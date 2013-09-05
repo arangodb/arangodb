@@ -279,10 +279,14 @@ namespace triagens {
 /// `/_admin/` etc. 
 ///
 /// IF the flag is set to @LIT{true}, then HTTP authentication is only
-/// required for requests going to URLs starting with `/_`, but not for other
+/// required for requests going to URLs starting with `/_`, but not for other 
 /// URLs. The flag can thus be used to expose a user-made API without HTTP
 /// authentication to the outside world, but to prevent the outside world from
 /// using the ArangoDB API and the admin interface without authentication.
+/// Note that checking the URL is performed after any database name prefix
+/// has been removed. That means when the actual URL called is 
+/// `/_db/_system/myapp/myaction`, the URL `/myapp/myaction` will be used for
+/// `authenticate-system-only` check.
 ///
 /// The default is @LIT{false}.
 ///

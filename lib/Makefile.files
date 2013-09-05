@@ -110,7 +110,6 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
-	lib/SimpleHttpClient/SimpleClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -166,7 +165,6 @@ lib_libarango_v8_a_SOURCES = \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
-	lib/SimpleHttpClient/SimpleClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 

@@ -135,6 +135,12 @@ static string TestCase = "version";
 static bool Progress = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief use HTTP keep-alive
+////////////////////////////////////////////////////////////////////////////////
+
+static bool KeepAlive = true;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,6 +199,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
+    ("keep-alive", &KeepAlive, "use HTTP keep-alive")
     ("collection", &Collection, "collection name to use in tests")
     ("test-case", &TestCase, "test case to use")
     ("complexity", &Complexity, "complexity parameter for the test")
@@ -294,7 +301,8 @@ int main (int argc, char* argv[]) {
         BaseClient.username(),
         BaseClient.password(),
         BaseClient.requestTimeout(),
-        BaseClient.connectTimeout());
+        BaseClient.connectTimeout(),
+        KeepAlive);
 
     threads.push_back(thread);
     thread->setOffset(i * realStep);
@@ -321,21 +329,25 @@ int main (int argc, char* argv[]) {
   }
 
   const size_t stepValue = (Operations / 20);
-  size_t lastReportValue = stepValue;
+  size_t nextReportValue = stepValue;
+
+  if (nextReportValue < 100) {
+    nextReportValue = 100;
+  }
 
   while (1) {
-    size_t numOperations = operationsCounter.getValue();
+    const size_t numOperations = operationsCounter.getValue();
 
     if (numOperations >= (size_t) Operations) {
       break;
     }
 
-    if (Progress && numOperations > lastReportValue) {
-      LOGGER_INFO("number of operations: " << numOperations);
-      lastReportValue = numOperations + stepValue;
+    if (Progress && numOperations >= nextReportValue) {
+      LOGGER_INFO("number of operations: " << nextReportValue);
+      nextReportValue += stepValue;
     }
 
-    usleep(50000);
+    usleep(20000);
   }
 
   double time = ((double) timer.time()) / 1000000.0;

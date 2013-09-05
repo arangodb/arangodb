@@ -58,7 +58,8 @@ var API = "_api/current-database";
 ///
 /// - `path`: The database path.
 ///
-/// - `isSystem`: Whether or not the current database is the system database.
+/// - `isSystem`: Whether or not the current database is the default 
+///   (`_system') database.
 ///
 /// @RESTRETURNCODES
 ///

@@ -7548,7 +7548,7 @@ static v8::Handle<v8::Value> JS_PathVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._name()}
 ///
-/// Returns the database name.
+/// Returns the name of the current database.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
@@ -7564,7 +7564,8 @@ static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._isSystem()}
 ///
-/// Returns the database type.
+/// Returns whether the currently used database is the default (`_system`)
+/// database.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_IsSystemVocbase (v8::Arguments const& argv) {
@@ -7576,18 +7577,25 @@ static v8::Handle<v8::Value> JS_IsSystemVocbase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database type
+/// @brief change the current database
 ///
-/// @FUN{USE_DATABASES}
+/// @FUN{@FA{db}._useDatabase(@FA{name})}
 ///
-/// Returns the database type.
+/// Changes the current database to the database specified by @FA{name}. Note
+/// that the database specified by @FA{name} must already exist.
+///
+/// When performing this command from arangosh, the current credentials (username 
+/// and password) will be re-used. These credentials might not be valid to
+/// connect to the database specified by @FA{name}. In this case, arangosh
+/// should be closed, and re-started with different username and password 
+/// credentials.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "USE_DATABASE(<name>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "db._useDatabase(<name>)");
   }
 
   string name = TRI_ObjectToString(argv[0]);
@@ -7605,18 +7613,18 @@ static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of database names
+/// @brief return the list of all existing databases
 ///
-/// @FUN{LIST_DATABASES}
+/// @FUN{@FA{db}._listDatabases()}
 ///
-/// Returns the list of database names
+/// Returns the list of all databases.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() > 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "LIST_DATABASES()");
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "db._listDatabases()");
   }
   
   vector<TRI_vocbase_t*> vocbases = VocbaseManager::manager.vocbases();
@@ -7705,18 +7713,26 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a new user database
+/// @brief create a new database
 ///
-/// @FUN{CREATE_DATABASE}
+/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options})}
 ///
-/// Returns the document id, the revision and the key.
+/// Creates a new database with the name specified by @FA{name}. This method
+/// can only be used from within the default (`_system`) database. 
+///
+/// Note that even if the database is created successfully, there will be no
+/// change of the current database to the new database. Changing the current
+/// database must explicitly be requested by using the @ref JS_UseVocbase
+/// method.
+///
+/// Returns the new database as an object.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<name>, <options>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7873,16 +7889,23 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete an existing database
+/// @brief drop an existing database
 ///
-/// @FUN{DROP_DATABASE}
+/// @FUN{@FA{db}._dropDatabase(@FA{name})}
+///
+/// Drops the database specified by @FA{name}. The database specified by 
+/// @FA{name} must exist. 
+///
+/// Note that dropping databases is only possible from within the default
+/// database (`_system`). The method will fail when not called from within the
+/// default database. The default database itself cannot be dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DropUserVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "DROP_DATABASE(<name>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "db._dropDatabase(<name>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();

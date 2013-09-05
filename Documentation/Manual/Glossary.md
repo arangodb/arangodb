@@ -7,6 +7,10 @@ Glossary {#Glossary}
 Glossary {#GlossaryIntro}
 =========================
 
+@copydoc GlossaryDatabase
+
+@copydoc GlossaryDatabaseName
+
 @copydoc GlossaryCollection
 
 @copydoc GlossaryCollectionIdentifier

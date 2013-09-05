@@ -5,7 +5,24 @@ Naming Conventions in ArangoDB {#NamingConventions}
 @EMBEDTOC{NamingConventionsTOC}
 
 The following naming conventions should be followed by users when creating
-collections and documents in ArangoDB.
+databases, collections, and documents in ArangoDB.
+
+Database Names {#DatabaseNames}
+===============================
+
+ArangoDB will always start up with a default database, named `_system`.
+Users can create additional databases in ArangoDB, provided the database
+names conform to the following constraints:
+
+- Database names must only consist of the lower-case letters `a` to `z`, 
+  the numbers `0` to `9`, and the underscore (`_`) symbol. 
+  This also means that any non-ASCII collection names are not allowed.
+- Database names must start with a letter (not a number, the underscore or the 
+  dash character). Database names starting with an underscore are considered to 
+  be system databases, and users should not create or delete those.
+- The maximum allowed length of a database name is 64 bytes.
+- Database names are case-sensitive (note that only lower-case database names
+  are allowed).
 
 Collection Names {#CollectionNames}
 ===================================
@@ -14,11 +31,10 @@ Users can pick names for their collections as desired, provided the following
 naming constraints are not violated:
 
 - Collection names must only consist of the letters `a` to `z` 
-  (both in lower and upper case), the numbers `0` to `9`, the
-  the underscore (`_`), or the dash (`-`) symbol. This also means that
-  any non-ASCII collection names are not allowed.
-- Collection names must start with a letter (not a number, the underscore or the 
-  dash character). Collection names starting with an underscore are considered to 
+  (both in lower and upper case), the numbers `0` to `9`, or the underscore (`_`)
+  symbol. This also means that any non-ASCII collection names are not allowed.
+- Collection names must start with a letter (not a number or the underscore character).
+  Collection names starting with an underscore are considered to 
   be system collections that are for ArangoDB's internal use only. 
   System collection names should not be used by end users for their own collections.
 - The maximum allowed length of a collection name is 64 bytes.

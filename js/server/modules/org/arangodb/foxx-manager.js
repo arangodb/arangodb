@@ -154,6 +154,21 @@ function buildAssetContent (app, assets, basePath) {
   var j;
   var m;
 
+  var excludeFile = function (name) {
+    var parts = name.split('/');
+        
+    if (parts.length > 0) {
+      var last = parts[parts.length - 1];
+
+      // exclude all files starting with .
+      if (last[0] === '.') {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   var reSub = /(.*)\/\*\*$/;
   var reAll = /(.*)\/\*$/;
 
@@ -174,20 +189,24 @@ function buildAssetContent (app, assets, basePath) {
 
       for (i = 0; i < m.length; ++i) {
         var filename = fs.join(basePath, match[1], m[i]);
-
-        if (fs.isFile(filename)) {
-          files.push(filename);
+        
+        if (! excludeFile(m[i])) {
+          if (fs.isFile(filename)) {
+            files.push(filename);
+          }
         }
       }
     }
     else {
       match = reAll.exec(asset);
-
+        
       if (match !== null) {
         throw new Error("Not implemented");
       }
       else {
-        files.push(fs.join(basePath, asset));
+        if (! excludeFile(asset)) {
+          files.push(fs.join(basePath, asset));
+        }
       }
     }
   }

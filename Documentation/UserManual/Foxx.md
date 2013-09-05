@@ -564,6 +564,10 @@ We built an authentication system you can use in your Foxx application (but you 
 
 @copydetails JSF_foxx_controller_logout
 
+### Adding a register route
+
+@copydetails JSF_foxx_controller_register
+
 ### Restricting routes
 
 To restrict routes, see the documentation for Documenting and Restraining the routes.
