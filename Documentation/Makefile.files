@@ -162,7 +162,6 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
 	Doxygen/js/server/modules/org/arangodb/arango-database.c \
 	Doxygen/js/server/modules/org/arangodb/foxx.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/application.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/authentication.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/base_middleware.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/controller.c \

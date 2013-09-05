@@ -1,4 +1,4 @@
-v1.4.0-alpha1 (2013-08-02)
+v1.4.0-alpha2 (2013-09-05)
 --------------------------
 
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
