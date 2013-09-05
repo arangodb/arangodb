@@ -217,7 +217,7 @@ int VocbaseManager::canAddVocbase (std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseManager::isValidName (std::string const& name) const {
-  return TRI_IsAllowedCollectionName(false, name.c_str());
+  return TRI_IsAllowedDatabaseName(false, name.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
