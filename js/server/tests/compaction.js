@@ -430,9 +430,7 @@ function CompactionSuite () {
       }
 
       internal.db._drop(cn);
-      internal.wait(5);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
-      internal.wait(2);
 
       for (var i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
@@ -450,10 +448,11 @@ function CompactionSuite () {
       c1.rotate();
 
       c1.truncate();
-      c1.unload();
-      
-      // trigger GC
-      internal.wait(2);
+        
+      fig = c1.figures();
+      assertEqual(0, fig["alive"]["count"]);
+      assertEqual(n, fig["dead"]["deletion"]);
+      assertEqual(0, c1.count());
       
       // wait for compactor to run
       require("console").log("waiting for compactor to run");
@@ -479,13 +478,12 @@ function CompactionSuite () {
       }
       
             
-      fig = c1.figures();
       assertEqual(0, c1.count());
       // all alive & dead markers should be gone
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);
       // we should still have all the deletion markers
-      assertEqual(n, fig["dead"]["deletion"]);
+      assertTrue(n >= fig["dead"]["deletion"]);
 
       internal.db._drop(cn);
     }
