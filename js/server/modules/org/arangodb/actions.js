@@ -34,7 +34,7 @@ var fs = require("fs");
 var console = require("console");
 
 var arangodb = require("org/arangodb");
-var foxxManager = require("org/arangodb/foxx-manager");
+var foxxManager = require("org/arangodb/foxx/manager");
 
 var moduleExists = function(name) { return module.exists; };
 
