@@ -900,8 +900,6 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 }
 
 
-#ifdef TRI_SKIPLIST_EX
-
 // -----------------------------------------------------------------------------
 // COMPARE & SWAP operations below for windows
 // Note that for the MAC OS we use the 'barrier' functions which ensure that
