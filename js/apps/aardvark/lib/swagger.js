@@ -37,7 +37,7 @@ exports.Swagger = function () {
     _routing = db._collection("_routing"),
     _aal = db._collection("_aal"),
     _ = require("underscore"),
-    foxx_manager = require("org/arangodb/foxx-manager");
+    foxx_manager = require("org/arangodb/foxx/manager");
   
   
   // Define the functionality to receive the documentation.
