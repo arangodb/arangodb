@@ -84,13 +84,13 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod32</TargetName>
     <LibraryPath>$(SolutionDir)Release;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>$(OutDir)\Exe\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod64</TargetName>
     <LibraryPath>$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>$(OutDir)\Exe\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

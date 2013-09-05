@@ -80,13 +80,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>$(OutDir)\Exe\</OutDir>
     <TargetName>arangoimp32</TargetName>
     <LibraryPath>$(SolutionDir)Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>$(OutDir)\Exe\</OutDir>
     <TargetName>arangoimp64</TargetName>
     <LibraryPath>$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
