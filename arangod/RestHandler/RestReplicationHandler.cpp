@@ -41,6 +41,7 @@
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
+#include "VocBase/update-policy.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -1449,8 +1450,6 @@ void RestReplicationHandler::handleCommandInventory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreCollection () {
-  generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_INTERNAL);
-#if 0  
   TRI_json_t* json = _request->toJson(0);
 
   if (json == 0) {
@@ -1472,9 +1471,8 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-  int res = processRestore(json, overwrite, remoteServerId, errorMsg);
+  int res = processRestoreCollection(json, overwrite, remoteServerId, errorMsg);
 
-  std::cout << "RES: " << res << "\n";
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1484,12 +1482,10 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     TRI_json_t result;
     
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    // TODO
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "done", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
   
     generateResult(&result);
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1525,19 +1521,19 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
   }
 
   if (! JsonHelper::isArray(json)) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
   
   const string name = JsonHelper::getStringValue(json, "name", "");
 
   if (name.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
   const TRI_voc_cid_t cid = getCid(json);
 
   if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
   
   const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
@@ -1581,8 +1577,9 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
     if (parameterName != 0) {
       int iterations = 0;
 
-      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 120) {
-        sleep(1);
+      // TODO: adjust sleep timer & maxiterations
+      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 1200) {
+        usleep(100 * 1000);
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
@@ -1609,14 +1606,14 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestore (TRI_json_t* const collection,
-                                            bool dropExisting,
-                                            TRI_server_id_t remoteServerId,
-                                            string& errorMsg) {
+int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collection,
+                                                      bool dropExisting,
+                                                      TRI_server_id_t remoteServerId,
+                                                      string& errorMsg) {
   if (! JsonHelper::isArray(collection)) {
     errorMsg = "collection declaration is invalid";
 
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
   TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
@@ -1624,7 +1621,7 @@ int RestReplicationHandler::processRestore (TRI_json_t* const collection,
   if (! JsonHelper::isArray(parameters)) {
     errorMsg = "collection parameters declaration is invalid";
 
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
   TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
@@ -1632,7 +1629,7 @@ int RestReplicationHandler::processRestore (TRI_json_t* const collection,
   if (! JsonHelper::isList(indexes)) {
     errorMsg = "collection indexes declaration is invalid";
 
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
   
   const string name = JsonHelper::getStringValue(parameters, "name", "");
@@ -1640,7 +1637,7 @@ int RestReplicationHandler::processRestore (TRI_json_t* const collection,
   if (name.empty()) {
     errorMsg = "collection name is missing";
 
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
   
   if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {  
@@ -1653,7 +1650,7 @@ int RestReplicationHandler::processRestore (TRI_json_t* const collection,
   if (! JsonHelper::isString(idString)) {
     errorMsg = "collection id is missing";
 
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
   
   TRI_voc_cid_t cid = StringUtils::uint64(idString->_value._string.data, idString->_value._string.length - 1);
@@ -1700,11 +1697,324 @@ int RestReplicationHandler::processRestore (TRI_json_t* const collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the data from a collection dump or the continuous log
+////////////////////////////////////////////////////////////////////////////////
+
+int RestReplicationHandler::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
+                                                       TRI_replication_operation_e type,
+                                                       const TRI_voc_key_t key,
+                                                       const TRI_voc_rid_t rid,
+                                                       TRI_json_t const* json,
+                                                       string& errorMsg) {
+
+  if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
+    // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+
+    assert(json != 0);
+
+    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+
+    if (shaped != 0) {
+      TRI_doc_mptr_t mptr;
+
+      int res = primary->read(trxCollection, key, &mptr, false);
+
+      if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // insert
+
+        if (type == MARKER_EDGE) {
+          // edge
+          if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
+            res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+          }
+          else {
+            res = TRI_ERROR_NO_ERROR;
+          }
+
+          const string from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
+          const string to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
+          
+
+          // parse _from
+          TRI_document_edge_t edge;
+          if (! DocumentHelper::parseDocumentId(from.c_str(), edge._fromCid, &edge._fromKey)) {
+            res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+          }
+          
+          // parse _to
+          if (! DocumentHelper::parseDocumentId(to.c_str(), edge._toCid, &edge._toKey)) {
+            res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+          }
+
+          if (res == TRI_ERROR_NO_ERROR) {
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false);
+          }
+        }
+        else {
+          // document
+          if (primary->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+            res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+          }
+          else {
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false);
+          }
+        }
+      }
+      else {
+        // update
+  
+        // init the update policy
+        TRI_doc_update_policy_t policy;
+        TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+        res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
+      }
+      
+      TRI_FreeShapedJson(primary->_shaper, shaped);
+
+      return res;
+    }
+    else {
+      errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+      
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+
+  else if (type == MARKER_REMOVE) {
+    // {"type":2402,"key":"592063"}
+    // init the update policy
+    TRI_doc_update_policy_t policy;
+    TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+
+    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
+    int res = primary->remove(trxCollection, key, rid, &policy, false, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // ignore this error
+        res = TRI_ERROR_NO_ERROR;
+      }
+      else {
+        errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
+      }
+    }
+
+    return res;
+  }
+
+  else {
+    errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+
+    return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RestReplicationHandler::processRestoreDataBatch (TRI_transaction_collection_t* trxCollection,
+                                                     TRI_server_id_t generatingServer,
+                                                     std::string& errorMsg) {
+  const string invalidMsg = "received invalid JSON data for collection " + 
+                            StringUtils::itoa(trxCollection->_cid);
+
+  char const* ptr = _request->body();
+  char const* end = ptr + _request->bodySize();
+
+  while (ptr < end) {
+    char const* pos = strchr(ptr, '\n');
+
+    if (pos == 0) {
+      pos = end;
+    }
+    else {
+      *((char*) pos) = '\0';
+    }
+
+    if (pos - ptr > 1) {
+      // found something
+      TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
+
+      if (! JsonHelper::isArray(json)) {
+        if (json != 0) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        }
+
+        errorMsg = invalidMsg;
+      
+        return TRI_ERROR_HTTP_CORRUPTED_JSON;
+      }
+
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+      const char* key       = 0;
+      TRI_voc_rid_t rid     = 0;
+      TRI_json_t const* doc = 0;
+
+      const size_t n = json->_value._objects._length;
+
+      for (size_t i = 0; i < n; i += 2) {
+        TRI_json_t const* element = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+  
+        if (! JsonHelper::isString(element)) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+          errorMsg = invalidMsg;
+      
+          return TRI_ERROR_HTTP_CORRUPTED_JSON;
+        }
+ 
+        const char* attributeName = element->_value._string.data;
+        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+
+        if (TRI_EqualString(attributeName, "type")) {
+          if (JsonHelper::isNumber(value)) {
+            type = (TRI_replication_operation_e) (int) value->_value._number;
+          }
+        }
+
+        else if (TRI_EqualString(attributeName, "key")) {
+          if (JsonHelper::isString(value)) {
+            key = value->_value._string.data;
+          }
+        }
+      
+        else if (TRI_EqualString(attributeName, "rev")) {
+          if (JsonHelper::isString(value)) {
+            rid = StringUtils::uint64(value->_value._string.data, value->_value._string.length - 1);
+          }
+        }
+
+        else if (TRI_EqualString(attributeName, "data")) {
+          if (JsonHelper::isArray(value)) {
+            doc = value;
+          }
+        }
+      }
+
+      // key must not be 0, but doc can be 0!
+      if (key == 0) {
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        errorMsg = invalidMsg;
+      
+        return TRI_ERROR_HTTP_BAD_PARAMETER;
+      }
+ 
+      int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
+      
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
+    ptr = pos + 1;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO
+////////////////////////////////////////////////////////////////////////////////
+
+int RestReplicationHandler::processRestoreData (TRI_voc_cid_t cid,
+                                                TRI_server_id_t generatingServer,
+                                                string& errorMsg) {
+
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+                                                 generatingServer,
+                                                 false, 
+                                                 0.0, 
+                                                 false);
+
+  if (trx == 0) {
+    errorMsg = "unable to start transaction";
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+    
+  int res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeTransaction(trx);
+    errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+
+    return res;
+  }
+    
+  // TODO: can we use this hint?
+  res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION, TRI_TRANSACTION_TOP_LEVEL);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeTransaction(trx);
+    errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+    
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
+
+  if (trxCollection == NULL) {
+    res = TRI_ERROR_INTERNAL;
+    errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+  }
+  else {
+    // TODO: waitForSync disabled here. use for initial replication, too
+    // sync at end of trx
+    trxCollection->_waitForSync = false;
+    res = processRestoreDataBatch(trxCollection, generatingServer, errorMsg);
+  }
+      
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
+  }
+
+  TRI_FreeTransaction(trx);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection TODO
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreData () {
-  generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_INTERNAL);
+  char const* collection = _request->value("collection");
+    
+  if (collection == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+  
+  TRI_voc_cid_t cid = StringUtils::uint64(collection);
+
+  if (cid == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return; 
+  }
+    
+  TRI_server_id_t remoteServerId = 0; // TODO
+  string errorMsg;
+
+  int res = processRestoreData(cid, remoteServerId, errorMsg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  
+    generateResult(&result);
+  }
 }
     
 ////////////////////////////////////////////////////////////////////////////////

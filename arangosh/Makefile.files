@@ -5,25 +5,42 @@
 ################################################################################
 
 ################################################################################
-### @brief program "arangosh"
+### @brief program "arangob"
 ################################################################################
 
-bin_arangosh_CPPFLAGS = \
+bin_arangob_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
 
-bin_arangosh_LDADD = \
+bin_arangob_LDADD = \
 	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
 	@V8_LIBS@
 
-bin_arangosh_SOURCES = \
+bin_arangob_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
-	arangosh/V8Client/ImportHelper.cpp \
-	arangosh/V8Client/V8ClientConnection.cpp \
-	arangosh/V8Client/arangosh.cpp
+	arangosh/Benchmark/arangob.cpp
+
+################################################################################
+### @brief program "arangodump"
+################################################################################
+
+bin_arangodump_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangodump_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
+bin_arangodump_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
+	arangosh/V8Client/arangodump.cpp
 
 ################################################################################
 ### @brief program "arangoimp"
@@ -47,23 +64,44 @@ bin_arangoimp_SOURCES = \
 	arangosh/V8Client/arangoimp.cpp
 
 ################################################################################
-### @brief program "arangob"
+### @brief program "arangorestore"
 ################################################################################
 
-bin_arangob_CPPFLAGS = \
+bin_arangorestore_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
 
-bin_arangob_LDADD = \
+bin_arangorestore_LDADD = \
 	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
 	@V8_LIBS@
 
-bin_arangob_SOURCES = \
+bin_arangorestore_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
-	arangosh/Benchmark/arangob.cpp
+	arangosh/V8Client/arangorestore.cpp
+
+################################################################################
+### @brief program "arangosh"
+################################################################################
+
+bin_arangosh_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangosh_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
+bin_arangosh_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
+	arangosh/V8Client/ImportHelper.cpp \
+	arangosh/V8Client/V8ClientConnection.cpp \
+	arangosh/V8Client/arangosh.cpp
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE
