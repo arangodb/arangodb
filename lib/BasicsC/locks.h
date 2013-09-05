@@ -449,10 +449,11 @@ bool TRI_CompareIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue);
 bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue);
 bool TRI_ComparePointer(void* volatile* theValue, void* oldValue);
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-#endif
 
 #ifdef __cplusplus
 }
