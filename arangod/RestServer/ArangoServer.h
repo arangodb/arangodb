@@ -193,12 +193,6 @@ namespace triagens {
         bool loadEndpoints ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads prefix mappings found in collection '_prefixes'
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool loadPrefixMappings ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -285,10 +279,14 @@ namespace triagens {
 /// `/_admin/` etc. 
 ///
 /// IF the flag is set to @LIT{true}, then HTTP authentication is only
-/// required for requests going to URLs starting with `/_`, but not for other
+/// required for requests going to URLs starting with `/_`, but not for other 
 /// URLs. The flag can thus be used to expose a user-made API without HTTP
 /// authentication to the outside world, but to prevent the outside world from
 /// using the ArangoDB API and the admin interface without authentication.
+/// Note that checking the URL is performed after any database name prefix
+/// has been removed. That means when the actual URL called is 
+/// `/_db/_system/myapp/myaction`, the URL `/myapp/myaction` will be used for
+/// `authenticate-system-only` check.
 ///
 /// The default is @LIT{false}.
 ///
@@ -301,6 +299,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _authenticateSystemOnly;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable authentication for ALL client requests
+///
+/// @CMDOPT{\--server.disable-authentication @CA{value}}
+///
+/// Setting @CA{value} to true will turn off authentication on the server side
+/// so all clients can execute any action without authorisation and privilege
+/// checks.
+///
+/// The default value is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
@@ -412,18 +424,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _forceSyncShapes;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start in multiple database mode
-///
-/// @CMDOPT{\--server.multiple-databases @CA{flag}}
-///
-/// If @LIT{true} the server can start more than one database.
-///
-/// The default is @LIT{false}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _multipleDatabases;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication logger on server startup

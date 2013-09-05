@@ -1,0 +1,140 @@
+/*#logContent {
+  margin-top: 0;
+  border: 20px solid rgba(0, 0, 0, 0.00);
+  background-color: rgba(0, 0, 0, 0.05);
+  min-height: 330px !important;
+  padding-bottom: 25px;
+}
+*/
+#logPages {
+  float:left;
+  margin-top: -6px !important;
+  padding-left: 10px;
+}
+
+#logButtons button {
+  margin-top: -10px !important;
+}
+
+.tab-content {
+  min-height: 390px;
+}
+
+#logContent {
+  padding-bottom: 0px !important;
+}
+
+.dataTables_info {
+  display:none !important;
+}
+
+.logContent {
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+
+
+#logContent .sorting_1 {
+  background-color: #FBFBFB !important;
+}
+
+/*.odd .sorting_1 {
+background-color: none !important;
+}
+
+  .even .sorting_1 {
+  background-color: #F1F0EE !important;
+}*/
+
+  #logToolbar {
+    padding-top: 10px;
+    padding-bottom: 15px;
+    border: 1px solid #C1BDBA;
+    background-color: #F7F6F6 !important;
+}
+
+#logToolbar button {
+  float:right;
+  border: medium none;
+  padding-left: 10px;
+  background-color: transparent;
+}
+
+
+#logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
+  background-color: #F9F9F9;
+  text-align: center;
+}
+
+#logTableID thead tr th, #infoTableID thead tr th, #debugTableID thead tr th, #critTableID thead tr th, #warnTableID thead tr th {
+  /*border-bottom: 1px solid #C1BDBA;*/
+  background-color: #FFFFFF !important;
+}
+
+#logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
+  /*background-color: #F4F4F4 !important;*/
+  width: 80px !important;
+  max-width: 80px !important;
+  cursor: default !important;
+}
+
+#logTableID tbody .firstcol, #infoTableID tbody .firstcol, #debugTableID tbody .firstcol, #critTableID tbody .firstcol, #warnTableID tbody .firstcol {
+  background-color: transparent !important;
+}
+
+.thirdcol {
+  max-width: 500px !important;
+  cursor: default !important;
+
+}
+
+.seccol, .dataTables_empty{
+  margin-bottom: 5px;
+  width: 100px !important;
+  cursor: default !important;
+}
+
+#logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {
+  border-spacing: 0 0px;
+  margin-top: -5px !important;
+  font-size: 15px !important;
+}
+
+
+#logTableID td, #infoTableID td, #debugTableID td, #critTableID td, #warnTableID td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+
+#logTableID_wrapper, #infoTableID_wrapper, #debugTableID_wrapper, #critTableID_wrapper, #warnTableID_wrapper{
+}
+
+#logContent .dataTable {
+› table-layout:fixed !important;
+› border-collapse:separate;
+› border-spacing:0 5px;
+}
+
+#logPaginationDiv a {
+  border-radius: 0 !important;
+}
+
+#logPaginationDiv {
+  padding-bottom: 5px !important;
+}
+
+#logContent .nav-tabs {
+  border-bottom: 0 !important;
+}
+
+#logTableID thead , #infoTableID thead , #debugTableID thead , #critTableID thead , #warnTableID thead {
+  border-top: 6px solid #888888 !important;
+}
+
+#logTableID thead th, #infoTableID thead th, #debugTableID thead th, #critTableID thead th, #warnTableID thead th {
+  border-top: 2px solid #888888;
+  border-bottom: 1px solid #C2C2C2;
+  background-color: #FFFFFF !important;
+}

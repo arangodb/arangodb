@@ -92,6 +92,8 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _endpoint(0),
   _connection(0),
   _client(0) {
+
+  _databaseName = string(vocbase->_name);
     
   // get our own server-id 
   _localServerId       = TRI_GetServerId();
@@ -129,6 +131,7 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
         }
 
         _client->setUserNamePassword("/", username, password);
+        _client->setLocationRewriter(this, &rewriteLocation);
       }
     }
   }
@@ -154,6 +157,41 @@ Syncer::~Syncer () {
 
   TRI_DestroyMasterInfoReplication(&_masterInfo);
   TRI_DestroyConfigurationReplicationApplier(&_configuration);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Replication
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+string Syncer::rewriteLocation (void* data, const string& location) {
+  Syncer* s = static_cast<Syncer*>(data);
+
+  assert(s != 0);
+
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + s->_databaseName + location;
+  }
+  else {
+    return "/_db/" + s->_databaseName + "/" + location;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -568,12 +606,13 @@ int Syncer::getMasterState (string& errorMsg) {
 
 int Syncer::handleStateResponse (TRI_json_t const* json, 
                                  string& errorMsg) {
+  const string endpointString = " from endpoint '" + string(_masterInfo._endpoint) + "'";
 
   // process "state" section
   TRI_json_t const* state = JsonHelper::getArrayElement(json, "state");
 
   if (! JsonHelper::isArray(state)) {
-    errorMsg = "state section is missing from response";
+    errorMsg = "state section is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -582,7 +621,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   TRI_json_t const* tick = JsonHelper::getArrayElement(state, "lastLogTick");
 
   if (! JsonHelper::isString(tick)) {
-    errorMsg = "lastLogTick is missing from response";
+    errorMsg = "lastLogTick is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -595,7 +634,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   TRI_json_t const* server = JsonHelper::getArrayElement(json, "server");
 
   if (! JsonHelper::isArray(server)) {
-    errorMsg = "server section is missing from response";
+    errorMsg = "server section is missing in response" + endpointString; 
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -604,7 +643,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   TRI_json_t const* version = JsonHelper::getArrayElement(server, "version");
 
   if (! JsonHelper::isString(version)) {
-    errorMsg = "server version is missing from response";
+    errorMsg = "server version is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -613,7 +652,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   TRI_json_t const* serverId = JsonHelper::getArrayElement(server, "serverId");
 
   if (! JsonHelper::isString(serverId)) {
-    errorMsg = "server id is missing from response";
+    errorMsg = "server id is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -624,14 +663,15 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
 
   if (masterId == 0) {
     // invalid master id
-    errorMsg = "server id in response is invalid";
+    errorMsg = "invalid server id in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
-    errorMsg = "master's id is the same as the applier server's id";
+    errorMsg = "got same server id (" + _localServerIdString + ")" + endpointString +
+               " as the local applier server's id";
 
     return TRI_ERROR_REPLICATION_LOOP;
   }
@@ -642,7 +682,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   const string versionString = string(version->_value._string.data, version->_value._string.length - 1);
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    errorMsg = "invalid master version info: " + versionString;
+    errorMsg = "invalid master version info" + endpointString + ": '" + versionString + "'";
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
@@ -650,7 +690,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   if (major != 1 ||
       (major == 1 && minor != 4)) {
     // we can connect to a 1.4 only
-    errorMsg = "incompatible master version: " + versionString;
+    errorMsg = "got incompatible master version" + endpointString + ": '" + versionString + "'";
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }

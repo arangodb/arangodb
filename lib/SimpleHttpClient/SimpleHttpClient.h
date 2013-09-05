@@ -34,7 +34,6 @@
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/SimpleClient.h"
 
 namespace triagens {
   namespace httpclient {
@@ -46,13 +45,28 @@ namespace triagens {
 /// @brief simple http client
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SimpleHttpClient : public SimpleClient {
+    class SimpleHttpClient {
 
     private:
       SimpleHttpClient (SimpleHttpClient const&);
       SimpleHttpClient& operator= (SimpleHttpClient const&);
 
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state of the connection
+////////////////////////////////////////////////////////////////////////////////
+
+      enum request_state {
+        IN_CONNECT,
+        IN_WRITE,
+        IN_READ_HEADER,
+        IN_READ_BODY,
+        IN_READ_CHUNKED_HEADER,
+        IN_READ_CHUNKED_BODY,
+        FINISHED,
+        DEAD
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http client
@@ -66,18 +80,24 @@ namespace triagens {
 /// @brief destructs a http client
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual ~SimpleHttpClient ();
+      ~SimpleHttpClient ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief close connection
+////////////////////////////////////////////////////////////////////////////////
+
+      bool close (); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a http request
 /// the caller has to delete the result object
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual SimpleHttpResult* request (rest::HttpRequest::HttpRequestType method,
-                                         const string& location,
-                                         const char* body,
-                                         size_t bodyLength,
-                                         const map<string, string>& headerFields);
+      SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
+                                 const string&,
+                                 const char*,
+                                 size_t,
+                                 const map<string, string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets username and password
@@ -87,17 +107,108 @@ namespace triagens {
 /// @param password                       password
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void setUserNamePassword (const string& prefix,
-                                        const string& username,
-                                        const string& password);
+      void setUserNamePassword (const string& prefix,
+                                const string& username,
+                                const string& password);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows rewriting locations
+////////////////////////////////////////////////////////////////////////////////
+
+      void setLocationRewriter (void* data, 
+                                std::string (*func)(void*, const std::string&)) {
+        _locationRewriter.data = data;
+        _locationRewriter.func = func;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable or disable keep-alive
+////////////////////////////////////////////////////////////////////////////////
+
+      void setKeepAlive (bool value) {
+        _keepAlive = value;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current error message
+////////////////////////////////////////////////////////////////////////////////
+
+      const string& getErrorMessage () const {
+        return _errorMessage;
+      }
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register and dump an error message
+////////////////////////////////////////////////////////////////////////////////
+
+      void setErrorMessage (const string& message, bool forceWarn = false) {
+        _errorMessage = message;
+
+        if (_warn || forceWarn) {
+          LOGGER_WARNING(_errorMessage);
+        }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error message
+////////////////////////////////////////////////////////////////////////////////
+
+      void setErrorMessage (const string& message, int error) {
+        if (error != 0) {
+          _errorMessage = message + ": " + strerror(error);
+        }
+        else {
+          setErrorMessage(message);
+        }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if the request is in progress
+////////////////////////////////////////////////////////////////////////////////
+
+      bool isWorking () const {
+        return _state < FINISHED;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the connection
+////////////////////////////////////////////////////////////////////////////////
+
+      void handleConnect ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get timestamp
+////////////////////////////////////////////////////////////////////////////////
+
+      static double now () {
+        struct timeval tv;
+        gettimeofday(&tv, 0);
+
+        double sec = (double) tv.tv_sec; // seconds
+        double usc = (double) tv.tv_usec; // microseconds
+
+        return sec + usc / 1000000.0;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reset state
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void reset ();
+      void reset ();
 
-    private:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rewrite a location URL
+////////////////////////////////////////////////////////////////////////////////
+
+      string rewriteLocation (const string& location) {
+        if (_locationRewriter.func != 0) {
+          return _locationRewriter.func(_locationRewriter.data, location);
+        }
+
+        return location;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the result
@@ -147,6 +258,44 @@ namespace triagens {
       bool readChunkedBody ();
 
     private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connection used (TCP or SSL connection)
+////////////////////////////////////////////////////////////////////////////////
+
+      GeneralClientConnection* _connection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write buffer
+////////////////////////////////////////////////////////////////////////////////
+
+      triagens::basics::StringBuffer _writeBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read buffer
+////////////////////////////////////////////////////////////////////////////////
+
+      triagens::basics::StringBuffer _readBuffer;
+
+      double _requestTimeout;
+
+      bool _warn;
+
+      request_state _state;
+
+      size_t _written;
+
+      string _errorMessage;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct for rewriting location URLs
+////////////////////////////////////////////////////////////////////////////////
+
+      struct {
+        void* data;
+        std::string (*func)(void*, const std::string&);
+      }
+      _locationRewriter;
     
       uint32_t _nextChunkedSize;
 
@@ -155,6 +304,8 @@ namespace triagens {
       std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
 
       const size_t _maxPacketSize;
+
+      bool _keepAlive;
       
       rest::HttpRequest::HttpRequestType _method;
 

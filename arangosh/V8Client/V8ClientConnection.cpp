@@ -30,6 +30,7 @@
 
 #include <sstream>
 
+#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
@@ -60,6 +61,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
+                                        string databaseName,
                                         const string& username,
                                         const string& password,
                                         double requestTimeout,
@@ -67,6 +69,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         size_t numRetries,
                                         bool warn)
   : _connection(0),
+    _databaseName(databaseName),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
@@ -80,6 +83,13 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   }
 
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+
+  if (_client == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
+  _client->setLocationRewriter(this, &rewriteLocation);
+
   _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
@@ -95,7 +105,6 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _lastHttpReturnCode = result->getHttpReturnCode();
 
     if (result->getHttpReturnCode() == HttpResponse::OK) {
-
       // default value
       _version = "arango";
 
@@ -103,23 +112,13 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
 
       if (json) {
+        // look up "server" value
+        const string server = JsonHelper::getStringValue(json, "server", "");
 
-        // look up "server" value (this returns a pointer, not a copy)
-        TRI_json_t* server = TRI_LookupArrayJson(json, "server");
-
-        if (TRI_IsStringJson(server)) {
-          // "server" value is a string and content is "arango"
-          if (TRI_EqualString(server->_value._string.data, "arango")) {
-            // look up "version" value (this returns a pointer, not a copy)
-            TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
-
-            if (TRI_IsStringJson(vs)) {
-              // "version" value is a string
-              _version = string(vs->_value._string.data, vs->_value._string.length - 1);
-            }
-          }
-
-          // must not free server and vs, they are contained in the "json" variable and freed below
+        // "server" value is a string and content is "arango"
+        if (server == "arango") {
+          // look up "version" value
+          _version = JsonHelper::getStringValue(json, "version", "");
         }
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -129,6 +128,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       // initial request for /_api/version return some non-HTTP 200 response.
       // now set up an error message
       _lastErrorMessage = _client->getErrorMessage();
+
       if (result) {
         _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
       }
@@ -172,11 +172,49 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+string V8ClientConnection::rewriteLocation (void* data, const string& location) {
+  V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
+
+  assert(c != 0);
+
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + c->_databaseName + location;
+  }
+  else {
+    return "/_db/" + c->_databaseName + "/" + location;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if it is connected
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8ClientConnection::isConnected () {
   return _connection->isConnected();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current database name
+////////////////////////////////////////////////////////////////////////////////
+
+const string& V8ClientConnection::getDatabaseName () {
+  return _databaseName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current database name
+////////////////////////////////////////////////////////////////////////////////
+
+void V8ClientConnection::setDatabaseName (const string& databaseName) {
+  _databaseName = databaseName;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

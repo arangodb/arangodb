@@ -193,7 +193,6 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _v8Options(""),
     _startupLoader(),
     _actionLoader(),
-    _adminDirectory(),
     _vocbase(0),
     _nrInstances(0),
     _contexts(0),
@@ -736,7 +735,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   context->_context->Enter();
 
-  TRI_InitV8VocBridge(context->_context, _vocbase, _adminDirectory, i);
+  TRI_InitV8VocBridge(context->_context, _vocbase, i);
   TRI_InitV8Queries(context->_context);
 
 
@@ -788,17 +787,19 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
       // but for all vocbases
       
       bool ok = VocbaseManager::manager.runVersionCheck(*vocbaseIterator, context->_context);
+
+      const string name = string((*vocbaseIterator)->_name);
       
-      if (!ok) {
+      if (! ok) {
         if (_performUpgrade) {
-          LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" + string((*vocbaseIterator)->_path) + "'. Please inspect the logs from the upgrade procedure");
+          LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" + name + "'. Please inspect the logs from the upgrade procedure");
         }
         else {
-          LOGGER_FATAL_AND_EXIT("Database version check failed for '" + string((*vocbaseIterator)->_path) + "'. Please start the server with the --upgrade option");
+          LOGGER_FATAL_AND_EXIT("Database version check failed for '" + name + "'. Please start the server with the --upgrade option");
         }
       }
 
-      LOGGER_DEBUG("database version check passed for " + string((*vocbaseIterator)->_path));
+      LOGGER_DEBUG("database version check passed for '" + name + "'");
     }
   }
 

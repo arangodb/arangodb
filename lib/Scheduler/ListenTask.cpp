@@ -205,7 +205,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 
     // disable nagle's algorithm, set to non-blocking and close-on-exec
     bool result = _endpoint->initIncoming(connectionSocket);
-    if (!result) {
+    if (! result) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
@@ -230,7 +230,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     }
 
     info.serverAddress = _endpoint->getHost();
-    info.serverPort = _endpoint->getPort();
+    info.serverPort    = _endpoint->getPort();
+    info.endpoint      = _endpoint->getSpecification();
 
     return handleConnected(connectionSocket, info);
   }

@@ -356,6 +356,12 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::String> CookiesKey;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief "database" key name
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> DatabaseKey;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief "doCompact" key name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -721,7 +727,8 @@ void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const char* const name,
-                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&));
+                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&),
+                                   const bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
@@ -729,7 +736,8 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const char* const name,
-                                   v8::Handle<v8::Function> func);
+                                   v8::Handle<v8::Function> func,
+                                   const bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global variable to the given context

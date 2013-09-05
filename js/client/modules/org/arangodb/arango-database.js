@@ -241,9 +241,9 @@ ArangoDatabase.prototype._help = function () {
 /// @brief return a string representation of the database object
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoDatabase.prototype.toString = function () {  
-    return "[object ArangoDatabase]";
-  };
+ArangoDatabase.prototype.toString = function () {  
+  return "[object ArangoDatabase \"" + this._name() + "\"]";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -451,8 +451,8 @@ ArangoDatabase.prototype._flushCache = function () {
 /// @brief query the database properties
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._queryProperties = function () {
-  if (this._properties === null) {
+ArangoDatabase.prototype._queryProperties = function (force) {
+  if (force || this._properties === null) {
     var requestResult = this._connection.GET("/_api/current-database");
 
     arangosh.checkRequestResult(requestResult);
@@ -780,13 +780,119 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (query, bindVars) {  
-  var payload = {
+ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {  
+  var data = {
     query: query,
-    bindVars: bindVars || undefined 
+    bindVars: bindVars || undefined,
+    count: (cursorOptions && cursorOptions.count) || false,
+    batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
+    options: options || undefined 
   };
   
-  return new ArangoStatement(this, payload).execute();
+  return new ArangoStatement(this, data).execute();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                database functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._createDatabase = function (name, options) {  
+  var data = {
+    name: name,
+    options: options || { } 
+  };
+  
+  var requestResult = this._connection.POST("/_api/database", JSON.stringify(data));
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop an existing database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._dropDatabase = function (name) {
+  var requestResult = this._connection.DELETE("/_api/database/" + encodeURIComponent(name));
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list all existing databases
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._listDatabases = function () {  
+  var requestResult = this._connection.GET("/_api/database");
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses a database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._useDatabase = function (name) {
+  var old = this._connection.getDatabaseName();
+
+  // no change
+  if (name === old) {
+    return true;
+  }
+
+  this._connection.setDatabaseName(name);
+
+  try {
+    // re-query properties
+    this._queryProperties(true);
+    this._flushCache();
+  }
+  catch (err) {
+    this._connection.setDatabaseName(old);
+   
+    if (err.hasOwnProperty("errorNum")) {
+      throw err;
+    }
+
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "cannot use database '" + name + "'"
+    });
+  }
+
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

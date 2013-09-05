@@ -98,7 +98,7 @@ Command-Line Options for arangod {#CommandLineArangod}
 
 @CLEARPAGE
 @anchor CommandLineArangoDisableAuthentication
-@copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+@copydetails triagens::arango::ArangoServer::_disableAuthentication
 
 @CLEARPAGE
 @anchor CommandLineArangoAuthenticateSystemOnly
@@ -144,9 +144,6 @@ Command-Line Options for arangod {#CommandLineArangod}
 @anchor CommandLineArangoBacklogSize
 @copydetails triagens::rest::ApplicationEndpointServer::_backlogSize
 
-@CLEARPAGE
-@anchor CommandLineArangoDisableAdminInterface
-@CMDOPT{\--disable-admin-interface @CA{value}}
 
 If this option is specified and @CA{value} is `true`, then the HTML
 administration interface at URL `http://server:port/` will be disabled and

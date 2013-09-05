@@ -622,7 +622,7 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
     TRI_fulltext_list_t* clone;
     uint32_t newSize;
 
-    newSize = numEntries * GROWTH_FACTOR;
+    newSize = (uint32_t) (numEntries * GROWTH_FACTOR);
     
     if (newSize == numEntries) {
       // 0 * something might not be enough...

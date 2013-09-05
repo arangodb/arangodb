@@ -52,15 +52,48 @@ namespace triagens {
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, 
                                         double requestTimeout, 
                                         bool warn) :
-      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
+      _connection(connection),
+      _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _readBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _requestTimeout(requestTimeout),
+      _warn(warn),
+      _locationRewriter(),
+      _result(0), 
+      _maxPacketSize(128 * 1024 * 1024),
+      _keepAlive(true) {
+
+      // waiting for C++11...
+      _locationRewriter.func = 0;
+      _locationRewriter.data = 0;
+      
+      _errorMessage = "";
+      _written = 0;
+      _state = IN_CONNECT;
+
+      reset();
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
+      _connection->disconnect();
     }
 
 // -----------------------------------------------------------------------------
     // public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief close connection
+////////////////////////////////////////////////////////////////////////////////
+
+    bool SimpleHttpClient::close () {
+      _connection->disconnect();
+      _state = IN_CONNECT;
+
+      reset();
+
+      return true;
+    }
+
 
     SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
             const string& location,
@@ -73,8 +106,8 @@ namespace triagens {
       _result = new SimpleHttpResult;
       _errorMessage = "";
 
-      // set body to all connections
-      setRequest(method, location, body, bodyLength, headerFields);
+      // set body 
+      setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;
@@ -155,8 +188,29 @@ namespace triagens {
     // private methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the connection
+////////////////////////////////////////////////////////////////////////////////
+
+      void SimpleHttpClient::handleConnect () {
+        if (! _connection->connect()) {
+          setErrorMessage("Could not connect to '" +  _connection->getEndpoint()->getSpecification() + "'", errno);
+          _state = DEAD;
+        }
+        else {
+          // can write now
+          _state = IN_WRITE;
+          _written = 0;
+        }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset state
+////////////////////////////////////////////////////////////////////////////////
+
     void SimpleHttpClient::reset () {
-      SimpleClient::reset();
+      _readBuffer.clear();
+
       if (_result) {
         _result->clear();
       }
@@ -166,10 +220,9 @@ namespace triagens {
 /// @brief sets username and password
 ////////////////////////////////////////////////////////////////////////////////
 
-    void SimpleHttpClient::setUserNamePassword (
-            const string& prefix,
-            const string& username,
-            const string& password) {
+    void SimpleHttpClient::setUserNamePassword (const string& prefix,
+                                                const string& username,
+                                                const string& password) {
 
       string value = triagens::basics::StringUtils::encodeBase64(username + ":" + password);
 
@@ -205,10 +258,10 @@ namespace triagens {
     }
 
     void SimpleHttpClient::setRequest (rest::HttpRequest::HttpRequestType method,
-            const string& location,
-            const char* body,
-            size_t bodyLength,
-            const map<string, string>& headerFields) {
+                                       const string& location,
+                                       const char* body,
+                                       size_t bodyLength,
+                                       const map<string, string>& headerFields) {
 
       _method = method;
 
@@ -238,9 +291,15 @@ namespace triagens {
       _writeBuffer.appendText(hostname);
       _writeBuffer.appendText("\r\n");
 
-      _writeBuffer.appendText("Connection: Keep-Alive\r\n");
-      _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
-
+      if (_keepAlive) {
+        _writeBuffer.appendText("Connection: Keep-Alive\r\n");
+      }
+      else {
+        _writeBuffer.appendText("Connection: Close\r\n");
+      }
+      _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
+      _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
+      
       // do basic authorization
       if (! _pathToBasicAuth.empty()) {
         string foundPrefix;
@@ -365,7 +424,15 @@ namespace triagens {
       }
 
       if (_readBuffer.length() >= _result->getContentLength()) {
-        _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
+        if (_result->isDeflated()) {
+          // body is compressed using deflate. inflate it
+          _readBuffer.inflate(_result->getBody());
+        }
+        else {
+          // body is not compressed
+          _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
+        }
+
         _readBuffer.erase_front(_result->getContentLength());
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;

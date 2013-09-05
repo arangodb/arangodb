@@ -211,7 +211,7 @@ dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES
 dnl ============================================================================
 
-BUILD_H="\$(top_srcdir)/build_posix.h"
+BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
 AC_CONFIG_FILES([Makefile Documentation/arango.template])

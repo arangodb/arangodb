@@ -92,7 +92,8 @@ namespace triagens {
           GeneralCommTask<S, HttpHandlerFactory>(server, socket, info, keepAliveTimeout),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
           _origin(),
-          _denyCredentials(false) {
+          _denyCredentials(false),
+          _acceptDeflate(false) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -144,6 +145,8 @@ namespace triagens {
           this->_httpVersion     = HttpRequest::HTTP_UNKNOWN;
           this->_requestType     = HttpRequest::HTTP_REQUEST_ILLEGAL;
           this->_fullUrl         = "";
+          this->_denyCredentials = false;
+          this->_acceptDeflate   = false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,8 +332,7 @@ namespace triagens {
 
                 return true;
               }
-
-
+                
               // check for a 100-continue
               if (this->_readRequestBody) {
                 bool found;
@@ -362,8 +364,9 @@ namespace triagens {
           // readRequestBody might have changed, so cannot use else
           if (this->_readRequestBody) {
             if (this->_bodyLength > this->_maximalBodySize) {
-              LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength);
               // request entity too large
+              LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength);
+
               HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
               this->handleResponse(&response);
               this->resetState();
@@ -378,6 +381,7 @@ namespace triagens {
               if (socketTask) {
                 // set read request time-out
                 LOGGER_TRACE("waiting for rest of body to be received. request timeout set to 60 s");
+
                 socketTask->setKeepAliveTimeout(60.0);
               }
 
@@ -459,11 +463,11 @@ namespace triagens {
             // authenticate
             // .............................................................................
 
-            bool auth = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
+            HttpResponse::HttpResponseCode authResult = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
 
             // authenticated
             // or an HTTP OPTIONS request. OPTIONS requests currently go unauthenticated
-            if (auth || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
+            if (authResult == HttpResponse::OK || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
 
               // handle HTTP OPTIONS requests directly
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
@@ -516,6 +520,14 @@ namespace triagens {
               }
               else {
                 this->RequestStatisticsAgent::transfer(handler);
+              
+                bool found;
+                string const& acceptEncoding = this->_request->header("accept-encoding", found);
+                if (found) {
+                  if (acceptEncoding.find("deflate") != string::npos) {
+                    _acceptDeflate = true;
+                  } 
+                }
 
                 this->_request = 0;
                 ok = this->_server->handleRequest(this, handler);
@@ -527,6 +539,14 @@ namespace triagens {
               }
             }
 
+            // not found 
+            else if (authResult == HttpResponse::NOT_FOUND) {
+              HttpResponse response(HttpResponse::NOT_FOUND);
+
+              this->handleResponse(&response);
+              this->resetState();
+            }
+            
             // not authenticated
             else {
               const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
@@ -578,20 +598,32 @@ namespace triagens {
             response->setHeader("connection", strlen("connection"), "Keep-Alive");
           }
 
+          size_t responseBodyLength = response->bodySize();
+
           if (this->_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
             // clear body if this is an HTTP HEAD request
             // HEAD must not return a body
-            response->headResponse(response->bodySize());
+            response->headResponse(responseBodyLength);
           }
+          // else {
+          //    // to enable automatic deflating of responses, active this.
+          //   // deflate takes a lot of CPU time so it should only be enabled for
+          //   // dedicated purposes and not generally         
+          //   if (responseBodyLength > 16384  && _acceptDeflate) {
+          //     response->deflate();
+          //     responseBodyLength = response->bodySize();
+          //   }
+          // }
 
           // reserve some outbuffer size
-          const size_t len = response->bodySize() + 128;
-          triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
+          triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128);
           // write header
           response->writeHeader(buffer);
 
           // write body
-          buffer->appendText(response->body());
+          if (this->_requestType != HttpRequest::HTTP_REQUEST_HEAD) {
+            buffer->appendText(response->body());
+          }
 
           this->_writeBuffers.push_back(buffer);
 
@@ -609,7 +641,7 @@ namespace triagens {
                        HttpRequest::translateVersion(this->_httpVersion) << "\"," << 
                        response->responseCode() << "," <<
                        this->_bodyLength << "," << 
-                       response->body().length() << ",\"" <<
+                       responseBodyLength << ",\"" <<
                        this->_fullUrl << "\"");
 
           // clear body
@@ -707,6 +739,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _denyCredentials;
+
+////////////////////////////////////////////////////////////////////////////////
+/// whether the client accepts deflate algorithm
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _acceptDeflate;
 
     };
   }

@@ -51,7 +51,6 @@
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
 
-#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -136,6 +135,12 @@ static string TestCase = "version";
 static bool Progress = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief use HTTP keep-alive
+////////////////////////////////////////////////////////////////////////////////
+
+static bool KeepAlive = true;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,6 +199,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
+    ("keep-alive", &KeepAlive, "use HTTP keep-alive")
     ("collection", &Collection, "collection name to use in tests")
     ("test-case", &TestCase, "test case to use")
     ("complexity", &Complexity, "complexity parameter for the test")
@@ -291,10 +297,12 @@ int main (int argc, char* argv[]) {
         (unsigned long) BatchSize,
         &operationsCounter,
         endpoint,
+        BaseClient.databaseName(),
         BaseClient.username(),
         BaseClient.password(),
         BaseClient.requestTimeout(),
-        BaseClient.connectTimeout());
+        BaseClient.connectTimeout(),
+        KeepAlive);
 
     threads.push_back(thread);
     thread->setOffset(i * realStep);
@@ -321,21 +329,25 @@ int main (int argc, char* argv[]) {
   }
 
   const size_t stepValue = (Operations / 20);
-  size_t lastReportValue = stepValue;
+  size_t nextReportValue = stepValue;
+
+  if (nextReportValue < 100) {
+    nextReportValue = 100;
+  }
 
   while (1) {
-    size_t numOperations = operationsCounter.getValue();
+    const size_t numOperations = operationsCounter.getValue();
 
     if (numOperations >= (size_t) Operations) {
       break;
     }
 
-    if (Progress && numOperations > lastReportValue) {
-      LOGGER_INFO("number of operations: " << numOperations);
-      lastReportValue = numOperations + stepValue;
+    if (Progress && numOperations >= nextReportValue) {
+      LOGGER_INFO("number of operations: " << nextReportValue);
+      nextReportValue += stepValue;
     }
 
-    usleep(50000);
+    usleep(20000);
   }
 
   double time = ((double) timer.time()) / 1000000.0;
@@ -349,7 +361,7 @@ int main (int argc, char* argv[]) {
 
   cout << endl;
   cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
-  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", collection: '" << Collection << "'" << endl;
+  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", database: '" << BaseClient.databaseName() << "', collection: '" << Collection << "'" << endl;
   cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
   cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
   cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;

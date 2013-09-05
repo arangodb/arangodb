@@ -1,0 +1,93 @@
+#save-new-collection, #save-modified-collection {
+  margin-right: 2px !important;
+}
+
+#delete-modified-collection {
+  margin-left: 1px !important;
+}
+
+.svgFigures {
+  margin-top: 0px !important;
+  width: 250px;
+  height: 250px;
+}
+
+#tab-content-collection-info {
+  min-height: 200px !important;
+}
+
+#change-collection .tab-content {
+  min-height: 230px ;
+}
+
+#change-collection .glyphicon-plus-sign,
+#change-collection .glyphicon-remove-circle {
+  float: right;
+  font-size: 27px;
+  color: #788F3D;
+  position: absolute;
+  right: 15px;
+  top: 55px;
+}
+
+#newIndexView .glyphicon-remove-circle {
+  color: #DA4F49;
+}
+
+#newIndexView table {
+  width: 100%;
+}
+
+#change-collection .glyphicon-minus-sign {
+  color: #DA4F49;
+  font-size: 20px;
+  margin-left: 10px;
+}
+
+#change-collection .glyphicon-ban-circle {
+  color: black;
+  opacity: 0.6;
+  font-size: 20px;
+  margin-left: 10px;
+}
+
+#change-collection .glyphicon-ban-circle:hover {
+  cursor: default !important;
+}
+
+#change-collection #collectionEditIndexTable {
+  margin-top: 20px;
+}
+
+#change-collection #newIndexView,
+#change-collection #indexEditView {
+  margin-top: 0px;
+}
+
+#newIndexType {
+  margin-left: 5px;
+}
+
+#createIndex {
+  margin-top: 15px !important;
+  margin-left: 0;
+}
+
+#tab-content-collection-edit {
+  max-height: 300px !important;
+}
+
+#newIndexHeader {
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 400;
+  color: black;
+}
+
+#newIndexView select {
+  margin-left: -10px;
+}
+
+#newIndexView input[type='checkbox'] {
+  margin-left: -20px;
+}

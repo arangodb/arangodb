@@ -56,14 +56,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
-                                        auth_fptr checkAuthentication,
                                         flush_fptr flushAuthentication,
                                         context_fptr setContext)
   : _authenticationRealm(authenticationRealm),
-    _checkAuthentication(checkAuthentication),
     _setContext(setContext),
     _flushAuthentication(flushAuthentication),
-    _requireAuthentication(true),
     _notFound(0) {
 }
 
@@ -73,10 +70,8 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
-    _checkAuthentication(that._checkAuthentication),
     _setContext(that._setContext),
     _flushAuthentication(that._flushAuthentication),
-    _requireAuthentication(that._requireAuthentication),
     _constructors(that._constructors),
     _datas(that._datas),
     _prefixes(that._prefixes),
@@ -90,10 +85,8 @@ HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
 HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& that) {
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm,
-    _checkAuthentication = that._checkAuthentication,
     _setContext = that._setContext,
     _flushAuthentication = that._flushAuthentication,
-    _requireAuthentication = that._requireAuthentication;
     _constructors = that._constructors;
     _datas = that._datas;
     _prefixes = that._prefixes;
@@ -134,14 +127,6 @@ void HttpHandlerFactory::flushAuthentication () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief require authentication
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpHandlerFactory::setRequireAuthentication (bool value) {
-  _requireAuthentication = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,11 +143,17 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 /// disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
+HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   RequestContext* rc = request->getRequestContext();
 
   if (! rc) {
-    setRequestContext(request);
+    if (! setRequestContext(request)) {
+      return HttpResponse::NOT_FOUND;
+    }
+  }
+
+  if (! rc) {
+    return HttpResponse::NOT_FOUND;
   }
 
   return rc->authenticate();
@@ -174,69 +165,6 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
 
 bool HttpHandlerFactory::setRequestContext (HttpRequest * request) {
   return _setContext(request);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request, worker method
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpHandlerFactory::authenticate (HttpRequest* request) {
-  bool found;
-  char const* auth = request->header("authorization", found);
-
-  if (found) {
-    if (! TRI_CaseEqualString2(auth, "basic ", 6)) {
-      return false;
-    }
-
-    auth += 6;
-
-    while (*auth == ' ') {
-      ++auth;
-    }
-
-    // check if the cache is outdated
-    if (_flushAuthentication()) {
-      // cache is outdated, now flush it
-      flushAuthentication();
-    }
-
-
-    // try reading auth info from cache first
-    {
-      READ_LOCKER(_authLock);
-
-      map<string,string>::iterator i = _authCache.find(auth);
-
-      if (i != _authCache.end()) {
-        request->setUser(i->second);
-        return true;
-      }
-    }
-
-    // auth info has not been in the cache yet
-
-    string up = StringUtils::decodeBase64(auth);
-    vector<string> split = StringUtils::split(up, ":");
-
-    if (split.size() != 2) {
-      return false;
-    }
-
-    bool res = _checkAuthentication(split[0].c_str(), split[1].c_str());
-
-    if (res) {
-      // put auth info into cache
-      WRITE_LOCKER(_authLock);
-
-      _authCache[auth] = split[0];
-      request->setUser(split[0]);
-    }
-
-    return res;
-  }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

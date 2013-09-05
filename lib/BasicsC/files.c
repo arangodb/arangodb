@@ -403,7 +403,7 @@ bool TRI_ExistsFile (char const* path) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateRecursiveDirectory (char const* path) {
+int TRI_CreateRecursiveDirectory (char const* path) {
   char* copy;
   char* p;
   char* s;
@@ -449,17 +449,25 @@ bool TRI_CreateRecursiveDirectory (char const* path) {
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateDirectory (char const* path) {
+int TRI_CreateDirectory (char const* path) {
   int res;
+
+  // reset error flag
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   res = TRI_MKDIR(path, 0777);
 
-  if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return false;
+  if (res != TRI_ERROR_NO_ERROR) {
+    // check errno
+    res = TRI_errno();
+
+    // if errno doesn't indicate an error, return a system error
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_ERROR_SYS_ERROR;
+    }
   }
 
-  return true;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -832,6 +840,31 @@ bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves data to a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteFile (const char* filename, const char* data, size_t length) {
+  int fd;
+  bool result;
+
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+  if (fd == -1) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  result = TRI_WritePointer(fd, data, length);
+
+  TRI_CLOSE(fd);
+
+  if (! result) {
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1490,7 +1523,6 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 
 char* TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
-  char* dir;
   char* binaryPath = NULL;
   size_t i;
 
@@ -1502,14 +1534,10 @@ char* TRI_LocateBinaryPath (char const* argv0) {
 
   // contains a path
   if (*p) {
-    dir = TRI_Dirname(argv0);
+    binaryPath = TRI_Dirname(argv0);
 
-    if (dir == 0) {
+    if (binaryPath == 0) {
       binaryPath = TRI_DuplicateString("");
-    }
-    else {
-      binaryPath = TRI_DuplicateString(dir);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
   }
 

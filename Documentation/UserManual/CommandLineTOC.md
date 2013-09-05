@@ -28,7 +28,6 @@ TOC {#CommandLineTOC}
     - @ref CommandLineArangoSslOptions "server.ssl-options"
     - @ref CommandLineArangoSslCipherList "server.ssl-cipher-list"
     - @ref CommandLineArangoBacklogSize "server.backlog-size"
-    - @ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"
     - @ref CommandLineArangoDisableStatistics "server.disable-statistics"
     - @ref CommandLineArangoDirectory "database.directory"
     - @ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"

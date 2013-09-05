@@ -59,8 +59,6 @@
 #include "V8Client/ImportHelper.h"
 #include "V8Client/V8ClientConnection.h"
 
-#include "build.h"
-
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
@@ -388,6 +386,7 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
 
 static V8ClientConnection* CreateConnection () {
   return new V8ClientConnection(BaseClient.endpointServer(),
+                                BaseClient.databaseName(),
                                 BaseClient.username(),
                                 BaseClient.password(),
                                 BaseClient.requestTimeout(),
@@ -532,7 +531,8 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-         << "' Version " << connection->getVersion() << endl;
+         << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName() 
+         << "', username: '" << BaseClient.username() << "'" << endl;
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
@@ -556,22 +556,24 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>[, <username>, <password>])");
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>, <databasename>, [, <username>, <password>])");
   }
 
   string definition = TRI_ObjectToString(argv[0]);
 
+  string databaseName = TRI_ObjectToString(argv[1]);
+
   string username;
-  if (argv.Length() < 2) {
+  if (argv.Length() < 3) {
     username = BaseClient.username();
   }
   else {
-    username = TRI_ObjectToString(argv[1]);
+    username = TRI_ObjectToString(argv[2]);
   }
 
   string password;
-  if (argv.Length() < 3) {
+  if (argv.Length() < 4) {
     cout << "Please specify a password: " << flush;
 
     // now prompt for it
@@ -586,16 +588,18 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     cout << "\n";
   }
   else {
-    password = TRI_ObjectToString(argv[2]);
+    password = TRI_ObjectToString(argv[3]);
   }
 
+  const string oldDefinition   = BaseClient.endpointString();
+  const string oldDatabaseName = BaseClient.databaseName();
+  const string oldUsername     = BaseClient.username();
+  const string oldPassword     = BaseClient.password();
+  
   delete connection;
 
-  const string oldDefinition = BaseClient.endpointString();
-  const string oldUsername   = BaseClient.username();
-  const string oldPassword   = BaseClient.password();
-
   BaseClient.setEndpointString(definition);
+  BaseClient.setDatabaseName(databaseName);
   BaseClient.setUsername(username);
   BaseClient.setPassword(password);
 
@@ -603,6 +607,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   BaseClient.createEndpoint();
   if (BaseClient.endpointServer() == 0) {
     BaseClient.setEndpointString(oldDefinition);
+    BaseClient.setDatabaseName(oldDatabaseName);
     BaseClient.setUsername(oldUsername);
     BaseClient.setPassword(oldPassword);
     BaseClient.createEndpoint();
@@ -615,7 +620,8 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-         << "' version " << newConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
+         << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+         << "', username: '" << BaseClient.username() << "'" << endl;
 
     argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(newConnection));
 
@@ -636,22 +642,23 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   }
   else {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
-
-    // rollback
-    BaseClient.setEndpointString(oldDefinition);
-    BaseClient.setUsername(oldUsername);
-    BaseClient.setPassword(oldPassword);
-    BaseClient.createEndpoint();
-
-    ClientConnection = CreateConnection();
-    argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(ClientConnection));
-
+    
     string errorMsg = "could not connect";
     if (newConnection->getErrorMessage() != "") {
       errorMsg = newConnection->getErrorMessage();
     }
 
     delete newConnection;
+
+    // rollback
+    BaseClient.setEndpointString(oldDefinition);
+    BaseClient.setDatabaseName(oldDatabaseName);
+    BaseClient.setUsername(oldUsername);
+    BaseClient.setPassword(oldPassword);
+    BaseClient.createEndpoint();
+
+    ClientConnection = CreateConnection();
+    argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(ClientConnection));
 
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, errorMsg.c_str());
   }
@@ -1176,6 +1183,50 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getDatabaseName"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_getDatabaseName (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getDatabaseName()");
+  }
+
+  return scope.Close(v8::String::New(connection->getDatabaseName().c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "setDatabaseName"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "setDatabaseName(<name>)");
+  }
+
+  connection->setDatabaseName(TRI_ObjectToString(argv[0]));
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1233,6 +1284,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   cout << endl;
 
   while (true) {
+
     // gc
     v8::V8::LowMemoryNotification();
     while (! v8::V8::IdleNotification()) {
@@ -1648,6 +1700,8 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("reconnect", v8::FunctionTemplate::New(ClientConnection_reconnect));
     connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
     connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
+    connection_proto->Set("getDatabaseName", v8::FunctionTemplate::New(ClientConnection_getDatabaseName));
+    connection_proto->Set("setDatabaseName", v8::FunctionTemplate::New(ClientConnection_setDatabaseName));
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
 
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
@@ -1686,10 +1740,8 @@ int main (int argc, char* argv[]) {
       int redColour     = FOREGROUND_RED | FOREGROUND_INTENSITY;
       int defaultColour = 0;
       CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
-      bool ok;
 
-      ok = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo);
-      if (ok) {
+      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo) != 0) {
         defaultColour = csbiInfo.wAttributes;
       }
 
@@ -1756,7 +1808,7 @@ int main (int argc, char* argv[]) {
 
 #endif
 
-    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH" << endl;
 
     ostringstream info;
 
@@ -1780,11 +1832,14 @@ int main (int argc, char* argv[]) {
 
     if (useServer) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
-        cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-             << "' version " << ClientConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
+        cout << "Connected to ArangoDB '" << BaseClient.endpointString()
+             << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+             << "', username: '" << BaseClient.username() << "'" << endl;
       }
       else {
-        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
+        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
+             << "', database: '" << BaseClient.databaseName() 
+             << "', username: '" << BaseClient.username() << "'" << endl;
         if (ClientConnection->getErrorMessage() != "") {
           cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
         }

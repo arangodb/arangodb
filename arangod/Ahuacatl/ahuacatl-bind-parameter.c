@@ -42,13 +42,64 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a node is a bound attribute access and convert it into a 
+/// "normal" attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* FixAttributeAccess (TRI_aql_statement_walker_t* const walker,
+                                           TRI_aql_node_t* node) {
+  TRI_aql_context_t* context;
+  TRI_aql_node_t* valueNode;
+  char* stringValue;
+
+  if (node == NULL || 
+      node->_type != TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS) {
+    return node;
+  }
+
+  // we found a bound attribute access
+  context = (TRI_aql_context_t*) walker->_data;
+  assert(context);
+
+  assert(node->_members._length == 2);
+  valueNode = TRI_AQL_NODE_MEMBER(node, 1);
+
+  if (valueNode == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+  
+  if (valueNode->_type != TRI_AQL_NODE_VALUE || valueNode->_value._type != TRI_AQL_TYPE_STRING) {  
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
+    return node;
+  }
+
+  stringValue = TRI_AQL_NODE_STRING(valueNode);
+
+  if (stringValue == NULL || strlen(stringValue) == 0) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
+    return node;
+  }
+
+  // remove second node
+  TRI_RemoveVectorPointer(&node->_members, 1);
+
+  // set attribute name
+  TRI_AQL_NODE_STRING(node) = stringValue;
+
+  // convert node type
+  node->_type = TRI_AQL_NODE_ATTRIBUTE_ACCESS;
+
+  return node;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a node is a bind parameter and convert it into a value node
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
-                                   TRI_aql_node_t* node) {
+static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker,
+                                        TRI_aql_node_t* node) {
   TRI_aql_bind_parameter_t* bind;
   TRI_associative_pointer_t* bindValues;
   TRI_aql_context_t* context;
@@ -312,16 +363,27 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
     return true;
   }
 
-  walker = TRI_CreateStatementWalkerAql(context, true, &ModifyNode, NULL, NULL);
+  walker = TRI_CreateStatementWalkerAql(context, true, &InjectParameter, NULL, NULL);
+
   if (walker == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }
 
+  TRI_WalkStatementsAql(walker, context->_statements);
+  TRI_FreeStatementWalkerAql(walker);
+  
+
+  walker = TRI_CreateStatementWalkerAql(context, true, &FixAttributeAccess, NULL, NULL);
+
+  if (walker == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+    return false;
+  }
 
   TRI_WalkStatementsAql(walker, context->_statements);
-
   TRI_FreeStatementWalkerAql(walker);
 
   return true;

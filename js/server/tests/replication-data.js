@@ -57,11 +57,11 @@ function ReplicationSuite () {
   var replicatorPassword = "replicator-password";
 
   var connectToMaster = function () {
-    arango.reconnect(masterEndpoint, replicatorUser, replicatorPassword);
+    arango.reconnect(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
   };
   
   var connectToSlave = function () {
-    arango.reconnect(slaveEndpoint, "root", "");
+    arango.reconnect(slaveEndpoint, db._name(), "root", "");
   };
 
   var collectionChecksum = function (name) {

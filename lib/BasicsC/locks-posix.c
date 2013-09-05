@@ -553,8 +553,6 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 
 
 
-#ifdef TRI_SKIPLIST_EX
-
 // -----------------------------------------------------------------------------
 // COMPARE & SWAP operations below for MAC and GNUC
 // Note that for the MAC OS we use the 'barrier' functions which ensure that
@@ -565,6 +563,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 // memory barrier.
 // -----------------------------------------------------------------------------
 
+#ifdef TRI_SKIPLIST_EX
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically compares and swaps 32bit integers with full memory barrier

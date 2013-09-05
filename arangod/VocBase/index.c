@@ -836,7 +836,7 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
   LOG_TRACE("destroying edge index");
 
   // free all elements in the edges index
-  n = edgesIndex->_edges._nrAlloc;
+  n = (size_t) edgesIndex->_edges._nrAlloc;
 
   for (i = 0; i < n; ++i) {
     TRI_edge_header_t* element = edgesIndex->_edges._table[i];

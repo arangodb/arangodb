@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, TRANSACTION */
+/*global require, exports, TRANSACTION, CREATE_DATABASE, DROP_DATABASE, USE_DATABASE, 
+  LIST_DATABASES */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -74,7 +75,7 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._PRINT = function(context) {
+ArangoDatabase.prototype._PRINT = function (context) {
   context.output += this.toString();
 };
 
@@ -83,7 +84,7 @@ ArangoDatabase.prototype._PRINT = function(context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype.toString = function(seen, path, names, level) {
-  return "[ArangoDatabase \"" + this._path() + "\"]";
+  return "[ArangoDatabase \"" + this._name() + "\"]";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,12 +112,60 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (query, bindVars) {  
+ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {  
   var payload = {
     query: query,
-    bindVars: bindVars || undefined 
+    bindVars: bindVars || undefined,
+    count: (cursorOptions && cursorOptions.count) || false,
+    batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
+    options: options || undefined
   };
   return new ArangoStatement(this, payload).execute();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                database functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._createDatabase = function (name, options) { 
+  return CREATE_DATABASE(name, options);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete an existing database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._dropDatabase = function (name) {
+  return DROP_DATABASE(name);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all existing databases
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._listDatabases = function () {
+  return LIST_DATABASES();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use a different database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._useDatabase = function (name) {
+  return USE_DATABASE(name);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -52,6 +52,7 @@ struct TRI_replication_applier_s;
 struct TRI_replication_logger_s;
 struct TRI_shadow_store_s;
 struct TRI_transaction_context_s;
+struct TRI_vector_pointer_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -333,6 +334,8 @@ typedef struct TRI_vocbase_s {
   bool                       _isSystem;
   bool                       _requireAuthentication;  
   bool                       _authenticateSystemOnly;
+
+  bool                       _canUse;             // this is set to false during deletion of a database
   
   char*                      _name;               // database name
 
@@ -373,6 +376,12 @@ typedef struct TRI_vocbase_s {
   
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
+
+  struct {
+    TRI_read_write_lock_t _lock;
+    TRI_vector_t          _data;
+  }
+  _compactionBlockers;
 
   TRI_condition_t            _cleanupCondition;
   TRI_condition_t            _syncWaitersCondition;
@@ -455,10 +464,36 @@ TRI_vocbase_defaults_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a collection is allowed
+/// @brief free the memory associated with a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedCollectionName (bool, char const*);
+void TRI_FreeCollectionVocBase (TRI_vocbase_col_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the memory associated with all collections in a vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeCollectionsVocBase (struct TRI_vector_pointer_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether or not the vocbase can be used
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CanUseVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a collection name is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedCollectionName (bool, 
+                                  char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a database name is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedDatabaseName (bool, 
+                                char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
@@ -519,7 +554,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const*,
 /// @brief closes a database and all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyVocBase (TRI_vocbase_t*);
+void TRI_DestroyVocBase (TRI_vocbase_t*, 
+                         struct TRI_vector_pointer_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the system defaults

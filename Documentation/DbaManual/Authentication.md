@@ -24,7 +24,7 @@ collection is
 Command-Line Options for the Authentication and Authorisation{#DbaManualAuthenticationCommandLine}
 --------------------------------------------------------------------------------------------------
 
-@copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+@copydetails triagens::arango::ArangoServer::_disableAuthentication
 
 Introduction to User Management{#UserManagementIntro}
 =====================================================

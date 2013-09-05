@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE (tst_int8) {
   CHECK_CONVERSION_INT8(-123, "-123", buffer)
   CHECK_CONVERSION_INT8(-126, "-126", buffer)
   CHECK_CONVERSION_INT8(-127, "-127", buffer)
-  CHECK_CONVERSION_INT16(INT8_MIN, "-128", buffer)
+  CHECK_CONVERSION_INT8(INT8_MIN, "-128", buffer)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

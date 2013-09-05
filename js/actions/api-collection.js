@@ -43,6 +43,14 @@ var API = "_api/collection";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a prefixed URL
+////////////////////////////////////////////////////////////////////////////////
+
+function databasePrefix (url) {
+  return "/_db/" + arangodb.db._name() + url;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief collection representation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -278,7 +286,7 @@ function post_api_collection (req, res) {
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;
     
-    headers.location = "/" + API + "/" + result.name;
+    headers.location = databasePrefix("/" + API + "/" + result.name);
 
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
   }
@@ -541,6 +549,12 @@ function get_api_collections (req, res) {
 /// - `figures.journals.count`: The number of journal files.
 /// - `figures.journals.fileSize`: The total filesize of all journal files.
 ///
+/// - `figures.compactors.count`: The number of compactor files.
+/// - `figures.compactors.fileSize`: The total filesize of all compactor files.
+///
+/// - `figures.shapefiles.count`: The number of shape files.
+/// - `figures.shapefiles.fileSize`: The total filesize of all shape files.
+///
 /// - `figures.shapes.count`: The total number of shapes in the 
 ///   collection (this includes shapes that are not in use anymore) 
 ///
@@ -549,13 +563,19 @@ function get_api_collections (req, res) {
 ///
 /// - `journalSize`: The maximal size of the journal in bytes.
 ///
-/// Note: the filesizes of shapes and compactor files are not reported. 
+/// Note: the filesizes of collection and index parameter JSON files are
+/// not reported. These files should normally have a size of a few bytes
+/// each. Please also note that the `fileSize` values are reported in bytes
+/// and reflect the logical file sizes. Some filesystems may use optimisations
+/// (e.g. sparse files) so that the actual physical file size is somewhat
+/// different. Directories and sub-directories may also require space in the
+/// file system, but this space is not reported in the `fileSize` results.
 ///
 /// That means that the figures reported do not reflect the actual disk
 /// usage of the collection with 100% accuracy. The actual disk usage of
-/// a collection is normally higher than the sum of the reported `fileSize` 
-/// values. Still the sum of the `fileSize` values can still be used as 
-/// a lower bound approximation of the disk usage.
+/// a collection is normally slightly higher than the sum of the reported 
+/// `fileSize` values. Still the sum of the `fileSize` values can still be 
+/// used as a lower bound approximation of the disk usage.
 ///
 /// @RESTRETURNCODES
 ///
@@ -730,7 +750,7 @@ function get_api_collection (req, res) {
 
   if (req.suffix.length === 1) {
     result = collectionRepresentation(collection, false, false, false);
-    headers = { location : "/" + API + "/" + collection.name() };
+    headers = { location : databasePrefix("/" + API + "/" + collection.name()) };
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     return;
   }
@@ -764,7 +784,7 @@ function get_api_collection (req, res) {
 
     else if (sub === "figures") {
       result = collectionRepresentation(collection, true, true, true);
-      headers = { location : "/" + API + "/" + collection.name() + "/figures" };
+      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/figures") };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
@@ -774,7 +794,7 @@ function get_api_collection (req, res) {
 
     else if (sub === "count") {
       result = collectionRepresentation(collection, true, true, false);
-      headers = { location : "/" + API + "/" + collection.name() + "/count" };
+      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/count") };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
@@ -784,7 +804,7 @@ function get_api_collection (req, res) {
 
     else if (sub === "properties") {
       result = collectionRepresentation(collection, true, false, false);
-      headers = { location : "/" + API + "/" + collection.name() + "/properties" };
+      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/properties") };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
@@ -794,7 +814,7 @@ function get_api_collection (req, res) {
 
     else if (sub === "parameter") {
       result = collectionRepresentation(collection, true, false, false);
-      headers = { location : "/" + API + "/" + collection.name() + "/parameter" };
+      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/parameter") };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
     
@@ -1153,6 +1173,83 @@ function put_api_collection_rename (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rotates the journal of a collection
+///
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/rotate,rotates the journal of a collection}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
+/// Rotates the journal of a collection. The current journal of the collection will be closed 
+/// and made a read-only datafile. The purpose of the rotate method is to make the data in
+/// the file available for compaction (compaction is only performed for read-only datafiles, and
+/// not for journals).
+///
+/// Saving new data in the collection subsequently will create a new journal file 
+/// automatically if there is no current journal.
+///
+/// If returns an object with the attributes
+///
+/// - `result`: will be `true` if rotation succeeded
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the collection currently has no journal, `HTTP 500` is returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+///
+/// @EXAMPLES
+///
+/// Rotating a journal:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
+///     var cn = "products";
+///     var coll = db._create(cn);
+///     coll.save({ "test" : true });
+///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///
+///     var response = logCurlRequest('PUT', url, { });
+///
+///     assert(response.code === 200);
+///     db._flushCache();
+///     db._drop("products");
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Rotating without a journal:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
+///     var cn = "products";
+///     var coll = db._create(cn);
+///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///
+///     var response = logCurlRequest('PUT', url, { });
+///
+///     assert(response.code === 400);
+///     db._flushCache();
+///     db._drop("products");
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+function put_api_collection_rotate (req, res, collection) {
+  try {
+    collection.rotate();
+
+    actions.resultOk(req, res, actions.HTTP_OK, { result: true });
+  }
+  catch (err) {
+    actions.resultException(req, res, err, undefined, false);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1187,6 +1284,9 @@ function put_api_collection (req, res) {
   }
   else if (sub === "rename") {
     put_api_collection_rename(req, res, collection);
+  }
+  else if (sub === "rotate") {
+    put_api_collection_rotate(req, res, collection);
   }
   else {
     actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,

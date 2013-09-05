@@ -61,10 +61,6 @@
 
 # -*- mode: Makefile; -*-
 
-################################################################################
-### @brief TOC files
-################################################################################
-
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -469,7 +465,6 @@ am_lib_libarango_client_a_OBJECTS =  \
 	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
-	lib/SimpleHttpClient/SimpleClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 lib_libarango_client_a_OBJECTS = $(am_lib_libarango_client_a_OBJECTS)
@@ -492,7 +487,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
 	lib/HttpServer/HttpHandlerFactory.$(OBJEXT) \
 	lib/HttpServer/PathHandler.$(OBJEXT) \
-	lib/HttpServer/RedirectHandler.$(OBJEXT) \
 	lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT) \
 	lib/Scheduler/ApplicationScheduler.$(OBJEXT) \
 	lib/Scheduler/AsyncTask.$(OBJEXT) \
@@ -526,7 +520,6 @@ am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
 	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
-	lib/SimpleHttpClient/SimpleClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
@@ -1116,7 +1109,7 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
-BUILT_SOURCES = build_posix.h etc/arangodb/arangod-uid.conf \
+BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
 	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangosh.conf $(am__append_12) \
 	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
@@ -1150,7 +1143,7 @@ CLEANUP = $(am__append_10) $(bin_SCRIPTS) Doxygen/.setup-directories \
 	Doxygen/* $(am__append_14)
 
 ################################################################################
-### @brief tragets for cleanup of 3rd party libraries
+### @brief targets for cleanup of 3rd party libraries
 ################################################################################
 
 ################################################################################
@@ -1263,13 +1256,8 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	$(shell find @srcdir@/js/server -name "*.js" -print) $(shell \
 	find @srcdir@/js/client -name "*.js" -print) $(shell find \
 	@srcdir@/js/node -type f -print) $(shell find @srcdir@/js/npm \
-	-type f -print) $(shell find @srcdir@/html -name "*.css" \
-	-print) $(shell find @srcdir@/html -name "*.gif" -print) \
-	$(shell find @srcdir@/html -name "*.html" -print) $(shell find \
-	@srcdir@/html -name "*.ico" -print) $(shell find @srcdir@/html \
-	-name "*.js" -print) $(shell find @srcdir@/html -name "*.ejs" \
-	-print) $(shell find @srcdir@/html -name "*.png" -print) \
-	$(shell find @srcdir@/js/apps -type f -print) $(am__append_7)
+	-type f -print) $(shell find @srcdir@/js/apps -type f -print) \
+	$(am__append_7)
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
@@ -1372,7 +1360,6 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
-	lib/SimpleHttpClient/SimpleClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -1397,7 +1384,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
 	lib/HttpServer/PathHandler.cpp \
-	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
@@ -1429,7 +1415,6 @@ lib_libarango_v8_a_SOURCES = \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
-	lib/SimpleHttpClient/SimpleClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -1661,7 +1646,6 @@ SERVER_OPT := \
 	--ruby.action-directory @top_srcdir@/mr/actions \
 	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
 	--server.threads 4 \
-	--server.admin-directory ./html/admin \
 	$(SERVER_START)
 
 CLIENT_OPT := \
@@ -1744,6 +1728,12 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
+               @top_srcdir@/js/common/tests/shell-foxx-repository.js \
+               @top_srcdir@/js/common/tests/shell-foxx-model.js \
+               @top_srcdir@/js/common/tests/shell-foxx-base-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-template-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-format-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-preprocessor.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
@@ -1828,57 +1818,11 @@ UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMM
 ### @brief tags file
 ################################################################################
 GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
-DOXYGEN_TOC = \
-	Documentation/DbaManual/DbaManual.md \
-	Documentation/ImplementorManual/ImplementorManual.md \
-	Documentation/InstallationManual/InstallationManual.md \
-	Documentation/Manual/Home.md \
-	Documentation/RefManual/RefManual.md \
-	Documentation/UserManual/UserManual.md \
-	Documentation/Manual/Upgrading.md
-
+MANUAL_DST = www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals
+OUTPUT_FOLDER = Doxygen/manuals/$(PACKAGE_VERSION)
 
 ################################################################################
-### @brief JavaScript files
-################################################################################
-DOXYGEN = \
-	Doxygen/js/actions/api-aqlfunction.c \
-	Doxygen/js/actions/api-collection.c \
-	Doxygen/js/actions/api-current-database.c \
-	Doxygen/js/actions/api-cursor.c \
-	Doxygen/js/actions/api-edges.c \
-	Doxygen/js/actions/api-explain.c \
-	Doxygen/js/actions/api-foxx.c \
-	Doxygen/js/actions/api-graph.c \
-	Doxygen/js/actions/api-index.c \
-	Doxygen/js/actions/api-query.c \
-	Doxygen/js/actions/api-simple.c \
-	Doxygen/js/actions/api-system.c \
-	Doxygen/js/actions/api-transaction.c \
-	Doxygen/js/actions/api-traversal.c \
-	Doxygen/js/actions/api-user.c \
-	Doxygen/js/common/bootstrap/module-console.c \
-	Doxygen/js/common/bootstrap/module-fs.c \
-	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
-	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
-	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
-	Doxygen/js/common/modules/org/arangodb/graph-common.c \
-	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
-	Doxygen/js/common/modules/org/arangodb/users-common.c \
-	Doxygen/js/server/modules/org/arangodb/actions.c \
-	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
-	Doxygen/js/server/modules/org/arangodb/arango-database.c \
-	Doxygen/js/server/modules/org/arangodb/foxx.c \
-	Doxygen/js/server/modules/org/arangodb/graph.c \
-	Doxygen/js/server/modules/org/arangodb/graph/algorithms.c \
-	Doxygen/js/server/modules/org/arangodb/simple-query.c \
-	Doxygen/js/server/server.c
-
-
-################################################################################
-### @brief wiki pages
+### @brief pages
 ################################################################################
 WIKI = \
 	Aql \
@@ -1897,6 +1841,7 @@ WIKI = \
 	Glossary \
 	Graphs \
 	HandlingCollections \
+	HandlingDatabases \
 	HandlingDocuments \
 	HandlingEdges \
 	HandlingIndexes \
@@ -1906,6 +1851,7 @@ WIKI = \
 	HttpCollection \
 	HttpCurrentDatabase \
 	HttpCursor \
+	HttpDatabase \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
@@ -1943,6 +1889,7 @@ WIKI = \
 	NewFeatures11 \
 	NewFeatures12 \
 	NewFeatures13 \
+	NewFeatures14 \
 	RefManual \
 	RefManualArangoErrors \
 	RefManualReplication \
@@ -1951,9 +1898,11 @@ WIKI = \
 	SimpleQueries \
 	Transactions \
 	Upgrading \
+	UpgradingGeneral \
 	Upgrading11 \
 	Upgrading12 \
 	Upgrading13 \
+	Upgrading14 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -1963,32 +1912,95 @@ WIKI = \
 	UserManualWebInterface \
 	jsUnity
 
+
+################################################################################
+### @brief TOC files
+################################################################################
+DOXYGEN_TOC = \
+	Documentation/DbaManual/DbaManual.md \
+	Documentation/ImplementorManual/ImplementorManual.md \
+	Documentation/InstallationManual/InstallationManual.md \
+	Documentation/Manual/Home.md \
+	Documentation/RefManual/RefManual.md \
+	Documentation/UserManual/UserManual.md \
+	Documentation/Manual/Upgrading.md
+
+
+################################################################################
+### @brief JavaScript files
+################################################################################
+DOXYGEN = \
+	Doxygen/js/actions/api-aqlfunction.c \
+	Doxygen/js/actions/api-collection.c \
+	Doxygen/js/actions/api-current-database.c \
+	Doxygen/js/actions/api-cursor.c \
+	Doxygen/js/actions/api-database.c \
+	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-foxx.c \
+	Doxygen/js/actions/api-graph.c \
+	Doxygen/js/actions/api-index.c \
+	Doxygen/js/actions/api-query.c \
+	Doxygen/js/actions/api-simple.c \
+	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-transaction.c \
+	Doxygen/js/actions/api-traversal.c \
+	Doxygen/js/actions/api-user.c \
+	Doxygen/js/common/bootstrap/module-console.c \
+	Doxygen/js/common/bootstrap/module-fs.c \
+	Doxygen/js/common/bootstrap/modules.c \
+	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
+	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
+	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
+	Doxygen/js/common/modules/org/arangodb/graph-common.c \
+	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
+	Doxygen/js/common/modules/org/arangodb/users-common.c \
+	Doxygen/js/server/modules/org/arangodb/actions.c \
+	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
+	Doxygen/js/server/modules/org/arangodb/arango-database.c \
+	Doxygen/js/server/modules/org/arangodb/foxx.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/application.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/authentication.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/base_middleware.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/controller.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/format_middleware.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/internals.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/model.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/repository.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/request_context.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/template_middleware.c \
+	Doxygen/js/server/modules/org/arangodb/graph.c \
+	Doxygen/js/server/modules/org/arangodb/graph/algorithms.c \
+	Doxygen/js/server/modules/org/arangodb/simple-query.c \
+	Doxygen/js/server/server.c
+
 JAVASCRIPT_BROWSER = \
-	html/admin/js/modules/org/arangodb.js \
-	html/admin/js/modules/org/arangodb/arango-collection.js \
-	html/admin/js/modules/org/arangodb/arango-database.js \
-	html/admin/js/modules/org/arangodb/arango-query-cursor.js \
-	html/admin/js/modules/org/arangodb/arango-statement.js \
-	html/admin/js/modules/org/arangodb/arangosh.js \
-	html/admin/js/modules/org/arangodb/graph.js \
-	html/admin/js/modules/org/arangodb/simple-query.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-collection.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-database.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-query-cursor.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-statement.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arangosh.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/graph.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
 	\
-	html/admin/js/modules/org/arangodb-common.js \
-	html/admin/js/modules/org/arangodb/arango-collection-common.js \
-	html/admin/js/modules/org/arangodb/arango-statement-common.js \
-	html/admin/js/modules/org/arangodb/graph-common.js \
-	html/admin/js/modules/org/arangodb/graph/traversal.js \
-	html/admin/js/modules/org/arangodb/aql/functions.js \
-	html/admin/js/modules/org/arangodb/mimetypes.js \
-	html/admin/js/modules/org/arangodb/replication.js \
-	html/admin/js/modules/org/arangodb/simple-query-common.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb-common.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-collection-common.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/replication.js \
+	js/apps/aardvark/frontend/js/modules/org/arangodb/simple-query-common.js \
 	\
-	html/admin/js/bootstrap/errors.js \
-	html/admin/js/bootstrap/monkeypatches.js \
-	html/admin/js/bootstrap/module-internal.js \
+	js/apps/aardvark/frontend/js/bootstrap/errors.js \
+	js/apps/aardvark/frontend/js/bootstrap/monkeypatches.js \
+	js/apps/aardvark/frontend/js/bootstrap/module-internal.js \
 	\
-	html/admin/js/client/client.js \
-	html/admin/js/client/bootstrap/module-internal.js
+	js/apps/aardvark/frontend/js/client/client.js \
+	js/apps/aardvark/frontend/js/client/bootstrap/module-internal.js
 
 
 ################################################################################
@@ -2003,16 +2015,16 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
-	`find @srcdir@/html/admin/js/models -name "*.js"` \
-	`find @srcdir@/html/admin/js/views -name "*.js"` \
-	`find @srcdir@/html/admin/js/collections -name "*.js"` \
-	`find @srcdir@/html/admin/js/routers -name "*.js"` \
+	`find @srcdir@/js/apps/aardvark/frontend/js/models -name "*.js"` \
+	`find @srcdir@/js/apps/aardvark/frontend/js/views -name "*.js"` \
+	`find @srcdir@/js/apps/aardvark/frontend/js/collections -name "*.js"` \
+	`find @srcdir@/js/apps/aardvark/frontend/js/routers -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/html/admin/js/shell/browser.js 
+	@srcdir@/js/apps/aardvark/frontend/js/shell/browser.js 
 
 @ENABLE_MRUBY_TRUE@MRUBY_HEADER = \
 @ENABLE_MRUBY_TRUE@	mr/common/bootstrap/mr-error.h \
@@ -2420,9 +2432,6 @@ lib/SimpleHttpClient/ClientConnection.$(OBJEXT):  \
 lib/SimpleHttpClient/SslClientConnection.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
-lib/SimpleHttpClient/SimpleClient.$(OBJEXT):  \
-	lib/SimpleHttpClient/$(am__dirstamp) \
-	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
@@ -2496,9 +2505,6 @@ lib/HttpServer/HttpHandlerFactory.$(OBJEXT):  \
 	lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/PathHandler.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
-	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpServer/RedirectHandler.$(OBJEXT):  \
-	lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT):  \
 	lib/HttpServer/$(am__dirstamp) \
@@ -3555,7 +3561,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandlerFactory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/PathHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/RedirectHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ServiceUnavailableHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParser/$(DEPDIR)/lib_libarango_a-json-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/lib_libarango_a-Logger.Po@am__quote@
@@ -3598,7 +3603,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/lib_libarango_a-shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/GeneralClientConnection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
@@ -7344,14 +7348,8 @@ install-data-local:
 ### @brief version number
 ################################################################################
 
-build_posix.h: configure.ac
-	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build_posix.h
-
-################################################################################
-### @brief local modifications
-################################################################################
-
--include Installation/Makefile.local
+build.h: configure.ac
+	@echo '#define TRI_VERSION "@PACKAGE_VERSION@"' > build.h
 
 ################################################################################
 ################################################################################
@@ -7418,7 +7416,8 @@ unittests-brief: \
 	unittests-upgrade \
 	unittests-dfdb \
 	unittests-foxx-manager \
-	unittests-authentication
+	unittests-authentication \
+	unittests-authentication-parameters
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -7858,8 +7857,8 @@ unittests-foxx-manager:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/foxx-manager $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/foxx-manager $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/foxx-manager --relative $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/foxx-manager --relative $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
@@ -7928,10 +7927,31 @@ unittests-arangob:
 .PHONY: unittests-authentication
 
 unittests-authentication:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
 
 	@echo
 	@echo "================================================================================"
 	@echo "<< AUTHENTICATION TESTS                                                       >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/client/tests/shell-auth.js || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+.PHONY: unittests-authentication-parameters
+
+unittests-authentication-parameters:
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< AUTHENTICATION PARAMETER TESTS                                             >>"
 	@echo "================================================================================"
 	@echo
 
@@ -8037,7 +8057,7 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: \
-	build_posix.h \
+	build.h \
 	@top_srcdir@/js/common/bootstrap/errors.js \
 	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
 
@@ -8069,12 +8089,12 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
+	@test -d Doxygen/js/server/modules/org/arangodb/foxx || mkdir -p Doxygen/js/server/modules/org/arangodb/foxx
 	@test -d Doxygen/js/server/modules/org/arangodb/graph || mkdir -p Doxygen/js/server/modules/org/arangodb/graph
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
 	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
-	@test -d Doxygen/wiki || mkdir -p Doxygen/wiki
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 	@touch $@
 
@@ -8132,25 +8152,6 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 
 ################################################################################
-### @brief wiki
-################################################################################
-
-.PHONY: wiki wiki-raw
-
-Doxygen/arango-xml.doxy: Documentation/arango.template Doxygen/toc.doxy
-	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
-	cat Doxygen/toc.doxy >> $@
-
-wiki: wiki-raw
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
-
-wiki-raw: Doxygen/arango-xml.doxy $(DOXYGEN)
-	$(MAKE) lib/BasicsC/voc-errors.h
-	doxygen Doxygen/arango-xml.doxy > /dev/null
-
-################################################################################
 ### @brief latex
 ################################################################################
 
@@ -8203,7 +8204,7 @@ man: Doxygen/.setup-directories
 .PHONY: swagger
 
 swagger:
-	(python @srcdir@/Documentation/Scripts/generateSwaggerApi.py @srcdir@ @srcdir@/html/admin/api-docs api-docs) > @srcdir@/html/admin/api-docs.json	
+	(python @srcdir@/Documentation/Scripts/generateSwaggerApi.py @srcdir@ @srcdir@/js/apps/aardvark/api-docs api-docs) > @srcdir@/js/apps/aardvark/api-docs.json	
 
 ################################################################################
 ### @brief generate examples
@@ -8241,6 +8242,35 @@ examples:
 documentation-complete: doxygen examples swagger
 
 ################################################################################
+################################################################################
+
+.PHONY: publish publish-html publish-pdf publish-copy
+
+publish: examples publish-html publish-pdf
+	make publish-copy
+
+publish-copy:
+	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
+
+publish-html:
+	$(MAKE) doxygen
+	mkdir -p $(OUTPUT_FOLDER)/images
+	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
+	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images/; done
+	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
+	@cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
+
+publish-pdf: $(OUTPUT_FOLDER)
+	$(MAKE) latex
+	cp Doxygen/latex/dba-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/implementor-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
+	cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
+
+################################################################################
 ### @brief executes jslint
 ################################################################################
 
@@ -8259,33 +8289,33 @@ jslint:
 	done
 
 @builddir@/.setup-js-directories:
-	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
-	@test -d html/admin/js/modules/org/arangodb/aql || mkdir -p html/admin/js/modules/org/arangodb/aql
-	@test -d html/admin/js/bootstrap || mkdir -p html/admin/js/bootstrap
-	@test -d html/admin/js/client/bootstrap || mkdir -p html/admin/js/client/bootstrap
+	@test -d js/apps/aardvark/frontend/js/modules/org/arangodb/graph || mkdir -p js/apps/aardvark/frontend/js/modules/org/arangodb/graph
+	@test -d js/apps/aardvark/frontend/js/modules/org/arangodb/aql || mkdir -p js/apps/aardvark/frontend/js/modules/org/arangodb/aql
+	@test -d js/apps/aardvark/frontend/js/bootstrap || mkdir -p js/apps/aardvark/frontend/js/bootstrap
+	@test -d js/apps/aardvark/frontend/js/client/bootstrap || mkdir -p js/apps/aardvark/frontend/js/client/bootstrap
 	@touch $@
 
 ################################################################################
 ### @brief copy JavaScript files
 ################################################################################
 
-html/admin/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
+js/apps/aardvark/frontend/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
 	cat $< > $@
 
-html/admin/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
+js/apps/aardvark/frontend/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
 	cat $< > $@
 
-html/admin/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
+js/apps/aardvark/frontend/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
 	cat $< > $@
 
 ################################################################################
 ### @brief converts JavaScript files to header files
 ################################################################################
 
-html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
+js/apps/aardvark/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/common/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
-html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
+js/apps/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 @ENABLE_MRUBY_TRUE@@builddir@/.setup-mr-directories:

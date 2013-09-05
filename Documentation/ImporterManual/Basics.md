@@ -18,8 +18,8 @@ imported documents have the `_from` and `_to` attributes, and that they contain
 valid references.
 
 
-Let's assume you want to import user records into an existing collection named
-"users" on the server.
+Let's assume for the following examples you want to import user records into an 
+existing collection named "users" on the server.
 
 Importing JSON-encoded Data {#ImpManualBasicsJson}
 ==================================================
@@ -32,7 +32,7 @@ example user records to import:
 To import these records, all you need to do is to put them into a file (with one
 line for each record to import) and run the following command:
 
-    ./arangoimp --file "data.json" --type json --collection "users"
+    unix> arangoimp --file "data.json" --type json --collection "users"
 
 This will transfer the data to the server, import the records, and print a
 status summary. To show the intermediate progress during the import process, the
@@ -40,27 +40,31 @@ option `--progress` can be added. This option will show the percentage of the
 input file that has been sent to the server. This will only be useful for big
 import files.
 
-    ./arangoimp --file "data.json" --type json --collection "users" --progress true
+    unix> arangoimp --file "data.json" --type json --collection "users" --progress true
 
 By default, the endpoint `tcp://127.0.0.1:8529` will be used.  If you want to
-specify a different endpoint, you can use the --server.endpoint option. You
+specify a different endpoint, you can use the `--server.endpoint` option. You
 probably want to specify a database user and password as well.  You can do so by
-using the options --server.username and --server.password.  If you do not
+using the options `--server.username` and `--server.password`.  If you do not
 specify a password, you will be prompted for one.
 
-    ./arangoimp --server.endpoint tcp://127.0.0.1:8529 --server.username root --file "data.json" --type json --collection "users"
+    unix> arangoimp --server.endpoint tcp://127.0.0.1:8529 --server.username root --file "data.json" --type json --collection "users"
 
 Note that the collection (`users` in this case) must already exist or the import
 will fail. If you want to create a new collection with the import data, you need
 to specify the `--create-collection` option. Note that it is only possible to 
 create a document collection using the `--create-collection` flag.
 
-    ./arangoimp --file "data.json" --type json --collection "users" --create-collection true
+    unix> arangoimp --file "data.json" --type json --collection "users" --create-collection true
 
 As the import file already contains the data in JSON format, attribute names and
 data types are fully preserved. As can be seen in the example data, there is no
 need for all data records to have the same attribute names or types. Records can
 be inhomogenous.
+
+Please note that by default, _arangoimp_ will import data into the specified 
+collection in the default database (`_system`). To specify a different database, 
+use the `--server.database` option when invoking _arangoimp_. 
 
 Importing CSV Data {#ImpManualBasicsCsv}
 ========================================
@@ -88,7 +92,7 @@ We'll be using the following import for the CSV import:
 
 The command line to execute the import then is:
 
-    arangoimp --file "data.csv" --type csv --collection "users"
+    unix> arangoimp --file "data.csv" --type csv --collection "users"
 
 Note that the quote and separator characters can be adjusted via the
 `--quote` and `--separator` arguments when invoking _arangoimp_.  The importer
@@ -110,4 +114,4 @@ with the `--separator` argument.
 
 An example command line to execute the TSV import is:
 
-    arangoimp --file "data.tsv" --type tsv --collection "users" 
+    unix> arangoimp --file "data.tsv" --type tsv --collection "users" 

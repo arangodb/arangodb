@@ -1,15 +1,23 @@
 require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
-  console = require("console"),
-  arangodb = require("org/arangodb"),
-  FoxxApplication = require("org/arangodb/foxx").Application,
-  db = arangodb.db;
+  FoxxController = require("org/arangodb/foxx").Controller,
+  db = require("org/arangodb").db,
+  fakeContext;
 
-function CreateFoxxApplicationSpec () {
+fakeContext = {
+  prefix: "",
+  foxxes: [],
+  comments: [],
+  clearComments: function () {},
+  comment: function () {},
+  collectionName: function () {}
+};
+
+function CreateFoxxControllerSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}),
+      var app = new FoxxController(fakeContext),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -17,42 +25,15 @@ function CreateFoxxApplicationSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}, {urlPrefix: "/wiese"}),
+      var app = new FoxxController(fakeContext, {urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
       assertEqual(routingInfo.urlPrefix, "/wiese");
     },
 
-    testCreationWithTemplateCollectionIfCollectionDoesntExist: function () {
-      var app, routingInfo, templateCollection;
-
-      db._drop("wiese");
-      app = new FoxxApplication({prefix: "", foxxes: []}, {templateCollection: "wiese"});
-      routingInfo = app.routingInfo;
-      templateCollection = db._collection("wiese");
-
-      assertEqual(routingInfo.routes.length, 0);
-      assertNotNull(templateCollection);
-      assertEqual(app.templateCollection, templateCollection);
-    },
-
-    testCreationWithTemplateCollectionIfCollectionDoesExist: function () {
-      var app, routingInfo, templateCollection;
-
-      db._drop("wiese");
-      db._create("wiese");
-      app = new FoxxApplication({prefix: "", foxxes: []}, {templateCollection: "wiese"});
-      routingInfo = app.routingInfo;
-      templateCollection = db._collection("wiese");
-
-      assertEqual(routingInfo.routes.length, 0);
-      assertNotNull(templateCollection);
-      assertEqual(app.templateCollection, templateCollection);
-    },
-
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}),
+      var app = new FoxxController(fakeContext),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
@@ -62,12 +43,12 @@ function CreateFoxxApplicationSpec () {
   };
 }
 
-function SetRoutesFoxxApplicationSpec () {
+function SetRoutesFoxxControllerSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxController(fakeContext);
     },
 
     testSettingRoutes: function () {
@@ -183,7 +164,63 @@ function SetRoutesFoxxApplicationSpec () {
       }
       assertEqual(error, new Error("URL has to be a String"));
       assertEqual(routes.length, 0);
-    }
+    },
+
+    testAddALoginRoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.activateAuthentication({
+        type: "cookie",
+        cookieLifetime: 360000,
+        cookieName: "my_cookie",
+        sessionLifetime: 400
+      });
+      app.login('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
+      assertEqual(routes[0].url.methods, ["post"]);
+    },
+
+    testRefuseLoginWhenAuthIsNotSetUp: function () {
+      var myFunc = function () {},
+        error;
+
+      try {
+        app.login('/simple/route', myFunc);
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, new Error("Setup authentication first"));
+    },
+
+    testAddALogoutRoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.activateAuthentication({
+        type: "cookie",
+        cookieLifetime: 360000,
+        cookieName: "my_cookie",
+        sessionLifetime: 400
+      });
+      app.logout('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
+      assertEqual(routes[0].url.methods, ["post"]);
+    },
+
+    testRefuseLogoutWhenAuthIsNotSetUp: function () {
+      var myFunc = function () {},
+        error;
+
+      try {
+        app.logout('/simple/route', myFunc);
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, new Error("Setup authentication first"));
+    },
   };
 }
 
@@ -192,8 +229,8 @@ function DocumentationAndConstraintsSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []}),
-        routes = app.routingInfo.routes;
+      app = new FoxxController(fakeContext);
+      routes = app.routingInfo.routes;
     },
 
     testDefinePathParam: function () {
@@ -201,7 +238,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("id", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -210,15 +247,14 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "id");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, true);
     },
-    
+
     testDefinePathCaseParam: function () {
       app.get('/foxx/:idParam', function () {
         //nothing
       }).pathParam("idParam", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -227,7 +263,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "idParam");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, true);
     },
 
     testDefineMultiplePathParams: function () {
@@ -235,10 +270,10 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("foxx", {
         description: "Kind of Foxx",
-        dataType: "string"
+        type: "string"
       }).pathParam("id", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -248,14 +283,12 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "foxx");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "string");
-      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "id");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineMultiplePathCaseParams: function () {
@@ -263,10 +296,10 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("foxxParam", {
         description: "Kind of Foxx",
-        dataType: "string"
+        type: "string"
       }).pathParam("idParam", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -276,14 +309,12 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "string");
-      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "idParam");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineQueryParam: function () {
@@ -291,7 +322,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).queryParam("a", {
         description: "The value of an a",
-        dataType: "int",
+        type: "int",
         required: false,
         allowMultiple: true
       });
@@ -305,50 +336,88 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
     },
 
-    testDefineMetaData: function () {
+    testDocumentationForErrorResponse: function () {
+      var CustomErrorClass = function () {};
+
       app.get('/foxx', function () {
         //nothing
-      }).summary("b").notes("c");
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.nickname, "get_foxx");
-      assertEqual(routes[0].docs.summary, "b");
-      assertEqual(routes[0].docs.notes, "c");
-    },
-
-    testSummaryRestrictedTo60Characters: function () {
-      var error;
-
-      try {
-        app.get('/foxx', function () {
-          //nothing
-        }).summary("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
-      } catch(e) {
-        error = e;
-      }
-
-      assertEqual(error, new Error("Summary can't be longer than 60 characters"));
-    },
-
-    testDefineErrorResponse: function () {
-      app.get('/foxx', function () {
-        //nothing
-      }).errorResponse(400, "I don't understand a word you're saying");
+      }).errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].docs.errorResponses.length, 1);
       assertEqual(routes[0].docs.errorResponses[0].code, 400);
       assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
+    },
+
+    testCatchesDefinedError: function () {
+      var CustomErrorClass = function () {},
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        statusWasCalled = false,
+        jsonWasCalled = false,
+        passedRequestAndResponse = false;
+
+      res = {
+        status: function (givenCode) {
+          statusWasCalled = (givenCode === code);
+        },
+        json: function (givenBody) {
+          jsonWasCalled = (givenBody.error === reason);
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        if (providedReq === req && providedRes === res) {
+          passedRequestAndResponse = true;
+        }
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(statusWasCalled);
+      assertTrue(jsonWasCalled);
+      assertTrue(passedRequestAndResponse);
+    },
+
+    testCatchesDefinedErrorWithCustomFunction: function () {
+      var jsonWasCalled = false,
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        CustomErrorClass = function () {};
+
+      res = {
+        status: function () {},
+        json: function (givenBody) {
+          jsonWasCalled = givenBody.success;
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason, function (e) {
+        if (e instanceof CustomErrorClass) {
+          return { success: "true" };
+        }
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(jsonWasCalled);
     }
   };
 }
 
-function AddMiddlewareFoxxApplicationSpec () {
+function AddMiddlewareFoxxControllerSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxController(fakeContext);
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -409,481 +478,216 @@ function AddMiddlewareFoxxApplicationSpec () {
       assertTrue(callback.indexOf((String(myFunc) + "(req, res)") > 0));
       assertTrue(callback.indexOf("next()" > 0));
       assertTrue(callback.indexOf("func(req") > callback.indexOf("next()"));
-    },
-
-    testAddTheFormatMiddlewareUsingTheShortform: function () {
-      app.accepts(["json"], "json");
-      assertEqual(app.routingInfo.middleware.length, 2);
-      assertEqual(app.routingInfo.middleware[1].url.match, '/*');
-      assertTrue(app.routingInfo.middleware[1].action.callback.indexOf("[\"json\"]") > 0);
     }
   };
 }
 
-function BaseMiddlewareWithoutTemplateSpec () {
-  var BaseMiddleware, request, response, options, next;
+function CommentDrivenDocumentationSpec () {
+  var app, routingInfo, noop;
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/foxx").BaseMiddleware().functionRepresentation;
-      request = {};
-      response = {};
-      options = {};
-      next = function () {};
+      app = new FoxxController(fakeContext);
+      routingInfo = app.routingInfo;
+      noop = function () {};
     },
 
-    testBodyFunctionAddedToRequest: function () {
-      request.requestBody = "test";
-      baseMiddleware(request, response, options, next);
-      assertEqual(request.body(), "test");
+    testSettingTheSummary: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
     },
 
-    testParamFunctionReturnsUrlParameters: function () {
-      request.urlParameters = {a: 1};
-      baseMiddleware(request, response, options, next);
-      assertEqual(request.params("a"), 1);
+    testSettingTheNotes: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
     },
 
-    testParamFunctionReturnsParameters: function () {
-      request.parameters = {a: 1};
-      baseMiddleware(request, response, options, next);
-      assertEqual(request.params("a"), 1);
+    testSettingTheSummaryWithAnEmptyFirstLine: function () {
+      fakeContext.comments = [
+        "",
+        "Get all the foxes"
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
     },
 
-    testParamFunctionReturnsAllParams: function () {
-      request.urlParameters = {a: 1};
-      request.parameters = {b: 2};
-      baseMiddleware(request, response, options, next);
-      assertEqual(request.params("a"), 1);
-      assertEqual(request.params("b"), 2);
+    testCleanUpCommentsAfterwards: function () {
+      var clearCommentsWasCalled = false;
+      fakeContext.clearComments = function () { clearCommentsWasCalled = true; };
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+      assertTrue(clearCommentsWasCalled);
     },
 
-    testStatusFunctionAddedToResponse: function () {
-      baseMiddleware(request, response, options, next);
+    testSetBothToEmptyStringsIfTheJSDocWasEmpty: function () {
+      fakeContext.comments = [
+        "",
+        "",
+        ""
+      ];
 
-      response.status(200);
-      assertEqual(response.responseCode, 200);
+      app.get('/simple/route', noop);
+      assertEqual(routingInfo.routes[0].docs.summary, "");
+      assertEqual(routingInfo.routes[0].docs.notes, "");
+    }
+  };
+}
+
+function HelperFunctionSpec () {
+  var app;
+
+  return {
+    setUp: function () {
+      fakeContext.collectionPrefix = "fancy";
+      app = new FoxxController(fakeContext);
     },
 
-    testSetFunctionAddedToResponse: function () {
-      baseMiddleware(request, response, options, next);
+    testGetACollection: function () {
+      db._create("fancy_pants");
 
-      response.set("Content-Length", "123");
-      assertEqual(response.headers["content-length"], "123");
-
-      response.set("Content-Type", "text/plain");
-      assertEqual(response.contentType, "text/plain");
+      assertEqual(app.collection("pants"), db._collection("fancy_pants"));
     },
 
-    testSetFunctionTakingAnObjectAddedToResponse: function () {
-      baseMiddleware(request, response, options, next);
-
-      response.set({
-        "Content-Length": "123",
-        "Content-Type": "text/plain"
-      });
-
-      assertEqual(response.headers["content-length"], "123");
-      assertEqual(response.contentType, "text/plain");
-    },
-
-    testJsonFunctionAddedToResponse: function () {
-      var rawObject = {test: "123"};
-
-      baseMiddleware(request, response, options, next);
-
-      response.json(rawObject);
-
-      assertEqual(response.body, JSON.stringify(rawObject));
-      assertEqual(response.contentType, "application/json");
-    },
-
-    testTemplateFunctionAddedToResponse: function () {
-      var error;
-
-      baseMiddleware(request, response, options, next);
+    testGetACollectionThatDoesNotExist: function () {
+      var err;
+      db._drop("fancy_pants");
 
       try {
-        response.render("simple/path", { username: "moonglum" });
+        app.collection("pants");
       } catch(e) {
-        error = e;
+        err = e;
       }
 
-      assertEqual(error, new Error("No template collection has been provided when creating a new FoxxApplication"));
-    },
-
-    testMiddlewareCallsTheAction: function () {
-      var actionWasCalled = false;
-
-      next = function () {
-        actionWasCalled = true;
-      };
-
-      baseMiddleware(request, response, options, next);
-
-      assertTrue(actionWasCalled);
+      assertEqual(err.message, "collection with name 'fancy_pants' does not exist.");
     }
   };
 }
 
-function BaseMiddlewareWithTemplateSpec () {
-  var BaseMiddleware, request, response, options, next;
+function SetupAuthorization () {
+  var app;
 
   return {
-    setUp: function () {
-      request = {};
-      response = {};
-      options = {};
-      next = function () {};
-      BaseMiddleware = require("org/arangodb/foxx").BaseMiddleware;
-    },
+    testWorksWithAllParameters: function () {
+      var err;
 
-    testRenderingATemplate: function () {
-      var myCollection, middleware;
-
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      myCollection.save({
-        path: "simple/path",
-        content: "hello <%= username %>",
-        contentType: "text/plain",
-        templateLanguage: "underscore"
-      });
-
-      middleware = new BaseMiddleware(myCollection).functionRepresentation;
-      middleware(request, response, options, next);
-
-      response.render("simple/path", { username: "moonglum" });
-      assertEqual(response.body, "hello moonglum");
-      assertEqual(response.contentType, "text/plain");
-    },
-
-    testRenderingATemplateWithAnUnknownTemplateEngine: function () {
-      var myCollection, error, middleware;
-
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      myCollection.save({
-        path: "simple/path",
-        content: "hello <%= username %>",
-        contentType: "text/plain",
-        templateLanguage: "pirateEngine"
-      });
-
-      middleware = new BaseMiddleware(myCollection).functionRepresentation;
-      middleware(request, response, options, next);
+      app = new FoxxController(fakeContext);
 
       try {
-        response.render("simple/path", { username: "moonglum" });
-      } catch(e) {
-        error = e;
+        app.activateAuthentication({
+          type: "cookie",
+          cookieLifetime: 360000,
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
       }
 
-      assertEqual(error, new Error("Unknown template language 'pirateEngine'"));
+      assertUndefined(err);
     },
 
-    testRenderingATemplateWithAnNotExistingTemplate: function () {
-      var myCollection, error, middleware;
+    testRefusesUnknownAuthTypes: function () {
+      var err;
 
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      middleware = new BaseMiddleware(myCollection).functionRepresentation;
-      middleware(request, response, options, next);
+      app = new FoxxController(fakeContext);
 
       try {
-        response.render("simple/path", { username: "moonglum" });
-      } catch(e) {
-        error = e;
+        app.activateAuthentication({
+          type: "brainwave",
+          cookieLifetime: 360000,
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
       }
 
-      assertEqual(error, new Error("Template 'simple/path' does not exist"));
+      assertEqual(err.message, "Currently only the following auth types are supported: cookie");
+    },
+
+    testRefusesMissingCookieLifetime: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the cookieLifetime");
+    },
+
+    testRefusesMissingCookieName: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieLifetime: 360000,
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the cookieName");
+    },
+
+    testRefusesMissingSessionLifetime: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieName: "mycookie",
+          cookieLifetime: 360000
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the sessionLifetime");
     }
   };
 }
 
-function ViewHelperSpec () {
-  var app, Middleware, request, response, options, next;
-
-  return {
-    setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
-      Middleware = require('org/arangodb/foxx').BaseMiddleware;
-      request = {};
-      response = {};
-      options = {};
-      next = function () {};
-    },
-
-    testDefiningAViewHelper: function () {
-      var my_func = function () {};
-
-      app.helper("testHelper", my_func);
-
-      assertEqual(app.helperCollection.testHelper, my_func);
-    },
-
-    testUsingTheHelperInATemplate: function () {
-      var a = false;
-
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      myCollection.save({
-        path: "simple/path",
-        content: "hello <%= testHelper() %>",
-        contentType: "text/plain",
-        templateLanguage: "underscore"
-      });
-
-      middleware = new Middleware(myCollection, {
-        testHelper: function() { a = true; }
-      }).functionRepresentation;
-      middleware(request, response, options, next);
-
-      assertFalse(a);
-      response.render("simple/path", {});
-      assertTrue(a);
-    }
-  };
-}
-
-function FormatMiddlewareSpec () {
-  var Middleware, middleware, request, response, options, next;
-
-  return {
-    setUp: function () {
-      Middleware = require('org/arangodb/foxx').FormatMiddleware;
-      request = {};
-      response = {};
-      options = {};
-      next = function () {};
-    },
-
-    testChangesTheURLAccordingly: function () {
-      request = { path: "test/1.json", headers: {} };
-      middleware = new Middleware(["json"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.path, "test/1");
-    },
-
-    testRefusesFormatsThatHaveNotBeenAllowed: function () {
-      var nextCalled = false,
-        next = function () { nextCalled = true; };
-      middleware = new Middleware(["json"]).functionRepresentation;
-      request = { path: "test/1.html", headers: {} };
-      middleware(request, response, options, next);
-      assertEqual(response.responseCode, 406);
-      assertEqual("<" + response.body + ">", "<Error: Format 'html' is not allowed.>");
-      assertFalse(nextCalled);
-    },
-
-    testRefuseContradictingURLAndResponseType: function () {
-      var nextCalled = false,
-        next = function () { nextCalled = true; };
-      request = { path: "test/1.json", headers: {"accept": "text/html"} };
-      middleware = new Middleware(["json"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(response.responseCode, 406);
-      assertEqual("<" + response.body + ">", "<Error: Contradiction between Accept Header and URL.>");
-      assertFalse(nextCalled);
-    },
-
-    testRefuseMissingBothURLAndResponseTypeWhenNoDefaultWasGiven: function () {
-      var nextCalled = false,
-        next = function () { nextCalled = true; };
-      request = { path: "test/1", headers: {} };
-      middleware = new Middleware(["json"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(response.responseCode, 406);
-      assertEqual("<" + response.body + ">", "<Error: Format 'undefined' is not allowed.>");
-      assertFalse(nextCalled);
-    },
-
-    testFallBackToDefaultWhenMissingBothURLAndResponseType: function () {
-      request = { path: "test/1", headers: {} };
-      middleware = new Middleware(["json"], "json").functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "json");
-      assertEqual(response.contentType, "application/json");
-    },
-
-    // JSON
-    testSettingTheFormatAttributeAndResponseTypeForJsonViaURL: function () {
-      request = { path: "test/1.json", headers: {} };
-      middleware = new Middleware(["json"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "json");
-      assertEqual(response.contentType, "application/json");
-    },
-
-    testSettingTheFormatAttributeAndResponseTypeForJsonViaAcceptHeader: function () {
-      request = { path: "test/1", headers: {"accept": "application/json"} };
-      middleware = new Middleware(["json"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "json");
-      assertEqual(response.contentType, "application/json");
-    },
-
-    // HTML
-    testSettingTheFormatAttributeAndResponseTypeForHtmlViaURL: function () {
-      request = { path: "test/1.html", headers: {} };
-      middleware = new Middleware(["html"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "html");
-      assertEqual(response.contentType, "text/html");
-    },
-
-    testSettingTheFormatAttributeAndResponseTypeForHtmlViaAcceptHeader: function () {
-      request = { path: "test/1", headers: {"accept": "text/html"} };
-      middleware = new Middleware(["html"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "html");
-      assertEqual(response.contentType, "text/html");
-    },
-
-    // TXT
-    testSettingTheFormatAttributeAndResponseTypeForTxtViaURL: function () {
-      request = { path: "test/1.txt", headers: {} };
-      middleware = new Middleware(["txt"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "txt");
-      assertEqual(response.contentType, "text/plain");
-    },
-
-    testSettingTheFormatAttributeAndResponseTypeForTxtViaAcceptHeader: function () {
-      request = { path: "test/1", headers: {"accept": "text/plain"} };
-      middleware = new Middleware(["txt"]).functionRepresentation;
-      middleware(request, response, options, next);
-      assertEqual(request.format, "txt");
-      assertEqual(response.contentType, "text/plain");
-    }
-  };
-}
-
-function ModelSpec () {
-  var FoxxModel, TestModel, instance;
-
-  return {
-    setUp: function () {
-      FoxxModel = require('org/arangodb/foxx').Model;
-    },
-
-    testWithInitialData: function () {
-      instance = new FoxxModel({
-        a: 1
-      });
-
-      assertEqual(instance.get("a"), 1);
-      instance.set("a", 2);
-      assertEqual(instance.get("a"), 2);
-    },
-
-    testWithoutInitialData: function () {
-      instance = new FoxxModel();
-
-      assertEqual(instance.get("a"), undefined);
-      instance.set("a", 1);
-      assertEqual(instance.get("a"), 1);
-    },
-
-    testAddingAMethodWithExtend: function () {
-      TestModel = FoxxModel.extend({
-        getA: function() {
-          return this.get("a");
-        }
-      });
-
-      instance = new TestModel({
-        a: 5
-      });
-
-      assertEqual(instance.getA(), 5);
-    },
-
-    testOverwritingAMethodWithExtend: function () {
-      TestModel = FoxxModel.extend({
-        get: function() {
-          return 1;
-        }
-      });
-
-      instance = new TestModel({
-        a: 5
-      });
-
-      assertEqual(instance.get(), 1);
-    },
-
-    testHas: function () {
-      instance = new FoxxModel({
-        a: 1,
-        b: null
-      });
-
-      assertTrue(instance.has("a"));
-      assertFalse(instance.has("b"));
-      assertFalse(instance.has("c"));
-    },
-
-    testSerialization: function () {
-      var raw = {
-        a: 1,
-        b: 2
-      };
-
-      instance = new FoxxModel(raw);
-
-      assertEqual(instance.forDB(), raw);
-      assertEqual(instance.forClient(), raw);
-    }
-  };
-}
-
-function RepositorySpec () {
-  var FoxxRepository, TestRepository, instance, prefix, collection, modelPrototype;
-
-  return {
-    setUp: function () {
-      FoxxRepository = require('org/arangodb/foxx').Repository;
-      prefix = "myApp";
-      collection = function () {};
-      modelPrototype = function () {};
-    },
-
-    testWasInitialized: function () {
-      instance = new FoxxRepository(prefix, collection, modelPrototype);
-
-      assertEqual(instance.prefix, prefix);
-      assertEqual(instance.collection, collection);
-      assertEqual(instance.modelPrototype, modelPrototype);
-    },
-
-    testAddingAMethodWithExtend: function () {
-      TestRepository = FoxxRepository.extend({
-        test: function() {
-          return "test";
-        }
-      });
-
-      instance = new TestRepository(prefix, collection, modelPrototype);
-
-      assertEqual(instance.test(), "test");
-    }
-  };
-}
-
-jsunity.run(CreateFoxxApplicationSpec);
-jsunity.run(SetRoutesFoxxApplicationSpec);
+jsunity.run(CreateFoxxControllerSpec);
+jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
-jsunity.run(AddMiddlewareFoxxApplicationSpec);
-jsunity.run(BaseMiddlewareWithoutTemplateSpec);
-jsunity.run(BaseMiddlewareWithTemplateSpec);
-jsunity.run(ViewHelperSpec);
-jsunity.run(FormatMiddlewareSpec);
-jsunity.run(ModelSpec);
-jsunity.run(RepositorySpec);
+jsunity.run(AddMiddlewareFoxxControllerSpec);
+jsunity.run(CommentDrivenDocumentationSpec);
+jsunity.run(HelperFunctionSpec);
+jsunity.run(SetupAuthorization);
 
 return jsunity.done();

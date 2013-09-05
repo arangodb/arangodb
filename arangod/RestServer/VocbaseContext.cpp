@@ -27,7 +27,7 @@
 
 #include "VocbaseContext.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "BasicsC/tri-strings.h"
 #include "VocBase/auth.h"
@@ -96,15 +96,15 @@ void VocbaseContext::setRequestUserByName (string const& name) {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
         
-bool VocbaseContext::authenticate () {
+HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   if (! _vocbase) {
     // no vocbase known
-    return true;
+    return HttpResponse::NOT_FOUND;
   }
 
   if (! _vocbase->_requireAuthentication) {
     // no authentication required at all
-    return true;
+    return HttpResponse::OK;
   }
 
   if (_vocbase->_authenticateSystemOnly) {
@@ -114,10 +114,10 @@ bool VocbaseContext::authenticate () {
     if (path != 0) {
       // check if path starts with /_
       if (*path != '/') {
-        return true;
+        return HttpResponse::OK;
       }
       if (*path != '\0' && *(path + 1) != '_') {
-        return true;
+        return HttpResponse::OK;
       }
     }
   }

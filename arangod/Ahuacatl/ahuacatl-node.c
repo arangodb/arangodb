@@ -167,6 +167,8 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "subquery";
     case TRI_AQL_NODE_ATTRIBUTE_ACCESS:
       return "attribute access";
+    case TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS:
+      return "bound attribute access";
     case TRI_AQL_NODE_INDEXED:
       return "indexed";
     case TRI_AQL_NODE_EXPAND:

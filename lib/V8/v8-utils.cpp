@@ -31,7 +31,7 @@
 
 #include "v8-utils.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include <fstream>
 #include <locale>
@@ -1059,10 +1059,10 @@ static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
   }
 
-  bool result = TRI_CreateDirectory(*name);
+  int res = TRI_CreateDirectory(*name);
 
-  if (! result) {
-    TRI_V8_EXCEPTION_SYS(scope, "cannot create directory");
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::Undefined());
@@ -2737,7 +2737,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(packages));
   TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
-  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));
+  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRI_VERSION));
 
   TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));

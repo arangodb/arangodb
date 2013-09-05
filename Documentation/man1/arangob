@@ -31,6 +31,8 @@ OPTION "--complexity <int32>"
 complexity value for test case (meaning depends on test case)
 OPTION "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.database <string>"
+database name to use when connection (default: "_system") ENDOPTION
 OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"

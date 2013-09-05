@@ -52,7 +52,10 @@ var internal = require("internal");
 ArangoStatement.prototype.parse = function () {
   var result = internal.AQL_PARSE(this._query); 
 
-  return { "bindVars" : result.parameters, "collections" : result.collections };
+  return { 
+    bindVars : result.parameters, 
+    collections : result.collections 
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,9 +75,12 @@ ArangoStatement.prototype.explain = function () {
 ArangoStatement.prototype.execute = function () {
   var result = internal.AQL_QUERY(this._query, 
                                   this._bindVars, 
-                                  this._doCount,
-                                  4294967296);
-  return new GeneralArrayCursor(result, 0, null);
+                                  {
+                                    count: this._doCount
+                                  },
+                                  this._options);
+
+  return new GeneralArrayCursor(result.docs, 0, null, result.extra);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

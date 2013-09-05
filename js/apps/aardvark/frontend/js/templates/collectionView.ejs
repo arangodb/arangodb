@@ -1,0 +1,215 @@
+<div id="change-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Modify Collection</a>
+  </div>
+  <div class="modal-body">
+
+    <ul id="collectionTab" class="nav nav-tabs" style="visibility:hidden">
+      <li class="active"><a href="#main" data-toggle="tab">Main</a></li>
+      <li><a href="#editIndex" data-toggle="tab">Index</a></li>
+    </ul>
+
+    <div class="tab-content" id="tab-content-collection-edit">
+      <div class="tab-pane active" id="main">
+        <table id="collectionEditTable">
+          <tr>
+            <th class="collectionTh">Name:</th>
+            <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
+            <th/>
+          </tr>
+          <tr id="collectionSizeBox" style="display:none">
+            <th class="collectionTh">Journal size:</th>
+            <th class="collectionTh"><input type="text" id="change-collection-size" name="size" value=""/></th>
+            <th><a class="modalTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><span class="glyphicon glyphicon-info-sign" style="color:black"></span></a></th>
+          </tr>
+          <tr id="collectionSyncBox" style="display:none">
+            <th class="collectionTh">Wait for sync:</th>
+            <th class="collectionTh">
+              <select id="change-collection-sync">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select> 
+            </th> 
+            <th><a class="modalTooltips" title="Synchronise to disk before returning from a create or update of a document."><span class="glyphicon glyphicon-info-sign" style="color:black"></span></a></th>
+          </tr> 
+
+          <tr>
+            <th class="collectionTh">ID:</th>
+            <th class="collectionTh">
+              <div id="change-collection-id" class="modal-text"/>
+            <th>
+          </tr>
+
+          <tr>
+            <th class="collectionTh">Type:</th> 
+            <th class="collectionTh">
+              <div id="change-collection-type" class="modal-text"/>
+            </th>
+            <th/>
+          </tr>
+
+          <tr>
+            <th class="collectionTh">Status:</th>
+            <th class="collectionTh">
+              <div id="change-collection-status" class="modal-text"/>
+            </th>
+          </tr>
+        </table>
+      </div>
+
+      <div class="tab-pane" id="editIndex">
+
+        <div id="indexEditView">
+          <span class="glyphicon glyphicon-plus-sign" data-original-title="Add index"></span>
+          <table id="collectionEditIndexTable">
+            <tr class="figuresHeader">
+              <th class="collectionInfoTh">ID</th>
+              <th class="collectionInfoTh">Type</th>
+              <th class="collectionInfoTh">Unique</th>
+              <th class="collectionInfoTh">Fields</th>
+              <th class="collectionInfoTh">Action</th>
+            </tr>
+          </table>
+        </div>
+
+        <div id="newIndexView" style="display:none">
+          <span class="glyphicon glyphicon-remove-circle" data-original-title="Abort"></span>
+          <a id="newIndexHeader" class="arangoHeader">Add Index:</a>
+          <table>
+            <tr>
+              <th class="collectionTh thBorderBottom">Type:</th>
+              <th class="thBorderBottom">
+                <select id="newIndexType">
+                  <option value="Cap">Cap Constraints</option>
+                  <option value="Geo">Geo Index</option>
+                  <option value="Hash">Hash Index</option>
+                  <option value="Fulltext">Fulltext Index</option>
+                  <option value="Skiplist">Skip-List Index</option>
+                </select>
+              </th>
+              <th class="thBorderBottom" style="width: 18px"/>
+            </tr>
+          </table>
+
+          <div id="newIndexTypeCap" class="newIndexClass">
+            <table>
+              <tr>
+                <th class="collectionTh">Size:</th>
+                <th><input type="text" id="newCapSize" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal number of documents for the collection."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Bytesize:</th>
+                <th><input type="text" id="newCapByteSize" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal size of the active document data in the collection."/></th>
+              </tr>
+            </table>
+          </div>
+
+          <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newGeoFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list with one or two attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Geo JSON:</th>
+                <th>
+                  <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Constraint:</th>
+                <th>
+                  <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If constraint is true, then a geo-spatial constraint is created."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Ignore Null:</th>
+                <th>
+                  <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newHashFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                </th>
+              </tr>
+            </table>
+
+          </div>
+
+          <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newFulltextFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ]."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Min. length:</th>
+                <th><input type="text" id="newFulltextMinLength" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."/></th>
+              </tr>
+            </table>
+
+          </div>
+
+          <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newSkiplistFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <button id="createIndex" class="btn btn-success" style="margin-right:8px; margin-top: 8px">Create Index</button>
+
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="delete-modified-collection" class="btn btn-danger">Delete</button>
+    <button id="save-modified-collection" class="btn btn-success" style="margin-right:8px">Save</button>
+    <button class="btn btn-close btn-margin" data-dismiss="modal" aria-hidden="true">Close</button>
+  </div>
+  <div class="alert alert-error" style="display:none" id="reallyDeleteColDiv">
+    <strong>Really delete Collection?</strong>
+    <button id="confirmDeleteCollection" class="btn btn-danger pull-right" style="margin-top: -4px; margin-right: -18px !important;">Yes</button>
+    <button id="abortDeleteCollection" class="btn pull-right" style="margin-top: -4px; margin-right:10px;">No</button>
+  </div>
+</div>
+

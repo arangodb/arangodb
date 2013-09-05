@@ -266,7 +266,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ELEMENT const * tableAndSize (size_t& size) const {
-          size = _nrAlloc;
+          size = (size_t) _nrAlloc;
 
           return _table;
         }

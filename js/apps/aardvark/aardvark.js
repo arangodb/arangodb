@@ -2,7 +2,7 @@
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief A Foxx-Application to overview your Foxx-Applications
+/// @brief A Foxx.Controller to show all Foxx Applications
 ///
 /// @file
 ///
@@ -30,9 +30,9 @@
 
 "use strict";
 
-// Initialise a new FoxxApplication called app under the urlPrefix: "foxxes".
-var FoxxApplication = require("org/arangodb/foxx").Application,
-  app = new FoxxApplication(applicationContext),
+// Initialise a new FoxxController called controller under the urlPrefix: "foxxes".
+var FoxxController = require("org/arangodb/foxx").Controller,
+  controller = new FoxxController(applicationContext),
   underscore = require("underscore");
   
 var foxxes = new (require("lib/foxxes").Foxxes)();
@@ -42,7 +42,7 @@ var docus = new (require("lib/swagger").Swagger)();
 // install
 // .............................................................................
 
-app.put("/foxxes/install", function (req, res) {
+controller.put("/foxxes/install", function (req, res) {
   var content = JSON.parse(req.requestBody),
     name = content.name,
     mount = content.mount,
@@ -55,11 +55,11 @@ app.put("/foxxes/install", function (req, res) {
 // uninstall
 // .............................................................................
 
-app.del("/foxxes/:key", function (req, res) {
+controller.del("/foxxes/:key", function (req, res) {
   res.json(foxxes.uninstall(req.params("key")));
 }).pathParam("key", {
   description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("Uninstall a Foxx.")
@@ -69,7 +69,7 @@ app.del("/foxxes/:key", function (req, res) {
 // update
 // .............................................................................
 
-app.put("/foxxes/:key", function (req, res) {
+controller.put("/foxxes/:key", function (req, res) {
   var content = JSON.parse(req.requestBody),
     active = content.active;
   // TODO: Other changes applied to foxx! e.g. Mount
@@ -80,7 +80,7 @@ app.put("/foxxes/:key", function (req, res) {
   }
 }).pathParam("key", {
   description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("Update a foxx.")
@@ -90,12 +90,12 @@ app.put("/foxxes/:key", function (req, res) {
 // read thumbnail
 // .............................................................................
 
-app.get("/foxxes/thumbnail/:app", function (req, res) {
+controller.get("/foxxes/thumbnail/:app", function (req, res) {
   res.transformations = [ "base64decode" ];
   res.body = foxxes.thumbnail(req.params("app"));
 }).pathParam("app", {
   description: "The appname which is used to identify the foxx in the list of available foxxes.",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("Get the thumbnail of a foxx.")
@@ -105,7 +105,7 @@ app.get("/foxxes/thumbnail/:app", function (req, res) {
 // all foxxes
 // .............................................................................
   
-app.get('/foxxes', function (req, res) {
+controller.get('/foxxes', function (req, res) {
   res.json(foxxes.viewAll());
 }).summary("List of all foxxes.")
   .notes("This function simply returns the list of all running foxxes");
@@ -114,8 +114,8 @@ app.get('/foxxes', function (req, res) {
 // documentation for all foxxes
 // .............................................................................
   
-app.get('/docus', function (req, res) {
-  res.json(docus.list("http://" + req.headers.host + req.path + "/"));
+controller.get('/docus', function (req, res) {
+  res.json(docus.list(req.protocol + "://" + req.headers.host + "/_db/" + req.database + req.path + "/"));
 }).summary("List documentation of all foxxes.")
   .notes("This function simply returns the list of all running"
        + " foxxes and supplies the paths for the swagger documentation");
@@ -124,10 +124,10 @@ app.get('/docus', function (req, res) {
 // documentation for one foxx
 // .............................................................................
   
-app.get("/docu/:key",function (req, res) {
-  var subPath = req.path.substr(0,req.path.lastIndexOf("[")-1),
+controller.get("/docu/:key",function (req, res) {
+  var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
     key = req.params("key"),
-    path = "http://" + req.headers.host + subPath + "/" + key + "/";
+    path = req.protocol + "://" + req.headers.host + "/_db/" + req.database + subPath + "/" + key + "/";
   res.json(docus.listOne(path, key));
 }).summary("List documentation of all foxxes.")
   .notes("This function simply returns one specific"
@@ -137,7 +137,7 @@ app.get("/docu/:key",function (req, res) {
 // API for one foxx
 // .............................................................................
   
-app.get('/docu/:key/*', function(req, res) {
+controller.get('/docu/:key/*', function(req, res) {
   var mountPoint = "";
     underscore.each(req.suffix, function(part) {
       mountPoint += "/" + part;
@@ -145,7 +145,7 @@ app.get('/docu/:key/*', function(req, res) {
   res.json(docus.show(mountPoint))
 }).pathParam("appname", {
   description: "The mount point of the App the documentation should be requested for",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("List the API for one foxx")

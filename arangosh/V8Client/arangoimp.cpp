@@ -49,7 +49,6 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8Client/V8ClientConnection.h"
 
-#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -63,7 +62,7 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -136,7 +135,7 @@ static bool Progress = false;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,7 +180,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup arangoimp
+/// @addtogroup Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -190,7 +189,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void* arangoimpResourcesAllocated = NULL;
 static void arangoimpEntryFunction ();
 static void arangoimpExitFunction (int, void*);
 
@@ -286,10 +284,11 @@ int main (int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == 0) {
     cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   ClientConnection = new V8ClientConnection(BaseClient.endpointServer(),
+                                            BaseClient.databaseName(),
                                             BaseClient.username(),
                                             BaseClient.password(),
                                             BaseClient.requestTimeout(),
@@ -298,16 +297,19 @@ int main (int argc, char* argv[]) {
                                             false);
 
   if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
-    cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
+    cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification() 
+         << "', database: '" << BaseClient.databaseName() << "'" << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // successfully connected
   cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-       << "' Version " << ClientConnection->getVersion() << endl;
+       << "', version " << ClientConnection->getVersion() << ", database: '" 
+       << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
 
   cout << "----------------------------------------" << endl;
+  cout << "database:         " << BaseClient.databaseName() << endl;
   cout << "collection:       " << CollectionName << endl;
   cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
   cout << "file:             " << FileName << endl;
@@ -335,7 +337,7 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Wrong length of quote character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // separator
@@ -344,24 +346,24 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Separator must be exactly one character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // collection name
   if (CollectionName == "") {
     cerr << "collection name is missing." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // filename
   if (FileName == "") {
     cerr << "file name is missing." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
     cerr << "file '" << FileName << "' is not a regular file." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // progress
@@ -391,7 +393,7 @@ int main (int argc, char* argv[]) {
 
   else {
     cerr << "Wrong type '" << TypeImport << "'." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   cout << endl;

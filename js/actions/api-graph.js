@@ -1165,8 +1165,10 @@ function post_graph_all_vertices (req, res, g) {
 
     var cursor = internal.AQL_QUERY(query,
                                     data.bindVars,
-                                    json.count,
-                                    json.batchSize || 1000);
+                                    { 
+                                      count: json.count,
+                                      batchSize: json.batchSize || 1000
+                                    });
 
     // error occurred
     if (cursor instanceof Error) {
@@ -1326,8 +1328,10 @@ function post_graph_vertex_vertices (req, res, g) {
     
     var cursor = internal.AQL_QUERY(query,
                                     data.bindVars,
-                                    json.count,
-                                    json.batchSize || 1000);
+                                    {
+                                      count: json.count,
+                                      batchSize: json.batchSize || 1000
+                                    });
 
     // error occurred
     if (cursor instanceof Error) {
@@ -1968,8 +1972,10 @@ function post_graph_all_edges (req, res, g) {
 
     var cursor = internal.AQL_QUERY(query,
                                     data.bindVars,
-                                    json.count,
-                                    json.batchSize || 1000);
+                                    {
+                                      count: json.count,
+                                      batchSize: json.batchSize || 1000 
+                                    });
 
     // error occurred
     if (cursor instanceof Error) {
@@ -2107,12 +2113,14 @@ function post_graph_vertex_edges (req, res, g) {
 
     var cursor = internal.AQL_QUERY(query,
                                     data.bindVars,
-                                    json.count,
-                                    json.batchSize || 1000);
+                                    {
+                                      count: json.count,
+                                      batchSize: json.batchSize || 1000
+                                    });
 
     // error occurred
     if (cursor instanceof Error) {
-      actions.resultException(req, res, cursor, undefined, false);
+      actions.resultBad(req, res, cursor);
       return;
     }
 
