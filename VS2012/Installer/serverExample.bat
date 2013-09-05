@@ -66,7 +66,6 @@ SET CMD=
 SET CMD=%CMD% --server.endpoint %HTTP_PORT%
 SET CMD=%CMD% --database.directory %DATABASE_DIR%
 SET CMD=%CMD% --server.disable-authentication true
-SET CMD=%CMD% --server.disable-admin-interface false
 SET CMD=%CMD% --log.level %LOG_LEVEL%
 SET CMD=%CMD% --log.severity human 
 SET CMD=%CMD% --javascript.action-directory %ACTION_DIR%
