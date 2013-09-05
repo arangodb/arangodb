@@ -7,6 +7,7 @@ mr-*.h
 *~
 *.pyc
 *.sdf
+*.suo
 
 
 *.orig
