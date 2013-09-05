@@ -29,6 +29,8 @@
 
 #include <v8.h>
 
+#include "BasicsC/common.h"
+
 #ifdef TRI_ENABLE_MRUBY
 #include "mruby.h"
 #include "mruby/compile.h"
@@ -36,8 +38,6 @@
 #include "mruby/proc.h"
 #include "mruby/variable.h"
 #endif
-
-#include "build.h"
 
 #include "Utils/DocumentWrapper.h"
 
@@ -59,7 +59,6 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/RedirectHandler.h"
 
 #include "Logger/Logger.h"
 #include "Rest/InitialiseRest.h"
@@ -192,6 +191,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _authenticateSystemOnly(false),
+    _disableAuthentication(false),
     _dispatcherThreads(8),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
@@ -199,7 +199,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _developmentMode(false),
     _forceSyncProperties(true),
     _forceSyncShapes(true),
-    _multipleDatabases(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnCompacted(true),
@@ -303,8 +302,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->addFeature(_applicationAdminServer);
 
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("arango", TRIAGENS_VERSION);
-  _applicationAdminServer->allowAdminDirectory(); // might be changed later
+  _applicationAdminServer->allowVersion("arango", TRI_VERSION);
 
   // .............................................................................
   // define server options
@@ -385,12 +383,9 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
-  bool disableAdminInterface = false;
-
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
-    ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
-    ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
@@ -417,7 +412,6 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
                                                              "arangodb",
-                                                             TRI_CheckAuthenticationAuthInfo,
                                                              TRI_FlushAuthenticationAuthInfo,
                                                              VocbaseManager::setRequestContext);
   _applicationServer->addFeature(_applicationEndpointServer);
@@ -434,9 +428,6 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
-
-  // dump version details
-  LOGGER_INFO(rest::Version::getVerboseVersionString());
 
   // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
@@ -466,14 +457,6 @@ void ArangoServer::buildApplicationServer () {
   if (optionNonceHashSize > 0) {
     LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );
     Nonce::create(optionNonceHashSize);
-  }
-
-  // .............................................................................
-  // disable access to the HTML admin interface
-  // .............................................................................
-
-  if (disableAdminInterface) {
-    _applicationAdminServer->allowAdminDirectory(false);
   }
 
   if (disableStatistics) {
@@ -506,6 +489,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // now run arangod
   // .............................................................................
+  
+  // dump version details
+  LOGGER_INFO(rest::Version::getVerboseVersionString());
 
   LOGGER_INFO("using default language '" << languageName << "'");
 
@@ -591,7 +577,6 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
-  _applicationV8->setAdminDirectory(_applicationAdminServer->adminDirectory());
 
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
@@ -656,11 +641,15 @@ int ArangoServer::startupServer () {
 
   // if the authentication info could not be loaded, but authentication is turned on,
   // then we refuse to start
-  if (! _vocbase->_authInfoLoaded && ! _applicationEndpointServer->isAuthenticationDisabled()) {
+  if (! _vocbase->_authInfoLoaded && ! _disableAuthentication) {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
 
-  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
+  if (_disableAuthentication) {
+    LOGGER_INFO("Authentication is turned off");
+  }
+
+  LOGGER_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
   _applicationServer->wait();
 
@@ -704,7 +693,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setAdminDirectory(_applicationAdminServer->adminDirectory());
   _applicationV8->setConcurrency(1);
 
   if (_applicationServer->programOptions().has("upgrade")) {
@@ -1125,22 +1113,13 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
     return true;
   }
 
-  string dbName = doc.getStringValue("name", "");
-  if (dbName == "") {
-    // database name not found
-    LOG_ERROR("Database name not found. User database not loaded!");
-    return true;
-  }
+  string databaseName = doc.getStringValue("name", "");
+  string databasePath = doc.getStringValue("path", "");
 
-  string dbPath = doc.getStringValue("path", "");
-  if (dbPath == "") {
-    // database path not found
-    LOG_ERROR("Database path not found. User database not loaded!");
-    return true;
-  }
+  int res = VocbaseManager::manager.canAddVocbase(databaseName, databasePath, false);
 
-  if (! VocbaseManager::manager.canAddVocbase(dbName, dbPath)) {
-    LOG_ERROR("Cannot add database. (Wrong name or path)");
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOGGER_ERROR("cannot load database: " << string(TRI_errno_string(res)));
     return true;    
   }
   
@@ -1167,13 +1146,16 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->authenticateSystemOnly);
   
   // open/load database
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), dbName.c_str(), &defaults);
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(databasePath.c_str(), databaseName.c_str(), &defaults);
   
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
-  }
 
-  LOGGER_INFO("loaded user database '" << dbName << "' from '" << dbPath << "'");
+    LOGGER_INFO("loaded database '" << databaseName << "' from '" << databasePath << "'");
+  }
+  else {
+    LOGGER_ERROR("unable to load database '" << databaseName << "' from '" << databasePath << "'");
+  }
 
   return true;
 }
@@ -1222,28 +1204,51 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a tcp endpoint
+/// @brief add an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool handleEnpoint (TRI_doc_mptr_t const* document, 
-        TRI_primary_collection_t* primary, void*) {
+                           TRI_primary_collection_t* primary, 
+                           void*) {
   
   DocumentWrapper doc(document, primary);
   
-  if (!doc.isArrayDocument()) {
+  if (! doc.isArrayDocument()) {
     // wrong document type
     return true;
   }
   
   string endpoint = doc.getStringValue("endpoint", "");
+
   if (endpoint == "") {
     // endpoint string not found
-    LOG_ERROR("Endpoint string not found!");
+    LOG_WARNING("invalid endpoint specification found");
     return true;
   }
 
-  VocbaseManager::manager.addEndpoint(endpoint);
-  
+  TRI_json_t const* json = doc.getJson();
+
+  vector<std::string> databaseNames;
+
+  if (JsonHelper::isList(json)) {
+    for (size_t i = 0; i < json->_value._objects._length; ++i) {
+      TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+      if (JsonHelper::isString(e)) {
+        const string databaseName = JsonHelper::getStringValue(e, "");
+
+        if (! databaseName.empty()) {
+          databaseNames.push_back(databaseName);
+        }
+      }
+    }
+  }
+  else {
+    databaseNames.push_back(TRI_VOC_SYSTEM_DATABASE);
+  }
+
+  VocbaseManager::manager.addEndpoint(endpoint, databaseNames);
+ 
   return true;
 }
 
@@ -1293,80 +1298,6 @@ bool ArangoServer::loadEndpoints () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a tcp endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static bool handlePrefixMapping (TRI_doc_mptr_t const* document, 
-        TRI_primary_collection_t* primary, void* data) {
-  
-  DocumentWrapper doc(document, primary);
-  
-  if (!doc.isArrayDocument()) {
-    // wrong document type
-    return true;
-  }
-  
-  string prefix = doc.getStringValue("prefix", "");
-  if (prefix == "") {
-    LOG_ERROR("Prefix string not found!");
-    return true;
-  }
-
-  string database = doc.getStringValue("database", "");
-  if (database == "") {
-    LOG_ERROR("Database string not found!");
-    return true;
-  }
-
-  VocbaseManager::manager.addPrefixMapping(prefix, database);
-  
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start server endpoints found in collection '_endpoints'
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoServer::loadPrefixMappings () {
-  TRI_vocbase_col_t* collection;
-  TRI_primary_collection_t* primary;
-
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_PREFIXES);
-
-  if (collection == NULL) {
-    // collection '_prefixes' not found
-    return false;
-  }
-
-  TRI_UseCollectionVocBase(_vocbase, collection);
-
-  primary = collection->_collection;
-
-  if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' cannot be loaded");
-  }
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
-    TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' has an unknown collection type");
-  }
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-    
-  TRI_DocumentIteratorPrimaryCollection(primary, 0, handlePrefixMapping);
-
-  // .............................................................................
-  // outside a read transaction
-  // .............................................................................
-
-  TRI_ReleaseCollectionVocBase(_vocbase, collection);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1382,7 +1313,7 @@ void ArangoServer::openDatabases () {
   defaults.defaultWaitForSync            = _defaultWaitForSync;
   defaults.forceSyncShapes               = _forceSyncShapes;
   defaults.forceSyncProperties           = _forceSyncProperties;
-  defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
+  defaults.requireAuthentication         = ! _disableAuthentication;
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
   
   // store these settings as initial system defaults
@@ -1399,14 +1330,13 @@ void ArangoServer::openDatabases () {
   LOGGER_INFO("loaded database '" TRI_VOC_SYSTEM_DATABASE "' from '" << _databasePath << "'");    
   
   // first database is the system database
-  _vocbase->_isSystem = _multipleDatabases;
+  _vocbase->_isSystem = true;
   
   VocbaseManager::manager.addSystemVocbase(_vocbase);
   
   if (_vocbase->_isSystem) {
     loadUserDatabases(&defaults);
     loadEndpoints();
-    loadPrefixMappings();
   }
 }
 
@@ -1416,7 +1346,7 @@ void ArangoServer::openDatabases () {
 
 void ArangoServer::closeDatabases () {
   TRI_CleanupActions();
-  TRI_DestroyVocBase(_vocbase);
+  TRI_DestroyVocBase(_vocbase, 0);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
   

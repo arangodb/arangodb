@@ -1,6 +1,200 @@
 v1.4.0-alpha1 (2013-08-02)
 --------------------------
 
+* introduced `--server.database` option for arangosh, arangoimp, and arangob.
+
+  The option allows these client tools to use a certain database for their actions.
+  In arangosh, the current database can be switched at any time using the command
+
+      db._useDatabase(<name>);
+
+  When no database is specified, all client tools will assume they should use the
+  default database `_system`. This is done for downwards-compatibility reasons.
+
+* added basic multi database support (alpha)
+
+  New databases can be created using the REST API POST `/_api/database` and the
+  shell command `db._createDatabase(<name>)`.
+
+  The default database in ArangoDB is called `_system`. This database is always
+  present and cannot be deleted by the user. When an older version of ArangoDB is
+  upgraded to 1.4, the previously only database will automatically become the
+  `_system` database.
+
+  New databases can be created with the above commands, and can be deleted with the
+  REST API DELETE `/_api/database/<name>` or the shell command `db._dropDatabase(<name>);`.
+
+  Deleting databases is still unstable in ArangoDB 1.4 alpha and might crash the
+  server. This will be fixed until 1.4 stable.
+
+  To access a specific database via the HTTP REST API, the `/_db/<name>/` prefix 
+  can be used in all URLs. ArangoDB will check if an incoming request starts with
+  this prefix, and will automatically pick the database name from it. If the prefix
+  is not there, ArangoDB will assume the request is made for the default database 
+  (`_system`). This is done for downwards-compatibility reasons.
+
+  That means, the following URL pathnames are logically identical:
+
+      /_api/document/mycollection/1234
+      /_db/_system/document/mycollection/1234
+
+  To access a different database (e.g. `test`), the URL pathname would look like this:
+
+      /_db/test/document/mycollection/1234
+
+
+  New databases can also be created and existing databases can only be dropped from
+  within the default database (`_system`). It is not possible to drop the `_system`
+  database itself.
+
+  Cross-database operations are unintended and unsupported. The intention of the
+  multi-database feature is to have the possibility to have a few databases managed
+  by ArangoDB in parallel, but to only access one database at a time from a connection 
+  or a request.
+
+  When accessing the web interface via the URL pathname `/_admin/html/` or `/_admin/aardvark`,
+  the web interface for the default database (`_system`) will be displayed.
+  To access the web interface for a different database, the database name can be
+  put into the URLs as a prefix, e.g. `/_db/test/_admin/html` or 
+  `/_db/test/_admin/aardvark`.
+
+  All internal request handlers and also all user-defined request handlers and actions
+  (including Foxx) will only get to see the unprefixed URL pathnames (i.e. excluding
+  any database name prefix). This is to ensure downwards-compatibility.
+
+  To access the name of the requested database from any action (including Foxx), use
+  use `req.database`.
+
+  For example, when calling the URL `/myapp/myaction`, the content of `req.database`
+  will be `_system` (the default database because no database got specified) and the
+  content of `req.url` will be `/myapp/myaction`.
+  
+  When calling the URL `/_db/test/myapp/myaction`, the content of `req.database` will be 
+  `test`, and the content of `req.url` will still be `/myapp/myaction`.
+   
+* Foxx now excludes files starting with . (dot) when bundling assets
+
+  This mitigates problems with editor swap files etc.
+
+* made the web interface a Foxx application
+
+  This change caused the files for the web interface to be moved from `html/admin` to
+  `js/apps/aardvark` in the file system.
+
+  The base URL for the admin interface changed from `_admin/html/index.html` to
+  `_admin/aardvark/index.html`.
+
+  The "old" redirection to `_admin/html/index.html` will now produce a 404 error. 
+  
+  When starting ArangoDB with the `--upgrade` option, this will automatically be remedied 
+  by putting in a redirection from `/` to `/_admin/aardvark/index.html`, and from 
+  `/_admin/html/index.html` to `/_admin/aardvark/index.html`.
+
+  This also obsoletes the following configuration options:
+  - `--server.admin-directory`
+  - `--server.disable-admin-interface`
+
+  when using these now obsolete options when the server is started, no error is produced
+  for downwards-compatibility.
+
+* changed User-Agent value sent by arangoimp, arangosh, and arangod from "VOC-Agent" to 
+  "ArangoDB"
+
+* changed journal file creation behavior as follows:
+
+  Previously, a journal file for a collection was always created when a collection was
+  created. When a journal filled up and became full, the current journal was made a
+  datafile, and a new (empty) journal was created automatically. There weren't many
+  intended situations when a collection did not have at least one journal.
+
+  This is changed now as follows:
+  - when a collection is created, no journal file will be created automatically
+  - when there is a write into a collection without a journal, the journal will be
+    created lazily
+  - when there is a write into a collection with a full journal, a new journal will
+    be created automatically
+
+  From the end user perspective, nothing should have changed, except that there is now
+  less disk usage for empty collections. Disk usage of infrequently updated collections 
+  might also be reduced significantly by running the `rotate()` method of a collection, 
+  and not writing into a collection subsequently.
+
+* added method `collection.rotate()`
+
+  This allows premature rotation of a collection's current journal file into a (read-only)
+  datafile. The purpose of using `rotate()` is to prematurely allow compaction (which is 
+  performed on datafiles only) on data, even if the journal was not filled up completely.
+
+  Using `rotate()` may make sense in the following scenario:
+
+      c = db._create("test");
+      for (i = 0; i < 1000; ++i) {
+        c.save(...); // insert lots of data here
+      }
+
+      ...
+      c.truncate(); // collection is now empty
+      // only data in datafiles will be compacted by following compaction runs
+      // all data in the current journal would not be compacted
+
+      // calling rotate will make the current journal a datafile, and thus make it
+      // eligible for compaction
+      c.rotate(); 
+
+  Using `rotate()` may also be useful when data in a collection is known to not change
+  in the immediate future. After having completed all write operations on a collection,
+  performing a `rotate()` will reduce the size of the current journal to the actually
+  required size (remember that journals are pre-allocated with a specific size) before
+  making the journal a datafile. Thus `rotate()` may cause disk space savings, even if
+  the datafiles does not qualify for compaction after rotation.
+
+  Note: the journal is asynchronously, so that the actual rotation may be executed
+  after `rotate()` returns to the caller.
+
+* changed compaction to merge small datafiles together (up to 3 datafiles are merged in 
+  a compaction run)
+
+  In the regular case, this should leave less small datafiles stay around on disk and allow
+  using less file descriptors in total.
+
+* added AQL MINUS function
+
+* added AQL UNION_DISTINCT function (more efficient than combination of `UNIQUE(UNION())`)
+
+* updated mruby to 2013-08-22
+
+* issue #587: Add db._create() in help for startup arangosh
+
+* issue #586: Share a link on installation instructions in the User Manual 
+
+* issue #585: Bison 2.4 missing on Mac for custom build
+
+* issue #584: Web interface images broken in devel
+
+* issue #583: Small documentation update
+
+* issue #581: Parameter binding for attributes
+
+* issue #580: Small improvements (by @guidoreina) 
+
+* issue #577: Missing documentation for collection figures in implementor manual
+
+* issue #576: Get disk usage for collections and graphs
+
+  This extends the result of the REST API for /_api/collection/figures with
+  the attributes `compactors.count`, `compactors.fileSize`, `shapefiles.count`,
+  and `shapefiles.fileSize`.
+
+* issue #575: installing devel version on mac (low prio)
+
+* issue #574: Documentation (POST /_admin/routing/reload)
+
+* issue #558: HTTP cursors, allow count to ignore LIMIT
+
+
+v1.4.0-alpha1 (2013-08-02)
+--------------------------
+
 * added replication. check online manual for details.
 
 * added server startup options `--server.disable-replication-logger` and 
@@ -269,7 +463,7 @@ v1.4.0-alpha1 (2013-08-02)
 * issue #512: Binded Parameters for LIMIT
 
 
-v1.3.3 (XXXX-XX-XX)
+v1.3.3 (2013-08-01)
 -------------------
 
 * issue #570: updateFishbowl() fails once
@@ -281,7 +475,7 @@ v1.3.3 (XXXX-XX-XX)
 * added missing error reporting for errors that happened during import of edges
 
 
-v1.3.2 (2013-XX-XX)
+v1.3.2 (2013-06-21)
 -------------------
 
 * fixed memleak in internal.download()

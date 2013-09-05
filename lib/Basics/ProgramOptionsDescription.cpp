@@ -510,8 +510,7 @@ string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOp
 
   // write help only if help options match
   if (! _helpOptions.empty() || helpStandard || helpAll) {
-
-    // produce a head line
+    // produce a headline
     if (! _name.empty() && ! (subDescriptions.empty() && _optionNames.empty())) {
       if (_helpOptions.empty()) {
         desc = _name + ":\n";
@@ -520,6 +519,14 @@ string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOp
         desc = "Extended " + _name + ":\n";
       }
     }
+    
+    // construct the parameters
+    size_t tWidth = TRI_ColumnsWidth();
+
+    if (tWidth < 40) {
+      tWidth = 40;
+    }
+
 
     // collect the maximal width of the option names
     size_t oWidth = 0;
@@ -599,13 +606,6 @@ string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOp
       if (name.size() > oWidth) {
         oWidth = name.size();
       }
-    }
-
-    // construct the parameters
-    size_t tWidth = TRI_ColumnsWidth();
-
-    if (tWidth < 40) {
-      tWidth = 40;
     }
 
     size_t sWidth = 8;

@@ -8351,6 +8351,14 @@ $as_echo "$as_me: WARNING: cannot compute V8 version number, old autoconf versio
   fi
 fi
 
+if test "x$TRI_V8_VERSION" != "xV8"; then
+  tr_v8_version=`echo "$TRI_V8_VERSION" | awk -F. '{print $1 * 10000 + $2 * 100 + $3}'`
+
+  if test "$tr_v8_version" -lt 31600; then
+    as_fn_error $? "V8 version found is too low: $TRI_V8_VERSION. Please install V8 with version 3.16.0 or higher or use the option --enable-all-in-one-v8." "$LINENO" 5
+  fi
+fi
+
 
 LIBS="$SAVE_LIBS"
 LDFLAGS="$SAVE_LDFLAGS"
@@ -8488,7 +8496,7 @@ fi
 
 
 
-BUILD_H="\$(top_srcdir)/build_posix.h"
+BUILD_H="\$(top_srcdir)/build.h"
 
 
 ac_config_files="$ac_config_files Makefile Documentation/arango.template"

@@ -1,0 +1,250 @@
+.collectionTh {
+  width: 20% !important;
+  text-align:left;
+}
+
+.collectionTh input, .collectionTh select, .collectionTh textarea,
+.modal-body input, .modal-body select, .modal-body textarea {
+  margin-top: 10px;
+}
+
+.collectinInfoTable {
+  width: 200px !important;
+  max-width: 200px !important;
+}
+
+.collectionInfoTh {
+  text-align:left;
+  min-width: 60px;
+}
+
+.modal-body-right, .modal-body-left {
+  float:left;
+  width:50%;
+  max-width: 50% !important;
+}
+
+.tooltipInfoTh {
+  width: 10%;
+}
+
+.modal-body .icon-info-sign {
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  margin-left: 10px;
+  opacity: 0.7;
+}
+
+.modal-body .icon-info-sign:hover {
+  opacity: 1;
+}
+
+.modal-body .accordion-inner {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.modal-body input {
+
+  width: 320px;
+}
+
+.modal-body select {
+  width: 334px;
+}
+
+.modal-text {
+  font-weight: 300;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.collectionInfoTh {
+  width: 320px;
+}
+
+.collectionInfoTh2 {
+  text-align:left;
+  width: 150px;
+}
+
+#figures table {
+  padding: 3px;
+  text-align: left;
+  min-width: 200px;
+  margin-top: 0px;
+  margin-left: 0;
+  margin-right: 0;
+  float:left;
+/*
+  border-collapse: separate !important; 
+  border-spacing: 0 6px !important;
+*/
+}
+
+#figures1, #figures2 {
+  margin-bottom: 20px;
+  width: 255px;
+}
+
+#figures2 {
+  margin-left: 20px !important;
+}
+
+#figures3 {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.figuresHeader {
+  border-bottom: 1px solid #888888;
+}
+
+.figuresHeader th {
+  font-weight: 400 !important;
+  font-family: 'Lato', sans-serif !important;
+}
+
+#collectionIndexTable {
+  margin-left: 0;
+  width: 100%;
+}
+
+.modal {
+  border-radius: 0 !important;
+}
+
+.modalTooltips span {
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+.modalTooltips span:hover {
+  opacity: 0.8;
+}
+
+#infoTab, #collectionTab{
+  padding-right: 10px;
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 1px;
+}
+
+#infoTab li, #collectionTab li{
+  float:right;
+}
+
+#infoTab a, #collectionTab a{
+  margin-right: 4px;
+  color: black;
+  margin-bottom: -1px;
+  background-color: #F1F0EE;
+  border-bottom: 1px solid #888888;
+  border-radius: 0 !important;
+  height: 21px;
+  font-size: 13px !important;
+  padding: 4px !important;
+}
+
+#infoTab .active > a, #collectionTab .active > a {
+  border-color: #888888 #888888 transparent !important;
+  background-color: #FFFFFF;
+}
+
+#tab-content-collection-info #info,
+#tab-content-collection-info #figures,
+#tab-content-collection-info #index,
+#tab-content-collection-edit #main,
+#tab-content-collection-edit #editIndex {
+  padding-top: 10px;
+  border-top: 1px solid #888888 !important;
+  margin-left: 0px !important;
+}
+
+.modal-footer {
+  border-top: 0 !important;
+}
+
+.modal-header {
+  margin-top: 5px;
+  margin-left: 5px;
+  margin-right: 5px;
+  background-color: #686766;
+  border-bottom: 0 !important;
+  padding-top: 4px;
+  padding-left: 5px;
+  padding-right: 10px;
+}
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px;
+}
+
+.modal-header .close {
+  color: #FFFFFF;
+  opacity: 0.5;
+}
+
+.modal-header .close:hover {
+  opacity: 1;
+}
+
+.modal-body .glyphicon-info-sign {
+  color: #736B68;
+  font-size: 18px;
+  margin-left: 5px;
+  margin-top: 2px;
+}
+
+.modal-body .glyphicon-info-sign:hover {
+  color: black;
+}
+
+#closeBtnInfoView {
+  margin-left: 0 !important;
+}
+
+.modal-body {
+  font-weight: 300;
+  font-family: 'Lato', sans-serif !important;
+}
+
+.collectionTh, .collectionInfoTh2 {
+  font-weight: 400 !important;
+  font-family: 'Lato', sans-serif !important;
+}
+
+#confirmCreateEdge {
+  margin-left: 20px;
+}
+
+.modal.fade.in {
+  top: 12.1% !important;
+}
+
+.modal table tr, .thBorderBottom {
+  border-bottom: 1px solid #F7F3F2 !important;
+}
+
+.modal table tr:last-child {
+  border-bottom: 0 !important;
+}
+
+#add-collection table tr {
+  border-bottom: 0 !important;
+}
+
+.modal-body input[type='checkbox'] {
+  margin-bottom: 10px;
+}
+
+#add-collection .glyphicon-info-sign {
+  top: 2px !important;
+  position: relative;
+  margin-left: 20px !important;
+}
+
+#add-collection .accordion {
+  margin-top: 10px;
+}

@@ -23,8 +23,6 @@ OPTION "--create-collection <bool>"
 set to "true" if collection should be created by the import ENDOPTION
 OPTION "--file <string>"
 input file with the data to import ENDOPTION
-OPTION "--eol <string>"
-the end-of-line character or string to be used ENDOPTION
 OPTION "--quote <string>"
 optional quote character to be used ENDOPTION
 OPTION "--separator <string>"
@@ -33,6 +31,8 @@ OPTION "--type <string>"
 set to "json", "tsv" or "csv", depending on the input file format ENDOPTION
 OPTION "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.database <string>"
+database name to use when connection (default: "_system") ENDOPTION
 OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"

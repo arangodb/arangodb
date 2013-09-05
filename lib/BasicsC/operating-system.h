@@ -529,7 +529,11 @@
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
+#ifdef _WIN64
+#define TRI_PLATFORM "win64"
+#else
 #define TRI_PLATFORM "win32"
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief necessary defines and includes

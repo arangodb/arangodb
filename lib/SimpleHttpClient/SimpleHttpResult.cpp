@@ -55,6 +55,7 @@ namespace triagens {
       _returnMessage = "";
       _contentLength = 0;
       _chunked = false;
+      _deflated = false;
       _requestResultType = UNKNOWN;
       _headerFields.clear();
       _resultBody.clear();
@@ -119,6 +120,11 @@ namespace triagens {
       else if (k == "transfer-encoding") {
         if (StringUtils::tolower(value) == "chunked") {
           _chunked = true;
+        }
+      }
+      else if (k == "content-encoding") {
+        if (StringUtils::tolower(value) == "deflate") {
+          _deflated = true;
         }
       }
 

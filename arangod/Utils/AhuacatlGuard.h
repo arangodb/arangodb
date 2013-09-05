@@ -29,9 +29,9 @@
 #define TRIAGENS_UTILS_AHUACATL_GUARD_H 1
 
 #include "Ahuacatl/ahuacatl-context.h"
-#include "VocBase/vocbase.h"
-
+#include "BasicsC/json.h"
 #include "Logger/Logger.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -61,9 +61,11 @@ namespace triagens {
 /// @brief create the guard
 ////////////////////////////////////////////////////////////////////////////////
 
-        AhuacatlGuard (TRI_vocbase_t* vocbase, const string& query) :
+        AhuacatlGuard (TRI_vocbase_t* vocbase, 
+                       const string& query,
+                       TRI_json_t* userOptions) :
           _context(0) {
-            _context = TRI_CreateContextAql(vocbase, query.c_str(), query.size());
+            _context = TRI_CreateContextAql(vocbase, query.c_str(), query.size(), userOptions);
 
             if (_context == 0) {
               LOGGER_DEBUG("failed to create context for query %s" << query);

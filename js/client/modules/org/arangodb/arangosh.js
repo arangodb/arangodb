@@ -140,12 +140,15 @@ exports.HELP = exports.createHelpHeadline("Help") +
   '  fm:                                    FoxxManager                ' + "\n" +
   'Example:                                                            ' + "\n" +
   ' > db._collections();                    list all collections       ' + "\n" +
+  ' > db._create(<coll_name>);              create a new collection    ' + "\n" +
+  ' > db._drop(<coll_name>);                drop a collection          ' + "\n" +
   ' > db.<coll_name>.all().toArray();       list all documents         ' + "\n" +
   ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
   ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
   ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
   ' > db.<coll_name>.replace(<_id>, {...}); overwrite a document       ' + "\n" +
   ' > db.<coll_name>.update(<_id>, {...});  partially update a document' + "\n" +
+  ' > db._query(<query>).toArray();         execute an AQL query       ' + "\n" +
   ' > help                                  show help pages            ' + "\n" +
   ' > exit                                                             ' + "\n" +
   'Note: collection names may be cached in arangosh. To refresh them, issue: ' + "\n" +

@@ -31,6 +31,8 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/StringUtils.h"
+
 namespace triagens {
   namespace rest {
 
@@ -42,26 +44,29 @@ namespace triagens {
       public:
         ConnectionInfo ()
           : serverPort(0),
-            serverAddress(),
             clientPort(0),
+            serverAddress(),
             clientAddress(),
+            endpoint(),
             sslContext(0) {
         }
 
         ConnectionInfo (ConnectionInfo const& that)
           : serverPort(that.serverPort),
-            serverAddress(that.serverAddress),
             clientPort(that.clientPort),
+            serverAddress(that.serverAddress),
             clientAddress(that.clientAddress),
+            endpoint(that.endpoint),
             sslContext(that.sslContext) {
         }
 
         ConnectionInfo& operator= (ConnectionInfo const& that) {
           if (this != &that) {
             serverPort = that.serverPort;
-            serverAddress = that.serverAddress;
             clientPort = that.clientPort;
+            serverAddress = that.serverAddress;
             clientAddress = that.clientAddress;
+            endpoint = that.endpoint;
             sslContext = that.sslContext;
           }
 
@@ -71,10 +76,11 @@ namespace triagens {
       public:
 
         int serverPort;
-        string serverAddress;
-
         int clientPort;
+
+        string serverAddress;
         string clientAddress;
+        string endpoint;
 
         void* sslContext;
     };

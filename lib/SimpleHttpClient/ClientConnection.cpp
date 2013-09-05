@@ -125,6 +125,8 @@ bool ClientConnection::checkSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::connectSocket () {
+  assert(_endpoint != 0);
+
   if (_endpoint->isConnected()) {
     _endpoint->disconnect();
   }
@@ -146,7 +148,9 @@ bool ClientConnection::connectSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClientConnection::disconnectSocket () {
-  _endpoint->disconnect();
+  if (_endpoint) {
+    _endpoint->disconnect();
+  }
   _socket.fileDescriptor = 0;
   _socket.fileHandle = 0;
 }
@@ -161,8 +165,8 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
 
   assert(_socket.fileHandle > 0);
 
-  tv.tv_sec = (uint64_t) timeout;
-  tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+  tv.tv_sec = (long) timeout;
+  tv.tv_usec = ((long) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
   FD_SET(_socket.fileHandle, &fdset);
@@ -178,6 +182,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   }
 
   int res = select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv);
+
   if (res > 0) {
     return true;
   }
@@ -213,6 +218,10 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
   int status = ::send(_socket.fileHandle, buffer, length, MSG_NOSIGNAL);
 #endif
 
+  if (status < 0) {
+    TRI_set_errno(errno);
+    return false;
+  }
 
   *bytesWritten = status;
 

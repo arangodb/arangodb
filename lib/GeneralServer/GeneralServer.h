@@ -187,15 +187,20 @@ namespace triagens {
           EndpointList::ListType endpoints = _endpointList->getEndpoints(this->getProtocol(), this->getEncryption());
 
           for (EndpointList::ListType::const_iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-            LOGGER_TRACE("trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests");
+            LOGGER_TRACE("trying to bind to endpoint '" << (*i).first->getSpecification() << "' for requests");
 
-            bool ok = openEndpoint(*i);
+            bool ok = openEndpoint((*i).first);
 
             if (ok) {
-              LOGGER_DEBUG("bound to endpoint '" << (*i)->getSpecification() << "'");
+              LOGGER_DEBUG("bound to endpoint '" << (*i).first->getSpecification() << "'");
             }
             else {
-              LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i)->getSpecification() << "'");
+              if ((*i).second) {
+                LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i).first->getSpecification() << "'");
+              }
+              else {
+                LOGGER_WARNING("failed to bind to endpoint '" << (*i).first->getSpecification() << "'");
+              }
             }
           }
         }

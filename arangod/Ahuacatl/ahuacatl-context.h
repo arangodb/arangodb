@@ -29,8 +29,8 @@
 #define TRIAGENS_AHUACATL_AHUACATL_CONTEXT_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/vector.h"
 #include "BasicsC/associative.h"
+#include "BasicsC/vector.h"
 
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
@@ -57,29 +57,35 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_context_s {
-  struct TRI_vocbase_s* _vocbase;
-  struct TRI_aql_parser_s* _parser;
-  TRI_aql_statement_list_t* _statements;
-  TRI_aql_error_t _error;
-  TRI_vector_pointer_t _collections;
-  TRI_associative_pointer_t _collectionNames;
+  struct TRI_vocbase_s*       _vocbase;
+  struct TRI_aql_parser_s*    _parser;
+  TRI_aql_statement_list_t*   _statements;
+  TRI_aql_error_t             _error;
+  TRI_vector_pointer_t        _collections;
+  TRI_associative_pointer_t   _collectionNames;
+
   struct {
-    TRI_vector_pointer_t _nodes;
-    TRI_vector_pointer_t _strings;
-    TRI_vector_pointer_t _scopes;
+    TRI_vector_pointer_t      _nodes;
+    TRI_vector_pointer_t      _strings;
+    TRI_vector_pointer_t      _scopes;
   }
   _memory;
-  TRI_vector_pointer_t _currentScopes;
+
+  TRI_vector_pointer_t        _currentScopes;
+
   struct {
     TRI_associative_pointer_t _values;
     TRI_associative_pointer_t _names;
   }
   _parameters;
+  
+  const char*                 _query;
 
-  const char* _query;
-
-  size_t _variableIndex;
-  size_t _scopeIndex;
+  size_t                      _variableIndex;
+  size_t                      _scopeIndex;
+  
+  struct TRI_json_s*          _userOptions;
+  bool                        _fullCount;
 }
 TRI_aql_context_t;
 
@@ -102,7 +108,8 @@ TRI_aql_context_t;
 
 TRI_aql_context_t* TRI_CreateContextAql (struct TRI_vocbase_s*,
                                          const char* const,
-                                         const size_t);
+                                         const size_t,
+                                         struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a context
@@ -175,6 +182,13 @@ bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const,
 void TRI_SetErrorContextAql (TRI_aql_context_t* const,
                              const int,
                              const char* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the value of an option variable
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_GetOptionContextAql (TRI_aql_context_t* const,
+                                            const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

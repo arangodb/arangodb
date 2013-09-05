@@ -30,6 +30,7 @@
 
 #include "VocBase/vocbase.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 #include <map>
 #include <string>
@@ -77,7 +78,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        VocbaseContext (rest::HttpRequest* request, VocbaseManager* manager);
+        VocbaseContext (rest::HttpRequest*,
+                        VocbaseManager*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -120,13 +122,13 @@ namespace triagens {
 /// @brief set request user by user name
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setRequestUserByName (string const& name);
+        void setRequestUserByName (string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool authenticate ();
+        rest::HttpResponse::HttpResponseCode authenticate ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

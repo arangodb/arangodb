@@ -97,6 +97,10 @@ Collection Methods {#HandlingCollectionsCollectionMethods}
 @copydetails JS_RenameVocbaseCol
 
 @CLEARPAGE
+@anchor HandlingCollectionsRotate
+@copydetails JS_RotateVocbaseCol
+
+@CLEARPAGE
 Database Methods {#HandlingCollectionsDatabaseMethods}
 ------------------------------------------------------
 

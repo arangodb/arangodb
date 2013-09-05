@@ -569,7 +569,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
 /// @brief initialise the array with the function declarations
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
+TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   TRI_associative_pointer_t* functions;
   bool result;
   int res;
@@ -645,6 +645,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // list functions
   REGISTER_FUNCTION("RANGE", "RANGE", true, false, "n,n|n", NULL);
   REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+", NULL);
+  REGISTER_FUNCTION("UNION_DISTINCT", "UNION_DISTINCT", true, false, "l,l|+", NULL);
+  REGISTER_FUNCTION("MINUS", "MINUS", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("INTERSECTION", "INTERSECTION", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "las", NULL);
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l", NULL);
@@ -710,6 +712,10 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 
 void TRI_FreeFunctionsAql (TRI_associative_pointer_t* functions) {
   size_t i;
+
+  if (functions == NULL) {
+    return;
+  }
 
   for (i = 0; i < functions->_nrAlloc; ++i) {
     TRI_aql_function_t* function = (TRI_aql_function_t*) functions->_table[i];

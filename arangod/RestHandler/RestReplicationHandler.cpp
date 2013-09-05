@@ -27,7 +27,8 @@
 
 #include "RestReplicationHandler.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
+
 #include "Basics/JsonHelper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
@@ -35,6 +36,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-logger.h"
@@ -121,7 +123,7 @@ Handler::status_e RestReplicationHandler::execute() {
 
   const size_t len = suffix.size();
 
-  if (len == 1) {
+  if (len >= 1) {
     const string& command = suffix[0];
 
     if (command == "logger-start") {
@@ -159,6 +161,9 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandLoggerFollow(); 
     }
+    else if (command == "batch") {
+      handleCommandBatch();
+    }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -170,6 +175,18 @@ Handler::status_e RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandDump(); 
+    }
+    else if (command == "restore-collection") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandRestoreCollection(); 
+    }
+    else if (command == "restore-data") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandRestoreData(); 
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -251,6 +268,30 @@ BAD_CALL:
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator to sort collections
+/// sort order is by collection type first (vertices before edges, this is
+/// because edges depend on vertices being there), then name 
+////////////////////////////////////////////////////////////////////////////////
+
+int RestReplicationHandler::sortCollections (const void* l, 
+                                             const void* r) {
+  TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
+  TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
+
+  int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
+  
+  if (leftType != rightType) {
+    return leftType - rightType;
+  }
+
+  string leftName  = JsonHelper::getStringValue(left,  "name", "");
+  string rightName = JsonHelper::getStringValue(right, "name", "");
+
+  return strcasecmp(leftName.c_str(), rightName.c_str());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
@@ -761,6 +802,177 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump batch command
+///
+/// @RESTHEADER{POST /_api/replication/batch,creates a new dump batch}
+///
+/// @RESTDESCRIPTION
+/// Creates a new dump batch and returns the batch's id.
+///
+/// The body of the request must be a JSON hash with the following attributes:
+///
+/// - `ttl`: the time-to-live for the new batch (in seconds)
+///
+/// The response is a JSON hash with the following attributes:
+///
+/// - `id`: the id of the batch
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the batch was created successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the ttl value is invalid.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump batch command
+///
+/// @RESTHEADER{PUT /_api/replication/`id`,prolongs an existing dump batch}
+///
+/// @RESTURLPARAM{id,string,required}
+/// The id of the batch.
+///
+/// @RESTDESCRIPTION
+/// Extends the ttl of an existing dump batch, using the batch's id and 
+/// the provided ttl value.
+///
+/// The body of the request must be a JSON hash with the following attributes:
+///
+/// - `ttl`: the time-to-live for the batch (in seconds)
+///
+/// If the batch's ttl can be extended successully, the response is empty.
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the batch's ttl was extended successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the ttl value is invalid or the batch was not found.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump batch command
+///
+/// @RESTHEADER{DELETE /_api/replication/`id`,deletes an existing dump batch}
+///
+/// @RESTURLPARAM{id,string,required}
+/// The id of the batch.
+///
+/// @RESTDESCRIPTION
+/// Deletes the existing dump batch, allowing compaction and cleanup to resume.
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the batch was deleted successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the batch was not found.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandBatch () {
+  // extract the request type
+  const HttpRequest::HttpRequestType type = _request->requestType();
+  vector<string> const& suffix = _request->suffix();
+  const size_t len = suffix.size();
+
+  assert(len >= 1);
+
+  if (type == HttpRequest::HTTP_REQUEST_POST) {
+    // create a new blocker
+    
+    TRI_json_t* input = _request->toJson(0);
+
+    if (input == 0) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
+
+    TRI_voc_tick_t id;
+    int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateError(HttpResponse::BAD, res);
+    }
+
+    TRI_json_t json;
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) id)));
+  
+    generateResult(&json);
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+    // extend an existing blocker
+    TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
+  
+    TRI_json_t* input = _request->toJson(0);
+
+    if (input == 0) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
+    
+    // now extend the blocker
+    int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      generateError(HttpResponse::BAD, res);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+    // delete an existing blocker
+    TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
+
+    int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      generateError(HttpResponse::BAD, res);
+    }
+    return;
+  }
+
+  // we get here if anything above is invalid
+  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns ranged data from the replication log
 ///
 /// @RESTHEADER{GET /_api/replication/logger-follow,returns recent log entries from the replication log}
@@ -1035,7 +1247,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
     if (length > 0) {
       // transfer ownership of the buffer contents
-      _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
+      _response->body().set(dump._buffer);
+      
       // avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
@@ -1054,6 +1267,11 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// @RESTHEADER{GET /_api/replication/inventory,returns an inventory of collections and indexes}
 ///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{includeSystem,boolean,optional}
+/// Include system collections in the result. The default value is `false`.
+///
 /// @RESTDESCRIPTION
 /// Returns the list of collections and indexes available on the server. This
 /// list can be used by replication clients to initiate an initial sync with the
@@ -1068,6 +1286,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// - `indexes`: a list of the indexes of a the collection. Primary indexes and edges indexes
 ///    are not included in this list.
+///
+/// `tick`: the system-wide tick value at the start of the dump
 ///
 /// The `state` attribute contains the current state of the replication logger. It
 /// contains the following sub-attributes:
@@ -1167,13 +1387,36 @@ void RestReplicationHandler::handleCommandInventory () {
 
   TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
   
-  // collections
-  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
+  // include system collections?
+  bool includeSystem = false;
+  bool found;
+  const char* value = _request->value("includeSystem", found);
+
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+
+  // register filter function
+  bool (*filter)(TRI_vocbase_col_t*, void*) = includeSystem ? 0 : &filterCollection;
+
+  // collections and indexes
+  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, filter, NULL);
 
   if (collections == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
+
+  assert(JsonHelper::isList(collections));
+ 
+  // sort collections by type, then name 
+  const size_t n = collections->_value._objects._length;
+
+  if (n > 1) {
+    // sort by collection type (vertices before edges), then name
+    qsort(collections->_value._objects._buffer, n, sizeof(TRI_json_t), &sortCollections);
+  }
+
 
   TRI_replication_logger_state_t state;
 
@@ -1189,13 +1432,279 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_json_t json;
   
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+  
+  char* tickString = TRI_StringUInt64(tick);
 
   // add collections data
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state)); 
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
   
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection TODO
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRestoreCollection () {
+  generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_INTERNAL);
+#if 0  
+  TRI_json_t* json = _request->toJson(0);
+
+  if (json == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid JSON");
+    return;
+  }
+
+  bool found;
+  char const* value;
+  
+  bool overwrite = false;
+  value = _request->value("overwrite", found);
+
+  if (found) {
+    overwrite = StringUtils::boolean(value);
+  }
+
+  TRI_server_id_t remoteServerId = 0; // TODO
+  string errorMsg;
+  int res = processRestore(json, overwrite, remoteServerId, errorMsg);
+
+  std::cout << "RES: " << res << "\n";
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    // TODO
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "done", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  
+    generateResult(&result);
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id from JSON TODO: move
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_cid_t RestReplicationHandler::getCid (TRI_json_t const* json) const {
+  if (! JsonHelper::isArray(json)) {
+    return 0;
+  }
+
+  TRI_json_t const* id = JsonHelper::getArrayElement(json, "cid");
+
+  if (JsonHelper::isString(id)) {
+    return StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
+  }
+  else if (JsonHelper::isNumber(id)) {
+    return (TRI_voc_cid_t) id->_value._number;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection, based on the JSON provided TODO: move
+////////////////////////////////////////////////////////////////////////////////
+    
+int RestReplicationHandler::createCollection (TRI_json_t const* json,
+                                              TRI_vocbase_col_t** dst,
+                                              TRI_server_id_t remoteServerId) {
+  if (dst != 0) {
+    *dst = 0;
+  }
+
+  if (! JsonHelper::isArray(json)) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const string name = JsonHelper::getStringValue(json, "name", "");
+
+  if (name.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  const TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
+
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col != 0 && 
+      (TRI_col_type_t) col->_type == (TRI_col_type_t) type) {
+    // collection already exists. TODO: compare attributes
+    return TRI_ERROR_NO_ERROR;
+  }
+
+
+  TRI_json_t* keyOptions = 0;
+
+  if (JsonHelper::isArray(JsonHelper::getArrayElement(json, "keyOptions"))) {
+    keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
+  }
+  
+  TRI_col_info_t params;
+  TRI_InitCollectionInfo(_vocbase, 
+                         &params, 
+                         name.c_str(),
+                         type,
+                         (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+                         keyOptions);
+
+  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
+  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_defaultWaitForSync);
+  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  
+  // wait for "old" collection to be dropped
+  char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
+                                             name.c_str(),
+                                             type, 
+                                             cid);
+
+  if (dirName != 0) {
+    char* parameterName = TRI_Concatenate2File(dirName, TRI_COL_PARAMETER_FILE);
+
+    if (parameterName != 0) {
+      int iterations = 0;
+
+      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 120) {
+        sleep(1);
+      }
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
+  }
+
+  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, remoteServerId);
+  TRI_FreeCollectionInfoOptions(&params);
+
+  if (col == NULL) {
+    return TRI_errno();
+  }
+
+  if (dst != 0) {
+    *dst = col;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RestReplicationHandler::processRestore (TRI_json_t* const collection,
+                                            bool dropExisting,
+                                            TRI_server_id_t remoteServerId,
+                                            string& errorMsg) {
+  if (! JsonHelper::isArray(collection)) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+
+  if (! JsonHelper::isArray(parameters)) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+
+  if (! JsonHelper::isList(indexes)) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const string name = JsonHelper::getStringValue(parameters, "name", "");
+  
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {  
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  TRI_json_t const* idString = JsonHelper::getArrayElement(parameters, "cid");
+
+  if (! JsonHelper::isString(idString)) {
+    errorMsg = "collection id is missing";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  TRI_voc_cid_t cid = StringUtils::uint64(idString->_value._string.data, idString->_value._string.length - 1);
+
+
+  // first look up the collection by the cid
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == 0) {
+    // not found, try name next
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+  }
+
+  // drop an existing collection if it exists
+  if (col != 0) {
+    if (dropExisting) {
+      int res = TRI_DropCollectionVocBase(_vocbase, col, remoteServerId);
+ 
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "unable to drop collection: " + string(TRI_errno_string(res));
+
+        return res;
+      }
+    }
+    else {
+      int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+
+      errorMsg = "unable to drop collection: " + string(TRI_errno_string(res));
+
+      return res;
+    }
+  }
+    
+  // now re-create the collection
+  int res = createCollection(parameters, &col, remoteServerId);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
+
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRestoreData () {
+  generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_INTERNAL);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -1216,6 +1725,9 @@ void RestReplicationHandler::handleCommandInventory () {
 ///
 /// @RESTQUERYPARAM{chunkSize,number,optional}
 /// Approximate maximum size of the returned result.
+///
+/// @RESTQUERYPARAM{ticks,boolean,optional}
+/// Whether or not to include tick values in the dump. Default value is `true`.
 ///
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
@@ -1335,16 +1847,20 @@ void RestReplicationHandler::handleCommandDump () {
   // determine start tick for dump
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
+  bool withTicks           = true;
+
   bool found;
   char const* value;
   
   value = _request->value("from", found);
+
   if (found) {
     tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 
   // determine end tick for dump
   value = _request->value("to", found);
+
   if (found) {
     tickEnd = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
@@ -1354,6 +1870,12 @@ void RestReplicationHandler::handleCommandDump () {
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
+  }
+
+  value = _request->value("ticks", found);
+
+  if (found) {
+    withTicks = StringUtils::boolean(value);
   }
   
   const uint64_t chunkSize = determineChunkSize(); 
@@ -1367,7 +1889,7 @@ void RestReplicationHandler::handleCommandDump () {
 
   const TRI_voc_cid_t cid = c->_cid;
 
-  LOGGER_DEBUG("request collection dump for collection '" << collection << "', "
+  LOGGER_DEBUG("requested collection dump for collection '" << collection << "', "
                "tickStart: " << tickStart << ", tickEnd: " << tickEnd);
 
   TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
@@ -1390,7 +1912,7 @@ void RestReplicationHandler::handleCommandDump () {
     return;
   }
 
-  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize);
+  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks);
   
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
@@ -1417,7 +1939,8 @@ void RestReplicationHandler::handleCommandDump () {
                          StringUtils::itoa(dump._lastFoundTick));
     
     // transfer ownership of the buffer contents
-    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
+    _response->body().set(dump._buffer);
+    
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
   }
@@ -1528,8 +2051,8 @@ void RestReplicationHandler::handleCommandSync () {
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if ((restrictType.empty() && restrictCollections.size() > 0) ||
-      (! restrictType.empty() && restrictCollections.size() == 0) ||
+  if ((restrictType.empty() && ! restrictCollections.empty()) ||
+      (! restrictType.empty() && restrictCollections.empty()) ||
       (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
     return;

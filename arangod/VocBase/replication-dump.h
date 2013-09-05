@@ -96,7 +96,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
                                    struct TRI_vocbase_col_s*,
                                    TRI_voc_tick_t,
                                    TRI_voc_tick_t,
-                                   uint64_t);
+                                   uint64_t,
+                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log

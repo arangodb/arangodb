@@ -1,0 +1,138 @@
+/* REPL SHELL */
+/* REPL SHELL */
+
+.shellul {
+  border-bottom: 20px solid rgba(0, 0, 0, 0.00);
+  padding-bottom: 20px;
+  background-color: black;
+}
+
+#shell_workspace {
+  width: auto;
+  margin-top: 40px;
+  margin-left: 5px;
+  margin-right: 5px !important;
+  margin-bottom: -25px;
+  padding-bottom: 20px;
+  height: 400px;
+  background-color: black;
+}
+
+#editor {
+  float:left;
+  width: 150px;
+  height: 400px;
+  background-color:white;
+  overflow: hidden;
+  border: 1px solid #A0A0A0;
+}
+
+.vsplitbar {
+  border: 0;
+  width: 10px;
+  background-color: #F0F0F0;
+  border-top: 1px solid #A0A0A0;
+  border-bottom: 1px solid #A0A0A0;
+  border-left: 1px solid #A0A0A0;
+  border-right: 1px solid #A0A0A0;
+  background-image: url(../img/stripes90.gif);
+  background-repeat:no-repeat;
+  background-position: 50% 50%;
+}
+
+.vsplitbar:hover {
+  cursor: col-resize !important;
+}
+
+/* REPL SHELL */
+#replShell {
+  float:left;
+  min-width: 100px;
+  width: 600px;
+  background-color: white;
+  position: relative;
+  height: 400px;
+  border-bottom: 2px solid black !important;
+}
+
+#replShell pre {
+  border-top: 1px solid #A0A0A0 !important;
+  border-right: 1px solid #A0A0A0 !important;
+  border-left: 0 !important;
+  border-bottom: 0 !important;
+}
+/* The inner console element. */
+.jqconsole {
+  background-color: black;
+  padding: 10px;
+  border-radius: 0;
+}
+.jqconsole-header {
+  color: white;
+}
+
+.jserror {
+  color: #FF0066;
+  margin-left: -10px;
+}
+
+.jssuccess {
+  color: #66FF00;
+}
+
+
+/* The cursor. */
+.jqconsole-cursor {
+  background-color: gray;
+}
+/* The cursor color when the console looses focus. */
+.jqconsole-blurred .jqconsole-header .jqconsole-cursor {
+      color: #C4CCCC;
+}
+/* The current prompt text color */
+.jqconsole-prompt {
+  color: #BB9911;
+}
+/* The command history */
+.jqconsole-old-prompt {
+  color: #FF6600;
+  font-weight: normal;
+}
+/* The text color when in input mode. */
+.jqconsole-input {
+  color: #dd0;
+}
+/* Previously entered input. */
+.jqconsole-old-input {
+  color: #bb0;
+  font-weight: normal;
+}
+/* The text color of the output. */
+.jqconsole-output {
+  color: white;
+}
+
+#editor-run:hover {
+  opacity: 1.0;
+}
+
+#editor-run {
+  cursor: pointer !important;
+  position: absolute;
+  z-index: 5;
+  bottom: 15px;
+  right: 32px;
+  width: 60px;
+  opacity: 0.6;
+  content: "Submit";
+  height: 20px !important;
+}
+
+.jqconsole-blurred .jqconsole-header, .jqconsole-blurred .jssuccess, .jqconsole-blurred .jserror,
+.jqconsole-blurred .jqconsole-prompt, .jqconsole-blurred .jqconsole-old-prompt{
+  opacity: 0.7;
+}
+
+#queryOutput .ace_gutter-cell {
+  background-color: #F0F0F0 !important;
+}

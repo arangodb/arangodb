@@ -136,10 +136,12 @@ string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, 
+                                                TRI_vocbase_t* vocbase)
   : RestBaseHandler(request),
     _vocbase(vocbase),
     _resolver(vocbase),
+    _databaseName(request->databaseName()),
     _timing(),
     _timingResult(RES_FAIL) {
 
@@ -231,7 +233,7 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
-    _response->setHeader("location", 8, DOCUMENT_PATH + "/" + handle);
+    _response->setHeader("location", 8, string("/_db/" + _databaseName + DOCUMENT_PATH + "/" + handle));
   }
 
   // _id and _key are safe and do not need to be JSON-encoded

@@ -177,8 +177,8 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
   struct timeval tv;
   fd_set fdset;
 
-  tv.tv_sec = (uint64_t) timeout;
-  tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+  tv.tv_sec = (long) timeout;
+  tv.tv_usec = ((long) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
   FD_SET(_socket.fileHandle, &fdset);

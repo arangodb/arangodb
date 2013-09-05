@@ -120,7 +120,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         static TRI_json_t* getArrayElement (TRI_json_t const*, 
-                                                   const char* name);
+                                            const char* name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+        
+        static std::string getStringValue (TRI_json_t const*, 
+                                           const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist

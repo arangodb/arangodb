@@ -226,7 +226,8 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
 
 static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
                                  TRI_document_collection_t* document,
-                                 TRI_df_marker_t const* marker) {
+                                 TRI_df_marker_t const* marker,
+                                 bool withTick) {
   TRI_replication_operation_e type;
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
@@ -257,10 +258,15 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
     return false;
   }
   
-  APPEND_STRING(buffer, "{\"tick\":\"");
-  APPEND_UINT64(buffer, (uint64_t) marker->_tick);
+  if (withTick) {
+    APPEND_STRING(buffer, "{\"tick\":\"");
+    APPEND_UINT64(buffer, (uint64_t) marker->_tick);
+    APPEND_STRING(buffer, "\",\"type\":"); 
+  }
+  else {
+    APPEND_STRING(buffer, "{\"type\":");
+  }
 
-  APPEND_STRING(buffer, "\",\"type\":"); 
   APPEND_UINT64(buffer, (uint64_t) type); 
   APPEND_STRING(buffer, ",\"key\":\""); 
   // key is user-defined, but does not need escaping
@@ -547,7 +553,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_primary_collection_t* primary,
                            TRI_voc_tick_t dataMin,
                            TRI_voc_tick_t dataMax,
-                           uint64_t chunkSize) {
+                           uint64_t chunkSize,
+                           bool withTicks) {
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
@@ -703,7 +710,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
 
-      if (! StringifyMarkerDump(buffer, document, marker)) {
+      if (! StringifyMarkerDump(buffer, document, marker, withTicks)) {
         res = TRI_ERROR_INTERNAL;
 
         goto NEXT_DF;
@@ -941,7 +948,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
                                    TRI_vocbase_col_t* col,
                                    TRI_voc_tick_t dataMin,
                                    TRI_voc_tick_t dataMax,
-                                   uint64_t chunkSize) {
+                                   uint64_t chunkSize,
+                                   bool withTicks) {
   TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
   int res;
@@ -961,7 +969,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&primary->_compactionLock);
 
-  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize);
+  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks);
   
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 

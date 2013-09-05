@@ -15,4 +15,8 @@
 "txt","text/plain",true
 "text","text/plain",true
 "xml","application/xml",true
-
+"svg","image/svg+xml",true
+"ttf","application/x-font-ttf",false
+"otf","application/x-font-opentype",false
+"woff","application/font-woff",false
+"eot","application/vnd.ms-fontobject",false

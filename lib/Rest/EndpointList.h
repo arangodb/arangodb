@@ -56,7 +56,7 @@ namespace triagens {
 /// @brief typedef for list contents
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef set<Endpoint*> ListType;
+        typedef std::map<Endpoint*, bool> ListType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -150,7 +150,8 @@ namespace triagens {
 /// @brief count the number of elements in a sub-list
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t count (const Endpoint::ProtocolType, const Endpoint::EncryptionType) const;
+        size_t count (const Endpoint::ProtocolType, 
+                      const Endpoint::EncryptionType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump all used endpoints
@@ -162,13 +163,17 @@ namespace triagens {
 /// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListType getEndpoints (const Endpoint::ProtocolType, const Endpoint::EncryptionType) const;
+        ListType getEndpoints (const Endpoint::ProtocolType, 
+                               const Endpoint::EncryptionType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addEndpoint (const Endpoint::ProtocolType, const Endpoint::EncryptionType, Endpoint*);
+        bool addEndpoint (const Endpoint::ProtocolType, 
+                          const Endpoint::EncryptionType, 
+                          Endpoint*,
+                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

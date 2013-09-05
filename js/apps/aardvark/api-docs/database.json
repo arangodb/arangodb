@@ -1,0 +1,84 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the database was dropped successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the database could not be found. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Retrieves a list of all existing databases <br><br>Note: retrieving the list of databases is only possible from within the <em>_system</em> database. <br><br>",
+                    "summary": "retrieves a list of all existing databases",
+                    "httpMethod": "GET",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/database\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "retrievesAListOfAllExistingDatabases"
+                }
+            ],
+            "path": "/_api/database"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the database was created successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the request parameters are invalid or if a database with the  specified name or path already exists. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Creates a new database <br><br>Note: creating a new database is only possible from within the <em>_system</em> database. <br><br>",
+                    "summary": "creates a new database",
+                    "httpMethod": "POST",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/database\n{\"name\":\"example\"}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"_id\" : \"_databases/example\", \n    \"_rev\" : \"85148071\", \n    \"_key\" : \"example\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "createsANewDatabase"
+                }
+            ],
+            "path": "/_api/database"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the database was dropped successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the database could not be found. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "database-name",
+                            "description": "The name of the database "
+                        }
+                    ],
+                    "notes": "Deletes the database along with all data stored in it. <br><br>Note: dropping a database is only possible from within the <em>_system</em> database. The <em>_system</em> database itself cannot be dropped. <br><br>",
+                    "summary": "drops an existing database",
+                    "httpMethod": "DELETE",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/database/example\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "dropsAnExistingDatabase"
+                }
+            ],
+            "path": "/_api/database/{database-name}"
+        }
+    ]
+}

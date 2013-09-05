@@ -768,9 +768,6 @@ uninstall-man: uninstall-man3
 	uninstall-libLTLIBRARIES uninstall-man uninstall-man3
 
 
-ev.3: ev.pod
-	pod2man -n LIBEV -r "libev-$(VERSION)" -c "libev - high performance full featured event loop" -s3 <$< >$@
-
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

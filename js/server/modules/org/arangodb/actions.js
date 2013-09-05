@@ -34,7 +34,7 @@ var fs = require("fs");
 var console = require("console");
 
 var arangodb = require("org/arangodb");
-var foxxManager = require("org/arangodb/foxx-manager");
+var foxxManager = require("org/arangodb/foxx/manager");
 
 var moduleExists = function(name) { return module.exists; };
 
@@ -1484,18 +1484,40 @@ function resultUnsupported (req, res, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function for handling redirects 
+////////////////////////////////////////////////////////////////////////////////
+
+function handleRedirect (req, res, destination, headers) {
+  res.contentType = "text/html";
+  res.body = "<html><head><title>Moved</title>"
+    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + destination
+    + "\">"
+    + destination
+    + "</a>.</p></body></html>";
+
+  if (headers !== undefined) {
+    res.headers = headers._shallowCopy;
+  }
+  else {
+    res.headers = {};
+  }
+
+  res.headers.location = destination;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a permanently redirect
 ///
 /// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The function generates an error response.
+/// The function generates a redirect response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
-  res.contentType = "text/html";
 
   if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
     if (req.headers.hasOwnProperty('host')) {
@@ -1514,21 +1536,7 @@ function resultPermanentRedirect (req, res, destination, headers) {
     }
   }
 
-  res.body = "<html><head><title>Moved</title>"
-    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-    + destination
-    + "\">"
-    + destination
-    + "</a>.</p></body></html>";
-
-  if (headers !== undefined) {
-    res.headers = headers._shallowCopy;
-  }
-  else {
-    res.headers = {};
-  }
-
-  res.headers.location = destination;
+  handleRedirect(req, res, destination, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1536,34 +1544,19 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ///
 /// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The function generates an error response.
+/// The function generates a redirect response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
-  res.contentType = "text/html";
-
-  res.body = "<html><head><title>Moved</title>"
-    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-    + destination
-    + "\">"
-    + destination
-    + "</a>.</p></body></html>";
-
-  if (headers !== undefined) {
-    res.headers = headers._shallowCopy;
-  }
-  else {
-    res.headers = {};
-  }
-
-  res.headers.location = destination;
+  
+  handleRedirect(req, res, destination, headers);
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      ArangoDB specific responses
+// --SECTION--                                       ArangoDB specific responses
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1578,6 +1571,7 @@ function resultCursor (req, res, cursor, code, options) {
   var hasCount;
   var hasNext;
   var cursorId;
+  var extra;
 
   if (Array.isArray(cursor)) {
     // performance optimisation: if the value passed in is an array, we can
@@ -1588,31 +1582,43 @@ function resultCursor (req, res, cursor, code, options) {
     hasNext = false;
     cursorId = null;
   }
-  else {
-    // cursor is assumed to be an ArangoCursor
-    hasCount = cursor.hasCount();
-    count = cursor.count();
-    rows = cursor.toArray();
+  else if (typeof cursor === 'object') {
+    if (cursor.getExtra !== undefined) {
+      // cursor is assumed to be an ArangoCursor
+      hasCount = cursor.hasCount();
+      count = cursor.count();
+      rows = cursor.toArray();
 
-    // must come after toArray()
-    hasNext = cursor.hasNext();
-    cursorId = null;
-   
-    if (hasNext) {
-      cursor.persist();
-      cursorId = cursor.id(); 
-      cursor.unuse();
+      // must come after toArray()
+      hasNext = cursor.hasNext();
+      extra = cursor.getExtra();
+
+      if (hasNext) {
+        cursor.persist();
+        cursorId = cursor.id(); 
+        cursor.unuse();
+      }
+      else {
+        cursorId = null;
+        cursor.dispose();
+      }
     }
-    else {
-      cursor.dispose();
+    else if (cursor.hasOwnProperty('docs')) {
+      // cursor is a regular JS object (performance optimisation)
+      hasCount = ((options && options.countRequested) ? true : false);
+      count = cursor.docs.length;
+      rows = cursor.docs;
+      extra = cursor.extra;
+      hasNext = false;
+      cursorId = null;
     }
   }
 
   // do not use cursor after this
 
   var result = { 
-    "result" : rows,
-    "hasMore" : hasNext
+    result : rows,
+    hasMore : hasNext
   };
 
   if (cursorId) {
@@ -1621,6 +1627,10 @@ function resultCursor (req, res, cursor, code, options) {
     
   if (hasCount) {
     result.count = count;
+  }
+
+  if (extra !== undefined && Object.keys(extra).length > 0) {
+    result.extra = extra;
   }
 
   if (code === undefined) {

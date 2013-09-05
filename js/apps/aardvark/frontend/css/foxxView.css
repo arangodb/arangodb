@@ -1,0 +1,87 @@
+.foxxList {
+  padding-top: 25px;
+}
+
+.foxxList i:hover {
+  cursor: pointer;
+}
+
+.foxxElement {
+  cursor: pointer;
+}
+
+.foxxElement .glyphicon-edit {
+  font-size: 18px;
+  margin-right: 3px;
+  position: absolute;
+  top: 27px;
+  right: 1px;
+  opacity: 0.7;
+}
+
+.foxxElement .glyphicon-edit:hover {
+  opacity: 1;
+}
+
+.foxxDescription {
+  margin-top: 5px;
+  width:140px;
+  height: 90px;
+  float: left;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+#availableList .foxxDescription {
+  margin-top: 8px !important;
+  height: 60px !important;
+}
+
+.foxxIcon {
+  width:64px;
+  height:64px;
+  float:left;
+  padding:10px;
+}
+
+.badge-foxx {
+  bottom: 0px;
+}
+
+li.applicationList {
+  width: auto !important;
+  margin-left: -17px;
+  background-color: transparent;
+  border: none;
+}
+
+.applicationListHeader {
+  margin-bottom: 10px;
+  margin-top: 15px;
+  color: #FFF;
+  height: 36px !important;
+  text-align: center;
+  padding: 1px 0px;
+}
+
+.toggle-icon {
+  margin: 10px;
+}
+
+.foxxList .boxHeader {
+  background-color: #686766;
+  opacity: 1;
+  margin-left: 12px;
+  margin-right: -2px;
+  width: auto;
+}
+
+.foxxList i {
+  visibility: hidden;
+}
+
+.applicationList {
+  width: 100% !important;
+  padding-left: 10px;
+  margin-bottom: 0px !important;
+}

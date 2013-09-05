@@ -44,6 +44,7 @@ import sys, os, json, string
 files = { 
   "js/actions/api-aqlfunction.js" : "aqlfunction",
   "js/actions/api-collection.js" : "collection",
+  "js/actions/api-database.js" : "database",
   "arangod/RestHandler/RestDocumentHandler.cpp" : "document",
   "arangod/RestHandler/RestEdgeHandler.cpp" : "edge",
   "js/actions/api-edges.js" : "edges",

@@ -1,0 +1,151 @@
+<%
+var ds = [], es = [],
+sortF = function(e) {
+  return e.toLowerCase();
+};
+col.each(function(m) {
+  switch (m.get("type")) {
+    case "document":
+      ds.push(m.get("name"));
+      break;
+    case "edge":
+      es.push(m.get("name"));
+      break;
+  }
+});
+ds = _.sortBy(ds, sortF);
+es = _.sortBy(es, sortF);
+gs = _.sortBy(gs, sortF);
+%>
+<div id="background">
+  <ul class="thumbnails2">
+    <div id="transparentHeader">
+      <a class="arangoHeader">Graph Viewer Configuration</a>
+    </div>
+  </ul>
+
+  <ul class="thumbnails">
+    <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+      <fieldset>
+        <div class="control-group">
+          
+          <fieldset id="datasoure">
+            <legend class="gv_inner">Datasource:</legend>
+          
+            <div class="controls">
+              <label class="radio">
+                <input type="radio" name="loadtype" id="collections" checked>
+                Select existing collections
+              </label>
+            </div>
+          
+            <div id="collection_config">
+              <label for="nodeCollection" class="control-label">Vertex collection</label>
+              <div class="controls">
+                <select id="nodeCollection" name="nodeCollection">
+                <%_.each(ds, function(d) {%>
+                  <option value="<%= d %>"><%= d %></option>
+                <%}); %>
+                </select>
+              </div>
+              <label for="edgeCollection" class="control-label">Edge collection</label>
+              <div class="controls">
+                <select id="edgeCollection" name="edgeCollection">
+                <%_.each(es, function(e) {%>
+                  <option value="<%= e %>"><%= e %></option>
+                <%}); %>
+                </select>
+              </div>
+            </div>
+
+            <div class="controls">
+              <label class="radio">
+                <input type="radio" name="loadtype" id="graphs">
+                Select an existing graph
+              </label>
+            </div>
+          
+            <div id="graph_config" style="display:none">
+              <label for="graph" class="control-label">Graph-Name</label>
+              <div class="controls">
+                <select id="graph" name="graph">
+                <%_.each(gs, function(g) {%>
+                  <option value="<%= g %>"><%= g %></option>
+                <%}); %>
+                </select>
+              </div>
+            </div>
+          </div>
+
+        </fieldset>
+              
+        <div class="accordion" id="advancedGraphOptions">
+
+          <div class="accordion-group">
+            <div class="accordion-heading">
+              <a class="accordion-toggle" data-toggle="collapse" data-parent="#advancedGraphOptions" href="#advancedOptions">
+                Advanced
+              </a>
+            </div>
+
+            <div id="advancedOptions" class="accordion-body collapse out">
+              <div class="accordion-inner">
+                
+                <div class="control-group">
+                  <label for="undirected" class="control-label">Treat graph as undirected</label>
+                  <div class="controls">
+                    <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
+                  </div>
+                </div>
+                
+                <div class="control-group">
+                  <label for="randomStart" class="control-label">Display random vertex at start</label>
+                  <div class="controls">
+                    <input id="randomStart" type="checkbox" name="randomStart" class="input-xlarge">
+                  </div>
+                </div>
+                
+                
+                <div class="control-group">
+                  <label for="nodeLabel" class="control-label">Vertex label attribute (e.g. "name")</label>
+                  <div class="controls">
+                    <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Attribute" maxlength="75" class="input-xlarge">
+                  </div>
+                </div>
+ 
+                <div class="control-group">
+                  <label for="nodeColor" class="control-label">Vertex color attribute (e.g. "name")</label>
+                  <div class="controls">
+                    <input id="nodeColor" type="text" name="nodeColor" placeholder="Attribute" maxlength="75" class="input-xlarge">
+                  </div>
+                </div>
+                
+                
+                <fieldset id="group_by_list">
+                  <legend class="gv_inner">Grouping of vertices:</legend>
+                  
+                  <div class="control-group">
+                    <label for="group_by_1" class="control-label">Attribute 1</label>
+                    <div class="controls">
+                      <input id="group_by_1" type="text" name="group_by_1" placeholder="Attribute" maxlength="75" class="input-xlarge">
+                      <button id="add_group_by" class="graphViewer-icon-button gv-icon-small add">
+                      </button>
+                    </div>
+                  </div>
+                  
+                </fieldset>              
+              </div>
+            </div>
+          </div>
+        </div>
+      
+         
+        <div class="control-group">
+          <div class="controls">
+            <button type="submit" class="btn btn-primary" id="createViewer" >Start</button>
+          </div>
+        </div>
+      </fieldset>
+    </form>
+  </ul>
+</div>

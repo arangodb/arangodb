@@ -123,7 +123,7 @@ TRI_aql_function_t;
 /// @brief initialise the array with the function declarations
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_associative_pointer_s* TRI_InitialiseFunctionsAql (void);
+struct TRI_associative_pointer_s* TRI_CreateFunctionsAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the array with the function declarations

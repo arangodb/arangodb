@@ -1,0 +1,78 @@
+{
+    "swaggerVersion": "1.1", 
+    "apiVersion": "1.4.0-alpha1", 
+    "apis": [
+        {
+            "path": "api-docs/aqlfunction.{format}", 
+            "description": "aqlfunction API"
+        }, 
+        {
+            "path": "api-docs/collection.{format}", 
+            "description": "collection API"
+        }, 
+        {
+            "path": "api-docs/cursor.{format}", 
+            "description": "cursor API"
+        }, 
+        {
+            "path": "api-docs/database.{format}", 
+            "description": "database API"
+        }, 
+        {
+            "path": "api-docs/document.{format}", 
+            "description": "document API"
+        }, 
+        {
+            "path": "api-docs/edge.{format}", 
+            "description": "edge API"
+        }, 
+        {
+            "path": "api-docs/edges.{format}", 
+            "description": "edges API"
+        }, 
+        {
+            "path": "api-docs/explain.{format}", 
+            "description": "explain API"
+        }, 
+        {
+            "path": "api-docs/graph.{format}", 
+            "description": "graph API"
+        }, 
+        {
+            "path": "api-docs/index.{format}", 
+            "description": "index API"
+        }, 
+        {
+            "path": "api-docs/query.{format}", 
+            "description": "query API"
+        }, 
+        {
+            "path": "api-docs/replication.{format}", 
+            "description": "replication API"
+        }, 
+        {
+            "path": "api-docs/simple.{format}", 
+            "description": "simple API"
+        }, 
+        {
+            "path": "api-docs/structure.{format}", 
+            "description": "structure API"
+        }, 
+        {
+            "path": "api-docs/system.{format}", 
+            "description": "system API"
+        }, 
+        {
+            "path": "api-docs/transaction.{format}", 
+            "description": "transaction API"
+        }, 
+        {
+            "path": "api-docs/traversal.{format}", 
+            "description": "traversal API"
+        }, 
+        {
+            "path": "api-docs/user.{format}", 
+            "description": "user API"
+        }
+    ]
+}
