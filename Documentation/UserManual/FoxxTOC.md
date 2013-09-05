@@ -4,6 +4,6 @@ TOC {#UserManualFoxxTOC}
 - @ref UserManualFoxx
   - @ref UserManualFoxxIntro
   - @ref UserManualFoxxHandlingRequests
-  - @ref UserManualFoxxDetailsApplication
+  - @ref UserManualFoxxDetailsController
   - @ref UserManualFoxxDetailsModel
   - @ref UserManualFoxxDetailsRepository
