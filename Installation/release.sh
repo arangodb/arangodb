@@ -43,7 +43,6 @@ make add-maintainer || exit 1
 make add-automagic || exit 1
 make doxygen || exit 1
 make latex || exit 1
-make wiki || exit 1
 
 if [ "$TAG" == "1" ];  then
   git commit -m "release version $VERSION" -a
