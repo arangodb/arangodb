@@ -39,7 +39,7 @@ Notes:
    server. We now wish to check that the installation is working correctly and to do this
    we will be using the administration web interface. Execute 'serverExample.bat' if you have
    not already done so, then open up your web browser and point it to the page:
-   http:/127.0.0.1:8529/_admin/html/index.html
+   http:/127.0.0.1:8529/
    To check if your installation is successful, on the right hand side of the web page 
    click the "Filter" drop down and select the "System" TYPE. If the installation was 
    successful, then the page should display a few system collections (note that the order 
