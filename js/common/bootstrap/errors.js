@@ -83,7 +83,6 @@
     "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parser failed" }, 
     "ERROR_ARANGO_DOCUMENT_KEY_BAD" : { "code" : 1221, "message" : "illegal document key" }, 
     "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" }, 
-    "ERROR_ARANGO_INDEX_NEEDS_RESIZE" : { "code" : 1223, "message" : "index needs resizing" }, 
     "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "database directory not writable" }, 
     "ERROR_ARANGO_OUT_OF_KEYS"     : { "code" : 1225, "message" : "out of keys" }, 
     "ERROR_ARANGO_DOCUMENT_KEY_MISSING" : { "code" : 1226, "message" : "missing document key" }, 
