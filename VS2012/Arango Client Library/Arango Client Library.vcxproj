@@ -168,7 +168,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\lib\SimpleHttpClient\ClientConnection.h" />
     <ClInclude Include="..\..\lib\SimpleHttpClient\GeneralClientConnection.h" />
-    <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleClient.h" />
     <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleHttpClient.h" />
     <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleHttpResult.h" />
     <ClInclude Include="..\..\lib\SimpleHttpClient\SslClientConnection.h" />
@@ -176,7 +175,6 @@
   <ItemGroup>
     <ClCompile Include="..\..\lib\SimpleHttpClient\ClientConnection.cpp" />
     <ClCompile Include="..\..\lib\SimpleHttpClient\GeneralClientConnection.cpp" />
-    <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleClient.cpp" />
     <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleHttpClient.cpp" />
     <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleHttpResult.cpp" />
     <ClCompile Include="..\..\lib\SimpleHttpClient\SslClientConnection.cpp" />
