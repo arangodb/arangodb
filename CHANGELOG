@@ -1,6 +1,18 @@
 v1.4
 ----
 
+* added data dump and restore tools, arangodump and arangorestore.
+
+  arangodump can be used to create a logical dump of an ArangoDB database, or
+  just dedicated collections. It can be used to dump both a collection's structure
+  (properties and indexes) and data (documents).
+
+  arangorestore can be used to restore data from a dump created with arangodump.
+  arangorestore currently does not re-create any indexes, and doesn't yet handle
+  referenced documents in edges propertly when doing just partial restores.
+  This will be fixed until 1.4 stable.
+  
+
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
 
   The option allows these client tools to use a certain database for their actions.

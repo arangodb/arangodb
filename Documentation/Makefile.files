@@ -120,12 +120,14 @@ DOXYGEN_TOC = \
 
 dist_man_MANS += \
 	Documentation/man/man1/arangob.1 \
+	Documentation/man/man1/arangodump.1 \
 	Documentation/man/man1/arangoimp.1 \
+	Documentation/man/man1/arangorestore.1 \
 	Documentation/man/man1/arangosh.1 \
-        Documentation/man/man8/rcarangod.8 \
-        Documentation/man/man8/arangod.8 \
-        Documentation/man/man8/arango-dfdb.8 \
-        Documentation/man/man8/foxx-manager.8 
+	Documentation/man/man8/rcarangod.8 \
+	Documentation/man/man8/arangod.8 \
+	Documentation/man/man8/arango-dfdb.8 \
+	Documentation/man/man8/foxx-manager.8 
 
 ################################################################################
 ### @brief JavaScript files
