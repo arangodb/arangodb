@@ -75,6 +75,37 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       div.appendChild(list);
       return list;
     },
+
+    makeConfigure = function (div, id) {
+      var ul, li, a, span, list;
+      div.className = "pagination pagination-small pagination-right btn-group";
+      ul = document.createElement("ul");
+      li = document.createElement("li");
+      li.className = "enabled";
+      a = document.createElement("a");
+      a.id = id;
+      a.className = "arangoHeaderA";
+      span = document.createElement("span");
+      span.className = "glyphicon glyphicon-cog";
+      span.title = "Configure";
+      
+      div.appendChild(ul);
+      ul.appendChild(li);
+      li.appendChild(a);
+      a.appendChild(span);
+
+      list = document.createElement("ul");
+      list.className = "dropdown-menu gv_configure_menu";
+      list.style.display = "none";
+      div.appendChild(list);
+
+      a.onclick = function () {
+        $(list).slideToggle(200);
+      }
+
+      return list;
+    },
+
     createSVG = function () {
       return d3.select("#" + container.id + " #background")
         .append("svg")
@@ -195,10 +226,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         buttons = document.createElement("div"),
         equalsField = document.createElement("span"),
         configureDropDown = document.createElement("div"),
-        configureList = makeBootstrapDropdown(
+        configureList = makeConfigure(
           configureDropDown,
-          "configuredropdown",
-          "Configure"
+          "configuredropdown"
         ),
         
         /*
@@ -313,7 +343,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchAttrExampleToggle.id = "attribute_example_toggle";
       searchAttrExampleToggle.className = "btn gv_example_toggle";
       searchAttrExampleToggle.setAttribute("data-toggle", "dropdown");
-      searchAttrExampleCaret.className = "caret";
+      searchAttrExampleCaret.className = "caret gv_caret";
       searchAttrExampleList.className = "dropdown-menu";
       searchValueField.id = "value";
       searchValueField.className = "input-xlarge searchInput";

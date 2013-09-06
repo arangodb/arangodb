@@ -1,10 +1,10 @@
 img.searchSubmit {
-  height: 14px;
+  height: 16px;
   margin-left: -18px;
   margin-top: 11px;
   opacity: 0.2;
   position: absolute;
-  width: 14px;
+  width: 16px;
   background-image:url("../img/enter_icon.png");
 }
 
@@ -14,7 +14,10 @@ img.searchSubmit {
 }
 
 .toolbox {
-  margin-right: -40px;
+  margin-right: -40px; 
+  border-radius: 0px !important;  
+  -webkit-border-radius: 0px !important;
+  -moz-border-radius: 0px !important;
 }
 
 .toolbox > .btn {
@@ -116,7 +119,9 @@ button.gv-icon-btn {
   width:36px;
   height:36px;
   background-size: 36px 36px;
-  
+  border-radius: 0px !important;  
+  -webkit-border-radius: 0px !important;
+  -moz-border-radius: 0px !important;
 }
 
 button.gv-icon-btn.edit{
@@ -261,6 +266,7 @@ pre.gv_object_view {
 input.gv_radio_button {
   display: block;
   width: auto;
+  margin-top: 3px;
 }
 
 label.gv_dropdown_label {
@@ -291,12 +297,14 @@ label.gv_dropdown_label {
 }
 
 .gv_example_toggle {
-  background-color:white;
-  height: 30px;
+  background-color:#8F8D8C;
+  height: 29px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .gv_example_toggle:hover {
-  background-color:white;
+  background-color:#8AA051;
 }
 
 legend.gv_inner {
@@ -307,4 +315,23 @@ legend.gv_inner {
 .gv_zoom_widget .ui-widget-content .ui-state-default,
 .gv_zoom_widget .ui-widget-header .ui-state-default {
   background: #F6F6F6;
+}
+
+
+ul.gv_configure_menu {
+  position: absolute;
+  left: auto;
+  right: 24px;
+  top: 18px;
+}
+
+a.gv_dropdown_entry {
+  width: 160px !important;
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  color: #FFFFFF !important;
+  height: 20px !important;
+}
+
+span.gv_caret {
+  margin-top: 2px !important;
 }

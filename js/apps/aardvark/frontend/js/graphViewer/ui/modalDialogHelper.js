@@ -346,7 +346,7 @@ var modalDialogHelper = modalDialogHelper || {};
     var div = document.createElement("div"),
     headerDiv = document.createElement("div"),
     buttonDismiss = document.createElement("button"),
-    header = document.createElement("h3"),
+    header = document.createElement("a"),
     footerDiv = document.createElement("div"),
     buttonCancel = document.createElement("button"),
     buttonSubmit = document.createElement("button"),
@@ -367,6 +367,7 @@ var modalDialogHelper = modalDialogHelper || {};
     };
       
     headerDiv.className = "modal-header";
+    header.className = "arangoHeader";
     buttonDismiss.id = idprefix + "modal_dismiss";
     buttonDismiss.className = "close";
     buttonDismiss.dataDismiss = "modal";
@@ -380,13 +381,14 @@ var modalDialogHelper = modalDialogHelper || {};
     bodyTable.id = idprefix + "table";
     
     footerDiv.className = "modal-footer";
-    
+
     buttonCancel.id = idprefix + "cancel";
-    buttonCancel.className = "btn btn-danger pull-left";
-    buttonCancel.appendChild(document.createTextNode("Cancel"));
+    buttonCancel.className = "btn btn-close btn-margin";
+    buttonCancel.appendChild(document.createTextNode("Close"));
     
     buttonSubmit.id = idprefix + "submit";
-    buttonSubmit.className = "btn btn-success pull-right";
+    buttonSubmit.className = "btn btn-success";
+    buttonSubmit.style.marginRight = "8px";
     buttonSubmit.appendChild(document.createTextNode(buttonTitle));
     
     // Append in correct ordering
@@ -399,8 +401,9 @@ var modalDialogHelper = modalDialogHelper || {};
     
     bodyDiv.appendChild(bodyTable);
     
-    footerDiv.appendChild(buttonCancel);
     footerDiv.appendChild(buttonSubmit);
+    footerDiv.appendChild(buttonCancel);
+
     document.body.appendChild(div);
     
     // Add click events
