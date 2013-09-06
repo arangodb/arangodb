@@ -40,6 +40,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
     button.className = baseclass + "_control " + prefix;
     button.id = prefix;
     button.appendChild(a);
+    a.className = "gv_dropdown_entry";
     a.appendChild(label);
     label.appendChild(document.createTextNode(title));
     label.className = "gv_dropdown_label";
