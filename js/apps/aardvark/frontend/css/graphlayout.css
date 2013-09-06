@@ -61,7 +61,8 @@ button.graphViewer-icon-button {
   border: medium none;
   width: 20px;
   height: 20px;
-  margin-top: -8px;
+  margin-top: -2px;
+  margin-left: 5px;
   padding: 0px;
   background-color: transparent;
 }
