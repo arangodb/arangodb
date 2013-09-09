@@ -267,7 +267,7 @@ function ArangoAdapter(nodes, edges, config) {
   
   parseConfig(config);
   
-  queries.getAllGraphs = "FOR g IN _graphs"
+  queries.getAllGraphs = "FOR g IN arangodb_graphs"
     + " return g._key";
   queries.randomDocuments = "FOR u IN @@nodes"
     + " sort rand()"

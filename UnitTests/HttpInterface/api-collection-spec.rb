@@ -56,8 +56,9 @@ describe ArangoDB do
           end
         end
 
-        realCollections.length.should eq(3)
-        realNames.length.should eq(3)
+        # 3 collections plus "arangodb_graphs" makes 4
+        realCollections.length.should eq(4)
+        realNames.length.should eq(4)
 
         for collection in realCollections do
           realNames[collection['name']].should eq(collection)
@@ -76,8 +77,9 @@ describe ArangoDB do
         collections = doc.parsed_response['collections']
         names = doc.parsed_response['names']
 
-        collections.length.should eq(3)
-        names.length.should eq(3)
+        # 3 collections plus "arangodb_graphs" makes 4
+        collections.length.should eq(4)
+        names.length.should eq(4)
       end
 
     end

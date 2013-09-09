@@ -1,6 +1,13 @@
 v1.4
 ----
 
+* renamed collection `_graphs` to `arangodb_graphs`
+
+  The graphs collection now is not a system collection anymore, meaning all data in 
+  and modifications to it will be included in the replication automatically. 
+  It also means the graphs collection can now be dropped by users explicitly if not
+  needed (e.g. to save space), though this will disable graph-related functionality.
+
 * added data dump and restore tools, arangodump and arangorestore.
 
   arangodump can be used to create a logical dump of an ArangoDB database, or

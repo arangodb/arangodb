@@ -6163,11 +6163,19 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 1) {
+  if (argv.Length() < 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "rename(<name>)");
   }
 
   string name = TRI_ObjectToString(argv[0]);
+
+  // second parameter "override" is to override renaming restrictions, e.g.
+  // renaming from a system collection name to a non-system collection name and
+  // vice versa. this parameter is not publicly exposed but used internally
+  bool override = false;
+  if (argv.Length() > 1) {
+    override = TRI_ObjectToBoolean(argv[1]);
+  }
 
   if (name.empty()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<name> must be non-empty");
@@ -6184,6 +6192,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, 
                                         collection, 
                                         name.c_str(), 
+                                        override,
                                         TRI_GetServerId());
 
   if (res != TRI_ERROR_NO_ERROR) {

@@ -513,6 +513,13 @@
 
       return true;
     });
+    
+    addTask("renameGraphs", "Rename _graphs to arangodb_graphs", function () {
+      db._collection('_graphs').rename('arangodb_graphs', true);
+
+      return true;
+    });
+
 
     // loop through all tasks and execute them
     logger.log("Found " + allTasks.length + " defined task(s), "
@@ -536,7 +543,7 @@
           result = task.code();
         }
         catch (e) {
-          logger.error("caught exception: %s", e);
+          logger.error("caught exception: " + (e.stack || ""));
         }
 
         if (result) {

@@ -238,7 +238,7 @@ function graph_by_request (req) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -352,7 +352,7 @@ function post_graph_graph (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// get all graphs
@@ -371,8 +371,8 @@ function post_graph_graph (req, res) {
 ///     db._drop("vertices2");
 ///     db._drop("edges1");
 ///     db._drop("vertices2");
-///     db._graphs.remove("graph1");
-///     db._graphs.remove("graph2");
+///     db.arangodb_graphs.remove("graph1");
+///     db.arangodb_graphs.remove("graph2");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -544,7 +544,7 @@ function delete_graph_graph (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -646,7 +646,7 @@ function post_graph_vertex (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -733,7 +733,7 @@ function get_graph_vertex (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -899,7 +899,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -990,7 +990,7 @@ function put_graph_vertex (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1134,7 +1134,7 @@ function process_labels_filter (data, labels, collname) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1249,7 +1249,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Select vertices by direction and property filter
@@ -1276,7 +1276,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1409,7 +1409,7 @@ function post_graph_vertex_vertices (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1519,7 +1519,7 @@ function post_graph_edge (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1607,7 +1607,7 @@ function get_graph_edge (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1778,7 +1778,7 @@ function update_graph_edge (req, res, g, isPatch) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1866,7 +1866,7 @@ function put_graph_edge (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1935,7 +1935,7 @@ function patch_graph_edge (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2063,7 +2063,7 @@ function post_graph_all_edges (req, res, g) {
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 

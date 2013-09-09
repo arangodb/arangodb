@@ -655,6 +655,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t*,
 int TRI_RenameCollectionVocBase (TRI_vocbase_t*, 
                                  TRI_vocbase_col_t*, 
                                  char const*,
+                                 bool,
                                  TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
