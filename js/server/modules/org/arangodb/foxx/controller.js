@@ -30,6 +30,7 @@
 
 var Controller,
   RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
+  RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
   _ = require("underscore"),
@@ -110,6 +111,8 @@ Controller = function (context, options) {
     }
   ];
 
+  this.allRoutes = new RequestContextBuffer();
+
   context.foxxes.push(this);
 
   this.applicationContext = context;
@@ -152,7 +155,7 @@ extend(Controller.prototype, {
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback),
-      requestContext = new RequestContext(newRoute),
+      requestContext = new RequestContext(this.allRoutes, newRoute),
       summary;
 
     this.routingInfo.routes.push(newRoute);

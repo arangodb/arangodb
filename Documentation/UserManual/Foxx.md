@@ -136,8 +136,8 @@ HTTP Methods
 
 @copydetails JSF_foxx_controller_delete
 
-Documenting and Constraining the Routes
----------------------------------------
+Documenting and constraining a specific route
+---------------------------------------------
 
 If you now want to document your route, you can use JSDoc style comments (a 
 multiline comment block with the first line starting with `/**` instead 
@@ -178,6 +178,18 @@ API by chaining the following methods onto your path definition:
 ### onlyIfAuthenticated
 
 @copydetails JSF_foxx_RequestContext_onlyIfAuthenticated
+
+Documenting and constraining all routes of a controller
+-------------------------------------------------------
+
+In addition to documenting a specific route, you can also
+do the same for all routes of a controller. For this purpose
+use the `allRoutes` object of the according controller.
+The following methods are available:
+
+### Error Response
+
+@copydetails JSF_foxx_RequestContextBuffer_errorResponse
 
 Before and After Hooks
 ----------------------

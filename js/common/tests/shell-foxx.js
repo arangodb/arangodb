@@ -408,6 +408,21 @@ function DocumentationAndConstraintsSpec () {
       routes[0].action.callback(req, res);
 
       assertTrue(jsonWasCalled);
+    },
+
+    testControllerWideErrorResponse: function () {
+      var CustomErrorClass = function () {};
+
+      app.allRoutes.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
+
+      app.get('/foxx', function () {
+        //nothing
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.errorResponses.length, 1);
+      assertEqual(routes[0].docs.errorResponses[0].code, 400);
+      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
     }
   };
 }
