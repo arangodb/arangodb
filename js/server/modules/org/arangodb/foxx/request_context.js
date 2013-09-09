@@ -366,8 +366,10 @@ extend(RequestContextBuffer.prototype, {
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
     });
-  },
+  }
+});
 
+_.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContextBuffer_errorResponse
 /// @brief Defines a controller-wide error response
@@ -387,12 +389,14 @@ extend(RequestContextBuffer.prototype, {
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-  errorResponse: function () {
+  "errorResponse"
+], function(functionName) {
+  extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
-      functionName: "errorResponse",
+      functionName: functionName,
       argumentList: arguments
     });
-  }
+  });
 });
 
 exports.RequestContext = RequestContext;
