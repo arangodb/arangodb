@@ -358,11 +358,13 @@ extend(RequestContext.prototype, {
 });
 
 RequestContextBuffer = function () {
+  'use strict';
   this.applyChain = [];
 };
 
 extend(RequestContextBuffer.prototype, {
   applyEachFunction: function (target) {
+    'use strict';
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
     });
@@ -432,7 +434,8 @@ _.each([
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   "onlyIfAuthenticated"
-], function(functionName) {
+], function (functionName) {
+  'use strict';
   extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
       functionName: functionName,
