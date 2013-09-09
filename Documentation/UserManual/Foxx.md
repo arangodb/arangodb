@@ -350,6 +350,10 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_modelPrototype
 
+### Save
+
+@copydetails JSF_foxx_repository_save
+
 ### Remove
 
 @copydetails JSF_foxx_repository_remove

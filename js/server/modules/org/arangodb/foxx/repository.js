@@ -101,6 +101,17 @@ Repository = function (collection, opts) {
 
 _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_save
+/// @brief See the documentation of collection.
+///
+/// See the documentation of collection.
+////////////////////////////////////////////////////////////////////////////////
+  save: function () {
+    'use strict';
+    this.collection.save.apply(this.collection, arguments);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_remove
 /// @brief See the documentation of collection.
 ///
