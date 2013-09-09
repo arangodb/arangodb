@@ -29,8 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var RequestContext,
+  RequestContextBuffer,
   SwaggerDocs,
-  extend = require("underscore").extend,
+  _ = require("underscore"),
+  extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
   UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
@@ -113,7 +115,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (route) {
+RequestContext = function (executionBuffer, route) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -122,6 +124,8 @@ RequestContext = function (route) {
   };
   this.docs = new SwaggerDocs(this.route.docs);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
+
+  executionBuffer.applyEachFunction(this);
 };
 
 extend(RequestContext.prototype, {
@@ -353,7 +357,46 @@ extend(RequestContext.prototype, {
   }
 });
 
+RequestContextBuffer = function () {
+  this.applyChain = [];
+};
+
+extend(RequestContextBuffer.prototype, {
+  applyEachFunction: function (target) {
+    _.each(this.applyChain, function (x) {
+      target[x.functionName].apply(target, x.argumentList);
+    });
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_errorResponse
+/// @brief Defines a controller-wide error response
+///
+/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+///
+/// Defines an `errorResponse` for all routes of this controller. For details on
+/// `errorResponse` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  errorResponse: function () {
+    this.applyChain.push({
+      functionName: "errorResponse",
+      argumentList: arguments
+    });
+  }
+});
+
 exports.RequestContext = RequestContext;
+exports.RequestContextBuffer = RequestContextBuffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
