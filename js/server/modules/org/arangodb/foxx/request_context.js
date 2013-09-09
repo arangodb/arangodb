@@ -389,7 +389,49 @@ _.each([
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-  "errorResponse"
+  "errorResponse",
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_onlyIf
+/// @brief Defines a controller-wide onlyIf
+///
+/// @FUN{RequestContextBuffer::onlyIf(@FA{code}, @FA{reason})}
+///
+/// Defines an `onlyIf` for all routes of this controller. For details on
+/// `onlyIf` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.onlyIf(myPersonalCheck);
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "onlyIf",
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
+/// @brief Defines a controller-wide onlyIfAuthenticated
+///
+/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+///
+/// Defines an `onlyIfAuthenticated` for all routes of this controller. For details on
+/// `onlyIfAuthenticated` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "onlyIfAuthenticated"
 ], function(functionName) {
   extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
