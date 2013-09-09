@@ -595,7 +595,11 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return TRI_RenameCollectionVocBase(_vocbase, col, name.c_str(), _masterInfo._serverId);
+  return TRI_RenameCollectionVocBase(_vocbase, 
+                                     col, 
+                                     name.c_str(), 
+                                     true, 
+                                     _masterInfo._serverId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

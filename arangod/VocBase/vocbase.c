@@ -2610,11 +2610,11 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, 
                                  TRI_vocbase_col_t* collection, 
                                  char const* newName,
+                                 bool override,
                                  TRI_server_id_t generatingServer) {
   TRI_col_info_t info;
   void const* found;
   char* oldName;
-  bool isSystem;
   int res;
   
   if (! TRI_CanUseVocBase(vocbase)) {
@@ -2643,25 +2643,28 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
 
-  isSystem = TRI_IsSystemCollectionName(oldName);
+  if (! override) {
+    bool isSystem;
+    isSystem = TRI_IsSystemCollectionName(oldName);
 
-  if (isSystem && ! TRI_IsSystemCollectionName(newName)) {
-    // a system collection shall not be renamed to a non-system collection name
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+    if (isSystem && ! TRI_IsSystemCollectionName(newName)) {
+      // a system collection shall not be renamed to a non-system collection name
+      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
-  else if (! isSystem && TRI_IsSystemCollectionName(newName)) {
-    // a non-system collection shall not be renamed to a system collection name
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    }
+    else if (! isSystem && TRI_IsSystemCollectionName(newName)) {
+      // a non-system collection shall not be renamed to a system collection name
+      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
+      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    }
 
-  if (! TRI_IsAllowedCollectionName(isSystem, newName)) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+    if (! TRI_IsAllowedCollectionName(isSystem, newName)) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    }
   }
 
   // lock collection because we are going to change the name

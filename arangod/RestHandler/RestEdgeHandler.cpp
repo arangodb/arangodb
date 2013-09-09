@@ -131,7 +131,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ///     logJsonResponse(response2);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db._graphs.remove("graph");
+///     db.arangodb_graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
