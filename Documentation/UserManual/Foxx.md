@@ -35,8 +35,8 @@ from now on that the absolute path for this directory is `/home/user/apps`.
 After that, create a sub-directory `my_app` in the `apps` directory and 
 save the following content in a file named `app.js` there:
 
-    var Foxx = require("org/arangodb/foxx");
-    var app = new Foxx.Controller(applicationContext);
+    var Foxx = require("org/arangodb/foxx"),
+      app = new Foxx.Controller(applicationContext);
     
     app.get("/meadow", function(req, res) {
       res.set("Content-Type", "text/plain");
@@ -76,11 +76,11 @@ Now your application is ready to be tested. Start ArangoDB as follows:
 
     $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
-This will start the ArangoDB server in a **development mode** using the 
-directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your 
-database directory. Production application are installed using the Foxx 
-manager and should not be changed. In development mode the server
-automatically monitors the workspace and detects any change made to the files.
+This will start the ArangoDB server in a **development mode** using the
+directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your
+database directory.  In development mode the server automatically monitors the
+workspace and detects any change made to the files. Production application are
+installed using the Foxx manager and changes will not be reloaded automatically.
 
 Replace `/home/user/apps` with the apps path that you initially created. This 
 is the path that you created the `my_app` directory in. Replace `/tmp/fancy_db` 
@@ -397,7 +397,7 @@ A more complete example for a Manifest file:
       "description": "My Website with a blog and a shop",
       "thumnail": "images/website-logo.png",
 
-      "apps": {
+      "controllers": {
         "/blog": "apps/blog.js",
         "/shop": "apps/shop.js"
       },
@@ -424,12 +424,11 @@ A more complete example for a Manifest file:
 The `setup` and `teardown` scripts
 ----------------------------------
 
-You can provide a path to a JavaScript file that prepares ArangoDB for your 
-application (or respectively removes it entirely). These scripts have access 
-to `appCollection` and `appCollectionName` just like models. Use the `setup` 
-script to create all collections your application needs and fill them with 
-initial data if you want to. Use the `teardown` script to remove all 
-collections you have created.
+You can provide a path to a JavaScript file that prepares ArangoDB for your
+application (or respectively removes it entirely). These scripts have access to
+`appCollection` and `appCollectionName`. Use the `setup` script to create all
+collections your application needs and fill them with initial data if you want
+to. Use the `teardown` script to remove all collections you have created.
 
 `controllers` is an object that matches routes to files
 ------------------------------------------------
@@ -520,7 +519,32 @@ turned on using the @ref CommandLineArangoAuthenticateSystemOnly
 then only system API requests need authentication whereas all requests to Foxx 
 applications and routes will not require authentication.
 
-More fine-grained authentication control might be added in the future.
+Authentication
+--------------
+
+We built an authentication system you can use in your Foxx application (but you
+can of course roll your own if you want). Currently we only support
+cookie-based authentication, but we will add the possibility to use Auth Tokens
+and external OAuth providers in the near future. To use the authentication in
+your app, first activate it:
+
+@copydetails JSF_foxx_controller_activateAuthentication
+
+### Adding a login route
+
+@copydetails JSF_foxx_controller_login
+
+### Adding a logout route
+
+@copydetails JSF_foxx_controller_logout
+
+### Adding a register route
+
+@copydetails JSF_foxx_controller_register
+
+### Restricting routes
+
+To restrict routes, see the documentation for Documenting and Restraining the routes.
 
 Optional Functionality: FormatMiddleware
 ----------------------------------------
@@ -548,29 +572,6 @@ Use it by calling:
 In both forms you can give a default format as a second parameter, if no 
 format could be determined. If you give no `defaultFormat` this case will be 
 handled as an error.
-
-Authentication
---------------
-
-We built an authentication system you can use in your Foxx application (but you can of course roll your own if you want). Currently we only support cookie-based authentication, but we will add the possibility to use Auth Tokens and external OAuth providers in the near future. To use the authentication in your app, first activate it:
-
-@copydetails JSF_foxx_controller_activateAuthentication
-
-### Adding a login route
-
-@copydetails JSF_foxx_controller_login
-
-### Adding a logout route
-
-@copydetails JSF_foxx_controller_logout
-
-### Adding a register route
-
-@copydetails JSF_foxx_controller_register
-
-### Restricting routes
-
-To restrict routes, see the documentation for Documenting and Restraining the routes.
 
 Optional Functionality: TemplateMiddleware
 ------------------------------------------
