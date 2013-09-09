@@ -191,6 +191,14 @@ The following methods are available:
 
 @copydetails JSF_foxx_RequestContextBuffer_errorResponse
 
+### onlyIf
+
+@copydetails JSF_foxx_RequestContextBuffer_onlyIf
+
+### onlyIfAuthenticated
+
+@copydetails JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
+
 Before and After Hooks
 ----------------------
 
