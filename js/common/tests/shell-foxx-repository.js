@@ -56,6 +56,7 @@ function RepositorySpec () {
       var arg = function () {};
 
       [
+        "save",
         "remove",
         "replace",
         "update",
