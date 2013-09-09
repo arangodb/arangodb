@@ -63,7 +63,6 @@ function RepositorySpec () {
         "removeByExample",
         "replaceByExample",
         "updateByExample",
-        "all",
         "byExample",
         "firstExample"
       ].forEach(function (f) {

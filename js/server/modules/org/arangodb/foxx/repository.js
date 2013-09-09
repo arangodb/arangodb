@@ -178,17 +178,6 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_all
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  all: function () {
-    'use strict';
-    this.collection.all.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_byExample
 /// @brief See the documentation of collection.
 ///

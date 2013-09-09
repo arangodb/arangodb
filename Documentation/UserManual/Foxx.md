@@ -378,10 +378,6 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_updateByExample
 
-### All
-
-@copydetails JSF_foxx_repository_all
-
 ### ByExample
 
 @copydetails JSF_foxx_repository_byExample
