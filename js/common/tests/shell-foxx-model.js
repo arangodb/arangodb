@@ -28,6 +28,22 @@ function ModelSpec () {
       assertEqual(instance.get("a"), 1);
     },
 
+    testSettingMultipleAttributes: function () {
+      instance = new FoxxModel({
+        a: 1,
+        b: 9
+      });
+
+      instance.set({
+        b: 2,
+        c: 3
+      });
+
+      assertEqual(instance.get("a"), 1);
+      assertEqual(instance.get("b"), 2);
+      assertEqual(instance.get("c"), 3);
+    },
+
     testAddingAMethodWithExtend: function () {
       TestModel = FoxxModel.extend({
         getA: function() {
