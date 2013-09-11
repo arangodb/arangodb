@@ -101,36 +101,25 @@ Repository = function (collection, opts) {
 
 _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_remove
+/// @fn JSF_foxx_repository_save
 /// @brief See the documentation of collection.
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  remove: function () {
+  save: function () {
+    'use strict';
+    this.collection.save.apply(this.collection, arguments);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_removeById
+/// @brief See the documentation of collection.
+///
+/// See the documentation of collection.
+////////////////////////////////////////////////////////////////////////////////
+  removeById: function () {
     'use strict';
     this.collection.remove.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replace
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  replace: function () {
-    'use strict';
-    this.collection.replace.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_update
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  update: function () {
-    'use strict';
-    this.collection.update.apply(this.collection, arguments);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +134,17 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_replaceById
+/// @brief See the documentation of collection.
+///
+/// See the documentation of collection.
+////////////////////////////////////////////////////////////////////////////////
+  replaceById: function () {
+    'use strict';
+    this.collection.replace.apply(this.collection, arguments);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_replaceByExample
 /// @brief See the documentation of collection.
 ///
@@ -153,6 +153,17 @@ _.extend(Repository.prototype, {
   replaceByExample: function () {
     'use strict';
     this.collection.replaceByExample.apply(this.collection, arguments);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_updateById
+/// @brief See the documentation of collection.
+///
+/// See the documentation of collection.
+////////////////////////////////////////////////////////////////////////////////
+  updateById: function () {
+    'use strict';
+    this.collection.update.apply(this.collection, arguments);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,14 +178,13 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_all
+/// @fn JSF_foxx_repository_byId
 /// @brief See the documentation of collection.
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  all: function () {
+  byId: function () {
     'use strict';
-    this.collection.all.apply(this.collection, arguments);
   },
 
 ////////////////////////////////////////////////////////////////////////////////

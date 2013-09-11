@@ -136,8 +136,8 @@ HTTP Methods
 
 @copydetails JSF_foxx_controller_delete
 
-Documenting and Constraining the Routes
----------------------------------------
+Documenting and constraining a specific route
+---------------------------------------------
 
 If you now want to document your route, you can use JSDoc style comments (a 
 multiline comment block with the first line starting with `/**` instead 
@@ -178,6 +178,26 @@ API by chaining the following methods onto your path definition:
 ### onlyIfAuthenticated
 
 @copydetails JSF_foxx_RequestContext_onlyIfAuthenticated
+
+Documenting and constraining all routes of a controller
+-------------------------------------------------------
+
+In addition to documenting a specific route, you can also
+do the same for all routes of a controller. For this purpose
+use the `allRoutes` object of the according controller.
+The following methods are available:
+
+### Error Response
+
+@copydetails JSF_foxx_RequestContextBuffer_errorResponse
+
+### onlyIf
+
+@copydetails JSF_foxx_RequestContextBuffer_onlyIf
+
+### onlyIfAuthenticated
+
+@copydetails JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 
 Before and After Hooks
 ----------------------
@@ -330,39 +350,43 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_modelPrototype
 
-### Remove
+### Save
 
-@copydetails JSF_foxx_repository_remove
+@copydetails JSF_foxx_repository_save
 
-### Replace
+### Remove By Id
 
-@copydetails JSF_foxx_repository_replace
-
-### Update
-
-@copydetails JSF_foxx_repository_update
+@copydetails JSF_foxx_repository_removeById
 
 ### Remove By Example
 
 @copydetails JSF_foxx_repository_removeByExample
 
+### Replace By Id
+
+@copydetails JSF_foxx_repository_replaceById
+
 ### ReplaceByExample
 
 @copydetails JSF_foxx_repository_replaceByExample
+
+### Update By Id
+
+@copydetails JSF_foxx_repository_updateById
 
 ### UpdateByExample
 
 @copydetails JSF_foxx_repository_updateByExample
 
-### All
+### By Id
 
-@copydetails JSF_foxx_repository_all
+@copydetails JSF_foxx_repository_byId
 
-### ByExample
+### By Example
 
 @copydetails JSF_foxx_repository_byExample
 
-### FirstExample
+### First Example
 
 @copydetails JSF_foxx_repository_firstExample
 
