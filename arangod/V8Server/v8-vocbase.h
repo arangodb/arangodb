@@ -33,6 +33,17 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
+extern "C" {
+  struct TRI_server_s;
+  struct TRI_vocbase_s;
+}
+
+namespace triagens {
+  namespace arango {
+    class JSLoader;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -89,7 +100,9 @@ int32_t TRI_GetVocBaseColType ();
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
-                          TRI_vocbase_t*,
+                          struct TRI_server_s*,
+                          struct TRI_vocbase_s*,
+                          triagens::arango::JSLoader*,
                           const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////

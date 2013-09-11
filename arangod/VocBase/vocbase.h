@@ -53,6 +53,7 @@ struct TRI_replication_logger_s;
 struct TRI_shadow_store_s;
 struct TRI_transaction_context_s;
 struct TRI_vector_pointer_s;
+struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -185,12 +186,6 @@ struct TRI_vector_pointer_s;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief page size
-////////////////////////////////////////////////////////////////////////////////
-
-extern size_t PageSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _from attribute
@@ -353,8 +348,6 @@ typedef struct TRI_vocbase_s {
   bool                       _authInfoFlush;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
 
-  struct TRI_transaction_context_s* _transactionContext;
-
   struct TRI_replication_logger_s*  _replicationLogger;
   struct TRI_replication_applier_s* _replicationApplier;
 
@@ -386,9 +379,6 @@ typedef struct TRI_vocbase_s {
   TRI_condition_t            _cleanupCondition;
   TRI_condition_t            _syncWaitersCondition;
   int64_t                    _syncWaiters;
-  
-  char*                      _lockFile;
-  char*                      _shutdownFilename;   // absolute filename of the file that contains the shutdown information
 }
 TRI_vocbase_t;
 
@@ -433,22 +423,6 @@ typedef struct TRI_vocbase_col_s {
   bool                              _canRename;  // true if the collection can be renamed
 }
 TRI_vocbase_col_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default settings
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_vocbase_defaults_s {
-  TRI_voc_size_t        defaultMaximalSize;
-  bool                  removeOnDrop;
-  bool                  removeOnCompacted;
-  bool                  defaultWaitForSync;
-  bool                  forceSyncShapes;
-  bool                  forceSyncProperties;
-  bool                  requireAuthentication;
-  bool                  authenticateSystemOnly;
-}
-TRI_vocbase_defaults_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -496,33 +470,6 @@ bool TRI_IsAllowedDatabaseName (bool,
                                 char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new tick
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_NewTickVocBase (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateTickVocBase (TRI_voc_tick_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_CurrentTickVocBase (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief msyncs a memory block between begin (incl) and end (excl)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_msync (int, 
-                void*, 
-                char const*, 
-                char const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -543,12 +490,13 @@ void TRI_SetupReplicationVocBase (bool,
                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an exiting database, loads all collections
+/// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* TRI_OpenVocBase (char const*, 
-                                char const*, 
-                                TRI_vocbase_defaults_t*);
+                                char const*,
+                                struct TRI_vocbase_defaults_s const*,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections
@@ -556,19 +504,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const*,
 
 void TRI_DestroyVocBase (TRI_vocbase_t*, 
                          struct TRI_vector_pointer_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the system defaults
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetSystemDefaultsVocBase (TRI_vocbase_defaults_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the system defaults
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GetDefaultsVocBase (TRI_vocbase_t const*,  
-                             TRI_vocbase_defaults_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load authentication information
@@ -600,13 +535,15 @@ struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
 /// it is the caller's responsibility to free the name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*, const TRI_voc_cid_t);
+char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*, 
+                                        const TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const*);
+TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, 
+                                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by identifier
@@ -696,35 +633,6 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*,
 
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t*, 
                                    TRI_vocbase_col_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the voc database components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseVocBase (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the voc database components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownVocBase (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

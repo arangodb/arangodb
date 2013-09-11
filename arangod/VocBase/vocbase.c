@@ -52,15 +52,17 @@
 #include "VocBase/primary-collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/synchroniser.h"
 #include "VocBase/transaction.h"
+#include "VocBase/vocbase-defaults.h"
 
+#ifdef TRI_SKIPLIST_EX
 #include "VocBase/index-garbage-collector.h"
+#endif
 
 #include "Ahuacatl/ahuacatl-functions.h"
-#include "Ahuacatl/ahuacatl-statementlist.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -70,30 +72,6 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief random server identifier (16 bit)
-////////////////////////////////////////////////////////////////////////////////
-
-static uint16_t ServerIdentifier = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current tick identifier (48 bit)
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t CurrentTick = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tick lock
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_spin_t TickLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief system defaults for vocbases
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_defaults_t SystemDefaults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do not autostart replication logger?
@@ -259,193 +237,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy the system defaults
-////////////////////////////////////////////////////////////////////////////////
-
-static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
-                          TRI_vocbase_defaults_t* dst) {
-  dst->defaultMaximalSize           = src->defaultMaximalSize;
-  dst->removeOnDrop                 = src->removeOnDrop;
-  dst->removeOnCompacted            = src->removeOnCompacted;
-  dst->defaultWaitForSync           = src->defaultWaitForSync;
-  dst->forceSyncShapes              = src->forceSyncShapes;
-  dst->forceSyncProperties          = src->forceSyncProperties;
-  dst->requireAuthentication        = src->requireAuthentication;    
-  dst->authenticateSystemOnly       = src->authenticateSystemOnly;
-}  
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fill a TRI_vocbase_t object with default values provided in defaults
-////////////////////////////////////////////////////////////////////////////////
-
-static void ApplyDefaults (TRI_vocbase_t* vocbase, 
-                           TRI_vocbase_defaults_t const* defaults) {
-
-  vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
-  vocbase->_removeOnDrop                 = defaults->removeOnDrop;
-  vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
-  vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
-  vocbase->_forceSyncShapes              = defaults->forceSyncShapes;
-  vocbase->_forceSyncProperties          = defaults->forceSyncProperties;
-  vocbase->_requireAuthentication        = defaults->requireAuthentication;    
-  vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fill a TRI_vocbase_defaults_t object with values from a vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-static void GetDefaults (TRI_vocbase_t const* vocbase, 
-                         TRI_vocbase_defaults_t* defaults) {
-
-  defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
-  defaults->removeOnDrop                = vocbase->_removeOnDrop;
-  defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
-  defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
-  defaults->forceSyncShapes             = vocbase->_forceSyncShapes;
-  defaults->forceSyncProperties         = vocbase->_forceSyncProperties;
-  defaults->requireAuthentication       = vocbase->_requireAuthentication;    
-  defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick value, without using a lock
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_tick_t GetTick (void) {
-  return (ServerIdentifier | (CurrentTick << 16));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter, without using a lock
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void UpdateTick (TRI_voc_tick_t tick) {
-  TRI_voc_tick_t s = tick >> 16;
-
-  if (CurrentTick < s) {
-    CurrentTick = s;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads shutdown information file
-/// this is called at server startup. if the file is present, the last tick
-/// value used by the server will be read from the file.
-////////////////////////////////////////////////////////////////////////////////
-
-static int ReadShutdownInfo (char const* filename) {
-  TRI_json_t* json;
-  TRI_json_t* shutdownTime;
-  TRI_json_t* tickString;
-  uint64_t foundTick;
-
-  assert(filename != NULL);
-
-  if (! TRI_ExistsFile(filename)) {
-    return TRI_ERROR_FILE_NOT_FOUND;
-  }
-
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
-
-  if (json == NULL) {
-    return TRI_ERROR_INTERNAL;
-  }
-  
-  shutdownTime = TRI_LookupArrayJson(json, "shutdownTime");
-
-  if (TRI_IsStringJson(shutdownTime)) {
-    LOG_DEBUG("server was shut down cleanly last time at '%s'", shutdownTime->_value._string.data);
-  }
-
-  tickString = TRI_LookupArrayJson(json, "tick");
-
-  if (! TRI_IsStringJson(tickString)) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  foundTick = TRI_UInt64String2(tickString->_value._string.data,
-                                tickString->_value._string.length - 1);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
-
-  if (foundTick == 0) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  UpdateTick((TRI_voc_tick_t) foundTick);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the shutdown information file
-/// this is called after the shutdown info file is read at restart. we need
-/// to remove the file because if we don't and the server crashes, we would
-/// leave some stale data around, leading to potential inconsistencies later.
-////////////////////////////////////////////////////////////////////////////////
-
-static int RemoveShutdownInfo (char const* filename) {
-  int res = TRI_UnlinkFile(filename);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes shutdown information file
-/// the file will contain the timestamp of the shutdown time plus the last
-/// tick value the server used. it will be read on restart of the server.
-/// if the server can find the file on restart, it can avoid scanning 
-/// collections.
-////////////////////////////////////////////////////////////////////////////////
-
-static int WriteShutdownInfo (char const* filename) {
-  TRI_json_t* json;
-  char* tickString;
-  char buffer[32];
-  size_t len;
-  time_t tt;
-  struct tm tb;
-  bool ok;
-
-  assert(filename != NULL);
-
-  // create a json object
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (json == NULL) {
-    // out of memory
-    LOG_ERROR("cannot save shutdown info in file '%s': out of memory", filename);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  tickString = TRI_StringUInt64((uint64_t) GetTick());
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, buffer, len));
-
-  // save json info to file
-  LOG_DEBUG("Writing shutdown info to file '%s'", filename);
-  ok = TRI_SaveJson(filename, json, true);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (! ok) {
-    LOG_ERROR("could not save shutdown info in file '%s': %s", filename, TRI_last_error());
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a collection name from the global list of collections
 ///
 /// This function is called when a collection is dropped.
@@ -478,20 +269,12 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 
 static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection;
-#if 0  
-  TRI_vocbase_t* vocbase;
-  TRI_voc_cid_t cid;
-#endif
   TRI_document_collection_t* document;
   int res;
 
   collection = data;
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
-#if 0  
-  cid = collection->_cid;
-  vocbase = collection->_vocbase;
-#endif
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -544,12 +327,6 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
   collection->_collection = NULL;
   
-#if 0    
-  if (cid > 0) {
-    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
-  }
-#endif
-
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return true;
 }
@@ -563,18 +340,12 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   TRI_document_collection_t* document;
   TRI_vocbase_col_t* collection;
   TRI_vocbase_t* vocbase;
-#if 0  
-  TRI_voc_cid_t cid;
-#endif
   regmatch_t matches[3];
   regex_t re;
   int res;
   size_t i;
 
   collection = data;
-#if 0  
-  cid = 0;
-#endif
 
 #ifdef _WIN32
   // .........................................................................
@@ -618,10 +389,6 @@ static bool DropCollectionCallback (TRI_collection_t* col,
 
       return false;
     }
-
-#if 0
-    cid = collection->_cid;
-#endif
 
     document = (TRI_document_collection_t*) collection->_collection;
 
@@ -740,12 +507,6 @@ static bool DropCollectionCallback (TRI_collection_t* col,
     
   regfree(&re);
 
-#if 0
-  if (cid > 0) {
-    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
-  }
-#endif
-
   return true;
 }
 
@@ -765,47 +526,6 @@ static bool DropCollectionCallback (TRI_collection_t* col,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the server id filename
-////////////////////////////////////////////////////////////////////////////////
-
-static char* GetServerIdFilename (TRI_vocbase_t* vocbase) {
-  char* filename = TRI_Concatenate2File(vocbase->_path, "SERVER");
-
-  return filename;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read / create the server id on startup
-////////////////////////////////////////////////////////////////////////////////
-
-static int ReadServerId (TRI_vocbase_t* vocbase) {
-  char* filename;
-  int res;
-
-  filename = GetServerIdFilename(vocbase);
-
-  if (filename == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  res = TRI_ReadServerId(filename);
-
-  if (res == TRI_ERROR_FILE_NOT_FOUND) {
-    // id file does not yet exist. now create it
-    res = TRI_GenerateServerId();
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // id was generated. now save it
-      res = TRI_WriteServerId(filename);
-    }
-  }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  return res;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
@@ -840,9 +560,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // check for special system collection names 
   if (TRI_IsSystemCollectionName(name)) {
     // a few system collections have special behavior
-    if (TRI_EqualString(name, TRI_COL_NAME_DATABASES) ||
-        TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
-        TRI_EqualString(name, TRI_COL_NAME_PREFIXES) ||
+    if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
         TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
         TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
         TRI_EqualString(name, TRI_COL_NAME_USERS)) {
@@ -852,9 +570,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
       // the replication collection cannot be unloaded manually)
       // (this would make the server hang)
-      init._canUnload = ! 
-        (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-         TRI_EqualString(name, TRI_COL_NAME_DATABASES));
+      init._canUnload = ! TRI_EqualString(name, TRI_COL_NAME_REPLICATION);
     }
   }
 
@@ -943,7 +659,7 @@ static bool StartupTickIterator (TRI_df_marker_t const* marker,
                                  void* data, 
                                  TRI_datafile_t* datafile, 
                                  bool journal) {
-  UpdateTick(marker->_tick);
+  TRI_FastUpdateTickServer(marker->_tick);
   
   return true;
 }
@@ -959,8 +675,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   regmatch_t matches[2];
   regex_t re;
   int res;
-  size_t n;
-  size_t i;
+  size_t i, n;
 
   res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
@@ -978,15 +693,10 @@ static int ScanPath (TRI_vocbase_t* vocbase,
     char* file;
 
     name = files._buffer[i];
-    assert(name);
+    assert(name != NULL);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
-
-      // do not issue a notice about the "lock" file
-      if (! TRI_EqualString(name, "lock")) {
-        LOG_DEBUG("ignoring file/directory '%s'", name);
-      }
-
+      // no match, ignore this file
       continue;
     }
 
@@ -1016,11 +726,11 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       res = TRI_LoadCollectionInfo(file, &info, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        UpdateTick(info._cid);
+        TRI_FastUpdateTickServer(info._cid);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_COL_PARAMETER_FILE);
+        LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_VOC_PARAMETER_FILE);
       }
       else if (info._deleted) {
         // we found a collection that is marked as deleted.
@@ -1467,68 +1177,6 @@ bool TRI_IsAllowedDatabaseName (bool allowSystem, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new tick
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_NewTickVocBase () {
-  uint64_t tick = ServerIdentifier;
-
-  TRI_LockSpin(&TickLock);
-
-  tick |= (++CurrentTick) << 16;
-
-  TRI_UnlockSpin(&TickLock);
-
-  return tick;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateTickVocBase (TRI_voc_tick_t tick) {
-  TRI_LockSpin(&TickLock);
-  UpdateTick(tick);
-  TRI_UnlockSpin(&TickLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_CurrentTickVocBase () {
-  TRI_voc_tick_t tick;
-
-  TRI_LockSpin(&TickLock);
-  tick = GetTick();
-  TRI_UnlockSpin(&TickLock);
-
-  return tick;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief msyncs a memory block between begin (incl) and end (excl)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
-  uintptr_t p = (intptr_t) begin;
-  uintptr_t q = (intptr_t) end;
-  uintptr_t g = (intptr_t) PageSize;
-
-  char* b = (char*)( (p / g) * g );
-  char* e = (char*)( ((q + g - 1) / g) * g );
-  int result;
-
-  result = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(result);
-    return false;
-  }
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1547,87 +1195,27 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
 
 void TRI_SetupReplicationVocBase (bool disableLogger, 
                                   bool disableApplier) {
-  DisableReplicationLogger = disableLogger;
+  // TODO: FIXME move to server
+  DisableReplicationLogger  = disableLogger;
   DisableReplicationApplier = disableApplier;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an exiting database, scans all collections
+/// @brief opens an existing database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* TRI_OpenVocBase (char const* path, 
                                 char const* name,
-                                TRI_vocbase_defaults_t* defaults) {
+                                TRI_vocbase_defaults_t const* defaults,
+                                bool iterateMarkers) {
+  TRI_vocbase_defaults_t ownDefaults;
   TRI_vocbase_t* vocbase;
-  char* lockFile;
-  bool iterateMarkers;
-  bool isSystem;
   int res;
 
+  assert(name != NULL);
+  assert(path != NULL);
   assert(defaults != NULL);
-
-  if (! TRI_IsDirectory(path)) {
-    LOG_ERROR("database path '%s' is not a directory", path);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
-    return NULL;
-  }
-
-  if (! TRI_IsWritable(path)) {
-    // database directory is not writable for the current user... bad luck
-    LOG_ERROR("database directory '%s' is not writable for current user", path);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
-    return NULL;
-  }
-
-  isSystem = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE); 
-
-  // .............................................................................
-  // check that the database is not locked and lock it
-  // .............................................................................
-
-  lockFile = TRI_Concatenate2File(path, "lock");
-  res = TRI_VerifyLockFile(lockFile);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    LOG_FATAL_AND_EXIT("database is locked, please check the lock file '%s'", lockFile);
-  }
-
-  if (TRI_ExistsFile(lockFile)) {
-    TRI_UnlinkFile(lockFile);
-  }
-
-  res = TRI_CreateLockFile(lockFile);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_FATAL_AND_EXIT("cannot lock the database, please check the lock file '%s': %s", 
-                       lockFile, 
-                       TRI_errno_string(res));
-  }
-
-  if (isSystem) {
-    char* databaseDirectory = TRI_Concatenate2File(path, "databases");
-
-    if (databaseDirectory != NULL) {
-      if (! TRI_IsDirectory(databaseDirectory)) {
-        res = TRI_CreateDirectory(databaseDirectory);
-      }
-    
-      if (! TRI_IsWritable(databaseDirectory)) {
-        res = TRI_ERROR_INTERNAL;
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_FATAL_AND_EXIT("cannot create or write database directory '%s': %s", 
-                           databaseDirectory, 
-                           TRI_errno_string(res));
-      }
-      
-      TRI_Free(TRI_CORE_MEM_ZONE, databaseDirectory);
-    }
-  }
-
+  
   // .............................................................................
   // setup vocbase structure
   // .............................................................................
@@ -1635,32 +1223,44 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t), false);
 
   if (vocbase == NULL) {
-    LOG_FATAL_AND_EXIT("out of memory");
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
   }
 
-  vocbase->_authInfoLoaded = false;
-
-  vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
-
-  if (vocbase->_cursors == NULL) {
-    LOG_FATAL_AND_EXIT("cannot create cursors");
-  }
-
-  vocbase->_lockFile         = lockFile;
-  vocbase->_path             = TRI_DuplicateString(path);
-  vocbase->_name             = TRI_DuplicateString(name);
-  vocbase->_shutdownFilename = TRI_Concatenate2File(path, "SHUTDOWN");
-  vocbase->_isSystem         = false;
+  vocbase->_path             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
+  vocbase->_name             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name); 
+  vocbase->_isSystem         = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE);
+  vocbase->_authInfoLoaded   = false;
 
   // use the defaults provided
-  ApplyDefaults(vocbase, defaults);
+  TRI_ApplyVocBaseDefaults(vocbase, &ownDefaults);
   
   // init AQL functions
   vocbase->_functions = TRI_CreateFunctionsAql();
 
   if (vocbase->_functions == NULL) {
-    LOG_FATAL_AND_EXIT("cannot create AQL functions");
+    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
+    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
   }
+  
+  // init cursors
+  vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
+
+  if (vocbase->_cursors == NULL) {
+    TRI_FreeFunctionsAql(vocbase->_functions);
+    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
+    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+
 
   TRI_InitCompactorVocBase(vocbase);
 
@@ -1689,10 +1289,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
                              EqualKeyAuthInfo,
                              NULL);
   
-  // transactions
-  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase);
-
-
   TRI_InitReadWriteLock(&vocbase->_inventoryLock);
 
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
@@ -1702,43 +1298,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
   TRI_InitCondition(&vocbase->_cleanupCondition);
-
-  // .............................................................................
-  // read the server id
-  // .............................................................................
-
-  if (isSystem) { 
-    if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
-      LOG_FATAL_AND_EXIT("reading/creating server id failed");
-    }
-  }
-
-  // .............................................................................
-  // read information from last shutdown
-  // .............................................................................
-
-  // check if we can find a SHUTDOWN file
-  // this file will contain the last tick value issued by the server
-  // if we find the file, we can avoid scanning datafiles for the last used tick value
-  // note: this is done for the _system database only
-
-  if (isSystem) {
-    iterateMarkers = true;
-
-    res = ReadShutdownInfo(vocbase->_shutdownFilename);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // we found the SHUTDOWN file
-      // no need to iterate the markers
-      iterateMarkers = false;
-    }
-    else if (res == TRI_ERROR_INTERNAL) {
-      LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
-    }
-  }
-  else {
-    iterateMarkers = false;
-  }
 
   // .............................................................................
   // scan directory for collections
@@ -1758,27 +1317,15 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
     TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
     TRI_DestroyVectorPointer(&vocbase->_collections);
     TRI_DestroyVectorPointer(&vocbase->_deadCollections);
-    TRI_DestroyLockFile(vocbase->_lockFile);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_shutdownFilename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_set_errno(res);
 
     return NULL;
-  }
-
-
-  LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());  
-
-  // now remove SHUTDOWN file if it was present. this is done for the _system database only
-  if (isSystem && ! iterateMarkers) {
-    if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
-    }
   }
 
 
@@ -1812,6 +1359,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
 
   if (vocbase->_replicationLogger == NULL) {
+    // TODO
     LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
   }
 
@@ -1823,6 +1371,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
       res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        // TODO
         LOG_FATAL_AND_EXIT("unable to start replication logger for database '%s'", name);
       }
     }
@@ -1831,6 +1380,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
 
   if (vocbase->_replicationApplier == NULL) {
+    // TODO
     LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
   }
  
@@ -1929,9 +1479,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
-#if 0    
-    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, collection->_cid);
-#endif
 
     if (reuseCollections != 0) {
       // the pointer to the collection is transferred to the other vector,
@@ -1942,15 +1489,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
       // instantly free the collection
       TRI_FreeCollectionVocBase(collection);
     }
-  }
-
-  // we are just before terminating the server. we can now write out a file with the
-  // shutdown timestamp and the last tick value the server used.
-  // if writing the file fails, it is not a problem as in this case we'll scan the
-  // collections for the tick value on startup
-
-  if (vocbase->_isSystem) {
-    WriteShutdownInfo(vocbase->_shutdownFilename);
   }
 
   // free the auth info
@@ -1972,12 +1510,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
   // free the cursors
   TRI_FreeShadowStore(vocbase->_cursors);
 
-  // release lock on database
-  TRI_DestroyLockFile(vocbase->_lockFile);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
-
-  TRI_FreeTransactionContext(vocbase->_transactionContext);
-
   // destroy locks
   TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
@@ -1986,29 +1518,9 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
 
   // free the filename path
-  TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_shutdownFilename);
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
 
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the vocbase system defaults
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetSystemDefaultsVocBase (TRI_vocbase_defaults_t const* src) {
-  TRI_vocbase_defaults_t* dst = &SystemDefaults;
-
-  CopyDefaults(src, dst);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the defaults from a vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GetDefaultsVocBase (TRI_vocbase_t const* vocbase,
-                             TRI_vocbase_defaults_t* dst) {
-  GetDefaults(vocbase, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2017,8 +1529,6 @@ void TRI_GetDefaultsVocBase (TRI_vocbase_t const* vocbase,
 
 void TRI_LoadAuthInfoVocBase (TRI_vocbase_t* vocbase) {
   vocbase->_authInfoLoaded = TRI_LoadAuthInfo(vocbase);
-
-  TRI_DefaultAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2514,7 +2024,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     // remove dangling .json.tmp file if it exists
-    tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_COL_PARAMETER_FILE, ".tmp");
+    tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_VOC_PARAMETER_FILE, ".tmp");
     if (tmpFile != NULL) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);
@@ -2882,61 +2392,6 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, 
                                    TRI_vocbase_col_t* collection) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the voc database components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseVocBase () {
-  TRI_GlobalInitStatementListAql();
-
-  ServerIdentifier = TRI_UInt16Random();
-  PageSize = (size_t) getpagesize();
-
-  TRI_InitSpin(&TickLock);
-
-#ifdef TRI_READLINE_VERSION
-  LOG_TRACE("%s", "$Revision: READLINE " TRI_READLINE_VERSION " $");
-#endif
-
-#ifdef TRI_V8_VERSION
-  LOG_TRACE("%s", "$Revision: V8 " TRI_V8_VERSION " $");
-#endif
-
-#ifdef TRI_ICU_VERSION
-  LOG_TRACE("%s", "$Revision: ICU " TRI_ICU_VERSION " $");
-#endif
-
-  LOG_TRACE("sizeof df_header:        %d", (int) sizeof(TRI_df_marker_t));
-  LOG_TRACE("sizeof df_header_marker: %d", (int) sizeof(TRI_df_header_marker_t));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the voc database components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownVocBase () {
-  TRI_DestroySpin(&TickLock);
-
-  TRI_GlobalFreeStatementListAql();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

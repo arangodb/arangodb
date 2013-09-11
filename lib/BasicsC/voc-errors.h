@@ -111,9 +111,9 @@ extern "C" {
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
-/// - 1201: @LIT{wrong path for database}
-///   Will be raised when a non-existing directory was specified as path for
-///   the database.
+/// - 1201: @LIT{invalid database directory}
+///   Will be raised when a non-existing database directory was specified when
+///   starting the database.
 /// - 1202: @LIT{document not found}
 ///   Will be raised when a document with a given identifier or handle is
 ///   unknown.
@@ -161,9 +161,9 @@ extern "C" {
 /// - 1222: @LIT{unexpected document key}
 ///   Will be raised when a user-defined document key is supplied for
 ///   collections with auto key generation.
-/// - 1224: @LIT{database directory not writable}
-///   Will be raised when the database directory is not writable for the
-///   current user.
+/// - 1224: @LIT{server database directory not writable}
+///   Will be raised when the server's database directory is not writable for
+///   the current user.
 /// - 1225: @LIT{out of keys}
 ///   Will be raised when a key generator runs out of keys.
 /// - 1226: @LIT{missing document key}
@@ -175,15 +175,17 @@ extern "C" {
 ///   Will be raised when a non-existing database is accessed.
 /// - 1229: @LIT{database name already used}
 ///   Will be raised when a duplicate database name is used.
-/// - 1230: @LIT{database path already used}
-///   Will be raised when a duplicate database path is used.
-/// - 1231: @LIT{database name invalid}
+/// - 1230: @LIT{database name invalid}
 ///   Will be raised when an invalid database name is used.
-/// - 1232: @LIT{database path invalid}
-///   Will be raised when an invalid database path is used.
-/// - 1233: @LIT{operation only allowed in system database}
+/// - 1231: @LIT{operation only allowed in system database}
 ///   Will be raised when an operation is requested in a database other than
 ///   the system database.
+/// - 1232: @LIT{database directory is locked}
+///   Will be raised when the server's database directory is locked (mainly
+///   because another ArangoDB instance is already running).
+/// - 1233: @LIT{cannot lock database directory}
+///   Will be raised when the server cannot lock the database directory on
+///   startup.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -952,15 +954,15 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_CONFLICT                                         (1200)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1201: ERROR_ARANGO_WRONG_VOCBASE_PATH
+/// @brief 1201: ERROR_ARANGO_DATADIR_INVALID
 ///
-/// wrong path for database
+/// invalid database directory
 ///
-/// Will be raised when a non-existing directory was specified as path for the
-/// database.
+/// Will be raised when a non-existing database directory was specified when
+/// starting the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH                               (1201)
+#define TRI_ERROR_ARANGO_DATADIR_INVALID                                  (1201)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
@@ -1178,10 +1180,10 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1224: ERROR_ARANGO_DATADIR_NOT_WRITABLE
 ///
-/// database directory not writable
+/// server database directory not writable
 ///
-/// Will be raised when the database directory is not writable for the current
-/// user.
+/// Will be raised when the server's database directory is not writable for the
+/// current user.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE                             (1224)
@@ -1238,37 +1240,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATABASE_NAME_USED                               (1229)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1230: ERROR_ARANGO_DATABASE_PATH_USED
-///
-/// database path already used
-///
-/// Will be raised when a duplicate database path is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATABASE_PATH_USED                               (1230)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1231: ERROR_ARANGO_DATABASE_NAME_INVALID
+/// @brief 1230: ERROR_ARANGO_DATABASE_NAME_INVALID
 ///
 /// database name invalid
 ///
 /// Will be raised when an invalid database name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1231)
+#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1230)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1232: ERROR_ARANGO_DATABASE_PATH_INVALID
-///
-/// database path invalid
-///
-/// Will be raised when an invalid database path is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATABASE_PATH_INVALID                            (1232)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1233: ERROR_ARANGO_USE_SYSTEM_DATABASE
+/// @brief 1231: ERROR_ARANGO_USE_SYSTEM_DATABASE
 ///
 /// operation only allowed in system database
 ///
@@ -1276,7 +1258,29 @@ void TRI_InitialiseErrorMessages (void);
 /// system database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1233)
+#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1231)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1232: ERROR_ARANGO_DATADIR_LOCKED
+///
+/// database directory is locked
+///
+/// Will be raised when the server's database directory is locked (mainly
+/// because another ArangoDB instance is already running).
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1232)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1233: ERROR_ARANGO_DATADIR_UNLOCKABLE
+///
+/// cannot lock database directory
+///
+/// Will be raised when the server cannot lock the database directory on
+/// startup.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1233)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

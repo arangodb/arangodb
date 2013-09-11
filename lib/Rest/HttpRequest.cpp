@@ -1208,10 +1208,10 @@ void HttpRequest::addSuffix (char const* part) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add request context
+/// @brief set the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::addRequestContext (RequestContext* requestContext) {
+void HttpRequest::setRequestContext (RequestContext* requestContext) {
   if (_requestContext) {
     delete _requestContext;
   }

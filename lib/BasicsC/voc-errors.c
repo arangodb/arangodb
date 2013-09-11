@@ -57,7 +57,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory already exists");
   REG_ERROR(ERROR_ARANGO_MSYNC_FAILED, "msync failed");
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
-  REG_ERROR(ERROR_ARANGO_WRONG_VOCBASE_PATH, "wrong path for database");
+  REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
@@ -79,16 +79,16 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_PARSER_FAILED, "parser failed");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_BAD, "illegal document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED, "unexpected document key");
-  REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "database directory not writable");
+  REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "server database directory not writable");
   REG_ERROR(ERROR_ARANGO_OUT_OF_KEYS, "out of keys");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_MISSING, "missing document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "invalid document type");
   REG_ERROR(ERROR_ARANGO_DATABASE_NOT_FOUND, "database not found");
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_USED, "database name already used");
-  REG_ERROR(ERROR_ARANGO_DATABASE_PATH_USED, "database path already used");
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_INVALID, "database name invalid");
-  REG_ERROR(ERROR_ARANGO_DATABASE_PATH_INVALID, "database path invalid");
   REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
+  REG_ERROR(ERROR_ARANGO_DATADIR_LOCKED, "database directory is locked");
+  REG_ERROR(ERROR_ARANGO_DATADIR_UNLOCKABLE, "cannot lock database directory");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");

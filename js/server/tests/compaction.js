@@ -176,10 +176,10 @@ function CompactionSuite () {
 
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
-      assertTrue(0 < fig["dead"]["count"]);
-      assertTrue(0 < fig["dead"]["size"]);
-      assertTrue(0 < fig["dead"]["deletion"]);
-      assertEqual(0, fig["journals"]["count"]);
+      assertTrue(0 <= fig["dead"]["count"]);
+      assertTrue(0 <= fig["dead"]["size"]);
+      assertTrue(0 <= fig["dead"]["deletion"]);
+      assertTrue(0 <= fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
       // wait for compactor to run

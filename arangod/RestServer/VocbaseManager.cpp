@@ -54,16 +54,13 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the global manager
-////////////////////////////////////////////////////////////////////////////////
-
-VocbaseManager VocbaseManager::manager;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 bool VocbaseManager::setRequestContext(triagens::rest::HttpRequest* request) {
+  return true;
+
+  // TODO
   TRI_vocbase_t* vocbase = VocbaseManager::manager.lookupVocbaseByHttpRequest(request);
 
   if (vocbase == 0) {
@@ -77,6 +74,7 @@ bool VocbaseManager::setRequestContext(triagens::rest::HttpRequest* request) {
   
   return true;
 }
+  */
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            public
@@ -88,20 +86,9 @@ bool VocbaseManager::setRequestContext(triagens::rest::HttpRequest* request) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add system vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-void VocbaseManager::addSystemVocbase (TRI_vocbase_t* vocbase) {
-  WRITE_LOCKER(_rwLock);
-  _vocbase = vocbase;
-  std::map<std::string, std::string> m;
-  _authCache[vocbase] = m;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief grab an exclusive lock for creation
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 void VocbaseManager::lockCreation () {
   _creationLock.lock();
 }
@@ -113,7 +100,8 @@ void VocbaseManager::lockCreation () {
 void VocbaseManager::unlockCreation () {
   _creationLock.unlock();
 }
-
+*/
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add user vocbase
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +109,7 @@ void VocbaseManager::unlockCreation () {
 void VocbaseManager::addUserVocbase (TRI_vocbase_t* vocbase) {
   {
     WRITE_LOCKER(_rwLock);
-    _vocbases[vocbase->_name] = vocbase;  
+    _databases[vocbase->_name] = vocbase;  
     std::map<std::string, std::string> m;
     _authCache[vocbase] = m;
   }
@@ -136,42 +124,47 @@ void VocbaseManager::addUserVocbase (TRI_vocbase_t* vocbase) {
 void VocbaseManager::closeUserVocbases () {
   WRITE_LOCKER(_rwLock);
   
-  std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();  
-  for (; i != _vocbases.end(); ++i) {
+  std::map<std::string, TRI_vocbase_t*>::iterator i = _databases.begin();  
+  for (; i != _databases.end(); ++i) {
     TRI_vocbase_t* vocbase = (*i).second;
 
     TRI_DestroyVocBase(vocbase, 0);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
   }
   
-  _vocbases.clear();  
+  _databases.clear();  
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up vocbase by name
 ////////////////////////////////////////////////////////////////////////////////
 
+  /*
 TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     return _vocbase;
   }
   
   READ_LOCKER(_rwLock);
-  map<string, TRI_vocbase_s*>::iterator find = _vocbases.find(name);
-  if (find != _vocbases.end()) {
+  map<string, TRI_vocbase_s*>::iterator find = _databases.find(name);
+  if (find != _databases.end()) {
     return find->second;
   } 
   
   return 0;  
 }
+  */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if name and path are not used
 ////////////////////////////////////////////////////////////////////////////////
 
+  /*
 int VocbaseManager::canAddVocbase (std::string const& name, 
                                    std::string const& path,
                                    bool checkPath) {
+  return false;
   if (! isValidName(name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -192,8 +185,8 @@ int VocbaseManager::canAddVocbase (std::string const& name,
   }
   
   // user vocbases
-  std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();
-  for (; i != _vocbases.end(); ++i) {
+  std::map<std::string, TRI_vocbase_t*>::iterator i = _databases.begin();
+  for (; i != _databases.end(); ++i) {
     TRI_vocbase_t* vocbase = i->second;
 
     if (name == string(vocbase->_name)) {
@@ -211,19 +204,21 @@ int VocbaseManager::canAddVocbase (std::string const& name,
   
   return TRI_ERROR_NO_ERROR;
 }
+  */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection name is valid
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 bool VocbaseManager::isValidName (std::string const& name) const {
   return TRI_IsAllowedDatabaseName(false, name.c_str());
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a vocbase by name
 ////////////////////////////////////////////////////////////////////////////////
 
+  /*
 int VocbaseManager::deleteVocbase (string const& name) {
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     // cannot delete _system database
@@ -235,8 +230,8 @@ int VocbaseManager::deleteVocbase (string const& name) {
   { 
     WRITE_LOCKER(_rwLock);
 
-    map<string, TRI_vocbase_s*>::iterator find = _vocbases.find(name);
-    if (find == _vocbases.end()) {
+    map<string, TRI_vocbase_s*>::iterator find = _databases.find(name);
+    if (find == _databases.end()) {
       // database does not exist
       return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
@@ -245,7 +240,7 @@ int VocbaseManager::deleteVocbase (string const& name) {
     vocbase = (*find).second;
 
     // remove from the list
-    _vocbases.erase(name);
+    _databases.erase(name);
   }  
 
   assert(vocbase != 0);
@@ -265,58 +260,11 @@ int VocbaseManager::deleteVocbase (string const& name) {
   int res = TRI_RemoveDirectory(path.c_str());
 
   return res;
+  return TRI_ERROR_NO_ERROR;
 }
+  */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run version check
-/// @return bool             returns false if the version check fails
-////////////////////////////////////////////////////////////////////////////////
-
-bool VocbaseManager::runVersionCheck (TRI_vocbase_t* vocbase, 
-                                      v8::Handle<v8::Context> context) {
-  if (! _startupLoader) {
-    LOGGER_ERROR("Javascript start up loader not found.");
-    return false;
-  }
-  
-  v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  TRI_vocbase_t* orig = (TRI_vocbase_t*) v8g->_vocbase;
-  v8g->_vocbase = vocbase;      
-      
-  v8::Handle<v8::Value> result = _startupLoader->executeGlobalScript(context, "server/version-check.js");
- 
-  v8g->_vocbase = orig;
-  
-  return TRI_ObjectToBoolean(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize foxx
-////////////////////////////////////////////////////////////////////////////////
-
-void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase, 
-                                     v8::Handle<v8::Context> context) {
-  TRI_vocbase_t* orig = 0;
-  {
-    v8::HandleScope scope;      
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-    orig = (TRI_vocbase_t*) v8g->_vocbase;
-    v8g->_vocbase = vocbase;      
-  }
-    
-  v8::HandleScope scope;      
-  TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require(\"internal\").initializeFoxx()"),
-                              v8::String::New("initialize foxx"),
-                              false);
-  {
-    v8::HandleScope scope;
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-    v8g->_vocbase = orig;
-  }  
-}
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add an endpoint
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,75 +282,6 @@ bool VocbaseManager::addEndpoint (std::string const& name,
   }
   
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief look up vocbase by http request
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpRequest* request) {
-  TRI_vocbase_t* vocbase = 0;
-
-  // get database name from request
-  string requestedName = request->databaseName();
- 
-  if (requestedName.empty()) {
-    // no name set in request, use system database name as a fallback
-    requestedName = TRI_VOC_SYSTEM_DATABASE;
-    vocbase = _vocbase;
-  }
-  else if (requestedName == TRI_VOC_SYSTEM_DATABASE) {
-    vocbase = _vocbase;
-  }
- 
-  READ_LOCKER(_rwLock);
-    
-  // check if we have a database with the requested name  
-  // this only needs to be done for non-system databases
-  if (vocbase == 0) {
-    map<string, TRI_vocbase_t*>::iterator it = _vocbases.find(requestedName);
-
-    if (it == _vocbases.end()) {
-      // requested database does not exist
-      return 0;
-    }
-
-    vocbase = (*it).second;
-  }
-
-  assert(vocbase != 0);
-
-  // check if we have an endpoint
-  ConnectionInfo ci = request->connectionInfo();
- 
-  const string& endpoint = ci.endpoint;
-
-  map<string, vector<string> >::const_iterator it2 = _endpoints.find(endpoint);
-
-  if (it2 == _endpoints.end()) {
-    // no user mapping entered for the endpoint. return the requested database
-    return vocbase;  
-  }
-
-  // we have a user-defined mapping for the endpoint
-  const vector<string>& databaseNames = (*it2).second;
-
-  if (databaseNames.size() == 0) {
-    // list of database names is specified but empty. this means no-one will get access
-    return 0;
-  }
-    
-  // finally check if the requested database is in the list of allowed databases for the endpoint
-  vector<string>::const_iterator it3;
-
-  for (it3 = databaseNames.begin(); it3 != databaseNames.end(); ++it3) {
-    if (requestedName == *it3) {
-      return vocbase;
-    }
-  }
-
-  // requested database not available for the endpoint
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,15 +389,15 @@ vector<TRI_vocbase_t*> VocbaseManager::vocbases () {
   
   READ_LOCKER(_rwLock);
 
-  std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();  
+  std::map<std::string, TRI_vocbase_t*>::iterator i = _databases.begin();  
   
-  for (; i != _vocbases.end(); ++i) {
+  for (; i != _databases.end(); ++i) {
     result.push_back(i->second);
   }
   
   return result;
 }
-        
+*/        
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

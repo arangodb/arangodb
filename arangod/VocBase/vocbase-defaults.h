@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server id handling
+/// @brief vocbase database defaults
 ///
 /// @file
 ///
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2013, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_SERVER_ID_H
-#define TRIAGENS_VOC_BASE_SERVER_ID_H 1
+#ifndef TRIAGENS_VOC_BASE_VOCBASE_DEFAULTS_H
+#define TRIAGENS_VOC_BASE_VOCBASE_DEFAULTS_H 1
 
 #include "BasicsC/common.h"
 #include "VocBase/voc-types.h"
@@ -34,6 +34,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_json_s;
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -45,10 +48,20 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mask value for significant bits of server id
+/// @brief default settings
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SERVER_ID_MASK 0x0000FFFFFFFFFFFFULL
+typedef struct TRI_vocbase_defaults_s {
+  TRI_voc_size_t    defaultMaximalSize;
+  bool              removeOnDrop;
+  bool              removeOnCompacted;
+  bool              defaultWaitForSync;
+  bool              forceSyncShapes;
+  bool              forceSyncProperties;
+  bool              requireAuthentication;
+  bool              authenticateSystemOnly;
+}
+TRI_vocbase_defaults_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -64,40 +77,25 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the global server id to 0 on startup
+/// @brief apply default settings
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseServerId (void);
+void TRI_ApplyVocBaseDefaults (struct TRI_vocbase_s*,
+                               TRI_vocbase_defaults_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the global server id
+/// @brief convert defaults into a JSON array
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_server_id_t TRI_GetServerId (void);
+struct TRI_json_s* TRI_JsonVocBaseDefaults (TRI_memory_zone_t*,
+                                            TRI_vocbase_defaults_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief establish the global server id
+/// @brief enhance defaults with data from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_EstablishServerId (const TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads server id from file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReadServerId (char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes server id to file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_WriteServerId (char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a new server id
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_GenerateServerId (void);
+void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t*,
+                                  struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -33,7 +33,6 @@
 #include "BasicsC/threads.h"
 #include "Replication/replication-static.h"
 #include "VocBase/replication-common.h"
-#include "VocBase/server-id.h"
 #include "VocBase/voc-types.h"
 
 #ifdef __cplusplus

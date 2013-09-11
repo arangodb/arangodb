@@ -60,7 +60,6 @@ namespace triagens {
 
         RequestContext (HttpRequest* request) : 
           _request(request) {
-          
         }
 
         virtual ~RequestContext () {

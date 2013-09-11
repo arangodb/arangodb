@@ -37,7 +37,7 @@
 
 #include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -74,7 +74,7 @@ namespace triagens {
                                      const triagens::arango::CollectionNameResolver& resolver,
                                      const TRI_voc_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, TRI_GetServerId(), resolver, true),
+          Transaction<T>(vocbase, TRI_GetIdServer(), resolver, true),
           _cid(cid),
           _accessType(accessType) {
 

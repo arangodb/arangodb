@@ -71,7 +71,7 @@
 #include "VocBase/key-generator.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
@@ -648,7 +648,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
                                                   &attributes, 
                                                   unique, 
                                                   &created, 
-                                                  TRI_GetServerId());
+                                                  TRI_GetIdServer());
 
       if (idx == 0) {
         res = TRI_errno();
@@ -666,7 +666,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
                                                       &attributes, 
                                                       unique, 
                                                       &created, 
-                                                      TRI_GetServerId());
+                                                      TRI_GetIdServer());
 
       if (idx == 0) {
         res = TRI_errno();
@@ -792,7 +792,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
                                                     indexSubstrings, 
                                                     minWordLength, 
                                                     &created, 
-                                                    TRI_GetServerId());
+                                                    TRI_GetIdServer());
 
     if (idx == 0) {
       res = TRI_errno();
@@ -1648,7 +1648,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, 
                                                                     &parameter, 
                                                                     0, 
-                                                                    TRI_GetServerId());
+                                                                    TRI_GetIdServer());
 
   TRI_FreeCollectionInfoOptions(&parameter);
 
@@ -1716,7 +1716,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
                                                 unique, 
                                                 ignoreNull, 
                                                 &created, 
-                                                TRI_GetServerId());
+                                                TRI_GetIdServer());
   }
 
   // .............................................................................
@@ -1741,7 +1741,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
                                                 unique, 
                                                 ignoreNull, 
                                                 &created, 
-                                                TRI_GetServerId());
+                                                TRI_GetIdServer());
   }
 
   // .............................................................................
@@ -1772,7 +1772,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
                                                 unique, 
                                                 ignoreNull, 
                                                 &created, 
-                                                TRI_GetServerId());
+                                                TRI_GetIdServer());
   }
 
   // .............................................................................
@@ -2034,7 +2034,7 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (! vocbase) {
+  if (vocbase == 0) {
     return;
   }
 
@@ -2542,8 +2542,7 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "RELOAD_AUTH()");
   }
 
-  // bool result = TRI_ReloadAuthInfo(vocbase);
-  bool result = VocbaseManager::manager.reloadAuthInfo(vocbase);
+  bool result = TRI_ReloadAuthInfo(vocbase);
 
   return scope.Close(result ? v8::True() : v8::False());
 }
@@ -3410,7 +3409,7 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
 static v8::Handle<v8::Value> JS_ServerIdReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  const string serverId = StringUtils::itoa(TRI_GetServerId());
+  const string serverId = StringUtils::itoa(TRI_GetIdServer());
   return scope.Close(v8::String::New(serverId.c_str(), serverId.size()));
 }
 
@@ -4698,7 +4697,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
-  res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetServerId());
+  res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
@@ -4775,7 +4774,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // inside a write transaction
   // .............................................................................
 
-  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, TRI_GetServerId());
+  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, TRI_GetIdServer());
 
   // .............................................................................
   // outside a write transaction
@@ -4869,7 +4868,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
                                                   count, 
                                                   size, 
                                                   &created, 
-                                                  TRI_GetServerId());
+                                                  TRI_GetIdServer());
 
   if (idx == 0) {
     ReleaseCollection(collection);
@@ -5063,7 +5062,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
                                                               &indexCreated, 
                                                               &errorCode, 
                                                               &errorStr,
-                                                              TRI_GetServerId());
+                                                              TRI_GetIdServer());
 
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
@@ -5479,7 +5478,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
                                                        &attributes, 
                                                        false, 
                                                        &created, 
-                                                       TRI_GetServerId());
+                                                       TRI_GetIdServer());
 
   // .............................................................................
   // Remove the memory allocated to the list of attributes used for the hash index
@@ -6039,7 +6038,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
                                                    base->_info._cid, 
                                                    base->_info._name, 
                                                    json, 
-                                                   TRI_GetServerId()); 
+                                                   TRI_GetIdServer()); 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
   }
@@ -6193,7 +6192,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
                                         collection, 
                                         name.c_str(), 
                                         override,
-                                        TRI_GetServerId());
+                                        TRI_GetIdServer());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot rename collection");
@@ -7607,12 +7606,12 @@ static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "db._useDatabase(<name>)");
   }
 
-  string name = TRI_ObjectToString(argv[0]);
-  
-  TRI_vocbase_t* vocbase = VocbaseManager::manager.lookupVocbaseByName(name);
+  const string name = TRI_ObjectToString(argv[0]);
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+ 
+  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer((TRI_server_t*) v8g->_server, name.c_str());  
 
-  if (vocbase) {
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  if (vocbase != 0) {
     v8g->_vocbase = vocbase;
     
     return scope.Close(WrapVocBase(vocbase));
@@ -7636,89 +7635,20 @@ static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "db._listDatabases()");
   }
   
-  vector<TRI_vocbase_t*> vocbases = VocbaseManager::manager.vocbases();
-
-  v8::Handle<v8::Array> result = v8::Array::New();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
   
-  // add database names
-  const uint32_t n = (uint32_t) vocbases.size();
-  for (uint32_t i = 0;  i < n;  ++i) {    
-    result->Set(i, v8::String::New(vocbases.at(i)->_name));
+  TRI_vector_string_t names;
+  TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
+  TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
+  
+  v8::Handle<v8::Array> result = v8::Array::New();
+  for (size_t i = 0;  i < names._length;  ++i) {    
+    result->Set((uint32_t) i, v8::String::New((char const*) TRI_AtVectorString(&names, i)));
   }
+
+  TRI_DestroyVectorString(&names);
   
   return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save a document
-///
-/// Returns the document id, the revision and the key or v8::ThrowException
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase, 
-                                               std::string const& collectionName, 
-                                               std::string const& key,
-                                               v8::Handle<v8::Object> newDoc) {
-  v8::HandleScope scope;
-  
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, collectionName.c_str());
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 2> trx(col->_vocbase, resolver, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
-  }
-
-  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    ResourceHolder holder;
-    TRI_primary_collection_t* primary = trx.primaryCollection();
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(newDoc, primary->_shaper);
-
-    if (! holder.registerShapedJson(primary->_shaper, shaped)) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
-    }
-
-    TRI_doc_mptr_t document;
-
-    res = trx.read(&document, key.c_str());
-
-    if (res == TRI_ERROR_NO_ERROR && document._key != 0 && document._data != 0) {
-      // previous version of document exists. delete it first
-      trx.deleteDocument(key.c_str(), TRI_DOC_UPDATE_LAST_WRITE, false, 0, 0);
-    }
-
-    res = trx.createDocument((const TRI_voc_key_t) key.c_str(), &document, shaped, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
-    }
-
-    assert(document._key != 0);
-
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-    v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-    result->Set(v8g->_RevKey, V8RevisionId(document._rid));
-    result->Set(v8g->_KeyKey, v8::String::New(document._key));
-    
-    res = trx.finish(res);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    // return OK
-    return scope.Close(result);
-  }
-  
-  TRI_V8_EXCEPTION(scope, res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7755,21 +7685,13 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   }
 
   const string name = TRI_ObjectToString(argv[0]);
-  const string path = string(vocbase->_path) + TRI_DIR_SEPARATOR_STR + "databases" + TRI_DIR_SEPARATOR_STR + name;
 
-  // we need a lock around the checks and the actual creation, otherwise the
-  // same database might be created multiple times
-  VocbaseManager::manager.lockCreation();
-
-  int res = VocbaseManager::manager.canAddVocbase(name, path, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    VocbaseManager::manager.unlockCreation();
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  v8::Local<v8::String> keyName = v8::String::New("name");
-  v8::Local<v8::String> keyPath = v8::String::New("path");
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+ 
+  // get database defaults from server
+  TRI_vocbase_defaults_t defaults;
+  TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
+  
   v8::Local<v8::String> keyRemoveOnDrop = v8::String::New("removeOnDrop");
   v8::Local<v8::String> keyRemoveOnCompacted = v8::String::New("removeOnCompacted");
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
@@ -7778,10 +7700,6 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
-
-  // get database defaults from system vocbase
-  TRI_vocbase_defaults_t defaults;
-  TRI_GetDefaultsVocBase(vocbase, &defaults);
   
   // overwrite database defaults from argv[2]
   if (argv.Length() > 1 && argv[1]->IsObject()) {
@@ -7820,81 +7738,25 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     }
   }
 
-  // now create the directory
-  res = TRI_CreateDirectory(path.c_str());
+  TRI_vocbase_t* database;
+  int res = TRI_CreateDatabaseServer((TRI_server_t*) v8g->_server, name.c_str(), &defaults, &database);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    VocbaseManager::manager.unlockCreation();
     TRI_V8_EXCEPTION(scope, res);
   }
 
+  assert(database != 0);
 
-  // load vocbase with defaults
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(), name.c_str(), &defaults);
-
-  if (! userVocbase) {
-    VocbaseManager::manager.unlockCreation();
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database from path '" + path + "'");
+  if (TRI_V8RunVersionCheck(database, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
+    // version check ok
+    TRI_V8InitialiseFoxx(database, v8::Context::GetCurrent());
+  }
+  else {
+    // version check failed
+    // TODO: report an error
   }
 
-  bool vocbaseOk = VocbaseManager::manager.runVersionCheck(userVocbase, v8::Context::GetCurrent());
-
-  if (! vocbaseOk) {
-    VocbaseManager::manager.unlockCreation();
-    // unload vocbase
-    TRI_DestroyVocBase(userVocbase, 0);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
-    userVocbase = 0;
-
-    // return with error
-    TRI_V8_EXCEPTION_INTERNAL(scope, 
-                              "Database version check failed for '" + name + "'. " + 
-                              "Please insert database manually and restart with the --upgrade option.");
-  }
-
-  LOGGER_INFO("database version check passed for '" << name << "'");
-
-  VocbaseManager::manager.initializeFoxx(userVocbase, v8::Context::GetCurrent());
-
-  // add a database document
-  v8::Handle<v8::Object> newDoc = v8::Object::New();
-  newDoc->Set(keyName, TRI_V8_SYMBOL(name.c_str()));
-  newDoc->Set(keyPath, TRI_V8_SYMBOL(path.c_str()));
-  newDoc->Set(keyRemoveOnDrop, v8::Boolean::New(defaults.removeOnDrop));
-  newDoc->Set(keyRemoveOnCompacted, v8::Boolean::New(defaults.removeOnCompacted));
-  newDoc->Set(keyDefaultMaximalSize, v8::Integer::New(defaults.defaultMaximalSize));
-  newDoc->Set(keyDefaultWaitForSync, v8::Boolean::New(defaults.defaultWaitForSync));
-  newDoc->Set(keyForceSyncShapes, v8::Boolean::New(defaults.forceSyncShapes));
-  newDoc->Set(keyForceSyncProperties, v8::Boolean::New(defaults.forceSyncProperties));
-  newDoc->Set(keyRequireAuthentication, v8::Boolean::New(defaults.requireAuthentication));
-  newDoc->Set(keyAuthenticateSystemOnly, v8::Boolean::New(defaults.authenticateSystemOnly));
-  
-  // exceptions must be caught in the following part because we have
-  // unload the userVocbase
-  v8::TryCatch tryCatch;
-  v8::Handle<v8::Value> result;
-
-  try {
-    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, name, newDoc);
-  }
-  catch (...) {
-  }
-
-  if (tryCatch.HasCaught()) {
-    VocbaseManager::manager.unlockCreation();
-
-    // unload vocbase
-    TRI_DestroyVocBase(userVocbase, 0);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
-    userVocbase = 0;
-    
-    return scope.Close(v8::ThrowException(tryCatch.Exception()));
-  }
-  
-  VocbaseManager::manager.addUserVocbase(userVocbase);
-  VocbaseManager::manager.unlockCreation();
-  
-  return scope.Close(result);
+  return scope.Close(WrapVocBase(database));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7931,7 +7793,9 @@ static v8::Handle<v8::Value> JS_DropUserVocbase (v8::Arguments const& argv) {
 
   // exclusive lock start
   // ---------------------------------------------------------
-
+ 
+  // TODO FIXME
+  /*
   VocbaseManager::manager.lockCreation();
 
   int res = VocbaseManager::manager.deleteVocbase(name);
@@ -7967,6 +7831,7 @@ static v8::Handle<v8::Value> JS_DropUserVocbase (v8::Arguments const& argv) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
+  */
 
   return scope.Close(v8::True());
 }
@@ -8022,6 +7887,8 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
     }
   }
 
+// TODO FIXME
+/*
   bool ok = VocbaseManager::manager.addEndpoint(endpoint, dbNames);
 
   if (! ok) {
@@ -8061,8 +7928,9 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
   const string key(hex, hexLen);
 
   delete[] hex;
-
   return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, key.c_str(), newDoc);
+*/
+return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8628,7 +8496,9 @@ int32_t TRI_GetVocBaseColType () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+                          TRI_server_t* server,
                           TRI_vocbase_t* vocbase,
+                          JSLoader* loader, 
                           const size_t threadNumber) {
   v8::HandleScope scope;
 
@@ -8636,8 +8506,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
+  // register the server
+  v8g->_server = server;
+
   // set the default database
   v8g->_vocbase = vocbase;
+  
+  // register the startup loader
+  v8g->_loader = loader;
 
   // create the regular expressions
   string expr;

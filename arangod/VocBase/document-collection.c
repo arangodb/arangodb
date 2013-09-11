@@ -42,6 +42,7 @@
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
 #include "VocBase/replication-logger.h"
+#include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
 
@@ -288,7 +289,7 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
   *totalSize = sizeof(TRI_doc_deletion_key_marker_t) + keyBodySize + 1;
   
   if (tick == 0) {
-    tick = TRI_NewTickVocBase();
+    tick = TRI_NewTickServer();
   }
 
   marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
@@ -367,7 +368,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   if (tick == 0) {
-    tick = TRI_NewTickVocBase();
+    tick = TRI_NewTickServer();
   }
 
   // copy non-changed data (e.g. key(s)) from old marker into new marker
@@ -434,7 +435,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   *result = NULL;
 
   if (tick == 0) {
-    tick = TRI_NewTickVocBase();
+    tick = TRI_NewTickServer();
   }
 
   // generate the key
@@ -2885,10 +2886,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   bool isVolatile;
 
   if (cid > 0) {
-    TRI_UpdateTickVocBase(cid);
+    TRI_UpdateTickServer(cid);
   }
   else {
-    cid = TRI_NewTickVocBase();
+    cid = TRI_NewTickServer();
   }
   parameter->_cid = cid;
 
@@ -3082,7 +3083,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
     return TRI_ERROR_INTERNAL;
   }
     
-  TRI_UpdateTickVocBase(iid);
+  TRI_UpdateTickServer(iid);
 
   // ...........................................................................
   // CAP CONSTRAINT

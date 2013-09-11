@@ -28,11 +28,11 @@
 #include "VocbaseContext.h"
 
 #include "BasicsC/common.h"
-
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "VocBase/auth.h"
-#include "Logger/Logger.h"
-#include "VocbaseManager.h"
+#include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -57,10 +57,15 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-VocbaseContext::VocbaseContext (triagens::rest::HttpRequest* request, VocbaseManager* manager) : 
+VocbaseContext::VocbaseContext (HttpRequest* request,
+                                TRI_server_t* server, 
+                                TRI_vocbase_t* vocbase) :
   RequestContext(request),
-  _vocbase(0),
-  _manager(manager) {
+  _server(server),
+  _vocbase(vocbase) {
+
+  assert(_server != 0);
+  assert(_vocbase != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +81,7 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            public
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,22 +90,11 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set request user by user name
-////////////////////////////////////////////////////////////////////////////////
-
-void VocbaseContext::setRequestUserByName (string const& name) {
-  // TODO:
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
         
 HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
-  if (! _vocbase) {
-    // no vocbase known
-    return HttpResponse::NOT_FOUND;
-  }
+  assert(_vocbase != 0);
 
   if (! _vocbase->_requireAuthentication) {
     // no authentication required at all
@@ -123,8 +117,47 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
   
   // authentication required
-  // TODO: create a user and add it to the context
-  return _manager->authenticate(_vocbase, _request);
+  
+  
+  bool found;
+  char const* auth = _request->header("authorization", found);
+  
+  if (! found || ! TRI_CaseEqualString2(auth, "basic ", 6)) {
+    return HttpResponse::UNAUTHORIZED;
+  }
+
+  // skip over "basic "
+  auth += 6;
+
+  while (*auth == ' ') {
+    ++auth;
+  }
+
+  string up = StringUtils::decodeBase64(auth);    
+
+  std::string::size_type n = up.find(':', 0);
+  if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+    LOG_TRACE("invalid authentication data found, cannot extract username/password");
+
+    return HttpResponse::BAD;
+  }
+   
+  const string username = up.substr(0, n);
+    
+  LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
+
+  // TODO FIXME: re-add caching
+
+  bool res = TRI_CheckAuthenticationAuthInfo(_vocbase, username.c_str(), up.substr(n + 1).c_str());
+    
+  if (! res) {
+    return HttpResponse::UNAUTHORIZED;
+  }
+
+  // TODO: create a user object for the VocbaseContext
+  _request->setUser(username);
+
+  return HttpResponse::OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
