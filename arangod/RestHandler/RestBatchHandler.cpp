@@ -50,9 +50,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestBatchHandler::RestBatchHandler (HttpRequest* request, 
-                                    TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase),
+RestBatchHandler::RestBatchHandler (HttpRequest* request) 
+  : RestVocbaseBaseHandler(request),
     _partContentType(HttpRequest::getPartContentType()) {
 }
 
@@ -185,7 +184,7 @@ Handler::status_e RestBatchHandler::execute() {
     }
 
     // inject the request context from the framing (batch) request
-    this->_server->setRequestContext(request);
+    this->_server->setRequestContext(request, false);
 
     if (bodyLength > 0) {
       LOGGER_TRACE("part body is " << string(bodyStart, bodyLength));

@@ -180,11 +180,20 @@ int TRI_DropDatabaseServer (TRI_server_t*,
                             char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a database by its name
+/// @brief use a database by its name
+/// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_s* TRI_GetDatabaseByNameServer (TRI_server_t*,
-                                                   char const*);
+struct TRI_vocbase_s* TRI_UseDatabaseServer (TRI_server_t*,
+                                             char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a previously used database
+/// this will decrease the reference-counter for the database
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReleaseDatabaseServer (TRI_server_t*,
+                                struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all database names

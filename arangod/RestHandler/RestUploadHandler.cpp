@@ -51,8 +51,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestUploadHandler::RestUploadHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase) {
+RestUploadHandler::RestUploadHandler (HttpRequest* request)
+  : RestVocbaseBaseHandler(request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

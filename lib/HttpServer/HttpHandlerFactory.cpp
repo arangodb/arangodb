@@ -117,16 +117,6 @@ HttpHandlerFactory::~HttpHandlerFactory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the authentication cache
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpHandlerFactory::flushAuthentication () {
-  WRITE_LOCKER(_authLock);
-
-  _authCache.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -147,7 +137,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
   RequestContext* rc = request->getRequestContext();
 
   if (rc == 0) {
-    if (! setRequestContext(request)) {
+    if (! setRequestContext(request, true)) {
       return HttpResponse::NOT_FOUND;
     }
    
@@ -163,8 +153,9 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
-  return _setContext(request, _setContextData);
+bool HttpHandlerFactory::setRequestContext (HttpRequest* request, 
+                                            bool manageResources) {
+  return _setContext(request, _setContextData, manageResources);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +182,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 #endif
 
   HttpRequest* request = new HttpRequest(info, ptr, length);
-  setRequestContext(request);
+  setRequestContext(request, true);
   
   return request;
 }

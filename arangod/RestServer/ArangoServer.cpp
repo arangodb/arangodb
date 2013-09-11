@@ -108,41 +108,34 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
-                               ApplicationAdminServer* admin,
-                               TRI_vocbase_t* vocbase) {
+                               ApplicationAdminServer* admin) {
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_api");
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
-                            RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestDocumentHandler>::createNoData);
 
   // add "/edge" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
-                            RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestEdgeHandler>::createNoData);
 
   // add "/import" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
-                            RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestImportHandler>::createNoData);
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                            RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestBatchHandler>::createNoData);
 
   // add "/replication" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
-                            RestHandlerCreator<RestReplicationHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestReplicationHandler>::createNoData);
 
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                            RestHandlerCreator<RestUploadHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestUploadHandler>::createNoData);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,8 +143,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
-                                 ApplicationAdminServer* admin,
-                                 TRI_vocbase_t* vocbase) {
+                                 ApplicationAdminServer* admin) {
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_admin");
@@ -174,7 +166,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     requestedName = TRI_VOC_SYSTEM_DATABASE;
   }
 
-  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer(server, requestedName.c_str()); 
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, requestedName.c_str()); 
   
   if (vocbase == 0) {
     // database not found
@@ -224,7 +216,8 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool SetRequestContext (triagens::rest::HttpRequest* request, 
-                               void* data) {
+                               void* data,
+                               bool manageResources) {
 
   TRI_server_t* server   = (TRI_server_t*) data;
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
@@ -234,7 +227,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
     return false;
   }
   
-  request->setRequestContext(new triagens::arango::VocbaseContext(request, server, vocbase));
+  request->setRequestContext(new triagens::arango::VocbaseContext(request, server, vocbase, manageResources));
 
   return true;
 }
@@ -638,10 +631,7 @@ void ArangoServer::buildApplicationServer () {
 
 int ArangoServer::startupServer () {
   v8::HandleScope scope;
-
-  // open all databases
-  openDatabases();
-
+  
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -650,7 +640,12 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
   
-  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  // open all databases
+  openDatabases();
+
+  // fetch the system database
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
   assert(vocbase != 0);
 
 
@@ -699,8 +694,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer, vocbase);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, vocbase);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer);
 
   // add action handler
   handlerFactory->addPrefixHandler(
@@ -764,7 +759,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   openDatabases();
 
   // fetch the system database
-  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
   assert(vocbase != 0);
 
   // load authentication
@@ -1091,7 +1086,7 @@ int ArangoServer::executeRubyConsole () {
   openDatabases();
 
   // fetch the system database
-  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
   assert(vocbase != 0);
 
   // load authentication
