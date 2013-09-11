@@ -31,8 +31,8 @@
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-
 #include "VocBase/marker.h"
+#include "VocBase/server.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -68,7 +68,7 @@ static int CreateJournal (TRI_shape_collection_t* collection,
     return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
   }
 
-  tick = (TRI_voc_tick_t) TRI_NewTickVocBase();
+  tick = (TRI_voc_tick_t) TRI_NewTickServer();
   isVolatile = collection->base._info._isVolatile;
 
   if (isVolatile) {
@@ -397,7 +397,7 @@ TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
   }
 
   parameter->_type = TRI_COL_TYPE_SHAPE;
-  parameter->_cid  = TRI_NewTickVocBase();
+  parameter->_cid  = TRI_NewTickServer();
   parameter->_waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
 
   collection = TRI_CreateCollection(vocbase, &shape->base, path, parameter);

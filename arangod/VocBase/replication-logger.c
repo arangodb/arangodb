@@ -37,7 +37,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -274,7 +274,7 @@ static void FreeCap (TRI_replication_logger_t* logger) {
 
     TRI_DropIndex2DocumentCollection((TRI_document_collection_t*) primary,
                                      logger->_cap->_iid,
-                                     TRI_GetServerId());
+                                     TRI_GetIdServer());
 
     logger->_cap = NULL;
   }
@@ -325,7 +325,7 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
                                                   maxEvents,
                                                   maxEventsSize,
                                                   NULL,
-                                                  TRI_GetServerId());
+                                                  TRI_GetIdServer());
 
   if (idx == NULL) {
     LOG_WARNING("creating cap constraint for '%s' failed", TRI_COL_NAME_REPLICATION);
@@ -907,7 +907,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
     
     parameter._isSystem = true;
 
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, TRI_GetServerId());
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, TRI_GetIdServer());
     TRI_FreeCollectionInfoOptions(&parameter);
     
     if (collection != NULL) {
@@ -923,7 +923,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
   cid = collection->_cid;
 
-  trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_GetServerId(), false, 0.0, false);
+  trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), false, 0.0, false);
 
   if (trx == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1373,7 +1373,7 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   logger->_configuration._maxEventsSize    = (uint64_t) TRI_REPLICATION_LOGGER_SIZE_DEFAULT;
   logger->_configuration._autoStart        = false; 
 
-  logger->_localServerId                   = TRI_GetServerId();
+  logger->_localServerId                   = TRI_GetIdServer();
   logger->_databaseName                    = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
 
   assert(logger->_databaseName != NULL);
@@ -1805,7 +1805,7 @@ TRI_json_t* TRI_JsonReplicationLogger (TRI_replication_logger_t* logger) {
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
 
-    serverId = TRI_GetServerId();  
+    serverId = TRI_GetIdServer();  
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "server", server);

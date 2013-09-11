@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicsC/logging.h"
-
+#include "VocBase/server.h"
 #include "VocBase/shadow-data.h"
 
 // -----------------------------------------------------------------------------
@@ -63,7 +63,7 @@ static TRI_shadow_t* CreateShadow (const void* const data) {
 
   shadow->_rc        = 1;
   shadow->_data      = (void*) data;
-  shadow->_id        = TRI_NewTickVocBase();
+  shadow->_id        = TRI_NewTickServer();
   shadow->_deleted   = false;
   shadow->_type      = SHADOW_TRANSIENT;
 

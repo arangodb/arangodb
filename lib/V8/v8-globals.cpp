@@ -109,7 +109,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     IndexIdRegex(),
 
     _currentTransaction(0),
-    _vocbase(0) 
+    _server(0),
+    _vocbase(0),
+    _loader(0) 
 {
   v8::HandleScope scope;
 

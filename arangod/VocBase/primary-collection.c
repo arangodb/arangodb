@@ -32,8 +32,8 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-
 #include "VocBase/key-generator.h"
+#include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -276,7 +276,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
   collection = &primary->base;
 
-  fid = (TRI_voc_fid_t) TRI_NewTickVocBase();
+  fid = (TRI_voc_fid_t) TRI_NewTickServer();
 
   if (collection->_info._isVolatile) {
     // in-memory collection

@@ -36,8 +36,8 @@
 #include "BasicsC/memory-map.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
-
 #include "VocBase/marker.h"
+#include "VocBase/server.h"
 
 
 // #define DEBUG_DATAFILE 1
@@ -120,7 +120,7 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
     return true;
   }
 
-  return TRI_msync(datafile->_fd, mmHandle, begin, end);
+  return TRI_MSync(datafile->_fd, mmHandle, begin, end);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -604,7 +604,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
         return false;
       }
 
-      TRI_UpdateTickVocBase(marker->_tick);
+      TRI_UpdateTickServer(marker->_tick);
     }
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
@@ -1311,7 +1311,7 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  bool forceSync) {
   if (marker->_tick == 0) {
     // set a tick value for the marker
-    marker->_tick = TRI_NewTickVocBase();
+    marker->_tick = TRI_NewTickServer();
   }
 
   if (datafile->isPhysical(datafile)) {

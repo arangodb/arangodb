@@ -1119,7 +1119,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+          _trx = TRI_CreateTransaction(_vocbase,
                                        _generatingServer,
                                        _replicate, 
                                        _timeout, 

@@ -46,6 +46,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-logger.h"
+#include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -72,7 +73,7 @@ void TRI_InitIndex (TRI_index_t* idx,
                     bool needsFullCoverage) {
   assert(idx != NULL);
 
-  idx->_iid               = TRI_NewTickVocBase();
+  idx->_iid               = TRI_NewTickServer();
   idx->_type              = type;
   idx->_collection        = primary;
   idx->_unique            = unique;

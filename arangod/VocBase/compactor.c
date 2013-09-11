@@ -37,6 +37,7 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/marker.h"
+#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
@@ -1141,7 +1142,7 @@ int TRI_InsertBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  blocker._id      = TRI_NewTickVocBase();
+  blocker._id      = TRI_NewTickServer();
   blocker._expires = TRI_microtime() + lifetime;
 
   LockCompaction(vocbase);

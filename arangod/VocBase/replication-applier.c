@@ -37,6 +37,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -900,7 +901,7 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
 
-    serverId = TRI_GetServerId();  
+    serverId = TRI_GetIdServer();  
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "server", server);

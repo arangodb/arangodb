@@ -36,25 +36,6 @@
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default auth info
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_t* DefaultAuthInfo = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -320,14 +301,6 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the default authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DefaultAuthInfo (TRI_vocbase_t* vocbase) {
-  DefaultAuthInfo = vocbase;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info
 /// this must be executed after the underlying _users collection is modified
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,111 +341,12 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether some externally cached authentication info 
-/// should be flushed, by querying the internal flush flag
-/// checking the information may also change the state of the flag
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_FlushAuthenticationAuthInfo () {
-  bool res;
-
-  TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-  res = DefaultAuthInfo->_authInfoFlush;
-  TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-
-  if (res) {
-    TRI_WriteLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-    DefaultAuthInfo->_authInfoFlush = false;
-    TRI_WriteUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckAuthenticationAuthInfo (char const* username,
+bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
+                                      char const* username,
                                       char const* password) {
-  TRI_vocbase_auth_t* auth;
-  bool res;
-  char* hex;
-  char* sha256;
-  size_t hexLen;
-  size_t len;
-  size_t sha256Len;
-
-  assert(DefaultAuthInfo);
-
-  // look up username
-  TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-  auth = TRI_LookupByKeyAssociativePointer(&DefaultAuthInfo->_authInfo, username);
-
-  if (auth == NULL || ! auth->_active) {
-    TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-    return false;
-  }
-
-  // convert password
-  res = false;
-
-  if (TRI_IsPrefixString(auth->_password, "$1$")) {
-    if (strlen(auth->_password) < 12 || auth->_password[11] != '$') {
-      LOG_WARNING("found corrupted password for user '%s'", username);
-    }
-    else {
-      char* salted;
-
-      len = 8 + strlen(password);
-      salted = TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false);
-      memcpy(salted, auth->_password + 3, 8);
-      memcpy(salted + 8, password, len - 8);
-      salted[len] = '\0';
-
-      sha256 = TRI_SHA256String(salted, len, &sha256Len);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, salted);
-
-      hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
-
-      LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
-                username,
-                auth->_password + 12,
-                hex);
-
-      res = TRI_EqualString(auth->_password + 12, hex);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
-    }
-  }
-  else {
-    len = strlen(password);
-    sha256 = TRI_SHA256String(password, len, &sha256Len);
-
-    hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
-
-    LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
-              username,
-              auth->_password + 12,
-              hex);
-
-    res = TRI_EqualString(auth->_password, hex);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
-  }
-
-  TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
-                                       char const* username,
-                                       char const* password) {
   TRI_vocbase_auth_t* auth;
   bool res;
   char* hex;
@@ -487,7 +361,7 @@ bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   auth = TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username);
 
-  if (auth == 0 || ! auth->_active) {
+  if (auth == NULL || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }

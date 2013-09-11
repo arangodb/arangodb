@@ -121,8 +121,9 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationMR::ApplicationMR (string const& binaryPath)
+ApplicationMR::ApplicationMR (TRI_server_t* server)
   : ApplicationFeature("MRuby"),
+    _server(server),
     _startupPath(),
     _startupModules(),
     _actionPath(),
@@ -137,6 +138,8 @@ ApplicationMR::ApplicationMR (string const& binaryPath)
     _freeContexts(),
     _dirtyContexts(),
     _stopping(0) {
+
+  assert(_server != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -45,10 +45,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Flush memory mapped file to disk
+// @brief flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
+int TRI_FlushMMFile (int fileDescriptor, 
+                     void** mmHandle, 
+                     void* startingAddress, 
+                     size_t numOfBytesToFlush, 
+                     int flags) {
 
   // ...........................................................................
   // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
@@ -89,14 +93,18 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
   return TRI_ERROR_SYS_ERROR;
 }
 
-int TRI_MMFile(void* memoryAddress,
-               size_t numOfBytesToInitialise,
-               int memoryProtection,
-               int flags,
-               int fileDescriptor,
-               void** mmHandle,
-               int64_t offset,
-               void** result) {
+////////////////////////////////////////////////////////////////////////////////
+// @brief memory map a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFile (void* memoryAddress,
+                size_t numOfBytesToInitialise,
+                int memoryProtection,
+                int flags,
+                int fileDescriptor,
+                void** mmHandle,
+                int64_t offset,
+                void** result) {
 
   off_t offsetRetyped = (off_t)(offset);
 
@@ -111,11 +119,18 @@ int TRI_MMFile(void* memoryAddress,
   if (errno == ENOMEM) {
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
   }
+
   return TRI_ERROR_SYS_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief unmap a memory-mapped file
+////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap, int fileDescriptor, void** mmHandle) {
+int TRI_UNMMFile (void* memoryAddress, 
+                  size_t numOfBytesToUnMap, 
+                  int fileDescriptor, 
+                  void** mmHandle) {
   int result;
 
   assert(*mmHandle == NULL);
@@ -133,8 +148,15 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap, int fileDescript
   return TRI_ERROR_SYS_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief protect a region in a memory-mapped file
+////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,  int flags,  int fileDescriptor, void** mmHandle) {
+int TRI_ProtectMMFile (void* memoryAddress, 
+                       size_t numOfBytesToProtect,  
+                       int flags,  
+                       int fileDescriptor, 
+                       void** mmHandle) {
   int result;
 
   assert(*mmHandle == NULL);
@@ -144,8 +166,10 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,  int flag
   if (result == 0) {
     return TRI_ERROR_NO_ERROR;
   }
+
   return TRI_ERROR_SYS_ERROR;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

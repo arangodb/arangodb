@@ -30,6 +30,7 @@
 
 #include "V8/v8-globals.h"
 
+#include "V8/JSLoader.h"
 #include "BasicsC/json.h"
 
 // -----------------------------------------------------------------------------
@@ -188,7 +189,22 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj);
 /// the modification for windows version -- since there isn't one yet!
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Array> TRI_V8PathList (std::string const& modules);
+v8::Handle<v8::Array> TRI_V8PathList (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run version check
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_V8RunVersionCheck (void*,
+                            triagens::arango::JSLoader*,
+                            v8::Handle<v8::Context>);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize foxx
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_V8InitialiseFoxx (void*, 
+                           v8::Handle<v8::Context>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils function inside the global variable

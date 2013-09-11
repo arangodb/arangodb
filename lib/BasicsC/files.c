@@ -667,7 +667,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   filter = TRI_Concatenate2String(path, "\\*");
-  if (!filter) {
+  if (! filter) {
     return result;
   }
 
@@ -683,7 +683,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
       TRI_PushBackVectorString(&result, TRI_DuplicateString(fd.name));
     }
   }
-  while(_findnext(handle, &fd) != -1);
+  while (_findnext(handle, &fd) != -1);
 
   _findclose(handle);
 
@@ -749,7 +749,7 @@ int TRI_RenameFile (char const* old, char const* filename) {
 #ifdef _WIN32
   BOOL moveResult = 0;
   moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
-  if (!moveResult) {
+  if (! moveResult) {
     DWORD errorCode = GetLastError();
     res = -1;
   }

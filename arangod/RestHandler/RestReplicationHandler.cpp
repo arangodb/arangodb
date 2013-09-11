@@ -40,7 +40,7 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-logger.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 
 using namespace std;
@@ -1386,7 +1386,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 void RestReplicationHandler::handleCommandInventory () {
   assert(_vocbase->_replicationLogger != 0);
 
-  TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
   
   // include system collections?
   bool includeSystem = false;
@@ -1572,7 +1572,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
                                              cid);
 
   if (dirName != 0) {
-    char* parameterName = TRI_Concatenate2File(dirName, TRI_COL_PARAMETER_FILE);
+    char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
 
     if (parameterName != 0) {
       int iterations = 0;
@@ -1923,7 +1923,7 @@ int RestReplicationHandler::processRestoreData (TRI_voc_cid_t cid,
                                                 TRI_server_id_t generatingServer,
                                                 string& errorMsg) {
 
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase, 
                                                  generatingServer,
                                                  false, 
                                                  0.0, 
@@ -2472,7 +2472,7 @@ void RestReplicationHandler::handleCommandServerId () {
 
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
-  const string serverId = StringUtils::itoa(TRI_GetServerId());
+  const string serverId = StringUtils::itoa(TRI_GetIdServer());
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
                        &result, 
                        "serverId", 

@@ -141,18 +141,19 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request,
   : RestBaseHandler(request),
     _vocbase(vocbase),
     _resolver(vocbase),
-    _databaseName(request->databaseName()),
     _timing(),
     _timingResult(RES_FAIL) {
 
   RequestContext* rc = request->getRequestContext();
   _context = static_cast<VocbaseContext*>(rc);
+
+  assert(_context != 0);
+
+  // overwrite vocbase. TODO FIXME: move into init list 
+  _vocbase = _context->getVocbase();
+  assert(_vocbase != 0);
   
-  // overwrite vocbase 
-  if (_context && _context->getVocbase()) {
-    _vocbase = _context->getVocbase();
-    _resolver = _context->getVocbase();
-  }  
+  _resolver = _context->getVocbase();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +205,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
   TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
                                                                           name.c_str(), 
                                                                           type,
-                                                                          TRI_GetServerId());
+                                                                          TRI_GetIdServer());
 
   if (collection == 0) {
     generateTransactionError(name, TRI_errno());
@@ -233,7 +234,7 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
-    _response->setHeader("location", 8, string("/_db/" + _databaseName + DOCUMENT_PATH + "/" + handle));
+    _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
   }
 
   // _id and _key are safe and do not need to be JSON-encoded

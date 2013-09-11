@@ -31,7 +31,7 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/headers.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT
@@ -136,7 +136,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     vocbase = primary->base._vocbase;
     cid = primary->base._info._cid;
 
-    trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_GetServerId(), true, 0.0, false);
+    trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), true, 0.0, false);
 
     if (trx == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;

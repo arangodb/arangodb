@@ -35,6 +35,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/server.h"
 #include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"
 
@@ -1065,7 +1066,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
     LOG_ERROR("cannot create collection '%s', path is not a directory", path);
 
@@ -1187,7 +1188,7 @@ TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
   char* filename;
   char* error;
 
-  filename = TRI_Concatenate2File(collection->_path, TRI_COL_PARAMETER_FILE);
+  filename = TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
 
   error = NULL;
 
@@ -1363,7 +1364,7 @@ int TRI_LoadCollectionInfo (char const* path,
   parameter->_isVolatile = false;
 
   // find parameter file
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
 
   if (filename == NULL) {
     LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
@@ -1489,7 +1490,7 @@ int TRI_SaveCollectionInfo (char const* path,
   char* filename;
   bool ok;
   
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
   json = TRI_CreateJsonCollectionInfo(info);
 
   // save json info to file
@@ -1691,7 +1692,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   freeCol = false;
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
     LOG_ERROR("cannot open '%s', not a directory or not found", path);
 
@@ -1935,7 +1936,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         char* fidString;
         char* jname;
 
-        fidString = TRI_StringUInt64(TRI_NewTickVocBase());
+        fidString = TRI_StringUInt64(TRI_NewTickServer());
         jname = TRI_Concatenate3String("datafile-", fidString, ".db.new");
         TRI_FreeString(TRI_CORE_MEM_ZONE, fidString);
 
@@ -1962,7 +1963,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         TRI_df_footer_marker_t footer;
         TRI_voc_tick_t tick;
 
-        tick = TRI_NewTickVocBase();
+        tick = TRI_NewTickServer();
 
         // datafile header
         TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
@@ -1998,7 +1999,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
               assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
                      marker->_type == TRI_DOC_MARKER_KEY_EDGE);
 
-              tick = TRI_NewTickVocBase();
+              tick = TRI_NewTickServer();
 
               // copy the old marker
               buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, TRI_DF_ALIGN_BLOCK(marker->_size), true);
@@ -2028,7 +2029,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
           }
         }
         
-        tick = TRI_NewTickVocBase();
+        tick = TRI_NewTickServer();
 
         // datafile footer
         TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
