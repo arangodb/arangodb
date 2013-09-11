@@ -1550,9 +1550,9 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   
@@ -2112,7 +2112,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // treat the argument as an object from now on
@@ -2534,7 +2534,7 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (argv.Length() != 0) {
@@ -2556,7 +2556,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (argv.Length() < 1) {
@@ -2636,9 +2636,9 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2658,9 +2658,9 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2684,9 +2684,9 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   TRI_general_cursor_t* cursor;
@@ -2715,10 +2715,11 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   v8::Handle<v8::Value> value;
   TRI_general_cursor_t* cursor;
@@ -2783,9 +2784,9 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2812,10 +2813,11 @@ static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv)
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   v8::Handle<v8::Array> rows = v8::Array::New();
   TRI_general_cursor_t* cursor;
@@ -2884,10 +2886,11 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   TRI_general_cursor_t* cursor;
 
@@ -2915,10 +2918,11 @@ static v8::Handle<v8::Value> JS_GetExtraGeneralCursor (v8::Arguments const& argv
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   TRI_general_cursor_t* cursor;
 
@@ -2950,10 +2954,11 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   TRI_general_cursor_t* cursor;
 
@@ -2982,10 +2987,11 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   TRI_general_cursor_t* cursor;
 
@@ -3015,9 +3021,9 @@ static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (! vocbase) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   TRI_EndUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -3037,9 +3043,9 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // get the id
@@ -3080,11 +3086,11 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
+  
   // get the id
   v8::Handle<v8::Value> idArg = argv[0]->ToString();
 
@@ -3125,9 +3131,13 @@ static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& arg
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
   int res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
@@ -3151,9 +3161,13 @@ static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
   int res = TRI_StopReplicationLogger(vocbase->_replicationLogger);
@@ -3177,9 +3191,13 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
   
   TRI_json_t* json = TRI_JsonReplicationLogger(vocbase->_replicationLogger);
@@ -3203,8 +3221,12 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
   
-  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
   
   if (argv.Length() == 0) {
@@ -3421,8 +3443,12 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
   
-  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
   
   if (argv.Length() == 0) {
@@ -3571,9 +3597,13 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
   
   if (argv.Length() > 1) {
@@ -3611,9 +3641,13 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
   int res = TRI_StopReplicationApplier(vocbase->_replicationApplier, true);
@@ -3637,9 +3671,13 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
   TRI_json_t* json = TRI_JsonReplicationApplier(vocbase->_replicationApplier);
@@ -3666,9 +3704,13 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
-  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  if (vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
   
   int res = TRI_ForgetReplicationApplier(vocbase->_replicationApplier);
@@ -3709,7 +3751,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // get the query string
@@ -3819,9 +3861,9 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // get the query string
@@ -3928,10 +3970,11 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
+  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
 
   // get the query string
   v8::Handle<v8::Value> queryArg = argv[0];
@@ -6914,7 +6957,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // convert the JavaScript string to a string
@@ -7021,7 +7064,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // expecting one argument
@@ -7075,7 +7118,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
@@ -7546,6 +7589,10 @@ static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
   
   return scope.Close(v8::String::New(vocbase->_path));
 }
@@ -7562,6 +7609,10 @@ static v8::Handle<v8::Value> JS_NameDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
   
   return scope.Close(v8::String::New(vocbase->_name));
 }
@@ -7676,7 +7727,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
  
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (! vocbase->_isSystem) {
@@ -7781,7 +7832,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
   
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (! vocbase->_isSystem) {
@@ -7818,9 +7869,9 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
   
   if (vocbase == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
+  
   if (! vocbase->_isSystem) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
