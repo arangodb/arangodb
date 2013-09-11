@@ -35,7 +35,7 @@
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the request parameters are invalid or if a database with the  specified name or path already exists. ",
+                            "reason": "is returned if the request parameters are invalid or if a database with the  specified name already exists. If the request is carried out from any other database than the <em>_system</em> database, this error will be returned, too. ",
                             "code": "400"
                         }
                     ],
@@ -43,7 +43,7 @@
                     "notes": "Creates a new database <br><br>Note: creating a new database is only possible from within the <em>_system</em> database. <br><br>",
                     "summary": "creates a new database",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/database\n{\"name\":\"example\"}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/database\n{\"name\":\"example\"}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "createsANewDatabase"
                 }
             ],
@@ -56,6 +56,10 @@
                         {
                             "reason": "is returned if the database was dropped successfully. ",
                             "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the request is carried out from any other database than the  <em>_system</em> database. ",
+                            "code": "400"
                         },
                         {
                             "reason": "is returned if the database could not be found. ",
@@ -74,7 +78,7 @@
                     "notes": "Deletes the database along with all data stored in it. <br><br>Note: dropping a database is only possible from within the <em>_system</em> database. The <em>_system</em> database itself cannot be dropped. <br><br>",
                     "summary": "drops an existing database",
                     "httpMethod": "DELETE",
-                    "examples": "<br><br><pre><code class=\"json\" ></code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/database/example\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "dropsAnExistingDatabase"
                 }
             ],
