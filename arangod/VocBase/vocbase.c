@@ -1174,7 +1174,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
                                 char const* name,
                                 TRI_vocbase_defaults_t const* defaults,
                                 bool iterateMarkers) {
-  TRI_vocbase_defaults_t ownDefaults;
   TRI_vocbase_t* vocbase;
   int res;
 
@@ -1201,7 +1200,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   vocbase->_isSystem         = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE);
 
   // use the defaults provided
-  TRI_ApplyVocBaseDefaults(vocbase, &ownDefaults);
+  TRI_ApplyVocBaseDefaults(vocbase, defaults);
   
   // init AQL functions
   vocbase->_functions = TRI_CreateFunctionsAql();
