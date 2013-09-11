@@ -7529,7 +7529,7 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 /// Returns the server version string.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_VersionServer (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   return scope.Close(v8::String::New(TRI_VERSION));
@@ -7543,7 +7543,7 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
 /// Returns the path.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_PathVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7559,7 +7559,7 @@ static v8::Handle<v8::Value> JS_PathVocbase (v8::Arguments const& argv) {
 /// Returns the name of the current database.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_NameDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7576,7 +7576,7 @@ static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
 /// database.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_IsSystemVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_IsSystemDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7599,7 +7599,7 @@ static v8::Handle<v8::Value> JS_IsSystemVocbase (v8::Arguments const& argv) {
 /// credentials.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
@@ -7628,7 +7628,7 @@ static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
 /// Returns the list of all databases.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
@@ -7667,7 +7667,7 @@ static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
 /// Returns the new database as an object.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1) {
@@ -7772,7 +7772,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
 /// default database. The default database itself cannot be dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DropUserVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
@@ -7790,48 +7790,13 @@ static v8::Handle<v8::Value> JS_DropUserVocbase (v8::Arguments const& argv) {
   }
   
   const string name = TRI_ObjectToString(argv[0]);
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
 
-  // exclusive lock start
-  // ---------------------------------------------------------
- 
-  // TODO FIXME
-  /*
-  VocbaseManager::manager.lockCreation();
+  int res = TRI_DropDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
 
-  int res = VocbaseManager::manager.deleteVocbase(name);
-
-  if (res == TRI_ERROR_NO_ERROR) { 
-    TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_DATABASES);
-
-    if (col == 0) {
-      VocbaseManager::manager.unlockCreation();
-      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-    }
-
-    CollectionNameResolver resolver(col->_vocbase);
-    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
-
-    res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      VocbaseManager::manager.unlockCreation();
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    trx.deleteDocument(name.c_str(), TRI_DOC_UPDATE_LAST_WRITE, false, 0, 0);
-    
-    res = trx.finish(res);
-  }
-
-  VocbaseManager::manager.unlockCreation();
-  
-  // exclusive lock end
-  // ---------------------------------------------------------
-    
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
-  */
 
   return scope.Close(v8::True());
 }
@@ -8567,14 +8532,26 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(rt, "_document", JS_DocumentVocbase);
   TRI_AddMethodVocbase(rt, "_exists", JS_ExistsVocbase);
-  TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemVocbase);
-  TRI_AddMethodVocbase(rt, "_name", JS_NameVocbase);
-  TRI_AddMethodVocbase(rt, "_path", JS_PathVocbase);
   TRI_AddMethodVocbase(rt, "_remove", JS_RemoveVocbase);
   TRI_AddMethodVocbase(rt, "_replace", JS_ReplaceVocbase);
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
-  TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
 
+  TRI_AddMethodVocbase(rt, "_version", JS_VersionServer);
+
+  TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemDatabase);
+  TRI_AddMethodVocbase(rt, "_name", JS_NameDatabase);
+  TRI_AddMethodVocbase(rt, "_path", JS_PathDatabase);
+  TRI_AddMethodVocbase(rt, "_createDatabase", JS_CreateDatabase);
+  TRI_AddMethodVocbase(rt, "_dropDatabase", JS_DropDatabase);
+  TRI_AddMethodVocbase(rt, "_listDatabases", JS_ListDatabases);
+  TRI_AddMethodVocbase(rt, "_useDatabase", JS_UseDatabase);
+ /*  TODO: FIXME
+  TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase, true);  
+  TRI_AddGlobalFunctionVocbase(context, "LIST_DATABASES", JS_ListVocbases, true);  
+  TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase, true);
+  TRI_AddGlobalFunctionVocbase(context, "DROP_DATABASE", JS_DropUserVocbase, true);
+  TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint, true);
+*/
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
 
@@ -8736,12 +8713,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
-  
-  TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase, true);  
-  TRI_AddGlobalFunctionVocbase(context, "LIST_DATABASES", JS_ListVocbases, true);  
-  TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase, true);
-  TRI_AddGlobalFunctionVocbase(context, "DROP_DATABASE", JS_DropUserVocbase, true);
-  TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint, true);
   
   // .............................................................................
   // create global variables

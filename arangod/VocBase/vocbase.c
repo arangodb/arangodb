@@ -1205,6 +1205,7 @@ void TRI_SetupReplicationVocBase (bool disableLogger,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* TRI_OpenVocBase (char const* path, 
+                                TRI_voc_tick_t id,
                                 char const* name,
                                 TRI_vocbase_defaults_t const* defaults,
                                 bool iterateMarkers) {
@@ -1228,6 +1229,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
     return NULL;
   }
 
+  vocbase->_id               = id;
   vocbase->_path             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   vocbase->_name             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name); 
   vocbase->_isSystem         = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE);
