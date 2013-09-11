@@ -7721,7 +7721,7 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ///
 /// Note that even if the database is created successfully, there will be no
 /// change of the current database to the new database. Changing the current
-/// database must explicitly be requested by using the @ref JS_UseVocbase
+/// database must explicitly be requested by using the @ref JS_UseDatabase
 /// method.
 ///
 /// Returns the new database as an object.
