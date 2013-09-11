@@ -318,6 +318,7 @@ struct TRI_vocbase_defaults_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
+  TRI_voc_tick_t             _id;
   char*                      _path;                // path to the data directory
 
   TRI_voc_size_t             _defaultMaximalSize;
@@ -493,7 +494,8 @@ void TRI_SetupReplicationVocBase (bool,
 /// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const*, 
+TRI_vocbase_t* TRI_OpenVocBase (char const*,
+                                TRI_voc_tick_t,
                                 char const*,
                                 struct TRI_vocbase_defaults_s const*,
                                 bool);

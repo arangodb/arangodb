@@ -173,17 +173,15 @@ extern "C" {
 ///   invalid type.
 /// - 1228: @LIT{database not found}
 ///   Will be raised when a non-existing database is accessed.
-/// - 1229: @LIT{database name already used}
-///   Will be raised when a duplicate database name is used.
-/// - 1230: @LIT{database name invalid}
+/// - 1229: @LIT{database name invalid}
 ///   Will be raised when an invalid database name is used.
-/// - 1231: @LIT{operation only allowed in system database}
+/// - 1230: @LIT{operation only allowed in system database}
 ///   Will be raised when an operation is requested in a database other than
 ///   the system database.
-/// - 1232: @LIT{database directory is locked}
+/// - 1231: @LIT{database directory is locked}
 ///   Will be raised when the server's database directory is locked (mainly
 ///   because another ArangoDB instance is already running).
-/// - 1233: @LIT{cannot lock database directory}
+/// - 1232: @LIT{cannot lock database directory}
 ///   Will be raised when the server cannot lock the database directory on
 ///   startup.
 /// - 1300: @LIT{datafile full}
@@ -1230,27 +1228,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATABASE_NOT_FOUND                               (1228)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1229: ERROR_ARANGO_DATABASE_NAME_USED
-///
-/// database name already used
-///
-/// Will be raised when a duplicate database name is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATABASE_NAME_USED                               (1229)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1230: ERROR_ARANGO_DATABASE_NAME_INVALID
+/// @brief 1229: ERROR_ARANGO_DATABASE_NAME_INVALID
 ///
 /// database name invalid
 ///
 /// Will be raised when an invalid database name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1230)
+#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1229)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1231: ERROR_ARANGO_USE_SYSTEM_DATABASE
+/// @brief 1230: ERROR_ARANGO_USE_SYSTEM_DATABASE
 ///
 /// operation only allowed in system database
 ///
@@ -1258,10 +1246,10 @@ void TRI_InitialiseErrorMessages (void);
 /// system database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1231)
+#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1230)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1232: ERROR_ARANGO_DATADIR_LOCKED
+/// @brief 1231: ERROR_ARANGO_DATADIR_LOCKED
 ///
 /// database directory is locked
 ///
@@ -1269,10 +1257,10 @@ void TRI_InitialiseErrorMessages (void);
 /// because another ArangoDB instance is already running).
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1232)
+#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1231)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1233: ERROR_ARANGO_DATADIR_UNLOCKABLE
+/// @brief 1232: ERROR_ARANGO_DATADIR_UNLOCKABLE
 ///
 /// cannot lock database directory
 ///
@@ -1280,7 +1268,7 @@ void TRI_InitialiseErrorMessages (void);
 /// startup.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1233)
+#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1232)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

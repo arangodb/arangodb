@@ -81,15 +81,15 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationScheduler* applicationScheduler,
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
-                                                      HttpHandlerFactory::flush_fptr flushAuthentication,
-                                                      HttpHandlerFactory::context_fptr setContext)
+                                                      HttpHandlerFactory::context_fptr setContext,
+                                                      void* setContextData)
   : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _setContext(setContext),
-    _flushAuthentication(flushAuthentication),
+    _setContextData(setContextData),
     _handlerFactory(0),
     _servers(),
     _endpointList(),
@@ -317,8 +317,8 @@ bool ApplicationEndpointServer::prepare () {
   _endpointList.dump();
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
-                                           _flushAuthentication, 
-                                           _setContext);
+                                           _setContext,
+                                           _setContextData);
 
   return true;
 }

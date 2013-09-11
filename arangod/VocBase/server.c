@@ -499,6 +499,8 @@ static int OpenDatabases (TRI_server_t* server) {
     TRI_json_t* json;
     TRI_json_t const* deletedJson;
     TRI_json_t const* nameJson;
+    TRI_json_t const* idJson;
+    TRI_voc_tick_t id;
     TRI_vocbase_defaults_t defaults;
     char const* name;
     char* databaseDirectory;
@@ -598,6 +600,20 @@ static int OpenDatabases (TRI_server_t* server) {
         continue;
       }
     }
+    
+    idJson = TRI_LookupArrayJson(json, "id");
+
+    if (! TRI_IsStringJson(idJson)) {
+      LOG_ERROR("database directory '%s' does not contain a valid parameters file", 
+                databaseDirectory);
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      // skip this database
+      continue;
+    }
+
+    id = (TRI_voc_tick_t) TRI_UInt64String(idJson->_value._string.data);
 
     nameJson = TRI_LookupArrayJson(json, "name");
 
@@ -635,7 +651,7 @@ static int OpenDatabases (TRI_server_t* server) {
     // .............................................................................
 
     // try to open this database
-    vocbase = TRI_OpenVocBase(databaseDirectory, databaseName, &defaults, server->_wasShutdownCleanly);
+    vocbase = TRI_OpenVocBase(databaseDirectory, id, databaseName, &defaults, server->_wasShutdownCleanly);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
@@ -934,20 +950,19 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
 /// @brief create a new database directory and return its name
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateDatabaseDirectory (TRI_server_t* server, 
+static int CreateDatabaseDirectory (TRI_server_t* server,
+                                    TRI_voc_tick_t tick,
                                     char const* databaseName,
                                     TRI_vocbase_defaults_t const* defaults,
                                     char** name) {
   char* tickString;
   char* dname;
   char* file;
-  TRI_voc_tick_t tick;
   int res;
   
   assert(server != NULL);
   assert(databaseName != NULL);
 
-  tick = TRI_NewTickServer();
   tickString = TRI_StringUInt64(tick);
 
   if (tickString == NULL) {
@@ -1122,7 +1137,7 @@ static int InitDatabases (TRI_server_t* server) {
 
       // no databases found, i.e. there is no system database!
       // create a database for the system database
-      res = CreateDatabaseDirectory(server, TRI_VOC_SYSTEM_DATABASE, &server->_defaults, &name);
+      res = CreateDatabaseDirectory(server, TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE, &server->_defaults, &name);
 
       if (res == TRI_ERROR_NO_ERROR) {
         if (TRI_PushBackVectorString(&names, name) != TRI_ERROR_NO_ERROR) {
@@ -1505,6 +1520,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
                               TRI_vocbase_defaults_t const* defaults,
                               TRI_vocbase_t** database) {
   TRI_vocbase_t* vocbase;
+  TRI_voc_tick_t tick;
   char* file;
   char* path;
   int res;
@@ -1528,7 +1544,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
         TRI_ReadUnlockReadWriteLock(&server->_lock);
         TRI_UnlockMutex(&server->_createLock);
 
-        return TRI_ERROR_ARANGO_DATABASE_NAME_USED;
+        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
     }
   }
@@ -1536,9 +1552,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   // name not yet in use, release the read lock
   TRI_ReadUnlockReadWriteLock(&server->_lock);
 
-
   // create the database directory
-  res = CreateDatabaseDirectory(server, name, defaults, &file);
+  tick = TRI_NewTickServer();
+  res = CreateDatabaseDirectory(server, tick, name, defaults, &file);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&server->_createLock);
@@ -1549,7 +1565,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   path = TRI_Concatenate2File(server->_databasePath, file);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
-  vocbase = TRI_OpenVocBase(path, name, defaults, false);
+  vocbase = TRI_OpenVocBase(path, tick, name, defaults, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
   if (vocbase == NULL) {
@@ -1581,6 +1597,37 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   *database = vocbase;
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an existing database
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DropDatabaseServer (TRI_server_t* server,
+                            char const* name) {
+  TRI_vocbase_t* vocbase;
+  int res;
+
+  if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
+    return TRI_ERROR_FORBIDDEN;
+  }
+    
+  TRI_WriteLockReadWriteLock(&server->_lock);
+
+  vocbase = TRI_RemoveKeyAssociativePointer(&server->_databases, name);
+  if (vocbase == NULL) {
+    res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  else {
+    assert(! vocbase->_isSystem);
+
+    res = SaveDatabaseParameters(vocbase->_id, name, true, &server->_defaults, vocbase->_path);
+    // TODO FIXME: perform actual drop
+  }
+
+  TRI_WriteUnlockReadWriteLock(&server->_lock);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

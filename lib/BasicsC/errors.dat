@@ -106,11 +106,10 @@ ERROR_ARANGO_OUT_OF_KEYS,1225,"out of keys","Will be raised when a key generator
 ERROR_ARANGO_DOCUMENT_KEY_MISSING,1226,"missing document key","Will be raised when a document key is missing."
 ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised when there is an attempt to create a document with an invalid type."
 ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a non-existing database is accessed."
-ERROR_ARANGO_DATABASE_NAME_USED,1229,"database name already used","Will be raised when a duplicate database name is used."
-ERROR_ARANGO_DATABASE_NAME_INVALID,1230,"database name invalid","Will be raised when an invalid database name is used."
-ERROR_ARANGO_USE_SYSTEM_DATABASE,1231,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
-ERROR_ARANGO_DATADIR_LOCKED,1232,"database directory is locked","Will be raised when the server's database directory is locked (mainly because another ArangoDB instance is already running)."
-ERROR_ARANGO_DATADIR_UNLOCKABLE,1233,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
+ERROR_ARANGO_DATABASE_NAME_INVALID,1229,"database name invalid","Will be raised when an invalid database name is used."
+ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
+ERROR_ARANGO_DATADIR_LOCKED,1231,"database directory is locked","Will be raised when the server's database directory is locked (mainly because another ArangoDB instance is already running)."
+ERROR_ARANGO_DATADIR_UNLOCKABLE,1232,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
 
 ################################################################################
 ## ArangoDB storage errors
