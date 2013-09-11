@@ -7865,18 +7865,16 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a new endpoint
+/// @brief configure a new endpoint
 ///
-/// @FUN{ADD_ENDPOINT}
-///
-/// Returns the document id, the revision and the key.
+/// @FUN{CONFIGURE_ENDPOINT}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "ADD_ENDPOINT(<endpoint>, <names>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "CONFIGURE_ENDPOINT(<endpoint>, <names>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7889,11 +7887,12 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  // TODO:check endpoint string
-  string endpoint = TRI_ObjectToString(argv[0]);
+  // TODO: check endpoint string
+  const string endpoint = TRI_ObjectToString(argv[0]);
 
   // validate and register dbNames
-  vector<string> dbNames;
+  TRI_vector_string_t dbNames;
+  TRI_InitVectorString(&dbNames, TRI_CORE_MEM_ZONE);
 
   if (argv.Length() > 1) {
     if (! argv[1]->IsArray()) {
@@ -7907,7 +7906,8 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
       v8::Handle<v8::Value> name = list->Get(i);
 
       if (name->IsString()) {
-        dbNames.push_back(TRI_ObjectToString(name));
+        const string dbName = TRI_ObjectToString(name);
+        TRI_PushBackVectorString(&dbNames, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, dbName.c_str()));
       }
       else {
         TRI_V8_EXCEPTION_PARAMETER(scope, "<names> must be a list of strings");
@@ -7915,50 +7915,12 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
     }
   }
 
-// TODO FIXME
-/*
-  bool ok = VocbaseManager::manager.addEndpoint(endpoint, dbNames);
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  TRI_StoreEndpointServer((TRI_server_t*) v8g->_server, endpoint.c_str(), &dbNames);
 
-  if (! ok) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "invalid endpoint");
-  }
+  TRI_DestroyVectorString(&dbNames);
 
-  v8::Local<v8::String> keyEndpoint = v8::String::New("endpoint");
-  v8::Local<v8::String> keyDbNames  = v8::String::New("dbNames");
-
-  // add endpoint document
-  v8::Handle<v8::Object> newDoc = v8::Object::New();
-  newDoc->Set(keyEndpoint, TRI_V8_STRING(endpoint.c_str()));
-  newDoc->Set(keyDbNames, argv[1]);
-
-  // create md5 of endpoint
-  char* hash = 0;
-  size_t hashLen;
-
-  SslInterface::sslMD5(endpoint.c_str(), endpoint.size(), hash, hashLen);
-
-  if (hash == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // as hex
-  char* hex = 0;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-  
-  delete[] hash;
-
-  if (hex == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  const string key(hex, hexLen);
-
-  delete[] hex;
-  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, key.c_str(), newDoc);
-*/
-return scope.Close(v8::True());
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8768,6 +8730,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FORMAT_DATETIME", JS_formatDatetime);
   TRI_AddGlobalFunctionVocbase(context, "PARSE_DATETIME", JS_parseDatetime);
 
+  TRI_AddGlobalFunctionVocbase(context, "CONFIGURE_ENDPOINT", JS_ConfigureEndpoint, true);
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   

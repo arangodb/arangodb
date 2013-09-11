@@ -31,14 +31,13 @@
 #include "BasicsC/common.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
+#include "BasicsC/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct TRI_vector_string_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -55,8 +54,11 @@ struct TRI_vector_string_s;
 
 typedef struct TRI_server_s {
   TRI_associative_pointer_t   _databases;
-  TRI_read_write_lock_t       _lock;
+  TRI_read_write_lock_t       _databasesLock;
   TRI_mutex_t                 _createLock;
+
+  TRI_associative_pointer_t   _endpoints;
+  TRI_read_write_lock_t       _endpointsLock;
 
   TRI_vocbase_defaults_t      _defaults;
 
@@ -72,6 +74,17 @@ typedef struct TRI_server_s {
   bool                        _wasShutdownCleanly;
 }
 TRI_server_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint declaration for a server
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_server_endpoint_s {
+  char*                       _endpoint;
+  TRI_vector_string_t         _databases;
+}
+TRI_server_endpoint_t;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief page size
@@ -200,7 +213,7 @@ void TRI_ReleaseDatabaseServer (TRI_server_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetDatabaseNamesServer (TRI_server_t*,
-                                struct TRI_vector_string_s*);
+                                TRI_vector_string_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the defaults into the target
@@ -258,6 +271,14 @@ TRI_voc_tick_t TRI_CurrentTickServer (void);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store a setting for an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StoreEndpointServer (TRI_server_t*,
+                             char const*,
+                             TRI_vector_string_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)

@@ -124,23 +124,11 @@ static TRI_server_id_t ServerId;
 /// @brief hashes the database name
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKeyDatabaseName (TRI_associative_pointer_t* array, 
-                                     void const* key) {
-  char const* k = (char const*) key;
-
-  return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the database name
-////////////////////////////////////////////////////////////////////////////////
-
 static uint64_t HashElementDatabaseName (TRI_associative_pointer_t* array, 
                                          void const* element) {
   TRI_vocbase_t const* e = element;
-  char const* name = e->_name;
 
-  return TRI_FnvHashString(name);
+  return TRI_FnvHashString((char const*) e->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,6 +147,44 @@ static bool EqualKeyDatabaseName (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                endpoint functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes the endpoint 
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementEndpoint (TRI_associative_pointer_t* array, 
+                                     void const* element) {
+  TRI_server_endpoint_t const* e = element;
+
+  return TRI_FnvHashString((char const*) e->_endpoint);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares an endpoint name and an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualKeyEndpoint (TRI_associative_pointer_t* array, 
+                              void const* key, 
+                              void const* element) {
+  char const* k = (char const*) key;
+  TRI_server_endpoint_t const* e = element;
+
+  return TRI_EqualString(k, e->_endpoint);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    tick functions
@@ -713,7 +739,7 @@ static int OpenDatabases (TRI_server_t* server) {
 static int CloseDatabases (TRI_server_t* server) {
   size_t i, n;
  
-  TRI_WriteLockReadWriteLock(&server->_lock);
+  TRI_WriteLockReadWriteLock(&server->_databasesLock);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -728,7 +754,7 @@ static int CloseDatabases (TRI_server_t* server) {
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&server->_lock);
+  TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -797,7 +823,42 @@ static int GetDatabases (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief move collections from the main data directory into the system 
+/// @brief move the VERSION file from the main data directory into the _system 
+/// database subdirectory
+////////////////////////////////////////////////////////////////////////////////
+
+static int MoveVersionFile (TRI_server_t* server,
+                            char const* systemName) {
+  char* oldName;
+  char* targetName;
+  int res;
+
+  oldName = TRI_Concatenate2File(server->_basePath, "VERSION");
+
+  if (oldName == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  targetName = TRI_Concatenate3File(server->_databasePath, systemName, "VERSION");
+  
+  if (targetName == NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+  if (TRI_ExistsFile(oldName)) {
+    res = TRI_RenameFile(oldName, targetName);
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, targetName);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move collections from the main data directory into the _system 
 /// database subdirectory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -811,6 +872,9 @@ static int MoveOldCollections (TRI_server_t* server,
 
   assert(server != NULL);
   assert(systemName != NULL);
+
+  // first move the VERSION file
+  MoveVersionFile(server, systemName);
 
   res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
@@ -1268,14 +1332,25 @@ int TRI_InitServer (TRI_server_t* server,
   
   TRI_InitAssociativePointer(&server->_databases,
                              TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyDatabaseName,
+                             &TRI_HashStringKeyAssociativePointer,
                              HashElementDatabaseName,
                              EqualKeyDatabaseName,
                              NULL);
   
-  TRI_InitReadWriteLock(&server->_lock);
-
+  TRI_InitReadWriteLock(&server->_databasesLock);
+  
   TRI_InitMutex(&server->_createLock);
+
+
+  TRI_InitAssociativePointer(&server->_endpoints,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             &TRI_HashStringKeyAssociativePointer,
+                             HashElementEndpoint,
+                             EqualKeyEndpoint,
+                             NULL);
+  
+  TRI_InitReadWriteLock(&server->_endpointsLock);
+
   
   server->_disableReplicationLoggers  = disableLoggers;
   server->_disableReplicationAppliers = disableAppliers;
@@ -1293,8 +1368,11 @@ int TRI_InitServer (TRI_server_t* server,
 void TRI_DestroyServer (TRI_server_t* server) {
   CloseDatabases(server);
 
+  TRI_DestroyReadWriteLock(&server->_endpointsLock);
+  TRI_DestroyAssociativePointer(&server->_endpoints);
+
   TRI_DestroyMutex(&server->_createLock);
-  TRI_DestroyReadWriteLock(&server->_lock);
+  TRI_DestroyReadWriteLock(&server->_databasesLock);
   TRI_DestroyAssociativePointer(&server->_databases);
 
   TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
@@ -1549,7 +1627,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   TRI_LockMutex(&server->_createLock);
 
-  TRI_ReadLockReadWriteLock(&server->_lock);
+  TRI_ReadLockReadWriteLock(&server->_databasesLock);
 
   n = server->_databases._nrAlloc;
   for (i = 0; i < n; ++i) {
@@ -1558,7 +1636,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     if (vocbase != NULL) {
       if (TRI_EqualString(name, vocbase->_name)) {
         // name already in use
-        TRI_ReadUnlockReadWriteLock(&server->_lock);
+        TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
         TRI_UnlockMutex(&server->_createLock);
 
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
@@ -1567,7 +1645,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   }
 
   // name not yet in use, release the read lock
-  TRI_ReadUnlockReadWriteLock(&server->_lock);
+  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
 
   // create the database directory
   tick = TRI_NewTickServer();
@@ -1612,9 +1690,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   // increase reference counter
   TRI_UseVocBase(vocbase);
 
-  TRI_WriteLockReadWriteLock(&server->_lock);
+  TRI_WriteLockReadWriteLock(&server->_databasesLock);
   TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
-  TRI_WriteUnlockReadWriteLock(&server->_lock);
+  TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
   
   TRI_UnlockMutex(&server->_createLock);
 
@@ -1637,7 +1715,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_FORBIDDEN;
   }
     
-  TRI_WriteLockReadWriteLock(&server->_lock);
+  TRI_WriteLockReadWriteLock(&server->_databasesLock);
 
   vocbase = TRI_RemoveKeyAssociativePointer(&server->_databases, name);
 
@@ -1660,7 +1738,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&server->_lock);
+  TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
 
 
   // move perform the actual deletion
@@ -1696,7 +1774,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
                                       char const* name) {
   TRI_vocbase_t* vocbase;
 
-  TRI_ReadLockReadWriteLock(&server->_lock);
+  TRI_ReadLockReadWriteLock(&server->_databasesLock);
 
   vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
 
@@ -1707,7 +1785,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
     assert(result == true);
   }
 
-  TRI_ReadUnlockReadWriteLock(&server->_lock);
+  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
 
   return vocbase;
 }
@@ -1732,7 +1810,7 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
 
   size_t i, n;
 
-  TRI_ReadLockReadWriteLock(&server->_lock);
+  TRI_ReadLockReadWriteLock(&server->_databasesLock);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -1742,7 +1820,7 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
       TRI_PushBackVectorString(names, TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name));
     }
   }
-  TRI_ReadUnlockReadWriteLock(&server->_lock);
+  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1830,6 +1908,65 @@ TRI_voc_tick_t TRI_CurrentTickServer () {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+static TRI_server_endpoint_t* CreateEndpoint (char const* endpoint,
+                                              TRI_vector_string_t const* databases) {
+  TRI_server_endpoint_t* ep;
+
+  ep = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_server_endpoint_t), false);
+
+  if (ep == NULL) {
+    return NULL;
+  }
+
+  ep->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+
+  if (ep->_endpoint == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, ep);
+
+    return NULL;
+  }
+
+  TRI_InitVectorString(&ep->_databases, TRI_CORE_MEM_ZONE);
+  TRI_CopyDataVectorString(TRI_CORE_MEM_ZONE, &ep->_databases, databases);
+
+  return ep;
+}
+
+static void FreeEndpoint (TRI_server_endpoint_t* ep) {
+  TRI_FreeString(TRI_CORE_MEM_ZONE, ep->_endpoint);
+  TRI_DestroyVectorString(&ep->_databases);
+
+  TRI_Free(TRI_CORE_MEM_ZONE, ep);
+}
+
+int TRI_StoreEndpointServer (TRI_server_t* server,
+                             char const* endpoint,
+                             TRI_vector_string_t const* databases) {
+  TRI_server_endpoint_t* ep;
+
+  TRI_WriteLockReadWriteLock(&server->_endpointsLock);
+
+  ep = TRI_RemoveKeyAssociativePointer(&server->_endpoints, endpoint);
+
+  if (ep != NULL) {
+    FreeEndpoint(ep);
+  }
+
+  ep = CreateEndpoint(endpoint, databases);
+
+  if (ep == NULL) {
+    TRI_WriteUnlockReadWriteLock(&server->_endpointsLock);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  TRI_InsertKeyAssociativePointer(&server->_endpoints, ep->_endpoint, ep, false);
+
+  TRI_WriteUnlockReadWriteLock(&server->_endpointsLock);
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
