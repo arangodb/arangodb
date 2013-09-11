@@ -50,7 +50,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
+RestBatchHandler::RestBatchHandler (HttpRequest* request, 
+                                    TRI_vocbase_t* vocbase)
   : RestVocbaseBaseHandler(request, vocbase),
     _partContentType(HttpRequest::getPartContentType()) {
 }
@@ -177,6 +178,15 @@ Handler::status_e RestBatchHandler::execute() {
     LOGGER_TRACE("part header is " << string(headerStart, headerLength));
     HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength);
 
+    if (request == 0) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY); 
+
+      return Handler::HANDLER_FAILED;
+    }
+
+    // inject the request context from the framing (batch) request
+    this->_server->setRequestContext(request);
+
     if (bodyLength > 0) {
       LOGGER_TRACE("part body is " << string(bodyStart, bodyLength));
       request->setBody(bodyStart, bodyLength);
@@ -189,6 +199,7 @@ Handler::status_e RestBatchHandler::execute() {
 
 
     HttpHandler* handler = _server->createHandler(request);
+
     if (! handler) {
       delete request;
 
@@ -235,6 +246,7 @@ Handler::status_e RestBatchHandler::execute() {
     }
 
     const HttpResponse::HttpResponseCode code = partResponse->responseCode();
+
     if (code >= 400) {
       // error
       ++errors;

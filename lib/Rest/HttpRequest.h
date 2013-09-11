@@ -285,7 +285,7 @@ namespace triagens {
 /// @brief add request context
 ////////////////////////////////////////////////////////////////////////////////
 
-        RequestContext* getRequestContext () {
+        RequestContext* getRequestContext () const {
           return _requestContext;
         }
         
