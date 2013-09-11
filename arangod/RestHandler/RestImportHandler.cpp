@@ -54,7 +54,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestImportHandler::RestImportHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
+RestImportHandler::RestImportHandler (HttpRequest* request, 
+                                      TRI_vocbase_t* vocbase)
   : RestVocbaseBaseHandler(request, vocbase) {
 }
 
@@ -94,29 +95,8 @@ string const& RestImportHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestImportHandler::execute () {
-
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
-
-  // prepare logging
-  static LoggerData::Task const logCreate(DOCUMENT_IMPORT_PATH + " [create]");
-  static LoggerData::Task const logIllegal(DOCUMENT_IMPORT_PATH + " [illegal]");
-
-  LoggerData::Task const * task = &logCreate;
-
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
-    default: task = &logIllegal; break;
-  }
-
-  _timing << *task;
-
-  // if ifdef is not used, the compiler will complain
-#ifdef TRI_ENABLE_LOGGER
-  LOGGER_REQUEST_IN_START_I(_timing, "");
-#endif
-
-  bool res = false;
 
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
@@ -129,22 +109,19 @@ HttpHandler::status_e RestImportHandler::execute () {
            documentType == "array" ||
            documentType == "list" ||
            documentType == "auto")) {
-        res = createFromJson(documentType);
+        createFromJson(documentType);
       }
       else {
         // CSV
-        res = createFromKeyValueList();
+        createFromKeyValueList();
       }
       break;
     }
 
     default:
-      res = false;
       generateNotImplemented("ILLEGAL " + DOCUMENT_IMPORT_PATH);
       break;
   }
-
-  _timingResult = res ? RES_ERR : RES_OK;
 
   // this handler is done
   return HANDLER_DONE;

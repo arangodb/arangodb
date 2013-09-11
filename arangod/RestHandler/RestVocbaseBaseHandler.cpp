@@ -58,34 +58,10 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief result RES-OK
-////////////////////////////////////////////////////////////////////////////////
-
-LoggerData::Extra const RestVocbaseBaseHandler::RES_OK;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result RES-ERR
-////////////////////////////////////////////////////////////////////////////////
-
-LoggerData::Extra const RestVocbaseBaseHandler::RES_ERR;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result RES-ERR
-////////////////////////////////////////////////////////////////////////////////
-
-LoggerData::Extra const RestVocbaseBaseHandler::RES_FAIL;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
 ////////////////////////////////////////////////////////////////////////////////
 
 string RestVocbaseBaseHandler::BATCH_PATH           = "/_api/batch";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection path
-////////////////////////////////////////////////////////////////////////////////
-
-string RestVocbaseBaseHandler::COLLECTION_PATH      = "/_api/collection";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document path
@@ -134,24 +110,15 @@ string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, 
-                                                TRI_vocbase_t* vocbase)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request,
+                                                TRI_vocbase_t* vocbase) 
   : RestBaseHandler(request),
-    _vocbase(vocbase),
-    _resolver(vocbase),
-    _timing(),
-    _timingResult(RES_FAIL) {
+    _context(static_cast<VocbaseContext*>(request->getRequestContext())),
+    _vocbase(_context->getVocbase()),
+    _resolver(_vocbase) {
 
-  RequestContext* rc = request->getRequestContext();
-  _context = static_cast<VocbaseContext*>(rc);
-
-  assert(_context != 0);
-
-  // overwrite vocbase. TODO FIXME: move into init list 
-  _vocbase = _context->getVocbase();
-  assert(_vocbase != 0);
-  
-  _resolver = _context->getVocbase();
+  // this is to ensure we have not forgotten anything
+  assert(_vocbase == vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +126,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
-  LOGGER_REQUEST_IN_END_I(_timing,  _timingResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,7 +387,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       }
       else {
         // collection name specified but collection not found
-        generateError(HttpResponse::NOT_FOUND, res, "collection " + COLLECTION_PATH + "/" + collectionName + " not found");
+        generateError(HttpResponse::NOT_FOUND, res, "collection '" + collectionName + "' not found");
       }
       return;
 

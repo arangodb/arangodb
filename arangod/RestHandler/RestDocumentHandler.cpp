@@ -97,49 +97,17 @@ string const& RestDocumentHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestDocumentHandler::execute () {
-
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
-  // prepare logging
-  static LoggerData::Task const logCreate(DOCUMENT_PATH + " [create]");
-  static LoggerData::Task const logRead(DOCUMENT_PATH + " [read]");
-  static LoggerData::Task const logUpdate(DOCUMENT_PATH + " [update]");
-  static LoggerData::Task const logDelete(DOCUMENT_PATH + " [delete]");
-  static LoggerData::Task const logHead(DOCUMENT_PATH + " [head]");
-  static LoggerData::Task const logOptions(DOCUMENT_PATH + " [options]");
-  static LoggerData::Task const logPatch(DOCUMENT_PATH + " [patch]");
-  static LoggerData::Task const logIllegal(DOCUMENT_PATH + " [illegal]");
-
-  LoggerData::Task const * task = &logCreate;
-
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: task = &logDelete; break;
-    case HttpRequest::HTTP_REQUEST_GET: task = &logRead; break;
-    case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
-    case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
-    case HttpRequest::HTTP_REQUEST_OPTIONS: task = &logOptions; break;
-    case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
-    case HttpRequest::HTTP_REQUEST_PUT: task = &logUpdate; break;
-    case HttpRequest::HTTP_REQUEST_PATCH: task = &logUpdate; break;
-  }
-
-  _timing << *task;
-#ifdef TRI_ENABLE_LOGGER
-  // if logger is not activated, the compiler will complain, so enclose it in ifdef
-  LOGGER_REQUEST_IN_START_I(_timing, "");
-#endif
-
   // execute one of the CRUD methods
-  bool res = false;
-
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
-    case HttpRequest::HTTP_REQUEST_GET:    res = readDocument(); break;
-    case HttpRequest::HTTP_REQUEST_HEAD:   res = checkDocument(); break;
-    case HttpRequest::HTTP_REQUEST_POST:   res = createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT:    res = replaceDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PATCH:  res = updateDocument(); break;
+    case HttpRequest::HTTP_REQUEST_DELETE: deleteDocument(); break;
+    case HttpRequest::HTTP_REQUEST_GET:    readDocument(); break;
+    case HttpRequest::HTTP_REQUEST_HEAD:   checkDocument(); break;
+    case HttpRequest::HTTP_REQUEST_POST:   createDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT:    replaceDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PATCH:  updateDocument(); break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
@@ -147,8 +115,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
       break;
     }
   }
-
-  _timingResult = res ? RES_ERR : RES_OK;
 
   // this handler is done
   return HANDLER_DONE;
