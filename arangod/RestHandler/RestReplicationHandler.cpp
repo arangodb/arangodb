@@ -69,9 +69,8 @@ const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestReplicationHandler::RestReplicationHandler (HttpRequest* request, 
-                                                TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase) {
+RestReplicationHandler::RestReplicationHandler (HttpRequest* request)  
+  : RestVocbaseBaseHandler(request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

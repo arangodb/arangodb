@@ -533,7 +533,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   init._canUnload   = true;
  
   // check for special system collection names 
-  if (TRI_IsSystemCollectionName(name)) {
+  if (TRI_IsSystemNameCollection(name)) {
     // a few system collections have special behavior
     if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
         TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
@@ -828,10 +828,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
                                   TRI_vocbase_col_t* collection) {
   TRI_col_type_e type;
   
-  if (! TRI_CanUseVocBase(vocbase)) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  } 
-
   // .............................................................................
   // read lock
   // .............................................................................
@@ -1058,100 +1054,6 @@ void TRI_FreeCollectionsVocBase (TRI_vector_pointer_t* collections) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether or not the vocbase can be used
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CanUseVocBase (TRI_vocbase_t* vocbase) {
-  bool canUse;
-
-  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  canUse = vocbase->_canUse;
-  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-  return canUse;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a collection name is allowed
-///
-/// Returns true if the name is allowed and false otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is allowed
-  for (ptr = name;  *ptr;  ++ptr) {
-    if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
-      else {
-        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
-    }
-    else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (! ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database name is allowed
-///
-/// Returns true if the name is allowed and false otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedDatabaseName (bool allowSystem, char const* name) {
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is allowed
-  for (ptr = name;  *ptr;  ++ptr) {
-    if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z');
-      }
-      else {
-        ok = ('a' <= *ptr && *ptr <= 'z');
-      }
-    }
-    else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z');
-    }
-
-    if (! ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1197,7 +1099,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   vocbase->_path             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   vocbase->_name             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name); 
   vocbase->_authInfoLoaded   = false;
-  vocbase->_isSystem         = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE);
 
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(vocbase, defaults);
@@ -1227,6 +1128,10 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     return NULL;
   }
 
+  // init usage info
+  TRI_InitSpin(&vocbase->_usage._lock);
+  vocbase->_usage._refCount  = 0;
+  vocbase->_usage._isDeleted = false;
 
   TRI_InitCompactorVocBase(vocbase);
 
@@ -1256,7 +1161,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
                              NULL);
   
   TRI_InitReadWriteLock(&vocbase->_inventoryLock);
-
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
   TRI_InitReadWriteLock(&vocbase->_lock);
   vocbase->_authInfoFlush = true;
@@ -1288,6 +1192,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
+    TRI_DestroySpin(&vocbase->_usage._lock);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_set_errno(res);
 
@@ -1365,8 +1270,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     }
   }
 
-  vocbase->_canUse = true;
-    
   // we are done
   return vocbase;
 }
@@ -1375,8 +1278,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 /// @brief closes a database and all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
-                         TRI_vector_pointer_t* reuseCollections) {
+void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t collections;
   size_t i;
   
@@ -1384,7 +1286,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
   // cannot use this vocbase from now on
-  vocbase->_canUse = false;
   TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -1434,9 +1335,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
 
     collection = (TRI_vocbase_col_t*) vocbase->_deadCollections._buffer[i];
 
-    if (vocbase->_isSystem) {
-      TRI_FreeCollectionVocBase(collection);
-    }
+    TRI_FreeCollectionVocBase(collection);
   }
 
   // free collections
@@ -1445,15 +1344,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
 
-    if (reuseCollections != 0) {
-      // the pointer to the collection is transferred to the other vector,
-      // which is then responsible to free the collection later
-      TRI_PushBackVectorPointer(reuseCollections, collection);
-    }
-    else {
-      // instantly free the collection
-      TRI_FreeCollectionVocBase(collection);
-    }
+    TRI_FreeCollectionVocBase(collection);
   }
 
   // free the auth info
@@ -1474,17 +1365,17 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
 
   // free the cursors
   TRI_FreeShadowStore(vocbase->_cursors);
-
+  
   // destroy locks
+  TRI_DestroySpin(&vocbase->_usage._lock);
   TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
   TRI_DestroyReadWriteLock(&vocbase->_lock);
   TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
 
-  // free the filename path
+  // free name and path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
-
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
 }
 
@@ -1633,11 +1524,6 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  if (! vocbase->_canUse) {
-    TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-    return NULL;
-  }
-
   found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 
   if (found == NULL) {
@@ -1669,12 +1555,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 
   // otherwise we'll look up the collection by name
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  if (vocbase->_canUse) {
-    found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
-  }
-  else {
-    found = NULL;
-  }
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   return found;
@@ -1688,12 +1569,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_
   TRI_vocbase_col_t* found;
   
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  if (vocbase->_canUse) {
-    found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
-  }
-  else {
-    found = NULL;
-  }
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   return found;
@@ -1710,12 +1586,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
   TRI_vocbase_col_t* found;
   
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  if (vocbase->_canUse) {
-    found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
-  }
-  else {
-    found = NULL;
-  }
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   if (found != NULL) {
@@ -1765,16 +1636,11 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   name = parameter->_name;
 
   // check that the name does not contain any strange characters
-  if (! TRI_IsAllowedCollectionName(parameter->_isSystem, name)) {
+  if (! TRI_IsAllowedNameCollection(parameter->_isSystem, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
 
     return NULL;
   }
-
-  if (! TRI_CanUseVocBase(vocbase)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return NULL;
-  } 
 
   type = (TRI_col_type_e) parameter->_type;
 
@@ -1944,10 +1810,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
                                TRI_server_id_t generatingServer) {
   int res;
   
-  if (! TRI_CanUseVocBase(vocbase)) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  } 
-
   if (! collection->_canDrop) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
   }
@@ -2092,10 +1954,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   char* oldName;
   int res;
   
-  if (! TRI_CanUseVocBase(vocbase)) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  } 
-  
   if (! collection->_canRename) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
   }
@@ -2120,22 +1978,22 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   if (! override) {
     bool isSystem;
-    isSystem = TRI_IsSystemCollectionName(oldName);
+    isSystem = TRI_IsSystemNameCollection(oldName);
 
-    if (isSystem && ! TRI_IsSystemCollectionName(newName)) {
+    if (isSystem && ! TRI_IsSystemNameCollection(newName)) {
       // a system collection shall not be renamed to a non-system collection name
       TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
-    else if (! isSystem && TRI_IsSystemCollectionName(newName)) {
+    else if (! isSystem && TRI_IsSystemNameCollection(newName)) {
       // a non-system collection shall not be renamed to a system collection name
       TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
-    if (! TRI_IsAllowedCollectionName(isSystem, newName)) {
+    if (! TRI_IsAllowedNameCollection(isSystem, newName)) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -2357,6 +2215,119 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, 
                                    TRI_vocbase_col_t* collection) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the reference counter for a database
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
+  bool result;
+
+  TRI_LockSpin(&vocbase->_usage._lock);
+  if (vocbase->_usage._isDeleted) {
+    result = false;
+  }
+  else {
+    ++vocbase->_usage._refCount;
+    result = true;
+  }
+  TRI_UnlockSpin(&vocbase->_usage._lock);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the reference counter for a database
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
+  TRI_LockSpin(&vocbase->_usage._lock);
+  --vocbase->_usage._refCount;
+  TRI_UnlockSpin(&vocbase->_usage._lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief marks a database as deleted
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
+  bool result;
+
+  TRI_LockSpin(&vocbase->_usage._lock);
+  if (vocbase->_usage._isDeleted) {
+    result = false;
+  }
+  else {
+    vocbase->_usage._isDeleted = true;
+    result = true;
+  }
+  TRI_UnlockSpin(&vocbase->_usage._lock);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether any references are held on a database
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsUsedVocBase (TRI_vocbase_t* vocbase) {
+  bool result;
+
+  TRI_LockSpin(&vocbase->_usage._lock);
+  result = (vocbase->_usage._refCount > 0);
+  TRI_UnlockSpin(&vocbase->_usage._lock);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether the database is the system database
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSystemVocBase (TRI_vocbase_t* vocbase) {
+  return TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a database name is allowed
+///
+/// Returns true if the name is allowed and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedNameVocBase (bool allowSystem, 
+                               char const* name) {
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is allowed
+  for (ptr = name;  *ptr;  ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z');
+      }
+      else {
+        ok = ('a' <= *ptr && *ptr <= 'z');
+      }
+    }
+    else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z');
+    }
+
+    if (! ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

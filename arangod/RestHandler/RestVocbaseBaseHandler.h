@@ -132,8 +132,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVocbaseBaseHandler (rest::HttpRequest*,
-                                struct TRI_vocbase_s*);
+        RestVocbaseBaseHandler (rest::HttpRequest*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

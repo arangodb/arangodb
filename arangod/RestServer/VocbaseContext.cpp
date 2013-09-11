@@ -59,10 +59,12 @@ using namespace triagens::rest;
 
 VocbaseContext::VocbaseContext (HttpRequest* request,
                                 TRI_server_t* server, 
-                                TRI_vocbase_t* vocbase) :
+                                TRI_vocbase_t* vocbase,
+                                bool releaseDatabase) :
   RequestContext(request),
   _server(server),
-  _vocbase(vocbase) {
+  _vocbase(vocbase),
+  _releaseDatabase(releaseDatabase) {
 
   assert(_server != 0);
   assert(_vocbase != 0);
@@ -73,7 +75,9 @@ VocbaseContext::VocbaseContext (HttpRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 VocbaseContext::~VocbaseContext () {
-          
+  if (_releaseDatabase) {
+    TRI_ReleaseVocBase(_vocbase);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

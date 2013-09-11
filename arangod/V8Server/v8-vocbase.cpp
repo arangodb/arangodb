@@ -6970,7 +6970,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   if (   key == "toString"
       || key == "toJSON"
       || key == "hasOwnProperty" // this prevents calling the property getter again (i.e. recursion!)
-      || TRI_IsSystemCollectionName(key.c_str())) { // hide system collections
+      || TRI_IsSystemNameCollection(key.c_str())) { // hide system collections
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -7631,7 +7631,11 @@ static v8::Handle<v8::Value> JS_IsSystemDatabase (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
   
-  return scope.Close(v8::Boolean::New(vocbase->_isSystem));
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  return scope.Close(v8::Boolean::New(TRI_IsSystemVocBase(vocbase)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7659,10 +7663,16 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
   const string name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
  
-  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer((TRI_server_t*) v8g->_server, name.c_str());  
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
 
   if (vocbase != 0) {
+    // switch databases
+    void* orig = v8g->_vocbase;
+    assert(orig != 0);
+
     v8g->_vocbase = vocbase;
+
+    TRI_ReleaseDatabaseServer((TRI_server_t*) v8g->_server, (TRI_vocbase_t*) orig);
     
     return scope.Close(WrapVocBase(vocbase));
   }
@@ -7730,7 +7740,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (! vocbase->_isSystem) {
+  if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -7805,8 +7815,11 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     // version check failed
     // TODO: report an error
   }
+ 
+  // finally decrease the reference-counter 
+  TRI_ReleaseVocBase(database);
 
-  return scope.Close(WrapVocBase(database));
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7835,7 +7848,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (! vocbase->_isSystem) {
+  if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
   
@@ -7872,7 +7885,7 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
-  if (! vocbase->_isSystem) {
+  if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -8524,7 +8537,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // register the server
   v8g->_server = server;
 
-  // set the default database
+  // register the database
   v8g->_vocbase = vocbase;
   
   // register the startup loader

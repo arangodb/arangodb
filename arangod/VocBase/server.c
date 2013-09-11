@@ -595,6 +595,14 @@ static int OpenDatabases (TRI_server_t* server) {
     if (TRI_IsBooleanJson(deletedJson)) {
       if (deletedJson->_value._boolean) {
         // database is deleted, skip it!
+        LOG_INFO("found dropped database in directory '%s'",
+                 databaseDirectory);
+        
+        LOG_INFO("removing superfluous database directory '%s'",
+                 databaseDirectory);
+
+        TRI_RemoveDirectory(databaseDirectory);
+
         TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         continue;
@@ -712,7 +720,7 @@ static int CloseDatabases (TRI_server_t* server) {
     TRI_vocbase_t* vocbase = server->_databases._table[i];
 
     if (vocbase != NULL) {
-      TRI_DestroyVocBase(vocbase, NULL);
+      TRI_DestroyVocBase(vocbase);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
 
       // clear to avoid potential double freeing
@@ -1535,7 +1543,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   int res;
   size_t i, n;
   
-  if (! TRI_IsAllowedDatabaseName(false, name)) {
+  if (! TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
@@ -1573,6 +1581,10 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   path = TRI_Concatenate2File(server->_databasePath, file);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+  
+  LOG_INFO("creating database '%s', directory '%s'", 
+           name,
+           path);
 
   vocbase = TRI_OpenVocBase(server, path, tick, name, defaults, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
@@ -1597,6 +1609,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   assert(vocbase != NULL);
 
+  // increase reference counter
+  TRI_UseVocBase(vocbase);
+
   TRI_WriteLockReadWriteLock(&server->_lock);
   TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
   TRI_WriteUnlockReadWriteLock(&server->_lock);
@@ -1618,38 +1633,94 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   int res;
 
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
+    // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
   }
     
   TRI_WriteLockReadWriteLock(&server->_lock);
 
   vocbase = TRI_RemoveKeyAssociativePointer(&server->_databases, name);
+
   if (vocbase == NULL) {
+    // not found 
     res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
   else {
-    res = SaveDatabaseParameters(vocbase->_id, name, true, &server->_defaults, vocbase->_path);
-    // TODO FIXME: perform actual drop
+    // mark as deleted
+    if (TRI_DropVocBase(vocbase)) {
+      res = SaveDatabaseParameters(vocbase->_id, 
+                                   vocbase->_name, 
+                                   true,
+                                   &vocbase->_settings,
+                                   vocbase->_path);
+    }
+    else {
+      // already deleted
+      res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
   }
 
   TRI_WriteUnlockReadWriteLock(&server->_lock);
+
+
+  // move perform the actual deletion
+  if (vocbase != NULL) {
+    char* path;
+
+    // we are allowed to drop the database
+    while (TRI_IsUsedVocBase(vocbase)) {
+      // cycle until there are no more references to the database
+      usleep(500 * 1000);
+    }
+
+    // remember the database path
+    path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_path);
+
+    TRI_DestroyVocBase(vocbase);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+
+    // remove directory
+    TRI_RemoveDirectory(path);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+  }
 
   return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a database by its name
+/// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_GetDatabaseByNameServer (TRI_server_t* server,
-                                            char const* name) {
+TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
+                                      char const* name) {
   TRI_vocbase_t* vocbase;
 
   TRI_ReadLockReadWriteLock(&server->_lock);
+
   vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
+
+  if (vocbase != NULL) {
+    bool result = TRI_UseVocBase(vocbase);
+
+    // if we got here, no one else can have deleted the database
+    assert(result == true);
+  }
+
   TRI_ReadUnlockReadWriteLock(&server->_lock);
 
   return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a previously used database
+/// this will decrease the reference-counter for the database
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReleaseDatabaseServer (TRI_server_t* server,
+                                TRI_vocbase_t* vocbase) {
+
+  TRI_ReleaseVocBase(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

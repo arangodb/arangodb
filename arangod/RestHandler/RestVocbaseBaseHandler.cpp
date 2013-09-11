@@ -110,15 +110,11 @@ string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request,
-                                                TRI_vocbase_t* vocbase) 
+RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request) 
   : RestBaseHandler(request),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
     _vocbase(_context->getVocbase()),
     _resolver(_vocbase) {
-
-  // this is to ensure we have not forgotten anything
-  assert(_vocbase == vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

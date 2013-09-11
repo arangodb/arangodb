@@ -1434,7 +1434,7 @@ int TRI_LoadCollectionInfo (char const* path,
       if (TRI_EqualString(key->_value._string.data, "name")) {
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
 
-        parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
+        parameter->_isSystem = TRI_IsSystemNameCollection(parameter->_name);
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
@@ -2130,12 +2130,53 @@ bool TRI_IterateTicksCollection (const char* const path,
 /// @brief determine whether a collection name is a system collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsSystemCollectionName (char const* name) {
+bool TRI_IsSystemNameCollection (char const* name) {
   if (name == NULL) {
     return false;
   }
 
   return *name == '_';
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a collection name is allowed
+///
+/// Returns true if the name is allowed and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedNameCollection (bool allowSystem, 
+                                  char const* name) {
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is allowed
+  for (ptr = name;  *ptr;  ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+      else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    }
+    else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (! ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

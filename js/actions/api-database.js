@@ -100,18 +100,26 @@ function get_api_database (req, res) {
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the request parameters are invalid or if a database with the 
-/// specified name or path already exists.
+/// specified name already exists. If the request is carried out from any other
+/// database than the `_system` database, this error will be returned, too.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreate}
 ///     var url = "/_api/database";
+///     var name = "example";
+///     try {
+///       db._dropDatabase(name);
+///     }
+///     catch (err) {
+///     }
+///
 ///     var data = {
-///       name: "example"
+///       name: name
 ///     };
 ///     var response = logCurlRequest('POST', url, JSON.stringify(data));
 ///
-///     db._dropDatabase("example"); 
+///     db._dropDatabase(name);
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
@@ -142,7 +150,7 @@ function post_api_database (req, res) {
     return;
   }
 
-  var result = arangodb.db._createDatabase(json.name || "", json.path || "", options);
+  var result = arangodb.db._createDatabase(json.name || "", options);
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
@@ -168,6 +176,10 @@ function post_api_database (req, res) {
 /// @RESTRETURNCODE{200}
 /// is returned if the database was dropped successfully.
 ///
+/// @RESTRETURNCODE{400}
+/// is returned if the request is carried out from any other database than the 
+/// `_system` database.
+///
 /// @RESTRETURNCODE{404}
 /// is returned if the database could not be found.
 ///
@@ -175,8 +187,9 @@ function post_api_database (req, res) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseDrop}
 ///     var url = "/_api/database";
-///     db._createDatabase("example");
-///     var response = logCurlRequest('DELETE', url + "/test");
+///     var name = "example";
+///     db._createDatabase(name); 
+///     var response = logCurlRequest('DELETE', url + '/' + name);
 /// 
 ///     assert(response.code === 200);
 /// 
@@ -190,7 +203,7 @@ function delete_api_database (req, res) {
     return;
   }
   
-  var result = arangodb.db._deleteDatabase(req.suffix[0]);
+  var result = arangodb.db._dropDatabase(req.suffix[0]);
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }

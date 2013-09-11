@@ -49,8 +49,9 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* data)
-  : RestVocbaseBaseHandler(request, data->_vocbase),
+RestActionHandler::RestActionHandler (HttpRequest* request, 
+                                      action_options_t* data)
+  : RestVocbaseBaseHandler(request),
     _action(0),
     _queue(),
     _allowed(false) {
