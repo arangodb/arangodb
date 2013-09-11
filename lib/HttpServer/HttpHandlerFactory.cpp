@@ -191,7 +191,6 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 #endif
 
   HttpRequest* request = new HttpRequest(info, ptr, length);
-  
   setRequestContext(request);
   
   return request;
