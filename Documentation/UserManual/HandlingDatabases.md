@@ -44,21 +44,21 @@ Database Methods {#HandlingDatabasesMethods}
 --------------------------------------------
 
 @anchor HandlingDatabasesList
-@copydetails JS_ListVocbases
+@copydetails JS_ListDatabases
 
 @CLEARPAGE
 @anchor HandlingDatabasesCreate
-@copydetails JS_CreateUserVocbase
+@copydetails JS_CreateDatabase
 
 @CLEARPAGE
 @anchor HandlingDatabasesUse
-@copydetails JS_UseVocbase
+@copydetails JS_UseDatabase
 
 @CLEARPAGE
 @anchor HandlingDatabasesDrop
-@copydetails JS_DropUserVocbase
+@copydetails JS_DropDatabase
 
 @CLEARPAGE
 @anchor HandlingDatabasesName
-@copydetails JS_NameVocbase
+@copydetails JS_NameDatabase
 

@@ -2305,14 +2305,14 @@ bool TRI_IsAllowedNameVocBase (bool allowSystem,
   for (ptr = name;  *ptr;  ++ptr) {
     if (length == 0) {
       if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z');
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
       }
       else {
-        ok = ('a' <= *ptr && *ptr <= 'z');
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
       }
     }
     else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z');
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
 
     if (! ok) {
