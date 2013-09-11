@@ -929,7 +929,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
   }
-  parameter->_waitForSync   = vocbase->_defaultWaitForSync;
+  parameter->_waitForSync   = vocbase->_settings.defaultWaitForSync;
 
   parameter->_keyOptions    = NULL;
 
@@ -1547,13 +1547,13 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
       if (shapeCollection != NULL) {
         // adjust wait for sync value of underlying shape collection
-        shapeCollection->base._info._waitForSync = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
+        shapeCollection->base._info._waitForSync = (vocbase->_settings.forceSyncShapes || collection->_info._waitForSync);
       }
     }
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_forceSyncProperties);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_settings.forceSyncProperties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1571,7 +1571,7 @@ int TRI_RenameCollection (TRI_collection_t* collection,
   TRI_CopyCollectionInfo(&new, &collection->_info);
   TRI_CopyString(new._name, name, sizeof(new._name));
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_settings.forceSyncProperties);
 
   TRI_FreeCollectionInfoOptions(&new);
 

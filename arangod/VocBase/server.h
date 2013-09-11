@@ -66,6 +66,9 @@ typedef struct TRI_server_s {
   char*                       _shutdownFilename;
   char*                       _serverIdFilename;
 
+  bool                        _disableReplicationLoggers;
+  bool                        _disableReplicationAppliers;
+
   bool                        _wasShutdownCleanly;
 }
 TRI_server_t;
@@ -101,7 +104,9 @@ TRI_server_t* TRI_CreateServer (void);
 
 int TRI_InitServer (TRI_server_t* server,
                     char const*, 
-                    TRI_vocbase_defaults_t const*);
+                    TRI_vocbase_defaults_t const*,
+                    bool,
+                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a server instance

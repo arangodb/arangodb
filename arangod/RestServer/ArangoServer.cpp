@@ -576,8 +576,6 @@ void ArangoServer::buildApplicationServer () {
 
   LOGGER_INFO("using default language '" << languageName << "'");
 
-  TRI_SetupReplicationVocBase(_disableReplicationLogger, _disableReplicationApplier);
-
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
   if (mode == OperationMode::MODE_CONSOLE ||
@@ -775,6 +773,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   // set-up V8 context
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(1);
+  _applicationV8->disableActions();
 
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
@@ -784,8 +783,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   if (_applicationServer->programOptions().has("no-upgrade")) {
     _applicationV8->skipUpgrade();
   }
-
-  _applicationV8->disableActions();
 
   bool ok = _applicationV8->prepare();
 
@@ -1001,7 +998,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   closeDatabases();
   Random::shutdown();
 
-  if (!ok) {
+  if (! ok) {
     return EXIT_FAILURE;
   }
 
@@ -1090,14 +1087,18 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
 
 
 int ArangoServer::executeRubyConsole () {
-  // open the database
+  // open all databases
   openDatabases();
 
+  // fetch the system database
+  TRI_vocbase_t* vocbase = TRI_GetDatabaseByNameServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  assert(vocbase != 0);
+
   // load authentication
-  TRI_LoadAuthInfoVocBase(_vocbase);
+  TRI_LoadAuthInfoVocBase(vocbase);
 
   // set-up MRuby context
-  _applicationMR->setVocbase(_vocbase);
+  _applicationMR->setVocbase(vocbase);
   _applicationMR->setConcurrency(1);
   _applicationMR->disableActions();
 
@@ -1168,7 +1169,6 @@ int ArangoServer::executeRubyConsole () {
 
   // close the database
   closeDatabases();
-
   Random::shutdown();
 
   return EXIT_SUCCESS;
@@ -1194,12 +1194,18 @@ void ArangoServer::openDatabases () {
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
   
   assert(_server != 0); 
-
-  if (TRI_InitServer(_server, _databasePath.c_str(), &defaults) != TRI_ERROR_NO_ERROR) {
+  
+  int res = TRI_InitServer(_server, 
+                           _databasePath.c_str(), 
+                           &defaults, 
+                           _disableReplicationLogger, 
+                           _disableReplicationApplier);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
 
-  int res = TRI_StartServer(_server);
+  res = TRI_StartServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));

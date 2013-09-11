@@ -65,31 +65,6 @@
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief do not autostart replication logger?
-////////////////////////////////////////////////////////////////////////////////
-
-static bool DisableReplicationLogger;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief do not autostart replication applier?
-////////////////////////////////////////////////////////////////////////////////
-
-static bool DisableReplicationApplier;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
@@ -476,7 +451,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
                   newFilename);
       }
       else {
-        if (collection->_vocbase->_removeOnDrop) {
+        if (collection->_vocbase->_settings.removeOnDrop) {
           LOG_DEBUG("wiping dropped collection '%s' from disk",
                     collection->_name);
 
@@ -736,7 +711,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         // we found a collection that is marked as deleted.
         // it depends on the configuration what will happen with these collections
 
-        if (vocbase->_removeOnDrop) {
+        if (vocbase->_settings.removeOnDrop) {
           // deleted collections should be removed on startup. this is the default
           LOG_DEBUG("collection '%s' was deleted, wiping it", name);
 
@@ -1190,21 +1165,11 @@ bool TRI_IsAllowedDatabaseName (bool allowSystem, char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to deactivate replication features at startup
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetupReplicationVocBase (bool disableLogger, 
-                                  bool disableApplier) {
-  // TODO: FIXME move to server
-  DisableReplicationLogger  = disableLogger;
-  DisableReplicationApplier = disableApplier;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path, 
+TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
+                                char const* path, 
                                 TRI_voc_tick_t id,
                                 char const* name,
                                 TRI_vocbase_defaults_t const* defaults,
@@ -1232,8 +1197,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_id               = id;
   vocbase->_path             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   vocbase->_name             = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name); 
-  vocbase->_isSystem         = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE);
   vocbase->_authInfoLoaded   = false;
+  vocbase->_isSystem         = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE);
 
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(vocbase, &ownDefaults);
@@ -1366,7 +1331,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   }
 
   if (vocbase->_replicationLogger->_configuration._autoStart) {
-    if (DisableReplicationLogger) {
+    if (server->_disableReplicationLoggers) {
       LOG_INFO("replication logger explicitly deactivated for database '%s'", name);
     }
     else {
@@ -1387,7 +1352,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   }
  
   if (vocbase->_replicationApplier->_configuration._autoStart) {
-    if (DisableReplicationApplier) {
+    if (server->_disableReplicationAppliers) {
       LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
     }
     else {
@@ -1463,7 +1428,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
   
   TRI_FreeReplicationLogger(vocbase->_replicationLogger);
   vocbase->_replicationLogger = NULL;
-
 
   // free dead collections (already dropped but pointers still around)
   for (i = 0;  i < vocbase->_deadCollections._length;  ++i) {
@@ -1767,7 +1731,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
                            &parameter, 
                            name, 
                            (TRI_col_type_e) type, 
-                           (TRI_voc_size_t) vocbase->_defaultMaximalSize, 
+                           (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize, 
                            NULL);
     collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, generatingServer);
     TRI_FreeCollectionInfoOptions(&parameter);
@@ -2038,7 +2002,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     if (! info._deleted) {
       info._deleted = true;
 
-      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2237,7 +2201,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
     TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-    res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
+    res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
 
     TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 

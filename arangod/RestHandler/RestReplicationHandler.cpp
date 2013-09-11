@@ -1562,7 +1562,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
                          keyOptions);
 
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
-  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_defaultWaitForSync);
+  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
   params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
   
   // wait for "old" collection to be dropped

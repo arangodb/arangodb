@@ -75,7 +75,6 @@
 #include "VocBase/shadow-data.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
-#include "RestServer/VocbaseManager.h"
 #include "V8/JSLoader.h"
 
 #include "unicode/timezone.h"
@@ -1568,7 +1567,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // set default journal size
-  TRI_voc_size_t effectiveSize = vocbase->_defaultMaximalSize;
+  TRI_voc_size_t effectiveSize = vocbase->_settings.defaultMaximalSize;
 
   // extract the name
   string name = TRI_ObjectToString(argv[0]);
@@ -6615,7 +6614,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_SaveCollectionInfo(collection->_path, &info, collection->_vocbase->_forceSyncProperties);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, collection->_vocbase->_settings.forceSyncProperties);
     }
   }
 
@@ -8545,13 +8544,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_dropDatabase", JS_DropDatabase);
   TRI_AddMethodVocbase(rt, "_listDatabases", JS_ListDatabases);
   TRI_AddMethodVocbase(rt, "_useDatabase", JS_UseDatabase);
- /*  TODO: FIXME
-  TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase, true);  
-  TRI_AddGlobalFunctionVocbase(context, "LIST_DATABASES", JS_ListVocbases, true);  
-  TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase, true);
-  TRI_AddGlobalFunctionVocbase(context, "DROP_DATABASE", JS_DropUserVocbase, true);
-  TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint, true);
-*/
+  
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
 

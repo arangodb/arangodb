@@ -265,7 +265,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
               TRI_last_error());
   }
   else if (datafile->isPhysical(datafile)) {
-    if (primary->base._vocbase->_removeOnCompacted) {
+    if (primary->base._vocbase->_settings.removeOnCompacted) {
       int res;
 
       LOG_DEBUG("wiping compacted datafile from disk");

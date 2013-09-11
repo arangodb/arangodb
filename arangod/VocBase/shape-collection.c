@@ -398,7 +398,7 @@ TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
 
   parameter->_type = TRI_COL_TYPE_SHAPE;
   parameter->_cid  = TRI_NewTickServer();
-  parameter->_waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+  parameter->_waitForSync = (vocbase->_settings.forceSyncShapes || parameter->_waitForSync);
 
   collection = TRI_CreateCollection(vocbase, &shape->base, path, parameter);
 

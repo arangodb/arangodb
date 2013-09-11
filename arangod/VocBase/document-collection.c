@@ -2940,7 +2940,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   // then the shape collection
-  waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+  waitForSync = (vocbase->_settings.forceSyncShapes || parameter->_waitForSync);
   isVolatile  = parameter->_isVolatile;
 
   // if the collection has the _volatile flag, the shapes collection is also volatile.
@@ -2973,7 +2973,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   document->base._keyGenerator = keyGenerator;
 
   // save the parameter block (within create, no need to lock)
-  res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_settings.forceSyncProperties);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
@@ -3401,7 +3401,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   shapeCollection = TRI_CollectionVocShaper(shaper);
 
   if (shapeCollection != NULL) {
-    bool syncShapes = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
+    bool syncShapes = (vocbase->_settings.forceSyncShapes || collection->_info._waitForSync);
 
     shapeCollection->base._info._waitForSync = syncShapes;
   }

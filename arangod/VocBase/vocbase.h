@@ -35,7 +35,7 @@
 #include "BasicsC/threads.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/voc-errors.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/vocbase-defaults.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,8 +50,8 @@ struct TRI_col_info_s;
 struct TRI_json_s;
 struct TRI_replication_applier_s;
 struct TRI_replication_logger_s;
+struct TRI_server_s;
 struct TRI_shadow_store_s;
-struct TRI_transaction_context_s;
 struct TRI_vector_pointer_s;
 struct TRI_vocbase_defaults_s;
 
@@ -320,20 +320,11 @@ struct TRI_vocbase_defaults_s;
 typedef struct TRI_vocbase_s {
   TRI_voc_tick_t             _id;
   char*                      _path;                // path to the data directory
-
-  TRI_voc_size_t             _defaultMaximalSize;
-  bool                       _removeOnDrop;        // wipe collection from disk after dropping
-  bool                       _removeOnCompacted;   // wipe datafile from disk after compaction
-  bool                       _defaultWaitForSync;
-  bool                       _forceSyncShapes;     // force syncing of shape data to disk
-  bool                       _forceSyncProperties; // force syncing of shape data to disk
-  bool                       _isSystem;
-  bool                       _requireAuthentication;  
-  bool                       _authenticateSystemOnly;
-
-  bool                       _canUse;             // this is set to false during deletion of a database
-  
   char*                      _name;               // database name
+  bool                       _canUse;             // this is set to false during deletion of a database
+  bool                       _isSystem;
+
+  TRI_vocbase_defaults_t     _settings;
 
   TRI_read_write_lock_t      _lock;               // collection iterator lock
   TRI_vector_pointer_t       _collections;        // pointers to ALL collections
@@ -484,17 +475,11 @@ bool TRI_IsAllowedDatabaseName (bool,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to deactivate replication features at startup
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetupReplicationVocBase (bool,
-                                  bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const*,
+TRI_vocbase_t* TRI_OpenVocBase (struct TRI_server_s*,
+                                char const*,
                                 TRI_voc_tick_t,
                                 char const*,
                                 struct TRI_vocbase_defaults_s const*,
