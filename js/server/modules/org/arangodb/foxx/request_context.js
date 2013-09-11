@@ -29,8 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var RequestContext,
+  RequestContextBuffer,
   SwaggerDocs,
-  extend = require("underscore").extend,
+  _ = require("underscore"),
+  extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
   UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
@@ -113,7 +115,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (route) {
+RequestContext = function (executionBuffer, route) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -122,6 +124,8 @@ RequestContext = function (route) {
   };
   this.docs = new SwaggerDocs(this.route.docs);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
+
+  executionBuffer.applyEachFunction(this);
 };
 
 extend(RequestContext.prototype, {
@@ -353,7 +357,95 @@ extend(RequestContext.prototype, {
   }
 });
 
+RequestContextBuffer = function () {
+  'use strict';
+  this.applyChain = [];
+};
+
+extend(RequestContextBuffer.prototype, {
+  applyEachFunction: function (target) {
+    'use strict';
+    _.each(this.applyChain, function (x) {
+      target[x.functionName].apply(target, x.argumentList);
+    });
+  }
+});
+
+_.each([
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_errorResponse
+/// @brief Defines a controller-wide error response
+///
+/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+///
+/// Defines an `errorResponse` for all routes of this controller. For details on
+/// `errorResponse` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "errorResponse",
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_onlyIf
+/// @brief Defines a controller-wide onlyIf
+///
+/// @FUN{RequestContextBuffer::onlyIf(@FA{code}, @FA{reason})}
+///
+/// Defines an `onlyIf` for all routes of this controller. For details on
+/// `onlyIf` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.onlyIf(myPersonalCheck);
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "onlyIf",
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
+/// @brief Defines a controller-wide onlyIfAuthenticated
+///
+/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+///
+/// Defines an `onlyIfAuthenticated` for all routes of this controller. For details on
+/// `onlyIfAuthenticated` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "onlyIfAuthenticated"
+], function (functionName) {
+  'use strict';
+  extend(RequestContextBuffer.prototype[functionName] = function () {
+    this.applyChain.push({
+      functionName: functionName,
+      argumentList: arguments
+    });
+  });
+});
+
 exports.RequestContext = RequestContext;
+exports.RequestContextBuffer = RequestContextBuffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

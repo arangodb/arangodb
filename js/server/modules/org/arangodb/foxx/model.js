@@ -30,6 +30,7 @@
 
 var Model,
   _ = require("underscore"),
+  is = require("org/arangodb/is"),
   backbone_helpers = require("backbone");
 
 // -----------------------------------------------------------------------------
@@ -96,8 +97,8 @@ _.extend(Model.prototype, {
 ///
 /// @FUN{FoxxModel::set(@FA{name}, @FA{value})}
 ///
-/// Set the value of an attribute
-/// 
+/// Set the value of an attribute or multiple attributes at once
+///
 /// @EXAMPLES
 ///
 /// @code
@@ -106,12 +107,19 @@ _.extend(Model.prototype, {
 ///     });
 ///
 ///     instance.set("a", 2);
+///     instance.set({
+///       b: 2
+///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   set: function (attributeName, value) {
     'use strict';
-    this.attributes[attributeName] = value;
+    if (is.object(attributeName)) {
+      _.extend(this.attributes, attributeName);
+    } else {
+      this.attributes[attributeName] = value;
+    }
   },
 
 ////////////////////////////////////////////////////////////////////////////////
