@@ -902,7 +902,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
                            &parameter, 
                            TRI_COL_NAME_REPLICATION,
                            (TRI_col_type_e) TRI_COL_TYPE_DOCUMENT, 
-                           (TRI_voc_size_t) vocbase->_defaultMaximalSize, 
+                           (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize, 
                            NULL);
     
     parameter._isSystem = true;

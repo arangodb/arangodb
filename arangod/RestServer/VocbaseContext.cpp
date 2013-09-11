@@ -96,12 +96,12 @@ VocbaseContext::~VocbaseContext () {
 HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   assert(_vocbase != 0);
 
-  if (! _vocbase->_requireAuthentication) {
+  if (! _vocbase->_settings.requireAuthentication) {
     // no authentication required at all
     return HttpResponse::OK;
   }
 
-  if (_vocbase->_authenticateSystemOnly) {
+  if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
     const char* path = _request->requestPath();
 

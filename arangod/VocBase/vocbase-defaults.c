@@ -44,15 +44,14 @@
 
 void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
                                TRI_vocbase_defaults_t const* defaults) {
-
-  vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
-  vocbase->_removeOnDrop                 = defaults->removeOnDrop;
-  vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
-  vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
-  vocbase->_forceSyncShapes              = defaults->forceSyncShapes;
-  vocbase->_forceSyncProperties          = defaults->forceSyncProperties;
-  vocbase->_requireAuthentication        = defaults->requireAuthentication;    
-  vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
+  vocbase->_settings.defaultMaximalSize       = defaults->defaultMaximalSize;
+  vocbase->_settings.removeOnDrop             = defaults->removeOnDrop;
+  vocbase->_settings.removeOnCompacted        = defaults->removeOnCompacted;
+  vocbase->_settings.defaultWaitForSync       = defaults->defaultWaitForSync;
+  vocbase->_settings.forceSyncShapes          = defaults->forceSyncShapes;
+  vocbase->_settings.forceSyncProperties      = defaults->forceSyncProperties;
+  vocbase->_settings.requireAuthentication    = defaults->requireAuthentication;    
+  vocbase->_settings.authenticateSystemOnly   = defaults->authenticateSystemOnly;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

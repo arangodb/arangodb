@@ -32,6 +32,7 @@
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "MRServer/mr-actions.h"
+#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::basics;

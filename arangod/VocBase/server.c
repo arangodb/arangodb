@@ -651,7 +651,7 @@ static int OpenDatabases (TRI_server_t* server) {
     // .............................................................................
 
     // try to open this database
-    vocbase = TRI_OpenVocBase(databaseDirectory, id, databaseName, &defaults, server->_wasShutdownCleanly);
+    vocbase = TRI_OpenVocBase(server, databaseDirectory, id, databaseName, &defaults, server->_wasShutdownCleanly);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
@@ -704,7 +704,8 @@ static int OpenDatabases (TRI_server_t* server) {
 
 static int CloseDatabases (TRI_server_t* server) {
   size_t i, n;
-
+ 
+  TRI_WriteLockReadWriteLock(&server->_lock);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -718,6 +719,8 @@ static int CloseDatabases (TRI_server_t* server) {
       server->_databases._table[i] = NULL;
     }
   }
+
+  TRI_WriteUnlockReadWriteLock(&server->_lock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1202,7 +1205,9 @@ TRI_server_t* TRI_CreateServer () {
 
 int TRI_InitServer (TRI_server_t* server,
                     char const* basePath,
-                    TRI_vocbase_defaults_t const* defaults) {
+                    TRI_vocbase_defaults_t const* defaults,
+                    bool disableLoggers,
+                    bool disableAppliers) {
 
   assert(server != NULL);
 
@@ -1263,9 +1268,13 @@ int TRI_InitServer (TRI_server_t* server,
   TRI_InitReadWriteLock(&server->_lock);
 
   TRI_InitMutex(&server->_createLock);
+  
+  server->_disableReplicationLoggers  = disableLoggers;
+  server->_disableReplicationAppliers = disableAppliers;
+
 
   server->_wasShutdownCleanly = false;
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1565,7 +1574,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   path = TRI_Concatenate2File(server->_databasePath, file);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
-  vocbase = TRI_OpenVocBase(path, tick, name, defaults, false);
+  vocbase = TRI_OpenVocBase(server, path, tick, name, defaults, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
   if (vocbase == NULL) {
@@ -1619,8 +1628,6 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
   else {
-    assert(! vocbase->_isSystem);
-
     res = SaveDatabaseParameters(vocbase->_id, name, true, &server->_defaults, vocbase->_path);
     // TODO FIXME: perform actual drop
   }
