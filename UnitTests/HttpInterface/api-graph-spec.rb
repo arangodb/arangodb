@@ -84,17 +84,17 @@ describe ArangoDB do
 
     context "checks graph requests" do
       before do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
       end
 
       after do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -218,7 +218,7 @@ describe ArangoDB do
 
       it "checks create and get graph with waitForSync" do
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : false}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -252,7 +252,7 @@ describe ArangoDB do
 
       it "checks create and delete graph waitForSync" do
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : false}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -278,9 +278,9 @@ describe ArangoDB do
 
     context "checks graph vertex requests" do
       before do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -292,9 +292,9 @@ describe ArangoDB do
       end
 
       after do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -755,9 +755,9 @@ describe ArangoDB do
 
     context "checks edge requests" do
       before do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -773,11 +773,11 @@ describe ArangoDB do
 
       after do
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
         ArangoDB.drop_collection( vertex_collection )
         ArangoDB.drop_collection( edge_collection )
       end
@@ -1282,9 +1282,9 @@ describe ArangoDB do
 
     context "checks vertices requests" do
       before do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -1309,9 +1309,9 @@ describe ArangoDB do
       end
 
       after do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -1432,9 +1432,9 @@ describe ArangoDB do
 
     context "checks edges requests" do
       before do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
@@ -1455,9 +1455,9 @@ describe ArangoDB do
       end
 
       after do
-        truncate_collection(prefix, "arangodb_graphs")
+        truncate_collection(prefix, "_graphs")
 
-        cmd = "/_api/collection/arangodb_graphs/properties"
+        cmd = "/_api/collection/_graphs/properties"
         body = "{\"waitForSync\" : true}"
         doc = ArangoDB.put(cmd, :body => body)        
 
