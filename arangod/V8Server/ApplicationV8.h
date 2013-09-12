@@ -223,8 +223,9 @@ namespace triagens {
 /// @brief enters an context
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Context* enterContext (TRI_vocbase_s* vocbase, 
-                                 bool initialise);
+        V8Context* enterContext (TRI_vocbase_s*, 
+                                 bool,
+                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exists an context
@@ -236,7 +237,7 @@ namespace triagens {
 /// @brief adds a global context functions to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addGlobalContextMethod (string const& method);
+        void addGlobalContextMethod (string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the garbage collection

@@ -263,7 +263,8 @@ void ApplicationV8::skipUpgrade () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, 
-                                                       bool initialise) {
+                                                       bool initialise,
+                                                       bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -307,6 +308,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
   v8g->_vocbase = vocbase;
+  v8g->_allowUseDatabase = allowUseDatabase;
   
   return context;
 }
