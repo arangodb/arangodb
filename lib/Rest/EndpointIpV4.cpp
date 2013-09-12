@@ -50,13 +50,12 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
-                            const Endpoint::ProtocolType protocol,
                             const Endpoint::EncryptionType encryption,
                             const std::string& specification,
                             int listenBacklog,
                             const std::string& host,
                             const uint16_t port) :
-    EndpointIp(type, DOMAIN_IPV4, protocol, encryption, specification, listenBacklog, host, port) {
+    EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

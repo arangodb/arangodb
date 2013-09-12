@@ -180,29 +180,62 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts listining
+/// @brief starts listening
 ////////////////////////////////////////////////////////////////////////////////
 
         void startListening () {
-          EndpointList::ListType endpoints = _endpointList->getEndpoints(this->getProtocol(), this->getEncryption());
+          map<string, Endpoint*> endpoints = _endpointList->getByPrefix(this->getEncryption());
 
-          for (EndpointList::ListType::const_iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-            LOGGER_TRACE("trying to bind to endpoint '" << (*i).first->getSpecification() << "' for requests");
+          for (map<string, Endpoint*>::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
+            LOGGER_TRACE("trying to bind to endpoint '" << (*i).first << "' for requests");
 
-            bool ok = openEndpoint((*i).first);
+            bool ok = openEndpoint((*i).second);
 
             if (ok) {
-              LOGGER_DEBUG("bound to endpoint '" << (*i).first->getSpecification() << "'");
+              LOGGER_DEBUG("bound to endpoint '" << (*i).first << "'");
             }
             else {
-              if ((*i).second) {
-                LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i).first->getSpecification() << "'");
-              }
-              else {
-                LOGGER_WARNING("failed to bind to endpoint '" << (*i).first->getSpecification() << "'");
-              }
+              LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i).first << "'");
             }
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add another endpoint at runtime
+/// the caller must make sure this is not called in parallel
+////////////////////////////////////////////////////////////////////////////////
+
+        bool addEndpoint (Endpoint* endpoint) {
+          bool ok = openEndpoint(endpoint);
+
+          if (ok) {
+            LOGGER_INFO("added endpoint '" << endpoint->getSpecification() << "'");
+          }
+
+          return ok;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an endpoint at runtime
+/// the caller must make sure this is not called in parallel
+////////////////////////////////////////////////////////////////////////////////
+
+        bool removeEndpoint (Endpoint* endpoint) {
+          for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
+            ListenTask* task = (*i);
+
+            if (task->endpoint() == endpoint) {
+              // TODO: remove commtasks for the listentask
+
+              _scheduler->destroyTask(task);
+              _listenTasks.erase(i);
+
+              LOGGER_INFO("removed endpoint '" << endpoint->getSpecification() << "'");
+              return true;
+            }
+          }
+
+          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +253,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops listining
+/// @brief stops listening
 ////////////////////////////////////////////////////////////////////////////////
 
         void stopListening () {
@@ -255,7 +288,8 @@ namespace triagens {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void handleConnected (TRI_socket_t s, ConnectionInfo& info) {
+        virtual void handleConnected (TRI_socket_t s, 
+                                      ConnectionInfo& info) {
           GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, _keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&_commTasksLock);

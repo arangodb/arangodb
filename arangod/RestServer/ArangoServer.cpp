@@ -560,6 +560,9 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
 
+  // strip trailing separators
+  _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR); 
+
   // .............................................................................
   // now run arangod
   // .............................................................................
@@ -1191,6 +1194,7 @@ void ArangoServer::openDatabases () {
   assert(_server != 0); 
   
   int res = TRI_InitServer(_server, 
+                           _applicationEndpointServer,
                            _databasePath.c_str(), 
                            &defaults, 
                            _disableReplicationLogger, 

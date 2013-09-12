@@ -45,6 +45,7 @@
 #include "BasicsC/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "HttpServer/ApplicationEndpointServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/SslInterface.h"
 #include "ShapedJson/shape-accessor.h"
@@ -7920,7 +7921,16 @@ static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "CONFIGURE_ENDPOINT(<endpoint>, <names>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "configureEndpoint(<endpoint>, <databases>)");
+  }
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  TRI_server_t* server = (TRI_server_t*) v8g->_server;
+  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
+
+  if (s == 0) {
+    // not implemented in console mode
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7933,16 +7943,14 @@ static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  // TODO: check endpoint string
   const string endpoint = TRI_ObjectToString(argv[0]);
 
-  // validate and register dbNames
-  TRI_vector_string_t dbNames;
-  TRI_InitVectorString(&dbNames, TRI_CORE_MEM_ZONE);
+  // register dbNames
+  vector<string> dbNames;
 
   if (argv.Length() > 1) {
     if (! argv[1]->IsArray()) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<names> must be a list");
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<databases> must be a list");
     }
 
     v8::Handle<v8::Array> list = v8::Handle<v8::Array>::Cast(argv[1]);
@@ -7952,21 +7960,117 @@ static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
       v8::Handle<v8::Value> name = list->Get(i);
 
       if (name->IsString()) {
-        const string dbName = TRI_ObjectToString(name);
-        TRI_PushBackVectorString(&dbNames, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, dbName.c_str()));
+        dbNames.push_back(TRI_ObjectToString(name));
       }
       else {
-        TRI_V8_EXCEPTION_PARAMETER(scope, "<names> must be a list of strings");
+        TRI_V8_EXCEPTION_PARAMETER(scope, "<databases> must be a list of strings");
       }
     }
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-  TRI_StoreEndpointServer((TRI_server_t*) v8g->_server, endpoint.c_str(), &dbNames);
-
-  TRI_DestroyVectorString(&dbNames);
+  bool result = s->addEndpoint(endpoint, dbNames);
+    
+  if (! result) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "unable to bind to endpoint");
+  }
 
   return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a new endpoint
+///
+/// @FUN{REMOVE_ENDPOINT}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RemoveEndpoint (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "removeEndpoint(<endpoint>)");
+  }
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  TRI_server_t* server = (TRI_server_t*) v8g->_server;
+  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
+
+  if (s == 0) {
+    // not implemented in console mode
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (! TRI_IsSystemVocBase(vocbase)) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+  }
+
+  bool result = s->removeEndpoint(TRI_ObjectToString(argv[0]));
+
+  if (! result) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "endpoint is not registered");
+  }
+  
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list of all endpoints
+///
+/// @FUN{LIST_ENDPOINTS}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "listEndpoints()");
+  }
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  TRI_server_t* server = (TRI_server_t*) v8g->_server;
+  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
+
+  if (s == 0) {
+    // not implemented in console mode
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (! TRI_IsSystemVocBase(vocbase)) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+  }
+
+  const map<string, vector<string> >& endpoints = s->getEndpoints();
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+  uint32_t j = 0;
+
+  map<string, vector<string> >::const_iterator it;
+  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
+    v8::Handle<v8::Array> dbNames = v8::Array::New();
+
+    for (uint32_t i = 0; i < (*it).second.size(); ++i) {
+      dbNames->Set(i, v8::String::New((*it).second.at(i).c_str()));
+    }
+
+    v8::Handle<v8::Object> item = v8::Object::New();
+    item->Set(v8::String::New("endpoint"), v8::String::New((*it).first.c_str()));
+    item->Set(v8::String::New("databases"), dbNames);
+    
+    result->Set(j++, item);
+  }
+  
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8786,6 +8890,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "PARSE_DATETIME", JS_parseDatetime);
 
   TRI_AddGlobalFunctionVocbase(context, "CONFIGURE_ENDPOINT", JS_ConfigureEndpoint, true);
+  TRI_AddGlobalFunctionVocbase(context, "REMOVE_ENDPOINT", JS_RemoveEndpoint, true);
+  TRI_AddGlobalFunctionVocbase(context, "LIST_ENDPOINTS", JS_ListEndpoints, true);
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   

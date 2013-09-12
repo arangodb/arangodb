@@ -155,106 +155,13 @@ static bool EqualKeyDatabaseName (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                endpoint functions
+// --SECTION--                                               server id functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the endpoint 
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementEndpoint (TRI_associative_pointer_t* array, 
-                                     void const* element) {
-  TRI_server_endpoint_t const* e = element;
-
-  return TRI_FnvHashString((char const*) e->_endpoint);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares an endpoint name and an endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyEndpoint (TRI_associative_pointer_t* array, 
-                              void const* key, 
-                              void const* element) {
-  char const* k = (char const*) key;
-  TRI_server_endpoint_t const* e = element;
-
-  return TRI_EqualString(k, e->_endpoint);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    tick functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick value, without using a lock
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_tick_t GetTick (void) {
-  return (ServerIdentifier | (CurrentTick << 16));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter, without using a lock
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void UpdateTick (TRI_voc_tick_t tick) {
-  TRI_voc_tick_t s = tick >> 16;
-
-  if (CurrentTick < s) {
-    CurrentTick = s;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the numeric part from a filename
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t GetNumericFilenamePart (const char* filename) {
-  char* pos;
-
-  pos = strrchr(filename, '-');
-
-  if (pos == NULL) {
-    return 0;
-  }
-
-  return TRI_UInt64String(pos + 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort database filenames on startup 
-////////////////////////////////////////////////////////////////////////////////
-
-static int NameComparator (const void* lhs, const void* rhs) {
-  const char* l = *((char**) lhs);
-  const char* r = *((char**) rhs);
-
-  const uint64_t numLeft  = GetNumericFilenamePart(l);
-  const uint64_t numRight = GetNumericFilenamePart(r);
-
-  if (numLeft != numRight) {
-    return numLeft < numRight ? -1 : 1;
-  }
-
-  return 0;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a new server id
@@ -394,6 +301,43 @@ static int DetermineServerId (TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    tick functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current tick value, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t GetTick (void) {
+  return (ServerIdentifier | (CurrentTick << 16));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the tick counter, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void UpdateTick (TRI_voc_tick_t tick) {
+  TRI_voc_tick_t s = tick >> 16;
+
+  if (CurrentTick < s) {
+    CurrentTick = s;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads shutdown information file
 /// this is called at server startup. if the file is present, the last tick
 /// value used by the server will be read from the file.
@@ -511,6 +455,58 @@ static int WriteShutdownInfo (TRI_server_t* server) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                database functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current tick value, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  char* pos;
+
+  pos = strrchr(filename, '-');
+
+  if (pos == NULL) {
+    return 0;
+  }
+
+  return TRI_UInt64String(pos + 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort database filenames on startup 
+////////////////////////////////////////////////////////////////////////////////
+
+static int NameComparator (const void* lhs, const void* rhs) {
+  const char* l = *((char**) lhs);
+  const char* r = *((char**) rhs);
+
+  const uint64_t numLeft  = GetNumericFilenamePart(l);
+  const uint64_t numRight = GetNumericFilenamePart(r);
+
+  if (numLeft != numRight) {
+    return numLeft < numRight ? -1 : 1;
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1298,7 +1294,6 @@ static void DatabaseManager (void* data) {
       // remember the database path
       char* path;
 
-printf("PHYSICALLY REMOVING DATABASE %s\n", database->_name);      
       path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
 
       TRI_DestroyVocBase(database);
@@ -1348,12 +1343,17 @@ TRI_server_t* TRI_CreateServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t* server,
+                    void* applicationEndpointServer,
                     char const* basePath,
                     TRI_vocbase_defaults_t const* defaults,
                     bool disableLoggers,
                     bool disableAppliers) {
 
   assert(server != NULL);
+  assert(basePath != NULL);
+
+  // c++ object, may be null in console mode
+  server->_applicationEndpointServer = applicationEndpointServer;
   
   // .............................................................................
   // set up paths and filenames 
@@ -1426,20 +1426,6 @@ int TRI_InitServer (TRI_server_t* server,
   
   TRI_InitMutex(&server->_createLock);
   
-  // .............................................................................
-  // endpoints
-  // .............................................................................
-
-
-  TRI_InitAssociativePointer(&server->_endpoints,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             HashElementEndpoint,
-                             EqualKeyEndpoint,
-                             NULL);
-  
-  TRI_InitReadWriteLock(&server->_endpointsLock);
-
   
   server->_disableReplicationLoggers  = disableLoggers;
   server->_disableReplicationAppliers = disableAppliers;
@@ -1456,9 +1442,6 @@ int TRI_InitServer (TRI_server_t* server,
 
 void TRI_DestroyServer (TRI_server_t* server) {
   CloseDatabases(server);
-
-  TRI_DestroyReadWriteLock(&server->_endpointsLock);
-  TRI_DestroyAssociativePointer(&server->_endpoints);
 
   TRI_DestroyMutex(&server->_createLock);
   TRI_DestroyVectorPointer(&server->_droppedDatabases);
@@ -1999,65 +1982,6 @@ TRI_voc_tick_t TRI_CurrentTickServer () {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-static TRI_server_endpoint_t* CreateEndpoint (char const* endpoint,
-                                              TRI_vector_string_t const* databases) {
-  TRI_server_endpoint_t* ep;
-
-  ep = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_server_endpoint_t), false);
-
-  if (ep == NULL) {
-    return NULL;
-  }
-
-  ep->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
-
-  if (ep->_endpoint == NULL) {
-    TRI_Free(TRI_CORE_MEM_ZONE, ep);
-
-    return NULL;
-  }
-
-  TRI_InitVectorString(&ep->_databases, TRI_CORE_MEM_ZONE);
-  TRI_CopyDataVectorString(TRI_CORE_MEM_ZONE, &ep->_databases, databases);
-
-  return ep;
-}
-
-static void FreeEndpoint (TRI_server_endpoint_t* ep) {
-  TRI_FreeString(TRI_CORE_MEM_ZONE, ep->_endpoint);
-  TRI_DestroyVectorString(&ep->_databases);
-
-  TRI_Free(TRI_CORE_MEM_ZONE, ep);
-}
-
-int TRI_StoreEndpointServer (TRI_server_t* server,
-                             char const* endpoint,
-                             TRI_vector_string_t const* databases) {
-  TRI_server_endpoint_t* ep;
-
-  TRI_WriteLockReadWriteLock(&server->_endpointsLock);
-
-  ep = TRI_RemoveKeyAssociativePointer(&server->_endpoints, endpoint);
-
-  if (ep != NULL) {
-    FreeEndpoint(ep);
-  }
-
-  ep = CreateEndpoint(endpoint, databases);
-
-  if (ep == NULL) {
-    TRI_WriteUnlockReadWriteLock(&server->_endpointsLock);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_InsertKeyAssociativePointer(&server->_endpoints, ep->_endpoint, ep, false);
-
-  TRI_WriteUnlockReadWriteLock(&server->_endpointsLock);
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)

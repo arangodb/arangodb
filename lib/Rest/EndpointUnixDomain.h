@@ -66,7 +66,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         EndpointUnixDomain (const EndpointType,
-                            const ProtocolType,
                             const std::string&,
                             int,
                             const std::string&);
