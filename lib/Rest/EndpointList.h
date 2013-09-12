@@ -44,25 +44,6 @@ namespace triagens {
       public:
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          typedefs
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for list contents
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef std::map<Endpoint*, bool> ListType;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -98,82 +79,59 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-        static const string getKey (const Endpoint::ProtocolType protocol,
-                                    const Endpoint::EncryptionType encryption) {
-          return string(getProtocolName(protocol) + " " + getEncryptionName(encryption));
-        }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a protocol name
+/// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string getProtocolName (const Endpoint::ProtocolType protocol) {
-          switch (protocol) {
-            case Endpoint::PROTOCOL_HTTP:
-              return "http";
-            default:
-              return "unknown";
-          }
-        }
+        bool add (const std::string&,
+                  const std::vector<std::string>&,
+                  int,
+                  Endpoint** = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a encryption name
+/// @brief remove a specific endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string getEncryptionName (const Endpoint::EncryptionType encryption) {
-          switch (encryption) {
-            case Endpoint::ENCRYPTION_SSL:
-              return "ssl-encrypted";
-            case Endpoint::ENCRYPTION_NONE:
-            default:
-              return "non-encrypted";
-          }
-        }
+        bool remove (const std::string&, 
+                     Endpoint**);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief count the number of elements in a sub-list
+/// @brief return all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t count (const Endpoint::ProtocolType, 
-                      const Endpoint::EncryptionType) const;
+        std::map<std::string, std::vector<std::string> > getAll () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump all used endpoints
+/// @brief return all endpoints with a certain prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-        void dump() const ;
+        std::map<std::string, Endpoint*> getByPrefix (const std::string&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all endpoints for a specific protocol
+/// @brief return all endpoints with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListType getEndpoints (const Endpoint::ProtocolType, 
-                               const Endpoint::EncryptionType) const;
+        std::map<std::string, Endpoint*> getByPrefix (const Endpoint::EncryptionType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an endpoint for a specific protocol
+/// @brief return if there is an endpoint with a certain encryption type
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool has (const Endpoint::EncryptionType) const;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief dump all endpoints used
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addEndpoint (const Endpoint::ProtocolType, 
-                          const Endpoint::EncryptionType, 
-                          Endpoint*,
-                          bool);
+        void dump () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an encryption name
+////////////////////////////////////////////////////////////////////////////////
+
+        static string getEncryptionName (const Endpoint::EncryptionType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -191,10 +149,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lists of endpoints
+/// @brief list of endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, ListType> _lists;
+        std::map<std::string, std::pair<Endpoint*, std::vector<std::string> > > _endpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

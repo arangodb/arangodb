@@ -56,7 +56,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         EndpointIpV4 (const EndpointType,
-                      const ProtocolType,
                       const EncryptionType,
                       const std::string&,
                       int,

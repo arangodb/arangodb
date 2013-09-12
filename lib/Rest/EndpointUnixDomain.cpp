@@ -57,11 +57,10 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointUnixDomain::EndpointUnixDomain (const Endpoint::EndpointType type,
-                                        const Endpoint::ProtocolType protocol,
                                         const std::string& specification,
                                         int listenBacklog,
                                         const std::string& path) :
-    Endpoint(type, DOMAIN_UNIX, protocol, ENCRYPTION_NONE, specification, listenBacklog),
+    Endpoint(type, DOMAIN_UNIX, ENCRYPTION_NONE, specification, listenBacklog),
     _path(path) {
 }
 

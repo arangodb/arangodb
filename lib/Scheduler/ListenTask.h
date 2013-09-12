@@ -78,6 +78,14 @@ namespace triagens {
 
         bool isBound () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+        Endpoint* endpoint () const {
+          return _endpoint;
+        }
+
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +139,7 @@ namespace triagens {
 
       private:
         Endpoint* _endpoint;
+
         TRI_socket_t _listenSocket;
 
         size_t acceptFailures;

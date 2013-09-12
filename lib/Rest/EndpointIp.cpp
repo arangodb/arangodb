@@ -81,13 +81,12 @@ const std::string EndpointIp::_defaultHost = "127.0.0.1";
 
 EndpointIp::EndpointIp (const Endpoint::EndpointType type,
                         const Endpoint::DomainType domainType,
-                        const Endpoint::ProtocolType protocol,
                         const Endpoint::EncryptionType encryption,
                         const std::string& specification,
                         int listenBacklog,
                         const std::string& host,
                         const uint16_t port) :
-    Endpoint(type, domainType, protocol, encryption, specification, listenBacklog), _host(host), _port(port) {
+    Endpoint(type, domainType, encryption, specification, listenBacklog), _host(host), _port(port) {
 
   assert(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }

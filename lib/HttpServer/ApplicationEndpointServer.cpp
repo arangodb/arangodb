@@ -151,19 +151,16 @@ bool ApplicationEndpointServer::buildServers () {
   EndpointServer* server;
 
   // unencrypted endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
-    // http endpoints
-    server = new HttpServer(_applicationScheduler->scheduler(),
-                            _applicationDispatcher->dispatcher(),
-                            _keepAliveTimeout,
-                            _handlerFactory);
+  server = new HttpServer(_applicationScheduler->scheduler(),
+                          _applicationDispatcher->dispatcher(),
+                          _keepAliveTimeout,
+                          _handlerFactory);
 
-    server->setEndpointList(&_endpointList);
-    _servers.push_back(server);
-  }
+  server->setEndpointList(&_endpointList);
+  _servers.push_back(server);
 
   // ssl endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
+  if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
     // check the ssl context
     if (_sslContext == 0) {
       LOGGER_INFO("please use the --server.keyfile option");
@@ -254,17 +251,11 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     LOGGER_FATAL_AND_EXIT("no endpoint has been specified, giving up");
   }
 
+  const vector<string> dbNames;
+
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    Endpoint* endpoint = Endpoint::serverFactory(*i, _backlogSize);
-
-    if (endpoint == 0) {
-      LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
-    }
-
-    assert(endpoint);
-
-    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint, true);
+    bool ok = _endpointList.add((*i), dbNames, _backlogSize);
 
     if (! ok) {
       LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
@@ -276,36 +267,123 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief return a list of all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
-  // create the ssl context (if possible)
-  bool ok = createSslContext();
+std::map<std::string, std::vector<std::string> > ApplicationEndpointServer::getEndpoints () {
+  MUTEX_LOCKER(_endpointsLock);
 
-  if (! ok) {
+  return _endpointList.getAll();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new endpoint at runtime, and connects to it
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
+                                             vector<string> const& dbNames) {
+  // validate...
+  const string unified = Endpoint::getUnifiedForm(newEndpoint);
+
+  if (unified.empty()) {
+    // invalid endpoint
     return false;
   }
 
-  Endpoint* endpoint = Endpoint::serverFactory(newEndpoint, _backlogSize);
-
-  if (endpoint != 0) {
-    ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint, false);
-
-    if (ok) {
-      _endpoints.push_back(newEndpoint);
-    }
+  Endpoint::EncryptionType encryption;
+  if (unified.substr(0, 6) == "ssl://") {
+    encryption = Endpoint::ENCRYPTION_SSL;
   }
   else {
-    ok = false;
+    encryption = Endpoint::ENCRYPTION_NONE;
   }
 
-  if (! ok) {
-    LOGGER_WARNING("Could not add endpoint '" << newEndpoint << "'");
+  // find the correct server (HTTP or HTTPS)
+  for (size_t i = 0; i < _servers.size(); ++i) {
+    if (_servers[i]->getEncryption() == encryption) {
+      // found the correct server
+      MUTEX_LOCKER(_endpointsLock);
+
+      Endpoint* endpoint;
+      bool ok = _endpointList.add(newEndpoint, dbNames, _backlogSize, &endpoint);
+
+      if (! ok) {
+        return false;
+      }
+
+      if (endpoint == 0) {
+        // in this case, we updated an existing endpoint and are done
+        return true;
+      }
+
+      // this connects the new endpoint
+      ok = _servers[i]->addEndpoint(endpoint);
+
+      if (ok) {
+        LOGGER_DEBUG("bound to endpoint '" << newEndpoint << "'");
+      }
+      else {
+        LOGGER_WARNING("failed to bind to endpoint '" << newEndpoint << "'");
+      }
+
+      return ok;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an existing endpoint, and disconnects from it
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) {
+  // validate...
+  const string unified = Endpoint::getUnifiedForm(oldEndpoint);
+
+  if (unified.empty()) {
+    // invalid endpoint
     return false;
   }
   
-  return ok;
+  Endpoint::EncryptionType encryption;
+  if (unified.substr(0, 6) == "ssl://") {
+    encryption = Endpoint::ENCRYPTION_SSL;
+  }
+  else {
+    encryption = Endpoint::ENCRYPTION_NONE;
+  }
+
+  // find the correct server (HTTP or HTTPS)
+  for (size_t i = 0; i < _servers.size(); ++i) {
+    if (_servers[i]->getEncryption() == encryption) {
+      // found the correct server
+      MUTEX_LOCKER(_endpointsLock);
+
+      Endpoint* endpoint;
+      bool ok = _endpointList.remove(unified, &endpoint); 
+
+      if (! ok) {
+        LOGGER_WARNING("could not remove endpoint '" << oldEndpoint << "'");
+        return false;
+      }
+
+      // this disconnects the new endpoint
+      ok = _servers[i]->removeEndpoint(endpoint);
+      delete endpoint;
+
+      if (ok) {
+        LOGGER_DEBUG("removed endpoint '" << oldEndpoint << "'");
+      }
+      else {
+        LOGGER_WARNING("failed to remove endpoint '" << oldEndpoint << "'");
+      }
+
+      return ok;
+    }
+  }
+
+  return false;
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,7 +391,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare () {
-  // dump used endpoints for user information
+  // dump all endpoints for user information
   _endpointList.dump();
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,

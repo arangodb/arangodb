@@ -232,49 +232,6 @@ BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test protocols
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (EndpointProtocols) {
-  Endpoint* e;
-
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Protocol, Endpoint::PROTOCOL_HTTP);
-  
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", Protocol, Endpoint::PROTOCOL_HTTP);
-  
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "Http@tcp://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "Http@ssl://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "Http@unix:///tmp/socket", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "HTTP@tcp://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "HTTP@ssl://127.0.0.1", Protocol, Endpoint::PROTOCOL_HTTP);
-  CHECK_ENDPOINT_FEATURE(client, "HTTP@unix:///tmp/socket", Protocol, Endpoint::PROTOCOL_HTTP);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test ports
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -579,7 +536,6 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
   BOOST_CHECK_EQUAL("tcp://127.0.0.1:667", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
   BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV4, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET, e->getDomain());
   BOOST_CHECK_EQUAL("127.0.0.1", e->getHost());
@@ -600,7 +556,6 @@ BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   BOOST_CHECK_EQUAL("unix:///path/to/arango.sock", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
   BOOST_CHECK_EQUAL(Endpoint::DOMAIN_UNIX, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_UNIX, e->getDomain());
   BOOST_CHECK_EQUAL("localhost", e->getHost());
@@ -621,7 +576,6 @@ BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
   BOOST_CHECK_EQUAL("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_CLIENT, e->getType());
   BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV6, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_SSL, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
   BOOST_CHECK_EQUAL("0001:0002:0003:0004:0005:0006:0007:0008", e->getHost());
@@ -642,7 +596,6 @@ BOOST_AUTO_TEST_CASE (EndpointClientTcpIpv6WithoutPort) {
   BOOST_CHECK_EQUAL("tcp://[::]", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_CLIENT, e->getType());
   BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV6, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
   BOOST_CHECK_EQUAL("::", e->getHost());

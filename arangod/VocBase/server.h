@@ -62,10 +62,8 @@ typedef struct TRI_server_s {
   TRI_vector_pointer_t        _droppedDatabases;
   bool                        _shutdown;
 
-  TRI_associative_pointer_t   _endpoints;
-  TRI_read_write_lock_t       _endpointsLock;
-
   TRI_vocbase_defaults_t      _defaults;
+  void*                       _applicationEndpointServer; // ptr to C++ object
 
   char*                       _basePath;
   char*                       _databasePath;
@@ -79,17 +77,6 @@ typedef struct TRI_server_s {
   bool                        _wasShutdownCleanly;
 }
 TRI_server_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint declaration for a server
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_server_endpoint_s {
-  char*                       _endpoint;
-  TRI_vector_string_t         _databases;
-}
-TRI_server_endpoint_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief page size
@@ -121,6 +108,7 @@ TRI_server_t* TRI_CreateServer (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t* server,
+                    void*,
                     char const*, 
                     TRI_vocbase_defaults_t const*,
                     bool,
@@ -276,14 +264,6 @@ TRI_voc_tick_t TRI_CurrentTickServer (void);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief store a setting for an endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_StoreEndpointServer (TRI_server_t*,
-                             char const*,
-                             TRI_vector_string_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)

@@ -60,14 +60,12 @@ using namespace triagens::rest;
 
 Endpoint::Endpoint (const Endpoint::EndpointType type,
                     const Endpoint::DomainType domainType,
-                    const Endpoint::ProtocolType protocol,
                     const Endpoint::EncryptionType encryption,
                     const std::string& specification,
                     int listenBacklog) :
   _connected(false),
   _type(type),
   _domainType(domainType),
-  _protocol(protocol),
   _encryption(encryption),
   _specification(specification),
   _listenBacklog(listenBacklog) {
@@ -94,6 +92,81 @@ Endpoint::~Endpoint () {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the endpoint specification in a unified form
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Endpoint::getUnifiedForm (const std::string& specification) {
+  if (specification.size() < 7) {
+    return "";
+  }
+ 
+  string copy = specification;
+  StringUtils::trimInPlace(copy);
+  copy = StringUtils::tolower(copy);
+
+  if (specification[specification.size() - 1] == '/') {
+    // address ends with a slash => remove
+    copy = copy.substr(0, copy.size() - 1);
+  }
+
+  // read protocol from string
+  if (StringUtils::isPrefix(copy, "http@")) {
+    copy = copy.substr(5);
+  }
+
+#if TRI_HAVE_LINUX_SOCKETS
+  if (StringUtils::isPrefix(copy, "unix://")) {
+    // unix socket
+    return copy;
+  }
+#else
+  // no unix socket for windows
+  if (StringUtils::isPrefix(copy, "unix://")) {
+    // unix socket
+    return "";
+  }
+#endif
+  else if (! StringUtils::isPrefix(copy, "ssl://") &&
+           ! StringUtils::isPrefix(copy, "tcp://")) {
+    // invalid type
+    return "";
+  }
+
+  // tcp/ip or ssl
+  size_t found;
+  string temp = copy.substr(6, copy.length()); // strip tcp:// or ssl://
+
+  if (temp[0] == '[') {
+    // ipv6
+    found = temp.find("]:", 1);
+    if (found != string::npos && found > 2 && found + 2 < temp.size()) {
+      // hostname and port (e.g. [address]:port)
+      return copy;
+    }
+
+    found = temp.find("]", 1);
+    if (found != string::npos && found > 2 && found + 1 == temp.size()) {
+      // hostname only (e.g. [address])
+      return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+    }
+
+    // invalid address specification
+    return "";
+  }
+
+  // ipv4
+  found = temp.find(':');
+
+  if (found != string::npos && found + 1 < temp.size()) {
+    // hostname and port
+    return copy;
+  }
+
+  // hostname only
+  return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a client endpoint object from a string value
@@ -133,9 +206,6 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     copy = copy.substr(0, copy.size() - 1);
   }
 
-  // default protocol is HTTP
-  Endpoint::ProtocolType protocol = PROTOCOL_HTTP;
-
   // read protocol from string
   size_t found = copy.find('@');
   if (found != string::npos) {
@@ -161,7 +231,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
 #if TRI_HAVE_LINUX_SOCKETS
   else if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
-    return new EndpointUnixDomain(type, protocol, specification, listenBacklog, copy.substr(strlen("unix://")));
+    return new EndpointUnixDomain(type, specification, listenBacklog, copy.substr(strlen("unix://")));
   }
 #else
     // no unix socket for windows
@@ -186,14 +256,14 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(1, found - 1), port);
+      return new EndpointIpV6(type, encryption, specification, listenBacklog, copy.substr(1, found - 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(1, found - 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, encryption, specification, listenBacklog, copy.substr(1, found - 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -207,11 +277,11 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found), port);
+    return new EndpointIpV4(type, encryption, specification, listenBacklog, copy.substr(0, found), port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, protocol, encryption, specification, listenBacklog, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, encryption, specification, listenBacklog, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -27,8 +27,10 @@
 
 #include "EndpointList.h"
 
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
+using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
@@ -49,7 +51,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointList::EndpointList () :
-   _lists() {
+   _endpoints() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,13 +59,15 @@ EndpointList::EndpointList () :
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointList::~EndpointList () {
-  for (map<string, ListType>::iterator i = _lists.begin(); i != _lists.end(); ++i) {
-    for (ListType::iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      delete (*i2).first;
-    }
+  map<string, pair<Endpoint*, vector<string> > >::iterator it;
 
-    (*i).second.clear();
+  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
+    Endpoint* ep = (*it).second.first;
+    
+    delete ep;
   }
+
+  _endpoints.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,19 +84,151 @@ EndpointList::~EndpointList () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief count the number of elements in a sub-list
+/// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t EndpointList::count (const Endpoint::ProtocolType protocol,
-                            const Endpoint::EncryptionType encryption) const {
+bool EndpointList::add (const string& specification, 
+                        const vector<string>& dbNames,
+                        int backLogSize,
+                        Endpoint** dst) {
+  const string key = Endpoint::getUnifiedForm(specification);
 
-   map<string, ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
+  if (key.empty()) {
+    return false;
+  }
 
-   if (i == _lists.end()) {
-     return 0;
-   }
+  map<string, pair<Endpoint*, vector<string> > >::iterator it = _endpoints.find(key);
 
-   return i->second.size();
+  if (it != _endpoints.end()) {
+    // already in list, just update
+   (*it).second.second = dbNames;
+   *dst = 0;
+    return true;
+  }
+
+  Endpoint* ep = Endpoint::serverFactory(key, backLogSize);
+
+  if (ep == 0) {
+    return false;
+  }
+
+  _endpoints[key] = pair<Endpoint*, vector<string> >(ep, dbNames);
+
+  if (dst != 0) {
+    *dst = ep;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a specific endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+bool EndpointList::remove (const string& specification,
+                           Endpoint** dst) {
+  const string key = Endpoint::getUnifiedForm(specification);
+  
+  if (key.empty()) {
+    return false;
+  }
+
+  map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.find(key);
+
+  if (it == _endpoints.end()) {
+    // not in list
+    return false;
+  }
+
+  *dst = (*it).second.first;
+  _endpoints.erase(key);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, std::vector<std::string> > EndpointList::getAll () const {
+  map<string, vector<string> > result;
+  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+  
+  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
+    result[(*it).first] = (*it).second.second;
+  }
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all endpoints with a certain prefix
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, Endpoint*> EndpointList::getByPrefix (const string& prefix) const {
+  map<string, Endpoint*> result;
+  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+  
+  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
+    const string& key = (*it).first;
+
+    if (StringUtils::isPrefix(key, prefix)) {
+      result[key] = (*it).second.first;
+    }
+  }
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all endpoints with a certain encryption type
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, Endpoint*> EndpointList::getByPrefix (const Endpoint::EncryptionType encryption) const {
+  map<string, Endpoint*> result;
+  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+  
+  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
+    const string& key = (*it).first;
+
+    if (encryption == Endpoint::ENCRYPTION_SSL) {
+      if (StringUtils::isPrefix(key, "ssl://")) {
+        result[key] = (*it).second.first;
+      }
+    }
+    else {
+      if (StringUtils::isPrefix(key, "tcp://") || StringUtils::isPrefix(key, "unix://")) {
+        result[key] = (*it).second.first;
+      }
+    }
+  }
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return if there is an endpoint with a certain encryption type
+////////////////////////////////////////////////////////////////////////////////
+
+bool EndpointList::has (const Endpoint::EncryptionType encryption) const {
+  map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
+  
+  for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
+    const string& key = (*it).first;
+
+    if (encryption == Endpoint::ENCRYPTION_SSL) {
+      if (StringUtils::isPrefix(key, "ssl://")) {
+        return true;
+      }
+    }
+    else {
+      if (StringUtils::isPrefix(key, "tcp://") || StringUtils::isPrefix(key, "unix://")) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,43 +236,25 @@ size_t EndpointList::count (const Endpoint::ProtocolType protocol,
 ////////////////////////////////////////////////////////////////////////////////
 
 void EndpointList::dump () const {
-  for (map<string, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
-    for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      LOGGER_INFO("using endpoint '" << (*i2).first->getSpecification() << "' for " << (*i).first << " requests");
-    }
+  for (map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.begin(); it != _endpoints.end(); ++it) {
+    Endpoint const* ep = (*it).second.first;
+
+    LOGGER_INFO("using endpoint '" << (*it).first << "' for " << getEncryptionName(ep->getEncryption()) << " requests");
   }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all endpoints for a specific protocol
+/// @brief return an encryption name
 ////////////////////////////////////////////////////////////////////////////////
-
-EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType protocol,
-                                                   const Endpoint::EncryptionType encryption) const {
-
-  EndpointList::ListType result;
-  map<string, EndpointList::ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
-
-  if (i != _lists.end()) {
-    for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      result.insert(pair<Endpoint*, bool>((*i2).first, (*i2).second));
-    }
+        
+std::string EndpointList::getEncryptionName (const Endpoint::EncryptionType encryption) {
+  switch (encryption) {
+    case Endpoint::ENCRYPTION_SSL:
+      return "ssl-encrypted";
+    case Endpoint::ENCRYPTION_NONE:
+    default:
+      return "non-encrypted";
   }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an endpoint for a specific protocol
-////////////////////////////////////////////////////////////////////////////////
-
-bool EndpointList::addEndpoint (const Endpoint::ProtocolType protocol,
-                                const Endpoint::EncryptionType encryption, 
-                                Endpoint* endpoint,
-                                bool isSystem) {
-
-  _lists[getKey(protocol, encryption)].insert(pair<Endpoint*, bool>(endpoint, isSystem));
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

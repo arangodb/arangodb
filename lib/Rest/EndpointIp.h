@@ -58,7 +58,6 @@ namespace triagens {
 
         EndpointIp (const EndpointType,
                     const DomainType,
-                    const ProtocolType,
                     const EncryptionType,
                     const std::string&,
                     int,
