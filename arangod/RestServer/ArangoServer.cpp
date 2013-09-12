@@ -788,7 +788,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->start();
 
   // enter V8 context
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true, true);
 
   // .............................................................................
   // execute everything with a global scope

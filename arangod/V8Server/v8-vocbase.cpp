@@ -7701,8 +7701,13 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "db._useDatabase(<name>)");
   }
 
-  const string name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+
+  if (! v8g->_allowUseDatabase) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
+  }
+
+  const string name = TRI_ObjectToString(argv[0]);
  
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
 
