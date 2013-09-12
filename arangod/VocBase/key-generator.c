@@ -409,7 +409,7 @@ static uint64_t AutoIncrementNext (const uint64_t lastValue,
 
   next = lastValue + increment - ((lastValue - offset) % increment);
 
-  // TODO: check if we can re move the following if
+  // TODO: check if we can remove the following if
   if (next < offset) {
     next = offset;
   }

@@ -433,8 +433,6 @@ static int LogEvent (TRI_replication_logger_t* logger,
   // this type of operation will be synced. all other operations will not be synced.
   forceSync = (type == REPLICATION_STOP);
  
-  // TODO: instead of using JSON here, we should directly use ShapedJson.
-  // this will be a performance optimisation
   TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &json, withTid ? 3 : 2);
 
   // add "type" attribute

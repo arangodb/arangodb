@@ -608,19 +608,33 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
 
 SkiplistIndex* SkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
+  int res;
 
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
 
-  skiplistIndex->unique = true;
-  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t), true);
-  if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
-    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
+  if (skiplistIndex == NULL) {
     return NULL;
   }
 
-  TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
-                   TRI_SKIPLIST_PROB_HALF,
-                   40);
+  skiplistIndex->unique = true;
+  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t), true);
+
+  if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
+
+    return NULL;
+  }
+
+  res = TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
+                         TRI_SKIPLIST_PROB_HALF,
+                         40);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex->skiplist.uniqueSkiplist);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
+
+    return NULL;
+  }
 
   return skiplistIndex;
 }

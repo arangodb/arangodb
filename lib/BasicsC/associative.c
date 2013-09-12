@@ -1377,7 +1377,7 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrAdds++;
 #endif
 
-  // search the table, TODO optimise the locks
+  // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {

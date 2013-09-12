@@ -308,18 +308,18 @@ static int32_t RandLevel (TRI_skiplist_base_t* skiplist) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an skip list
+/// @brief initialises a skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSkipList (TRI_skiplist_t* skiplist,
-                       TRI_skiplist_prob_e probability,
-                       uint32_t maximumHeight) {
+int TRI_InitSkipList (TRI_skiplist_t* skiplist,
+                      TRI_skiplist_prob_e probability,
+                      uint32_t maximumHeight) {
 
   bool growResult;
   size_t elementSize = sizeof(TRI_skiplist_index_element_t);
 
   if (skiplist == NULL) {
-    return;
+    return TRI_ERROR_INTERNAL;
   }
 
   // ..........................................................................
@@ -338,7 +338,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
 
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
     LOG_ERROR("Invalid maximum height for skiplist");
-    assert(false);
+    return TRI_ERROR_INTERNAL;
   }
 
   // ..........................................................................
@@ -375,9 +375,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
       break;
     }
     default: {
-      assert(false);
-      // todo: log error
-      break;
+      return TRI_ERROR_INTERNAL;
     }
   }  // end of switch statement
 
@@ -387,7 +385,10 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
   // ..........................................................................  
 
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
-  // TODO: memory allocation might fail
+
+  if (skiplist->_base._random == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // ..........................................................................
   // Assign the element size
@@ -423,7 +424,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
 
   if (! growResult) {
     // TODO: undo growth by cutting down the node height
-    return;
+    return TRI_ERROR_NO_ERROR;
   }
 
   // ..........................................................................
@@ -432,6 +433,8 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
   // [N]<----------------------------------->[N]
   // ..........................................................................
   JoinNodes(&(skiplist->_base._startNode),&(skiplist->_base._endNode),0,1); // list 0 & 1
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

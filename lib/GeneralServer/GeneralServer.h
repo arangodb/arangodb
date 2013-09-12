@@ -225,7 +225,7 @@ namespace triagens {
             ListenTask* task = (*i);
 
             if (task->endpoint() == endpoint) {
-              // TODO: remove commtasks for the listentask
+              // TODO: remove commtasks for the listentask??
 
               _scheduler->destroyTask(task);
               _listenTasks.erase(i);
