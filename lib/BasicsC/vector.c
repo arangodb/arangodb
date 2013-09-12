@@ -442,6 +442,7 @@ int TRI_InitVectorPointer2 (TRI_vector_pointer_t* vector,
 
   if (initialCapacity != 0) {
     vector->_buffer = (void*) TRI_Allocate(vector->_memoryZone, (initialCapacity * sizeof(void*)), true);
+
     if (vector->_buffer == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -502,6 +503,21 @@ void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures a vector has space for extraCapacity more items
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector, 
+                               size_t extraCapacity) {
+  size_t minLength = vector->_length + extraCapacity;
+
+  if (vector->_capacity >= minLength) {
+    return true;
+  }
+
+  return (TRI_ResizeVectorPointer(vector, minLength) == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -525,6 +541,7 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
 
     if (copy->_buffer == NULL) {
       TRI_Free(zone, copy);
+
       return NULL;
     }
 
@@ -587,7 +604,8 @@ void TRI_ClearVectorPointer (TRI_vector_pointer_t* vector) {
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
+int TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, 
+                             size_t n) {
   if (vector->_length == n) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -907,10 +925,10 @@ int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies all pointers from a vector
+/// @brief copies data from a TRI_vector_pointer_t into a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t* zone,
+int TRI_CopyDataFromVectorPointerVectorString (TRI_memory_zone_t* zone,
                                                TRI_vector_string_t* dst,
                                                TRI_vector_pointer_t const* src) {
   TRI_ClearVectorString(dst);
@@ -921,7 +939,7 @@ int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t* zone,
     char** qtr;
     int res;
 
-    res = TRI_ResizeVectorString (dst, src->_length);
+    res = TRI_ResizeVectorString(dst, src->_length);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

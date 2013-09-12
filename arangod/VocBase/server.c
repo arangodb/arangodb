@@ -58,7 +58,13 @@
 /// @brief mask value for significant bits of server id
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SERVER_ID_MASK 0x0000FFFFFFFFFFFFULL
+#define SERVER_ID_MASK 0x0000FFFFFFFFFFFFULL
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interval for database manager activity
+////////////////////////////////////////////////////////////////////////////////
+
+#define DATABASE_MANAGER_INTERVAL (1000 * 1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -266,7 +272,7 @@ static int GenerateServerId (void) {
 
   // use the lower 6 bytes only
   randomValue = (((uint64_t) value1) << 32) | ((uint64_t) value2);
-  randomValue &= TRI_SERVER_ID_MASK;
+  randomValue &= SERVER_ID_MASK;
 
   ServerId = (TRI_server_id_t) randomValue;
 
@@ -1247,6 +1253,72 @@ static int InitDatabases (TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief database manager thread main loop
+////////////////////////////////////////////////////////////////////////////////
+
+static void DatabaseManager (void* data) {
+  TRI_server_t* server;
+  bool shutdown;
+
+  server = data;
+
+  while (true) {
+    TRI_vocbase_t* database;
+    size_t i;
+
+    TRI_LockMutex(&server->_createLock);
+    shutdown = server->_shutdown;
+    TRI_UnlockMutex(&server->_createLock);
+
+    if (shutdown) {
+      // done
+      break;
+    }
+
+    // check if we have to drop some database
+    database = NULL;
+
+    TRI_ReadLockReadWriteLock(&server->_databasesLock); 
+
+    for (i = 0; i < server->_droppedDatabases._length; ++i) {
+      TRI_vocbase_t* vocbase = TRI_AtVectorPointer(&server->_droppedDatabases, i);
+
+      if (! TRI_CanRemoveVocBase(vocbase)) {
+        continue;
+      }
+ 
+      // found a database to delete
+      database = TRI_RemoveVectorPointer(&server->_droppedDatabases, i);
+      break;
+    }
+    
+    TRI_ReadUnlockReadWriteLock(&server->_databasesLock); 
+
+    if (database != NULL) {
+      // remember the database path
+      char* path;
+
+printf("PHYSICALLY REMOVING DATABASE %s\n", database->_name);      
+      path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
+
+      TRI_DestroyVocBase(database);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, database);
+
+      // remove directory
+      TRI_RemoveDirectory(path);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+
+      // directly start next iteration
+    }
+    else {
+      usleep(DATABASE_MANAGER_INTERVAL);
+    }
+
+    // next iteration
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1282,6 +1354,10 @@ int TRI_InitServer (TRI_server_t* server,
                     bool disableAppliers) {
 
   assert(server != NULL);
+  
+  // .............................................................................
+  // set up paths and filenames 
+  // .............................................................................
 
   server->_basePath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, basePath);
 
@@ -1326,9 +1402,16 @@ int TRI_InitServer (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+  // .............................................................................
+  // server defaults
+  // .............................................................................
 
-  // copy defaults
   memcpy(&server->_defaults, defaults, sizeof(TRI_vocbase_defaults_t));
+  
+  // .............................................................................
+  // database hashes and vectors
+  // .............................................................................
   
   TRI_InitAssociativePointer(&server->_databases,
                              TRI_UNKNOWN_MEM_ZONE,
@@ -1338,8 +1421,14 @@ int TRI_InitServer (TRI_server_t* server,
                              NULL);
   
   TRI_InitReadWriteLock(&server->_databasesLock);
+
+  TRI_InitVectorPointer2(&server->_droppedDatabases, TRI_UNKNOWN_MEM_ZONE, 64);
   
   TRI_InitMutex(&server->_createLock);
+  
+  // .............................................................................
+  // endpoints
+  // .............................................................................
 
 
   TRI_InitAssociativePointer(&server->_endpoints,
@@ -1372,6 +1461,7 @@ void TRI_DestroyServer (TRI_server_t* server) {
   TRI_DestroyAssociativePointer(&server->_endpoints);
 
   TRI_DestroyMutex(&server->_createLock);
+  TRI_DestroyVectorPointer(&server->_droppedDatabases);
   TRI_DestroyReadWriteLock(&server->_databasesLock);
   TRI_DestroyAssociativePointer(&server->_databases);
 
@@ -1586,6 +1676,12 @@ int TRI_StartServer (TRI_server_t* server) {
     }
   }
 
+  server->_shutdown = false;
+  
+  // start dbm thread
+  TRI_InitThread(&server->_databaseManager);
+  TRI_StartThread(&server->_databaseManager, "[databases]", DatabaseManager, server);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1594,6 +1690,14 @@ int TRI_StartServer (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StopServer (TRI_server_t* server) {
+  // set shutdown flag
+  TRI_LockMutex(&server->_createLock);
+  server->_shutdown = true;
+  TRI_UnlockMutex(&server->_createLock);
+
+  // stop dbm thread
+  TRI_JoinThread(&server->_databaseManager);
+
   CloseDatabases(server);
 
   // we are just before terminating the server. we can now write out a file with the
@@ -1717,6 +1821,13 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     
   TRI_WriteLockReadWriteLock(&server->_databasesLock);
 
+  if (! TRI_ReserveVectorPointer(&server->_droppedDatabases, 1)) {
+    // we need space for one more element
+    TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   vocbase = TRI_RemoveKeyAssociativePointer(&server->_databases, name);
 
   if (vocbase == NULL) {
@@ -1731,6 +1842,8 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
                                    true,
                                    &vocbase->_settings,
                                    vocbase->_path);
+
+      TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
     }
     else {
       // already deleted
@@ -1739,28 +1852,6 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   }
 
   TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
-
-
-  // move perform the actual deletion
-  if (vocbase != NULL) {
-    char* path;
-
-    // we are allowed to drop the database
-    while (TRI_IsUsedVocBase(vocbase)) {
-      // cycle until there are no more references to the database
-      usleep(500 * 1000);
-    }
-
-    // remember the database path
-    path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_path);
-
-    TRI_DestroyVocBase(vocbase);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
-
-    // remove directory
-    TRI_RemoveDirectory(path);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, path);
-  }
 
   return res;
 }

@@ -601,7 +601,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
   TRI_CopyPathVector(&hashIndex->_paths, paths);
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
-  TRI_CopyDataVectorStringFromVectorPointer(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
+  TRI_CopyDataFromVectorPointerVectorString(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
 
   // create a index preallocated for the current number of documents
   res = TRI_InitHashArray(&hashIndex->_hashArray,
