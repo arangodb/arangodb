@@ -84,7 +84,7 @@ var API = "/_api/edges";
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db.arangodb_graphs.remove("graph");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// In edges
@@ -108,7 +108,7 @@ var API = "/_api/edges";
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db.arangodb_graphs.remove("graph");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Out edges
@@ -132,7 +132,7 @@ var API = "/_api/edges";
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
-///     db.arangodb_graphs.remove("graph");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -382,12 +382,12 @@ Vertex.prototype.outDegree = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
-  var gdb = db._collection("arangodb_graphs");
+  var gdb = db._collection("_graphs");
   var graphProperties;
   var graphPropertiesId;
 
   if (gdb === null) {
-    throw "arangodb_graphs collection does not exist.";
+    throw "_graphs collection does not exist.";
   }
 
   if (typeof name !== "string" || name === "") {
@@ -521,7 +521,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getAllGraphs () {
-  var gdb = db._collection("arangodb_graphs"),
+  var gdb = db._collection("_graphs"),
     graphs = [ ];
 
   gdb.toArray().forEach(function(doc) {
@@ -551,7 +551,7 @@ Graph.getAll = getAllGraphs;
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function (waitForSync) {
-  var gdb = db._collection("arangodb_graphs");
+  var gdb = db._collection("_graphs");
 
   gdb.remove(this._properties, true, waitForSync);
 
