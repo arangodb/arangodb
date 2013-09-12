@@ -139,6 +139,12 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 static int const SLOT_BARRIER = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slot for a "collection"
+////////////////////////////////////////////////////////////////////////////////
+
+static int const SLOT_COLLECTION = 2;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
 ///
 /// Layout:
@@ -154,6 +160,7 @@ static int32_t const WRP_VOCBASE_TYPE = 1;
 /// Layout:
 /// - SLOT_CLASS_TYPE
 /// - SLOT_CLASS
+/// - SLOT_COLLECTION
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_VOCBASE_COL_TYPE = 2;
@@ -446,6 +453,25 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg,
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for collections
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakCollectionCallback (v8::Isolate* isolate,
+                                    v8::Persistent<v8::Value> object,
+                                    void* parameter) {
+  v8::HandleScope scope; // do not remove, will fail otherwise!!
+
+  TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) parameter;
+
+  // decrease the reference-counter for the collection
+  TRI_ReleaseVocBase(collection->_vocbase);
+
+  // dispose and clear the persistent handle
+  object.Dispose(isolate);
+  object.Clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -877,7 +903,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     vocbase = GetContextVocBase();
   }
 
-  assert(vocbase);
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
@@ -982,8 +1010,10 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     // called as db._exists()
     vocbase = GetContextVocBase();
   }
-
-  assert(vocbase);
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
@@ -1085,8 +1115,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     // called as db._replace()
     vocbase = GetContextVocBase();
   }
-
-  assert(vocbase);
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
@@ -1383,8 +1415,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     // called as db._update()
     vocbase = GetContextVocBase();
   }
-
-  assert(vocbase);
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
@@ -1503,8 +1537,10 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     // called as db._remove()
     vocbase = GetContextVocBase();
   }
-
-  assert(vocbase);
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
@@ -1546,7 +1582,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_type_e collectionType) {
+static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, 
+                                            TRI_col_type_e collectionType) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -2045,7 +2082,7 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a general cursor in a javascript object
+/// @brief stores a general cursor in a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
@@ -2077,7 +2114,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a cursor from a javascript object
+/// @brief extracts a cursor from a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
@@ -3318,6 +3355,10 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
     
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
@@ -8365,11 +8406,20 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
   v8::HandleScope scope;
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseColTempl,
-                                            WRP_VOCBASE_COL_TYPE,
-                                            const_cast<TRI_vocbase_col_t*>(collection));
+  v8::Handle<v8::Object> result = v8g->VocbaseColTempl->NewInstance();
   
   if (! result.IsEmpty()) {
+    // increase the reference-counter for the database
+    TRI_UseVocBase(collection->_vocbase);
+
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(const_cast<TRI_vocbase_col_t*>(collection)));
+    persistent.MakeWeak(isolate, const_cast<TRI_vocbase_col_t*>(collection), WeakCollectionCallback);
+
+    result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_VOCBASE_COL_TYPE));
+    result->SetInternalField(SLOT_CLASS, v8::External::New(const_cast<TRI_vocbase_col_t*>(collection)));
+    result->SetInternalField(SLOT_COLLECTION, persistent);
+
     const string cidString = StringUtils::itoa(collection->_cid);
 
     result->Set(v8g->_IdKey, v8::String::New(cidString.c_str(), cidString.size()), v8::ReadOnly);
@@ -8613,7 +8663,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   ft->SetClassName(TRI_V8_SYMBOL("ArangoCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
+  rt->SetInternalFieldCount(3);
 
   TRI_AddMethodVocbase(rt, "count", JS_CountVocbaseCol);
   TRI_AddMethodVocbase(rt, "datafiles", JS_DatafilesVocbaseCol);

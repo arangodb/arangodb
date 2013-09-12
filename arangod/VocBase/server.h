@@ -31,6 +31,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
+#include "BasicsC/threads.h"
 #include "BasicsC/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
@@ -55,7 +56,11 @@ extern "C" {
 typedef struct TRI_server_s {
   TRI_associative_pointer_t   _databases;
   TRI_read_write_lock_t       _databasesLock;
+
   TRI_mutex_t                 _createLock;
+  TRI_thread_t                _databaseManager;
+  TRI_vector_pointer_t        _droppedDatabases;
+  bool                        _shutdown;
 
   TRI_associative_pointer_t   _endpoints;
   TRI_read_write_lock_t       _endpointsLock;
