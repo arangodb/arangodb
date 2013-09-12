@@ -124,6 +124,7 @@ int TRI_InitSkipList (TRI_skip_list_t* skiplist, uint32_t elementSize,
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIP_LIST_ABSOLUTE_MAX_HEIGHT) {
     LOG_ERROR("Invalid maximum height for skiplist");
+
     return TRI_ERROR_INTERNAL;
   }  
   
@@ -175,6 +176,7 @@ int TRI_InitSkipList (TRI_skip_list_t* skiplist, uint32_t elementSize,
   // ..........................................................................  
   
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
+
   if (skiplist->_base._random == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
