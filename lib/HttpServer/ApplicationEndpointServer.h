@@ -32,7 +32,8 @@
 
 #include <openssl/ssl.h>
 
-#include "Basics/MutexLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "GeneralServer/EndpointServer.h"
 #include "Rest/EndpointList.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -170,6 +171,12 @@ namespace triagens {
         bool removeEndpoint (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the list of databases for an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::vector<std::string> getEndpointMapping (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -293,7 +300,7 @@ namespace triagens {
 /// @brief mutex to protect _endpointList
 ////////////////////////////////////////////////////////////////////////////////
 
-          basics::Mutex _endpointsLock;
+          basics::ReadWriteLock _endpointsLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deprecated hidden option for downwards compatibility
