@@ -48,7 +48,7 @@ var internal = require("internal");
 /// @fn JSF_get_api_endpoint
 /// @brief returns a list of all endpoints
 ///
-/// @RESTHEADER{POST /_api/endpoint,returns a list of all endpoints}
+/// @RESTHEADER{GET /_api/endpoint,returns a list of all endpoints}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -64,7 +64,7 @@ var internal = require("internal");
 /// @fn JSF_delete_api_endpoint
 /// @brief disconnects an existing endpoint
 ///
-/// @RESTHEADER{DELETE /_api/endpoint/<endpoint>,disconnects an existing endpoint}
+/// @RESTHEADER{DELETE /_api/endpoint/{endpoint},disconnects an existing endpoint}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -314,6 +314,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/compaction.js \
                @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/server/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
                @top_srcdir@/js/common/tests/shell-foxx-repository.js \
                @top_srcdir@/js/common/tests/shell-foxx-model.js \
@@ -726,31 +727,6 @@ unittests-foxx-manager:
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
-	@echo
-
-################################################################################
-### @brief BITARRAY INDEXES TESTS
-################################################################################
-
-BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
-
-.PHONY:	unittests-bitarray-index
-
-UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
-
-unittests-bitarray-index:
-	@echo
-	@echo "================================================================================"
-	@echo "<< BITARRAY INDEX TESTS                                                       >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_BITARRAY) || test "x$(FORCE)" == "x1"
-
-	@ rm -rf "$(VOCDIR)"
 	@echo
 
 ################################################################################

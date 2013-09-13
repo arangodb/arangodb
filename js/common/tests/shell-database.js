@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the database interface
+/// @brief test the common database interface
 ///
 /// @file
 ///
@@ -27,17 +27,23 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var arangodb = require("org/arangodb");
+var ERRORS = arangodb.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  database methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: error handling
+/// @brief test suite: database methods
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseSuite () {
   return {
+
+    setUp : function () {
+      internal.db._useDatabase("_system");
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the version information
@@ -70,6 +76,7 @@ function DatabaseSuite () {
 
     testIsSystem : function () {
       assertTrue(typeof internal.db._isSystem() === "boolean");
+      assertTrue(internal.db._isSystem());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,6 +87,351 @@ function DatabaseSuite () {
       assertEqual([ 1 ], internal.db._query("return 1").toArray());
       assertEqual([ [ 1, 2, 9, "foo" ] ], internal.db._query("return [ 1, 2, 9, \"foo\" ]").toArray());
       assertEqual([ [ 1, 454 ] ], internal.db._query("return [ @low, @high ]", { low : 1, high : 454 }).toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _executeTransaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteTransaction1 : function () {
+      var result = internal.db._executeTransaction({ 
+        collections: { }, 
+        action: function (params) {
+          return params.v1 + params.v2;
+        },
+        params: { 
+          "v1": 1, 
+          "v2": 2
+        } 
+      });
+
+      assertEqual(3, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _executeTransaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteTransaction2 : function () {
+      var result = internal.db._executeTransaction({ 
+        collections: { }, 
+        action: "function () { return params.v1[0] - params.v1[1]; }",
+        params: { 
+          "v1": [ 10, 4 ], 
+        } 
+      });
+
+      assertEqual(6, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _listDatabases function
+////////////////////////////////////////////////////////////////////////////////
+
+    testListDatabases : function () {
+      var actual, n;
+      
+      assertEqual("_system", internal.db._name());
+
+      actual = internal.db._listDatabases();
+      assertTrue(Array.isArray(actual));
+      n = actual.length;
+      assertTrue(n > 0);
+      assertTrue(function () { 
+        for (var i = 0; i < actual.length; ++i) { 
+          if (actual[i] === "_system") { 
+            return true;
+          }
+        }
+        return false;
+      }());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err) {
+      }
+
+      internal.db._createDatabase("UnitTestsDatabase0");
+      
+      actual = internal.db._listDatabases();
+      assertTrue(Array.isArray(actual));
+      assertEqual(n + 1, actual.length);
+      assertTrue(function () { 
+        for (var i = 0; i < actual.length; ++i) { 
+          if (actual[i] === "UnitTestsDatabase0") { 
+            return true;
+          }
+        }
+        return false;
+      }());
+
+      internal.db._dropDatabase("UnitTestsDatabase0");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabase : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+      
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase1");
+      }
+      catch (err2) {
+      }
+
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase1"));
+      
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase1"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseInvalidName : function () {
+      assertEqual("_system", internal.db._name());
+
+      [ "", " ", "-", "0", "99999", ":::", "fox::", "test!" ].forEach (function (d) {
+        try {
+          internal.db._createDatabase(d);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum)
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseNonSystem : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+
+      internal.db._createDatabase("UnitTestsDatabase0");
+      internal.db._useDatabase("UnitTestsDatabase0");
+      assertEqual("UnitTestsDatabase0", internal.db._name());
+
+      // creation of new databases should fail here
+      try {
+        internal.db._createDatabase("UnitTestsDatabase1");
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum)
+      }
+      
+      // removing a database should fail here
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase1");
+        fail();
+      }
+      catch (err3) {
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum)
+      }
+      
+      internal.db._useDatabase("_system");
+      internal.db._dropDatabase("UnitTestsDatabase0");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseDuplicate : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+
+      internal.db._createDatabase("UnitTestsDatabase0");
+
+      try {
+        internal.db._createDatabase("UnitTestsDatabase0");
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err2.errorNum)
+      }
+        
+      internal.db._dropDatabase("UnitTestsDatabase0");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseCase : function () {
+      assertEqual("_system", internal.db._name());
+
+      var getCollections = function () {
+        var result = [ ];
+
+        internal.db._collections().forEach(function (c) {
+          if (c.name()[0] !== '_') {
+            result.push(c.name());
+          }
+        });
+        result.sort();
+
+        return result;
+      };
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+      
+      try {
+        internal.db._dropDatabase("UNITTESTSDATABASE0");
+      }
+      catch (err2) {
+      }
+
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
+      assertTrue(internal.db._createDatabase("UNITTESTSDATABASE0"));
+
+      internal.db._useDatabase("UnitTestsDatabase0");
+      assertEqual("UnitTestsDatabase0", internal.db._name());
+      var c1 = internal.db._create("test1");
+      assertEqual([ "test1" ], getCollections());
+      c1.save({ "_key": "foo" });
+      assertEqual(1, internal.db._collection("test1").count());
+      assertEqual(1, c1.count());
+
+      
+      internal.db._useDatabase("UNITTESTSDATABASE0");
+      assertEqual("UNITTESTSDATABASE0", internal.db._name());
+      var c2 = internal.db._create("test1");
+      assertEqual([ "test1" ], getCollections());
+      c2.save({ "_key": "foo" });
+      c2.save({ "_key": "bar" });
+      c2.save({ "_key": "baz" });
+      assertEqual(3, internal.db._collection("test1").count());
+      assertEqual(3, c2.count());
+
+      c1.remove("foo");
+      assertEqual(0, c1.count());
+      assertEqual(3, c2.count());
+      assertEqual(3, internal.db._collection("test1").count());
+      
+      internal.db._useDatabase("UnitTestsDatabase0");
+      assertEqual(0, c1.count());
+      assertEqual(3, c2.count());
+      assertEqual(0, internal.db._collection("test1").count());
+      c1.drop();
+      c1 = null;
+
+      internal.db._useDatabase("UNITTESTSDATABASE0");
+      assertEqual(3, internal.db._collection("test1").count());
+      assertEqual(3, c2.count());
+      c2.remove("foo");
+      assertEqual(2, internal.db._collection("test1").count());
+      assertEqual(2, c2.count());
+
+      internal.db._useDatabase("_system");
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+      assertTrue(internal.db._dropDatabase("UNITTESTSDATABASE0"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _useDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseDatabase : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+      
+      internal.db._createDatabase("UnitTestsDatabase0");
+      internal.db._useDatabase("UnitTestsDatabase0");
+      assertEqual("UnitTestsDatabase0", internal.db._name());
+      
+      internal.db._useDatabase("UnitTestsDatabase0");
+      assertEqual("UnitTestsDatabase0", internal.db._name());
+      
+      internal.db._useDatabase("_system");
+      assertEqual("_system", internal.db._name());
+      
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+      
+      try {
+        internal.db._useDatabase("UnitTestsDatabase0");
+        fail();
+      }
+      catch (err2) {
+        assertTrue(err2.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code || 
+                   err2.errorNum === ERRORS.ERROR_HTTP_NOT_FOUND.code);
+      }
+      
+      assertEqual("_system", internal.db._name());
+      
+      try {
+        internal.db._useDatabase("THISDATABASEDOESNOTEXIST");
+        fail();
+      }
+      catch (err3) {
+        assertTrue(err3.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code || 
+                   err3.errorNum === ERRORS.ERROR_HTTP_NOT_FOUND.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _dropDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropDatabase : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+      
+      var isContained = function (name) {
+        var l = internal.db._listDatabases();
+        for (var i = 0; i < l.length; ++i) {
+          if (l[i] === name) {
+            return true;
+          }
+        }
+        return false;
+      };
+      
+      internal.db._createDatabase("UnitTestsDatabase0");
+      assertTrue(isContained("UnitTestsDatabase0"));
+      assertTrue(isContained("_system"));
+
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+      assertFalse(isContained("UnitTestsDatabase0"));
+      assertTrue(isContained("_system"));
     }
 
   };
