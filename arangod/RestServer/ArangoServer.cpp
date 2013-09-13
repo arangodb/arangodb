@@ -158,15 +158,52 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 
 static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
                                                  TRI_server_t* server) {
-  // get database name from request
-  string requestedName = request->databaseName();
- 
-  if (requestedName.empty()) {
-    // no name set in request, use system database name as a fallback
-    requestedName = TRI_VOC_SYSTEM_DATABASE;
-  }
+  // get the request endpoint
+  ConnectionInfo ci = request->connectionInfo();
+  const string& endpoint = ci.endpoint;
+  
+  // get the databases mapped to the endpoint
+  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
+  const vector<string> databases = s->getEndpointMapping(endpoint);
 
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, requestedName.c_str()); 
+  // get database name from request
+  string dbName = request->databaseName();
+
+  if (databases.empty()) {
+    // no databases defined. this means all databases are accessible via the endpoint
+  
+    if (dbName.empty()) {
+      // if no databases was specified in the request, use system database name as a fallback
+      dbName = TRI_VOC_SYSTEM_DATABASE;
+      request->setDatabaseName(dbName);
+    }
+  }
+  else {
+    // only some databases are allowed for this endpoint
+    if (dbName.empty()) {
+      // no specific database requested, so use first mapped database
+      dbName = databases.at(0);
+      request->setDatabaseName(dbName);
+    }
+    else {
+      bool found = false;
+
+      for (size_t i = 0; i < databases.size(); ++i) {
+        if (dbName == databases.at(i)) {
+          found = true;
+          break;
+        }
+      }
+
+      if (! found) {
+        // requested database not found
+        return 0;
+      }
+    }
+  }
+  
+
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, dbName.c_str()); 
   
   if (vocbase == 0) {
     // database not found
@@ -174,41 +211,6 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
   } 
 
   return vocbase;
-
-  // TODO FIXME
-  /*
-  // check if we have an endpoint
-  ConnectionInfo ci = request->connectionInfo();
- 
-  const string& endpoint = ci.endpoint;
-
-  map<string, vector<string> >::const_iterator it2 = _endpoints.find(endpoint);
-
-  if (it2 == _endpoints.end()) {
-    // no user mapping entered for the endpoint. return the requested database
-    return vocbase;  
-  }
-
-  // we have a user-defined mapping for the endpoint
-  const vector<string>& databaseNames = (*it2).second;
-
-  if (databaseNames.size() == 0) {
-    // list of database names is specified but empty. this means no-one will get access
-    return 0;
-  }
-    
-  // finally check if the requested database is in the list of allowed databases for the endpoint
-  vector<string>::const_iterator it3;
-
-  for (it3 = databaseNames.begin(); it3 != databaseNames.end(); ++it3) {
-    if (requestedName == *it3) {
-      return vocbase;
-    }
-  }
-
-  // requested database not available for the endpoint
-  return 0;
-  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////

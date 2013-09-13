@@ -271,7 +271,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::vector<std::string> > ApplicationEndpointServer::getEndpoints () {
-  MUTEX_LOCKER(_endpointsLock);
+  READ_LOCKER(_endpointsLock);
 
   return _endpointList.getAll();
 }
@@ -302,7 +302,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
   for (size_t i = 0; i < _servers.size(); ++i) {
     if (_servers[i]->getEncryption() == encryption) {
       // found the correct server
-      MUTEX_LOCKER(_endpointsLock);
+      WRITE_LOCKER(_endpointsLock);
 
       Endpoint* endpoint;
       bool ok = _endpointList.add(newEndpoint, dbNames, _backlogSize, &endpoint);
@@ -358,7 +358,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
   for (size_t i = 0; i < _servers.size(); ++i) {
     if (_servers[i]->getEncryption() == encryption) {
       // found the correct server
-      MUTEX_LOCKER(_endpointsLock);
+      WRITE_LOCKER(_endpointsLock);
 
       Endpoint* endpoint;
       bool ok = _endpointList.remove(unified, &endpoint); 
@@ -384,6 +384,16 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the list of databases for an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+const std::vector<std::string> ApplicationEndpointServer::getEndpointMapping (std::string const& endpoint) {
+  READ_LOCKER(_endpointsLock);
+
+  return _endpointList.getMapping(endpoint);
 }
  
 ////////////////////////////////////////////////////////////////////////////////

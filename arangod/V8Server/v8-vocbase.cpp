@@ -7962,10 +7962,16 @@ static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
       v8::Handle<v8::Value> name = list->Get(i);
 
       if (name->IsString()) {
-        dbNames.push_back(TRI_ObjectToString(name));
+        const string dbName = TRI_ObjectToString(name);
+
+        if (! TRI_IsAllowedNameVocBase(true, dbName.c_str())) {
+          TRI_V8_EXCEPTION_PARAMETER(scope, "<databases> must be a list of database names");
+        }
+
+        dbNames.push_back(dbName);
       }
       else {
-        TRI_V8_EXCEPTION_PARAMETER(scope, "<databases> must be a list of strings");
+        TRI_V8_EXCEPTION_PARAMETER(scope, "<databases> must be a list of database names");
       }
     }
   }
