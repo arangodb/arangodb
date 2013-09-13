@@ -557,11 +557,10 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   }
 
   if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>, <databasename>, [, <username>, <password>])");
+    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>, <database>, [, <username>, <password>])");
   }
 
   string definition = TRI_ObjectToString(argv[0]);
-
   string databaseName = TRI_ObjectToString(argv[1]);
 
   string username;
