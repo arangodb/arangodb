@@ -165,7 +165,7 @@ std::map<std::string, std::vector<std::string> > EndpointList::getAll () const {
 /// @brief return all endpoints with a certain prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, Endpoint*> EndpointList::getByPrefix (const string& prefix) const {
+std::map<std::string, Endpoint*> EndpointList::getByPrefix (const std::string& prefix) const {
   map<string, Endpoint*> result;
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
   
