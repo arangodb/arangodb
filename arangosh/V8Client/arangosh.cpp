@@ -94,7 +94,7 @@ v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 /// @brief max size body size (used for imports)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t MaxUploadSize = 500000;
+static uint64_t ChunkSize = 1024 * 1024 * 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -278,7 +278,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(ClientConnection->getHttpClient(), ChunkSize);
 
   ih.setQuote(quote);
   ih.setSeparator(separator.c_str());
@@ -327,7 +327,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   }
 
 
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(ClientConnection->getHttpClient(), ChunkSize);
 
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
@@ -413,9 +413,15 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
   ;
+  
+  ProgramOptionsDescription deprecatedOptions("DEPRECATED options");
+  deprecatedOptions
+    ("max-upload-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
+  ;
 
   description
-    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
+    ("chunk-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
+    (deprecatedOptions, true)
     (javascript, false)
   ;
 
