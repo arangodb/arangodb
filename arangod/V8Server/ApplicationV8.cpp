@@ -291,6 +291,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
+  
+  // set the current database
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
+  v8g->_vocbase = vocbase;
+  v8g->_allowUseDatabase = allowUseDatabase;
+  
 
   LOGGER_TRACE("entering V8 context " << context->_id);
   context->handleGlobalContextMethods();
@@ -304,12 +311,6 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
                                 false);
   }
 
-  // set the current database
-  v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-  v8g->_vocbase = vocbase;
-  v8g->_allowUseDatabase = allowUseDatabase;
-  
   return context;
 }
 
@@ -327,6 +328,10 @@ void ApplicationV8::exitContext (V8Context* context) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   context->handleGlobalContextMethods();
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  // set vocbase to 0
+  v8g->_vocbase = 0;
 
   context->_context->Exit();
   context->_isolate->Exit();
