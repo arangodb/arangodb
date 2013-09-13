@@ -901,6 +901,68 @@ ArangoDatabase.prototype._useDatabase = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                         endpoints
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._listEndpoints = function () {
+  var requestResult = this._connection.GET("/_api/endpoint");
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds and connects a new endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
+  var requestResult = this._connection.POST("/_api/endpoint",
+    JSON.stringify({ endpoint: endpoint, databases: databases || [ ] }));
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnects and removes an existing endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
+  var requestResult = this._connection.DELETE("/_api/endpoint/" + encodeURIComponent(endpoint));
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      transactions
 // -----------------------------------------------------------------------------
 

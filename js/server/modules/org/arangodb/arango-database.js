@@ -359,7 +359,7 @@ ArangoDatabase.prototype._index = function(id) {
 /// @verbinclude shell_index-drop-index-db
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._dropIndex = function(id) {
+ArangoDatabase.prototype._dropIndex = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -384,6 +384,58 @@ ArangoDatabase.prototype._dropIndex = function(id) {
   }
 
   return col.dropIndex(id);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                endpoint functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list of all endpoints
+///
+/// @FUN{db._getEndpoints()}
+///
+/// Returns a list of all endpoints and their mapped databases.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._listEndpoints = function () {
+  return internal._listEndpoints();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds and connects a new endpoint
+///
+/// @FUN{db._removeEndpoint(@FA{endpoint}, @FA{databases})}
+///
+/// Adds and connects the @FA{endpoint}. The optional @FA{databases} argument
+/// allows restricting the endpoint to specific databases. The first database
+/// in the list will automatically become the default database for the 
+/// endpoint.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._addEndpoint = function (endpoint, databases) {
+  return internal._configureEndpoint(endpoint, databases || [ ]);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnects and removes a specific endpoint
+///
+/// @FUN{db._removeEndpoint(@FA{endpoint})}
+///
+/// Disconnects and removes the @FA{endpoint}.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
+  return internal._removeEndpoint(endpoint);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

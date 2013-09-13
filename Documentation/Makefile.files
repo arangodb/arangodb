@@ -140,6 +140,7 @@ DOXYGEN = \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-database.c \
 	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-endpoint.c \
 	Doxygen/js/actions/api-explain.c \
 	Doxygen/js/actions/api-foxx.c \
 	Doxygen/js/actions/api-graph.c \

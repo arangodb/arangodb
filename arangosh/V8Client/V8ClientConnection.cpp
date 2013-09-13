@@ -89,7 +89,6 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   }
 
   _client->setLocationRewriter(this, &rewriteLocation);
-
   _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
@@ -175,10 +174,16 @@ V8ClientConnection::~V8ClientConnection () {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-string V8ClientConnection::rewriteLocation (void* data, const string& location) {
+string V8ClientConnection::rewriteLocation (void* data, 
+                                            const string& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
   assert(c != 0);
+
+  if (c->_databaseName.empty()) {
+    // no database name provided
+    return location;
+  }
 
   if (location.substr(0, 5) == "/_db/") {
     // location already contains /_db/
