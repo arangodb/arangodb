@@ -2641,54 +2641,6 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run version check
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_V8RunVersionCheck (void* vocbase, 
-                            JSLoader* startupLoader,
-                            v8::Handle<v8::Context> context) {
-  assert(startupLoader != 0);
-  
-  v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  void* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;      
-      
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/version-check.js");
- 
-  v8g->_vocbase = orig;
-  
-  return TRI_ObjectToBoolean(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize foxx
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_V8InitialiseFoxx (void* vocbase, 
-                           v8::Handle<v8::Context> context) {
-  void* orig = 0;
-
-  {
-    v8::HandleScope scope;      
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-    orig = v8g->_vocbase;
-    v8g->_vocbase = vocbase;      
-  }
-    
-  v8::HandleScope scope;      
-  TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require(\"internal\").initializeFoxx()"),
-                              v8::String::New("initialize foxx"),
-                              false);
-  {
-    v8::HandleScope scope;
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-    v8g->_vocbase = orig;
-  }  
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
