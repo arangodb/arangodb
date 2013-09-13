@@ -1820,6 +1820,11 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   else {
     // mark as deleted
     if (TRI_DropVocBase(vocbase)) {
+  
+      LOG_INFO("dropping database '%s', directory '%s'", 
+               vocbase->_name,
+               vocbase->_path);
+
       res = SaveDatabaseParameters(vocbase->_id, 
                                    vocbase->_name, 
                                    true,
