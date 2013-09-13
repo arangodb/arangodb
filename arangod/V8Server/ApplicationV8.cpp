@@ -329,9 +329,12 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   context->handleGlobalContextMethods();
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  // TODO: setting vocbase to 0 will make the server crash because GC 
+  // might refer to it. But it would be better to reset the vocbase
+  // pointer after each request so there are no unintended side-effects
+  // TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   // set vocbase to 0
-  v8g->_vocbase = 0;
+  // v8g->_vocbase = 0;
 
   context->_context->Exit();
   context->_isolate->Exit();
