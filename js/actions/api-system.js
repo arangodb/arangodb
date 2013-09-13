@@ -665,6 +665,8 @@ actions.defineHttp({
 
   callback : function (req, res) {
     try {
+      var result;
+
       if (req.requestType === actions.GET) {
         actions.resultOk(req, res, actions.HTTP_OK, internal.listEndpoints());
       }
@@ -678,7 +680,7 @@ actions.defineHttp({
           return;
         }
 
-        var result = internal.configureEndpoint(body.endpoint, body.databases || [ ]);
+        result = internal.configureEndpoint(body.endpoint, body.databases || [ ]);
         actions.resultOk(req, res, actions.HTTP_OK, { result: result });
       }
 
@@ -690,7 +692,7 @@ actions.defineHttp({
         }
 
         var endpoint = decodeURIComponent(req.suffix[0]);
-        var result = internal.removeEndpoint(endpoint);
+        result = internal.removeEndpoint(endpoint);
         actions.resultOk(req, res, actions.HTTP_OK, { result: result });
       }
       else {
