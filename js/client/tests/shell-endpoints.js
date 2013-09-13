@@ -89,6 +89,8 @@ function EndpointsSuite () {
         catch (err) {
         }
       }
+
+      arango.reconnect(originalEndpoint, "", "root", "");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +98,8 @@ function EndpointsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testListEndpoints : function () {
+      assertEqual("_system", db._name());
+
       var i;
       var base = 30000 + parseInt(Math.random() * 10000, 10);
 
@@ -121,6 +125,8 @@ function EndpointsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConfigureEndpoints : function () {
+      assertEqual("_system", db._name());
+
       var i;
       var base = 30000 + parseInt(Math.random() * 10000, 10);
 
@@ -150,6 +156,8 @@ function EndpointsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConfigureInvalidEndpoints : function () {
+      assertEqual("_system", db._name());
+
       var base = 30000 + parseInt(Math.random() * 10000, 10);
 
       try {
@@ -185,6 +193,8 @@ function EndpointsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveEndpoints : function () {
+      assertEqual("_system", db._name());
+
       var i;
       var base = 30000 + parseInt(Math.random() * 10000, 10);
 
@@ -320,6 +330,42 @@ function EndpointsSuite () {
       ];
 
       test("tcp://127.0.0.1:" + (base + 4), endpoints);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-system
+////////////////////////////////////////////////////////////////////////////////
+
+    testEndpointsNonSystem : function () {
+      assertEqual("_system", db._name());
+
+      try {
+        db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+
+      db._createDatabase("UnitTestsDatabase0");
+      db._useDatabase("UnitTestsDatabase0");
+
+      // _listEndpoints is forbidden
+      try {
+        db._listEndpoints();
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum)
+      }
+
+      // _configureEndpoint is forbidden
+      try {
+        var base = 30000 + parseInt(Math.random() * 10000, 10);
+        db._configureEndpoint("tcp://127.0.0.1:" + base, [ ]);
+        fail();
+      }
+      catch (err3) {
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum)
+      }
     }
 
   };

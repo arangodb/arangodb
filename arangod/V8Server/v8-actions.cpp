@@ -109,7 +109,8 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    void createCallback (v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
+    void createCallback (v8::Isolate* isolate, 
+                         v8::Handle<v8::Function> callback) {
       WRITE_LOCKER(_callbacksLock);
 
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(isolate);
@@ -125,7 +126,8 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+    HttpResponse* execute (TRI_vocbase_t* vocbase, 
+                           HttpRequest* request) {
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, false, false);
 
       // note: the context might be 0 in case of shut-down
