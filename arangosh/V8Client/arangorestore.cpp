@@ -153,7 +153,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
-    ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
+    ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("import-data", &ImportData, "import data into collection")
     ("create-collection", &ImportStructure, "create collection structure")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
