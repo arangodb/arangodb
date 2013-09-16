@@ -493,6 +493,8 @@ void ApplicationMR::shutdownMRInstance (size_t i) {
   MR_CloseShell(mrb);
 
   LOGGER_TRACE("closed MR context #" << i);
+  
+  delete context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
