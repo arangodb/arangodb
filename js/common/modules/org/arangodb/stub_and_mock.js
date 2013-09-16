@@ -76,11 +76,10 @@ allow = function(obj) {
   return (new FunctionStub(obj));
 };
 
-// expect(x).to({
-//   receive: "functionName",
-//   withArguments: [ 5 ],
-//   and_return { x: 1 }
-// });
+// expect(x)
+//   .toReceive("functionName")
+//   .withArguments(5)
+//   .andReturn({ x: 1 })
 //
 // ...
 //
