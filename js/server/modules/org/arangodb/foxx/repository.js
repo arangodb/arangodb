@@ -118,9 +118,9 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  removeById: function () {
+  removeById: function (id) {
     'use strict';
-    this.collection.remove.apply(this.collection, arguments);
+    this.collection.remove(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
