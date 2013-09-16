@@ -88,17 +88,21 @@ function RepositoryMethodsSpec() {
     ModelPrototype,
     model,
     modelData,
+    id,
     id_and_rev;
 
   return {
     setUp: function () {
       // Stubs:
+      // Basically, this should be `let(:x) { double }`
       ModelPrototype = function () {};
       id_and_rev = function () {};
       model = function () {};
       modelData = function () {};
+      id = function () {};
 
       // Stubbed Functions:
+      // Basically, this should be `allow(x).to receive(:forDB).and_return(y)`
       model.forDB = function () {
         return modelData;
       };
@@ -121,6 +125,20 @@ function RepositoryMethodsSpec() {
 
       instance = new FoxxRepository(collection, { model: ModelPrototype });
       instance.save(model);
+      assertTrue(called);
+    },
+
+    testRemoveById: function () {
+      var called = false;
+
+      collection = {
+        remove: function(x) {
+          called = (x === id);
+        }
+      };
+
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+      instance.removeById(id);
       assertTrue(called);
     }
   };
