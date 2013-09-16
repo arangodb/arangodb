@@ -129,9 +129,9 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  removeByExample: function () {
+  removeByExample: function (example) {
     'use strict';
-    this.collection.removeByExample.apply(this.collection, arguments);
+    this.collection.removeByExample(example);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
