@@ -154,16 +154,7 @@ function RepositoryMethodsSpec() {
     testById: function () {
       expect(collection)
         .toReceive("document")
-        .withArguments(id);
-
-      instance.byId(id);
-
-      collection.assertIsSatisfied();
-    },
-
-    testByIdConstructsModelAndReturnsIt: function () {
-      allow(collection)
-        .toReceive("document")
+        .withArguments(id)
         .andReturn(data);
 
       ModelPrototype = mockConstructor(data);
@@ -173,6 +164,7 @@ function RepositoryMethodsSpec() {
 
       assertTrue(model instanceof ModelPrototype);
       ModelPrototype.assertIsSatisfied();
+      collection.assertIsSatisfied();
     }
   };
 }
