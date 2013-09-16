@@ -104,7 +104,7 @@ namespace triagens {
 /// @brief context handler
 ////////////////////////////////////////////////////////////////////////////////
         
-        typedef bool (*context_fptr) (HttpRequest*, void*, bool);
+        typedef bool (*context_fptr) (HttpRequest*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -178,8 +178,7 @@ namespace triagens {
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool setRequestContext (HttpRequest*,
-                                        bool);
+        virtual bool setRequestContext (HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authentication realm

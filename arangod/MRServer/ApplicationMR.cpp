@@ -411,6 +411,8 @@ void ApplicationMR::stop () {
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownMRInstance(i);
   }
+  
+  delete[] _contexts;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

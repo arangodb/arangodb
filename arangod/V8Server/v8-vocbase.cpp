@@ -73,7 +73,6 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
-#include "VocBase/shadow-data.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 #include "V8/JSLoader.h"
@@ -463,16 +462,21 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg,
 static void WeakCollectionCallback (v8::Isolate* isolate,
                                     v8::Persistent<v8::Value> object,
                                     void* parameter) {
-  v8::HandleScope scope; // do not remove, will fail otherwise!!
-
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) parameter;
 
-  // decrease the reference-counter for the collection
+  v8::HandleScope scope; // do not remove, will fail otherwise!!
+
+  // decrease the reference-counter for the database
   TRI_ReleaseVocBase(collection->_vocbase);
+  
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSCollections[collection];
+  v8g->JSCollections.erase(collection);
 
   // dispose and clear the persistent handle
-  object.Dispose(isolate);
-  object.Clear();
+  persistent.Dispose(isolate);
+  persistent.Clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2018,7 +2022,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     extra = TRI_ObjectToJson(resultObject->Get(TRI_V8_SYMBOL("extra")));
   }
 
-  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize, extra);
+  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount, batchSize, extra);
 
   if (cursor == 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
@@ -2030,7 +2034,6 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   assert(cursor != 0);
-  TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
 
   v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
 
@@ -2067,15 +2070,12 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
                                        void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
 
-  LOG_TRACE("weak-callback for general cursor called");
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (vocbase == 0) {
-    return;
-  }
-
-  TRI_EndUsageDataShadowData(vocbase->_cursors, parameter);
+  TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) parameter;
+  
+  TRI_ReleaseGeneralCursor(cursor);
+  
+  // decrease the reference-counter for the database
+  TRI_ReleaseVocBase(cursor->_vocbase);
 
   // dispose and clear the persistent handle
   object.Dispose(isolate);
@@ -2093,33 +2093,35 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->GeneralCursorTempl->NewInstance();
 
-  if (cursorObject.IsEmpty()) {
-    // error
-    return scope.Close(cursorObject);
+  if (! result.IsEmpty()) {
+    TRI_general_cursor_t* c = (TRI_general_cursor_t*) cursor;
+    TRI_UseGeneralCursor(c);
+    // increase the reference-counter for the database
+    TRI_UseVocBase(c->_vocbase);
+
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(cursor));
+
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::Undefined());
+    }
+
+    result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
+    result->SetInternalField(SLOT_CLASS, persistent);
+
+    persistent.MakeWeak(isolate, cursor, WeakGeneralCursorCallback);
   }
 
-  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(cursor));
-
-  if (tryCatch.HasCaught()) {
-    return scope.Close(v8::Undefined());
-  }
-
-  cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
-  cursorObject->SetInternalField(SLOT_CLASS, persistent);
-
-  persistent.MakeWeak(isolate, cursor, WeakGeneralCursorCallback);
-
-  return scope.Close(cursorObject);
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a cursor from a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
-  return TRI_UnwrapClass<void>(cursorObject, WRP_GENERAL_CURSOR_TYPE);
+static TRI_general_cursor_t* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
+  return TRI_UnwrapClass<TRI_general_cursor_t>(cursorObject, WRP_GENERAL_CURSOR_TYPE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2636,7 +2638,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
   if (cursorResult != 0) {
-    cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize, 0);
+    cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount, batchSize, 0);
 
     if (cursor == 0) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
@@ -2644,7 +2646,6 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
     }
   }
   else {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
@@ -2652,9 +2653,8 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot create cursor");
   }
 
-  TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
-  
   v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+
   if (cursorObject.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -2673,15 +2673,9 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "dispose()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  bool found = TRI_DropGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-  bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  return scope.Close(found ? v8::True() : v8::False());
+  return scope.Close(v8::Boolean::New(found));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2695,13 +2689,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "id()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+  TRI_voc_tick_t id = TRI_IdGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
   if (id != 0) {
     return scope.Close(V8TickId(id));
@@ -2721,24 +2709,9 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "count()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  size_t length = TRI_CountGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-  TRI_general_cursor_t* cursor;
-
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (cursor) {
-    size_t length = (size_t) cursor->_length;
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
-
-    return scope.Close(v8::Number::New(length));
-  }
-
-  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
+  return scope.Close(v8::Number::New((double) length));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2752,26 +2725,20 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "next()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
 
   v8::Handle<v8::Value> value;
   TRI_general_cursor_t* cursor;
 
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+  cursor = (TRI_general_cursor_t*) TRI_UseGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-  if (cursor) {
+  if (cursor != 0) {
     bool result = false;
 
     TRI_LockGeneralCursor(cursor);
 
     if (cursor->_length == 0) {
       TRI_UnlockGeneralCursor(cursor);
-      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+      TRI_ReleaseGeneralCursor(cursor);
 
       return scope.Close(v8::Undefined());
     }
@@ -2795,8 +2762,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     }
 
     TRI_UnlockGeneralCursor(cursor);
-
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    TRI_ReleaseGeneralCursor(cursor);
 
     if (result && ! tryCatch.HasCaught()) {
       return scope.Close(value);
@@ -2821,19 +2787,8 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "persist()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (result) {
-    return scope.Close(v8::True());
-  }
-
-  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
+  TRI_PersistGeneralCursor(UnwrapGeneralCursor(argv.Holder()), 30.0);
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2850,19 +2805,10 @@ static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "toArray()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-
   v8::Handle<v8::Array> rows = v8::Array::New();
-  TRI_general_cursor_t* cursor;
+  TRI_general_cursor_t* cursor = TRI_UseGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (cursor) {
+  if (cursor != 0) {
     bool result = false;
 
     TRI_LockGeneralCursor(cursor);
@@ -2888,8 +2834,7 @@ static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv)
     }
 
     TRI_UnlockGeneralCursor(cursor);
-
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    TRI_ReleaseGeneralCursor(cursor);
 
     if (result && ! tryCatch.HasCaught()) {
       return scope.Close(rows);
@@ -2923,22 +2868,15 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
     TRI_V8_EXCEPTION_USAGE(scope, "getBatchSize()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  TRI_general_cursor_t* cursor = TRI_UseGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-
-  TRI_general_cursor_t* cursor;
-
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (cursor) {
+  if (cursor != 0) {
+    TRI_LockGeneralCursor(cursor);
     uint32_t max = cursor->getBatchSize(cursor);
+    TRI_UnlockGeneralCursor(cursor);
+    TRI_ReleaseGeneralCursor(cursor);
 
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
-    return scope.Close(v8::Number::New(max));
+    return scope.Close(v8::Number::New((size_t) max));
   }
 
   TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
@@ -2955,24 +2893,21 @@ static v8::Handle<v8::Value> JS_GetExtraGeneralCursor (v8::Arguments const& argv
     TRI_V8_EXCEPTION_USAGE(scope, "getExtra()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  TRI_general_cursor_t* cursor = TRI_UseGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-
-  TRI_general_cursor_t* cursor;
-
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (cursor) {
+  if (cursor != 0) {
+    TRI_LockGeneralCursor(cursor);
     TRI_json_t* extra = cursor->getExtra(cursor);
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
 
     if (extra != 0 && extra->_type == TRI_JSON_ARRAY) {
+      TRI_UnlockGeneralCursor(cursor);
+      TRI_ReleaseGeneralCursor(cursor);
+
       return scope.Close(TRI_ObjectJson(extra));
     }
+
+    TRI_UnlockGeneralCursor(cursor);
+    TRI_ReleaseGeneralCursor(cursor);
 
     return scope.Close(v8::Undefined());
   }
@@ -2991,21 +2926,14 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
     TRI_V8_EXCEPTION_USAGE(scope, "hasCount()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  TRI_general_cursor_t* cursor = TRI_UseGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-
-  TRI_general_cursor_t* cursor;
-
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (cursor) {
+  if (cursor != 0) {
+    TRI_LockGeneralCursor(cursor);
     bool hasCount = cursor->hasCount(cursor);
+    TRI_UnlockGeneralCursor(cursor);
+    TRI_ReleaseGeneralCursor(cursor);
 
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
     return scope.Close(hasCount ? v8::True() : v8::False());
   }
 
@@ -3024,49 +2952,18 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "hasNext()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  TRI_general_cursor_t* cursor = TRI_UseGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
 
-
-  TRI_general_cursor_t* cursor;
-
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  if (cursor) {
+  if (cursor != 0) {
     TRI_LockGeneralCursor(cursor);
     bool hasNext = cursor->hasNext(cursor);
     TRI_UnlockGeneralCursor(cursor);
+    TRI_ReleaseGeneralCursor(cursor);
 
-    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
-    return scope.Close(hasNext ? v8::True() : v8::False());
+    return scope.Close(v8::Boolean::New(hasNext));
   }
 
   TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unuse a general cursor
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "unuse()");
-  }
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  TRI_EndUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
-
-  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3096,15 +2993,14 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   const string idString = TRI_ObjectToString(idArg);
   uint64_t id = TRI_UInt64String(idString.c_str());
 
-  TRI_general_cursor_t* cursor;
-
-  cursor = (TRI_general_cursor_t*) TRI_BeginUsageIdShadowData(vocbase->_cursors, id);
+  TRI_general_cursor_t* cursor = TRI_FindGeneralCursor(vocbase, (TRI_voc_tick_t) id);
 
   if (cursor == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
   }
 
   v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+
   if (cursorObject.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -3136,12 +3032,12 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "expecting a string for <cursor-identifier>)");
   }
 
-  string idString = TRI_ObjectToString(idArg);
+  const string idString = TRI_ObjectToString(idArg);
   uint64_t id = TRI_UInt64String(idString.c_str());
+  
+  bool found = TRI_RemoveGeneralCursor(vocbase, id);
 
-  bool found = TRI_DeleteIdShadowData(vocbase->_cursors, id);
-
-  return scope.Close(found ? v8::True() : v8::False());
+  return scope.Close(v8::Boolean::New(found));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7206,27 +7102,22 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   }
 
 
-  TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
+  TRI_vector_string_t names = TRI_CollectionNamesVocBase(vocbase);
 
-  uint32_t n = (uint32_t) colls._length;
+  size_t n = names._length;
   uint32_t j = 0;
 
   v8::Handle<v8::Array> result = v8::Array::New();
   // add collection names
-  for (uint32_t i = 0;  i < n;  ++i) {
-    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
+  for (size_t i = 0;  i < n;  ++i) {
+    char const* name = TRI_AtVectorString(&names, i);
 
-    // this copies the name into a new place so we can safely access it later
-    // if we wouldn't do this, we would risk other threads modifying the name while
-    // we're reading it
-    char* name = TRI_GetCollectionNameByIdVocBase(collection->_vocbase, collection->_cid);
     if (name != 0) {
       result->Set(j++, v8::String::New(name));
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
     }
   }
 
-  TRI_DestroyVectorPointer(&colls);
+  TRI_DestroyVectorString(&names);
 
   // add function names. these are hard coded
   result->Set(j++, v8::String::New("_collection()"));
@@ -8118,8 +8009,21 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   persistent.Dispose(isolate);
   persistent.Clear();
 
+  TRI_vocbase_t* vocbase;
+  if (! barrier->_mustFree) {
+    vocbase = barrier->base._container->_collection->base._vocbase;
+  }
+  else {
+    vocbase = 0;
+  }
+
   // free the barrier
   TRI_FreeBarrier(&barrier->base);
+    
+  if (vocbase != 0) {
+    // decrease the reference-counter for the database
+    TRI_ReleaseVocBase(vocbase);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8526,16 +8430,27 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
   v8::Handle<v8::Object> result = v8g->VocbaseColTempl->NewInstance();
   
   if (! result.IsEmpty()) {
-    // increase the reference-counter for the database
-    TRI_UseVocBase(collection->_vocbase);
-
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(const_cast<TRI_vocbase_col_t*>(collection)));
-    persistent.MakeWeak(isolate, const_cast<TRI_vocbase_col_t*>(collection), WeakCollectionCallback);
+    TRI_vocbase_col_t* c = const_cast<TRI_vocbase_col_t*>(collection);
 
     result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_VOCBASE_COL_TYPE));
-    result->SetInternalField(SLOT_CLASS, v8::External::New(const_cast<TRI_vocbase_col_t*>(collection)));
-    result->SetInternalField(SLOT_COLLECTION, persistent);
+    result->SetInternalField(SLOT_CLASS, v8::External::New(c));
+  
+    map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSCollections.find(c);
+
+    if (i == v8g->JSCollections.end()) {
+      // increase the reference-counter for the database
+      TRI_UseVocBase(collection->_vocbase);
+
+      v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(c));
+      result->SetInternalField(SLOT_COLLECTION, persistent);
+    
+      v8g->JSCollections[c] = persistent;
+      persistent.MakeWeak(isolate, c, WeakCollectionCallback);
+    }
+    else {
+      result->SetInternalField(SLOT_COLLECTION, i->second);
+    }
 
     const string cidString = StringUtils::itoa(collection->_cid);
 
@@ -8580,9 +8495,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     // we'll create our own copy of the data
     TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(document->_data);
 
-    if (blocker->_data != NULL && blocker->_mustFree) {
+    if (blocker->_data != 0 && blocker->_mustFree) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, blocker->_data);
-      blocker->_data = NULL;
+      blocker->_data = 0;
       blocker->_mustFree = false;
     }
 
@@ -8610,6 +8525,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
   if (i == v8g->JSBarriers.end()) {
+    if (! blocker->_mustFree) {
+      // increase the reference-counter for the database
+      TRI_UseVocBase(barrier->_container->_collection->base._vocbase);
+    }
+
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
     result->SetInternalField(SLOT_BARRIER, persistent);
 
@@ -8919,7 +8839,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "next", JS_NextGeneralCursor);
   TRI_AddMethodVocbase(rt, "persist", JS_PersistGeneralCursor);
   TRI_AddMethodVocbase(rt, "toArray", JS_ToArrayGeneralCursor);
-  TRI_AddMethodVocbase(rt, "unuse", JS_UnuseGeneralCursor);
 
   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCursor", ft->GetFunction());

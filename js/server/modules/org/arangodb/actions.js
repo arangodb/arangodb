@@ -1596,7 +1596,6 @@ function resultCursor (req, res, cursor, code, options) {
       if (hasNext) {
         cursor.persist();
         cursorId = cursor.id(); 
-        cursor.unuse();
       }
       else {
         cursorId = null;

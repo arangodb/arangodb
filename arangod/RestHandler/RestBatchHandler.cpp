@@ -184,7 +184,9 @@ Handler::status_e RestBatchHandler::execute() {
     }
 
     // inject the request context from the framing (batch) request
-    this->_server->setRequestContext(request, false);
+    // the "false" means the context is not responsible for resource handling
+    request->setRequestContext(_request->getRequestContext(), false);
+    request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
       LOGGER_TRACE("part body is " << string(bodyStart, bodyLength));

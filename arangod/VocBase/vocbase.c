@@ -53,7 +53,6 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
-#include "VocBase/shadow-data.h"
 #include "VocBase/synchroniser.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
@@ -1116,7 +1115,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   }
   
   // init cursors
-  vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
+  vocbase->_cursors = TRI_CreateStoreGeneralCursor();
 
   if (vocbase->_cursors == NULL) {
     TRI_FreeFunctionsAql(vocbase->_functions);
@@ -1189,7 +1188,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     TRI_DestroyVectorPointer(&vocbase->_deadCollections);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_name);
-    TRI_FreeShadowStore(vocbase->_cursors);
+    TRI_FreeStoreGeneralCursor(vocbase->_cursors);
     TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
     TRI_DestroySpin(&vocbase->_usage._lock);
@@ -1364,7 +1363,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_FreeFunctionsAql(vocbase->_functions);
 
   // free the cursors
-  TRI_FreeShadowStore(vocbase->_cursors);
+  TRI_FreeStoreGeneralCursor(vocbase->_cursors);
   
   // destroy locks
   TRI_DestroySpin(&vocbase->_usage._lock);
@@ -1406,6 +1405,37 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
     if (found != NULL) {
       TRI_PushBackVectorPointer(&result, found);
+    }
+  }
+
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns names of all known (document) collections
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t* vocbase) {
+  TRI_vector_string_t result;
+  size_t i;
+
+  TRI_InitVectorString(&result, TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  for (i = 0;  i < vocbase->_collectionsById._nrAlloc;  ++i) {
+    TRI_vocbase_col_t* found;
+
+    found = vocbase->_collectionsById._table[i];
+
+    if (found != NULL) {
+      char const* name = found->_name;
+
+      if (name != NULL) {
+        TRI_PushBackVectorString(&result, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name));
+      }
     }
   }
 

@@ -47,12 +47,13 @@ extern "C" {
 
 struct TRI_primary_collection_s;
 struct TRI_col_info_s;
+struct TRI_general_cursor_store_s;
 struct TRI_json_s;
 struct TRI_replication_applier_s;
 struct TRI_replication_logger_s;
 struct TRI_server_s;
-struct TRI_shadow_store_s;
 struct TRI_vector_pointer_s;
+struct TRI_vector_string_s;
 struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
@@ -363,7 +364,7 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t               _indexGC;
 #endif  
   
-  struct TRI_shadow_store_s* _cursors;
+  struct TRI_general_cursor_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 
   struct {
@@ -473,6 +474,12 @@ void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns names of all known collections
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters

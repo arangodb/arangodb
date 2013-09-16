@@ -201,6 +201,12 @@ typedef struct TRI_v8_global_s {
 
   std::map< void*, v8::Persistent<v8::Value> > JSBarriers;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection mapping for weak pointers
+////////////////////////////////////////////////////////////////////////////////
+
+  std::map< void*, v8::Persistent<v8::Value> > JSCollections;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                       JAVASCRIPT OBJECT TEMPLATES
 // -----------------------------------------------------------------------------
