@@ -187,7 +187,23 @@ function RepositoryMethodsSpec() {
       assertTrue(models[0] instanceof ModelPrototype);
       ModelPrototype.assertIsSatisfied();
       collection.assertIsSatisfied();
-    }
+    },
+
+    testFirstExample: function () {
+      expect(collection)
+        .toReceive("firstExample")
+        .withArguments(example)
+        .andReturn(data);
+
+      ModelPrototype = mockConstructor(data);
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+
+      model = instance.firstExample(example);
+
+      assertTrue(model instanceof ModelPrototype);
+      ModelPrototype.assertIsSatisfied();
+      collection.assertIsSatisfied();
+    },
   };
 }
 

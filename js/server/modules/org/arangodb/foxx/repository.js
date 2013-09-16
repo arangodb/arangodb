@@ -210,9 +210,10 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  firstExample: function () {
+  firstExample: function (example) {
     'use strict';
-    this.collection.firstExample.apply(this.collection, arguments);
+    var rawDocument = this.collection.firstExample(example);
+    return (new this.modelPrototype(rawDocument));
   }
 });
 
