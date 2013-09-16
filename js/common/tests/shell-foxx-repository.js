@@ -91,6 +91,7 @@ function RepositoryMethodsSpec() {
     ModelPrototype,
     model,
     modelData,
+    data,
     example,
     id,
     id_and_rev;
@@ -102,6 +103,7 @@ function RepositoryMethodsSpec() {
       modelData = stub();
       example = stub();
       model = stub();
+      data = stub();
       collection = stub();
       id = stub();
 
@@ -146,6 +148,38 @@ function RepositoryMethodsSpec() {
       instance.removeByExample(example);
 
       collection.assertIsSatisfied();
+    },
+
+    testById: function () {
+      expect(collection)
+        .toReceive("document")
+        .withArguments(id);
+
+      instance.byId(id);
+
+      collection.assertIsSatisfied();
+    },
+
+    testByIdReturnValue: function () {
+      var calledWith;
+
+      allow(collection)
+        .toReceive("document")
+        .andReturn(data);
+
+      ModelPrototype = function (arg) {
+        if (this.constructor === ModelPrototype) {
+          calledWith = arg;
+        }
+      };
+
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+
+      model = instance.byId(id);
+
+      // This checks if it was called with the correct arguments
+      // and using new
+      assertEqual(calledWith, data);
     }
   };
 }
