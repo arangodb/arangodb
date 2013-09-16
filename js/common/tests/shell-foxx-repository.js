@@ -103,10 +103,9 @@ function RepositoryMethodsSpec() {
       collection = stub();
       id = stub();
 
-      allow(model).to({
-        receive: "forDB",
-        and_return: modelData
-      });
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(modelData);
 
       instance = new FoxxRepository(collection, { model: ModelPrototype });
     },

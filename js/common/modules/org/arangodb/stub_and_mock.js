@@ -42,20 +42,35 @@ stub = function () {
   return function() {};
 };
 
-// allow(x).to({
-//   receive: "functionName",
-//   and_return: { x: 1 }
-// });
+// allow(x)
+//   .toReceive("functionName")
+//   .andReturn({ x: 1 })
 
 FunctionStub = function(obj) {
   this.obj = obj;
 };
 
-FunctionStub.prototype.to = function(config) {
-  this.obj[config.receive] = function () {
-    return config.and_return;
-  };
-};
+_.extend(FunctionStub.prototype, {
+  toReceive: function (functionName) {
+    this.functionName = functionName;
+    this.buildFunctionStub();
+    return this;
+  },
+
+  andReturn: function (returnValue) {
+    this.returnValue = returnValue;
+    this.buildFunctionStub();
+    return this;
+  },
+
+  buildFunctionStub: function () {
+    var returnValue = this.returnValue;
+
+    this.obj[this.functionName] = function () {
+      return returnValue;
+    };
+  }
+});
 
 allow = function(obj) {
   return (new FunctionStub(obj));
