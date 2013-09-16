@@ -106,9 +106,10 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  save: function () {
+  save: function (model) {
     'use strict';
-    this.collection.save.apply(this.collection, arguments);
+    var id_and_rev = this.collection.save(model.forDB());
+    model.set(id_and_rev);
   },
 
 ////////////////////////////////////////////////////////////////////////////////

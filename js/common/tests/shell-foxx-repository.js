@@ -4,14 +4,20 @@ var jsunity = require("jsunity"),
   FoxxRepository = require("org/arangodb/foxx/repository").Repository,
   Model = require("org/arangodb/foxx/model").Model;
 
+
 function RepositorySpec () {
-  var TestRepository, instance, prefix, collection, modelPrototype;
+  var TestRepository, instance, prefix, collection, modelPrototype, model, modelData;
 
   return {
     setUp: function () {
       prefix = "myApp";
       collection = function () {};
       modelPrototype = function () {};
+      model = new modelPrototype();
+      modelData = { fancy: 1 };
+      model.forDB = function () {
+        return modelData;
+      };
     },
 
     testInitializeWithCollectionOnly: function () {
@@ -76,6 +82,51 @@ function RepositorySpec () {
   };
 }
 
+function RepositoryMethodsSpec() {
+  var instance,
+    collection,
+    ModelPrototype,
+    model,
+    modelData,
+    id_and_rev;
+
+  return {
+    setUp: function () {
+      // Stubs:
+      ModelPrototype = function () {};
+      id_and_rev = function () {};
+      model = function () {};
+      modelData = function () {};
+
+      // Stubbed Functions:
+      model.forDB = function () {
+        return modelData;
+      };
+    },
+
+    testSave: function () {
+      var called = false;
+
+      model.set = function (x) {
+        called = (x === id_and_rev);
+      };
+
+      collection = {
+        save: function(x) {
+          if (x === modelData) {
+            return id_and_rev;
+          }
+        }
+      };
+
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+      instance.save(model);
+      assertTrue(called);
+    }
+  };
+}
+
 jsunity.run(RepositorySpec);
+jsunity.run(RepositoryMethodsSpec);
 
 return jsunity.done();
