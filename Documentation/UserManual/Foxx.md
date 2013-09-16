@@ -362,21 +362,9 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_removeByExample
 
-### Replace By Id
+### Replace
 
-@copydetails JSF_foxx_repository_replaceById
-
-### ReplaceByExample
-
-@copydetails JSF_foxx_repository_replaceByExample
-
-### Update By Id
-
-@copydetails JSF_foxx_repository_updateById
-
-### UpdateByExample
-
-@copydetails JSF_foxx_repository_updateByExample
+@copydetails JSF_foxx_repository_replace
 
 ### By Id
 

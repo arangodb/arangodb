@@ -6,7 +6,8 @@ var jsunity = require("jsunity"),
   stub_and_mock = require("org/arangodb/stub_and_mock"),
   stub = stub_and_mock.stub,
   allow = stub_and_mock.allow,
-  expect = stub_and_mock.expect;
+  expect = stub_and_mock.expect,
+  mockConstructor = stub_and_mock.mockConstructor;
 
 function RepositorySpec () {
   var TestRepository, instance, prefix, collection, modelPrototype, model, modelData;
@@ -68,11 +69,7 @@ function RepositorySpec () {
         "removeById",
         "removeByExample",
 
-        "replaceById",
-        "replaceByExample",
-
-        "updateById",
-        "updateByExample",
+        "replace",
 
         "byId",
         "byExample",
@@ -91,7 +88,9 @@ function RepositoryMethodsSpec() {
     ModelPrototype,
     model,
     modelData,
+    data,
     example,
+    cursor,
     id,
     id_and_rev;
 
@@ -101,7 +100,9 @@ function RepositoryMethodsSpec() {
       id_and_rev = stub();
       modelData = stub();
       example = stub();
+      cursor = stub();
       model = stub();
+      data = stub();
       collection = stub();
       id = stub();
 
@@ -146,7 +147,83 @@ function RepositoryMethodsSpec() {
       instance.removeByExample(example);
 
       collection.assertIsSatisfied();
-    }
+    },
+
+    testReplace: function () {
+      allow(model)
+        .toReceive("get")
+        .andReturn(id);
+
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(data);
+
+      expect(model)
+        .toReceive("set")
+        .withArguments(id_and_rev);
+
+      expect(collection)
+        .toReceive("replace")
+        .withArguments(id, data)
+        .andReturn(id_and_rev);
+
+      instance.replace(model);
+
+      collection.assertIsSatisfied();
+      model.assertIsSatisfied();
+    },
+
+    testById: function () {
+      expect(collection)
+        .toReceive("document")
+        .withArguments(id)
+        .andReturn(data);
+
+      ModelPrototype = mockConstructor(data);
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+
+      model = instance.byId(id);
+
+      assertTrue(model instanceof ModelPrototype);
+      ModelPrototype.assertIsSatisfied();
+      collection.assertIsSatisfied();
+    },
+
+    testByExample: function () {
+      expect(collection)
+        .toReceive("byExample")
+        .withArguments(example)
+        .andReturn(cursor);
+
+      allow(cursor)
+        .toReceive("toArray")
+        .andReturn([data]);
+
+      ModelPrototype = mockConstructor(data);
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+
+      var models = instance.byExample(example);
+
+      assertTrue(models[0] instanceof ModelPrototype);
+      ModelPrototype.assertIsSatisfied();
+      collection.assertIsSatisfied();
+    },
+
+    testFirstExample: function () {
+      expect(collection)
+        .toReceive("firstExample")
+        .withArguments(example)
+        .andReturn(data);
+
+      ModelPrototype = mockConstructor(data);
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+
+      model = instance.firstExample(example);
+
+      assertTrue(model instanceof ModelPrototype);
+      ModelPrototype.assertIsSatisfied();
+      collection.assertIsSatisfied();
+    },
   };
 }
 
