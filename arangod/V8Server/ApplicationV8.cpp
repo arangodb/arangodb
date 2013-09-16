@@ -732,6 +732,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   LOGGER_TRACE("initialising V8 context #" << i);
 
   V8Context* context = _contexts[i] = new V8Context();
+
   if (context == 0) {
     LOGGER_FATAL_AND_EXIT("cannot initialize V8 engine");
   }
