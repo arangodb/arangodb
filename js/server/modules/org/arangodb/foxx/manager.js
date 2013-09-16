@@ -95,23 +95,23 @@ function checkManifest (filename, mf) {
 
   // the following attributes are allowed with these types...
   var expected = {
-    "name":         [ true, "string" ],
-    "version":      [ true, "string" ],
-    "description":  [ true, "string" ],
-    "controllers":  [ true, "object" ],
+    "assets":       [ false, "object" ],
     "author":       [ false, "string" ],
     "contributors": [ false, "array" ],
-    "keywords":     [ false, "array" ],
-    "files":        [ false, "object" ],
-    "assets":       [ false, "object" ],
+    "controllers":  [ true, "object" ],
+    "description":  [ true, "string" ],
     "engines":      [ false, "object" ],
-    "repository":   [ false, "object" ],
-    "license":      [ false, "string" ],
-    "thumbnail":    [ false, "string" ],
-    "lib":          [ false, "string" ],
+    "files":        [ false, "object" ],
+    "keywords":     [ false, "array" ],
     "isSystem":     [ false, "boolean" ],
+    "lib":          [ false, "string" ],
+    "license":      [ false, "string" ],
+    "name":         [ true, "string" ],
+    "repository":   [ false, "object" ],
     "setup":        [ false, "string" ],
-    "teardown":     [ false, "string" ]
+    "teardown":     [ false, "string" ],
+    "thumbnail":    [ false, "string" ],
+    "version":      [ true, "string" ]
   };
 
   var att, failed = false;
