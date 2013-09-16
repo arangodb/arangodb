@@ -91,6 +91,7 @@ function RepositoryMethodsSpec() {
     ModelPrototype,
     model,
     modelData,
+    example,
     id,
     id_and_rev;
 
@@ -99,6 +100,7 @@ function RepositoryMethodsSpec() {
       ModelPrototype = stub();
       id_and_rev = stub();
       modelData = stub();
+      example = stub();
       model = stub();
       collection = stub();
       id = stub();
@@ -132,6 +134,16 @@ function RepositoryMethodsSpec() {
         .withArguments(id);
 
       instance.removeById(id);
+
+      collection.assertIsSatisfied();
+    },
+
+    testRemoveByExample: function () {
+      expect(collection)
+        .toReceive("removeByExample")
+        .withArguments(example);
+
+      instance.removeByExample(example);
 
       collection.assertIsSatisfied();
     }
