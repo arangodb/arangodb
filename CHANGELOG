@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* issue #590: Manifest Lint
+
 * added data dump and restore tools, arangodump and arangorestore.
 
   arangodump can be used to create a logical dump of an ArangoDB database, or
