@@ -161,7 +161,7 @@ function RepositoryMethodsSpec() {
       collection.assertIsSatisfied();
     },
 
-    testByIdReturnValue: function () {
+    testByIdConstructsModelAndReturnsIt: function () {
       allow(collection)
         .toReceive("document")
         .andReturn(data);
@@ -171,6 +171,7 @@ function RepositoryMethodsSpec() {
 
       model = instance.byId(id);
 
+      assertTrue(model instanceof ModelPrototype);
       ModelPrototype.assertIsSatisfied();
     }
   };
