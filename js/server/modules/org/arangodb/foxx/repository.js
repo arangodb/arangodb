@@ -135,47 +135,17 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replaceById
+/// @fn JSF_foxx_repository_replace
 /// @brief See the documentation of collection.
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  replaceById: function () {
+  replace: function (model) {
     'use strict';
-    this.collection.replace.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replaceByExample
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  replaceByExample: function () {
-    'use strict';
-    this.collection.replaceByExample.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_updateById
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  updateById: function () {
-    'use strict';
-    this.collection.update.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_updateByExample
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  updateByExample: function () {
-    'use strict';
-    this.collection.updateByExample.apply(this.collection, arguments);
+    var id = model.get("_id"),
+      data = model.forDB(),
+      id_and_rev = this.collection.replace(id, data);
+    model.set(id_and_rev);
   },
 
 ////////////////////////////////////////////////////////////////////////////////

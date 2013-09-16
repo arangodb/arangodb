@@ -69,11 +69,7 @@ function RepositorySpec () {
         "removeById",
         "removeByExample",
 
-        "replaceById",
-        "replaceByExample",
-
-        "updateById",
-        "updateByExample",
+        "replace",
 
         "byId",
         "byExample",
@@ -151,6 +147,30 @@ function RepositoryMethodsSpec() {
       instance.removeByExample(example);
 
       collection.assertIsSatisfied();
+    },
+
+    testReplace: function () {
+      allow(model)
+        .toReceive("get")
+        .andReturn(id);
+
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(data);
+
+      expect(model)
+        .toReceive("set")
+        .withArguments(id_and_rev);
+
+      expect(collection)
+        .toReceive("replace")
+        .withArguments(id, data)
+        .andReturn(id_and_rev);
+
+      instance.replace(model);
+
+      collection.assertIsSatisfied();
+      model.assertIsSatisfied();
     },
 
     testById: function () {
