@@ -108,8 +108,8 @@ _.extend(FunctionMock.prototype, {
     return this;
   },
 
-  withArguments: function (expectedArguments) {
-    this.expectedArguments = expectedArguments;
+  withArguments: function () {
+    this.expectedArguments = arguments;
     this.buildFunctionMock();
     return this;
   },
@@ -120,9 +120,7 @@ _.extend(FunctionMock.prototype, {
       obj = this.obj;
 
     this.obj[this.functionName] = function () {
-      var args = Array.prototype.slice.call(arguments, 0);
-
-      if ((expectedArguments === undefined) || (_.isEqual(args, expectedArguments))) {
+      if ((expectedArguments === undefined) || (_.isEqual(arguments, expectedArguments))) {
         obj.satisfied = true;
       }
 

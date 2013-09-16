@@ -113,11 +113,11 @@ function RepositoryMethodsSpec() {
     testSave: function () {
       expect(model)
         .toReceive("set")
-        .withArguments([ id_and_rev ]);
+        .withArguments(id_and_rev);
 
       expect(collection)
         .toReceive("save")
-        .withArguments([ modelData ])
+        .withArguments(modelData)
         .andReturn(id_and_rev);
 
       instance.save(model);
@@ -129,7 +129,7 @@ function RepositoryMethodsSpec() {
     testRemoveById: function () {
       expect(collection)
         .toReceive("remove")
-        .withArguments([ id ]);
+        .withArguments(id);
 
       instance.removeById(id);
 
