@@ -32,6 +32,7 @@ var stub,
   expect,
   FunctionStub,
   FunctionMock,
+  mockConstructor,
   _ = require("underscore");
 
 // Sorry for Yak Shaving. But I can't take it anymore.
@@ -144,6 +145,37 @@ expect = function(obj) {
   return (new FunctionMock(obj));
 };
 
+/* Create a Mock Constructor
+ *
+ * Give the arguments you expect to mockConstructor:
+ * It checks, if it was called with new and the
+ * correct arguments.
+ *
+ * MyProto = mockConstructor(test);
+ *
+ * a = new MyProto(test);
+ *
+ * MyProto.assertIsSatisfied();
+ */
+mockConstructor = function () {
+  var expectedArguments = arguments,
+    satisfied = false;
+
+  var MockConstructor = function () {
+    if (this.constructor === MockConstructor) {
+      // Was called as a constructor
+      satisfied = _.isEqual(arguments, expectedArguments);
+    }
+  };
+
+  MockConstructor.assertIsSatisfied = function () {
+    assertTrue(satisfied);
+  };
+
+  return MockConstructor;
+};
+
 exports.stub = stub;
 exports.allow = allow;
 exports.expect = expect;
+exports.mockConstructor = mockConstructor;
