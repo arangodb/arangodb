@@ -158,10 +158,10 @@ expect = function(obj) {
  * MyProto.assertIsSatisfied();
  */
 mockConstructor = function () {
+  'use strict';
   var expectedArguments = arguments,
-    satisfied = false;
-
-  var MockConstructor = function () {
+    satisfied = false,
+    MockConstructor = function () {
     if (this.constructor === MockConstructor) {
       // Was called as a constructor
       satisfied = _.isEqual(arguments, expectedArguments);
