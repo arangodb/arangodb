@@ -133,6 +133,11 @@ bool EndpointList::remove (const string& specification,
     return false;
   }
 
+  if (_endpoints.size() <= 1) {
+    // must not remove last endpoint
+    return false;
+  }
+
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.find(key);
 
   if (it == _endpoints.end()) {
