@@ -129,6 +129,8 @@ static char* CompletionGenerator (char const* text, int state) {
       prefix = TRI_DuplicateString(text);
     }
 
+    v8::HandleScope scope;
+
     // compute all possible completions
     v8::Handle<v8::Array> properties;
     v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
