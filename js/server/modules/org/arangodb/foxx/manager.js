@@ -64,6 +64,104 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check a manifest for completeness
+/// this implements issue #590: Manifest Lint
+////////////////////////////////////////////////////////////////////////////////
+
+function checkManifest (filename, mf) {
+  // add some default attributes
+  if (! mf.hasOwnProperty("author")) {
+    // add a default (empty) author
+    mf.author = "";
+  }
+
+  if (! mf.hasOwnProperty("description")) {
+    // add a default (empty) description
+    mf.description = "";
+  }
+  
+  if (mf.hasOwnProperty("apps")) {
+    console.warn("Manifest '%s' still contains the deprecated 'apps' attribute. " +
+                 "Please change the attribute name to 'controllers'.", filename);
+
+    if (! mf.hasOwnProperty("controllers")) {
+      // controllers = apps
+      mf.controllers = mf.apps;
+      delete mf.apps;
+    }
+  }
+
+  // validate all attributes specified in the manifest
+
+  // the following attributes are allowed with these types...
+  var expected = {
+    "name":         [ true, "string" ],
+    "version":      [ true, "string" ],
+    "description":  [ true, "string" ],
+    "controllers":  [ true, "object" ],
+    "author":       [ false, "string" ],
+    "contributors": [ false, "array" ],
+    "keywords":     [ false, "array" ],
+    "files":        [ false, "object" ],
+    "assets":       [ false, "object" ],
+    "engines":      [ false, "object" ],
+    "repository":   [ false, "object" ],
+    "license":      [ false, "string" ],
+    "thumbnail":    [ false, "string" ],
+    "lib":          [ false, "string" ],
+    "isSystem":     [ false, "boolean" ],
+    "setup":        [ false, "string" ],
+    "teardown":     [ false, "string" ]
+  };
+
+  var att, failed = false;
+  for (att in expected) {
+    if (expected.hasOwnProperty(att)) {
+      if (mf.hasOwnProperty(att)) {
+        // attribute is present in manifest, now check data type
+        var expectedType = expected[att][1];
+        var actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
+
+        if (actualType !== expectedType) {
+          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'", 
+                        filename, 
+                        actualType,
+                        expectedType,
+                        att);
+          failed = true;
+        }
+      }
+      else {
+        // attribute not present in manifest
+        if (expected[att][0]) {
+          // required attribute
+          console.error("Manifest '%s' does not provide required attribute '%s'", 
+                        filename, 
+                        att);
+
+          failed = true;
+        }
+      }
+    }
+  }
+  
+  if (failed) {
+    throw new Error("Manifest '%s' is invalid/incompatible. Please check the error logs.");
+  }
+
+  // additionally check if there are superfluous attributes in the manifest
+  for (att in mf) {
+    if (mf.hasOwnProperty(att)) {
+      if (! expected.hasOwnProperty(att)) {
+        console.warn("Manifest '%s' contains an unknown attribute '%s'", 
+                      filename, 
+                      att);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extend a context with some helper functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -656,13 +754,7 @@ exports.scanAppDirectory = function () {
         thumbnail = undefined;
         var mf = JSON.parse(fs.read(m));
 
-        // add some default attributes
-        if (! mf.hasOwnProperty("author")) {
-          mf.author = "";
-        }
-        if (! mf.hasOwnProperty("description")) {
-          mf.description = "";
-        }
+        checkManifest(m, mf);
 
         if (mf.hasOwnProperty('thumbnail') && mf.thumbnail !== null && mf.thumbnail !== '') {
           var p = fs.join(path, files[j], mf.thumbnail);
@@ -936,6 +1028,8 @@ exports.devSetup = function (filename) {
     try {
       var mf = JSON.parse(fs.read(m));
 
+      checkManifest(m, mf);
+
       var appId = "dev:" + mf.name + ":" + filename;
       var mount = "/dev/" + filename;
       var prefix = prefixFromMount(mount);
@@ -981,6 +1075,8 @@ exports.devTeardown = function (filename) {
   if (fs.exists(m)) {
     try {
       var mf = JSON.parse(fs.read(m));
+
+      checkManifest(m, mf);
 
       var appId = "dev:" + mf.name + ":" + filename;
       var mount = "/dev/" + filename;
