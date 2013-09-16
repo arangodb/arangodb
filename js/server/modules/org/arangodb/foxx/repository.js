@@ -102,9 +102,9 @@ Repository = function (collection, opts) {
 _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_save
-/// @brief See the documentation of collection.
+/// @brief Save a model into the database
 ///
-/// See the documentation of collection.
+/// Expects a model. Will set the ID and Rev on the model.
 ////////////////////////////////////////////////////////////////////////////////
   save: function (model) {
     'use strict';
@@ -114,9 +114,9 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_removeById
-/// @brief See the documentation of collection.
+/// @brief Remove the document with the given ID
 ///
-/// See the documentation of collection.
+/// Expects an ID of an existing document.
 ////////////////////////////////////////////////////////////////////////////////
   removeById: function (id) {
     'use strict';
@@ -125,9 +125,9 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_removeByExample
-/// @brief See the documentation of collection.
+/// @brief Remove all documents that match the example
 ///
-/// See the documentation of collection.
+/// Find all documents that fit this example and remove them.
 ////////////////////////////////////////////////////////////////////////////////
   removeByExample: function (example) {
     'use strict';
@@ -136,9 +136,10 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_replace
-/// @brief See the documentation of collection.
+/// @brief Replace a model in the database
 ///
-/// See the documentation of collection.
+/// Find the model in the database (by ID) and replace it with this version.
+/// Expects a model. Sets the Revision of the model.
 ////////////////////////////////////////////////////////////////////////////////
   replace: function (model) {
     'use strict';
@@ -150,9 +151,9 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_byId
-/// @brief See the documentation of collection.
+/// @brief Find a model by its ID
 ///
-/// See the documentation of collection.
+/// Returns the model for the given ID.
 ////////////////////////////////////////////////////////////////////////////////
   byId: function (id) {
     'use strict';
@@ -162,9 +163,9 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_byExample
-/// @brief See the documentation of collection.
+/// @brief Find all models by an example
 ///
-/// See the documentation of collection.
+/// Returns an array of models for the given ID.
 ////////////////////////////////////////////////////////////////////////////////
   byExample: function (example) {
     'use strict';
@@ -176,9 +177,9 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_firstExample
-/// @brief See the documentation of collection.
+/// @brief Find the first model that matches the example.
 ///
-/// See the documentation of collection.
+/// Returns a model that matches the given example.
 ////////////////////////////////////////////////////////////////////////////////
   firstExample: function (example) {
     'use strict';
