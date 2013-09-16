@@ -94,6 +94,7 @@ function RepositoryMethodsSpec() {
     modelData,
     data,
     example,
+    cursor,
     id,
     id_and_rev;
 
@@ -103,6 +104,7 @@ function RepositoryMethodsSpec() {
       id_and_rev = stub();
       modelData = stub();
       example = stub();
+      cursor = stub();
       model = stub();
       data = stub();
       collection = stub();
@@ -163,6 +165,26 @@ function RepositoryMethodsSpec() {
       model = instance.byId(id);
 
       assertTrue(model instanceof ModelPrototype);
+      ModelPrototype.assertIsSatisfied();
+      collection.assertIsSatisfied();
+    },
+
+    testByExample: function () {
+      expect(collection)
+        .toReceive("byExample")
+        .withArguments(example)
+        .andReturn(cursor);
+
+      allow(cursor)
+        .toReceive("toArray")
+        .andReturn([data]);
+
+      ModelPrototype = mockConstructor(data);
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+
+      var models = instance.byExample(example);
+
+      assertTrue(models[0] instanceof ModelPrototype);
       ModelPrototype.assertIsSatisfied();
       collection.assertIsSatisfied();
     }

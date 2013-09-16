@@ -196,9 +196,12 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  byExample: function () {
+  byExample: function (example) {
     'use strict';
-    this.collection.byExample.apply(this.collection, arguments);
+    var rawDocuments = this.collection.byExample(example).toArray();
+    return _.map(rawDocuments, function (rawDocument) {
+      return (new this.modelPrototype(rawDocument));
+    }, this);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
