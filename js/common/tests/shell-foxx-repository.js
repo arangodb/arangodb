@@ -99,20 +99,19 @@ function RepositoryMethodsSpec() {
       ModelPrototype = stub();
       id_and_rev = stub();
       modelData = stub();
-      id = stub();
-    },
-
-    testSave: function () {
-      var called = false;
-
       model = stub();
       collection = stub();
+      id = stub();
 
       allow(model).to({
         receive: "forDB",
         and_return: modelData
       });
 
+      instance = new FoxxRepository(collection, { model: ModelPrototype });
+    },
+
+    testSave: function () {
       expect(model).to({
         receive: "set",
         withArguments: [ id_and_rev ]
@@ -124,7 +123,6 @@ function RepositoryMethodsSpec() {
         and_return: id_and_rev
       });
 
-      instance = new FoxxRepository(collection, { model: ModelPrototype });
       instance.save(model);
 
       model.assertIsSatisfied();
@@ -132,16 +130,13 @@ function RepositoryMethodsSpec() {
     },
 
     testRemoveById: function () {
-      model = stub();
-      collection = stub();
-
       expect(collection).to({
         receive: "remove",
         withArguments: [ id ]
       });
 
-      instance = new FoxxRepository(collection, { model: ModelPrototype });
       instance.removeById(id);
+
       collection.assertIsSatisfied();
     }
   };
