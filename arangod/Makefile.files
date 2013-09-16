@@ -106,7 +106,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/replication-logger.c \
 	arangod/VocBase/replication-master.c \
 	arangod/VocBase/server.c \
-	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/transaction.c \

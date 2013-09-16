@@ -153,7 +153,9 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the requested database
+/// @brief determine the requested database from the request URL
+/// when the database is present in the request and is still "alive", its
+/// reference-counter is increased by one
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
@@ -218,8 +220,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool SetRequestContext (triagens::rest::HttpRequest* request, 
-                               void* data,
-                               bool manageResources) {
+                               void* data) {
 
   TRI_server_t* server   = (TRI_server_t*) data;
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
@@ -228,8 +229,16 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
     // invalid database name specified, database not found etc.
     return false;
   }
+
+  VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
+
+  if (ctx == 0) {
+    // out of memory
+    return false;
+  }
   
-  request->setRequestContext(new triagens::arango::VocbaseContext(request, server, vocbase, manageResources));
+  // the "true" means the request is the owner of the context
+  request->setRequestContext(ctx, true);
 
   return true;
 }

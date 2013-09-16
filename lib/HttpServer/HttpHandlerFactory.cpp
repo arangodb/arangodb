@@ -137,7 +137,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
   RequestContext* rc = request->getRequestContext();
 
   if (rc == 0) {
-    if (! setRequestContext(request, true)) {
+    if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
    
@@ -153,9 +153,8 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext (HttpRequest* request, 
-                                            bool manageResources) {
-  return _setContext(request, _setContextData, manageResources);
+bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
+  return _setContext(request, _setContextData);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +181,9 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 #endif
 
   HttpRequest* request = new HttpRequest(info, ptr, length);
-  setRequestContext(request, true);
+  if (request != 0) {
+    setRequestContext(request);
+  }
   
   return request;
 }

@@ -407,8 +407,7 @@ function put_api_cursor (req, res) {
   catch (e) {
   }
 
-  // unuse the cursor and garbage-collect it
-  cursor.unuse();
+  // force garbage-collection
   cursor = null;
   internal.wait(0.0);
 }

@@ -130,7 +130,8 @@ HttpRequest::~HttpRequest () {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
   
-  if (_requestContext) {
+  if (_requestContext != 0 && _isRequestContextOwner) {
+    // only delete if we are the owner of the context
     delete _requestContext;
   }
 }
@@ -1206,12 +1207,19 @@ void HttpRequest::addSuffix (char const* part) {
 /// @brief set the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestContext (RequestContext* requestContext) {
+void HttpRequest::setRequestContext (RequestContext* requestContext,
+                                     bool isRequestContextOwner) {
   if (_requestContext) {
+    // if we have a shared context, we should not have got here
+    assert(isRequestContextOwner);
+
+    // delete any previous context
+    assert(false);
     delete _requestContext;
   }
 
-  _requestContext = requestContext;
+  _requestContext        = requestContext;
+  _isRequestContextOwner = isRequestContextOwner;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -329,26 +329,29 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   context->handleGlobalContextMethods();
 
-  // TODO: setting vocbase to 0 will make the server crash because GC 
-  // might refer to it. But it would be better to reset the vocbase
-  // pointer after each request so there are no unintended side-effects
-  // TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
-  // set vocbase to 0
-  // v8g->_vocbase = 0;
+  ++context->_dirt;
 
+  // exit the context
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
 
-  ++context->_dirt;
+
+  bool performGarbageCollection;
 
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
     LOGGER_TRACE("V8 context has reached GC timeout threshold and will be scheduled for GC");
-    _dirtyContexts.push_back(context);
-    _busyContexts.erase(context);
+    performGarbageCollection = true;
   }
   else if (context->_dirt >= _gcInterval) {
     LOGGER_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
+    performGarbageCollection = true;
+  }
+  else {
+    performGarbageCollection = false;
+  }
+
+  if (performGarbageCollection) {
     _dirtyContexts.push_back(context);
     _busyContexts.erase(context);
   }
@@ -682,7 +685,6 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
-
   // stop GC
   _gcThread->shutdown();
 

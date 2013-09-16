@@ -1294,6 +1294,10 @@ static void DatabaseManager (void* data) {
       // remember the database path
       char* path;
 
+      LOG_TRACE("physically removing database directory '%s' of database '%s'",
+                database->_path,
+                database->_name);
+
       path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
 
       TRI_DestroyVocBase(database);

@@ -33,7 +33,7 @@
 #include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shadow-data.h"
+#include "VocBase/general-cursor.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -194,12 +194,13 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clean up shadows
+/// @brief clean up cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
+static void CleanupCursors (TRI_vocbase_t* const vocbase, 
+                            bool force) {
   // clean unused cursors
-  TRI_CleanupShadowData(vocbase->_cursors, (double) SHADOW_CURSOR_MAX_AGE, force);
+  TRI_CleanupGeneralCursor(vocbase->_cursors, force);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +243,7 @@ void TRI_CleanupVocBase (void* data) {
       // shadows must be cleaned before collections are handled
       // otherwise the shadows might still hold barriers on collections
       // and collections cannot be closed properly
-      CleanupShadows(vocbase, true);
+      CleanupCursors(vocbase, true);
     }
 
     // check if we can get the compactor lock exclusively
@@ -298,7 +299,7 @@ void TRI_CleanupVocBase (void* data) {
     if (vocbase->_state >= 1) {
       // server is still running, clean up unused shadows
       if (iterations % CLEANUP_SHADOW_ITERATIONS == 0) {
-        CleanupShadows(vocbase, false);
+        CleanupCursors(vocbase, false);
       }
 
       // clean up expired compactor locks
