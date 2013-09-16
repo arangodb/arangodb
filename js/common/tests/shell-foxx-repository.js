@@ -2,8 +2,81 @@ require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
   FoxxRepository = require("org/arangodb/foxx/repository").Repository,
-  Model = require("org/arangodb/foxx/model").Model;
+  Model = require("org/arangodb/foxx/model").Model,
+  _ = require("underscore"),
+  stub,
+  allow,
+  expect,
+  FunctionStub,
+  FunctionMock;
 
+/* Mini Stub and Mock Framework
+ *
+ * Sorry for Yak Shaving. But I can't take it anymore.
+ */
+
+// x = stub();
+
+stub = function () {
+  return function() {};
+};
+
+// allow(x).to({
+//   receive: "functionName",
+//   and_return: { x: 1 }
+// });
+
+FunctionStub = function(obj) {
+  this.obj = obj;
+};
+
+FunctionStub.prototype.to = function(config) {
+  this.obj[config.receive] = function () {
+    return config.and_return;
+  };
+};
+
+allow = function(obj) {
+  return (new FunctionStub(obj));
+};
+
+// expect(x).to({
+//   receive: "functionName",
+//   withArguments: [ 5 ],
+//   and_return { x: 1 }
+// });
+//
+// ...
+//
+// x.assertIsSatisfied();
+
+FunctionMock = function(obj) {
+  this.obj = obj;
+  this.obj.satisfied = true;
+
+  this.obj.assertIsSatisfied = function () {
+    assertTrue(this.satisfied, "Mock Expectation was not satisfied");
+  };
+};
+
+FunctionMock.prototype.to = function(config) {
+  var obj = this.obj;
+  obj.satisfied = false;
+
+  this.obj[config.receive] = function () {
+    var args = Array.prototype.slice.call(arguments, 0);
+
+    if ((config.withArguments === undefined) || (_.isEqual(args, config.withArguments))) {
+      obj.satisfied = true;
+    }
+
+    return config.and_return;
+  };
+};
+
+expect = function(obj) {
+  return (new FunctionMock(obj));
+};
 
 function RepositorySpec () {
   var TestRepository, instance, prefix, collection, modelPrototype, model, modelData;
@@ -93,53 +166,53 @@ function RepositoryMethodsSpec() {
 
   return {
     setUp: function () {
-      // Stubs:
-      // Basically, this should be `let(:x) { double }`
-      ModelPrototype = function () {};
-      id_and_rev = function () {};
-      model = function () {};
-      modelData = function () {};
-      id = function () {};
-
-      // Stubbed Functions:
-      // Basically, this should be `allow(x).to receive(:forDB).and_return(y)`
-      model.forDB = function () {
-        return modelData;
-      };
+      ModelPrototype = stub();
+      id_and_rev = stub();
+      modelData = stub();
+      id = stub();
     },
 
     testSave: function () {
       var called = false;
 
-      model.set = function (x) {
-        called = (x === id_and_rev);
-      };
+      model = stub();
+      collection = stub();
 
-      collection = {
-        save: function(x) {
-          if (x === modelData) {
-            return id_and_rev;
-          }
-        }
-      };
+      allow(model).to({
+        receive: "forDB",
+        and_return: modelData
+      });
+
+      expect(model).to({
+        receive: "set",
+        withArguments: [ id_and_rev ]
+      });
+
+      expect(collection).to({
+        receive: "save",
+        withArguments: [ modelData ],
+        and_return: id_and_rev
+      });
 
       instance = new FoxxRepository(collection, { model: ModelPrototype });
       instance.save(model);
-      assertTrue(called);
+
+      model.assertIsSatisfied();
+      collection.assertIsSatisfied();
     },
 
     testRemoveById: function () {
-      var called = false;
+      model = stub();
+      collection = stub();
 
-      collection = {
-        remove: function(x) {
-          called = (x === id);
-        }
-      };
+      expect(collection).to({
+        receive: "remove",
+        withArguments: [ id ]
+      });
 
       instance = new FoxxRepository(collection, { model: ModelPrototype });
       instance.removeById(id);
-      assertTrue(called);
+      collection.assertIsSatisfied();
     }
   };
 }
