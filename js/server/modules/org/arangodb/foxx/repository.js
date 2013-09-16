@@ -106,9 +106,10 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  save: function () {
+  save: function (model) {
     'use strict';
-    this.collection.save.apply(this.collection, arguments);
+    var id_and_rev = this.collection.save(model.forDB());
+    model.set(id_and_rev);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,9 +118,9 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  removeById: function () {
+  removeById: function (id) {
     'use strict';
-    this.collection.remove.apply(this.collection, arguments);
+    this.collection.remove(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,9 +129,9 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  removeByExample: function () {
+  removeByExample: function (example) {
     'use strict';
-    this.collection.removeByExample.apply(this.collection, arguments);
+    this.collection.removeByExample(example);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
