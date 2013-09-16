@@ -184,8 +184,10 @@ _.extend(Repository.prototype, {
 ///
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
-  byId: function () {
+  byId: function (id) {
     'use strict';
+    var data = this.collection.document(id);
+    return (new this.modelPrototype(data));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
