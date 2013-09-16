@@ -6,7 +6,8 @@ var jsunity = require("jsunity"),
   stub_and_mock = require("org/arangodb/stub_and_mock"),
   stub = stub_and_mock.stub,
   allow = stub_and_mock.allow,
-  expect = stub_and_mock.expect;
+  expect = stub_and_mock.expect,
+  mockConstructor = stub_and_mock.mockConstructor;
 
 function RepositorySpec () {
   var TestRepository, instance, prefix, collection, modelPrototype, model, modelData;
@@ -161,25 +162,16 @@ function RepositoryMethodsSpec() {
     },
 
     testByIdReturnValue: function () {
-      var calledWith;
-
       allow(collection)
         .toReceive("document")
         .andReturn(data);
 
-      ModelPrototype = function (arg) {
-        if (this.constructor === ModelPrototype) {
-          calledWith = arg;
-        }
-      };
-
+      ModelPrototype = mockConstructor(data);
       instance = new FoxxRepository(collection, { model: ModelPrototype });
 
       model = instance.byId(id);
 
-      // This checks if it was called with the correct arguments
-      // and using new
-      assertEqual(calledWith, data);
+      ModelPrototype.assertIsSatisfied();
     }
   };
 }
