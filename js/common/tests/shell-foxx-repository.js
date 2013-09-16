@@ -3,80 +3,10 @@ require("internal").flushModuleCache();
 var jsunity = require("jsunity"),
   FoxxRepository = require("org/arangodb/foxx/repository").Repository,
   Model = require("org/arangodb/foxx/model").Model,
-  _ = require("underscore"),
-  stub,
-  allow,
-  expect,
-  FunctionStub,
-  FunctionMock;
-
-/* Mini Stub and Mock Framework
- *
- * Sorry for Yak Shaving. But I can't take it anymore.
- */
-
-// x = stub();
-
-stub = function () {
-  return function() {};
-};
-
-// allow(x).to({
-//   receive: "functionName",
-//   and_return: { x: 1 }
-// });
-
-FunctionStub = function(obj) {
-  this.obj = obj;
-};
-
-FunctionStub.prototype.to = function(config) {
-  this.obj[config.receive] = function () {
-    return config.and_return;
-  };
-};
-
-allow = function(obj) {
-  return (new FunctionStub(obj));
-};
-
-// expect(x).to({
-//   receive: "functionName",
-//   withArguments: [ 5 ],
-//   and_return { x: 1 }
-// });
-//
-// ...
-//
-// x.assertIsSatisfied();
-
-FunctionMock = function(obj) {
-  this.obj = obj;
-  this.obj.satisfied = true;
-
-  this.obj.assertIsSatisfied = function () {
-    assertTrue(this.satisfied, "Mock Expectation was not satisfied");
-  };
-};
-
-FunctionMock.prototype.to = function(config) {
-  var obj = this.obj;
-  obj.satisfied = false;
-
-  this.obj[config.receive] = function () {
-    var args = Array.prototype.slice.call(arguments, 0);
-
-    if ((config.withArguments === undefined) || (_.isEqual(args, config.withArguments))) {
-      obj.satisfied = true;
-    }
-
-    return config.and_return;
-  };
-};
-
-expect = function(obj) {
-  return (new FunctionMock(obj));
-};
+  stub_and_mock = require("org/arangodb/stub_and_mock"),
+  stub = stub_and_mock.stub,
+  allow = stub_and_mock.allow,
+  expect = stub_and_mock.expect;
 
 function RepositorySpec () {
   var TestRepository, instance, prefix, collection, modelPrototype, model, modelData;
