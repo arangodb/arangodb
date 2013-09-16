@@ -483,7 +483,7 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
   }
   else {
     // check if something was changed
-    if (JSON.stringify(manifest) !== JSON.stringifiy(doc.manifest) ||
+    if (JSON.stringify(manifest) !== JSON.stringify(doc.manifest) ||
         path !== doc.path ||
         thumbnail !== doc.thumbnail) {
 
