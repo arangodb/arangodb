@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, eqeq: true */
-/*global require, exports */
+/*global require, exports, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Mini Stub and Mock Framework
@@ -39,6 +39,7 @@ var stub,
 // x = stub();
 
 stub = function () {
+  'use strict';
   return function() {};
 };
 
@@ -47,23 +48,27 @@ stub = function () {
 //   .andReturn({ x: 1 })
 
 FunctionStub = function(obj) {
+  'use strict';
   this.obj = obj;
 };
 
 _.extend(FunctionStub.prototype, {
   toReceive: function (functionName) {
+    'use strict';
     this.functionName = functionName;
     this.buildFunctionStub();
     return this;
   },
 
   andReturn: function (returnValue) {
+    'use strict';
     this.returnValue = returnValue;
     this.buildFunctionStub();
     return this;
   },
 
   buildFunctionStub: function () {
+    'use strict';
     var returnValue = this.returnValue;
 
     this.obj[this.functionName] = function () {
@@ -73,6 +78,7 @@ _.extend(FunctionStub.prototype, {
 });
 
 allow = function(obj) {
+  'use strict';
   return (new FunctionStub(obj));
 };
 
@@ -86,6 +92,7 @@ allow = function(obj) {
 // x.assertIsSatisfied();
 
 FunctionMock = function(obj) {
+  'use strict';
   this.obj = obj;
   this.obj.satisfied = false;
 
@@ -96,24 +103,28 @@ FunctionMock = function(obj) {
 
 _.extend(FunctionMock.prototype, {
   toReceive: function (functionName) {
+    'use strict';
     this.functionName = functionName;
     this.buildFunctionMock();
     return this;
   },
 
   andReturn: function (returnValue) {
+    'use strict';
     this.returnValue = returnValue;
     this.buildFunctionMock();
     return this;
   },
 
   withArguments: function () {
+    'use strict';
     this.expectedArguments = arguments;
     this.buildFunctionMock();
     return this;
   },
 
   buildFunctionMock: function () {
+    'use strict';
     var returnValue = this.returnValue,
       expectedArguments = this.expectedArguments,
       obj = this.obj;
@@ -129,6 +140,7 @@ _.extend(FunctionMock.prototype, {
 });
 
 expect = function(obj) {
+  'use strict';
   return (new FunctionMock(obj));
 };
 
