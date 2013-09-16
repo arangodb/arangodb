@@ -111,16 +111,14 @@ function RepositoryMethodsSpec() {
     },
 
     testSave: function () {
-      expect(model).to({
-        receive: "set",
-        withArguments: [ id_and_rev ]
-      });
+      expect(model)
+        .toReceive("set")
+        .withArguments([ id_and_rev ]);
 
-      expect(collection).to({
-        receive: "save",
-        withArguments: [ modelData ],
-        and_return: id_and_rev
-      });
+      expect(collection)
+        .toReceive("save")
+        .withArguments([ modelData ])
+        .andReturn(id_and_rev);
 
       instance.save(model);
 
@@ -129,10 +127,9 @@ function RepositoryMethodsSpec() {
     },
 
     testRemoveById: function () {
-      expect(collection).to({
-        receive: "remove",
-        withArguments: [ id ]
-      });
+      expect(collection)
+        .toReceive("remove")
+        .withArguments([ id ]);
 
       instance.removeById(id);
 

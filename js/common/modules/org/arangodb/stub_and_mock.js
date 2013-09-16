@@ -88,27 +88,48 @@ allow = function(obj) {
 
 FunctionMock = function(obj) {
   this.obj = obj;
-  this.obj.satisfied = true;
+  this.obj.satisfied = false;
 
   this.obj.assertIsSatisfied = function () {
-    assertTrue(this.satisfied, "Mock Expectation was not satisfied");
+    assertTrue(this.satisfied, "Mock expectation was not satisfied");
   };
 };
 
-FunctionMock.prototype.to = function(config) {
-  var obj = this.obj;
-  obj.satisfied = false;
+_.extend(FunctionMock.prototype, {
+  toReceive: function (functionName) {
+    this.functionName = functionName;
+    this.buildFunctionMock();
+    return this;
+  },
 
-  this.obj[config.receive] = function () {
-    var args = Array.prototype.slice.call(arguments, 0);
+  andReturn: function (returnValue) {
+    this.returnValue = returnValue;
+    this.buildFunctionMock();
+    return this;
+  },
 
-    if ((config.withArguments === undefined) || (_.isEqual(args, config.withArguments))) {
-      obj.satisfied = true;
-    }
+  withArguments: function (expectedArguments) {
+    this.expectedArguments = expectedArguments;
+    this.buildFunctionMock();
+    return this;
+  },
 
-    return config.and_return;
-  };
-};
+  buildFunctionMock: function () {
+    var returnValue = this.returnValue,
+      expectedArguments = this.expectedArguments,
+      obj = this.obj;
+
+    this.obj[this.functionName] = function () {
+      var args = Array.prototype.slice.call(arguments, 0);
+
+      if ((expectedArguments === undefined) || (_.isEqual(args, expectedArguments))) {
+        obj.satisfied = true;
+      }
+
+      return returnValue;
+    };
+  }
+});
 
 expect = function(obj) {
   return (new FunctionMock(obj));
