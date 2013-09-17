@@ -44,6 +44,19 @@ function DatabaseSuite () {
     setUp : function () {
       internal.db._useDatabase("_system");
     },
+    
+    tearDown : function () {
+      // always go back to system database
+      internal.db._useDatabase("_system");
+
+      try {
+        // drop this database if it exists
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err) {
+        // ignore
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the version information
@@ -208,7 +221,7 @@ function DatabaseSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum)
+          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
         }
       });
     },
@@ -236,7 +249,7 @@ function DatabaseSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum)
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum);
       }
       
       // removing a database should fail here
@@ -245,7 +258,7 @@ function DatabaseSuite () {
         fail();
       }
       catch (err3) {
-        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum)
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum);
       }
       
       internal.db._useDatabase("_system");
@@ -272,7 +285,7 @@ function DatabaseSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err2.errorNum)
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err2.errorNum);
       }
         
       internal.db._dropDatabase("UnitTestsDatabase0");
@@ -432,6 +445,96 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
       assertFalse(isContained("UnitTestsDatabase0"));
       assertTrue(isContained("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection cache in the face of collection deletion
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectionsCache1 : function () {
+      var db = internal.db;
+      var name = "UnitTestsCollectionCache";
+
+      db._drop(name); 
+
+      db._create(name);
+
+      db[name].save({ _key: "test", value: 1 });
+      var cid = db[name]._id;
+      assertEqual(name, db[name].name());
+      assertEqual(1, db[name].count());
+      assertEqual(1, db[name].document("test").value);
+ 
+      // remove the collection and re-create a new one with the same name
+      db._drop(name);
+
+      db._create(name);
+      db[name].save({ _key: "foo", value: 1 });
+      db[name].save({ _key: "test", value: 2 });
+      
+      assertNotEqual(cid, db[name]._id);
+      assertEqual(name, db[name].name());
+      assertEqual(2, db[name].count());
+      assertEqual(1, db[name].document("foo").value);
+      assertEqual(2, db[name].document("test").value);
+ 
+      db._drop(name);
+
+      try {
+        db[name].save({ _key: "foo", value: 1 });
+        fail();
+      }
+      catch (err) {
+        // cannot call method ... of undefined
+        assertMatch(/^Cannot call method.*of undefined/, err.message);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection cache in the face of database changes
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectionsCache2 : function () {
+      var db = internal.db;
+      var name = "UnitTestsCollectionCache";
+
+      assertTrue("_system", db._name());
+
+      db._drop(name); 
+      db._create(name);
+
+      db[name].save({ _key: "foo", value: 1 });
+      var cid = db[name]._id;
+      assertEqual(name, db[name].name());
+      assertEqual(1, db[name].count());
+ 
+      // switch the database
+      db._createDatabase("UnitTestsDatabase0");
+      db._useDatabase("UnitTestsDatabase0");
+      
+      // collection should not yet exist in other database
+      try {
+        db[name].save({ _key: "foo", value: 1 });
+        fail();
+      }
+      catch (err) {
+        // cannot call method ... of undefined
+        assertMatch(/^Cannot call method.*of undefined/, err.message);
+      }
+
+      db._create(name);
+      assertNotEqual(cid, db[name]._id);
+      assertEqual(name, db[name].name());
+      assertEqual(0, db[name].count());
+
+      db[name].save({ _key: "foo", value: 1 });
+      db[name].save({ _key: "bar", value: 1 });
+      assertEqual(2, db[name].count());
+
+      db._useDatabase("_system");
+      assertEqual(1, db[name].count());
+      
+      db._dropDatabase("UnitTestsDatabase0");
     }
 
   };
