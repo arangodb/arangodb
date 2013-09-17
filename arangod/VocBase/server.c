@@ -1198,7 +1198,8 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
 /// @brief initialise the list of databases
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InitDatabases (TRI_server_t* server) {
+static int InitDatabases (TRI_server_t* server,
+                          bool isUpgrade) {
   TRI_vector_string_t names;
   int res;
   
@@ -1212,6 +1213,12 @@ static int InitDatabases (TRI_server_t* server) {
     if (names._length == 0) {
       char* name;
 
+      if (! isUpgrade) {
+        LOG_ERROR("no databases found. Please start the server with the --upgrade option");
+
+        return TRI_ERROR_INTERNAL;
+      }
+
       // no databases found, i.e. there is no system database!
       // create a database for the system database
       res = CreateDatabaseDirectory(server, TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE, &server->_defaults, &name);
@@ -1224,7 +1231,7 @@ static int InitDatabases (TRI_server_t* server) {
       }
     }
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_NO_ERROR && isUpgrade) {
       char const* systemName;
 
       assert(names._length > 0);
@@ -1517,7 +1524,8 @@ TRI_server_id_t TRI_GetIdServer () {
 /// @brief start the server
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartServer (TRI_server_t* server) {
+int TRI_StartServer (TRI_server_t* server,
+                     bool isUpgrade) {
   int res;
 
   if (! TRI_IsDirectory(server->_basePath)) {
@@ -1602,6 +1610,13 @@ int TRI_StartServer (TRI_server_t* server) {
   // .............................................................................
 
   if (! TRI_IsDirectory(server->_databasePath)) {
+    if (! isUpgrade) {
+      LOG_ERROR("database drectory '%s' not found. Please start the server with the --upgrade option",
+                server->_databasePath);
+   
+      return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
+    }
+
     res = TRI_CreateDirectory(server->_databasePath);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1625,7 +1640,7 @@ int TRI_StartServer (TRI_server_t* server) {
   // perform an eventual migration of the databases. 
   // .............................................................................
 
-  res = InitDatabases(server);
+  res = InitDatabases(server, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("unable to initialise databases: %s", 

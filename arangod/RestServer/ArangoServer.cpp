@@ -1215,7 +1215,8 @@ void ArangoServer::openDatabases () {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
 
-  res = TRI_StartServer(_server);
+  const bool isUpgrade = _applicationServer->programOptions().has("upgrade");
+  res = TRI_StartServer(_server, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
