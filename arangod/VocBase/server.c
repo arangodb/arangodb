@@ -860,6 +860,46 @@ static int MoveVersionFile (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if there are "old" collections
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HasOldCollections (TRI_server_t* server) {
+  regex_t re;
+  regmatch_t matches[2];
+  TRI_vector_string_t files;
+  bool found;
+  size_t i, n;
+
+  assert(server != NULL);
+
+  if (regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return false;
+  }
+
+  found = false;
+  files = TRI_FilesDirectory(server->_basePath);
+  n = files._length;
+  
+  for (i = 0;  i < n;  ++i) {
+    char const* name = files._buffer[i];
+    assert(name != NULL);
+
+    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      // found "collection-xxxx". we can ignore the rest
+      found = true;
+      break;
+    }
+  }
+  
+  TRI_DestroyVectorString(&files);
+  regfree(&re);
+
+  return found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move collections from the main data directory into the _system 
 /// database subdirectory
 ////////////////////////////////////////////////////////////////////////////////
@@ -1213,10 +1253,10 @@ static int InitDatabases (TRI_server_t* server,
     if (names._length == 0) {
       char* name;
 
-      if (! isUpgrade) {
+      if (! isUpgrade && HasOldCollections(server)) {
         LOG_ERROR("no databases found. Please start the server with the --upgrade option");
 
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_ARANGO_DATADIR_INVALID;
       }
 
       // no databases found, i.e. there is no system database!
@@ -1610,13 +1650,6 @@ int TRI_StartServer (TRI_server_t* server,
   // .............................................................................
 
   if (! TRI_IsDirectory(server->_databasePath)) {
-    if (! isUpgrade) {
-      LOG_ERROR("database drectory '%s' not found. Please start the server with the --upgrade option",
-                server->_databasePath);
-   
-      return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
-    }
-
     res = TRI_CreateDirectory(server->_databasePath);
 
     if (res != TRI_ERROR_NO_ERROR) {

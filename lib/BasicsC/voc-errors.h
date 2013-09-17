@@ -101,13 +101,17 @@ extern "C" {
 /// - 1106: @LIT{cannot create/rename datafile because it already exists}
 ///   Will be raised when the datafile cannot be created or renamed because a
 ///   file of the same name already exists.
-/// - 1107: @LIT{database is locked}
-///   Will be raised when the database is locked by a different process.
+/// - 1107: @LIT{database directory is locked}
+///   Will be raised when the database directory is locked by a different
+///   process.
 /// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
 /// - 1109: @LIT{msync failed}
 ///   Will be raised when the system call msync failed.
+/// - 1110: @LIT{cannot lock database directory}
+///   Will be raised when the server cannot lock the database directory on
+///   startup.
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -178,12 +182,6 @@ extern "C" {
 /// - 1230: @LIT{operation only allowed in system database}
 ///   Will be raised when an operation is requested in a database other than
 ///   the system database.
-/// - 1231: @LIT{database directory is locked}
-///   Will be raised when the server's database directory is locked (mainly
-///   because another ArangoDB instance is already running).
-/// - 1232: @LIT{cannot lock database directory}
-///   Will be raised when the server cannot lock the database directory on
-///   startup.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -910,14 +908,14 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS                          (1106)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1107: ERROR_ARANGO_DATABASE_LOCKED
+/// @brief 1107: ERROR_ARANGO_DATADIR_LOCKED
 ///
-/// database is locked
+/// database directory is locked
 ///
-/// Will be raised when the database is locked by a different process.
+/// Will be raised when the database directory is locked by a different process.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_LOCKED                                  (1107)
+#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1107)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS
@@ -939,6 +937,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_MSYNC_FAILED                                     (1109)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1110: ERROR_ARANGO_DATADIR_UNLOCKABLE
+///
+/// cannot lock database directory
+///
+/// Will be raised when the server cannot lock the database directory on
+/// startup.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1110)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT
@@ -1247,28 +1256,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1230)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1231: ERROR_ARANGO_DATADIR_LOCKED
-///
-/// database directory is locked
-///
-/// Will be raised when the server's database directory is locked (mainly
-/// because another ArangoDB instance is already running).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1231)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1232: ERROR_ARANGO_DATADIR_UNLOCKABLE
-///
-/// cannot lock database directory
-///
-/// Will be raised when the server cannot lock the database directory on
-/// startup.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1232)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
