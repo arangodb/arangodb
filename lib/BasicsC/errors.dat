@@ -68,9 +68,10 @@ ERROR_ARANGO_MMAP_FAILED,1103,"mmap failed","Will be raised when the system call
 ERROR_ARANGO_FILESYSTEM_FULL,1104,"filesystem full","Will be raised when the filesystem is full."
 ERROR_ARANGO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot be created."
 ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
-ERROR_ARANGO_DATABASE_LOCKED,1107,"database is locked","Will be raised when the database is locked by a different process."
+ERROR_ARANGO_DATADIR_LOCKED,1107,"database directory is locked","Will be raised when the database directory is locked by a different process."
 ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
 ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
+ERROR_ARANGO_DATADIR_UNLOCKABLE,1110,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -108,8 +109,6 @@ ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised 
 ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a non-existing database is accessed."
 ERROR_ARANGO_DATABASE_NAME_INVALID,1229,"database name invalid","Will be raised when an invalid database name is used."
 ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
-ERROR_ARANGO_DATADIR_LOCKED,1231,"database directory is locked","Will be raised when the server's database directory is locked (mainly because another ArangoDB instance is already running)."
-ERROR_ARANGO_DATADIR_UNLOCKABLE,1232,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
 
 ################################################################################
 ## ArangoDB storage errors
