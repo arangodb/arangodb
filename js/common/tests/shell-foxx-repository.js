@@ -173,6 +173,26 @@ function RepositoryMethodsSpec() {
       model.assertIsSatisfied();
     },
 
+    testReplaceById: function () {
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(data);
+
+      expect(model)
+        .toReceive("set")
+        .withArguments(id_and_rev);
+
+      expect(collection)
+        .toReceive("replace")
+        .withArguments(id, data)
+        .andReturn(id_and_rev);
+
+      instance.replaceById(id, model);
+
+      collection.assertIsSatisfied();
+      model.assertIsSatisfied();
+    },
+
     testById: function () {
       expect(collection)
         .toReceive("document")

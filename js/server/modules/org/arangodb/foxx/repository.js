@@ -138,13 +138,28 @@ _.extend(Repository.prototype, {
 /// @fn JSF_foxx_repository_replace
 /// @brief Replace a model in the database
 ///
-/// Find the model in the database (by ID) and replace it with this version.
+/// Find the model in the database by its `_id` and replace it with this version.
 /// Expects a model. Sets the Revision of the model.
 ////////////////////////////////////////////////////////////////////////////////
   replace: function (model) {
     'use strict';
     var id = model.get("_id"),
       data = model.forDB(),
+      id_and_rev = this.collection.replace(id, data);
+    model.set(id_and_rev);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_replaceById
+/// @brief Find an item by ID and replace it with the given model
+///
+/// Find the model in the database by the given ID and replace it with the given.
+/// model.
+/// Expects a model. Sets the ID and Revision of the model.
+////////////////////////////////////////////////////////////////////////////////
+  replaceById: function (id, model) {
+    'use strict';
+    var data = model.forDB(),
       id_and_rev = this.collection.replace(id, data);
     model.set(id_and_rev);
   },
