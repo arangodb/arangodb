@@ -123,7 +123,7 @@ function RepositoryMethodsSpec() {
         .withArguments(modelData)
         .andReturn(id_and_rev);
 
-      instance.save(model);
+      assertEqual(instance.save(model), model);
 
       model.assertIsSatisfied();
       collection.assertIsSatisfied();
@@ -167,7 +167,27 @@ function RepositoryMethodsSpec() {
         .withArguments(id, data)
         .andReturn(id_and_rev);
 
-      instance.replace(model);
+      assertEqual(instance.replace(model), model);
+
+      collection.assertIsSatisfied();
+      model.assertIsSatisfied();
+    },
+
+    testReplaceById: function () {
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(data);
+
+      expect(model)
+        .toReceive("set")
+        .withArguments(id_and_rev);
+
+      expect(collection)
+        .toReceive("replace")
+        .withArguments(id, data)
+        .andReturn(id_and_rev);
+
+      assertEqual(instance.replaceById(id, model), model);
 
       collection.assertIsSatisfied();
       model.assertIsSatisfied();
