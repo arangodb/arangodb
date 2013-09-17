@@ -49,6 +49,10 @@
   var userManager = require("org/arangodb/users");
   var db = internal.db;
 
+  // whether or not we are initialising an empty / a new database
+  var isInitialisation;
+
+
   var logger = {
     info: function (msg) {
       console.log("In database '%s': %s", db._name(), msg);
@@ -94,7 +98,7 @@
       return collectionExists(name);
     }
   
-    // helper function to define tasks
+    // helper function to define a task
     function addTask (name, description, code) {
       // "description" is a textual description of the task that will be printed out on screen
       // "maxVersion" is the maximum version number the task will be applied for
@@ -108,6 +112,20 @@
       }
     }
 
+    // helper function to define a task that is run on upgrades only, but not on initialisation
+    // of a new empty database
+    function addUpgradeTask (name, description, code) {
+      if (isInitialisation) {
+        // if we are initialising a new database, set the task to completed
+        // without executing it. this saves unnecessary migrations for empty
+        // databases
+        lastTasks[name] = true;
+      }
+      else {
+        // if we are upgrading, execute the task
+        addTask(name, description, code);
+      }
+    }
 
     if (fs.exists(versionFile)) {
       // VERSION file exists, read its contents
@@ -124,35 +142,26 @@
           lastTasks   = versionValues.tasks || { };
         }
       }
+
+      isInitialisation = false;
     }
-    
-    logger.log("Starting upgrade from version " + (lastVersion || "unknown") 
-                + " to " + internal.db._version());
+    else {
+      // VERSION file does not exist
+      // we assume that we are initialising a new, empty database
+      isInitialisation = true;
+    }
+   
+    if (isInitialisation) { 
+      logger.log("preparing database directory for version " + internal.db._version());
+    }
+    else {
+      logger.log("starting upgrade from version " + (lastVersion || "unknown") 
+                  + " to " + internal.db._version());
+    }
 
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
-
-    if (db._isSystem()) {
-      // set up the collection _endpoints
-      addTask("setupEndpoints", "setup _endpoints collection", function () {
-        return createSystemCollection("_endpoints", { waitForSync : true });
-      });
-    
-      // create a unique index on "endpoint" attribute in _endpoints
-      addTask("createEndpointsIndex", 
-            "create index on 'endpoint' attribute in _endpoints collection",
-        function () {
-          var databases = getCollection("_endpoints");
-          if (! databases) {
-            return false;
-          }
-
-          databases.ensureUniqueConstraint("endpoint");
-          
-          return true;
-        });
-    }
 
     // set up the collection _users 
     addTask("setupUsers", "setup _users collection", function () {
@@ -209,8 +218,8 @@
       });
 
     // make distinction between document and edge collections
-    addTask("addCollectionVersion",
-            "set new collection type for edge collections and update collection version",
+    addUpgradeTask("addCollectionVersion",
+                   "set new collection type for edge collections and update collection version",
       function () {
         var collections = db._collections();
         var i;
@@ -316,7 +325,7 @@
     });
     
     // update markers in all collection datafiles to key markers
-    addTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
+    addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
       var collections = db._collections();
       var i;
       
@@ -429,7 +438,7 @@
     });
 
     // migration aql function names
-    addTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
+    addUpgradeTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
       var funcs = getCollection('_aqlfunctions');
 
       if (! funcs) {
@@ -462,7 +471,7 @@
       return result;
     });
 
-    addTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
+    addUpgradeTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
       var potentialFoxxes = getCollection('_routing');
 
       potentialFoxxes.iterate(function (maybeFoxx) {
@@ -557,6 +566,7 @@
 
    // VERSION file exists, read its contents
   var versionInfo = fs.read(versionFile);
+
   if (versionInfo !== '') {
     var versionValues = JSON.parse(versionInfo);
     if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
