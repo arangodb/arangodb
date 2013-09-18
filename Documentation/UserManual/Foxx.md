@@ -167,6 +167,10 @@ API by chaining the following methods onto your path definition:
 
 @copydetails JSF_foxx_RequestContext_queryParam
 
+### Body Param
+
+@copydetails JSF_foxx_RequestContext_bodyParam
+
 ### Error Response
 
 @copydetails JSF_foxx_RequestContext_errorResponse

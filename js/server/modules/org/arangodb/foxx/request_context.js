@@ -70,9 +70,10 @@ addCheck = function (handler, check) {
 };
 
 // Wraps the docs object of a route to add swagger compatible documentation
-SwaggerDocs = function (docs) {
+SwaggerDocs = function (docs, models) {
   'use strict';
   this.docs = docs;
+  this.models = models;
 };
 
 extend(SwaggerDocs.prototype, {
@@ -97,6 +98,18 @@ extend(SwaggerDocs.prototype, {
     ));
   },
 
+  addBodyParam: function (paramName, description, jsonSchema) {
+    'use strict';
+    this.models[jsonSchema.id] = jsonSchema;
+
+    this.docs.parameters.push({
+      name: paramName,
+      paramType: "body",
+      description: description,
+      dataType: jsonSchema.id
+    });
+  },
+
   addSummary: function (summary) {
     'use strict';
     this.docs.summary = summary;
@@ -115,14 +128,15 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, route) {
+RequestContext = function (executionBuffer, route, models) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
     "string": "/.+/"
   };
-  this.docs = new SwaggerDocs(this.route.docs);
+
+  this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
 
   executionBuffer.applyEachFunction(this);
@@ -208,6 +222,24 @@ extend(RequestContext.prototype, {
       attributes.required,
       attributes.allowMultiple
     );
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_bodyParam
+/// @brief Define a parameter for the body of the request
+///
+/// @FUN{FoxxController::bodyParam(@FA{paramName}, @FA{description}, @FA{Model})}
+///
+/// Expect the body of the request to be a JSON with the attributes you annotated
+/// in your model. It will appear alongside the provided description in your
+/// Documentation.
+/// For information about how to annotate your models, see the Model section.
+////////////////////////////////////////////////////////////////////////////////
+
+  bodyParam: function (paramName, description, Proto) {
+    'use strict';
+    this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
     return this;
   },
 
