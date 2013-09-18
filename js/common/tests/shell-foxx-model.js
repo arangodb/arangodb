@@ -97,7 +97,7 @@ function ModelSpec () {
   };
 }
 
-function JSONSchema () {
+function ModelAnnotationSpec () {
   var FoxxModel, TestModel, jsonSchema, instance;
 
   return {
@@ -157,11 +157,23 @@ function JSONSchema () {
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.properties.x.type, "string");
       assertEqual(jsonSchema.required, ["x"]);
+    },
+
+    testWhitelistConstructorAttributesInAnnotatedModel: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          a: { type: "string", required: true },
+          b: { type: "string" }
+        }
+      });
+
+      instance = new TestModel({ a: "a", b: "b", c: "c" });
+      assertEqual(instance.attributes, { a: "a", b: "b" });
     }
   };
 }
 
 jsunity.run(ModelSpec);
-jsunity.run(JSONSchema);
+jsunity.run(ModelAnnotationSpec);
 
 return jsunity.done();
