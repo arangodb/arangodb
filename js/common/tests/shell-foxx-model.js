@@ -169,6 +169,19 @@ function ModelAnnotationSpec () {
 
       instance = new TestModel({ a: "a", b: "b", c: "c" });
       assertEqual(instance.attributes, { a: "a", b: "b" });
+    },
+
+    testSetDefaultAttributesInAnnotatedModel: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          a: { type: "string", defaultValue: "test" },
+          b: { type: "string", defaultValue: "test" },
+          c: { type: "string" }
+        }
+      });
+
+      instance = new TestModel({ a: "a", c: "c" });
+      assertEqual(instance.attributes, { a: "a", c: "c", b: "test" });
     }
   };
 }

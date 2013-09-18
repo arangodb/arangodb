@@ -69,6 +69,18 @@ var whitelistProperties = function (properties, constructorProperties) {
   return filteredProperties;
 };
 
+var fillInDefaults = function (properties, constructorProperties) {
+  var defaults = _.reduce(constructorProperties, function (result, value, key) {
+    if (_.has(value, "defaultValue")) {
+      result[key] = value.defaultValue;
+    }
+
+    return result;
+  }, {});
+
+  return _.defaults(properties, defaults);
+};
+
 Model = function (attributes) {
   'use strict';
 
@@ -79,6 +91,7 @@ Model = function (attributes) {
 
   if (is.object(this.constructor.attributes)) {
     this.attributes = whitelistProperties(attributes, this.constructor.attributes);
+    this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
   } else {
     this.attributes = attributes || {};
   }
