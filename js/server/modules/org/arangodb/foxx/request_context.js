@@ -128,7 +128,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, route, models) {
+RequestContext = function (executionBuffer, models, route) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
