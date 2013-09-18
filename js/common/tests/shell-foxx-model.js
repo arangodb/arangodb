@@ -97,6 +97,71 @@ function ModelSpec () {
   };
 }
 
+function JSONSchema () {
+  var FoxxModel, TestModel, jsonSchema, instance;
+
+  return {
+    setUp: function () {
+      FoxxModel = require('org/arangodb/foxx/model').Model;
+    },
+
+    testGetEmptyJSONSchema: function () {
+      TestModel = FoxxModel.extend({});
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.properties, {});
+    },
+
+    testAttributesOfAPlainModel: function () {
+      attributes = {a: 1, b: 2};
+      TestModel = FoxxModel.extend({});
+      instance = new TestModel(attributes);
+      assertEqual(instance.attributes, attributes);
+    },
+
+    testAddOptionalAttributeToJSONSchemaInLongForm: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          x: { type: "string" }
+        }
+      });
+
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.properties.x.type, "string");
+    },
+
+    testAddOptionalAttributeToJSONSchemaInShortForm: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          x: "string"
+        }
+      });
+
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.properties.x.type, "string");
+    },
+
+    testAddRequiredAttributeToJSONSchema: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          x: { type: "string", required: true }
+        }
+      });
+
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.properties.x.type, "string");
+      assertEqual(jsonSchema.required, ["x"]);
+    }
+  };
+}
+
 jsunity.run(ModelSpec);
+jsunity.run(JSONSchema);
 
 return jsunity.done();
