@@ -56,6 +56,19 @@ var Model,
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
+var whitelistProperties = function (properties, constructorProperties) {
+  var filteredProperties,
+    whitelistedProperties = _.keys(constructorProperties);
+
+  if (whitelistedProperties) {
+    filteredProperties = _.pick(properties, whitelistedProperties);
+  } else {
+    filteredProperties = properties;
+  }
+
+  return filteredProperties;
+};
+
 Model = function (attributes) {
   'use strict';
 
@@ -64,7 +77,11 @@ Model = function (attributes) {
 /// @brief The attributes property is the internal hash containing the model's state.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.attributes = attributes || {};
+  if (is.object(this.constructor.attributes)) {
+    this.attributes = whitelistProperties(attributes, this.constructor.attributes);
+  } else {
+    this.attributes = attributes || {};
+  }
 };
 
 parseAttributes = function (rawAttributes) {
