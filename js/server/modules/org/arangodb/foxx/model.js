@@ -31,7 +31,9 @@
 var Model,
   _ = require("underscore"),
   is = require("org/arangodb/is"),
-  backbone_helpers = require("backbone");
+  backbone_helpers = require("backbone"),
+  parseAttributes,
+  parseRequiredAttributes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Model
@@ -65,8 +67,56 @@ Model = function (attributes) {
   this.attributes = attributes || {};
 };
 
-_.extend(Model.prototype, {
+parseAttributes = function (rawAttributes) {
+  'use strict';
+  var properties = {};
 
+  _.each(rawAttributes, function (value, key) {
+    if (_.isString(value)) {
+      properties[key] = {
+        type: value
+      };
+    } else {
+      properties[key] = {
+        type: value.type
+      };
+    }
+  });
+
+  return properties;
+};
+
+parseRequiredAttributes = function (rawAttributes) {
+  'use strict';
+  var requiredProperties = [];
+
+  _.each(rawAttributes, function (value, key) {
+    if (_.isObject(value) && value.required) {
+      requiredProperties.push(key);
+    }
+  });
+
+  return requiredProperties;
+};
+
+// "Class" Properties
+_.extend(Model, {
+  // TODO: Docs
+
+  toJSONSchema: function (id) {
+    'use strict';
+    var attributes = this.attributes;
+
+    return {
+      id: id,
+      required: parseRequiredAttributes(attributes),
+      properties: parseAttributes(attributes)
+    };
+  },
+});
+
+// Instance Properties
+_.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_get
 /// @brief Get the value of an attribute
