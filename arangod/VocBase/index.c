@@ -1412,7 +1412,6 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
 
       relationOperator = (TRI_relation_index_operator_t*)(slOperator);
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_collection = collection;
       relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
       if (relationOperator->_fields != NULL) {
         for (j = 0; j < relationOperator->_numFields; ++j) {
@@ -1445,7 +1444,6 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
 
       relationOperator = (TRI_relation_index_operator_t*)(slOperator);
       relationOperator->_numFields  = 0;
-      relationOperator->_collection = collection;
       relationOperator->_fields     = NULL;
 
       // .......................................................................
@@ -2394,7 +2392,6 @@ static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_p
 
       relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_collection = collection;
       relationOperator->_fields     = NULL; // bitarray indexes need only the json representation of values
 
       // even tough we use the json representation of the values sent by the client

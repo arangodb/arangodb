@@ -85,12 +85,12 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
         return NULL;
       }
 
-      newLogicalOperator->_base._type   = operatorType;
-      newLogicalOperator->_base._shaper = shaper;
+      newLogicalOperator->base._type   = operatorType;
+      newLogicalOperator->base._shaper = shaper;
       newLogicalOperator->_left         = leftOperand;
       newLogicalOperator->_right        = rightOperand;
 
-      newOperator = &(newLogicalOperator->_base);
+      newOperator = &(newLogicalOperator->base);
       break;
     }
 
@@ -107,14 +107,13 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
         return NULL;
       }
 
-      newRelationOperator->_base._type = operatorType;
-      newRelationOperator->_base._shaper = shaper;
+      newRelationOperator->base._type = operatorType;
+      newRelationOperator->base._shaper = shaper;
       newRelationOperator->_parameters = parameters;
       newRelationOperator->_fields     = fields;
       newRelationOperator->_numFields  = numFields;
-      newRelationOperator->_collection = collection;
 
-      newOperator = &(newRelationOperator->_base);
+      newOperator = &(newRelationOperator->base);
       break;
     }
 
@@ -176,7 +175,7 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
         for (i = 0; i < relationOperator->_numFields; ++i) {
           // destroy each individual shapedJson object
           TRI_shaped_json_t* shaped = relationOperator->_fields + i;
-          TRI_DestroyShapedJson(relationOperator->_base._shaper, shaped);
+          TRI_DestroyShapedJson(relationOperator->base._shaper, shaped);
         }
         // free the memory pointer
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);
@@ -219,11 +218,11 @@ TRI_index_operator_t* TRI_CopyIndexOperator(TRI_index_operator_t* indexOperator)
         break;
       }
 
-      newLogicalOperator->_base._type   = indexOperator->_type;
-      newLogicalOperator->_base._shaper = indexOperator->_shaper;
+      newLogicalOperator->base._type   = indexOperator->_type;
+      newLogicalOperator->base._shaper = indexOperator->_shaper;
       newLogicalOperator->_left         = TRI_CopyIndexOperator(oldLogicalOperator->_left);
       newLogicalOperator->_right        = TRI_CopyIndexOperator(oldLogicalOperator->_right);
-      newOperator = &(newLogicalOperator->_base);
+      newOperator = &(newLogicalOperator->base);
 
       break;
 
@@ -244,8 +243,8 @@ TRI_index_operator_t* TRI_CopyIndexOperator(TRI_index_operator_t* indexOperator)
         break;
       }
 
-      newRelationOperator->_base._type   = indexOperator->_type;
-      newRelationOperator->_base._shaper = indexOperator->_shaper;
+      newRelationOperator->base._type   = indexOperator->_type;
+      newRelationOperator->base._shaper = indexOperator->_shaper;
 
       if (oldRelationOperator->_parameters != NULL) {
         newRelationOperator->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, oldRelationOperator->_parameters);
@@ -255,16 +254,15 @@ TRI_index_operator_t* TRI_CopyIndexOperator(TRI_index_operator_t* indexOperator)
       }
 
       if (oldRelationOperator->_fields != NULL) {
-        newRelationOperator->_fields = TRI_CopyShapedJson(oldRelationOperator->_base._shaper, oldRelationOperator->_fields);
+        newRelationOperator->_fields = TRI_CopyShapedJson(oldRelationOperator->base._shaper, oldRelationOperator->_fields);
       }
       else {
         newRelationOperator->_fields = NULL;
       }
 
       newRelationOperator->_numFields    = oldRelationOperator->_numFields;
-      newRelationOperator->_collection   = oldRelationOperator->_collection;
 
-      newOperator = &(newRelationOperator->_base);
+      newOperator = &(newRelationOperator->base);
 
       break;
     }
