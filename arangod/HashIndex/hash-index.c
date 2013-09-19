@@ -446,10 +446,10 @@ static const char* TypeNameHashIndex (TRI_index_t const* idx) {
 /// @brief describes a hash index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
-                                  TRI_primary_collection_t const* primary) {
+static TRI_json_t* JsonHashIndex (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
+  TRI_primary_collection_t* primary;
   TRI_hash_index_t* hashIndex;
   char const** fieldList;
   size_t j;
@@ -459,6 +459,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
   // .............................................................................
 
   hashIndex = (TRI_hash_index_t*) idx;
+  primary = idx->_collection;
 
   // .............................................................................
   // Allocate sufficent memory for the field list

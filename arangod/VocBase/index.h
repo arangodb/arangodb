@@ -115,7 +115,7 @@ typedef struct TRI_index_s {
   bool _needsFullCoverage;
 
   const char* (*typeName) (struct TRI_index_s const*);
-  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_primary_collection_s const*);
+  TRI_json_t* (*json) (struct TRI_index_s*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
   
   // .........................................................................................
@@ -138,6 +138,11 @@ typedef struct TRI_index_s {
 
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
+  
+#if 0
+  // reserve hint function. must be called under the collection's write-lock
+  bool (*reserve) (struct TRI_index_s*, int64_t);
+#endif
 
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
@@ -337,6 +342,19 @@ void TRI_InitIndex (TRI_index_t*,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate index id string
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValidateIdIndex (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate an index id (collection name + / + index id)
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValidateIndexIdIndex (char const*,
+                               size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an index
