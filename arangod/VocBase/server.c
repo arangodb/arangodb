@@ -671,7 +671,8 @@ static int OpenDatabases (TRI_server_t* server) {
 
     // use defaults and blend them with parameters found in file
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-    TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupArrayJson(json, "properties"));
+    // TODO: decide which parameter from the command-line should win vs. parameter.json
+    // TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupArrayJson(json, "properties"));
     
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
