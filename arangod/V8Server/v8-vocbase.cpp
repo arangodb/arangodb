@@ -348,26 +348,23 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
     return false;
   }
 
-  // string handle
-  TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
-  char const* s = *str;
+  // the handle must always be an ASCII string. These is no need to normalise it first
+  v8::String::Utf8Value str(arg);
 
-  if (s == 0) {
+  if (*str == 0) {
     return false;
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  regmatch_t matches[3];
-
   // collection name / document key
-  if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-    collectionName = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+  size_t split;
+  if (TRI_ValidateDocumentIdKeyGenerator(*str, &split)) {
+    collectionName = string(*str, split);
+    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str + split + 1, str.length() - split - 1);
     return true;
   }
 
   // document key only
-  if (regexec(&v8g->DocumentKeyRegex, s, 0, NULL, 0) == 0) {
+  if (TRI_ValidateKeyKeyGenerator(*str)) {
     key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str, str.length());
     return true;
   }
@@ -392,9 +389,15 @@ static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
 
       if (v->IsString()) {
         // string key
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
+        // keys must not contain any special characters, so it is not necessary
+        // to normalise them first
+        v8::String::Utf8Value str(v);
 
+        if (*str == 0) {
+          return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+        }
+
+        key = TRI_DuplicateString2(*str, str.length());
         return TRI_ERROR_NO_ERROR;
       }
       else {
@@ -423,6 +426,7 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg,
   assert(iid == 0);
 
   if (arg->IsNumber()) {
+    // numeric index id
     iid = (TRI_idx_iid_t) arg->ToNumber()->Value();
     return true;
   }
@@ -431,24 +435,21 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg,
     return false;
   }
 
-  TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
-  char const* s = *str;
+  v8::String::Utf8Value str(arg);
 
-  if (s == 0) {
+  if (*str == 0) {
     return false;
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  regmatch_t matches[3];
-
-  if (regexec(&v8g->IndexIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-    collectionName = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-    iid = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+  size_t split;
+  if (TRI_ValidateIndexIdIndex(*str, &split)) {
+    collectionName = string(*str, split);
+    iid = TRI_UInt64String2(*str + split + 1, str.length() - split - 1);
     return true;
   }
 
-  if (regexec(&v8g->IdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-    iid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+  if (TRI_ValidateIdIndex(*str)) {
+    iid = TRI_UInt64String2(*str, str.length());
     return true;
   }
 
@@ -736,7 +737,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx, primary);
+  TRI_json_t* json = idx->json(idx);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -852,7 +853,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx, primary);
+  TRI_json_t* json = idx->json(idx);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -1842,7 +1843,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   }
 
   ResourceHolder holder;
-  TRI_json_t* json = idx->json(idx, primary);
+  TRI_json_t* json = idx->json(idx);
 
   if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
     ReleaseCollection(collection);
@@ -4857,7 +4858,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   ResourceHolder holder;
 
-  TRI_json_t* json = idx->json(idx, primary);
+  TRI_json_t* json = idx->json(idx);
 
   if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
     ReleaseCollection(collection);
@@ -5078,7 +5079,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     // Create a json represention of the index
     // ...........................................................................
 
-    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, primary);
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex);
 
     if (json == NULL) {
       errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -5476,7 +5477,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx, primary);
+  TRI_json_t* json = idx->json(idx);
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -6238,6 +6239,111 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sends a resize hint to the collection
+///
+/// @FUN{@FA{collection}.reserve(@FA{number})}
+///
+/// Sends a resize hint to the indexes in the collection. The resize hint 
+/// allows indexes to reserve space for additional documents (specified by
+/// @FA{number}) in one go.
+///
+/// The reserve hint can be sent before a mass insertion into the collection 
+/// is started. It allows indexes to allocate the required memory at once 
+/// and avoids re-allocations and possible re-locations.
+/// 
+/// Not all indexes implement the reserve function at the moment. The indexes
+/// that don't implement it will simply ignore the request.
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+static v8::Handle<v8::Value> JS_ReserveVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+    
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "reserve(<numDocuments>)");
+  }
+
+  int64_t numDocuments = TRI_ObjectToInt64(argv[0]);
+
+  if (numDocuments <= 0 || numDocuments > (int64_t) UINT32_MAX) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <numDocuments>");
+  }
+
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  // WRITE-LOCK start
+  trx.lockWrite();
+  TRI_document_collection_t* document = (TRI_document_collection_t*) col->_collection;
+  bool result = document->reserveIndexes(document, numDocuments);
+
+  trx.finish(res);
+  // WRITE-LOCK end
+
+  return scope.Close(v8::Boolean::New(result));
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the revision id of a collection
+///
+/// @FUN{@FA{collection}.revision()}
+///
+/// Returns the revision id of the collection
+///
+/// The revision id is updated when the document data is modified, either by
+/// inserting, deleting, updating or replacing documents in it.
+///
+/// The revision id of a collection can be used by clients to check whether
+/// data in a collection has changed or if it is still unmodified since a
+/// previous fetch of the revision id.
+///
+/// The revision id returned is a string value. Clients should treat this value
+/// as an opaque string, and only use it for equality/non-equality comparisons.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  CollectionNameResolver resolver(collection->_vocbase);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch revision");
+  }
+
+  // READ-LOCK start
+  trx.lockRead();
+  TRI_primary_collection_t* primary = collection->_collection;
+  TRI_voc_rid_t rid = primary->base._info._revision;
+
+  trx.finish(res);
+  // READ-LOCK end
+
+  return scope.Close(V8RevisionId(rid));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief rotates the current journal of a collection
 ///
 /// @FUN{@FA{collection}.rotate()}
@@ -6628,53 +6734,6 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   return scope.Close(v8::Number::New((int) status));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the revision id of a collection
-///
-/// @FUN{@FA{collection}.revision()}
-///
-/// Returns the revision id of the collection
-///
-/// The revision id is updated when the document data is modified, either by
-/// inserting, deleting, updating or replacing documents in it.
-///
-/// The revision id of a collection can be used by clients to check whether
-/// data in a collection has changed or if it is still unmodified since a
-/// previous fetch of the revision id.
-///
-/// The revision id returned is a string value. Clients should treat this value
-/// as an opaque string, and only use it for equality/non-equality comparisons.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch revision");
-  }
-
-  // READ-LOCK start
-  trx.lockRead();
-  TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_rid_t rid = primary->base._info._revision;
-
-  trx.finish(res);
-  // READ-LOCK end
-
-  return scope.Close(V8RevisionId(rid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8653,32 +8712,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // register the startup loader
   v8g->_loader = loader;
 
-  // create the regular expressions
-  string expr;
-
-  // collection name / id (used for indexes)
-  expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
-  if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL_AND_EXIT("cannot compile regular expression");
-  }
-
-  // id only
-  expr = "^(" TRI_VOC_ID_REGEX ")$";
-  if (regcomp(&v8g->IdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL_AND_EXIT("cannot compile regular expression");
-  }
-
-  // collection name / document key (used for documents)
-  expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
-  if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL_AND_EXIT("cannot compile regular expression");
-  }
-
-  // key only
-  expr = "^" TRI_VOC_KEY_REGEX "$";
-  if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL_AND_EXIT("cannot compile regular expression");
-  }
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
@@ -8798,6 +8831,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
   TRI_AddMethodVocbase(rt, "properties", JS_PropertiesVocbaseCol);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
+#if 0
+  TRI_AddMethodVocbase(rt, "reserve", JS_ReserveVocbaseCol, true); // currently hidden
+#endif
   TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
   TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);
