@@ -3,7 +3,12 @@ require("internal").flushModuleCache();
 var jsunity = require("jsunity"),
   FoxxController = require("org/arangodb/foxx").Controller,
   db = require("org/arangodb").db,
-  fakeContext;
+  fakeContext,
+  stub_and_mock = require("org/arangodb/stub_and_mock"),
+  stub = stub_and_mock.stub,
+  allow = stub_and_mock.allow,
+  expect = stub_and_mock.expect,
+  mockConstructor = stub_and_mock.mockConstructor;
 
 fakeContext = {
   prefix: "",
@@ -225,12 +230,13 @@ function SetRoutesFoxxControllerSpec () {
 }
 
 function DocumentationAndConstraintsSpec () {
-  var app, routes;
+  var app, routes, models;
 
   return {
     setUp: function () {
       app = new FoxxController(fakeContext);
       routes = app.routingInfo.routes;
+      models = app.models;
     },
 
     testDefinePathParam: function () {
@@ -334,6 +340,75 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
       assertEqual(routes[0].docs.parameters[0].required, false);
       assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
+    },
+
+    testAddBodyParam: function () {
+      var determinedName,
+        determinedType,
+        paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
+      }).bodyParam(paramName, description, ModelPrototype);
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].name, paramName);
+      assertEqual(routes[0].docs.parameters[0].paramType, "body");
+      assertEqual(routes[0].docs.parameters[0].description, description);
+      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+    },
+
+    testDefineBodyParamAddsJSONSchemaToModels: function () {
+      var determinedName,
+        determinedType,
+        paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
+      }).bodyParam(paramName, description, ModelPrototype);
+
+      assertEqual(app.models[jsonSchema.id], jsonSchema);
+    },
+
+    testSetParamForBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        requestBody = stub(),
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(requestBody);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName] instanceof ModelPrototype);
+      }).bodyParam(paramName, description, ModelPrototype);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
     },
 
     testDocumentationForErrorResponse: function () {

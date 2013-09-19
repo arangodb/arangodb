@@ -156,7 +156,7 @@ extend(Controller.prototype, {
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback),
-      requestContext = new RequestContext(this.allRoutes, newRoute),
+      requestContext = new RequestContext(this.allRoutes, this.models, newRoute),
       summary;
 
     this.routingInfo.routes.push(newRoute);

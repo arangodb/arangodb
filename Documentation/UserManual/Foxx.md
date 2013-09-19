@@ -167,6 +167,10 @@ API by chaining the following methods onto your path definition:
 
 @copydetails JSF_foxx_RequestContext_queryParam
 
+### Body Param
+
+@copydetails JSF_foxx_RequestContext_bodyParam
+
 ### Error Response
 
 @copydetails JSF_foxx_RequestContext_errorResponse
@@ -285,6 +289,39 @@ your model file, export the model as `model`.
     exports.model = TodoModel;
 
 A Foxx Model can be initialized with an object of attributes and their values.
+
+There's also the possibility of annotation: The second hash you give to the
+extend method are properties of the prototype. You can define an attributes 
+property there:
+
+    var Foxx = require("org/arangodb/foxx");
+    
+    var PersonModel = Foxx.Model.extend({
+      // Your instance properties
+    }, {
+      // Your prototype properties
+      attributes: {
+        name: { type: "string", required: true },
+        age: { type: "integer" },
+        active: { type: "boolean", defaultValue: true }
+    });
+    
+    exports.model = TodoModel;
+
+This has two effects: On the one hand it provides documentation. If you annotated
+your model, you can use it in the `bodyParam` method for documentation.
+On the other hand it will influence the behavior of the constructor: If you provide
+an object to the constructor, it will only take those attributes that are listed
+in the attributes object. This is especially useful if you want to to initialize
+the Model from user input. On the other hand it will set the default value for all
+attributes that have not been set by hand. An example:
+
+    var person = new PersonModel({
+      name: "Pete",
+      admin: true
+    });
+
+    person.attributes // => { name: "Pete", active: true }
 
 ### Extend
 
