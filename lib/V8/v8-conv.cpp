@@ -40,6 +40,8 @@
 using namespace std;
 using namespace triagens::basics;
 
+// #define DEBUG_JSON_SHAPER 1
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -584,7 +586,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   total = 0;
   f = 0;
   v = 0;
-
+  
   for (i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = json->Get(key);
@@ -639,6 +641,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
   }
 
+  // adjust n
   n = f + v;
 
   // add variable offset table size
@@ -652,7 +655,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
          (unsigned int) n,
          (unsigned int) f,
          (unsigned int) v);
-  PrintShapeValues(values, n);
+  TRI_PrintShapeValues(values, n);
   printf("\n");
 #endif
 
@@ -790,7 +793,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      LOG_TRACE("found hash %d", hash);
+      // LOG_TRACE("found hash %d", hash);
 
       for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
         if (json->StrictEquals(*i)) {

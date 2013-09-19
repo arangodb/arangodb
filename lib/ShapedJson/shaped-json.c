@@ -191,7 +191,8 @@ void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent)
 
 #ifdef DEBUG_JSON_SHAPER
 
-static void PrintShapeValues (TRI_shape_value_t* values, size_t n) {
+static void PrintShapeValues (TRI_shape_value_t* values, 
+                              size_t n) {
   TRI_shape_value_t* p;
   TRI_shape_value_t* e;
 
@@ -2679,6 +2680,19 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
 
   return;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a list of TRI_shape_value_t for debugging
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_JSON_SHAPER
+
+void TRI_PrintShapeValues (TRI_shape_value_t* values,
+                           size_t n) {
+  PrintShapeValues(values, n);
+}
+
+#endif
 
 // Local Variables:
 // mode: outline-minor
