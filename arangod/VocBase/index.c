@@ -1371,13 +1371,11 @@ PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t* idx,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // .............................................................................
 // Helper function for TRI_LookupSkiplistIndex
 // .............................................................................
 
-
-static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_primary_collection_t* collection) {
+static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_collection_t* collection) {
   TRI_json_t*                    jsonObject;
   TRI_shaped_json_t*             shapedObject;
   TRI_relation_index_operator_t* relationOperator;
@@ -1701,6 +1699,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // ............................................................................
 
   skiplistIndex = (TRI_skiplist_index_t*) idx;
+
   if (idx == NULL) {
     LOG_WARNING("internal error in InsertSkiplistIndex");
     return TRI_ERROR_INTERNAL;
@@ -1713,7 +1712,6 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 
   skiplistElement.numFields   = skiplistIndex->_paths._length;
   skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistElement.numFields, false);
-  skiplistElement.collection  = skiplistIndex->base._collection;
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1866,7 +1864,6 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
 
   skiplistElement.numFields   = skiplistIndex->_paths._length;
   skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistElement.numFields, false);
-  skiplistElement.collection  = skiplistIndex->base._collection;
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1934,7 +1931,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
@@ -1943,7 +1940,15 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   int result;
   size_t j;
 
+  assert(primary != NULL);
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
+
+  if (skiplistIndex == NULL) {
+    return NULL;
+  }
+
+  skiplistIndex->base._collection = primary;
+
   idx = &skiplistIndex->base;
 
   idx->typeName = TypeNameSkiplistIndex;
@@ -1974,10 +1979,10 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   }
 
   if (unique) {
-    skiplistIndex->_skiplistIndex = SkiplistIndex_new();
+    skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary);
   }
   else {
-    skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new();
+    skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new(primary);
   }
 
   if (skiplistIndex->_skiplistIndex == NULL) {

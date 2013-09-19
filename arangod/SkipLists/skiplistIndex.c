@@ -473,7 +473,6 @@ static void FillSkiplistIndexKeyBySkiplistIndexElement (SkiplistIndex* idx,
   size_t i;
 
   key->numFields = element->numFields;
-  key->collection = element->collection;
 
   n = element->numFields;
   key->fields = TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
@@ -606,7 +605,7 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
 /// @brief creates a new unique entry skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex* SkiplistIndex_new() {
+SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary) {
   SkiplistIndex* skiplistIndex;
   int res;
 
@@ -626,6 +625,7 @@ SkiplistIndex* SkiplistIndex_new() {
   }
 
   res = TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
+                         primary,
                          TRI_SKIPLIST_PROB_HALF,
                          40);
 
@@ -809,9 +809,9 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
     case TRI_LT_INDEX_OPERATOR: 
     case TRI_GE_INDEX_OPERATOR: 
     case TRI_GT_INDEX_OPERATOR: 
+
       values.fields     = relationOperator->_fields;
       values.numFields  = relationOperator->_numFields;
-      values.collection = relationOperator->_collection;
       
     default: {
       // must not access relationOperator->xxx if the operator is not a relational one
@@ -1025,11 +1025,15 @@ int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, TRI_skiplist_index_eleme
 /// @brief creates a new non-uniqe (allows duplicates) multi skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex* MultiSkiplistIndex_new() {
+SkiplistIndex* MultiSkiplistIndex_new (TRI_primary_collection_t* primary) {
   SkiplistIndex* skiplistIndex;
   int res;
 
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
+
+  if (skiplistIndex == NULL) {
+    return NULL;
+  }
 
   skiplistIndex->unique = false;
   skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t), true);
@@ -1038,8 +1042,9 @@ SkiplistIndex* MultiSkiplistIndex_new() {
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
   }
-
+  
   res = TRI_InitSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist,
+                              primary,
                               TRI_SKIPLIST_PROB_HALF,
                               40);
 
@@ -1192,10 +1197,10 @@ static bool multiSkiplistIndex_findHelperIntervalValid (SkiplistIndex* skiplistI
 
 
 
-static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
-                                          TRI_vector_t* shapeList,
-                                          TRI_index_operator_t* indexOperator,
-                                          TRI_vector_t* resultIntervalList) {
+static void MultiSkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
+                                           TRI_vector_t* shapeList,
+                                           TRI_index_operator_t* indexOperator,
+                                           TRI_vector_t* resultIntervalList) {
   TRI_skiplist_index_key_t          values;
   TRI_vector_t                      leftResult;
   TRI_vector_t                      rightResult;
@@ -1222,7 +1227,6 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 
       values.fields     = relationOperator->_fields;
       values.numFields  = relationOperator->_numFields;
-      values.collection = relationOperator->_collection;
       
     default: {
       // must not access relationOperator->xxx if the operator is not a relational one
@@ -1322,7 +1326,9 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 }
 
 
-TRI_skiplist_iterator_t* MultiSkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_index_operator_t* indexOperator) {
+TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex* skiplistIndex, 
+                                                  TRI_vector_t* shapeList, 
+                                                  TRI_index_operator_t* indexOperator) {
   TRI_skiplist_iterator_t* results;
 
   results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), false);
@@ -1350,8 +1356,8 @@ TRI_skiplist_iterator_t* MultiSkiplistIndex_find(SkiplistIndex* skiplistIndex, T
 /// @brief inserts a data element into a multi skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-
-int MultiSkiplistIndex_insert(SkiplistIndex* skiplistIndex, TRI_skiplist_index_element_t* element) {
+int MultiSkiplistIndex_insert (SkiplistIndex* skiplistIndex, 
+                               TRI_skiplist_index_element_t* element) {
   return TRI_InsertElementSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, element, false);  
 }
 
@@ -1359,7 +1365,8 @@ int MultiSkiplistIndex_insert(SkiplistIndex* skiplistIndex, TRI_skiplist_index_e
 /// @brief removes an entry from the skiplist
 //////////////////////////////////////////////////////////////////////////////////
 
-int MultiSkiplistIndex_remove(SkiplistIndex* skiplistIndex, TRI_skiplist_index_element_t* element) {
+int MultiSkiplistIndex_remove (SkiplistIndex* skiplistIndex, 
+                               TRI_skiplist_index_element_t* element) {
   return TRI_RemoveElementSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, element, NULL);
 }
 
@@ -1367,8 +1374,10 @@ int MultiSkiplistIndex_remove(SkiplistIndex* skiplistIndex, TRI_skiplist_index_e
 // Implementation of forward declared query engine callback functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SkiplistIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator,
-                                         TRI_index_challenge_t* challenge, void* data) {
+static int SkiplistIndex_queryMethodCall (void* theIndex, 
+                                          TRI_index_operator_t* indexOperator,
+                                          TRI_index_challenge_t* challenge, 
+                                          void* data) {
   SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
   if (slIndex == NULL || indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
@@ -1377,8 +1386,10 @@ static int SkiplistIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* i
   return TRI_ERROR_NO_ERROR;
 }
 
-static TRI_index_iterator_t* SkiplistIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator,
-                                          void* data, bool (*filter) (TRI_index_iterator_t*)) {
+static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (void* theIndex, 
+                                                             TRI_index_operator_t* indexOperator,
+                                                             void* data, 
+                                                             bool (*filter) (TRI_index_iterator_t*)) {
   SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
   if (slIndex == NULL || indexOperator == NULL) {
     return NULL;
@@ -1387,7 +1398,8 @@ static TRI_index_iterator_t* SkiplistIndex_resultMethodCall(void* theIndex, TRI_
   return NULL;
 }
 
-static int SkiplistIndex_freeMethodCall(void* theIndex, void* data) {
+static int SkiplistIndex_freeMethodCall (void* theIndex, 
+                                         void* data) {
   SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
   if (slIndex == NULL) {
     return TRI_ERROR_INTERNAL;
