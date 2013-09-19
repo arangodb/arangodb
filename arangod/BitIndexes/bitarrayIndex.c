@@ -100,7 +100,7 @@ static void BitarrayIndex_debugPrintMask           (BitarrayIndex*, uint64_t);
 /// @brief destroys a bitarray index , but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void BitarrayIndex_destroy(BitarrayIndex* baIndex) {
+void BitarrayIndex_destroy (BitarrayIndex* baIndex) {
   size_t j;
   if (baIndex == NULL) {
     return;
@@ -110,8 +110,10 @@ void BitarrayIndex_destroy(BitarrayIndex* baIndex) {
   }
   TRI_DestroyVector(&baIndex->_values);
 
-  TRI_FreeBitarray(baIndex->_bitarray);
-  baIndex->_bitarray = NULL;
+  if (baIndex->_bitarray != NULL) {
+    TRI_FreeBitarray(baIndex->_bitarray);
+    baIndex->_bitarray = NULL;
+  }
 }
 
 
@@ -119,7 +121,7 @@ void BitarrayIndex_destroy(BitarrayIndex* baIndex) {
 /// @brief destroys a bitarray index and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void BitarrayIndex_free(BitarrayIndex* baIndex) {
+void BitarrayIndex_free (BitarrayIndex* baIndex) {
   if (baIndex == NULL) {
     return;
   }
@@ -194,7 +196,6 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
   // ...........................................................................
 
   if (baIndex == NULL) {
-    assert(false);
     return TRI_ERROR_INTERNAL;
   }
 

@@ -295,6 +295,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   }
 
   collection = TRI_GetCollectionAql(context, collectionName);
+
   if (collection == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
@@ -546,9 +547,15 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
 static TRI_string_buffer_t* RelationCode (const char* const name,
                                           const TRI_aql_node_t* const lhs,
                                           const TRI_aql_node_t* const rhs) {
-  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  TRI_string_buffer_t* buffer;
 
-  if (! lhs || ! rhs) {
+  if (lhs == NULL || rhs == NULL) {
+    return NULL;
+  }
+
+  buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+
+  if (buffer == NULL) {
     return NULL;
   }
 
@@ -1170,7 +1177,8 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   }
 
   code = RelationCode(func, lhs, rhs);
-  if (! code) {
+
+  if (code == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }

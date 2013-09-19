@@ -1544,7 +1544,7 @@ static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_primary_co
 // .............................................................................
 
 
-TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_operator_t* slOperator) {
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx, TRI_index_operator_t* slOperator) {
   TRI_skiplist_index_t*    skiplistIndex;
   TRI_skiplist_iterator_t* iteratorResult;
   int                      errorResult;
@@ -1558,6 +1558,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_ope
   // .........................................................................
 
   errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection);
+
   if (errorResult != TRI_ERROR_NO_ERROR) {
     return NULL;
   }
@@ -3109,8 +3110,6 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   result = BitarrayIndex_new(&(baIndex->_bitarrayIndex), TRI_UNKNOWN_MEM_ZONE, (size_t) cardinality,
                              &baIndex->_values, supportUndef, createContext);
   if (result != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVector(&baIndex->_paths);
-    TRI_DestroyVector(&baIndex->_values);
     TRI_FreeBitarrayIndex(idx);
     LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
     return NULL;

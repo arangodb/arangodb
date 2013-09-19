@@ -111,7 +111,6 @@ static int PrepareFailedLists (TRI_transaction_t* const trx,
 
     for (i = 0; i < n; ++i) {
       TRI_transaction_collection_t* trxCollection;
-      int res;
 
       trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
 
@@ -122,10 +121,8 @@ static int PrepareFailedLists (TRI_transaction_t* const trx,
       document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
       assert(document != NULL);
 
-      res = TRI_EnsureSpareCapacityVector(&document->_failedTransactions, 1);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+      if (! TRI_ReserveVector(&document->_failedTransactions, 1)) {
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
   }
@@ -150,6 +147,11 @@ static int InitCollectionOperations (TRI_transaction_collection_t* trxCollection
   }
 
   res = TRI_InitVector2(trxCollection->_operations, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_operation_t), 4);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection->_operations);
+    trxCollection->_operations = NULL;
+  }
    
   return res;
 }
@@ -1538,13 +1540,12 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
     }
   }
   else {
-    trx->_hasOperations = true;
-
     res = AddCollectionOperation(trxCollection, type, newHeader, oldHeader, oldData, marker, totalSize);
 
     if (res == TRI_ERROR_NO_ERROR) {
       // if everything went well, this will ensure we don't double free etc. headers
       *directOperation = false; 
+      trx->_hasOperations = true;
     }
     else {
       TRI_ASSERT_MAINTAINER(res == TRI_ERROR_OUT_OF_MEMORY);

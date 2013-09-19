@@ -382,9 +382,9 @@ typedef struct TRI_skiplist_synced_multi_s {
 /// @brief initialises a skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
-                            TRI_skiplist_prob_e,
-                            uint32_t);
+int TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
+                           TRI_skiplist_prob_e,
+                           uint32_t);
                                               
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a multi skip list, but does not free the pointer
