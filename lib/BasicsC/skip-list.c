@@ -1582,7 +1582,7 @@ void* TRI_LookupByKeySkipListMulti(TRI_skip_list_multi_t* skiplist, void* key) {
 /// @brief adds an element to a multi skip list using an element for searching
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertElementSkipListMulti(TRI_skip_list_multi_t* skiplist, void* element, bool overwrite) {
+int TRI_InsertElementSkipListMulti (TRI_skip_list_multi_t* skiplist, void* element, bool overwrite) {
   int32_t newHeight;
   int32_t currentLevel;
   uint32_t oldColLength;

@@ -1662,14 +1662,22 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   }
     
   // get shape and type
-  leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
-  rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+
+  if (leftShaper == rightShaper && left._sid == right._sid) {
+    // identical collection and shape
+    leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
+  }
+  else {
+    // different shapes
+    leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
+    rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+  }
 
   leftType   = leftShape->_type;
   rightType  = rightShape->_type;
 
   // .............................................................................
-  // check ALL combination of leftType and rightType
+  // check ALL combinations of leftType and rightType
   // .............................................................................
 
   switch (leftType) {

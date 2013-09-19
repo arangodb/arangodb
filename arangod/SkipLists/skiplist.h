@@ -43,6 +43,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_primary_collection_s;
 struct TRI_skiplist_node_s;
 
 // -----------------------------------------------------------------------------
@@ -102,6 +103,8 @@ TRI_skiplist_node_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_base_s {
+  struct TRI_primary_collection_s* _collection;
+
   // ...........................................................................
   // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
   // stored in the skip list.
@@ -158,7 +161,7 @@ TRI_skiplist_base_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_s {
-  TRI_skiplist_base_t _base;
+  TRI_skiplist_base_t base;
 
   // ...........................................................................
   // callback compare function
@@ -179,23 +182,6 @@ typedef struct TRI_skiplist_s {
 }
 TRI_skiplist_t;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a skip list which only accepts unique entries and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// structure for a skiplist which allows unique entries -- with locking
-// available for its nearest neighbours.
-// TODO: implement locking for nearest neighbours rather than for all of index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_synced_s {
-  TRI_skiplist_t _base;
-  TRI_read_write_lock_t _lock;
-} TRI_skiplist_synced_t;
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,6 +201,7 @@ typedef struct TRI_skiplist_synced_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitSkipList (TRI_skiplist_t*,
+                      struct TRI_primary_collection_s*,
                       TRI_skiplist_prob_e,
                       uint32_t);
 
@@ -326,7 +313,7 @@ void* TRI_StartNodeSkipList (TRI_skiplist_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_multi_s {
-  TRI_skiplist_base_t _base;
+  TRI_skiplist_base_t base;
 
   // ...........................................................................
   // callback compare function
@@ -357,15 +344,6 @@ typedef struct TRI_skiplist_multi_s {
 TRI_skiplist_multi_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a multi skip list and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_synced_multi_s {
-  TRI_skiplist_t _base;
-  TRI_read_write_lock_t _lock;
-} TRI_skiplist_synced_multi_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -383,6 +361,7 @@ typedef struct TRI_skiplist_synced_multi_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
+                           struct TRI_primary_collection_s*,
                            TRI_skiplist_prob_e,
                            uint32_t);
                                               
