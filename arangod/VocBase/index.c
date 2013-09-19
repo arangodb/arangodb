@@ -1708,8 +1708,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // These will be used for comparisions
   // ............................................................................
 
-  skiplistElement.numFields   = skiplistIndex->_paths._length;
-  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistElement.numFields, false);
+  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false);
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1860,8 +1859,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Allocate some memory for the SkiplistIndexElement structure
   // ............................................................................
 
-  skiplistElement.numFields   = skiplistIndex->_paths._length;
-  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistElement.numFields, false);
+  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistIndex->_paths._length, false);
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1945,8 +1943,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
     return NULL;
   }
 
-  skiplistIndex->base._collection = primary;
-
   idx = &skiplistIndex->base;
 
   idx->typeName = TypeNameSkiplistIndex;
@@ -1977,10 +1973,10 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
   }
 
   if (unique) {
-    skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary);
+    skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary, paths->_length);
   }
   else {
-    skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new(primary);
+    skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new(primary, paths->_length);
   }
 
   if (skiplistIndex->_skiplistIndex == NULL) {

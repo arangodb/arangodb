@@ -49,15 +49,14 @@ static int IndexStaticCopyElementElement (TRI_skiplist_base_t* skiplist,
     return TRI_ERROR_INTERNAL;
   }
     
-  leftElement->numFields   = rightElement->numFields;
   leftElement->_document   = rightElement->_document;
-  leftElement->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * leftElement->numFields, false);
+  leftElement->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplist->_numFields, false);
   
   if (leftElement->_subObjects == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  memcpy(leftElement->_subObjects, rightElement->_subObjects, sizeof(TRI_shaped_sub_t) * leftElement->numFields);
+  memcpy(leftElement->_subObjects, rightElement->_subObjects, sizeof(TRI_shaped_sub_t) * skiplist->_numFields);
   
   return TRI_ERROR_NO_ERROR;  
 }
@@ -258,10 +257,6 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist,
   // list entries.
   // ............................................................................
   
-  if (leftElement->numFields != rightElement->numFields) {
-    assert(false);
-  }
-  
   // ............................................................................
   // The document could be the same -- so no further comparison is required.
   // ............................................................................
@@ -272,7 +267,7 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist,
   
   shaper = skiplist->base._collection->_shaper;
   
-  for (j = 0;  j < leftElement->numFields;  j++) {
+  for (j = 0;  j < skiplist->base._numFields;  j++) {
     compareResult = CompareElementElement(leftElement,
                                           j,
                                           rightElement,
@@ -346,12 +341,7 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist,
   // the number of fields that the index is defined with.
   // ............................................................................
 
-  if (leftElement->numFields < rightElement->numFields) {
-    numFields = leftElement->numFields;
-  }
-  else {
-    numFields = rightElement->numFields;
-  }
+  numFields = skiplist->base._numFields;
   
   shaper = skiplist->base._collection->_shaper;
   
@@ -409,17 +399,13 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
     return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }
 
-  if (leftElement->numFields != rightElement->numFields) {
-    assert(false);
-  }
-
   if (leftElement->_document == rightElement->_document) {
     return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }
 
   shaper = multiSkiplist->base._collection->_shaper;
 
-  for (j = 0;  j < leftElement->numFields;  j++) {
+  for (j = 0;  j < multiSkiplist->base._numFields;  j++) {
     compareResult = CompareElementElement(leftElement,
                                           j,
                                           rightElement,
@@ -474,12 +460,7 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
   // the number of fields that the index is defined with.
   // ............................................................................
   
-  if (leftElement->numFields < rightElement->numFields) {
-    numFields = leftElement->numFields;
-  }
-  else {
-    numFields = rightElement->numFields;
-  }
+  numFields = multiSkiplist->base._numFields;
 
   shaper = multiSkiplist->base._collection->_shaper;
 
