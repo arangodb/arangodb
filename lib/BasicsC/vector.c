@@ -130,6 +130,30 @@ void TRI_FreeVector (TRI_memory_zone_t* zone, TRI_vector_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures a vector has space for extraCapacity more items
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReserveVector (TRI_vector_t* vector, 
+                        size_t extraCapacity) {
+  size_t oldLength = vector->_length;
+  size_t minLength = oldLength + extraCapacity;
+
+  if (vector->_capacity >= minLength) {
+    return true;
+  }
+
+  if (TRI_ResizeVector(vector, minLength) != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  // resize adjusts the length. we don't want that but only wanted to reserve
+  // capacity. reset the length to the original value
+  vector->_length = oldLength;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -229,7 +253,8 @@ void TRI_ClearVector (TRI_vector_t* vector) {
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeVector (TRI_vector_t* vector, size_t n) {
+int TRI_ResizeVector (TRI_vector_t* vector, 
+                      size_t n) {
   if (vector->_length == n) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -250,25 +275,6 @@ int TRI_ResizeVector (TRI_vector_t* vector, size_t n) {
 
   vector->_length = n;
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures there is spare capacity at the end of the vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_EnsureSpareCapacityVector (TRI_vector_t* vector, size_t spare) {
-  int res;
-
-  if (vector->_length + spare <= vector->_capacity) {
-    // vector is already big enough
-    res = TRI_ERROR_NO_ERROR;
-  }
-  else {
-    // vector is too small. resize
-    res = TRI_ResizeVector(vector, vector->_length + spare);
-  }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,13 +514,22 @@ void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
 
 bool TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector, 
                                size_t extraCapacity) {
-  size_t minLength = vector->_length + extraCapacity;
+  size_t oldLength = vector->_length;
+  size_t minLength = oldLength + extraCapacity;
 
   if (vector->_capacity >= minLength) {
     return true;
   }
 
-  return (TRI_ResizeVectorPointer(vector, minLength) == TRI_ERROR_NO_ERROR);
+  if (TRI_ResizeVectorPointer(vector, minLength) != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  // resize adjusts the length. we don't want that but only wanted to reserve
+  // capacity. reset the length to the original value
+  vector->_length = oldLength;
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

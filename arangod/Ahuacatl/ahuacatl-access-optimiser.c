@@ -308,7 +308,9 @@ static bool InsertOrs (TRI_aql_context_t* const context,
         return false;
       }
 
-      TRI_PushBackVectorPointer(dest, (void*) orElement);
+      if (TRI_PushBackVectorPointer(dest, (void*) orElement) != TRI_ERROR_NO_ERROR) {
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
     }
     else {
       // compare previous with current condition
@@ -1873,11 +1875,14 @@ static TRI_vector_pointer_t* Vectorize (TRI_aql_context_t* const context,
   }
 
   vector = CreateEmptyVector(context);
+
   if (vector == NULL) {
     return NULL;
   }
 
-  TRI_PushBackVectorPointer(vector, fieldAccess);
+  if (TRI_PushBackVectorPointer(vector, fieldAccess) != TRI_ERROR_NO_ERROR) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+  }
 
   return vector;
 }
@@ -1963,7 +1968,9 @@ static void MergeVector (TRI_aql_context_t* const context,
 
     if (! found) {
       // element not found, now add it to the list of restrictions
-      TRI_PushBackVectorPointer(result, fieldAccess);
+      if (TRI_PushBackVectorPointer(result, fieldAccess) != TRI_ERROR_NO_ERROR) {
+        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      }
     }
   }
 }
@@ -1996,7 +2003,9 @@ static void InsertVector (TRI_aql_context_t* const context,
       return;
     }
 
-    TRI_PushBackVectorPointer(result, (void*) copy);
+    if (TRI_PushBackVectorPointer(result, (void*) copy) != TRI_ERROR_NO_ERROR) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    }
   }
 }
 
@@ -2837,6 +2846,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
   else {
     // create a new vector
     accesses = CreateEmptyVector(context);
+
     if (accesses == NULL) {
       // OOM
       return NULL;
@@ -2881,7 +2891,18 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
 
   if (! found) {
     // not found, now add this candidate
-    TRI_PushBackVectorPointer(accesses, TRI_CloneAccessAql(context, candidate));
+    TRI_aql_field_access_t* copy;
+
+    copy = TRI_CloneAccessAql(context, candidate);
+
+    if (copy == NULL) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return accesses;
+    }
+
+    if (TRI_PushBackVectorPointer(accesses, copy) != TRI_ERROR_NO_ERROR) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    }
   }
 
   return accesses;

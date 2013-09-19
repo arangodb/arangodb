@@ -987,17 +987,27 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
 
     return TRI_ERROR_NO_ERROR;
   }
-    
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     if (! ResizeAssociativePointer(array, (uint32_t) (2 * array->_nrAlloc) + 1)) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
+
+    // now we need to recalc the position
+    i = hash % array->_nrAlloc;
+    // search the table
+    while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+      i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
+      array->_nrProbesA++;
+#endif
+    }
   }
+  
+  // add a new element to the associative array
+  array->_table[i] = element;
+  array->_nrUsed++;
 
   return TRI_ERROR_NO_ERROR; 
 }

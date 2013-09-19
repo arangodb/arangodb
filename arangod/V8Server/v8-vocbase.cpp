@@ -749,7 +749,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   if (create) {
     if (index->IsObject()) {
-      index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+      index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
     }
   }
 
@@ -865,7 +865,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 
   if (create) {
     if (index->IsObject()) {
-      index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+      index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
     }
   }
   
@@ -1168,7 +1168,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
   }
 
-  assert(document._key);
+  assert(document._key != 0);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -1493,7 +1493,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
   }
 
-  assert(document._key);
+  assert(document._key != 0);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -1853,7 +1853,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
 
   if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
   }
 
   ReleaseCollection(collection);
@@ -2090,6 +2090,8 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
+
+  assert(cursor != 0);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
@@ -4868,7 +4870,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
 
   if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
   }
 
   ReleaseCollection(collection);
@@ -5090,7 +5092,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     else {
       theIndex = IndexRep(&primary->base, json);
       if (theIndex->IsObject()) {
-        theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), indexCreated ? v8::True() : v8::False());
+        theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(indexCreated));
       }
 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -5425,7 +5427,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
     ReleaseCollection(collection);
 
     errorString = "one string parameter required for the ensurePQIndex(...) command";
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+    return scope.Close(v8::String::New(errorString.c_str(), errorString.length()));
   }
 
 
@@ -5483,7 +5485,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
   }
 
   ReleaseCollection(collection);
@@ -7696,8 +7698,13 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   
   TRI_vector_string_t names;
   TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
-  TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
+  int res = TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
   
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorString(&names);
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
   v8::Handle<v8::Array> result = v8::Array::New();
   for (size_t i = 0;  i < names._length;  ++i) {    
     result->Set((uint32_t) i, v8::String::New((char const*) TRI_AtVectorString(&names, i)));
@@ -8218,7 +8225,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   for (i = 0;  i < n;  ++i, ++aids) {
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
-    if (att) {
+    if (att != 0) {
       result->Set(count++, v8::String::New(att));
     }
   }
@@ -8234,7 +8241,8 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 /// @brief check if a property is present
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> name, const v8::AccessorInfo& info) {
+static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> name, 
+                                                        const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
   // sanity check
@@ -8289,13 +8297,16 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 /// @brief selects an indexed attribute from the shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t index,
+static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
                                                       const v8::AccessorInfo& info) {
   v8::HandleScope scope;
+  
+  char buffer[11];
+  size_t len;
 
-  char* str = TRI_StringUInt32(index);
-  v8::Local<v8::String> strVal = v8::String::New(str);
-  TRI_Free(TRI_CORE_MEM_ZONE, str);
+  len = TRI_StringUInt32InPlace(idx, (char*) &buffer);
+
+  v8::Local<v8::String> strVal = v8::String::New((char*) &buffer, len);
 
   return scope.Close(MapGetNamedShapedJson(strVal, info));
 }
@@ -8537,6 +8548,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  assert(barrier != 0);
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();

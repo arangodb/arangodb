@@ -1047,7 +1047,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
     
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     
-  if (! TRI_SaveJson(file, json, true)) {
+  if (! TRI_SaveJson(file, json, false)) {
     LOG_ERROR("cannot save database information in file '%s'",
               file);
 
@@ -1940,6 +1940,9 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
                                 TRI_vector_string_t* names) {
 
   size_t i, n;
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
 
   TRI_ReadLockReadWriteLock(&server->_databasesLock);
   n = server->_databases._nrAlloc;
@@ -1948,12 +1951,28 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
     TRI_vocbase_t* vocbase = server->_databases._table[i];
 
     if (vocbase != NULL) {
-      TRI_PushBackVectorString(names, TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name));
+      char* copy;
+
+      assert(vocbase->_name != NULL);
+
+      copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
+
+      if (copy == NULL) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
+
+      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
+        // insertion failed.
+        TRI_Free(names->_memoryZone, copy);
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
     }
   }
   TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

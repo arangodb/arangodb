@@ -1067,11 +1067,15 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     skiplistOperator = SetupConditionsSkiplist(idx, shaper, values);
   }
 
-  if (! skiplistOperator) {
+  if (skiplistOperator == 0) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "setting up skiplist operator failed");
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+
+  if (skiplistIterator == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
