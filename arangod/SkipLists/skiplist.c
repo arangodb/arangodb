@@ -322,6 +322,7 @@ static int32_t RandLevel (TRI_skiplist_base_t* skiplist) {
 
 int TRI_InitSkipList (TRI_skiplist_t* skiplist,
                       TRI_primary_collection_t* primary,
+                      size_t numFields,
                       TRI_skiplist_prob_e probability,
                       uint32_t maximumHeight) {
 
@@ -333,6 +334,7 @@ int TRI_InitSkipList (TRI_skiplist_t* skiplist,
   }
 
   skiplist->base._collection = primary;
+  skiplist->base._numFields = numFields;
 
   // ..........................................................................
   // Assign the STATIC comparision call back functions
@@ -1325,6 +1327,7 @@ void* TRI_StartNodeSkipList(TRI_skiplist_t* skiplist) {
 
 int TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
                            TRI_primary_collection_t* primary,
+                           size_t numFields,
                            TRI_skiplist_prob_e probability,
                            uint32_t maximumHeight) {
 
@@ -1336,6 +1339,7 @@ int TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   }
   
   skiplist->base._collection = primary;
+  skiplist->base._numFields = numFields;
 
   // ..........................................................................
   // Assign the comparision call back functions

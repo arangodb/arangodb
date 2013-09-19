@@ -105,6 +105,8 @@ TRI_skiplist_node_t;
 typedef struct TRI_skiplist_base_s {
   struct TRI_primary_collection_s* _collection;
 
+  size_t _numFields;
+
   // ...........................................................................
   // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
   // stored in the skip list.
@@ -202,6 +204,7 @@ TRI_skiplist_t;
 
 int TRI_InitSkipList (TRI_skiplist_t*,
                       struct TRI_primary_collection_s*,
+                      size_t,
                       TRI_skiplist_prob_e,
                       uint32_t);
 
@@ -362,6 +365,7 @@ TRI_skiplist_multi_t;
 
 int TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
                            struct TRI_primary_collection_s*,
+                           size_t,
                            TRI_skiplist_prob_e,
                            uint32_t);
                                               

@@ -472,9 +472,13 @@ static void FillSkiplistIndexKeyBySkiplistIndexElement (SkiplistIndex* idx,
   size_t n;
   size_t i;
 
-  key->numFields = element->numFields;
+  if (idx->unique) {
+    n = idx->skiplist.uniqueSkiplist->base._numFields;
+  }
+  else {
+    n = idx->skiplist.nonUniqueSkiplist->base._numFields;
+  }
 
-  n = element->numFields;
   key->fields = TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
 
   ptr = (char const*) element->_document->_data;
@@ -605,7 +609,8 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
 /// @brief creates a new unique entry skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary) {
+SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
+                                  size_t numFields) {
   SkiplistIndex* skiplistIndex;
   int res;
 
@@ -626,6 +631,7 @@ SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary) {
 
   res = TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
                          primary,
+                         numFields,
                          TRI_SKIPLIST_PROB_HALF,
                          40);
 
@@ -782,10 +788,10 @@ static bool skiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, 
 } 
 
 
-static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
-                                     TRI_vector_t* shapeList,
-                                     TRI_index_operator_t* indexOperator,
-                                     TRI_vector_t* resultIntervalList) {
+static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
+                                      TRI_vector_t* shapeList,
+                                      TRI_index_operator_t* indexOperator,
+                                      TRI_vector_t* resultIntervalList) {
   TRI_skiplist_index_key_t          values;
   TRI_vector_t                      leftResult;
   TRI_vector_t                      rightResult;
@@ -811,7 +817,6 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
     case TRI_GT_INDEX_OPERATOR: 
 
       values.fields     = relationOperator->_fields;
-      values.numFields  = relationOperator->_numFields;
       
     default: {
       // must not access relationOperator->xxx if the operator is not a relational one
@@ -953,7 +958,9 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
   } // end of switch statement
 }
 
-TRI_skiplist_iterator_t* SkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_index_operator_t* indexOperator) {
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex* skiplistIndex, 
+                                             TRI_vector_t* shapeList, 
+                                             TRI_index_operator_t* indexOperator) {
   TRI_skiplist_iterator_t*         results;
 
   results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), true);
@@ -980,7 +987,8 @@ TRI_skiplist_iterator_t* SkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_ve
 /// @brief inserts a data element into a unique skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, TRI_skiplist_index_element_t* element) {
+int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, 
+                          TRI_skiplist_index_element_t* element) {
   TRI_skiplist_index_key_t key;
   int result;
 
@@ -995,7 +1003,8 @@ int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, TRI_skiplist_index_eleme
 /// @brief removes an entry from the skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, TRI_skiplist_index_element_t* element) {
+int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, 
+                          TRI_skiplist_index_element_t* element) {
   int result;
 
   result = TRI_RemoveElementSkipList(skiplistIndex->skiplist.uniqueSkiplist, element, NULL);
@@ -1025,7 +1034,8 @@ int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, TRI_skiplist_index_eleme
 /// @brief creates a new non-uniqe (allows duplicates) multi skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex* MultiSkiplistIndex_new (TRI_primary_collection_t* primary) {
+SkiplistIndex* MultiSkiplistIndex_new (TRI_primary_collection_t* primary,
+                                       size_t numFields) {
   SkiplistIndex* skiplistIndex;
   int res;
 
@@ -1045,6 +1055,7 @@ SkiplistIndex* MultiSkiplistIndex_new (TRI_primary_collection_t* primary) {
   
   res = TRI_InitSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist,
                               primary,
+                              numFields,
                               TRI_SKIPLIST_PROB_HALF,
                               40);
 
@@ -1226,7 +1237,6 @@ static void MultiSkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     case TRI_GT_INDEX_OPERATOR:
 
       values.fields     = relationOperator->_fields;
-      values.numFields  = relationOperator->_numFields;
       
     default: {
       // must not access relationOperator->xxx if the operator is not a relational one

@@ -67,13 +67,11 @@ typedef struct {
 
 
 typedef struct {
-  size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
 } 
 TRI_skiplist_index_key_t;
 
 typedef struct {
-  size_t numFields;                 // the number of fields
   TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the collection should know about
   struct TRI_doc_mptr_s* _document; // master document pointer
 } 
@@ -150,7 +148,8 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-SkiplistIndex* SkiplistIndex_new (struct TRI_primary_collection_s*);
+SkiplistIndex* SkiplistIndex_new (struct TRI_primary_collection_s*,
+                                  size_t);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
@@ -168,7 +167,8 @@ bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*, 
 //------------------------------------------------------------------------------
 
 
-SkiplistIndex* MultiSkiplistIndex_new (struct TRI_primary_collection_s*);
+SkiplistIndex* MultiSkiplistIndex_new (struct TRI_primary_collection_s*, 
+                                       size_t);
 
 TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
