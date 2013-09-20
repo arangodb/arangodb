@@ -526,12 +526,29 @@ namespace triagens {
                 if (found) {
                   if (acceptEncoding.find("deflate") != string::npos) {
                     _acceptDeflate = true;
-                  } 
+                  }
+                } 
+
+                // check for an async request
+                string const& asyncExecution = this->_request->header("x-arango-async", found);
+                if (found && triagens::basics::StringUtils::boolean(asyncExecution)) {
+                  // we have an async request
+                  this->_request = 0;
+
+                  ok = this->_server->handleRequestAsync(handler);
+                  
+                  if (ok) {
+                    HttpResponse response(HttpResponse::ACCEPTED);
+                    this->handleResponse(&response);
+                  }
                 }
+                else {
+                  // synchronous request
+                  this->_request = 0;
 
-                this->_request = 0;
-                ok = this->_server->handleRequest(this, handler);
-
+                  ok = this->_server->handleRequest(this, handler);
+                }
+                
                 if (! ok) {
                   HttpResponse response(HttpResponse::SERVER_ERROR);
                   this->handleResponse(&response);
