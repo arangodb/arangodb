@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sinon.JS Unit tests</title>
+    <link rel="stylesheet" type="text/css" href="../node_modules/buster-test/resources/buster-test.css">
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <h1>Sinon.JS Unit tests</h1>
+    <!--
+        Test framework. Not using pre-built bundle because we don't want
+        Sinon.JS bundled inside Buster.JS (which it is in the official
+        distribution).
+      -->
+    <script src="../node_modules/buster-core/lib/buster-core.js"></script>
+    <script src="../node_modules/buster-core/lib/buster-event-emitter.js"></script>
+    <script src="../node_modules/buster-format/lib/buster-format.js"></script>
+    <script src="../node_modules/buster-assertions/lib/buster-assertions.js"></script>
+    <script src="../node_modules/buster-evented-logger/lib/buster-evented-logger.js"></script>
+    <script src="../node_modules/buster-test/node_modules/when/when.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/test-context.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/test-case.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/test-runner.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/auto-run.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/stack-filter.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/reporters.js"></script>
+    <script src="../node_modules/buster-test/lib/buster-test/reporters/html.js"></script>
+    <!-- Custom runner -->
+    <script src="runner.js"></script>
+    <!-- Distribution -->
+    <script src="../pkg/sinon.js"></script>
+    <script src="../pkg/sinon-ie.js"></script>
+    <!-- Tests -->
+    <script src="sinon_test.js"></script>
+    <script src="sinon/spy_test.js"></script>
+    <script src="sinon/stub_test.js"></script>
+    <script src="sinon/mock_test.js"></script>
+    <script src="sinon/match_test.js"></script>
+    <script src="sinon/assert_test.js"></script>
+    <script src="sinon/collection_test.js"></script>
+    <script src="sinon/test_test.js"></script>
+    <script src="sinon/test_case_test.js"></script>
+    <script src="sinon/util/event_test.js"></script>
+    <script src="sinon/util/fake_xml_http_request_test.js"></script>
+    <script src="sinon/util/fake_server_test.js"></script>
+    <script src="sinon/sandbox_test.js"></script>
+    <script src="sinon/util/fake_timers_test.js"></script>
+    <script src="sinon/util/fake_server_with_clock_test.js"></script>
+  </body>
+</html>
