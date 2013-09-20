@@ -121,7 +121,7 @@ static int PrepareFailedLists (TRI_transaction_t* const trx,
       document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
       assert(document != NULL);
 
-      if (! TRI_ReserveVector(&document->_failedTransactions, 1)) {
+      if (TRI_ReserveVector(&document->_failedTransactions, 1) != TRI_ERROR_NO_ERROR) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }

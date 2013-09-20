@@ -411,7 +411,7 @@ void TRI_CopyPathVector (TRI_vector_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyFieldsVector (TRI_vector_string_t*, 
-                           TRI_vector_pointer_t*);
+                           TRI_vector_pointer_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a path vector into a field list
