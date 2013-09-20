@@ -287,6 +287,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("out of memory");
+    TRI_DestroyVectorPointer(&ops);
     return false;
   }
 

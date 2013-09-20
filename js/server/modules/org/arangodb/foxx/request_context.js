@@ -37,7 +37,16 @@ var RequestContext,
   is = require("org/arangodb/is"),
   UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
   createErrorBubbleWrap,
+  createBodyParamBubbleWrap,
   addCheck;
+
+createBodyParamBubbleWrap = function (handler, paramName, Proto) {
+  'use strict';
+  return function (req, res) {
+    req.parameters[paramName] = new Proto(req.body());
+    handler(req, res);
+  };
+};
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
   'use strict';
@@ -128,7 +137,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, route, models) {
+RequestContext = function (executionBuffer, models, route) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -234,12 +243,18 @@ extend(RequestContext.prototype, {
 /// Expect the body of the request to be a JSON with the attributes you annotated
 /// in your model. It will appear alongside the provided description in your
 /// Documentation.
+/// This will initialize a `Model` with the data and provide it to you via the
+/// params as `paramName`.
 /// For information about how to annotate your models, see the Model section.
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, description, Proto) {
     'use strict';
+    var handler = this.route.action.callback;
+
     this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto);
+
     return this;
   },
 

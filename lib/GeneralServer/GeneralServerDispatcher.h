@@ -229,10 +229,17 @@ namespace triagens {
             return;
           }
 
-          GENERAL_SERVER_LOCK(&this->_mappingLock);
-
           // locate the handler
           GeneralHandler* handler = job->getHandler();
+
+          if (job->isDetached()) {
+            if (handler != 0) {
+              delete handler;
+            }
+            return;
+          }
+
+          GENERAL_SERVER_LOCK(&this->_mappingLock);
           handler_task_job_t const& element = this->_handlers.findKey(handler);
 
           if (element._handler != handler) {
@@ -302,6 +309,36 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+        bool handleRequestAsync (GeneralHandler* handler) {
+          // execute the handler using the dispatcher
+          if (_dispatcher != 0) {
+            Job* ajob = handler->createJob(this, true);
+            ServerJob* job = dynamic_cast<ServerJob*>(ajob);
+
+            if (job == 0) {
+              RequestStatisticsAgentSetExecuteError(handler);
+
+              LOGGER_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
+
+              delete handler;
+              return false;
+            }
+
+            return _dispatcher->addJob(job);
+          }
+
+          // without a dispatcher, simply give up
+          RequestStatisticsAgentSetExecuteError(handler);
+
+          LOGGER_WARNING("no dispatcher is known");
+
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
         bool handleRequest (CT * task, GeneralHandler* handler) {
           this->registerHandler(handler, task);
 
@@ -331,7 +368,7 @@ namespace triagens {
                 return false;
               }
               else {
-                Job* ajob = handler->createJob(this);
+                Job* ajob = handler->createJob(this, false);
                 ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
                 if (job == 0) {

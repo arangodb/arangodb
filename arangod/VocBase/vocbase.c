@@ -220,6 +220,9 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, 
                                   TRI_vocbase_col_t* collection,
                                   TRI_server_id_t generatingServer) {
+  assert(collection != NULL);
+  assert(collection->_name != NULL);
+
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
@@ -568,10 +571,10 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   memcpy(collection, &init, sizeof(TRI_vocbase_col_t));
 
   // check name
-  res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, collection->_name, collection, &found);
+  res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, name, collection, &found);
   
   if (found != NULL) {
-    LOG_ERROR("duplicate entry for collection name '%s'", collection->_name);
+    LOG_ERROR("duplicate entry for collection name '%s'", name);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -581,21 +584,21 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // OOM. this might have happend AFTER insertion
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(res);
 
     return NULL;
   }
 
-  // check collection identifier (unknown for new born collections)
+  // check collection identifier
   res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsById, &cid, collection, &found);
   
   if (found != NULL) {
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
     LOG_ERROR("duplicate collection identifier %llu for name '%s'",
-              (unsigned long long) collection->_cid, collection->_name);
+              (unsigned long long) collection->_cid, name);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
@@ -606,13 +609,15 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     // OOM. this might have happend AFTER insertion
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 
     TRI_set_errno(res);
 
     return NULL;
   }
+  
+  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_InitReadWriteLock(&collection->_lock);
 
@@ -2149,7 +2154,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
  
   // this shouldn't fail, as we removed an element above so adding one should be ok
-  TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
+  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
+  assert(found == NULL);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 

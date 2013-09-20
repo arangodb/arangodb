@@ -182,6 +182,8 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   void const* f;
   void const* p;
 
+  assert(name != NULL);
+
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
   if (p != NULL) {
@@ -351,9 +353,12 @@ static bool EqualKeyAttributeName (TRI_associative_pointer_t* array, void const*
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* name) {
+static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, 
+                                            char const* name) {
   array_shaper_t* s;
   void const* p;
+
+  assert(name != NULL);
 
   s = (array_shaper_t*) shaper;
   p = TRI_LookupByKeyAssociativePointer(&s->_attributeNames, name);
@@ -486,6 +491,8 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   TRI_shape_t const* l;
   array_shaper_t* s;
   int res;
+
+  assert(shape != NULL);
 
   s = (array_shaper_t*) shaper;
   l = TRI_LookupByElementAssociativePointer(&s->_shapeDictionary, shape);

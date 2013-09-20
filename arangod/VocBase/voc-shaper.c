@@ -359,6 +359,8 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   bool weighted;
   attribute_weight_t* weightedAttribute;
 
+  assert(name != NULL);
+
   s = (voc_shaper_t*) shaper;
   p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
@@ -673,6 +675,8 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
     return NULL;
   }
+
+  assert(result != NULL);
 
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
@@ -1658,14 +1662,26 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   }
     
   // get shape and type
-  leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
-  rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+  if (leftShaper == rightShaper && left._sid == right._sid) {
+    // identical collection and shape
+    leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
+  }
+  else {
+    // different shapes
+    leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
+    rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+  }
+
+  if (leftShape == NULL || rightShape == NULL) {
+    LOG_ERROR("shape not found");
+    assert(false);
+  }
 
   leftType   = leftShape->_type;
   rightType  = rightShape->_type;
 
   // .............................................................................
-  // check ALL combination of leftType and rightType
+  // check ALL combinations of leftType and rightType
   // .............................................................................
 
   switch (leftType) {

@@ -797,7 +797,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 
     LOG_TRACE("freeing collection datafile");
 
-    assert(datafile);
+    assert(datafile != NULL);
     TRI_FreeDatafile(datafile);
   }
 
@@ -1807,7 +1807,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
   if (regcomp(&re, "^.*\\.new$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   res = TRI_ERROR_NO_ERROR;

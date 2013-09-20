@@ -79,9 +79,12 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
   // headers and values in-place
 
   char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
-  _freeables.push_back(request);
 
-  parseHeader(request, length);
+  if (request != 0) {
+    _freeables.push_back(request);
+
+    parseHeader(request, length);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

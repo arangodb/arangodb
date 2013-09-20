@@ -787,6 +787,7 @@ void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
                           char const* name,
                           TRI_json_t* subobject) {
   TRI_json_t copy;
+  char* att;
   size_t length;
 
   assert(object->_type == TRI_JSON_ARRAY);
@@ -795,9 +796,21 @@ void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
     return;
   }
 
+  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
+    // TODO: signal OOM here
+    return;
+  }
+
   // attribute name
   length = strlen(name);
-  InitString(&copy, TRI_DuplicateString2Z(zone, name, length), length);
+  att = TRI_DuplicateString2Z(zone, name, length);
+
+  if (att == NULL) {
+    // TODO: signal OOM here
+    return;
+  }
+
+  InitString(&copy, att, length);
   TRI_PushBackVector(&object->_value._objects, &copy);
 
   // attribute value
@@ -814,6 +827,7 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
                            char const* name,
                            TRI_json_t* subobject) {
   TRI_json_t copy;
+  char* att;
   size_t length;
 
   assert(object->_type == TRI_JSON_ARRAY);
@@ -821,11 +835,22 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
   if (subobject == NULL) {
     return;
   }
+  
+  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
+    // TODO: signal OOM here
+    return;
+  }
 
   length = strlen(name);
+  att = TRI_DuplicateString2Z(zone, name, length);
+
+  if (att == NULL) {
+    // TODO: signal OOM here
+    return;
+  }
 
   // attribute name
-  InitString(&copy, TRI_DuplicateString2Z(zone, name, length), length);
+  InitString(&copy, att, length);
   TRI_PushBackVector(&object->_value._objects, &copy);
 
   // attribute value
@@ -850,12 +875,19 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject, bool asReference) {
   TRI_json_t copy;
 
+  assert(name != NULL);
+
   // attribute name
   if (asReference) {
     InitStringReference(&copy, name, nameLength);
   }
   else {
     InitString(&copy, name, nameLength);
+  }
+
+  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
+    // TODO: signal OOM here
+    return;
   }
 
   TRI_PushBackVector(&object->_value._objects, &copy);
@@ -1009,7 +1041,10 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
   size_t n;
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  StringifyJson(buffer._memoryZone, &buffer, object, true);
+  if (StringifyJson(buffer._memoryZone, &buffer, object, true) != TRI_ERROR_NO_ERROR) {
+    TRI_AnnihilateStringBuffer(&buffer);
+    return false;
+  }
 
   p = TRI_BeginStringBuffer(&buffer);
   n = TRI_LengthStringBuffer(&buffer);
@@ -1052,14 +1087,14 @@ bool TRI_SaveJson (char const* filename,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot create json file '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
+    LOG_ERROR("cannot create json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
 
   if (! TRI_PrintJson(fd, object)) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot write to json file '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
+    LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -1069,7 +1104,7 @@ bool TRI_SaveJson (char const* filename,
 
   if (m <= 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot write to json file '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
+    LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -1078,7 +1113,7 @@ bool TRI_SaveJson (char const* filename,
   if (syncFile) {
     if (! TRI_fsync(fd)) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_ERROR("cannot sync saved json '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
+      LOG_ERROR("cannot sync saved json '%s': %s", tmp, TRI_LAST_ERROR_STR);
       TRI_UnlinkFile(tmp);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
       return false;
@@ -1089,7 +1124,7 @@ bool TRI_SaveJson (char const* filename,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot close saved file '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
+    LOG_ERROR("cannot close saved file '%s': %s", tmp, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -1099,7 +1134,7 @@ bool TRI_SaveJson (char const* filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_ERROR("cannot rename saved file '%s' to '%s': '%s'", tmp, filename, TRI_LAST_ERROR_STR);
+    LOG_ERROR("cannot rename saved file '%s' to '%s': %s", tmp, filename, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 

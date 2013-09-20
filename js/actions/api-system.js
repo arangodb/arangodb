@@ -651,61 +651,6 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_admin_configure_endpoint
-/// @brief configures a server endpoint
-///
-/// @RESTHEADER{POST /_admin/endpoint,configures a server endpoint}
-///
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/endpoint",
-  context : "admin",
-  prefix : true,
-
-  callback : function (req, res) {
-    try {
-      var result;
-
-      if (req.requestType === actions.GET) {
-        actions.resultOk(req, res, actions.HTTP_OK, internal.listEndpoints());
-      }
-
-      else if (req.requestType === actions.POST) {
-        var body = actions.getJsonBody(req, res);
-
-        if (typeof body === undefined || typeof body.endpoint !== 'string') {
-          actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                            "invalid endpoint value");
-          return;
-        }
-
-        result = internal.configureEndpoint(body.endpoint, body.databases || [ ]);
-        actions.resultOk(req, res, actions.HTTP_OK, { result: result });
-      }
-
-      else if (req.requestType === actions.DELETE) {
-        if (req.suffix.length !== 1) {
-          actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                            "expected DELETE /" + this.url + "/<endpoint>");
-          return;
-        }
-
-        var endpoint = decodeURIComponent(req.suffix[0]);
-        result = internal.removeEndpoint(endpoint);
-        actions.resultOk(req, res, actions.HTTP_OK, { result: result });
-      }
-      else {
-        actions.resultUnsupported(req, res);
-      }
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -223,7 +223,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
 /// @brief Destroy all memory allocated within the bitarray structure
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyBitarray(TRI_bitarray_t* ba) {
+int TRI_DestroyBitarray (TRI_bitarray_t* ba) {
   MasterTable_t* mt = (MasterTable_t*)(ba->_masterTable);
   size_t j;
 
@@ -251,7 +251,7 @@ int TRI_DestroyBitarray(TRI_bitarray_t* ba) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int TRI_FreeBitarray(TRI_bitarray_t* ba) {
+int TRI_FreeBitarray (TRI_bitarray_t* ba) {
   int result;
 
   result = TRI_DestroyBitarray(ba);
