@@ -41,6 +41,7 @@ var RequestContext,
   addCheck;
 
 createBodyParamBubbleWrap = function (handler, paramName, Proto) {
+  'use strict';
   return function (req, res) {
     req.parameters[paramName] = new Proto(req.body());
     handler(req, res);
