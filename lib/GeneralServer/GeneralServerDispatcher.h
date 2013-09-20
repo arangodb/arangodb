@@ -324,8 +324,7 @@ namespace triagens {
               return false;
             }
 
-            _dispatcher->addJob(job);
-            return true;
+            return _dispatcher->addJob(job);
           }
 
           // without a dispatcher, simply give up

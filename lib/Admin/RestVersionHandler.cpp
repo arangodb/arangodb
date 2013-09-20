@@ -51,7 +51,8 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler (HttpRequest* request, version_options_t const* data)
+RestVersionHandler::RestVersionHandler (HttpRequest* request, 
+                                        version_options_t const* data)
   : RestBaseHandler(request),
     _name(data->_name),
     _version(data->_version),
