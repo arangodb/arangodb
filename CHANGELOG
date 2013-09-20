@@ -1,6 +1,19 @@
 v1.4
 ----
 
+* added (experimental) support for asynchronous requests
+
+  Incoming HTTP requests with the header "x-arango-async: true" will be answered
+  by the server instantly with a generic HTTP 202 (Accepted) response. The actual 
+  requests will be queued and processed by the server asynchronously, allowing the 
+  client to continue sending other requests.
+
+  The exact point in time when a queued request is executed is undefined. If an
+  error occurs during execution of an asynchronous request, the client will not
+  be notified.
+
+  The feature is currently experimental.
+
 * issue #590: Manifest Lint
 
 * added data dump and restore tools, arangodump and arangorestore.
