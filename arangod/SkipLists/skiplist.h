@@ -178,6 +178,7 @@ typedef struct TRI_skiplist_s {
                                 int);
 
   int (*compareKeyElement) (struct TRI_skiplist_s*,
+                            size_t,
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
                             int);    
@@ -254,14 +255,16 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                                  TRI_skiplist_index_key_t* key);
+                                                  TRI_skiplist_index_key_t* key,
+                                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key, returns null if not found
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                              TRI_skiplist_index_key_t* key);
+                                              TRI_skiplist_index_key_t* key,
+                                              size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
@@ -290,7 +293,8 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                                   TRI_skiplist_index_key_t* key);
+                                                   TRI_skiplist_index_key_t* key,
+                                                   size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the start node  which belongs to a skiplist
@@ -331,6 +335,7 @@ typedef struct TRI_skiplist_multi_s {
                                 int);
 
   int (*compareKeyElement) (struct TRI_skiplist_multi_s*,
+                            size_t,
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
                             int);
@@ -413,7 +418,8 @@ int TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* skiplist,
-                                                       TRI_skiplist_index_key_t* key);
+                                                       TRI_skiplist_index_key_t* key,
+                                                       size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
@@ -442,7 +448,8 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist,
-                                                       TRI_skiplist_index_key_t* key);
+                                                       TRI_skiplist_index_key_t* key,
+                                                       size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the start node  which belongs to a skiplist

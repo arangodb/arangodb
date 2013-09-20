@@ -1662,7 +1662,6 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   }
     
   // get shape and type
-
   if (leftShaper == rightShaper && left._sid == right._sid) {
     // identical collection and shape
     leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
@@ -1671,6 +1670,11 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     // different shapes
     leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
     rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+  }
+
+  if (leftShape == NULL || rightShape == NULL) {
+    LOG_ERROR("shape not found");
+    assert(false);
   }
 
   leftType   = leftShape->_type;

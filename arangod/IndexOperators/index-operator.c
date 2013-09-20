@@ -79,14 +79,14 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
 
-      newLogicalOperator = (TRI_logical_index_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_logical_index_operator_t), false);
+      newLogicalOperator = (TRI_logical_index_operator_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_logical_index_operator_t), false);
 
-      if (!newLogicalOperator) {
+      if (newLogicalOperator == NULL) {
         return NULL;
       }
 
-      newLogicalOperator->base._type   = operatorType;
-      newLogicalOperator->base._shaper = shaper;
+      newLogicalOperator->base._type    = operatorType;
+      newLogicalOperator->base._shaper  = shaper;
       newLogicalOperator->_left         = leftOperand;
       newLogicalOperator->_right        = rightOperand;
 
@@ -101,17 +101,17 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
 
-      newRelationOperator = (TRI_relation_index_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_relation_index_operator_t), false);
+      newRelationOperator = (TRI_relation_index_operator_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_relation_index_operator_t), false);
 
-      if (!newRelationOperator) {
+      if (newRelationOperator == NULL) {
         return NULL;
       }
 
-      newRelationOperator->base._type = operatorType;
+      newRelationOperator->base._type   = operatorType;
       newRelationOperator->base._shaper = shaper;
-      newRelationOperator->_parameters = parameters;
-      newRelationOperator->_fields     = fields;
-      newRelationOperator->_numFields  = numFields;
+      newRelationOperator->_parameters  = parameters;
+      newRelationOperator->_fields      = fields;
+      newRelationOperator->_numFields   = numFields;
 
       newOperator = &(newRelationOperator->base);
       break;
