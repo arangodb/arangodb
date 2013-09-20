@@ -1458,7 +1458,7 @@ function DatabaseDocumentSuite () {
     testDocumentTooLarge : function () {
       // create a very big and silly document, just to blow up the datafiles
       var doc = { };
-      for (var i = 0; i < 50000; ++i) {
+      for (var i = 0; i < 60000; ++i) {
         var val = "thequickbrownfoxjumpsoverthelazydog" + i;
         doc[val] = val;
       }

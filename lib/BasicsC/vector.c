@@ -133,24 +133,32 @@ void TRI_FreeVector (TRI_memory_zone_t* zone, TRI_vector_t* vector) {
 /// @brief ensures a vector has space for extraCapacity more items
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveVector (TRI_vector_t* vector, 
-                        size_t extraCapacity) {
+int TRI_ReserveVector (TRI_vector_t* vector, 
+                       size_t extraCapacity) {
   size_t oldLength = vector->_length;
   size_t minLength = oldLength + extraCapacity;
+  size_t newSize;
+  char* newBuffer;
 
   if (vector->_capacity >= minLength) {
-    return true;
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  newSize = vector->_capacity;
+  while (newSize < minLength) {
+    newSize = (size_t) (1 + GROW_FACTOR * newSize);
   }
 
-  if (TRI_ResizeVector(vector, minLength) != TRI_ERROR_NO_ERROR) {
-    return false;
+  newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * vector->_elementSize);
+
+  if (newBuffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  // resize adjusts the length. we don't want that but only wanted to reserve
-  // capacity. reset the length to the original value
-  vector->_length = oldLength;
+  vector->_buffer = newBuffer;
+  vector->_capacity = newSize;
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,24 +520,32 @@ void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
 /// @brief ensures a vector has space for extraCapacity more items
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector, 
-                               size_t extraCapacity) {
+int TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector, 
+                              size_t extraCapacity) {
   size_t oldLength = vector->_length;
   size_t minLength = oldLength + extraCapacity;
+  size_t newSize;
+  void* newBuffer;
 
   if (vector->_capacity >= minLength) {
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
-  if (TRI_ResizeVectorPointer(vector, minLength) != TRI_ERROR_NO_ERROR) {
-    return false;
+  newSize = vector->_capacity;
+  while (newSize < minLength) {
+    newSize = (size_t) (1 + GROW_FACTOR * newSize);
   }
 
-  // resize adjusts the length. we don't want that but only wanted to reserve
-  // capacity. reset the length to the original value
-  vector->_length = oldLength;
+  newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(void*));
 
-  return true;
+  if (newBuffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  vector->_buffer = newBuffer;
+  vector->_capacity = newSize;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

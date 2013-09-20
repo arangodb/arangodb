@@ -1857,7 +1857,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     
   TRI_WriteLockReadWriteLock(&server->_databasesLock);
 
-  if (! TRI_ReserveVectorPointer(&server->_droppedDatabases, 1)) {
+  if (TRI_ReserveVectorPointer(&server->_droppedDatabases, 1) != TRI_ERROR_NO_ERROR) {
     // we need space for one more element
     TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
 

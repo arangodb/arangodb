@@ -796,7 +796,7 @@ void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
     return;
   }
 
-  if (! TRI_ReserveVector(&object->_value._objects, 2)) {
+  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
     // TODO: signal OOM here
     return;
   }
@@ -836,7 +836,7 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
     return;
   }
   
-  if (! TRI_ReserveVector(&object->_value._objects, 2)) {
+  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
     // TODO: signal OOM here
     return;
   }
@@ -885,7 +885,7 @@ void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* na
     InitString(&copy, name, nameLength);
   }
 
-  if (! TRI_ReserveVector(&object->_value._objects, 2)) {
+  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
     // TODO: signal OOM here
     return;
   }

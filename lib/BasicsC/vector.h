@@ -117,8 +117,8 @@ void TRI_FreeVector (TRI_memory_zone_t* zone, TRI_vector_t*);
 /// @brief ensures a vector has space for extraCapacity more items
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveVector (TRI_vector_t*, 
-                        size_t);
+int TRI_ReserveVector (TRI_vector_t*, 
+                       size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a vector
@@ -292,8 +292,8 @@ void TRI_FreeContentVectorPointer (TRI_memory_zone_t*,
 /// @brief ensures a vector has space for more items
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveVectorPointer (TRI_vector_pointer_t*, 
-                               size_t);
+int TRI_ReserveVectorPointer (TRI_vector_pointer_t*, 
+                              size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a vector

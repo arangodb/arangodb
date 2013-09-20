@@ -159,7 +159,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   collection = &document->base.base;
   
   // reserve room for one additional entry
-  if (! TRI_ReserveVectorPointer(&collection->_compactors, 1)) {
+  if (TRI_ReserveVectorPointer(&collection->_compactors, 1) != TRI_ERROR_NO_ERROR) {
     // could not get memory, exit early
     return NULL;
   }
