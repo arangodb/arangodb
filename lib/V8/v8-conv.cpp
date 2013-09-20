@@ -290,7 +290,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   e = values + n;
 
   for (i = 0;  i < n;  ++i, ++p) {
-    v8::Local<v8::Value> el = json->Get(i);
+    v8::Handle<v8::Value> el = json->Get(i);
     bool ok = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects);
 
     if (! ok) {
