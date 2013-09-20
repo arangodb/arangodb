@@ -1375,7 +1375,8 @@ PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t* idx,
 // Helper function for TRI_LookupSkiplistIndex
 // .............................................................................
 
-static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_collection_t* collection) {
+static int FillLookupSLOperator (TRI_index_operator_t* slOperator, 
+                                 TRI_primary_collection_t* primary) {
   TRI_json_t*                    jsonObject;
   TRI_shaped_json_t*             shapedObject;
   TRI_relation_index_operator_t* relationOperator;
@@ -1393,9 +1394,9 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
     case TRI_OR_INDEX_OPERATOR: {
 
       logicalOperator = (TRI_logical_index_operator_t*)(slOperator);
-      result = FillLookupSLOperator(logicalOperator->_left,collection);
+      result = FillLookupSLOperator(logicalOperator->_left, primary);
       if (result == TRI_ERROR_NO_ERROR) {
-        result = FillLookupSLOperator(logicalOperator->_right,collection);
+        result = FillLookupSLOperator(logicalOperator->_right, primary);
       }
       if (result != TRI_ERROR_NO_ERROR) {
         return result;
@@ -1411,12 +1412,13 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
     case TRI_LT_INDEX_OPERATOR: {
 
       relationOperator = (TRI_relation_index_operator_t*)(slOperator);
-      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+      relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
+
+      relationOperator->_fields = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
       if (relationOperator->_fields != NULL) {
         for (j = 0; j < relationOperator->_numFields; ++j) {
           jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-          shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+          shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject);
           if (shapedObject) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
@@ -1471,6 +1473,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
 
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
       relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+
       if (relationOperator->_fields == NULL) {
         relationOperator->_numFields = 0; // out of memory?
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -1502,7 +1505,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
         }
 
         // convert json to shaped json
-        shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+        shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject);
         if (shapedObject == NULL) {
           result = -4;
           break;
@@ -1540,7 +1543,8 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator, TRI_primary_c
 // .............................................................................
 
 
-TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx, TRI_index_operator_t* slOperator) {
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx, 
+                                                  TRI_index_operator_t* slOperator) {
   TRI_skiplist_index_t*    skiplistIndex;
   TRI_skiplist_iterator_t* iteratorResult;
   int                      errorResult;
@@ -1644,7 +1648,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   ptr = (char const*) skiplistElement->_document->_data;
     
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths, j)));
 
     // ..........................................................................
     // Determine if document has that particular shape 
@@ -1653,7 +1657,6 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
     acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
 
     if (acc == NULL || acc->_shape == NULL) {
-      // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
       return TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
     }  
       
@@ -1663,7 +1666,6 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
     // ..........................................................................    
 
     if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-      // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
       return TRI_ERROR_INTERNAL;
     }
 
@@ -1677,9 +1679,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   }
 
   return TRI_ERROR_NO_ERROR;
-} // end of static function SkiplistIndexHelper
-
-
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document into a skip list index
@@ -1804,7 +1804,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
   // ..........................................................................
   // Allocate sufficent memory for the field list
   // ..........................................................................
-  fieldList = TRI_Allocate( TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false);
+  fieldList = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false);
 
   // ..........................................................................
   // Convert the attributes (field list of the skiplist index) into strings
@@ -1859,7 +1859,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Allocate some memory for the SkiplistIndexElement structure
   // ............................................................................
 
-  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistIndex->_paths._length, false);
+  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false);
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1935,7 +1935,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
   TRI_index_t* idx;
   int result;
   size_t j;
-
+  
   assert(primary != NULL);
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
 

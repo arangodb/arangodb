@@ -63,24 +63,19 @@ typedef struct {
     struct TRI_skiplist_multi_s* nonUniqueSkiplist;
   } skiplist;
   bool unique;
-} SkiplistIndex;
-
+} 
+SkiplistIndex;
 
 typedef struct {
-  TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
+  TRI_shaped_json_t*      _fields; // list of shaped json objects which the collection should know about
 } 
 TRI_skiplist_index_key_t;
 
 typedef struct {
-  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the collection should know about
+  TRI_shaped_sub_t*      _subObjects;    // list of shaped json objects which the collection should know about
   struct TRI_doc_mptr_s* _document; // master document pointer
 } 
 TRI_skiplist_index_element_t;
-
-typedef struct {
-  size_t _numElements;
-  TRI_skiplist_index_element_t* _elements; // simple list of elements
-} SkiplistIndexElements;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node

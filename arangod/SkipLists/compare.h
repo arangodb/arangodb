@@ -121,7 +121,7 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
   if (left != NULL && right == NULL) {
     return 1;
   }
-    
+
   result = TRI_CompareShapeTypes(NULL,
                                  NULL, 
                                  left,
@@ -180,6 +180,7 @@ static int CompareElementElement (TRI_skiplist_index_element_t* left,
   if (left != NULL && right == NULL) {
     return 1;
   }
+  
   result = TRI_CompareShapeTypes(left->_document,
                                  &left->_subObjects[leftPosition],
                                  NULL, 
@@ -295,6 +296,7 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist,
+                                         size_t numFields,
                                          TRI_skiplist_index_key_t* leftElement,
                                          TRI_skiplist_index_element_t* rightElement,
                                          int defaultEqual) {
@@ -307,7 +309,6 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist,
   // .............................................................................
 
   int compareResult;                               
-  size_t numFields;
   TRI_shaper_t* shaper;
   size_t j;
 
@@ -341,12 +342,10 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist,
   // the number of fields that the index is defined with.
   // ............................................................................
 
-  numFields = skiplist->base._numFields;
-  
   shaper = skiplist->base._collection->_shaper;
   
   for (j = 0; j < numFields; j++) {
-    compareResult = CompareKeyElement(&leftElement->fields[j], 
+    compareResult = CompareKeyElement(&leftElement->_fields[j], 
                                       rightElement,
                                       j,
                                       shaper); 
@@ -434,11 +433,11 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
 ////////////////////////////////////////////////////////////////////////////////
 
 static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkiplist,
+                                               size_t numFields,
                                                TRI_skiplist_index_key_t* leftElement,
                                                TRI_skiplist_index_element_t* rightElement,
                                                int defaultEqual) {
   int compareResult;
-  size_t numFields;
   TRI_shaper_t* shaper;
   size_t j;
 
@@ -460,12 +459,10 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
   // the number of fields that the index is defined with.
   // ............................................................................
   
-  numFields = multiSkiplist->base._numFields;
-
   shaper = multiSkiplist->base._collection->_shaper;
 
   for (j = 0; j < numFields; j++) {
-    compareResult = CompareKeyElement(&leftElement->fields[j],
+    compareResult = CompareKeyElement(&leftElement->_fields[j],
                                       rightElement,
                                       j,
                                       shaper);

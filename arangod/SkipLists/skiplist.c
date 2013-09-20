@@ -668,7 +668,7 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
       // the next node element.
       // .......................................................................
 
-      compareResult = IndexStaticCompareKeyElement(skiplist, key, &(nextNode->_element), 0);
+      compareResult = IndexStaticCompareKeyElement(skiplist, skiplist->base._numFields, key, &(nextNode->_element), 0);
 
       // .......................................................................
       // The element matches the next element. Overwrite if possible and return.
@@ -743,7 +743,8 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                                  TRI_skiplist_index_key_t* key) {
+                                                  TRI_skiplist_index_key_t* key,
+                                                  size_t numFields) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
@@ -819,7 +820,7 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
       // the next node element.
       // .......................................................................
 
-      compareResult = IndexStaticCompareKeyElement(skiplist, key, &(nextNode->_element), -1);
+      compareResult = IndexStaticCompareKeyElement(skiplist, numFields, key, &(nextNode->_element), -1);
 
       // .......................................................................    
       // -1 is returned if the number of fields (attributes) in the key is LESS
@@ -874,7 +875,8 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                              TRI_skiplist_index_key_t* key) {
+                                              TRI_skiplist_index_key_t* key,
+                                              size_t numFields) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
@@ -950,7 +952,7 @@ TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
       // the next node element.
       // .......................................................................
 
-      compareResult = IndexStaticCompareKeyElement(skiplist,key,&(nextNode->_element), 0);
+      compareResult = IndexStaticCompareKeyElement(skiplist, numFields, key, &(nextNode->_element), 0);
 
       // .......................................................................
       // We have found the item!
@@ -1171,7 +1173,8 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                                   TRI_skiplist_index_key_t* key) {
+                                                   TRI_skiplist_index_key_t* key,
+                                                   size_t numFields) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* prevNode;
@@ -1245,7 +1248,7 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
       // the next node element.
       // .......................................................................
 
-      int compareResult = IndexStaticCompareKeyElement(skiplist, key, &(prevNode->_element), 1);
+      int compareResult = IndexStaticCompareKeyElement(skiplist, numFields, key, &(prevNode->_element), 1);
 
       // .......................................................................
       // If the number of fields (attributes) in the key is LESS than the number
@@ -1508,7 +1511,8 @@ TRI_skiplist_node_t* TRI_EndNodeSkipListMulti (TRI_skiplist_multi_t* skiplist) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* skiplist,
-                                                       TRI_skiplist_index_key_t* key) {
+                                                       TRI_skiplist_index_key_t* key,
+                                                       size_t numFields) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
@@ -1584,7 +1588,7 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
       // the next node element.
       // .......................................................................    
 
-      int compareResult = IndexStaticMultiCompareKeyElement(skiplist, key, &(nextNode->_element), -1);
+      int compareResult = IndexStaticMultiCompareKeyElement(skiplist, numFields, key, &(nextNode->_element), -1);
       
       // .......................................................................    
       // We have found the item! Not possible
@@ -2083,8 +2087,9 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 /// @brief returns smallest node greater than a given key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist,
-                                                       TRI_skiplist_index_key_t* key) {
+TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti (TRI_skiplist_multi_t* skiplist,
+                                                        TRI_skiplist_index_key_t* key,
+                                                        size_t numFields) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* prevNode;
@@ -2157,7 +2162,7 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* ski
       // the next node element.
       // .......................................................................    
 
-      int compareResult = IndexStaticMultiCompareKeyElement(skiplist, key, &(prevNode->_element), 1);
+      int compareResult = IndexStaticMultiCompareKeyElement(skiplist, numFields, key, &(prevNode->_element), 1);
 
       // .......................................................................    
       // We have found the item! Not possible since we are searching by key!
