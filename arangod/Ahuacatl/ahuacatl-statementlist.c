@@ -264,14 +264,14 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
 bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const list,
                                  TRI_aql_node_t* const node,
                                  const size_t position) {
-  int result;
+  int res;
 
-  assert(list);
-  assert(node);
+  assert(list != NULL);
+  assert(node != NULL);
 
-  result = TRI_InsertVectorPointer(&list->_statements, node, position);
+  res = TRI_InsertVectorPointer(&list->_statements, node, position);
 
-  return result == TRI_ERROR_NO_ERROR;
+  return res == TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,10 +281,10 @@ bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const list,
 bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
                                  TRI_aql_node_t* const node) {
   TRI_aql_node_type_e type;
-  int result;
+  int res;
 
-  assert(list);
-  assert(node);
+  assert(list != NULL);
+  assert(node != NULL);
 
   type = node->_type;
   assert(TRI_IsTopLevelTypeAql(type));
@@ -297,9 +297,9 @@ bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
     --list->_currentLevel;
   }
 
-  result = TRI_PushBackVectorPointer(&list->_statements, node);
+  res = TRI_PushBackVectorPointer(&list->_statements, node);
 
-  return result == TRI_ERROR_NO_ERROR;
+  return res == TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

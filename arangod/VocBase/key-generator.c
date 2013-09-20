@@ -27,8 +27,6 @@
 
 #include "key-generator.h"
 
-#include <regex.h>
-
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
@@ -38,12 +36,17 @@
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        SPECIALIZED KEY GENERATORS
+// --SECTION--                                                     KEY GENERATOR 
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available key generators
@@ -59,6 +62,76 @@ generator_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a key
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ValidateKey (char const* key) {
+  char const* p = key;
+
+  while (1) {
+    char c = *p;
+
+    if (c == '\0') {
+      return ((p - key) > 0) && 
+             ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
+    }
+    
+    if ((c >= 'a' && c <= 'z') || 
+        (c >= 'A' && c <= 'Z') || 
+        (c >= '0' && c <= '9') || 
+         c == '_' || 
+         c == ':' || 
+         c == '-') {
+      ++p;
+      continue;
+    }
+
+    return false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a numeric key
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ValidateNumericKey (char const* key) {
+  char const* p = key;
+
+  while (1) {
+    char c = *p;
+
+    if (c == '\0') {
+      return ((p - key) > 0) && 
+             ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
+    }
+    
+    if (c >= '0' && c <= '9') {
+      ++p;
+      continue;
+    }
+
+    return false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        SPECIALIZED KEY GENERATORS
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         TRADITIONAL KEY GENERATOR
@@ -78,7 +151,6 @@ generator_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct traditional_keygen_s {
-  regex_t _regex;         // regex of allowed keys
   bool    _allowUserKeys; // allow keys supplied by user?
 }
 traditional_keygen_t;
@@ -119,14 +191,6 @@ static int TraditionalInit (TRI_key_generator_t* const generator,
   // defaults
   data->_allowUserKeys = true;
 
-  // compile regex for key validation
-  if (regcomp(&data->_regex, "^(" TRI_VOC_KEY_REGEX ")$", REG_EXTENDED | REG_NOSUB) != 0) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
-    LOG_ERROR("cannot compile regular expression");
-
-    return TRI_ERROR_INTERNAL;
-  }
-
   if (options != NULL) {
     TRI_json_t* option;
 
@@ -153,9 +217,6 @@ static void TraditionalFree (TRI_key_generator_t* const generator) {
 
   data = (traditional_keygen_t*) generator->_data;
   if (data != NULL) {
-    // free regex
-    regfree(&data->_regex);
-
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
 }
@@ -200,7 +261,7 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
     }
 
     // validate user-supplied key
-    if (regexec(&data->_regex, userKey, 0, NULL, 0)  != 0) {
+    if (! ValidateKey(userKey)) {
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 
@@ -282,7 +343,6 @@ typedef struct autoincrement_keygen_s {
   uint64_t _lastValue;     // last value assigned
   uint64_t _offset;        // start value
   uint64_t _increment;     // increment value
-  regex_t  _regex;         // regex of allowed keys
   bool     _allowUserKeys; // allow keys supplied by user?
 }
 autoincrement_keygen_t;
@@ -326,14 +386,6 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
   data->_offset        = 0;
   data->_increment     = 1;
 
-  // compile regex for key validation
-  if (regcomp(&data->_regex, "^(" TRI_VOC_ID_REGEX ")$", REG_EXTENDED | REG_NOSUB) != 0) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
-    LOG_ERROR("cannot compile regular expression");
-
-    return TRI_ERROR_INTERNAL;
-  }
-
   if (options != NULL) {
     TRI_json_t* option;
 
@@ -346,7 +398,6 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
     if (option != NULL && option->_type == TRI_JSON_NUMBER) {
       data->_increment = (uint64_t) option->_value._number;
       if (data->_increment == 0 || data->_increment >= AUTOINCREMENT_MAX_INCREMENT) {
-        regfree(&data->_regex);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 
         return TRI_ERROR_BAD_PARAMETER;
@@ -357,7 +408,6 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
     if (option != NULL && option->_type == TRI_JSON_NUMBER) {
       data->_offset = (uint64_t) option->_value._number;
       if (data->_offset >= AUTOINCREMENT_MAX_OFFSET) {
-        regfree(&data->_regex);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 
         return TRI_ERROR_BAD_PARAMETER;
@@ -384,9 +434,6 @@ static void AutoIncrementFree (TRI_key_generator_t* const generator) {
 
   data = (autoincrement_keygen_t*) generator->_data;
   if (data != NULL) {
-    // free regex
-    regfree(&data->_regex);
-
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
 }
@@ -454,7 +501,7 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
     }
 
     // validate user-supplied key
-    if (regexec(&data->_regex, userKey, 0, NULL, 0)  != 0) {
+    if (! ValidateNumericKey(userKey)) {
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 
@@ -687,6 +734,57 @@ void TRI_FreeKeyGenerator (TRI_key_generator_t* generator) {
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, generator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a key
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValidateKeyKeyGenerator (char const* key) {
+  return ValidateKey(key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a document id (collection name + / + document key)
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ValidateDocumentIdKeyGenerator (char const* key,
+                                         size_t* split) {
+  char const* p = key;
+  char c = *p;
+
+  // extract collection name
+  if (! (c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
+    return false;
+  }
+
+  ++p;
+
+  while (1) {
+    c = *p;
+
+    if (c == '_' || c == '-' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+      ++p;
+      continue;
+    }
+
+    if (c == '/') {
+      break;
+    }
+
+    return false;
+  }
+
+  if (p - key > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  // store split position
+  *split = p - key;
+  ++p;
+ 
+  // validate document key
+  return ValidateKey(p);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

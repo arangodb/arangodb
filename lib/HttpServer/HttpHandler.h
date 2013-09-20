@@ -139,7 +139,8 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Job* createJob (AsyncJobServer*);
+        virtual Job* createJob (AsyncJobServer*,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the response of a sub handler

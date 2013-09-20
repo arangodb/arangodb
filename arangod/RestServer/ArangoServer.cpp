@@ -39,8 +39,6 @@
 #include "mruby/variable.h"
 #endif
 
-#include "Utils/DocumentWrapper.h"
-
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -774,7 +772,10 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
-  assert(vocbase != 0);
+
+  if (vocbase == 0) {
+    LOGGER_FATAL_AND_EXIT("cannot start server");
+  }
 
   // load authentication
   TRI_LoadAuthInfoVocBase(vocbase);

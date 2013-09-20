@@ -1450,6 +1450,36 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief send a resize hint to all indexes
+/// must be called under the collection's write-lock
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+static bool ResizeIndexes (TRI_document_collection_t* document,
+                           int64_t numDocuments) {
+  size_t i, n;
+  bool result;
+
+  result = true;
+
+  n = document->_allIndexes._length;
+  for (i = 0 ; i < n ; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
+
+    if (idx->reserve != NULL) {
+      result = idx->reserve(idx, numDocuments);
+
+      if (! result) {
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief debug output for headers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2816,8 +2846,11 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   // we do not require an initial journal
   document->_journalRequested      = false;
-  document->_rotateRequested      = false;
+  document->_rotateRequested       = false;
   document->cleanupIndexes         = CleanupIndexes;
+#if 0  
+  document->reserveIndexes         = ResizeIndexes;
+#endif
 
   return true;
 }
@@ -4149,7 +4182,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
     idx = document->_allIndexes._buffer[i];
 
-    json = idx->json(idx, (TRI_primary_collection_t*) document);
+    json = idx->json(idx);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);

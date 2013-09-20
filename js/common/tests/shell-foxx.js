@@ -321,7 +321,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[1].name, "idParam");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-
     },
 
     testDefineQueryParam: function () {
@@ -383,6 +382,33 @@ function DocumentationAndConstraintsSpec () {
       }).bodyParam(paramName, description, ModelPrototype);
 
       assertEqual(app.models[jsonSchema.id], jsonSchema);
+    },
+
+    testSetParamForBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        requestBody = stub(),
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(requestBody);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName] instanceof ModelPrototype);
+      }).bodyParam(paramName, description, ModelPrototype);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
     },
 
     testDocumentationForErrorResponse: function () {

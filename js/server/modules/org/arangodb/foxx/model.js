@@ -56,6 +56,33 @@ var Model,
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
+var whitelistProperties = function (properties, constructorProperties) {
+  'use strict';
+  var filteredProperties,
+    whitelistedProperties = _.keys(constructorProperties);
+
+  if (whitelistedProperties) {
+    filteredProperties = _.pick(properties, whitelistedProperties);
+  } else {
+    filteredProperties = properties;
+  }
+
+  return filteredProperties;
+};
+
+var fillInDefaults = function (properties, constructorProperties) {
+  'use strict';
+  var defaults = _.reduce(constructorProperties, function (result, value, key) {
+    if (_.has(value, "defaultValue")) {
+      result[key] = value.defaultValue;
+    }
+
+    return result;
+  }, {});
+
+  return _.defaults(properties, defaults);
+};
+
 Model = function (attributes) {
   'use strict';
 
@@ -64,7 +91,12 @@ Model = function (attributes) {
 /// @brief The attributes property is the internal hash containing the model's state.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.attributes = attributes || {};
+  if (is.object(this.constructor.attributes)) {
+    this.attributes = whitelistProperties(attributes, this.constructor.attributes);
+    this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
+  } else {
+    this.attributes = attributes || {};
+  }
 };
 
 parseAttributes = function (rawAttributes) {
@@ -231,9 +263,11 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_extend
 /// @brief Extend the Model prototype to add or overwrite methods.
 ///
-/// @FUN{FoxxModel::extent(@FA{prototype})}
+/// @FUN{FoxxModel::extend(@FA{instanceProperties}, @FA{classProperties})}
 ///
 /// Extend the Model prototype to add or overwrite methods.
+/// The first object contains the properties to be defined on the instance,
+/// the second object those to be defined on the prototype.
 ////////////////////////////////////////////////////////////////////////////////
 
 Model.extend = backbone_helpers.extend;

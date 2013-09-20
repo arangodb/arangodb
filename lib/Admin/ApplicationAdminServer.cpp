@@ -179,6 +179,7 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, stri
       _versionDataDirect->_name = _name;
       _versionDataDirect->_version = _version;
       _versionDataDirect->_isDirect = true;
+      _versionDataDirect->_queue = "STANDARD";
     }
 
     factory->addHandler(prefix + "/version",
