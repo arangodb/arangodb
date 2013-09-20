@@ -57,6 +57,7 @@ var Model,
 ////////////////////////////////////////////////////////////////////////////////
 
 var whitelistProperties = function (properties, constructorProperties) {
+  'use strict';
   var filteredProperties,
     whitelistedProperties = _.keys(constructorProperties);
 
@@ -70,6 +71,7 @@ var whitelistProperties = function (properties, constructorProperties) {
 };
 
 var fillInDefaults = function (properties, constructorProperties) {
+  'use strict';
   var defaults = _.reduce(constructorProperties, function (result, value, key) {
     if (_.has(value, "defaultValue")) {
       result[key] = value.defaultValue;
@@ -142,7 +144,7 @@ _.extend(Model, {
       required: parseRequiredAttributes(attributes),
       properties: parseAttributes(attributes)
     };
-  },
+  }
 });
 
 // Instance Properties
