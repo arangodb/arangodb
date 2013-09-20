@@ -204,15 +204,29 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 collection id value from the internal collection id
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> V8CollectionId (const TRI_voc_cid_t cid) {
+  v8::HandleScope scope;
+
+  char buffer[21];
+  size_t len = TRI_StringUInt64InPlace((uint64_t) cid, (char*) &buffer);
+
+  return scope.Close(v8::String::New((const char*) buffer, len));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 tick id value from the internal tick id
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
   v8::HandleScope scope;
 
-  const string id = StringUtils::itoa(tick);
+  char buffer[21];
+  size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
-  return scope.Close(v8::String::New(id.c_str(), id.size()));
+  return scope.Close(v8::String::New((const char*) buffer, len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,9 +236,10 @@ static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
 static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
   v8::HandleScope scope;
 
-  const string id = StringUtils::itoa(rid);
+  char buffer[21];
+  size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
 
-  return scope.Close(v8::String::New(id.c_str(), id.size()));
+  return scope.Close(v8::String::New((const char*) buffer, len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1201,9 +1216,6 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     }
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ResourceHolder holder;
-
   // set document key
   TRI_voc_key_t key = 0;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -1215,9 +1227,6 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
       TRI_V8_EXCEPTION(scope, res);
     }
-    else if (key != 0) {
-      holder.registerString(TRI_CORE_MEM_ZONE, key);
-    }
   }
   else {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1226,7 +1235,10 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   TRI_primary_collection_t* primary = trx->primaryCollection();
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
 
-  if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+  if (shaped == 0) {
+    if (key != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
@@ -1235,19 +1247,26 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   TRI_doc_mptr_t document;
   res = trx->createDocument(key, &document, shaped, forceSync);
 
+  TRI_FreeShapedJson(primary->_shaper, shaped); 
+  
   res = trx->finish(res);
+    
+  if (key != 0) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  
+  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver().getCollectionName(col->_cid), document._key));
   result->Set(v8g->_RevKey, V8RevisionId(document._rid));
   result->Set(v8g->_KeyKey, v8::String::New(document._key));
-
+  
   return scope.Close(result);
 }
 
@@ -2339,7 +2358,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> args = params;
   v8::Handle<v8::Value> result = action->Call(current, 1, &args);
-
+    
   if (tryCatch.HasCaught()) {
     trx.abort();
 
@@ -6502,7 +6521,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Value> result;
@@ -6952,7 +6971,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::Object> holder = info.Holder()->ToObject();
+//  v8::Handle<v8::Object> holder = info.Holder()->ToObject();
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
@@ -6960,7 +6979,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   }
 
   // convert the JavaScript string to a string
-  string key = TRI_ObjectToString(name);
+  const string key = TRI_ObjectToString(name);
 
   if (key == "") {
     return scope.Close(v8::Handle<v8::Value>());
@@ -6973,26 +6992,36 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
+  TRI_vocbase_col_t* collection = 0;
+  
+  // TODO: caching causes errors in case of db[...]; db._drop(...); db[...];  
+  /*
   if (holder->HasRealNamedProperty(name)) {
     v8::Handle<v8::Object> value = holder->GetRealNamedProperty(name)->ToObject();
-    TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
+    collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
     if (collection != 0) {
       TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
       TRI_vocbase_col_status_e status = collection->_status;
+      TRI_voc_cid_t cid = collection->_cid;
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    
-      if (status != TRI_VOC_COL_STATUS_DELETED) {
+      
+      // check if the collection is still alive and from the same database
+      if (status != TRI_VOC_COL_STATUS_DELETED && 
+          cid > 0 && 
+          collection->_vocbase == vocbase) {
+        // cache hit
         return scope.Close(value);
       }
-      else {
-        holder->Delete(name);
-      }
     }
+
+    // cache miss
+    holder->Delete(name);
   }
+  */  
 
   // look up the collection
-  TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, key.c_str());
+  collection = TRI_LookupCollectionByNameVocBase(vocbase, key.c_str());
 
   if (collection == 0) {
     return scope.Close(v8::Undefined());
@@ -7007,9 +7036,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   if (result.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
-
-  // TODO: when this line is uncommented, the collection names are cached.
-  // but this causes problems and confusion somewhere else. Need to find the reason!
+  
+  // TODO: caching causes errors in case of db[...]; db._drop(...); db[...];  
   // holder->Set(name, result);
 
   return scope.Close(result);
@@ -8522,9 +8550,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
       result->SetInternalField(SLOT_COLLECTION, i->second);
     }
 
-    const string cidString = StringUtils::itoa(collection->_cid);
-
-    result->Set(v8g->_IdKey, v8::String::New(cidString.c_str(), cidString.size()), v8::ReadOnly);
+    result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
   }
 
   return scope.Close(result);
