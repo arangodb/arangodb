@@ -112,7 +112,7 @@ _.extend(Model, {
       required: parseRequiredAttributes(attributes),
       properties: parseAttributes(attributes)
     };
-  },
+  }
 });
 
 // Instance Properties
