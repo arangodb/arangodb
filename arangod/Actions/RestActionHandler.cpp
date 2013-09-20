@@ -76,6 +76,11 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
   if (_action != 0) {
     _queue = data->_queue;
   }
+
+  if (_queue.empty()) {
+    // must have a queue
+    _queue = "STANDARD";
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +108,7 @@ bool RestActionHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestActionHandler::queue () const {
+std::string const& RestActionHandler::queue () const {
   return _queue;
 }
 

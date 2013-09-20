@@ -82,7 +82,8 @@ namespace triagens {
                          const string& password,
                          double requestTimeout,
                          double connectTimeout,
-                         bool keepAlive)
+                         bool keepAlive,
+                         bool async)
           : Thread("arangob"),
             _operation(operation),
             _startCondition(condition),
@@ -99,6 +100,7 @@ namespace triagens {
             _requestTimeout(requestTimeout),
             _connectTimeout(connectTimeout),
             _keepAlive(keepAlive),
+            _async(async),
             _client(0),
             _connection(0),
             _offset(0),
@@ -106,6 +108,10 @@ namespace triagens {
             _time(0.0) {
 
           _errorHeader = StringUtils::tolower(HttpResponse::getBatchErrorHeader());
+
+          if (_async) {
+            _headers["x-arango-async"] = "true";
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,6 +533,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _keepAlive;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send async requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _async;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief underlying client
