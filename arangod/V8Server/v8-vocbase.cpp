@@ -7945,7 +7945,7 @@ static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "configureEndpoint(<endpoint>, <databases>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "db._configureEndpoint(<endpoint>, <databases>)");
   }
   
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
@@ -8017,7 +8017,7 @@ static v8::Handle<v8::Value> JS_RemoveEndpoint (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "removeEndpoint(<endpoint>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "db._removeEndpoint(<endpoint>)");
   }
   
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
@@ -8058,7 +8058,7 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "listEndpoints()");
+    TRI_V8_EXCEPTION_USAGE(scope, "db._listEndpoints()");
   }
   
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  

@@ -33,6 +33,7 @@ WIKI = \
 	HandlingDatabases \
 	HandlingDocuments \
 	HandlingEdges \
+	HandlingEndpoints \
 	HandlingIndexes \
 	Home \
 	HttpAqlFunctions \

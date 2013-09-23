@@ -9,8 +9,9 @@ Endpoints {#HttpEndpointIntro}
 
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
-The endpoint is normally specified either in ArangoDB's configuration file or on
+The endpoints are normally specified either in ArangoDB's configuration file or on
 the command-line, using the @ref CommandLineArangoEndpoint "--server.endpoint" option.
+The default endpoint for ArangoDB is `tcp://127.0.0.1:8529` or `tcp://localhost:8529`.
 
 The number of endpoints can also be changed at runtime using the API described
 below. Each endpoint can optionally be restricted to a specific list of databases
