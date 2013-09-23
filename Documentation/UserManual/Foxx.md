@@ -434,6 +434,7 @@ The content is a JSON object with the following keys:
 * `version`: Current version of the application (Meta information)
 * `description`: A short description of the application (Meta information)
 * `license`: Short form of the license (MIT, GPL...)
+* `author`: the author name
 * `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
 * `thumbnail`: Path to a thumbnail that represents the application (Meta information)
 * `repository`: An object with information about where you can find the repository: `type` and `url`
@@ -443,7 +444,7 @@ The content is a JSON object with the following keys:
 * `lib`: Base path for all required modules
 * `files`: Deliver files
 * `assets`: Deliver pre-processed files
-* `system`: Mark an application as a system application
+* `isSystem`: Mark an application as a system application
 * `setup`: Path to a setup script
 * `teardown`: Path to a teardown script
 
@@ -527,6 +528,27 @@ If a request is made to `/application.js` (in development mode), the file
 array provided will be processed one element at a time. The elements are 
 paths to files (with the option to use wildcards). The files will be 
 concatenated and delivered as a single file.
+
+The content-type (or mime type) of the HTTP response when requesting 
+`application.js` is automatically determined by looking at the filename 
+extension in the asset name (`application.js` in the above example). 
+If the asset does not have a filename extension, the content-type is 
+determined by looking at the filename extension of the first file in the 
+`files` list. If no file extension can be determined, the asset will be
+delived with a content-type of `text/plain`.
+
+It is possible to explicitly override the content-type for an asset by
+setting the optional `contentType` attribute of an asset as follows:
+
+  "assets": {
+    "myincludes": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ],
+      "contentType": "text/javascript"
+    }
+  }
 
 Development Mode
 ----------------
