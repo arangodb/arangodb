@@ -94,7 +94,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _contextData(contextData),
     _handlerFactory(0),
     _servers(),
-    _endpointsFilename(),
+    _basePath(),
     _endpointList(),
     _httpPort(),
     _endpoints(),
@@ -147,11 +147,9 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 /// @brief builds the endpoint servers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::buildServers (std::string const& basePath) {
+bool ApplicationEndpointServer::buildServers () {
   assert(_handlerFactory != 0);
   assert(_applicationScheduler->scheduler() != 0);
-
-  _endpointsFilename = basePath + TRI_DIR_SEPARATOR_CHAR + "ENDPOINTS";
 
   EndpointServer* server;
 
@@ -250,12 +248,6 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     _endpoints.push_back(httpEndpoint);
   }
 
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
-  if (_endpoints.empty() && mode == OperationMode::MODE_SERVER) {
-    LOGGER_INFO("please use the '--server.endpoint' option");
-    LOGGER_FATAL_AND_EXIT("no endpoint has been specified, giving up");
-  }
-
   const vector<string> dbNames;
 
   // add & validate endpoints
@@ -267,8 +259,17 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     }
   }
 
+
   // and return
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of the endpoints file
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ApplicationEndpointServer::getEndpointsFilename () const {
+  return _basePath + TRI_DIR_SEPARATOR_CHAR + "ENDPOINTS";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,6 +322,8 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
         if (save) {
           saveEndpoints();
         }
+        
+        LOGGER_DEBUG("reconfigured endpoint '" << newEndpoint << "'");
         // in this case, we updated an existing endpoint and are done
         return true;
       }
@@ -403,14 +406,16 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::loadEndpoints () {
-  if (! FileUtils::exists(_endpointsFilename)) {
+  const string filename = getEndpointsFilename();
+
+  if (! FileUtils::exists(filename)) {
     return false;
   }
 
-  LOGGER_TRACE("loading endpoint list from file '" << _endpointsFilename << "'"); 
+  LOGGER_TRACE("loading endpoint list from file '" << filename << "'"); 
 
   char* err = 0;
-  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, _endpointsFilename.c_str(), &err);
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename.c_str(), &err);
 
   if (json == 0) {
     return false;
@@ -500,8 +505,9 @@ bool ApplicationEndpointServer::saveEndpoints () {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
   }
  
-  LOGGER_TRACE("saving endpoint list in file '" << _endpointsFilename << "'"); 
-  bool ok = TRI_SaveJson(_endpointsFilename.c_str(), json, true);  
+  const string filename = getEndpointsFilename();
+  LOGGER_TRACE("saving endpoint list in file '" << filename << "'"); 
+  bool ok = TRI_SaveJson(filename.c_str(), json, true);  
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -523,6 +529,13 @@ const std::vector<std::string> ApplicationEndpointServer::getEndpointMapping (st
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare () {
+  loadEndpoints();
+  
+  if (_endpointList.empty()) { 
+    LOGGER_INFO("please use the '--server.endpoint' option");
+    LOGGER_FATAL_AND_EXIT("no endpoints have been specified, giving up");
+  }
+
   // dump all endpoints for user information
   _endpointList.dump();
 
@@ -542,7 +555,7 @@ bool ApplicationEndpointServer::prepare2 () {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create http server");
+    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create server");
 
     return false;
   }
@@ -555,8 +568,6 @@ bool ApplicationEndpointServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::open () {
-  loadEndpoints();
-
   for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     EndpointServer* server = *i;
 
