@@ -109,6 +109,7 @@ ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised 
 ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a non-existing database is accessed."
 ERROR_ARANGO_DATABASE_NAME_INVALID,1229,"database name invalid","Will be raised when an invalid database name is used."
 ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
+ERROR_ARANGO_ENDPOINT_NOT_FOUND,1231,"endpoint not found","Will be raised when there is an attempt to delete a non-existing endpoint."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -204,11 +205,10 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ## Application management
 ################################################################################
 
-ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an application is not found or not present in the specified version."
-ERROR_APPLICATION_INVALID_NAME,1751,"invalid application name","Will be raised when an invalid application name is specified."
-ERROR_APPLICATION_INVALID_MOUNT,1752,"invalid mount","Will be raised when an invalid mount is specified."
-ERROR_APPLICATION_DOWNLOAD_FAILED,1753,"application download failed","Will be raised when an application download from the central repository failed."
-ERROR_APPLICATION_UPLOAD_FAILED,1754,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
+ERROR_APPLICATION_INVALID_NAME,1750,"invalid application name","Will be raised when an invalid application name is specified."
+ERROR_APPLICATION_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
+ERROR_APPLICATION_DOWNLOAD_FAILED,1752,"application download failed","Will be raised when an application download from the central repository failed."
+ERROR_APPLICATION_UPLOAD_FAILED,1753,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
 
 ################################################################################
 ## Key value access

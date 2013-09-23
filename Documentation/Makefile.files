@@ -41,6 +41,7 @@ WIKI = \
 	HttpCurrentDatabase \
 	HttpCursor \
 	HttpDatabase \
+	HttpEndpoint \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \

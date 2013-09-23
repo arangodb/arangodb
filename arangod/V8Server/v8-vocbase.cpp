@@ -8042,7 +8042,7 @@ static v8::Handle<v8::Value> JS_RemoveEndpoint (v8::Arguments const& argv) {
   bool result = s->removeEndpoint(TRI_ObjectToString(argv[0]));
 
   if (! result) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "endpoint is not registered");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND);
   }
   
   return scope.Close(v8::True());

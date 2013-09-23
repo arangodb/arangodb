@@ -245,9 +245,11 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 
 bool ListenTask::bindSocket () {
   _listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
+
   if (_listenSocket.fileHandle == 0) {
     return false;
   }
 
   return true;
 }
+
