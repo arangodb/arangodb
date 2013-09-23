@@ -30,36 +30,46 @@ should therefore support HTTP version 1.1.
 Blocking vs. Non-blocking Requests {#CommunicationBlocking}
 ===========================================================
 
-ArangoDB is a multi-threaded server, allowing the processing of multiple client 
-requests at the same time. Communication handling and the actual work can be performed
-by multiple worker threads in parallel.
+ArangoDB supports both blocking and non-blocking requests.
 
-Though multiple clients can connect and send their requests in parallel to ArangoDB,
-clients may need to wait for their requests to be processed.
+ArangoDB is a multi-threaded server, allowing the processing of multiple 
+client requests at the same time. Request/response handling and the actual 
+work are performed on the server in parallel by multiple worker threads.
 
-By default, the server will fully process an incoming request and then return the
-result to the client. The client must wait for the server's response before it can
-send additional requests over the connection. For clients that are single-threaded
-or not event-driven, waiting for the full server response may be non-optimal.
+Still, clients need to wait for their requests to be processed by the server. 
+By default, the server will fully process an incoming request and then return 
+the result to the client when the operation is finished. The client must 
+wait for the server's response before it can send additional requests over 
+the same connection. For clients that are single-threaded and/or are 
+blocking on I/O themselves, waiting idle for the server response may be 
+non-optimal.
 
-To mitigate client blocking issues, ArangoDB since version 1.4. offers a generic mechanism 
-for non-blocking requests: if clients add the HTTP header `x-arango-async: true` to their
-requests, ArangoDB will put the request into an in-memory task queue and return an HTTP 202
-(accepted) response to the client instantly. The server will execute the tasks from
-the queue asynchronously, decoupling the client requests and the actual work.
+To reduce blocking on the client side, ArangoDB since version 1.4 offers 
+a generic mechanism for non-blocking, asynchronous execution: clients can 
+add the HTTP header `x-arango-async: true` to any of their requests, marking 
+them as to be executed asynchronously on the server. ArangoDB will put such 
+requests into an in-memory task queue and return an `HTTP 202` (accepted) 
+response to the client instantly. The server will execute the tasks from the 
+queue asynchronously as fast as possible, while clients can continue to work.
 
-This allows for much higher throughput than if clients would wait for the server's
-response. The downside is that the response that is sent to the client is always the
-same (a generic HTTP 202) and clients cannot make a decision based on the actual
-operation's result. In fact, the operation might have not even been executed at the
-time the generic response has reached the client. Clients can thus not rely on their
-requests having been processed successfully.
+Asynchronous execution decouples the request/response handling from the actual 
+work to be performed, allowing fast server responses and greatly reducing wait 
+time for clients. Overall this allows for much higher throughput than if 
+clients would always wait for the server's response.
 
-The asynchronous task queue on the server is not persisted, meaning not-yet processed
-tasks from the queue might be lost in case of a crash.
+Keep in mind that the asynchronous execution is just "fire and forget". 
+Clients will get any of their asynchronous requests answered with a generic 
+HTTP 202 response. At the time the server sends this response, it does not 
+know whether the requested operation can be carried out successfully (the 
+actual operation execution will happen at some later point). Clients therefore 
+cannot make a decision based on the server response and must rely on their 
+requests being valid and processable by the server.
 
-Clients should thus not send the extra header when they have strict durability 
-requirements or if they rely on result of the sent operation for further actions.
+Additionally, the server's asynchronous task queue is an in-memory data 
+structure, meaning not-yet processed tasks from the queue might be lost in 
+case of a crash. Clients should therefore not use the asynchronous feature 
+when they have strict durability requirements or if they rely on the immediate 
+result of the request they send.
 
 
 HTTP Keep-Alive {#CommunicationKeepAlive}
