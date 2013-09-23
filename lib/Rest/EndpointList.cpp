@@ -102,7 +102,9 @@ bool EndpointList::add (const string& specification,
   if (it != _endpoints.end()) {
     // already in list, just update
    (*it).second.second = dbNames;
-   *dst = 0;
+   if (dst != 0) {
+     *dst = 0;
+   }
     return true;
   }
 

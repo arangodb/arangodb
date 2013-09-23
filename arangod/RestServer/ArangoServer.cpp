@@ -490,7 +490,6 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
-
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
@@ -702,7 +701,7 @@ int ArangoServer::startupServer () {
 
 
   // create the server
-  _applicationEndpointServer->buildServers();
+  _applicationEndpointServer->buildServers(_databasePath);
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 

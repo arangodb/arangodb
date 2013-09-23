@@ -673,7 +673,6 @@ static int OpenDatabases (TRI_server_t* server) {
     TRI_GetDatabaseDefaultsServer(server, &defaults);
     // TODO: decide which parameter from the command-line should win vs. parameter.json
     // TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupArrayJson(json, "properties"));
-    
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -1002,7 +1001,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
   char* file;
   char* tickString;
   TRI_json_t* json;
-  TRI_json_t* properties;
+  // TRI_json_t* properties;
   
   assert(id > 0);
   assert(name != NULL);
@@ -1030,7 +1029,9 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+ 
+  // TODO
+  /* 
   properties = TRI_JsonVocBaseDefaults(TRI_CORE_MEM_ZONE, defaults);
 
   if (properties == NULL) {
@@ -1040,11 +1041,13 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  */
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
+  // TODO: save properties later when it is clear what they will be used
+  // TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
     
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     
@@ -1454,6 +1457,7 @@ int TRI_InitServer (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
   
   // .............................................................................
   // server defaults

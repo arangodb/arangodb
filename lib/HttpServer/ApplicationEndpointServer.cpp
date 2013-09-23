@@ -31,7 +31,9 @@
 
 #include "Basics/delete_object.h"
 #include "Basics/ssl-helper.h"
+#include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
+#include "BasicsC/json.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
@@ -82,16 +84,17 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
                                                       HttpHandlerFactory::context_fptr setContext,
-                                                      void* setContextData)
+                                                      void* contextData)
   : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _setContext(setContext),
-    _setContextData(setContextData),
+    _contextData(contextData),
     _handlerFactory(0),
     _servers(),
+    _endpointsFilename(),
     _endpointList(),
     _httpPort(),
     _endpoints(),
@@ -144,9 +147,11 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 /// @brief builds the endpoint servers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::buildServers () {
+bool ApplicationEndpointServer::buildServers (std::string const& basePath) {
   assert(_handlerFactory != 0);
   assert(_applicationScheduler->scheduler() != 0);
+
+  _endpointsFilename = basePath + TRI_DIR_SEPARATOR_CHAR + "ENDPOINTS";
 
   EndpointServer* server;
 
@@ -177,7 +182,7 @@ bool ApplicationEndpointServer::buildServers () {
     server->setEndpointList(&_endpointList);
     _servers.push_back(server);
   }
-
+  
   return true;
 }
 
@@ -281,7 +286,8 @@ std::map<std::string, std::vector<std::string> > ApplicationEndpointServer::getE
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
-                                             vector<string> const& dbNames) {
+                                             vector<string> const& dbNames,
+                                             bool save) {
   // validate...
   const string unified = Endpoint::getUnifiedForm(newEndpoint);
 
@@ -312,6 +318,9 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
       }
 
       if (endpoint == 0) {
+        if (save) {
+          saveEndpoints();
+        }
         // in this case, we updated an existing endpoint and are done
         return true;
       }
@@ -320,13 +329,15 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
       ok = _servers[i]->addEndpoint(endpoint);
 
       if (ok) {
+        if (save) {
+          saveEndpoints();
+        }
         LOGGER_DEBUG("bound to endpoint '" << newEndpoint << "'");
+        return true;
       }
-      else {
-        LOGGER_WARNING("failed to bind to endpoint '" << newEndpoint << "'");
-      }
-
-      return ok;
+      
+      LOGGER_WARNING("failed to bind to endpoint '" << newEndpoint << "'");
+      return false;
     }
   }
 
@@ -373,6 +384,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
       delete endpoint;
 
       if (ok) {
+        saveEndpoints();
         LOGGER_DEBUG("removed endpoint '" << oldEndpoint << "'");
       }
       else {
@@ -384,6 +396,116 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
   }
 
   return false;
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the endpoint list
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::loadEndpoints () {
+  if (! FileUtils::exists(_endpointsFilename)) {
+    return false;
+  }
+
+  LOGGER_TRACE("loading endpoint list from file '" << _endpointsFilename << "'"); 
+
+  char* err = 0;
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, _endpointsFilename.c_str(), &err);
+
+  if (json == 0) {
+    return false;
+  }
+  
+  std::map<std::string, std::vector<std::string> > endpoints;
+
+  if (! TRI_IsArrayJson(json)) {
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    return false;
+  }
+
+  const size_t n = json->_value._objects._length;
+  for (size_t i = 0; i < n; i += 2) {
+    TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+
+    if (! TRI_IsStringJson(e) || ! TRI_IsListJson(v)) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      return false;
+    }
+    
+    const string endpoint = string(e->_value._string.data, e->_value._string.length - 1);
+
+    vector<string> dbNames;
+    for (size_t j = 0; j < v->_value._objects._length; ++j) {
+      TRI_json_t const* d = (TRI_json_t const*) TRI_AtVector(&v->_value._objects, j);
+
+      if (! TRI_IsStringJson(d)) {
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        return false;
+      }
+
+      const string dbName = string(d->_value._string.data, d->_value._string.length - 1);
+      dbNames.push_back(dbName);
+    }
+
+    endpoints[endpoint] = dbNames;
+  }
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+
+  std::map<std::string, std::vector<std::string> >::const_iterator it;
+  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
+      
+    bool ok = _endpointList.add((*it).first, (*it).second, _backlogSize);
+
+    if (! ok) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief persists the endpoint list
+/// this method must be called under the _endpointsLock
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::saveEndpoints () {
+  const std::map<std::string, std::vector<std::string> > endpoints = _endpointList.getAll();
+  
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (json == 0) {
+    return false;
+  }
+
+  std::map<std::string, std::vector<std::string> >::const_iterator it;
+  
+  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
+    TRI_json_t* list = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+    if (list == 0) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      return false;
+    }
+
+    for (size_t i = 0; i < (*it).second.size(); ++i) {
+      const string e = (*it).second.at(i);
+
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, list, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
+    }
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
+  }
+ 
+  LOGGER_TRACE("saving endpoint list in file '" << _endpointsFilename << "'"); 
+  bool ok = TRI_SaveJson(_endpointsFilename.c_str(), json, true);  
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,7 +528,7 @@ bool ApplicationEndpointServer::prepare () {
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
                                            _setContext,
-                                           _setContextData);
+                                           _contextData);
 
   return true;
 }
@@ -433,6 +555,8 @@ bool ApplicationEndpointServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::open () {
+  loadEndpoints();
+
   for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     EndpointServer* server = *i;
 
