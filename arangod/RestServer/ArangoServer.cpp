@@ -505,7 +505,7 @@ void ArangoServer::buildApplicationServer () {
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
-
+  
   // set the temp-path
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
@@ -570,6 +570,8 @@ void ArangoServer::buildApplicationServer () {
 
   // strip trailing separators
   _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR); 
+  
+  _applicationEndpointServer->setBasePath(_databasePath);
 
   // .............................................................................
   // now run arangod
@@ -701,7 +703,7 @@ int ArangoServer::startupServer () {
 
 
   // create the server
-  _applicationEndpointServer->buildServers(_databasePath);
+  _applicationEndpointServer->buildServers();
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
