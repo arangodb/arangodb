@@ -4,6 +4,20 @@ HTTP Handling in ArangoDB {#Communication}
 @NAVIGATE_Communication
 @EMBEDTOC{CommunicationTOC}
 
+Protocol {#CommunicationProtocol}
+=================================
+
+ArangoDB exposes its API via HTTP, making the server accessible easily with
+a variety of clients and tools (e.g. browsers, curl, telnet). The communication
+can optionally be SSL-encrypted.
+
+ArangoDB uses the standard HTTP methods (e.g. `GET`, `POST`, `PUT`, `DELETE`) plus
+the `PATCH` method described in @EXTREF{http://tools.ietf.org/html/rfc5789,RFC 5789}.
+
+Most server APIs expect clients to send any payload data in @EXTREF{http://www.json.org,JSON}
+format. Details on the expected format and JSON attributes can be found in the
+documentation of the individual server methods.
+
 Clients sending requests to ArangoDB must use either HTTP 1.0 or HTTP 1.1.
 Other HTTP versions are not supported by ArangoDB and any attempt to send 
 a different HTTP version signature will result in the server responding with
@@ -12,11 +26,44 @@ an HTTP 505 (HTTP version not supported) error.
 ArangoDB will always respond to client requests with HTTP 1.1. Clients
 should therefore support HTTP version 1.1. 
 
-The maximum URL length accepted by ArangoDB is 16K. Incoming requests with
-longer URLs will be rejected with an HTTP 414 (Request-URI too long) error.
 
-Keep-Alive and Authentication {#CommunicationKeepAlive}
-=======================================================
+Blocking vs. Non-blocking Requests {#CommunicationBlocking}
+===========================================================
+
+ArangoDB is a multi-threaded server, allowing the processing of multiple client 
+requests at the same time. Communication handling and the actual work can be performed
+by multiple worker threads in parallel.
+
+Though multiple clients can connect and send their requests in parallel to ArangoDB,
+clients may need to wait for their requests to be processed.
+
+By default, the server will fully process an incoming request and then return the
+result to the client. The client must wait for the server's response before it can
+send additional requests over the connection. For clients that are single-threaded
+or not event-driven, waiting for the full server response may be non-optimal.
+
+To mitigate client blocking issues, ArangoDB offers a generic mechanism for non-
+blocking requests: if clients add the HTTP header `x-arangodb-async: true` to their
+requests, ArangoDB will put the request into an in-memory task queue and return an HTTP 202
+(accepted) response to the client instantly. The server will execute the tasks from
+the queue asynchronously, decoupling the client requests and the actual work.
+
+This allows for much higher throughput than if clients would wait for the server's
+response. The downside is that the response that is sent to the client is always the
+same (a generic HTTP 202) and clients cannot make a decision based on the actual
+operation's result. In fact, the operation might have not even been executed at the
+time the generic response has reached the client. Clients can thus not rely on their
+requests having been processed successfully.
+
+The asynchronous task queue on the server is not persisted, meaning not-yet processed
+tasks from the queue might be lost in case of a crash.
+
+Clients should thus not send the extra header when they have strict durability 
+requirements or if they rely on result of the sent operation for further actions.
+
+
+HTTP Keep-Alive {#CommunicationKeepAlive}
+=========================================
 
 ArangoDB supports HTTP keep-alive. If the client does not send a `Connection`
 header in its request, and the client uses HTTP version 1.1, ArangoDB will assume 
@@ -31,11 +78,15 @@ using HTTP 1.0, except if they send an `Connection: Keep-Alive` header.
 The default Keep-Alive timeout can be specified at server start using the
 `--server.keep-alive-timeout` parameter.
 
-Client authentication is done by using the `Authorization` HTTP header.
-ArangoDB supports Basic authentication.
+Authentication {#CommunicationAuthentication}
+=============================================
+
+Client authentication can be achieved by using the `Authorization` HTTP header in
+client requests. ArangoDB supports HTTP Basic authentication.
 
 Authentication is optional. To enforce authentication for incoming requested,
-the server must be started with the option `--server.disable-authentication`.
+the server must be started with the option @ref CommandLineArangoDisableAuthentication
+"--server.disable-authentication". 
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
@@ -43,19 +94,21 @@ requests (see @ref CommunicationCors). The response to an HTTP OPTIONS request
 will be generic and not expose any private data.
 
 Please note that when authentication is turned on in ArangoDB, it will by
-default affect all incoming requests. Since ArangoDB 1.4, there is an additional
-option to restrict authentication to requests to the ArangoDB internal APIs and
-the admin interface. 
+default affect all incoming requests. 
+
+Since ArangoDB 1.4, there is an additional option @ref CommandLineArangoAuthenticateSystemOnly 
+"--server.authenticate-system-only" to restrict authentication to requests to the ArangoDB 
+internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside
 world without the need for HTTP authentication, but to still protect the usage of the
 ArangoDB API (i.e. `/_api/*`) and the admin interface (i.e. `/_admin/*`) with
 HTTP authentication.
 
-This behavior can be controlled with the option `--server.authenticate-system-only`
-startup parameter. It is set to `false` by default so when using authentication,
-all incoming requests need HTTP authentication. Setting the option to `false` will
-only require requests to the internal functionality require authentication but 
-will allow unauthenticated requests to all other URLs.
+If the server is started with the `--server.authenticate-system-only` parameter set 
+to `false` (which is the default), all incoming requests need HTTP authentication if the
+server is configured to require HTTP authentication. Setting the option to `false` will
+make the server require authentication only for requests to the internal functionality at
+`/_api/` or `/_admin` and will allow unauthenticated requests to all other URLs.
 
 Error Handling {#CommunicationErrors}
 =====================================
@@ -63,8 +116,14 @@ Error Handling {#CommunicationErrors}
 The following should be noted about how ArangoDB handles client errors in its
 HTTP layer:
 
+- client requests using an HTTP version signature different than `HTTP/1.0` or 
+  `HTTP/1.1` will get an `HTTP 505` (HTTP version not supported) error in return.
+
 - ArangoDB will reject client requests with a negative value in the
   `Content-Length` request header with `HTTP 411` (Length Required).
+
+- the maximum URL length accepted by ArangoDB is 16K. Incoming requests with
+  longer URLs will be rejected with an `HTTP 414` (Request-URI too long) error.
 
 - if the client sends a `Content-Length` header with a value bigger than 0 for
   an HTTP GET, HEAD, or DELETE request, ArangoDB will process the request, but
