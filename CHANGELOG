@@ -1,6 +1,9 @@
 v1.4
 ----
 
+* changed HTTP return code of PUT `/_api/cursor` from 400 to 404 in case a
+  non-existing cursor is referred to
+
 * added (experimental) support for asynchronous requests
 
   Incoming HTTP requests with the header "x-arango-async: true" will be answered
