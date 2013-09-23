@@ -95,24 +95,24 @@ function checkManifest (filename, mf) {
 
   // the following attributes are allowed with these types...
   var expected = {
-    "assets":          [ false, "object" ],
-    "author":          [ false, "string" ],
-    "contributors":    [ false, "array" ],
-    "controllers":     [ true, "object" ],
-    "defaultDocument": [ false, "string" ],
-    "description":     [ true, "string" ],
-    "engines":         [ false, "object" ],
-    "files":           [ false, "object" ],
-    "keywords":        [ false, "array" ],
-    "isSystem":        [ false, "boolean" ],
-    "lib":             [ false, "string" ],
-    "license":         [ false, "string" ],
-    "name":            [ true, "string" ],
-    "repository":      [ false, "object" ],
-    "setup":           [ false, "string" ],
-    "teardown":        [ false, "string" ],
-    "thumbnail":       [ false, "string" ],
-    "version":         [ true, "string" ]
+    "assets":             [ false, "object" ],
+    "author":             [ false, "string" ],
+    "contributors":       [ false, "array" ],
+    "controllers":        [ true, "object" ],
+    "defaultDocument":    [ false, "string" ],
+    "description":        [ true, "string" ],
+    "engines":            [ false, "object" ],
+    "files":              [ false, "object" ],
+    "keywords":           [ false, "array" ],
+    "isSystem":           [ false, "boolean" ],
+    "lib":                [ false, "string" ],
+    "license":            [ false, "string" ],
+    "name":               [ true, "string" ],
+    "repository":         [ false, "object" ],
+    "setup":              [ false, "string" ],
+    "teardown":           [ false, "string" ],
+    "thumbnail":          [ false, "string" ],
+    "version":            [ true, "string" ]
   };
 
   var att, failed = false;
@@ -354,9 +354,31 @@ function installAssets (app, routes) {
 
         if (asset.hasOwnProperty('files')) {
           var content = buildAssetContent(app, asset.files, basePath);
+          var type;
 
           normalized = arangodb.normalizeURL("/" + path);
-          var type = arangodb.guessContentType(normalized);
+
+          // content-type detection
+          // ----------------------
+
+          if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
+            // contentType explicitly specified for asset
+            type = asset.contentType;
+          }
+          else if (normalized.match(/\.[a-zA-Z0-9]+$/)) {
+            // path contains a dot
+            // derive content type from path 
+            type = arangodb.guessContentType(normalized);
+          }
+          else if (asset.files.length > 0) {
+            // path does not contain a dot
+            // derive content type from included asset names
+            type = arangodb.guessContentType(asset.files[0]);
+          }
+          else {
+            // use built-in defaulti content-type
+            type = arangodb.guessContentType("");
+          }
 
           route = {
             url: { match: normalized },
@@ -609,16 +631,19 @@ function routingAalApp (app, mount, options) {
       p = mount + "/";
     }
 
-    routes.routes.push({
-      "url" : { match: "/" },
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : true,
-          "destination" : p + defaultDocument 
+    if ((p + defaultDocument) !== p) {
+      // only add redirection if src and target are not the same
+      routes.routes.push({
+        "url" : { match: "/" },
+        "action" : {
+          "do" : "org/arangodb/actions/redirectRequest",
+          "options" : {
+            "permanently" : true,
+            "destination" : p + defaultDocument 
+          }
         }
-      }
-    });
+      });
+    }
 
     // mount all applications
     var controllers = app._manifest.controllers;
@@ -764,7 +789,9 @@ exports.scanAppDirectory = function () {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.error("Cannot read thumbnail: %s", String(err2.stack || err2));
+            console.error("Cannot read thumbnail referenced by manifest '%s': %s", 
+                          m, 
+                          String(err2.stack || err2));
           }
         }
 
