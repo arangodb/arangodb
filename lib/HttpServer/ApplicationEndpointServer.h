@@ -375,6 +375,9 @@ namespace triagens {
 ///
 /// Note that if you are using SSL-encrypted endpoints, you must also supply
 /// the path to a server certificate using the \-\-server.keyfile option.
+///
+/// Endpoints can also be changed at runtime. Please refer to @ref HttpEndpoint
+/// for more details.
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _endpoints;

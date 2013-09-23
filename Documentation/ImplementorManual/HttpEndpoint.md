@@ -10,7 +10,7 @@ Endpoints {#HttpEndpointIntro}
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
 The endpoint is normally specified either in ArangoDB's configuration file or on
-the command-line, using the @ref CommandLineArangoEndpoint option.
+the command-line, using the @ref CommandLineArangoEndpoint "--server.endpoint" option.
 
 The number of endpoints can also be changed at runtime using the API described
 below. Each endpoint can optionally be restricted to a specific list of databases
