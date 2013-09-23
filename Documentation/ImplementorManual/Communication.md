@@ -42,8 +42,8 @@ result to the client. The client must wait for the server's response before it c
 send additional requests over the connection. For clients that are single-threaded
 or not event-driven, waiting for the full server response may be non-optimal.
 
-To mitigate client blocking issues, ArangoDB offers a generic mechanism for non-
-blocking requests: if clients add the HTTP header `x-arangodb-async: true` to their
+To mitigate client blocking issues, ArangoDB since version 1.4. offers a generic mechanism 
+for non-blocking requests: if clients add the HTTP header `x-arango-async: true` to their
 requests, ArangoDB will put the request into an in-memory task queue and return an HTTP 202
 (accepted) response to the client instantly. The server will execute the tasks from
 the queue asynchronously, decoupling the client requests and the actual work.
