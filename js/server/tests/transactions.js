@@ -1800,6 +1800,8 @@ function transactionGraphSuite () {
 
       graph = new g('UnitTestsGraph', cn1, cn2);
       var gotHere = 0;
+      
+      assertEqual(0, db[cn1].count());
 
       var obj = {
         collections: { 
