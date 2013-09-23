@@ -1473,11 +1473,8 @@ void HttpRequest::parseCookies (const char* buffer) {
     }
 
     setCookie(keyBegin, key - keyBegin, valueBegin);
-
   }
 }
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

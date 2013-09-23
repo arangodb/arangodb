@@ -7998,7 +7998,7 @@ static v8::Handle<v8::Value> JS_ConfigureEndpoint (v8::Arguments const& argv) {
     }
   }
 
-  bool result = s->addEndpoint(endpoint, dbNames);
+  bool result = s->addEndpoint(endpoint, dbNames, true);
     
   if (! result) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "unable to bind to endpoint");
