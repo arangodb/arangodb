@@ -35,13 +35,18 @@ from now on that the absolute path for this directory is `/home/user/apps`.
 After that, create a sub-directory `my_app` in the `apps` directory and 
 save the following content in a file named `app.js` there:
 
-    var Foxx = require("org/arangodb/foxx"),
-      app = new Foxx.Controller(applicationContext);
+    (function() {
+        "use strict";
     
-    app.get("/meadow", function(req, res) {
-      res.set("Content-Type", "text/plain");
-      res.body = "Worked!"
-    });
+        var Foxx = require("org/arangodb/foxx"),
+            controller = new Foxx.Controller(applicationContext)
+    
+        controller.get("/meadow", function(req, res) {
+            res.set("Content-Type", "text/plain");
+            res.body = "Worked!"
+        }); 
+    
+    }());
 
 Beside the `app.js` we need a manifest file. In order to achieve that, we 
 create a file called `manifest.json` in our `my_app` directory with the 
