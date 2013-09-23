@@ -270,10 +270,10 @@ bool V8LineEditor::open (const bool autoComplete) {
     rl_variable_bind("blink-matching-paren", "1");
 
     // show selection list when completion is ambiguous. not setting this
-    // variable will turn the selection list of at least on Ubuntu
+    // variable will turn the selection list off at least on Ubuntu
     rl_variable_bind("show-all-if-ambiguous", "1");
 
-    // use readlines built-in page-wise completer
+    // use readline's built-in page-wise completer
     rl_variable_bind("page-completions", "1");
 #endif
 
