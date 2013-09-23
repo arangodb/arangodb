@@ -120,7 +120,7 @@ v1.4
   by putting in a redirection from `/` to `/_admin/aardvark/index.html`, and from 
   `/_admin/html/index.html` to `/_admin/aardvark/index.html`.
 
-  This also obsoletes the following configuration options:
+  This also obsoletes the following configuration (command-line) options:
   - `--server.admin-directory`
   - `--server.disable-admin-interface`
 
