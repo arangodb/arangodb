@@ -95,23 +95,24 @@ function checkManifest (filename, mf) {
 
   // the following attributes are allowed with these types...
   var expected = {
-    "assets":       [ false, "object" ],
-    "author":       [ false, "string" ],
-    "contributors": [ false, "array" ],
-    "controllers":  [ true, "object" ],
-    "description":  [ true, "string" ],
-    "engines":      [ false, "object" ],
-    "files":        [ false, "object" ],
-    "keywords":     [ false, "array" ],
-    "isSystem":     [ false, "boolean" ],
-    "lib":          [ false, "string" ],
-    "license":      [ false, "string" ],
-    "name":         [ true, "string" ],
-    "repository":   [ false, "object" ],
-    "setup":        [ false, "string" ],
-    "teardown":     [ false, "string" ],
-    "thumbnail":    [ false, "string" ],
-    "version":      [ true, "string" ]
+    "assets":          [ false, "object" ],
+    "author":          [ false, "string" ],
+    "contributors":    [ false, "array" ],
+    "controllers":     [ true, "object" ],
+    "defaultDocument": [ false, "string" ],
+    "description":     [ true, "string" ],
+    "engines":         [ false, "object" ],
+    "files":           [ false, "object" ],
+    "keywords":        [ false, "array" ],
+    "isSystem":        [ false, "boolean" ],
+    "lib":             [ false, "string" ],
+    "license":         [ false, "string" ],
+    "name":            [ true, "string" ],
+    "repository":      [ false, "object" ],
+    "setup":           [ false, "string" ],
+    "teardown":        [ false, "string" ],
+    "thumbnail":       [ false, "string" ],
+    "version":         [ true, "string" ]
   };
 
   var att, failed = false;
@@ -1166,6 +1167,8 @@ exports.developmentRoutes = function () {
     if (fs.exists(m)) {
       try {
         var mf = JSON.parse(fs.read(m));
+      
+        checkManifest(m, mf);
 
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];
