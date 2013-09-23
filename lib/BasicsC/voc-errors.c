@@ -87,6 +87,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DATABASE_NOT_FOUND, "database not found");
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_INVALID, "database name invalid");
   REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
+  REG_ERROR(ERROR_ARANGO_ENDPOINT_NOT_FOUND, "endpoint not found");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
@@ -140,7 +141,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
-  REG_ERROR(ERROR_APPLICATION_NOT_FOUND, "application not found");
   REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
   REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");

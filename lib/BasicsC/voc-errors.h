@@ -182,6 +182,8 @@ extern "C" {
 /// - 1230: @LIT{operation only allowed in system database}
 ///   Will be raised when an operation is requested in a database other than
 ///   the system database.
+/// - 1231: @LIT{endpoint not found}
+///   Will be raised when there is an attempt to delete a non-existing endpoint.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -318,17 +320,14 @@ extern "C" {
 ///   Will be raised when a user name already exists
 /// - 1703: @LIT{user not found}
 ///   Will be raised when a user name is updated that does not exist
-/// - 1750: @LIT{application not found}
-///   Will be raised when an application is not found or not present in the
-///   specified version.
-/// - 1751: @LIT{invalid application name}
+/// - 1750: @LIT{invalid application name}
 ///   Will be raised when an invalid application name is specified.
-/// - 1752: @LIT{invalid mount}
+/// - 1751: @LIT{invalid mount}
 ///   Will be raised when an invalid mount is specified.
-/// - 1753: @LIT{application download failed}
+/// - 1752: @LIT{application download failed}
 ///   Will be raised when an application download from the central repository
 ///   failed.
-/// - 1754: @LIT{application upload failed}
+/// - 1753: @LIT{application upload failed}
 ///   Will be raised when an application upload from the client to the ArangoDB
 ///   server failed.
 /// - 1800: @LIT{invalid key declaration}
@@ -1258,6 +1257,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1230)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1231: ERROR_ARANGO_ENDPOINT_NOT_FOUND
+///
+/// endpoint not found
+///
+/// Will be raised when there is an attempt to delete a non-existing endpoint.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND                               (1231)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -1812,38 +1821,27 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_USER_NOT_FOUND                                          (1703)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1750: ERROR_APPLICATION_NOT_FOUND
-///
-/// application not found
-///
-/// Will be raised when an application is not found or not present in the
-/// specified version.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1751: ERROR_APPLICATION_INVALID_NAME
+/// @brief 1750: ERROR_APPLICATION_INVALID_NAME
 ///
 /// invalid application name
 ///
 /// Will be raised when an invalid application name is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1751)
+#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1752: ERROR_APPLICATION_INVALID_MOUNT
+/// @brief 1751: ERROR_APPLICATION_INVALID_MOUNT
 ///
 /// invalid mount
 ///
 /// Will be raised when an invalid mount is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1752)
+#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1751)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1753: ERROR_APPLICATION_DOWNLOAD_FAILED
+/// @brief 1752: ERROR_APPLICATION_DOWNLOAD_FAILED
 ///
 /// application download failed
 ///
@@ -1851,10 +1849,10 @@ void TRI_InitialiseErrorMessages (void);
 /// failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
+#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1752)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1754: ERROR_APPLICATION_UPLOAD_FAILED
+/// @brief 1753: ERROR_APPLICATION_UPLOAD_FAILED
 ///
 /// application upload failed
 ///
@@ -1862,7 +1860,7 @@ void TRI_InitialiseErrorMessages (void);
 /// server failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1754)
+#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
