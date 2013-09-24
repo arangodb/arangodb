@@ -14,7 +14,7 @@ describe ArangoDB do
 ################################################################################
 
     it "retrieves the list of databases" do
-      doc = ArangoDB.log_get("#{prefix}-list1", api)
+      doc = ArangoDB.log_get("#{prefix}-list", api)
 
       doc.code.should eq(200)
       result = doc.parsed_response["result"]
