@@ -403,6 +403,10 @@ namespace triagens {
           else {
             _result->setResultType(SimpleHttpResult::COMPLETE);
             _state = FINISHED;
+
+            if (! _keepAlive) {
+              _connection->disconnect();
+            }
           }
           break;
         }
@@ -420,6 +424,9 @@ namespace triagens {
         // HEAD requests may be responded to without a body...
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
+        if (! _keepAlive) {
+          _connection->disconnect();
+        }
         return true;
       }
 
@@ -436,6 +443,9 @@ namespace triagens {
         _readBuffer.erase_front(_result->getContentLength());
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
+        if (! _keepAlive) {
+          _connection->disconnect();
+        }
       }
 
       return true;
@@ -467,6 +477,9 @@ namespace triagens {
           _result->setResultType(SimpleHttpResult::COMPLETE);
 
           _state = FINISHED;
+          if (! _keepAlive) {
+            _connection->disconnect();
+          }
 
           return true;
         }
@@ -496,6 +509,9 @@ namespace triagens {
         // HEAD requests may be responded to without a body...
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
+        if (! _keepAlive) {
+          _connection->disconnect();
+        }
         return true;
       }
 

@@ -98,12 +98,19 @@ bool ClientConnection::checkSocket () {
 
   assert(_socket.fileHandle > 0);
 
-  getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+  int res = getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(errno);
+    return false;
+  }
 
   if (so_error == 0) {
     return true;
   }
 
+  TRI_set_errno(so_error);
+  
   return false;
 }
 
@@ -223,9 +230,9 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
     return false;
   }
 
-  *bytesWritten = status;
+  *bytesWritten = (size_t) status;
 
-  return (status >= 0);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,6 +250,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
     // reserve some memory for reading
     if (stringBuffer.reserve(READBUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       // out of memory
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return false;
     }
 

@@ -368,8 +368,19 @@ int main (int argc, char* argv[]) {
   size_t failures = operationsCounter.failures();
 
   cout << endl;
-  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
-  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", database: '" << BaseClient.databaseName() << "', collection: '" << Collection << "'" << endl;
+  cout << "Total number of operations: " << Operations << 
+          ", keep alive: " << (KeepAlive ? "yes" : "no") << 
+          ", async: " << (Async ? "yes" : "no")  << 
+          ", batch size: " << BatchSize << 
+          ", concurrency level (threads): " << Concurrency << 
+          endl;
+
+  cout << "Test case: " << TestCase << 
+          ", complexity: " << Complexity << 
+          ", database: '" << BaseClient.databaseName() << 
+          "', collection: '" << Collection << "'" << 
+          endl;
+
   cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
   cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
   cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;

@@ -108,10 +108,6 @@ namespace triagens {
             _time(0.0) {
 
           _errorHeader = StringUtils::tolower(HttpResponse::getBatchErrorHeader());
-
-          if (_async) {
-            _headers["x-arango-async"] = "true";
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,16 +179,15 @@ namespace triagens {
 
           delete result;
 
-          if (! _keepAlive) {
-            _client->close();
-          }
-
-
           // if we're the first thread, set up the test
           if (_threadNumber == 0) {
             if (! _operation->setUp(_client)) {
               LOGGER_FATAL_AND_EXIT("could not set up the test");
             }
+          }
+
+          if (_async) {
+            _headers["x-arango-async"] = "true";
           }
 
           _callback();
@@ -215,10 +210,6 @@ namespace triagens {
             }
             else {
               executeBatchRequest(numOps);
-            }
-
-            if (! _keepAlive) {
-              _client->close();
             }
           }
         }
@@ -253,10 +244,10 @@ namespace triagens {
           }
 
           if (location[0] == '/') {
-            return "/_db/" + t->_databaseName + location;
+            return string("/_db/" + t->_databaseName + location);
           }
           else {
-            return "/_db/" + t->_databaseName + "/" + location;
+            return string("/_db/" + t->_databaseName + "/" + location);
           }
         }
 
