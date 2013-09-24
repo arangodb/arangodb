@@ -14,13 +14,13 @@ here - see the CHANGELOG for details.
 Multiple Databases {#NewFeatures14MultipleDatabases}
 ----------------------------------------------------
 
-Traditionally ArangoDB provided @ref GlossaryCollection "collections", but no way 
-of grouping them. When an ArangoDB server was used for multiple applications, there
-could be collection name clashes, so this was worked around by prefixing collection
-names with unique application names etc.
+Traditionally ArangoDB provided _collections_, but no way of grouping them. 
+When an ArangoDB server was used for multiple applications, there could be collection 
+name clashes, so this was worked around by prefixing collection names with unique 
+application names etc.
 
-Since version 1.4, ArangoDB provides @ref GlossaryDatabase "databases" as a high-level
-grouping element. Multiple databases can exist in parallel, and each collection belongs
+Since version 1.4, ArangoDB provides _databases_ as the highest level grouping element. 
+Multiple databases can exist in parallel, and each collection belongs
 to exactly one database. Collection names need to be unique within their database, but
 not globally. Thus it is now possible to use the same collection name in different
 databases. 
@@ -60,6 +60,85 @@ From within _arangosh_, the name of the current database can always be retrieved
     arangosh> db._name(); 
     _system
 
+To create a new database, use the `db._createDatabase()` command (note: you need to be
+inside the `_system` database to execute this command):
+    
+    arangosh> db._createDatabase("mydb"); 
+   
+To retrieve the list of available databases, issue the following command from within
+_arangosh_ (note: you need to be inside the `_system` database to execute this command):
+
+    arangosh> db._listDatabases();
+
+To switch to a different database, use the `db._useDatabase()` method:
+
+    arangosh> db._useDatabase("mydb");
+
+To remove an entire database with all collections, use the `db._dropDatabase()` method
+(note: dropping a database can be executed from within the `_system` database):
+    
+    arangosh> db._dropDatabase("mydb");
+
+Databases are dropped asynchronously when all clients have disconnected and all references
+to the database have been garbage-collected. This is similar to how collections are
+dropped.
+
+
+Any operation triggered via ArangoDB's HTTP REST API is executed in the context of exactly
+one database. To explicitly specify the database in the request, the request URI must contain
+the database name in front of the actual path:
+
+    http://localhost:8529/_db/mydb/...
+
+where `...` is the actual path to the accessed resource. In the example, the resource will be
+accessed in the context of the database `mydb`. Actual URLs in the context of `mydb` could look
+like this:
+
+    http://localhost:8529/_db/mydb/_api/version
+    http://localhost:8529/_db/mydb/_api/document/test/12345
+    http://localhost:8529/_db/mydb/myapp/get
+
+If a database name is present in the URI as above, ArangoDB will consult the database-to-endpoint
+mapping for the current endpoint, and validate if access to the database is allowed on the 
+endpoint. 
+If the endpoint is not restricted to a list of databases, ArangoDB will continue with the 
+regular authentication procedure. If the endpoint is restricted to a list of specified databases,
+ArangoDB will check if the requested database is in the list. If not, the request will be turned
+down instantly. If yes, then ArangoDB will continue with the regular authentication procedure.
+
+If the request URI was `http://localhost:8529/_db/mydb/...`, then the request to `mydb` will be 
+allowed (or disallowed) in the following situations: 
+
+    Endpoint-to-database mapping           Access to `mydb` allowed (subject to further authentication)
+    ----------------------------           ------------------------------------------------------------
+    [ ]                                    yes
+    [ "_system" ]                          no 
+    [ "_system", "mydb" ]                  yes
+    [ "mydb" ]                             yes
+    [ "mydb", "_system" ]                  yes
+    [ "test1", "test2" ]                   no
+
+In case no database name is specified in the request URI, ArangoDB will derive the database
+name from the endpoint-to-database mapping (see @ref NewFeatures14Endpoints} of the endpoint 
+the connection was coming in on. 
+
+If the endpoint is not restricted to a list of databases, ArangoDB will assume the `_system`
+database. If the endpoint is restricted to one or multiple databases, ArangoDB will assume
+the first name from the list.
+
+Following is an overview of which database name will be assumed for different endpoint-to-database
+mappings in case no database name is specified in the URI:
+
+    Endpoint-to-database mapping           Database
+    ----------------------------           --------
+    [ ]                                    _system
+    [ "_system" ]                          _system
+    [ "_system", "mydb" ]                  _system
+    [ "mydb" ]                             mydb
+    [ "mydb", "_system" ]                  mydb
+
+
+@copydoc GlossaryDatabaseName
 
 Runtime Endpoint Management {#NewFeatures14Endpoints}
 -----------------------------------------------------
@@ -72,10 +151,10 @@ In previous versions of ArangoDB, the endpoints could not be changed while the
 server was running. 
 
 In ArangoDB 1.4, the endpoints can also be changed at runtime. Each endpoint can
-optionally be restricted to a specific database (or a list of databases), thus allowing
-the usage of different port numbers for different databases.  
-
+optionally be restricted to a specific database (or a list of databases). This endpoint-to-
+database mapping allows the usage of different port numbers for different databases.  
 This may be useful in multi-tenant setups. 
+
 A multi-endpoint setup may also be useful to turn on encrypted communication for
 just specific databases.
 

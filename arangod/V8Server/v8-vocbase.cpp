@@ -7764,11 +7764,11 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   if (vocbase == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
- /* 
+  
   if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-  */
+  
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
   
   TRI_vector_string_t names;
