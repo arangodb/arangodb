@@ -9,6 +9,37 @@ Upgrading {#Upgrading14Introduction}
 
 1.4 is currently alpha, please do not use in production.
 
+Troubleshooting {#Upgrading14Troubleshooting}
+=============================================
+
+If you cannot find a solution here, please ask the Google-Group at 
+http://groups.google.com/group/arangodb
+
+Problem: Server does not start
+------------------------------
+
+The server will try to bind to all defined endpoints at startup. The
+list of endpoints to connect to is read from the command-line, ArangoDB's
+configuration file, and a file named `ENDPOINTS` in the database directory.
+The `ENDPOINTS` file contains all endpoints which were added at runtime.
+
+In case a previously defined endpoint is invalid at server start, ArangoDB
+will fail on startup with a message like this:
+
+    2013-09-24T07:09:00Z [4318] INFO using endpoint 'tcp://127.0.0.1:8529' for non-encrypted requests
+    2013-09-24T07:09:00Z [4318] INFO using endpoint 'tcp://127.0.0.1:8531' for non-encrypted requests
+    2013-09-24T07:09:00Z [4318] INFO using endpoint 'tcp://localhost:8529' for non-encrypted requests
+    ...
+    2013-09-24T07:09:01Z [4318] ERROR bind() failed with 98 (Address already in use)
+    2013-09-24T07:09:01Z [4318] FATAL failed to bind to endpoint 'tcp://localhost:8529'. Please review your endpoints configuration.
+
+The problem above may be obvious: in a typical setup, `127.0.0.1` will be 
+the same IP address, so ArangoDB will try to bind to the same address twice
+(which will fail).
+Other obvious bind problems at startup may be caused by ports being used by
+other programs, or IP addresses changing.
+
+
 Removed Features {#Upgrading14RemovedFeatures}
 ==============================================
 
