@@ -431,6 +431,10 @@ ArangoDatabase.prototype._listEndpoints = function () {
 /// If @FA{databases} is an empty list, the endpoint will allow access to all
 /// existing databases.
 ///
+/// The adjusted list of endpoints is saved in a file `ENDPOINTS` in the
+/// database directory. The endpoints are restored from the file at server 
+/// start.
+///
 /// Please note that managing endpoints can only be performed from out of the
 /// `_system` database. When not in the default database, you must first switch 
 /// to it using the @ref JS_UseDatabase "db._useDatabase" method.
@@ -449,6 +453,10 @@ ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
 /// configured before, the operation will fail. If the endpoint happens to be
 /// the last bound endpoint, the operation will also fail as disconnecting 
 /// would make the server unable to communicate with any clients.
+///
+/// The adjusted list of endpoints is saved in a file `ENDPOINTS` in the
+/// database directory. The endpoints are restored from the file at server 
+/// start.
 ///
 /// Please note that managing endpoints can only be performed from out of the
 /// `_system` database. When not in the default database, you must first switch 
