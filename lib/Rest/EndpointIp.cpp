@@ -149,10 +149,10 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
       listenSocket.fileHandle = 0;
       return listenSocket;
     }
-    LOGGER_TRACE("reuse address flag set");
 
     // server needs to bind to socket
     int result = ::bind(listenSocket.fileHandle, aip->ai_addr, aip->ai_addrlen);
+
     if (result != 0) {
       // error
       LOGGER_ERROR("bind() failed with " << errno << " (" << strerror(errno) << ")");

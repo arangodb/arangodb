@@ -133,11 +133,20 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
     // invalid type
     return "";
   }
+  
+  size_t found;
+  /*
+  // turn "localhost" into "127.0.0.1"
+  // technically this is not always correct, but circumvents obvious problems
+  // when the configuration contains both "127.0.0.1" and "localhost" endpoints
+  found = copy.find("localhost");
+  if (found != string::npos && found >= 6 && found < 10) {
+    copy = copy.replace(found, strlen("localhost"), "127.0.0.1");
+  }
+  */
 
   // tcp/ip or ssl
-  size_t found;
   string temp = copy.substr(6, copy.length()); // strip tcp:// or ssl://
-
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
