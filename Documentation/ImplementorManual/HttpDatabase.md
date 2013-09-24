@@ -4,8 +4,8 @@ HTTP Interface for Databases {#HttpDatabase}
 @NAVIGATE_HttpDatabase
 @EMBEDTOC{HttpDatabaseTOC}
 
-Databases {#HttpDatabaseIntro}
-==============================
+Address of a Database {#HttpDatabaseAddress}
+============================================
 
 Any operation triggered via ArangoDB's HTTP REST API is executed in the context of exactly
 one database. To explicitly specify the database in a request, the request URI must contain
@@ -20,6 +20,9 @@ like this:
     http://localhost:8529/_db/mydb/_api/version
     http://localhost:8529/_db/mydb/_api/document/test/12345
     http://localhost:8529/_db/mydb/myapp/get
+
+Database-to-Endpoint Mapping {#HttpDatabaseMapping}
+===================================================
 
 If a database name is present in the URI as above, ArangoDB will consult the database-to-endpoint
 mapping for the current endpoint, and validate if access to the database is allowed on the 

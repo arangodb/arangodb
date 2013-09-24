@@ -60,15 +60,10 @@ WIKI = \
 	ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
-	IndexCapHttp \
 	IndexFulltext \
-	IndexFulltextHttp \
 	IndexGeo \
-	IndexGeoHttp \
 	IndexHash \
-	IndexHashHttp \
 	IndexSkiplist \
-	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \

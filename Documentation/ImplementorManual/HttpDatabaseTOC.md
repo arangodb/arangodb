@@ -2,7 +2,8 @@ TOC {#HttpDatabaseTOC}
 ======================
 
 - @ref HttpDatabase
-  - @ref HttpDatabaseIntro
+  - @ref HttpDatabaseAddress
+  - @ref HttpDatabaseMapping
   - @ref HttpDatabaseManagement
   - @ref HttpDatabaseHttp
     - @ref HttpDatabaseCurrent "GET /_api/database/current"
