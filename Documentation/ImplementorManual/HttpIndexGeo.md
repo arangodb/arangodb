@@ -1,4 +1,4 @@
-Accessing Geo Indexes via Http {#IndexGeoHttp}
+Accessing Geo Indexes via HTTP {#IndexGeoHttp}
 ==============================================
 
 @NAVIGATE_IndexGeoHttp

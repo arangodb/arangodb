@@ -1,4 +1,4 @@
-Accessing Hash Indexes via Http {#IndexHashHttp}
+Accessing Hash Indexes via HTTP {#IndexHashHttp}
 ================================================
 
 @NAVIGATE_IndexHashHttp

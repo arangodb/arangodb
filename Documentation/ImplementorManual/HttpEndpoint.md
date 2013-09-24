@@ -1,5 +1,5 @@
-HTTP Interface for managing Endpoints {#HttpEndpoint}
-=====================================================
+HTTP Interface for Endpoints {#HttpEndpoint}
+============================================
 
 @NAVIGATE_HttpEndpoint
 @EMBEDTOC{HttpEndpointTOC}

@@ -216,7 +216,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
     ("server.backlog-size", &_backlogSize, "listen backlog size")
   ;
 
-  options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
+  options[ApplicationServer::OPTIONS_SSL]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")

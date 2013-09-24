@@ -54,10 +54,12 @@ using namespace triagens::rest;
 DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
                                   std::string const& name,
                                   Dispatcher::newDispatcherThread_fptr creator,
-                                  size_t nrThreads)
+                                  size_t nrThreads,
+                                  size_t maxSize)
   : _name(name),
     _accessQueue(),
     _readyJobs(),
+    _maxSize(maxSize),
     _stopping(0),
     _monopolizer(0),
     _startedThreads(),
@@ -100,16 +102,22 @@ DispatcherQueue::~DispatcherQueue () {
 /// @brief adds a job
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::addJob (Job* job) {
+bool DispatcherQueue::addJob (Job* job) {
   CONDITION_LOCKER(guard, _accessQueue);
 
   // add the job to the list of ready jobs
   _readyJobs.push_back(job);
 
+  if (_readyJobs.size() > _maxSize) {
+    return false;
+  }
+
   // wake up the _dispatcher queue threads
   if (0 < _nrWaiting) {
     guard.broadcast();
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-Accessing Fulltext Indexes via Http {#IndexFulltextHttp}
+Accessing Fulltext Indexes via HTTP {#IndexFulltextHttp}
 ========================================================
 
 @NAVIGATE_IndexFulltextHttp

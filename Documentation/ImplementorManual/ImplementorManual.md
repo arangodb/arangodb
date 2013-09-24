@@ -13,11 +13,6 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{HttpSimple}
 @CHAPTER_REF{HttpCollection}
 @CHAPTER_REF{HttpIndex}
-@CHAPTER_REF{IndexCapHttp}
-@CHAPTER_REF{IndexHashHttp}
-@CHAPTER_REF{IndexSkiplistHttp}
-@CHAPTER_REF{IndexGeoHttp}
-@CHAPTER_REF{IndexFulltextHttp}
 @CHAPTER_REF{HttpTransactions}
 @CHAPTER_REF{HttpGraph}
 @CHAPTER_REF{HttpTraversals}

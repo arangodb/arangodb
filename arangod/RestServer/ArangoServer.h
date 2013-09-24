@@ -311,6 +311,20 @@ namespace triagens {
         int _dispatcherThreads;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum size of the dispatcher queue for asynchronous requests
+///
+/// @CMDOPT{\--scheduler.maximal-queue-size @CA{size}}
+///
+/// Specifies the maximum @CA{size} of the dispatcher queue for asynchronous
+/// task execution. If the queue already contains @CA{size} tasks, new tasks
+/// will be rejected until other tasks are popped from the queue. Setting this
+/// value may help preventing from running out of memory if the queue is filled
+/// up faster than the server can process requests.
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _dispatcherQueueSize;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
 ///
 /// @CMDOPT{\--database.directory @CA{directory}}
