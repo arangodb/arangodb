@@ -7641,7 +7641,7 @@ static v8::Handle<v8::Value> JS_VersionServer (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._path()}
 ///
-/// Returns the path.
+/// Returns the filesystem path of the current database as a string. 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
@@ -7661,7 +7661,7 @@ static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._name()}
 ///
-/// Returns the name of the current database.
+/// Returns the name of the current database as a string. 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NameDatabase (v8::Arguments const& argv) {
@@ -7681,8 +7681,11 @@ static v8::Handle<v8::Value> JS_NameDatabase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._isSystem()}
 ///
-/// Returns whether the currently used database is the default (`_system`)
-/// database.
+/// Returns whether the currently used database is the `_system` database.
+/// The system database has some special privileges and properties, for example,
+/// database management operations such as create or drop can only be executed
+/// from within this database. Additionally, the `_system` database itself 
+/// cannot be dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_IsSystemDatabase (v8::Arguments const& argv) {
@@ -7705,11 +7708,16 @@ static v8::Handle<v8::Value> JS_IsSystemDatabase (v8::Arguments const& argv) {
 /// Changes the current database to the database specified by @FA{name}. Note
 /// that the database specified by @FA{name} must already exist.
 ///
+/// Changing the database might be disallowed in some contexts, for example
+/// server-side actions (including Foxx).
+///
 /// When performing this command from arangosh, the current credentials (username 
 /// and password) will be re-used. These credentials might not be valid to
-/// connect to the database specified by @FA{name}. In this case, arangosh
-/// should be closed, and re-started with different username and password 
-/// credentials.
+/// connect to the database specified by @FA{name}. Additionally, the database
+/// only be accessed from certain endpoints only. In this case, switching the
+/// database might not work, and the connection / session should be closed and
+/// restarted with different username and password credentials and/or 
+/// endpoint data.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
@@ -7749,7 +7757,8 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._listDatabases()}
 ///
-/// Returns the list of all databases.
+/// Returns the list of all databases. This method can only be used from within
+/// the `_system` database. 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
@@ -7793,17 +7802,17 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ///
-/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options})}
+/// @FUN{@FA{db}._createDatabase(@FA{name})}
 ///
-/// Creates a new database with the name specified by @FA{name}. This method
-/// can only be used from within the default (`_system`) database. 
+/// Creates a new database with the name specified by @FA{name}. 
+/// There are restrictions for database names (see @ref DatabaseNames}.
 ///
 /// Note that even if the database is created successfully, there will be no
-/// change of the current database to the new database. Changing the current
-/// database must explicitly be requested by using the @ref JS_UseDatabase
-/// method.
+/// change into the current database to the new database. Changing the current
+/// database must explicitly be requested by using the @ref HandlingDatabasesUse
+/// "db._useDatabase" method.
 ///
-/// Returns the new database as an object.
+/// This method can only be used from within the `_system` database. 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
@@ -7909,9 +7918,11 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 /// Drops the database specified by @FA{name}. The database specified by 
 /// @FA{name} must exist. 
 ///
-/// Note that dropping databases is only possible from within the default
-/// database (`_system`). The method will fail when not called from within the
-/// default database. The default database itself cannot be dropped.
+/// Note that dropping databases is only possible from within the `_system` 
+/// database. The `_system` database itself cannot be dropped.
+/// 
+/// Databases are dropped asynchronously, and will be physically removed if 
+/// all clients have disconnected and references have been garbage-collected.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {

@@ -17,7 +17,7 @@ names conform to the following constraints:
 - Database names must only consist of the letters `a` to `z` (both lower and
   upper case allowed), the numbers `0` to `9`, and the underscore (`_`) or 
   dash (`-`) symbols. 
-  This also means that any non-ASCII collection names are not allowed.
+  This also means that any non-ASCII database names are not allowed.
 - Database names must always start with a letter. Database names starting 
   with an underscore are considered to be system databases, and users should 
   not create or delete those.
