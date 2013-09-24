@@ -443,7 +443,9 @@ v1.4.0-alpha1 (2013-08-02)
 * added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
 
 * added API `/_api/current-database` to retrieve information about the database the
-  client is currently connected to.
+  client is currently connected to (note: the API `/_api/current-database` has been
+  removed in the meantime. The functionality is accessible via `/_api/database/current` 
+  now).
 
 * ensure a proper order of tick values in datafiles/journals/compactors.
   any new files written will have the _tick values of their markers in order. for
