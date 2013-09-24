@@ -453,7 +453,8 @@ ArangoDatabase.prototype._flushCache = function () {
 
 ArangoDatabase.prototype._queryProperties = function (force) {
   if (force || this._properties === null) {
-    var requestResult = this._connection.GET("/_api/current-database");
+    var url = "/_api/database/current";
+    var requestResult = this._connection.GET(url);
 
     arangosh.checkRequestResult(requestResult);
     this._properties = requestResult.result;

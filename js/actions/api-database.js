@@ -43,6 +43,7 @@ var API = "_api/database";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_get_api_database_list
 /// @brief retrieves a list of all existing databases
 ///
 /// @RESTHEADER{GET /_api/database,retrieves a list of all existing databases}
@@ -55,10 +56,14 @@ var API = "_api/database";
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// is returned if the database was dropped successfully.
+/// is returned if the list of database was compiled successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the request is invalid.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the database could not be found.
+/// is returned if the database could not be found or if the request was not
+/// executed in the `_system` database.
 ///
 /// @EXAMPLES
 ///
@@ -72,13 +77,70 @@ var API = "_api/database";
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_get_api_database_current
+/// @brief retrieves information about the current database
+///
+/// @RESTHEADER{GET /_api/database/current`,retrieves information about the current database}
+///
+/// @RESTDESCRIPTION
+/// Retrieves information about the current database
+///
+/// The response is a JSON object with the following attributes:
+/// 
+/// - `name`: the name of the current database
+///
+/// - `path`: the filesystem path of the current database
+///
+/// - `isSystem`: whether or not the current database is the `_system` database
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the information was retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the request is invalid.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the database could not be found.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGetInfo}
+///     var url = "/_api/database/current";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
 function get_api_database (req, res) {
-  if (req.suffix.length !== 0) { 
+  if (req.suffix.length > 1) { 
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  
+  if (req.suffix.length === 1 && req.suffix[0] !== 'current') {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
-  var result = arangodb.db._listDatabases();
+  var result;
+  if (req.suffix.length === 0) {
+    // list of all databases
+    result = arangodb.db._listDatabases();
+  }
+  else {
+    // information about the current database
+    result = {
+      name: arangodb.db._name(),
+      path: arangodb.db._path(),
+      isSystem: arangodb.db._isSystem()
+    };
+  }
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
@@ -90,6 +152,11 @@ function get_api_database (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// Creates a new database
+///
+/// The request body must be a JSON object with the attribute `name`. `name` must
+/// contain a valid @ref DatabaseNames.
+///
+/// The response is a JSON object with the attribute `result` set to `true`.
 ///
 /// Note: creating a new database is only possible from within the `_system` database.
 ///
