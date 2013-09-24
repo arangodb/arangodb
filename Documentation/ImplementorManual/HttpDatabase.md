@@ -32,8 +32,8 @@ down instantly. If yes, then ArangoDB will continue with the regular authenticat
 If the request URI was `http://localhost:8529/_db/mydb/...`, then the request to `mydb` will be 
 allowed (or disallowed) in the following situations: 
 
-    Endpoint-to-database mapping           Access to `mydb` allowed (subject to further authentication)
-    ----------------------------           ------------------------------------------------------------
+    Endpoint-to-database mapping           Access to `mydb` allowed?
+    ----------------------------           -------------------------
     [ ]                                    yes
     [ "_system" ]                          no 
     [ "_system", "mydb" ]                  yes
@@ -65,10 +65,6 @@ Database Management {#HttpDatabaseManagement}
 
 This is an introduction to ArangoDB's Http interface for managing databases.
 
-@copydoc GlossaryDatabase
-
-@copydoc GlossaryDatabaseName
-
 The HTTP interface for databases provides operations to create and drop
 individual databases. These are mapped to the standard HTTP methods `POST`
 and `DELETE`. There is also the `GET` method to retrieve a list of existing
@@ -80,14 +76,18 @@ the default database (`_system`) and none of the other databases.
 Managing Databases using HTTP {#HttpDatabaseHttp}
 =================================================
 
+@anchor HttpDatabaseCurrent
+@copydetails JSF_get_api_database_current
+
+@CLEARPAGE
+@anchor HttpDatabaseList
+@copydetails JSF_get_api_database_list
+
+@CLEARPAGE
 @anchor HttpDatabaseCreate
 @copydetails JSF_post_api_database
 
 @CLEARPAGE
 @anchor HttpDatabaseDelete
 @copydetails JSF_delete_api_database
-
-@CLEARPAGE
-@anchor HttpDatabaseList
-@copydetails JSF_get_api_database
 
