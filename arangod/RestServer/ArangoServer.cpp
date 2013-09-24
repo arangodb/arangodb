@@ -273,6 +273,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _dispatcherThreads(8),
+    _dispatcherQueueSize(8192),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
@@ -485,6 +486,10 @@ void ArangoServer::buildApplicationServer () {
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
+  
+  additional["Server Options:help-extended"]
+    ("scheduler.maximal-queue-size", &_dispatcherQueueSize, "maximum size of queue for asynchronous operations")
+  ;
 
   // .............................................................................
   // endpoint server
@@ -545,9 +550,14 @@ void ArangoServer::buildApplicationServer () {
     TRI_ENABLE_STATISTICS = false;
   }
 
+  // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    // validate journal size
-    LOGGER_FATAL_AND_EXIT("invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+    LOGGER_FATAL_AND_EXIT("invalid value for '--database.maximal-journal-size'. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+  }
+
+  // validate queue size
+  if (_dispatcherQueueSize <= 128) {
+    LOGGER_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
   }
 
   // .............................................................................
@@ -686,7 +696,7 @@ int ArangoServer::startupServer () {
   // create the dispatcher
   // .............................................................................
 
-  _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
+  _applicationDispatcher->buildStandardQueue(_dispatcherThreads, _dispatcherQueueSize);
 
   _applicationServer->prepare2();
   

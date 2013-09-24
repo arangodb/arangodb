@@ -1,4 +1,4 @@
-Accessing Skip-List Indexes via Http {#IndexSkiplistHttp}
+Accessing Skip-List Indexes via HTTP {#IndexSkiplistHttp}
 =========================================================
 
 @NAVIGATE_IndexSkiplistHttp

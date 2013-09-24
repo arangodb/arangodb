@@ -1,4 +1,4 @@
-Accessing Cap Constraints via Http {#IndexCapHttp}
+Accessing Cap Constraints via HTTP {#IndexCapHttp}
 ==================================================
 
 @NAVIGATE_IndexCapHttp

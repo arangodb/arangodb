@@ -1,4 +1,4 @@
-REST Interface for Edges {#RestEdge}
+HTTP Interface for Edges {#RestEdge}
 ====================================
 
 @NAVIGATE_RestEdge

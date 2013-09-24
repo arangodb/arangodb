@@ -18,7 +18,12 @@ v1.4
   error occurs during execution of an asynchronous request, the client will not
   be notified.
 
-  The feature is currently experimental.
+  The maximum size of the asynchronous task queue can be controlled using the new
+  option `--scheduler.maximal-queue-size`. If the queue contains this many number of
+  tasks and a new asynchronous request comes in, the server will reject it with an
+  HTTP 500 (internal server error) response.
+
+  This also introduces the new option `--scheduler.maximal-queue-size`.
 
 * issue #590: Manifest Lint
 
