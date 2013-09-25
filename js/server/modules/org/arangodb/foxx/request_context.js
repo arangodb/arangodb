@@ -322,7 +322,7 @@ extend(RequestContext.prototype, {
 ///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
 ///       return {
 ///         code: 123,
-///         desc: e.description
+///         desc: e.message
 ///       };
 ///     });
 /// @endcode
