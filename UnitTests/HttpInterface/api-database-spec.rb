@@ -106,7 +106,6 @@ describe ArangoDB do
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       
       doc = ArangoDB.log_post("#{prefix}-post", api, :body => body)
-      p doc
       doc.code.should eq(409)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       
