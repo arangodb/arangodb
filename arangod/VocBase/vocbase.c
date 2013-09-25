@@ -537,8 +537,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // check for special system collection names 
   if (TRI_IsSystemNameCollection(name)) {
     // a few system collections have special behavior
-    if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
-        TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+    if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
         TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
         TRI_EqualString(name, TRI_COL_NAME_USERS)) {
       // these collections cannot be dropped or renamed
