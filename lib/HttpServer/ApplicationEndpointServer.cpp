@@ -414,8 +414,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
   LOGGER_TRACE("loading endpoint list from file '" << filename << "'"); 
 
-  char* err = 0;
-  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename.c_str(), &err);
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename.c_str(), 0);
 
   if (json == 0) {
     return false;

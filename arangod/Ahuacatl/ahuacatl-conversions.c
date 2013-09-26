@@ -166,18 +166,20 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
         case TRI_AQL_TYPE_STRING:
           return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, node->_value._value._string);
       }
+      assert(false);
+      break;
     }
     case TRI_AQL_NODE_LIST: {
       const size_t n = node->_members._length;
       TRI_json_t* result = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n);
 
-      if (result) {
+      if (result != NULL) {
         size_t i;
 
         for (i = 0; i < n; ++i) {
           TRI_json_t* subValue = TRI_NodeJsonAql(context, TRI_AQL_NODE_MEMBER(node, i));
 
-          if (subValue) {
+          if (subValue != NULL) {
             TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, result, subValue);
           }
         }
@@ -188,7 +190,7 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
       const size_t n = node->_members._length;
       TRI_json_t* result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n);
 
-      if (result) {
+      if (result != NULL) {
         size_t i;
 
         for (i = 0; i < n; ++i) {
@@ -205,6 +207,7 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
       }
       return result;
     }
+
     default: {
       return NULL;
     }

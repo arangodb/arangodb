@@ -363,12 +363,12 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   TRI_CLOSE(datafile->_fd);
 
-
   datafile->_data = data;
   datafile->_next = (char*)(data) + vocSize;
   datafile->_maximalSize = maximalSize;
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
+  datafile->_state = TRI_DF_STATE_CLOSED;
 
   // rename files
   oldname = TRI_Concatenate2String(datafile->_filename, ".corrupted");
@@ -829,7 +829,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   datafile->_state = TRI_DF_STATE_WRITE;
 
   // create the header
-  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+  TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
   header.base._tick = (TRI_voc_tick_t) fid;
 
   header._version     = TRI_DF_VERSION;
@@ -953,7 +953,8 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
   assert(filename != NULL);
 
   fd = CreateSparseFile(filename, maximalSize);
-  if (fd <= 0) {
+
+  if (fd < 0) {
     // an error occurred
     return NULL;
   }
@@ -1569,7 +1570,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
 
   // create the footer
-  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+  TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
   // set a proper tick value
   footer.base._tick = datafile->_tickMax;
 
@@ -1651,7 +1652,8 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 /// @brief truncates a datafile and seals it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
+int TRI_TruncateDatafile (char const* path, 
+                          TRI_voc_size_t position) {
   TRI_datafile_t* datafile;
   int res;
 
@@ -1666,6 +1668,7 @@ int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
 
   res = TruncateAndSealDatafile(datafile, position);
   TRI_CloseDatafile(datafile);
+  TRI_FreeDatafile(datafile);
 
   return res;
 }
@@ -1683,9 +1686,10 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path) {
 
   datafile = OpenDatafile(path, true);
 
-  if (datafile != 0) {
+  if (datafile != NULL) {
     scan = ScanDatafile(datafile);
     TRI_CloseDatafile(datafile);
+    TRI_FreeDatafile(datafile);
   }
   else {
     scan._currentSize = 0;

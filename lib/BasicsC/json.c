@@ -1093,6 +1093,7 @@ bool TRI_SaveJson (char const* filename,
   }
 
   if (! TRI_PrintJson(fd, object)) {
+    TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
@@ -1103,6 +1104,7 @@ bool TRI_SaveJson (char const* filename,
   m = TRI_WRITE(fd, "\n", 1);
 
   if (m <= 0) {
+    TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
@@ -1112,6 +1114,7 @@ bool TRI_SaveJson (char const* filename,
 
   if (syncFile) {
     if (! TRI_fsync(fd)) {
+      TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_ERROR("cannot sync saved json '%s': %s", tmp, TRI_LAST_ERROR_STR);
       TRI_UnlinkFile(tmp);

@@ -1,6 +1,10 @@
 v1.4
 ----
 
+* changed error code from 10 (bad parameter) to 1232 (invalid key generator) for 
+  errors that are due to an invalid key generator specification when creating a new
+  collection
+
 * automatic detection of content-type / mime-type for Foxx assets based on filenames,
   added possibility to override auto detection
 

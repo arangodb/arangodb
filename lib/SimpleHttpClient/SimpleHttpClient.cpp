@@ -58,6 +58,7 @@ namespace triagens {
       _requestTimeout(requestTimeout),
       _warn(warn),
       _locationRewriter(),
+      _nextChunkedSize(0),
       _result(0), 
       _maxPacketSize(128 * 1024 * 1024),
       _keepAlive(true) {

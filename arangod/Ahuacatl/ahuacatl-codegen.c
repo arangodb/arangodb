@@ -771,18 +771,27 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
                          const char* const name,
                          const TRI_aql_codegen_register_t registerIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator); 
-  TRI_aql_codegen_variable_t* variable = CreateVariable(name, registerIndex);
+  TRI_aql_codegen_variable_t* variable;
+  
+  if (scope == NULL) {
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+    return;
+  }
+  
+  variable = CreateVariable(name, registerIndex);
 
-  if (scope == NULL || variable == NULL) {
+  if (variable == NULL) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return;
   }
 
-  if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false)) {
+  if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false) != NULL) {
     // variable already exists in symbol table. this should never happen
     LOG_TRACE("variable already registered: %s", name);
     generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_REDECLARED;
     generator->_errorValue = (char*) name;
+
+    FreeVariable(variable);
   }
 }
 
@@ -1007,6 +1016,7 @@ static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
   // we are closing at least one scope
   while (true) {
     TRI_aql_scope_e type = scope->_type;
+
     ScopeOutput(generator, "}\n");
     EndScope(generator);
 
@@ -1017,6 +1027,11 @@ static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
 
     // next iteration
     scope = CurrentScope(generator);
+
+    if (scope == NULL) {
+      generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+      return;
+    }
   }
 }
 
@@ -1466,6 +1481,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
 
       case TRI_AQL_ACCESS_REFERENCE: {
         ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+        break;
       }
 
       default: {

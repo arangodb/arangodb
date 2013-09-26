@@ -355,7 +355,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
   size_t len;
   size_t sha256Len;
 
-  assert(vocbase);
+  assert(vocbase != NULL);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);

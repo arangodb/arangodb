@@ -1805,7 +1805,6 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex (const TRI_fts_index_t* const ftx) {
   }
   else {
     stats._memoryHandles       = 0;
-    stats._numNodes            = 0;
     stats._numDocuments        = 0;
     stats._numDeleted          = 0;
     stats._handleDeletionGrade = 0.0;

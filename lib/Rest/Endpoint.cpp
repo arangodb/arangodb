@@ -313,7 +313,7 @@ const std::string Endpoint::getDefaultEndpoint () {
 /// @brief set socket timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
+bool Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   struct timeval tv;
 
   // shut up Valgrind
@@ -322,8 +322,15 @@ void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
 
   // conversion to (const char*) ensures windows does not complain
-  setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv));
-  setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
+  if (setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
+    return false;
+  }
+
+  if (setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

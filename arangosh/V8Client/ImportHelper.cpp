@@ -110,11 +110,11 @@ namespace triagens {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
         fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
-      }
 
-      if (fd < 0) {
-        _errorMessage = TRI_LAST_ERROR_STR;
-        return false;
+        if (fd < 0) {
+          _errorMessage = TRI_LAST_ERROR_STR;
+          return false;
+        }
       }
 
       // progress display control variables
@@ -123,7 +123,12 @@ namespace triagens {
 
       size_t separatorLength;
       char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
-      if (separator == NULL) {
+
+      if (separator == 0) {
+        if (fd != STDIN_FILENO) {
+          TRI_CLOSE(fd);
+        }
+
         _errorMessage = "out of memory";
         return false;
       }
@@ -158,6 +163,9 @@ namespace triagens {
         if (n < 0) {
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
           TRI_DestroyCsvParser(&parser);
+          if (fd != STDIN_FILENO) {
+            TRI_CLOSE(fd);
+          }
           _errorMessage = TRI_LAST_ERROR_STR;
           return false;
         }
@@ -178,7 +186,7 @@ namespace triagens {
       TRI_DestroyCsvParser(&parser);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
 
-      if (fileName != "-") {
+      if (fd != STDIN_FILENO) {
         TRI_CLOSE(fd);
       }
 
@@ -209,11 +217,11 @@ namespace triagens {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
         fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
-      }
-
-      if (fd < 0) {
-        _errorMessage = TRI_LAST_ERROR_STR;
-        return false;
+      
+        if (fd < 0) {
+          _errorMessage = TRI_LAST_ERROR_STR;
+          return false;
+        }
       }
 
       char buffer[32768];
@@ -229,6 +237,9 @@ namespace triagens {
 
         if (n < 0) {
           _errorMessage = TRI_LAST_ERROR_STR;
+          if (fd != STDIN_FILENO) {
+            TRI_CLOSE(fd);
+          }
           return false;
         }
         else if (n == 0) {
@@ -251,6 +262,9 @@ namespace triagens {
 
         if (_outputBuffer.length() > _maxUploadSize) {
           if (isArray) {
+            if (fd != STDIN_FILENO) {
+              TRI_CLOSE(fd);
+            }
             _errorMessage = "import file is too big.";
             return false;
           }
@@ -273,7 +287,7 @@ namespace triagens {
 
       _numberLines = _numberError + _numberOk;
 
-      if (fileName != "-") {
+      if (fd != STDIN_FILENO) {
         TRI_CLOSE(fd);
       }
 
@@ -326,7 +340,7 @@ namespace triagens {
       }
     }
 
-    void ImportHelper::beginLine(size_t row) {
+    void ImportHelper::beginLine (size_t row) {
       if (_lineBuffer.length() > 0) {
         // error
         ++_numberError;

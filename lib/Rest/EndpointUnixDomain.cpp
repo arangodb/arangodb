@@ -215,7 +215,9 @@ void EndpointUnixDomain::disconnect () {
 
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
-      FileUtils::remove(_path, &error);
+      if (! FileUtils::remove(_path, &error)) {
+        LOGGER_TRACE("unable to remove socket file '" << _path << "'");
+      }
     }
   }
 }

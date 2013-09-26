@@ -820,15 +820,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
     }
     
     ptr = datafile->_data;
-
-    if (res == TRI_ERROR_NO_ERROR) { 
-      // no error so far. start iterating
-      end = ptr + datafile->_currentSize;
-    }
-    else {
-      // some error occurred. don't iterate
-      end = ptr;
-    }
+    end = ptr + datafile->_currentSize;
 
     while (ptr < end) {
       TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;

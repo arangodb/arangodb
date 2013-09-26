@@ -502,22 +502,23 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
 static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection,
                                                v8::Handle<v8::Object>* err) {
 
+  int res = TRI_ERROR_INTERNAL;
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
-  int res = TRI_UseCollectionVocBase(col->_vocbase, col);
+  if (col != 0) {
+    res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
-    return 0;
+    if (res == TRI_ERROR_NO_ERROR && 
+        col->_collection != 0) {
+      // no error
+      return col;
+    }
   }
 
-  if (col->_collection == 0) {
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection", true);
-    return 0;
-  }
-
-  return col;
+  // some error occurred
+  *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
+  TRI_set_errno(res);
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2337,8 +2338,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     // Invoke Function constructor to create function with the given body and no arguments
     string body = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("action"))->ToString());
     body = "return (" + body + ")(params);";
-    v8::Handle<v8::Value> argv[2] = { v8::String::New("params"), v8::String::New(body.c_str(), body.size()) };
-    v8::Local<v8::Object> function = ctor->NewInstance(2, argv);
+    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(body.c_str(), body.size()) };
+    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     action = v8::Local<v8::Function>::Cast(function);
   }
@@ -4373,10 +4374,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
         delete [] payload;
       }
-      else if (bytesRead == 0) {
-        // eof
-        break;
-      }
       else {
         LOG_ERROR("Could not read data from file '%s' while upgrading collection '%s'.", df->_filename, name);
         LOG_ERROR("Remove collection manually.");
@@ -5034,19 +5031,11 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       // If the conversion from V8 value into a TRI_json_t fails, exit
       // .........................................................................
 
-      if (value == 0) {
-        errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_BAD_PARAMETER;
-        ok = false;
-        break;
-      }
+      if (! TRI_IsListJson(value)) {
+        if (value != 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
+        }
 
-
-      // .........................................................................
-      // If the TRI_json_t is NOT a list, then exit with an error
-      // .........................................................................
-
-      if (value->_type != TRI_JSON_LIST) {
         errorString = "invalid parameter -- expected an array (list)";
         errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
@@ -5054,9 +5043,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       }
 
       TRI_PushBackVectorPointer(&values, value);
-
     }
-
   }
 
 
@@ -5730,9 +5717,14 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   res = trx.finish(res);
   // READ-LOCK end
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch figures");
+  if (res != TRI_ERROR_NO_ERROR || info == 0) {
+    if (info != 0) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
+    }
+    TRI_V8_EXCEPTION(scope, res);
   }
+
+  assert(info != 0);
 
   if (info == NULL) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -7734,8 +7726,20 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
   }
 
   const string name = TRI_ObjectToString(argv[0]);
- 
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+
+  if (TRI_EqualString(name.c_str(), vocbase->_name)) {
+    // same database. nothing to do
+    return scope.Close(WrapVocBase(vocbase));
+  }
+  
+  // check if the other database exists, and increase its refcount
+  vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
 
   if (vocbase != 0) {
     // switch databases
