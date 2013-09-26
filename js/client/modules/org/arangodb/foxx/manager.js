@@ -690,6 +690,9 @@ exports.run = function (args) {
              res.name,
              res.purged.length); 
     }
+    else if (type === 'config') {
+      exports.config();
+    }
     else if (type === 'list') {
       if (1 < args.length && args[1] === "prefix") {
         exports.list(true);
@@ -952,6 +955,26 @@ exports.purge = function (key) {
   var res = arango.POST("/_admin/foxx/purge", JSON.stringify(req));
 
   return arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns configuration from the server
+////////////////////////////////////////////////////////////////////////////////
+
+exports.config = function () {
+  'use strict';
+
+  var res = arango.GET("/_admin/foxx/config"), name;
+
+  arangosh.checkRequestResult(res);
+
+  arangodb.printf("The following configuration values are effective on the server:\n");
+
+  for (name in res.result) {
+    if (res.result.hasOwnProperty(name)) {
+      arangodb.printf("- %s: %s\n", name, JSON.stringify(res.result[name]));
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1318,6 +1341,7 @@ exports.help = function () {
     "info"         : "displays information about a foxx application",
     "search"       : "searches the local foxx-apps repository",
     "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+    "config"       : "returns configuration information from the server",
     "help"         : "shows this help"
   };
 
