@@ -226,6 +226,11 @@ void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t*
 void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key) {
   uint64_t hash;
   uint64_t i;
+  
+  if (array->_nrUsed == 0) {
+    // optimisation if empty
+    return NULL;
+  }
 
   // compute the hash
   hash = array->hashKey(array, key);
@@ -772,6 +777,11 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
   uint64_t hash;
   uint64_t i;
 
+  if (array->_nrUsed == 0) {
+    // optimisation if empty
+    return NULL;
+  }
+  
   // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;

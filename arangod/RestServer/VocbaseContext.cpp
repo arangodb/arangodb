@@ -133,6 +133,19 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     ++auth;
   }
 
+  // look up the info in the cache first
+  char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth);
+
+  if (cached != 0) {
+    // found a cached entry, access must be granted
+    _request->setUser(string(cached));
+    TRI_Free(TRI_CORE_MEM_ZONE, cached);
+
+    return HttpResponse::OK;
+  }
+
+  // no entry found in cache, decode the basic auth info and look it up
+
   string up = StringUtils::decodeBase64(auth);    
 
   std::string::size_type n = up.find(':', 0);
@@ -146,9 +159,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     
   LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
 
-  // TODO FIXME: re-add caching
-
-  bool res = TRI_CheckAuthenticationAuthInfo(_vocbase, username.c_str(), up.substr(n + 1).c_str());
+  bool res = TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(), up.substr(n + 1).c_str());
     
   if (! res) {
     return HttpResponse::UNAUTHORIZED;

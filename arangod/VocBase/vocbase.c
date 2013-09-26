@@ -100,37 +100,6 @@ index_json_helper_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the auth info
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyAuthInfo (TRI_associative_pointer_t* array, void const* key) {
-  char const* k = (char const*) key;
-
-  return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the auth info
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, void const* element) {
-  TRI_vocbase_auth_t const* e = element;
-
-  return TRI_FnvHashString(e->_username);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a auth info and a username
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  char const* k = (char const*) key;
-  TRI_vocbase_auth_t const* e = element;
-
-  return TRI_EqualString(k, e->_username);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1364,17 +1333,10 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
                              EqualKeyCollectionName,
                              NULL);
 
-  TRI_InitAssociativePointer(&vocbase->_authInfo,
-                             TRI_CORE_MEM_ZONE,
-                             HashKeyAuthInfo,
-                             HashElementAuthInfo,
-                             EqualKeyAuthInfo,
-                             NULL);
+  TRI_InitAuthInfo(vocbase);
   
   TRI_InitReadWriteLock(&vocbase->_inventoryLock);
-  TRI_InitReadWriteLock(&vocbase->_authInfoLock);
   TRI_InitReadWriteLock(&vocbase->_lock);
-  vocbase->_authInfoFlush = true;
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
@@ -1401,7 +1363,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_FreeStoreGeneralCursor(vocbase->_cursors);
-    TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
+    TRI_DestroyAuthInfo(vocbase);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
     TRI_DestroySpin(&vocbase->_usage._lock);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
@@ -1564,7 +1526,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // clear the hashes and vectors
   TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
   TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
-  TRI_DestroyAssociativePointer(&vocbase->_authInfo);
 
   TRI_DestroyVectorPointer(&vocbase->_collections);
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
@@ -1580,7 +1541,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // destroy locks
   TRI_DestroySpin(&vocbase->_usage._lock);
   TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
-  TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
   TRI_DestroyReadWriteLock(&vocbase->_lock);
   TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
