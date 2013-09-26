@@ -36,7 +36,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
-#include "Utilities/ResourceHolder.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -312,19 +311,19 @@ bool RestDocumentHandler::createDocument () {
 
   const bool waitForSync = extractWaitForSync();
 
-  // auto-ptr that will free JSON data when scope is left
-  ResourceHolder holder;
-
   TRI_json_t* json = parseJsonBody();
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+
+  if (json == 0) {
     return false;
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
   if (json->_type != TRI_JSON_ARRAY) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
@@ -339,12 +338,14 @@ bool RestDocumentHandler::createDocument () {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, res);
     return false;
   }
 
   if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
@@ -355,6 +356,8 @@ bool RestDocumentHandler::createDocument () {
   res = trx.createDocument(&document, json, waitForSync);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
+    
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
   // outside write transaction
@@ -1153,17 +1156,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const string& collection = suffix[0];
   const string& key = suffix[1];
 
-  // auto-ptr that will free JSON data when scope is left
-  ResourceHolder holder;
-
   TRI_json_t* json = parseJsonBody();
 
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
-    return false;
-  }
-  
-  if (json->_type != TRI_JSON_ARRAY) {
+  if (! TRI_IsArrayJson(json)) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return false;
   }
 
@@ -1187,6 +1186,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -1222,6 +1222,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
     }
@@ -1229,6 +1230,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (oldDocument._key == 0 || oldDocument._data == 0) {
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
     }
@@ -1237,24 +1239,39 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
-    if (holder.registerJson(shaper->_memoryZone, old)) {
-      TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+    if (old == 0) {
+      trx.abort();
+      generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-      if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
-        // do not acquire an extra lock
-        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
-      }
+      return false;
     }
+
+    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+    TRI_FreeJson(shaper->_memoryZone, old);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    if (patchedJson == 0) {
+      trx.abort();
+      generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+
+      return false;
+    }
+
+    // do not acquire an extra lock
+    res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
   }
   else {
     // replacing an existing document, using a lock
     res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
   const bool wasSynchronous = trx.synchronous();
 
   res = trx.finish(res);
-
+    
   // .............................................................................
   // outside write transaction
   // .............................................................................

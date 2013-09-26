@@ -283,6 +283,7 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
                                  TRI_voc_size_t* totalSize,
                                  char* keyBody,
                                  TRI_voc_size_t keyBodySize) {
+  char* mem;
   TRI_doc_deletion_key_marker_t* marker;
 
   *result = NULL;
@@ -292,13 +293,16 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
     tick = TRI_NewTickServer();
   }
 
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  marker = (TRI_doc_deletion_key_marker_t*) mem;
+  assert(marker != NULL);
    
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_KEY_DELETION, *totalSize);
+  TRI_InitMarker(mem, TRI_DOC_MARKER_KEY_DELETION, *totalSize);
   assert(marker->_rid == 0);
   marker->_rid = (TRI_voc_rid_t) tick;
   
@@ -307,7 +311,7 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
   marker->_offsetKey = sizeof(TRI_doc_deletion_key_marker_t);
 
   // copy the key into the marker
-  memcpy(((char*) marker) + marker->_offsetKey, keyBody, keyBodySize + 1);
+  memcpy(mem + marker->_offsetKey, keyBody, keyBodySize + 1);
   
   *result = marker;
 
@@ -327,6 +331,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
                                 const TRI_df_marker_type_e markerType,
                                 TRI_shaped_json_t const* shaped) {
 
+  char* mem;
   TRI_doc_document_key_marker_t* marker;
   size_t baseLength;
 
@@ -360,12 +365,16 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
   *totalSize = baseLength + shaped->_data.length;
-  
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+ 
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  // marker points to mem, but has a different type
+  marker = (TRI_doc_document_key_marker_t*) mem;
+  assert(marker != NULL);
 
   if (tick == 0) {
     tick = TRI_NewTickServer();
@@ -382,7 +391,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   marker->_shape = shaped->_sid;
 
   // copy shaped json into the marker
-  memcpy(((char*) marker) + baseLength, (char*) shaped->_data.data, shaped->_data.length);
+  memcpy(mem + baseLength, (char*) shaped->_data.data, shaped->_data.length);
   
   // no need to adjust _offsetKey, _offsetJson etc. as we copied it from the old marker
   
@@ -421,6 +430,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                  TRI_voc_key_t key,
                                  TRI_shaped_json_t const* shaped, 
                                  void const* data) {
+  char* mem;
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
   char* position;
@@ -484,21 +494,24 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
   *totalSize = markerSize + keyBodySize + shaped->_data.length;
-  
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+ 
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  marker = (TRI_doc_document_key_marker_t*) mem;
+  assert(marker != NULL);
+
   // set the marker type, size, revision id etc. 
-  TRI_InitMarker(&marker->base, markerType, *totalSize);
+  TRI_InitMarker(mem, markerType, *totalSize);
   assert(marker->_rid == 0);
   marker->_rid   = (TRI_voc_rid_t) tick; 
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
-  *keyBody = ((char*) marker) + markerSize;
+  *keyBody = mem + markerSize;
 
   // copy the key into the marker
   position = *keyBody;
@@ -521,7 +534,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   }
 
   // copy shaped json into the marker
-  position = ((char*) marker) + markerSize + keyBodySize;
+  position = mem + markerSize + keyBodySize;
   memcpy(position, (char*) shaped->_data.data, shaped->_data.length);
   
   // set the offsets for _key and shaped json
@@ -2692,31 +2705,20 @@ static bool FillInternalIndexes (TRI_document_collection_t* document) {
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIndexIterator (char const* filename, void* data) {
+static bool OpenIndexIterator (char const* filename, 
+                               void* data) {
   TRI_json_t* json;
-  char* error;
   int res;
 
-  error = NULL;
-
   // load json description of the index
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   
   // json must be a index description
-  if (json == NULL) {
-    if (error != NULL) {
-      LOG_ERROR("cannot read index definition from '%s': %s", filename, error);
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
+  if (! TRI_IsArrayJson(json)) {
+    LOG_ERROR("cannot read index definition from '%s'", filename);
+    if (json != NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
-    else {
-      LOG_ERROR("cannot read index definition from '%s'", filename);
-    }
-    return false;
-  }
-  
-  if (json->_type != TRI_JSON_ARRAY) {
-    LOG_ERROR("cannot read index definition from '%s': expecting an array", filename);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return false;
   }
@@ -2924,13 +2926,13 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   else {
     cid = TRI_NewTickServer();
   }
+
   parameter->_cid = cid;
 
   // check if we can generate the key generator
   res = TRI_CreateKeyGenerator(parameter->_keyOptions, &keyGenerator);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("cannot create key generator for document collection: %s", TRI_errno_string(res));
     TRI_set_errno(res);
 
     return NULL;
@@ -2955,7 +2957,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
-    LOG_WARNING("cannot create key generator for document collection: %s", TRI_errno_string(res));
+    LOG_WARNING("cannot initialise collection: %s", TRI_errno_string(res));
     TRI_set_errno(res);
 
     return NULL;
@@ -6049,18 +6051,6 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
 
-
-  // ...........................................................................
-  // Perhaps the index was not created in the function TRI_CreateBitarrayIndex
-  // ...........................................................................
-
-  if (idx == NULL) {
-    LOG_TRACE("bitarray index could not be created in TRI_CreateBitarrayIndex");
-    if (created != NULL) {
-      *created = false;
-    }
-    return idx;
-  }
 
   // ...........................................................................
   // If an index id given, use it otherwise use the default (generate one)

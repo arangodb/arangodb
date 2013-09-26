@@ -56,6 +56,9 @@ function DatabaseSuite () {
       catch (err) {
         // ignore
       }
+
+      // trigger GC to remove databases physically
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

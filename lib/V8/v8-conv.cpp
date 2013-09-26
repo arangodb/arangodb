@@ -424,6 +424,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
+    // if found returns non-NULL, it will free the shape!!
     found = shaper->findShape(shaper, &shape->base);
 
     if (found == 0) {
@@ -432,11 +433,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
           TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
+      
+      LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
 
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
-
-      LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
       return false;
     }
 

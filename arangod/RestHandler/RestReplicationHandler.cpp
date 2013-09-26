@@ -1542,6 +1542,10 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
                          (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
                          keyOptions);
 
+  if (keyOptions != 0) {
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
+  }
+
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
   params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 

@@ -1383,47 +1383,41 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
     LOG_TRACE("looking for replication logger configuration in '%s'", filename);
 
     if (TRI_ExistsFile(filename)) {
-      char* error;
       TRI_json_t* json;
 
       LOG_TRACE("loading replication logger configuration from '%s'", filename);
 
-      error = NULL;
-      json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+      json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
 
-      if (error != NULL) {
-        TRI_Free(TRI_CORE_MEM_ZONE, error);
+      if (TRI_IsArrayJson(json)) {
+        TRI_json_t const* value;
+
+        value =  TRI_LookupArrayJson(json, "autoStart");
+
+        if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
+          logger->_configuration._autoStart = value->_value._boolean;
+        }
+
+        value =  TRI_LookupArrayJson(json, "logRemoteChanges");
+
+        if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
+          logger->_configuration._logRemoteChanges = value->_value._boolean;
+        }
+
+        value =  TRI_LookupArrayJson(json, "maxEvents");
+
+        if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+          logger->_configuration._maxEvents = (uint64_t) value->_value._number;
+        }
+
+        value =  TRI_LookupArrayJson(json, "maxEventsSize");
+
+        if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+          logger->_configuration._maxEventsSize = (uint64_t) value->_value._number;
+        }
       }
 
       if (json != NULL) {
-        if (json->_type == TRI_JSON_ARRAY) {
-          TRI_json_t const* value;
-
-          value =  TRI_LookupArrayJson(json, "autoStart");
-
-          if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
-            logger->_configuration._autoStart = value->_value._boolean;
-          }
-
-          value =  TRI_LookupArrayJson(json, "logRemoteChanges");
-
-          if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
-            logger->_configuration._logRemoteChanges = value->_value._boolean;
-          }
-
-          value =  TRI_LookupArrayJson(json, "maxEvents");
-
-          if (value != NULL && value->_type == TRI_JSON_NUMBER) {
-            logger->_configuration._maxEvents = (uint64_t) value->_value._number;
-          }
-
-          value =  TRI_LookupArrayJson(json, "maxEventsSize");
-
-          if (value != NULL && value->_type == TRI_JSON_NUMBER) {
-            logger->_configuration._maxEventsSize = (uint64_t) value->_value._number;
-          }
-        }
-
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       }
     }
@@ -1670,7 +1664,8 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
     FreeClient((logger_client_t*) found); 
   }
 
-  client = TRI_InsertKeyAssociativePointer(&logger->_clients, &client->_serverId, (void*) client, false);
+  found = TRI_InsertKeyAssociativePointer(&logger->_clients, &client->_serverId, (void*) client, false);
+  assert(found == NULL);
 
   TRI_WriteUnlockReadWriteLock(&logger->_clientsLock);
 }

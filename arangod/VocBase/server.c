@@ -203,7 +203,10 @@ static int ReadServerId (char const* filename) {
 
   json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
 
-  if (json == NULL) {
+  if (! TRI_IsArrayJson(json)) {
+    if (json != NULL) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return TRI_ERROR_INTERNAL;
   }
 
@@ -533,7 +536,6 @@ static int OpenDatabases (TRI_server_t* server) {
     char const* name;
     char* databaseDirectory;
     char* parametersFile;
-    char* error;
     char* databaseName;
     void const* found;
 
@@ -599,14 +601,9 @@ static int OpenDatabases (TRI_server_t* server) {
     LOG_DEBUG("reading database parameters from file '%s'",
               parametersFile);
 
-    error = NULL;
-    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, &error);
+    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, NULL);
 
     if (json == NULL) {
-      if (error != NULL) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-      }
-
       LOG_ERROR("database directory '%s' does not contain a valid parameters file", 
                 databaseDirectory);
       
@@ -1197,6 +1194,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
     if (dname == NULL) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
       res = TRI_ERROR_OUT_OF_MEMORY;
+      break;
     }
 
     targetName = TRI_Concatenate2File(server->_databasePath, dname);
@@ -1311,23 +1309,20 @@ static void DatabaseManager (void* data) {
 
   while (true) {
     TRI_vocbase_t* database;
-    size_t i;
+    size_t i, n;
 
     TRI_LockMutex(&server->_createLock);
     shutdown = server->_shutdown;
     TRI_UnlockMutex(&server->_createLock);
-
-    if (shutdown) {
-      // done
-      break;
-    }
 
     // check if we have to drop some database
     database = NULL;
 
     TRI_ReadLockReadWriteLock(&server->_databasesLock); 
 
-    for (i = 0; i < server->_droppedDatabases._length; ++i) {
+    n = server->_droppedDatabases._length;
+
+    for (i = 0; i < n; ++i) {
       TRI_vocbase_t* vocbase = TRI_AtVectorPointer(&server->_droppedDatabases, i);
 
       if (! TRI_CanRemoveVocBase(vocbase)) {
@@ -1361,6 +1356,11 @@ static void DatabaseManager (void* data) {
       // directly start next iteration
     }
     else {
+      if (shutdown) {
+        // done
+        break;
+      }
+
       usleep(DATABASE_MANAGER_INTERVAL);
     }
 
@@ -1716,7 +1716,11 @@ int TRI_StartServer (TRI_server_t* server,
     }
   }
 
+  // we don't yet need the lock here as this is called during startup and no races
+  // are possible. however, this may be changed in the future
+  TRI_LockMutex(&server->_createLock);
   server->_shutdown = false;
+  TRI_UnlockMutex(&server->_createLock);
   
   // start dbm thread
   TRI_InitThread(&server->_databaseManager);

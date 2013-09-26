@@ -78,7 +78,7 @@ bool DocumentHelper::parseDocumentId (const std::string& input,
                                       std::string& key) {
   size_t pos = input.find('/');
 
-  if (pos == input.npos) {
+  if (pos == string::npos) {
     return false;
   }
 

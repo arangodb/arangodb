@@ -417,6 +417,7 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
 
   ULocDataLocaleType type = ULOC_VALID_LOCALE;
   const Locale& locale = _coll->getLocale(type, status);
+
   if (U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
     LOGGER_ERROR("error in Collator::getLocale(...): " << u_errorName(status));
@@ -425,13 +426,17 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
 
   size_t tempUtf16Length = 0;
   UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);
+
   if (tempUtf16 == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
     return NULL;
   }
 
   words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
+
   if (words == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
     return NULL;
   }
 
@@ -446,6 +451,7 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
     // alloc at most 8192 pointers (= 64kb)
     initialWordCount = 8192;
   }
+
   TRI_InitVectorString2(words, TRI_UNKNOWN_MEM_ZONE, initialWordCount);
 
   BreakIterator* wordIterator = BreakIterator::createWordInstance(locale, status);

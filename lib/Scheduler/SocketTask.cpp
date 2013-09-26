@@ -65,7 +65,9 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _writeBufferStatistics(0),
 #endif
     ownBuffer(true),
-    writeLength(0) {
+    writeLength(0),
+    tid(0) {
+
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
   ConnectionStatisticsAgent::acquire();

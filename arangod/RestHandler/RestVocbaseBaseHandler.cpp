@@ -542,6 +542,8 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
     return 0;
   }
 
+  assert(errmsg == 0);
+
   if (TRI_HasDuplicateKeyJson(json)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON,

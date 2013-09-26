@@ -313,9 +313,8 @@ namespace triagens {
           // execute the handler using the dispatcher
           if (_dispatcher != 0) {
             Job* ajob = handler->createJob(this, true);
-            ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
-            if (job == 0) {
+            if (ajob == 0) {
               RequestStatisticsAgentSetExecuteError(handler);
 
               LOGGER_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
@@ -323,6 +322,9 @@ namespace triagens {
               delete handler;
               return false;
             }
+
+            ServerJob* job = dynamic_cast<ServerJob*>(ajob);
+            assert(job != 0);
 
             return _dispatcher->addJob(job);
           }
@@ -369,9 +371,8 @@ namespace triagens {
               }
               else {
                 Job* ajob = handler->createJob(this, false);
-                ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
-                if (job == 0) {
+                if (ajob == 0) {
                   RequestStatisticsAgentSetExecuteError(handler);
 
                   LOGGER_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
@@ -379,6 +380,9 @@ namespace triagens {
                   this->shutdownHandlerByTask(task);
                   return false;
                 }
+
+                ServerJob* job = dynamic_cast<ServerJob*>(ajob);
+                assert(job != 0);
 
                 registerJob(handler, job);
                 return true;

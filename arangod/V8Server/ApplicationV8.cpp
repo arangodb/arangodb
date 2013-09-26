@@ -201,7 +201,8 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server)
     _freeContexts(),
     _dirtyContexts(),
     _busyContexts(),
-    _stopping(0) {
+    _stopping(0),
+    _gcThread(0) {
 
   assert(_server != 0);
 }
@@ -388,6 +389,8 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
   }
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  assert(gc != 0);
+
   V8Context* context = 0;
 
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
