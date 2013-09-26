@@ -126,9 +126,9 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory,
                                                void* jobManager) {
   factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
     
-  factory->addHandler(prefix + "/job",
-                      RestHandlerCreator<RestJobHandler>::createData<void*>,
-                      jobManager);
+  factory->addPrefixHandler(prefix + "/job",
+                            RestHandlerCreator<RestJobHandler>::createData<void*>,
+                            jobManager);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
