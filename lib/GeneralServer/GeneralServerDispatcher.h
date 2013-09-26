@@ -35,6 +35,7 @@
 #include "Dispatcher/Job.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralAsyncCommTask.h"
+#include "HttpServer/AsyncJobManager.h"
 #include "Rest/AsyncJobServer.h"
 
 // -----------------------------------------------------------------------------
@@ -43,6 +44,7 @@
 
 namespace triagens {
   namespace rest {
+    class AsyncJobManager;
     class Dispatcher;
 
 // -----------------------------------------------------------------------------
@@ -90,16 +92,21 @@ namespace triagens {
         explicit
         GeneralServerDispatcher (Scheduler* scheduler, double keepAliveTimeout)
           : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
-            _dispatcher(0) {
+            _dispatcher(0),
+            _jobManager(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new general server
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralServerDispatcher (Scheduler* scheduler, Dispatcher* dispatcher, double keepAliveTimeout)
+        GeneralServerDispatcher (Scheduler* scheduler, 
+                                 Dispatcher* dispatcher, 
+                                 AsyncJobManager* jobManager, 
+                                 double keepAliveTimeout)
           : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
-            _dispatcher(dispatcher) {
+            _dispatcher(dispatcher),
+            _jobManager(jobManager) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,6 +241,7 @@ namespace triagens {
 
           if (job->isDetached()) {
             if (handler != 0) {
+              _jobManager->finishAsyncJob<S, HF>(job);
               delete handler;
             }
             return;
@@ -306,37 +314,48 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRequestAsync (GeneralHandler* handler) {
-          // execute the handler using the dispatcher
-          if (_dispatcher != 0) {
-            Job* ajob = handler->createJob(this, true);
-            ServerJob* job = dynamic_cast<ServerJob*>(ajob);
+        bool handleRequestAsync (GeneralHandler* handler,
+                                 uint64_t* jobId) {
+          if (_dispatcher == 0) {
+            // without a dispatcher, simply give up
+            RequestStatisticsAgentSetExecuteError(handler);
 
-            if (job == 0) {
-              RequestStatisticsAgentSetExecuteError(handler);
+            LOGGER_WARNING("no dispatcher is known");
 
-              LOGGER_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
+            return false;
+          }
+          
+          // create a job and add it to the dispatcher queue 
+          Job* ajob = handler->createJob(this, true);
+          ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
-              delete handler;
-              return false;
-            }
+          if (job == 0) {
+            RequestStatisticsAgentSetExecuteError(handler);
 
-            return _dispatcher->addJob(job);
+            LOGGER_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
+
+            delete handler;
+            return false;
+          }
+         
+          if (jobId != 0) { 
+            _jobManager->initAsyncJob<S, HF>(job, jobId);
           }
 
-          // without a dispatcher, simply give up
-          RequestStatisticsAgentSetExecuteError(handler);
+          if (! _dispatcher->addJob(job)) {
+            // could not add job to job queue
+            return false;
+          }
 
-          LOGGER_WARNING("no dispatcher is known");
-
-          return false;
+          // job is in queue now
+          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief execute the handler directly, or add it to the dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleRequest (CT * task, GeneralHandler* handler) {
@@ -511,6 +530,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the job manager
+////////////////////////////////////////////////////////////////////////////////
+
+        AsyncJobManager* _jobManager;
+
     };
   }
 }

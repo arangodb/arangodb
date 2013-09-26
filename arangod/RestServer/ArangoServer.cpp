@@ -56,6 +56,7 @@
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
+#include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpHandlerFactory.h"
 
 #include "Logger/Logger.h"
@@ -106,10 +107,15 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
-                               ApplicationAdminServer* admin) {
+                               ApplicationAdminServer* admin,
+                               AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api");
+  admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+  
+  // add "/batch" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                            RestHandlerCreator<RestBatchHandler>::createNoData);
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
@@ -122,10 +128,6 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/import" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createNoData);
-
-  // add "/batch" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                            RestHandlerCreator<RestBatchHandler>::createNoData);
 
   // add "/replication" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
@@ -141,10 +143,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
-                                 ApplicationAdminServer* admin) {
+                                 ApplicationAdminServer* admin,
+                                 AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin");
+  admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
@@ -270,6 +273,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+    _jobManager(0),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _dispatcherThreads(8),
@@ -303,6 +307,16 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   if (_server == 0) {
     LOG_FATAL_AND_EXIT("could not create server instance");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoServer::~ArangoServer () {
+  if (_jobManager != 0) {
+    delete _jobManager;
   }
 }
 
@@ -377,7 +391,7 @@ void ArangoServer::buildApplicationServer () {
   ;
 
 #endif
-
+  
   // .............................................................................
   // and start a simple admin server
   // .............................................................................
@@ -495,9 +509,12 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer);
+
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
+                                                             _jobManager,
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
@@ -717,8 +734,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _jobManager);
 
   // add action handler
   handlerFactory->addPrefixHandler(

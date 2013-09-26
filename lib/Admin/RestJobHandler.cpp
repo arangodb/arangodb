@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for handlers
+/// @brief job control request handler
 ///
 /// @file
 ///
@@ -21,83 +21,53 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandler.h"
+#include "RestJobHandler.h"
 
-#include "Logger/Logger.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpsServer.h"
+#include "Basics/StringUtils.h"
+#include "HttpServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "GeneralServer/GeneralServerJob.h"
 
+using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::admin;
+using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
+/// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandler::HttpHandler (HttpRequest* request)
-  : _request(request),
-    _response(0),
-    _server(0) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandler::~HttpHandler () {
-  if (_request != 0) {
-    delete _request;
-  }
-
-  if (_response != 0) {
-    delete _response;
-  }
-}
+  
+const string RestJobHandler::QUEUE_NAME = "STANDARD";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup RestServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::getResponse () const {
-  return _response;
-}
+RestJobHandler::RestJobHandler (HttpRequest* request, void* data) 
+  : RestBaseHandler(request) {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the response
-////////////////////////////////////////////////////////////////////////////////
-
-HttpResponse* HttpHandler::stealResponse () {
-  HttpResponse* tmp = _response;
-  _response = 0;
-  return tmp;
+  _jobManager = static_cast<AsyncJobManager*>(data);    
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +79,7 @@ HttpResponse* HttpHandler::stealResponse () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup RestServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,22 +87,37 @@ HttpResponse* HttpHandler::stealResponse () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job* HttpHandler::createJob (AsyncJobServer* server,
-                             bool isDetached) {
-  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
-  // check if we are an HTTP server at all
-  if (httpServer != 0) {
-    return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this, isDetached);
+bool RestJobHandler::isDirect () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestJobHandler::queue () const {
+  return QUEUE_NAME;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler::status_e RestJobHandler::execute () {
+  // extract the sub-request type
+  HttpRequest::HttpRequestType type = _request->requestType();
+
+  if (type == HttpRequest::HTTP_REQUEST_GET) {
+    getJob();
+  }
+  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+    deleteJob();
+  }
+  else {
+    generateError(HttpResponse::METHOD_NOT_ALLOWED, (int) HttpResponse::METHOD_NOT_ALLOWED);
   }
 
-  // check if we are an HTTPs server at all
-  HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
-  if (httpsServer != 0) {
-    return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this, isDetached);
-  }
-
-  LOGGER_WARNING("cannot convert AsyncJobServer into a HttpServer");
-  return 0;
+  return HANDLER_DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,44 +125,89 @@ Job* HttpHandler::createJob (AsyncJobServer* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup RestServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure the handler has only one response, otherwise we'd have a leak
+/// @brief returns a job result by id
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::removePreviousResponse () {
+void RestJobHandler::getJob () {
+  const vector<string> suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  
+  const string& value = suffix[0];
+  uint64_t jobId = StringUtils::uint64(value);
+
+  AsyncJobResult::Status status;
+  HttpResponse* response = _jobManager->getJobResult(jobId, status);
+
+  if (status == AsyncJobResult::JOB_UNDEFINED) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+  
+  if (status == AsyncJobResult::JOB_PENDING) {
+    // TODO: signal "job not ready"
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+
+  assert(status == AsyncJobResult::JOB_DONE);
+
+  // delete our own response
   if (_response != 0) {
     delete _response;
-    _response = 0;
   }
+
+  // return the original response
+  _response = response; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new HTTP response
+/// @brief deletes a result by id
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) {
-  // avoid having multiple responses. this would be a memleak
-  removePreviousResponse();
+void RestJobHandler::deleteJob () {
+  const vector<string> suffix = _request->suffix();
 
-  // otherwise, we return a "standard" (standalone) Http response
-  return new HttpResponse(code);
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  const string& value = suffix[0];
+  uint64_t jobId = StringUtils::uint64(value);
+
+  bool found = _jobManager->deleteJobResult(jobId);
+  
+  if (! found) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (json != 0) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  }
+
+  generateResult(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

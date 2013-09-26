@@ -82,6 +82,7 @@ namespace {
 ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applicationServer,
                                                       ApplicationScheduler* applicationScheduler,
                                                       ApplicationDispatcher* applicationDispatcher,
+                                                      AsyncJobManager* jobManager,
                                                       std::string const& authenticationRealm,
                                                       HttpHandlerFactory::context_fptr setContext,
                                                       void* contextData)
@@ -89,6 +90,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
+    _jobManager(jobManager),
     _authenticationRealm(authenticationRealm),
     _setContext(setContext),
     _contextData(contextData),
@@ -156,6 +158,7 @@ bool ApplicationEndpointServer::buildServers () {
   // unencrypted endpoints
   server = new HttpServer(_applicationScheduler->scheduler(),
                           _applicationDispatcher->dispatcher(),
+                          _jobManager,
                           _keepAliveTimeout,
                           _handlerFactory);
 
@@ -173,6 +176,7 @@ bool ApplicationEndpointServer::buildServers () {
     // https
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
+                             _jobManager,
                              _keepAliveTimeout,
                              _handlerFactory,
                              _sslContext);
