@@ -39,7 +39,6 @@ WIKI = \
 	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
-	HttpCurrentDatabase \
 	HttpCursor \
 	HttpDatabase \
 	HttpEndpoint \
@@ -133,7 +132,6 @@ dist_man_MANS += \
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
-	Doxygen/js/actions/api-current-database.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-database.c \
 	Doxygen/js/actions/api-edges.c \
