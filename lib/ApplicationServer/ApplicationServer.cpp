@@ -1098,7 +1098,7 @@ void ApplicationServer::extractPrivileges() {
   else {
     int gidNumber = TRI_Int32String(_gid.c_str());
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
 
 #ifdef TRI_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);

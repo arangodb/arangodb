@@ -226,7 +226,11 @@ void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t*
 void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key) {
   uint64_t hash;
   uint64_t i;
-
+  
+  if (array->_nrUsed == 0) {
+    return NULL;
+  }
+  
   // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
@@ -258,8 +262,10 @@ void* TRI_FindByKeyAssociativeArray (TRI_associative_array_t* array, void* key) 
 
   element = TRI_LookupByKeyAssociativeArray(array, key);
 
-  if (! array->isEmptyElement(array, element)) {
-    return element;
+  if (element != NULL) {
+    if (! array->isEmptyElement(array, element)) {
+      return element;
+    }
   }
 
   return NULL;
@@ -304,8 +310,10 @@ void* TRI_FindByElementAssociativeArray (TRI_associative_array_t* array, void* e
 
   element2 = TRI_LookupByElementAssociativeArray(array, element);
 
-  if (! array->isEmptyElement(array, element2)) {
-    return element2;
+  if (element2 != NULL) {
+    if (! array->isEmptyElement(array, element2)) {
+      return element2;
+    }
   }
 
   return NULL;
@@ -771,6 +779,10 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
                                          void const* key) {
   uint64_t hash;
   uint64_t i;
+
+  if (array->_nrUsed == 0) {
+    return NULL;
+  }
 
   // compute the hash
   hash = array->hashKey(array, key);

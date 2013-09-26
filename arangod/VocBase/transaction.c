@@ -1813,7 +1813,7 @@ int TRI_CreateMarkerBeginTransaction (TRI_transaction_t* trx,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_BEGIN_TRANSACTION, sizeof(TRI_doc_begin_transaction_marker_t));
+  TRI_InitMarker((char*) marker, TRI_DOC_MARKER_BEGIN_TRANSACTION, sizeof(TRI_doc_begin_transaction_marker_t));
   marker->_tid = trx->_id;
   marker->_numCollections = numCollections;
 
@@ -1837,7 +1837,7 @@ int TRI_CreateMarkerCommitTransaction (TRI_transaction_t* trx,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_COMMIT_TRANSACTION, sizeof(TRI_doc_commit_transaction_marker_t));
+  TRI_InitMarker((char*) marker, TRI_DOC_MARKER_COMMIT_TRANSACTION, sizeof(TRI_doc_commit_transaction_marker_t));
   marker->_tid = trx->_id;
 
   *result = marker;
@@ -1860,7 +1860,7 @@ int TRI_CreateMarkerAbortTransaction (TRI_transaction_t* trx,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_ABORT_TRANSACTION, sizeof(TRI_doc_abort_transaction_marker_t));
+  TRI_InitMarker((char*) marker, TRI_DOC_MARKER_ABORT_TRANSACTION, sizeof(TRI_doc_abort_transaction_marker_t));
   marker->_tid = trx->_id;
 
   *result = marker;
@@ -1883,7 +1883,7 @@ int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t* trx,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_PREPARE_TRANSACTION, sizeof(TRI_doc_prepare_transaction_marker_t));
+  TRI_InitMarker((char*) marker, TRI_DOC_MARKER_PREPARE_TRANSACTION, sizeof(TRI_doc_prepare_transaction_marker_t));
   marker->_tid = trx->_id;
 
   *result = marker;

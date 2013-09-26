@@ -400,7 +400,7 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
       if (data->_increment == 0 || data->_increment >= AUTOINCREMENT_MAX_INCREMENT) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 
-        return TRI_ERROR_BAD_PARAMETER;
+        return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
       }
     }
 
@@ -410,7 +410,7 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
       if (data->_offset >= AUTOINCREMENT_MAX_OFFSET) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 
-        return TRI_ERROR_BAD_PARAMETER;
+        return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
       }
     }
   }
@@ -708,7 +708,7 @@ int TRI_CreateKeyGenerator (const TRI_json_t* const parameters,
   generator = CreateGenerator(options);
 
   if (generator == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
   }
 
   res = generator->init(generator, options);

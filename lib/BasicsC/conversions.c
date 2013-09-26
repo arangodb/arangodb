@@ -661,7 +661,7 @@ size_t TRI_StringUInt64InPlace (uint64_t attr, char* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_StringInt8 (int8_t attr) {
-  char buffer[4];
+  char buffer[5];
   size_t len;
 
   len = TRI_StringInt8InPlace(attr, (char*) &buffer);
@@ -674,7 +674,7 @@ char* TRI_StringInt8 (int8_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_StringUInt8 (uint8_t attr) {
-  char buffer[3];
+  char buffer[4];
   size_t len;
 
   len = TRI_StringUInt8InPlace(attr, (char*) &buffer);
@@ -739,7 +739,7 @@ char* TRI_StringUInt32 (uint32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_StringInt64 (int64_t attr) {
-  char buffer[21];
+  char buffer[22];
   size_t len;
 
   len = TRI_StringInt64InPlace(attr, (char*) &buffer);

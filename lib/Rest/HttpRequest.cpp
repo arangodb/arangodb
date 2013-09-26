@@ -73,7 +73,8 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0) {
+    _requestContext(0),
+    _isRequestContextOwner(false) {
 
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
@@ -108,7 +109,8 @@ HttpRequest::HttpRequest ()
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0) {
+    _requestContext(0),
+    _isRequestContextOwner(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -897,12 +899,6 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         }
         else {
           start = end;
-        }
-
-        // skip \r
-        if (keyBegin < valueEnd && keyEnd[-1] == '\r') {
-          --keyEnd;
-          *keyEnd = '\0';
         }
 
         // check the key

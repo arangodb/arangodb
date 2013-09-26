@@ -1226,6 +1226,8 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   }
 
   if (shaper->_memoryZone->_failed) {
+    TRI_FreeJson(shaper->_memoryZone, array);
+
     return NULL;
   }
 
@@ -1306,6 +1308,8 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   }
 
   if (shaper->_memoryZone->_failed) {
+    TRI_FreeJson(shaper->_memoryZone, list);
+
     return NULL;
   }
 
@@ -1371,6 +1375,8 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   }
 
   if (shaper->_memoryZone->_failed) {
+    TRI_FreeJson(shaper->_memoryZone, list);
+
     return NULL;
   }
 

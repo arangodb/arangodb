@@ -38,6 +38,21 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace std;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the queue
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+  
+const string RestVersionHandler::QUEUE_NAME           = "STANDARD";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -51,13 +66,8 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler (HttpRequest* request, 
-                                        version_options_t const* data)
-  : RestBaseHandler(request),
-    _name(data->_name),
-    _version(data->_version),
-    _isDirect(data->_isDirect),
-    _queue(data->_queue) {
+RestVersionHandler::RestVersionHandler (HttpRequest* request)  
+  : RestBaseHandler(request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +88,7 @@ RestVersionHandler::RestVersionHandler (HttpRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestVersionHandler::isDirect () {
-  return _isDirect;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +96,7 @@ bool RestVersionHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& RestVersionHandler::queue () const {
-  return _queue;
+  return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,10 +110,10 @@ HttpHandler::status_e RestVersionHandler::execute () {
 
   TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
 
-  TRI_InitStringJson(&server, TRI_DuplicateString(_name.c_str()));
+  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
 
-  TRI_InitStringJson(&version, TRI_DuplicateString(_version.c_str()));
+  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
   bool found;

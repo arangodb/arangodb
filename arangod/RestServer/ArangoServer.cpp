@@ -274,6 +274,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _jobManager(0),
+#ifdef TRI_ENABLE_MRUBY
+    _applicationMR(0),
+#endif
+    _applicationV8(0),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _dispatcherThreads(8),
@@ -309,7 +313,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     LOG_FATAL_AND_EXIT("could not create server instance");
   }
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,6 +322,14 @@ ArangoServer::~ArangoServer () {
   if (_jobManager != 0) {
     delete _jobManager;
   }
+
+  if (_server != 0) {
+    TRI_FreeServer(_server);
+  }
+  
+  TRI_ShutdownServer();
+
+  Nonce::destroy();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,6 +353,10 @@ void ArangoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
+  if (_applicationServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
   _applicationServer->setSystemConfigFile("arangod.conf");
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
@@ -352,6 +368,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
+  if (_applicationScheduler == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationScheduler->allowMultiScheduler(true);
 
   _applicationServer->addFeature(_applicationScheduler);
@@ -361,6 +380,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
+  if (_applicationDispatcher == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
@@ -368,6 +390,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationV8 = new ApplicationV8(_server);
+  if (_applicationV8 == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -377,6 +402,9 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_ENABLE_MRUBY
 
   _applicationMR = new ApplicationMR(_server);
+  if (_applicationMR == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationMR);
 
 #else
@@ -397,10 +425,12 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  _applicationServer->addFeature(_applicationAdminServer);
+  if (_applicationAdminServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
 
+  _applicationServer->addFeature(_applicationAdminServer);
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("arango", TRI_VERSION);
 
   // .............................................................................
   // define server options
@@ -518,6 +548,10 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
+  if (_applicationEndpointServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -1264,11 +1298,7 @@ void ArangoServer::closeDatabases () {
   TRI_CleanupActions();
 
   TRI_StopServer(_server);
-  TRI_FreeServer(_server);
 
-  TRI_ShutdownServer();
-
-  Nonce::destroy();
 
   LOGGER_INFO("ArangoDB has been shut down");
 }
