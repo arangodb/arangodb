@@ -103,14 +103,17 @@ DispatcherQueue::~DispatcherQueue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::addJob (Job* job) {
+  assert(job != 0);
+
   CONDITION_LOCKER(guard, _accessQueue);
+  
+  if (_readyJobs.size() >= _maxSize) {
+    // queue is full
+    return false;
+  }
 
   // add the job to the list of ready jobs
   _readyJobs.push_back(job);
-
-  if (_readyJobs.size() > _maxSize) {
-    return false;
-  }
 
   // wake up the _dispatcher queue threads
   if (0 < _nrWaiting) {
