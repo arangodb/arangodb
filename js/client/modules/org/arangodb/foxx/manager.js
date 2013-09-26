@@ -388,17 +388,29 @@ function updateFishbowlFromZip (filename) {
 
   try {
     fs.makeDirectoryRecursive(tempPath);
-    fs.unzipFile(filename, tempPath, false, true);
-
     var root = fs.join(tempPath, "foxx-apps-master/applications");
 
+    // remove any previous files in the directory
+    fs.listTree(root).forEach(function (file) {
+      require("internal").print(file);
+      if (file.match(/\.json$/)) {
+        try {
+          fs.remove(fs.join(root, file));
+        }
+        catch (err3) {
+        }
+      }
+    });
+
+    fs.unzipFile(filename, tempPath, false, true);
+
     if (! fs.exists(root)) {
-      throw new Error("Applications diectory is missing in foxx-apps, giving up");
+      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
     }
 
     var m = fs.listTree(root);
     var reSub = /(.*)\.json$/;
-    
+   
     for (i = 0;  i < m.length;  ++i) {
       var f = m[i];
       var match = reSub.exec(f);
