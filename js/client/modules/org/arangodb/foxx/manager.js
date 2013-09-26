@@ -76,7 +76,7 @@ function getFishbowlStorage () {
 function getFishbowlUrl (version) {
   'use strict';
 
-  return "triAGENS/foxx-apps";
+  return "arangodb/foxx-apps";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
