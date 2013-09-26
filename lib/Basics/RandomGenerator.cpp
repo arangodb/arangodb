@@ -386,6 +386,8 @@ namespace RandomHelper {
         int count = 0;
         static int const MAX_COUNT = 20;
 
+        assert(g > 0);
+
         while (r >= g) {
           if (++count >= MAX_COUNT) {
             LOGGER_ERROR("cannot generate small random number after " << count << " tries");

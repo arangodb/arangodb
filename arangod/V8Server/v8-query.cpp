@@ -260,20 +260,12 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
       if (*keyStr == 0) {
         *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert attribute path to UTF8");
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-      else if (pids[i] == 0) {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot convert to attribute path");
-        return TRI_ERROR_BAD_PARAMETER;
       }
       else {
         *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert value to JSON");
-        return TRI_ERROR_BAD_PARAMETER;
       }
-
-      assert(false);
+      return TRI_ERROR_BAD_PARAMETER;
     }
   }
 
@@ -300,12 +292,12 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   for (size_t i = 1; i <= idx->_fields._length; ++i) {
     v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i - 1]);
 
-    if (!conditions->HasOwnProperty(key)) {
+    if (! conditions->HasOwnProperty(key)) {
       break;
     }
     v8::Handle<v8::Value> fieldConditions = conditions->Get(key);
 
-    if (!fieldConditions->IsArray()) {
+    if (! fieldConditions->IsArray()) {
       // wrong data type for field conditions
       break;
     }
@@ -337,7 +329,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
       TRI_json_t* json = TRI_ObjectToJson(value);
 
-      if (! json) {
+      if (json == 0) {
         goto MEM_ERROR;
       }
 
@@ -346,6 +338,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         // equality comparison
 
         if (lastNonEq > 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
@@ -358,6 +351,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         if (lastNonEq > 0 && lastNonEq != i) {
           // if we already had a range condition and a previous field, we cannot continue
           // because the skiplist interface does not support such queries
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
@@ -376,13 +370,16 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         }
         else {
           // wrong operator type
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
         lastNonEq = i;
 
         TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
         if (cloned == 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
@@ -391,6 +388,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         if (numEq) {
           // create equality operator if one is in queue
           TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
           if (clonedParams == 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
             goto MEM_ERROR;
@@ -403,6 +401,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
         // create the operator for the current condition
         current = TRI_CreateIndexOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
+
         if (current == 0) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
           goto MEM_ERROR;
@@ -434,6 +433,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
     assert(lastNonEq == 0);
 
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
     if (clonedParams == 0) {
       goto MEM_ERROR;
     }
@@ -2956,6 +2956,10 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> err;
   TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
+  
+  if (idx == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
 
   if (idx->_type != TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX) {
     trx.finish(res);
@@ -2964,19 +2968,21 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
 
   PQIndexElements* elms = TRI_LookupPriorityQueueIndex(idx, 1);
 
-  if (elms == NULL ) {
+  if (elms == 0) {
     trx.finish(res);
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot execute pqueue query");
   }
 
   if (elms->_numElements == 0) {
     trx.finish(res);
+    TRI_FreeLookupResultPriorityQueueIndex(elms);
     return scope.Close(v8::Undefined());
   }
 
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) col->_collection)->_barrierList);
 
   if (barrier == 0) {
+    TRI_FreeLookupResultPriorityQueueIndex(elms);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -2985,9 +2991,9 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
                                                   (TRI_doc_mptr_t const*) elms->_elements[0]._document,
                                                   barrier);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, elms->_elements);
-
   trx.finish(res);
+  
+  TRI_FreeLookupResultPriorityQueueIndex(elms);
 
   if (result.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);

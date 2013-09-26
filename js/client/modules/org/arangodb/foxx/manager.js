@@ -76,7 +76,7 @@ function getFishbowlStorage () {
 function getFishbowlUrl (version) {
   'use strict';
 
-  return "triAGENS/foxx-apps";
+  return "arangodb/foxx-apps";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,17 +388,29 @@ function updateFishbowlFromZip (filename) {
 
   try {
     fs.makeDirectoryRecursive(tempPath);
-    fs.unzipFile(filename, tempPath, false, true);
-
     var root = fs.join(tempPath, "foxx-apps-master/applications");
 
+    // remove any previous files in the directory
+    fs.listTree(root).forEach(function (file) {
+      require("internal").print(file);
+      if (file.match(/\.json$/)) {
+        try {
+          fs.remove(fs.join(root, file));
+        }
+        catch (err3) {
+        }
+      }
+    });
+
+    fs.unzipFile(filename, tempPath, false, true);
+
     if (! fs.exists(root)) {
-      throw new Error("Applications diectory is missing in foxx-apps, giving up");
+      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
     }
 
     var m = fs.listTree(root);
     var reSub = /(.*)\.json$/;
-    
+   
     for (i = 0;  i < m.length;  ++i) {
       var f = m[i];
       var match = reSub.exec(f);
@@ -690,6 +702,9 @@ exports.run = function (args) {
              res.name,
              res.purged.length); 
     }
+    else if (type === 'config') {
+      exports.config();
+    }
     else if (type === 'list') {
       if (1 < args.length && args[1] === "prefix") {
         exports.list(true);
@@ -952,6 +967,26 @@ exports.purge = function (key) {
   var res = arango.POST("/_admin/foxx/purge", JSON.stringify(req));
 
   return arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns configuration from the server
+////////////////////////////////////////////////////////////////////////////////
+
+exports.config = function () {
+  'use strict';
+
+  var res = arango.GET("/_admin/foxx/config"), name;
+
+  arangosh.checkRequestResult(res);
+
+  arangodb.printf("The following configuration values are effective on the server:\n");
+
+  for (name in res.result) {
+    if (res.result.hasOwnProperty(name)) {
+      arangodb.printf("- %s: %s\n", name, JSON.stringify(res.result[name]));
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1318,6 +1353,7 @@ exports.help = function () {
     "info"         : "displays information about a foxx application",
     "search"       : "searches the local foxx-apps repository",
     "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+    "config"       : "returns configuration information from the server",
     "help"         : "shows this help"
   };
 

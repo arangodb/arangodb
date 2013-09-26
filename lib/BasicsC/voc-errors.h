@@ -184,6 +184,8 @@ extern "C" {
 ///   the system database.
 /// - 1231: @LIT{endpoint not found}
 ///   Will be raised when there is an attempt to delete a non-existing endpoint.
+/// - 1232: @LIT{invalid key generator}
+///   Will be raised when an invalid key generator description is used.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -1265,6 +1267,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND                               (1231)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1232: ERROR_ARANGO_INVALID_KEY_GENERATOR
+///
+/// invalid key generator
+///
+/// Will be raised when an invalid key generator description is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR                            (1232)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

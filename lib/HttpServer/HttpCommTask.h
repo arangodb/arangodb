@@ -90,6 +90,7 @@ namespace triagens {
                       double keepAliveTimeout)
         : Task("HttpCommTask"),
           GeneralCommTask<S, HttpHandlerFactory>(server, socket, info, keepAliveTimeout),
+          _httpVersion(HttpRequest::HTTP_UNKNOWN),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
           _origin(),
           _denyCredentials(false),

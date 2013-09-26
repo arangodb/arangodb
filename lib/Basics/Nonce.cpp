@@ -148,6 +148,8 @@ namespace triagens {
           create(SizeNonces);
         }
 
+        assert(TimestampNonces != 0);
+
         int proofs = 0;
 
         // first count to avoid miscounts if two hashes are equal

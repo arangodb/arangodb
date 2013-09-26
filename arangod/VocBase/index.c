@@ -1265,7 +1265,7 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* prim
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyPriorityQueueIndex(TRI_index_t* idx) {
+void TRI_DestroyPriorityQueueIndex (TRI_index_t* idx) {
   TRI_priorityqueue_index_t* pqIndex;
 
   if (idx == NULL) {
@@ -1285,7 +1285,7 @@ void TRI_DestroyPriorityQueueIndex(TRI_index_t* idx) {
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreePriorityQueueIndex(TRI_index_t* idx) {
+void TRI_FreePriorityQueueIndex (TRI_index_t* idx) {
   if (idx == NULL) {
     return;
   }
@@ -1312,7 +1312,7 @@ void TRI_FreePriorityQueueIndex(TRI_index_t* idx) {
 /// of the queue to be located.
 ///
 /// @warning who ever calls this function is responsible for destroying
-/// PQIndexElement* result (which could be null)
+/// PQIndexElements* result (which could be null)
 ////////////////////////////////////////////////////////////////////////////////
 
 PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t* idx,
@@ -1326,6 +1326,17 @@ PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t* idx,
   pqIndex = (TRI_priorityqueue_index_t*) idx;
   
   return PQIndex_top(pqIndex->_pqIndex, n);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the result of a priority queue lookup
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeLookupResultPriorityQueueIndex (PQIndexElements* pq) {
+  if (pq->_elements != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq->_elements);
+  }
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2068,11 +2079,13 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
 
   // parse the document text
   words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+
   if (words == NULL) {
     return NULL;
   }
 
   wordlist = TRI_CreateWordlistFulltextIndex(words->_buffer, words->_length);
+
   if (wordlist == NULL) {
     TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
     return NULL;
@@ -2719,6 +2732,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
       TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
       return NULL;
     }
+
     fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
   }
 
@@ -2753,6 +2767,12 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
 
     keyValue = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
+    if (keyValue == NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      return NULL;
+    }
 
     // ........................................................................
     // Create the key json object (copy the string)
@@ -2760,6 +2780,13 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
 
     key = TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]);
 
+    if (key == NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      return NULL;
+    }
 
     // ........................................................................
     // Create the list of values and fill it from the values stored in the
@@ -2768,7 +2795,11 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
 
     value = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-    if (keyValue == NULL || key == NULL || value == NULL) {
+    if (value == NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, key);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
       return NULL;
     }

@@ -2245,7 +2245,11 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
         // string is not empty
         ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-        if (ptr == NULL || outLength == 0) {
+        if (ptr == 0 || outLength == 0) {
+          if (ptr != 0) {
+            TRI_Free(yyextra._memoryZone, ptr);
+          }
+
           yyextra._message = "out-of-memory";
           return scope.Close(v8::Undefined());
         }

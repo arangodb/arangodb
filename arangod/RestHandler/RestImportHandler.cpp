@@ -370,6 +370,8 @@ bool RestImportHandler::createFromJson (const string& type) {
       return false;
     }
 
+    assert(errmsg == 0);
+
     if (documents->_type != TRI_JSON_LIST) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
 

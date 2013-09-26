@@ -82,14 +82,7 @@ static bool UnusedDisableAdminInterface;
 ApplicationAdminServer::ApplicationAdminServer ()
   : ApplicationFeature("admin"),
     _allowLogViewer(false),
-    _allowVersion(false),
-    _pathOptions(0),
-    _name(),
-    _version(),
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    _versionDataQueued(0),
-#endif
-    _versionDataDirect(0) {
+    _pathOptions(0) {
   _pathOptions = new PathHandler::Options();
 }
 
@@ -99,16 +92,6 @@ ApplicationAdminServer::ApplicationAdminServer ()
 
 ApplicationAdminServer::~ApplicationAdminServer () {
   delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  if (_versionDataQueued != 0) {
-    delete _versionDataQueued;
-  }
-#endif
-
-  if (_versionDataDirect != 0) {
-    delete _versionDataDirect;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,25 +116,6 @@ void ApplicationAdminServer::allowLogViewer () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows for a version handler using the default version
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowVersion () {
-  _allowVersion = true;
-  _version = TRI_VERSION;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allows for a version handler
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowVersion (string name, string version) {
-  _allowVersion = true;
-  _name = name;
-  _version = version;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the http handlers
 ///
 /// Note that the server does not claim ownership of the factory.
@@ -160,35 +124,7 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, 
                                                string const& prefix,
                                                void* jobManager) {
-#if TRI_ENABLE_MAINTAINER_MODE
-    // this handler does not provide any real benefit. we only use it to compare
-    // the performance of direct vs. the performance of queued execution
-    if (! _versionDataQueued) {
-      _versionDataQueued = new RestVersionHandler::version_options_t;
-      _versionDataQueued->_name = _name;
-      _versionDataQueued->_version = _version;
-      _versionDataQueued->_isDirect = false;
-      _versionDataQueued->_queue = "STANDARD";
-    }
-
-    factory->addHandler(prefix + "/queued-version",
-                        RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
-                        (void*) _versionDataQueued);
-#endif
-
-  if (_allowVersion) {
-    if (! _versionDataDirect) {
-      _versionDataDirect = new RestVersionHandler::version_options_t;
-      _versionDataDirect->_name = _name;
-      _versionDataDirect->_version = _version;
-      _versionDataDirect->_isDirect = true;
-      _versionDataDirect->_queue = "STANDARD";
-    }
-
-    factory->addHandler(prefix + "/version",
-                        RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
-                        (void*) _versionDataDirect);
-  }
+  factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
     
   factory->addHandler(prefix + "/job",
                       RestHandlerCreator<RestJobHandler>::createData<void*>,

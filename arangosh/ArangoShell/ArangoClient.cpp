@@ -99,6 +99,7 @@ ArangoClient::ArangoClient ()
     _usePager(false),
 
     _logFile(""),
+    _log(0),
     _logOptions(false),
 
     _serverOptions(false),

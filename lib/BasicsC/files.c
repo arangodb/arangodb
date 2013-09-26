@@ -1206,8 +1206,18 @@ int TRI_VerifyLockFile (char const* filename) {
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
+
+  if (fd < 0) {
+    return TRI_set_errno(errno);
+  }
+
   n = TRI_READ(fd, buffer, sizeof(buffer));
+
   TRI_CLOSE(fd);
+  
+  if (n < 0) {
+    return TRI_set_errno(errno);
+  }
 
   // file empty or pid too long
   if (n == 0 || n == sizeof(buffer)) {
@@ -1314,11 +1324,17 @@ int TRI_DestroyLockFile (char const* filename) {
   n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
-    return false;
+    // TODO: what happens if the file does not exist?
+    return TRI_ERROR_NO_ERROR;
   }
 
   fd = TRI_OPEN(filename, O_RDWR);
-  // TODO: what happens if the file does not exist?
+
+  if (fd < 0) {
+    // TODO: what happens if the file does not exist?
+    return TRI_ERROR_NO_ERROR;
+  }
+
   res = flock(fd, LOCK_UN);
   TRI_CLOSE(fd);
 

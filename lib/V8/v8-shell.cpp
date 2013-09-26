@@ -199,6 +199,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
+      TRI_CLOSE(fd);
       TRI_V8_EXCEPTION_SYS(scope, "cannot read file");
     }
     else if (n == 0) {
@@ -208,6 +209,8 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 
     TRI_ParseCsvString2(&parser, buffer, n);
   }
+
+  TRI_CLOSE(fd);
 
   return scope.Close(v8::Undefined());
 }
@@ -270,14 +273,22 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
         continue;
       }
 
-      char* error;
+      char* error = 0;
       v8::Handle<v8::Value> object = TRI_FromJsonString(line.c_str(), &error);
 
       if (object->IsUndefined()) {
-        string msg = error;
-        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+        if (error != 0) {
+          string msg = error;
+          TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+          TRI_V8_SYNTAX_ERROR(scope, msg.c_str());
+        }
+        else {
+          TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+        }
+      }
 
-        TRI_V8_SYNTAX_ERROR(scope, msg.c_str());
+      if (error != 0) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
       }
 
       v8::Handle<v8::Number> r = v8::Number::New(row);

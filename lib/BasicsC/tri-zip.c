@@ -284,6 +284,7 @@ int TRI_ZipFile (const char* filename,
     res = TRI_Crc32File(fullfile, &crc);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
       break;
     }
 
@@ -312,6 +313,10 @@ int TRI_ZipFile (const char* filename,
                                 password,
                                 (unsigned long) crc, 
                                 isLarge) != ZIP_OK) {
+      // TODO FIXME
+      res = TRI_ERROR_INTERNAL;
+      TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
+      break;
     }
 
     fin = fopen(fullfile, "rb");

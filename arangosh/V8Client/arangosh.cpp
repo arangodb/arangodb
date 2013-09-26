@@ -1302,6 +1302,8 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     }
 
     if (*input == '\0') {
+      // input string is empty, but we must still free it
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       continue;
     }
 
