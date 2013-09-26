@@ -149,16 +149,17 @@ bool Dispatcher::addJob (Job* job) {
   }
 
   // try to find a suitable queue
-  DispatcherQueue* queue = lookupQueue(job->queue());
+  const string& name = job->queue();
+  DispatcherQueue* queue = lookupQueue(name);
 
   if (queue == 0) {
-    LOGGER_WARNING("unknown queue '" << job->queue() << "'");
+    LOGGER_WARNING("unknown queue '" << name << "'");
     return false;
   }
 
   // log success, but do this BEFORE the real add, because the addJob might execute
   // and delete the job before we have a chance to log something
-  LOGGER_TRACE("added job " << job << " to queue " << job->queue());
+  LOGGER_TRACE("added job " << job << " to queue " << name);
 
   // add the job to the list of ready jobs
   if (! queue->addJob(job)) {
