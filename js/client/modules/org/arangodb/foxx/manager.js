@@ -392,7 +392,6 @@ function updateFishbowlFromZip (filename) {
 
     // remove any previous files in the directory
     fs.listTree(root).forEach(function (file) {
-      require("internal").print(file);
       if (file.match(/\.json$/)) {
         try {
           fs.remove(fs.join(root, file));
