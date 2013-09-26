@@ -30,6 +30,7 @@
 #include "BasicsC/common.h"
 
 #include "Admin/RestAdminLogHandler.h"
+#include "Admin/RestJobHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -156,7 +157,9 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 /// Note that the server does not claim ownership of the factory.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, string const& prefix) {
+void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, 
+                                               string const& prefix,
+                                               void* jobManager) {
 #if TRI_ENABLE_MAINTAINER_MODE
     // this handler does not provide any real benefit. we only use it to compare
     // the performance of direct vs. the performance of queued execution
@@ -186,6 +189,10 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, stri
                         RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
                         (void*) _versionDataDirect);
   }
+    
+  factory->addHandler(prefix + "/job",
+                      RestHandlerCreator<RestJobHandler>::createData<void*>,
+                      jobManager);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

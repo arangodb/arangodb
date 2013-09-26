@@ -46,6 +46,7 @@ namespace triagens {
   namespace rest {
     class ApplicationDispatcher;
     class ApplicationScheduler;
+    class AsyncJobManager;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   class ApplicationEndpointServer
@@ -87,6 +88,7 @@ namespace triagens {
         ApplicationEndpointServer (ApplicationServer*,
                                    ApplicationScheduler*,
                                    ApplicationDispatcher*,
+                                   AsyncJobManager*,
                                    std::string const&,
                                    HttpHandlerFactory::context_fptr,
                                    void*);
@@ -287,6 +289,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ApplicationDispatcher* _applicationDispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief application job manager
+////////////////////////////////////////////////////////////////////////////////
+
+        AsyncJobManager* _jobManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authentication realm
