@@ -12,11 +12,37 @@ ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If
 Foxx is Sinatra, @ref UserManualActions are the corresponding `Rack`. 
 They provide all the HTTP goodness.
 
-If you just want to install an existiting application, please use the 
+If you just want to install an existing application, please use the 
 @ref UserManualFoxxManager. If you want to create your own application, 
 please continue.
 
 So let's get started, shall we?
+
+Overview
+--------
+
+The typical request to a Foxx application will work as follows (only conceptually,
+a lot of the steps are cached in reality):
+
+1. The request is routed to a Foxx application depending on the mount point
+2. The according controller of this application is determined (via something called the manifest file)
+3. The request is then routed to a specific handler in this controller
+
+The handler will now parse the request. This includes determining all parameters
+from the body (which is typically JSON encoded) to the path parameters of the URL.
+It is then up to you to handle this request and generate a response. In this process
+you will probably access the database. This is done via the **Repository**: This is an
+entity that is responsible for a collection and specifically:
+
+1. Creating new entries in this collection
+2. Modify or delete existing entries in this collection
+3. Search for entries in this collection
+
+To represent an entry in this collection it will use a **Model**, which is a wrapper around
+the raw data from the database. Here you can implement helper functions or simple access
+methods.
+
+Now let's get into the details.
 
 Creating the application files
 ------------------------------
