@@ -747,7 +747,7 @@ int ArangoServer::startupServer () {
   // create the dispatcher
   // .............................................................................
 
-  _applicationDispatcher->buildStandardQueue(_dispatcherThreads, _dispatcherQueueSize);
+  _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
 
   _applicationServer->prepare2();
   
