@@ -26,7 +26,7 @@ ArangoDB directly. ArangoDB serves this application, you do not need a
 separate application server.
 
 So given you want to build an application that sends a plain-text response 
-"Worked!" for all requests to `/dev/my_app/meadow`.  How would you achieve that 
+"Hello YourName!" for all requests to `/dev/my_app/hello/YourName`.  How would you achieve that 
 with Foxx?
 
 First, create a directory `apps` somewhere in your filesystem. Let's assume 
@@ -41,9 +41,9 @@ save the following content in a file named `app.js` there:
         var Foxx = require("org/arangodb/foxx"),
             controller = new Foxx.Controller(applicationContext)
     
-        controller.get("/meadow", function(req, res) {
+        controller.get("/hello/:name", function(req, res) {
             res.set("Content-Type", "text/plain");
-            res.body = "Worked!"
+            res.body = "Hello " + req.params("name");
         }); 
     
     }());
@@ -91,8 +91,8 @@ Replace `/home/user/apps` with the apps path that you initially created. This
 is the path that you created the `my_app` directory in. Replace `/tmp/fancy_db` 
 with the directory your database is located in.
 
-Now point your browser to `http://localhost:8529/dev/my_app/meadow` and you should 
-see "Worked!". After this short overview, let's get into the details.
+Now point your browser to `http://localhost:8529/dev/my_app/hello/YourName` and you should 
+see "Hello YourName". After this short overview, let's get into the details.
 
 
 Handling Requests{#UserManualFoxxHandlingRequests}
