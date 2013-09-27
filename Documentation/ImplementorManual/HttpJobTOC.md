@@ -6,6 +6,7 @@ TOC {#HttpJobTOC}
     - @ref HttpJobBlocking
     - @ref HttpJobFireForget
     - @ref HttpJobAsync
+    - @ref HttpJobOrder
   - @ref HttpJobHttp
     - @ref HttpJobPut "PUT /_api/job"
     - @ref HttpJobDelete "DELETE /_api/job"

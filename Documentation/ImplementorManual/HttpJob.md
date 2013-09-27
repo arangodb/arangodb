@@ -56,16 +56,15 @@ Async Execution and later Result Retrieval {#HttpJobAsync}
 By adding the HTTP header `x-arango-async: store` to a request, clients can instruct
 the ArangoDB server to execute the operation asynchronously as @ref HttpJobFireForget
 "above", but also store the operation result in memory for a later retrieval. The
-queue and the results are kept in memory, so queued requests and results might be
-lost in case of a crash.
-
-For managing the results of requests marked with `x-arango-async: store`, ArangoDB 
-provides an HTTP API at `/_api/job`, which is described in the following parts.
+server will return a job id in the HTTP response header `x-arango-async-id`. The client
+can use this id in conjunction with the HTTP API at `/_api/job`, which is described in
+detail in this manual.
 
 Clients can ask the ArangoDB server via the async jobs API which results are
 ready for retrieval, and which are not. Clients can also use the async jobs API to
-retrieve the original results of an already executed async job. The API will return
-the job result as if the job was executed normally.
+retrieve the original results of an already executed async job by passing it the
+originally returned job id. The server will then return the job result as if the job was 
+executed normally.
 
 ArangoDB will keep all results of jobs initiated with the `x-arango-async: store` 
 header. Results are removed from the server only if a client explicitly asks the
@@ -78,6 +77,17 @@ because ArangoDB does not artifically limit the number of not-yet-fetched result
 It is thus a client responsibility to store only as many results as needed and to fetch 
 available results as soon as possible, or at least to clean up not fetched results
 from time to time.
+
+The job queue and the results are kept in memory only on the server, so they might be
+lost in case of a crash.
+
+Async Execution and Authentication {#HttpJobOrder}
+==================================================
+
+If a request requires authentication, the authentication procedure is run before 
+queueing. The request will only be queued if it valid credentials and the authentication 
+succeeds. If the request does not contain valid credentials, it will not be queued but
+rejected instantly in the same way as a "regular", non-queued request.
 
 Managing Async Results via HTTP {#HttpJobHttp}
 ==============================================

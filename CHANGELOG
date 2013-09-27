@@ -8,10 +8,12 @@ v1.4
 * automatic detection of content-type / mime-type for Foxx assets based on filenames,
   added possibility to override auto detection
 
+* added endpoint management API at `/_api/endpoint`
+
 * changed HTTP return code of PUT `/_api/cursor` from 400 to 404 in case a
   non-existing cursor is referred to
 
-* added support for asynchronous requests
+* issue #360: added support for asynchronous requests
 
   Incoming HTTP requests with the headers `x-arango-async: true` or 
   `x-arango-async: store` will be answered by the server instantly with a generic 
@@ -1795,7 +1797,7 @@ v1.0.beta1 (2012-07-29)
 * INCOMPATIBLE CHANGE: removed startup option "--server.admin-port". 
   The new endpoints feature (see --server.endpoint) allows opening multiple endpoints 
   anyway, and the distinction between admin and "other" endpoints can be emulated 
-  later using privileges
+  later using privileges.
 
 * INCOMPATIBLE CHANGE: removed startup options "--port", "--server.port", and 
   "--server.http-port" for arangod. 
