@@ -46,6 +46,10 @@ tasks from the queue might be lost in case of a crash.
 Clients should thus not send the extra header when they have strict durability 
 requirements or if they rely on result of the sent operation for further actions.
 
+The maximum number of queued tasks is determined by the startup option 
+`-scheduler.maximal-queue-size`. If more than this number of tasks are already queued,
+the server will reject the request with an HTTP 500 error.
+
 Async Execution and later Result Retrieval {#HttpJobAsync}
 ----------------------------------------------------------
 
@@ -63,8 +67,14 @@ the job result as if the job was executed normally.
 ArangoDB will keep all results of jobs initiated with the `x-arango-async: store` 
 header. Results are removed from the server only if a client explicitly asks the
 server for a specific result.
+
 The async jobs API also provides methods for garbage collection that clients can
-use to get rid of "old" not fetched results.
+use to get rid of "old" not fetched results. Clients should call this method periodically
+because ArangoDB does not artifically limit the number of not-yet-fetched results.
+
+It is thus a client responsibility to store only as many results as needed and to fetch 
+available results as soon as possible, or at least to clean up not fetched results
+from time to time.
 
 Managing Async Results via HTTP {#HttpJobHttp}
 ==============================================

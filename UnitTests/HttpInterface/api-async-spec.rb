@@ -17,23 +17,26 @@ describe ArangoDB do
       doc = ArangoDB.log_get("#{prefix}-get-status", cmd, :headers => { "X-Arango-Async" => "false" })
 
       doc.code.should eq(200)
+      doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should_not be_nil
     end
 
-    it "checks whether GET returns status 202" do
+    it "checks whether async=true returns status 202" do
       cmd = "/_api/version"
       doc = ArangoDB.log_get("#{prefix}-get-status", cmd, :headers => { "X-Arango-Async" => "true" })
 
       doc.code.should eq(202)
+      doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
     
-    it "checks whether GET returns status 202" do
+    it "checks whether async=1 returns status 202" do
       cmd = "/_api/version"
       doc = ArangoDB.log_get("#{prefix}-get-status", cmd, :headers => { "X-Arango-Async" => "1" })
 
-      doc.code.should eq(202)
-      doc.response.body.should eq ""
+      doc.code.should eq(200)
+      doc.headers.should_not have_key("x-arango-async-id")
+      doc.response.body.should_not be_nil
     end
     
     it "checks whether HEAD returns status 202" do
@@ -41,6 +44,7 @@ describe ArangoDB do
       doc = ArangoDB.log_head("#{prefix}-head-status", cmd, :headers => { "X-Arango-Async" => "true" })
 
       doc.code.should eq(202)
+      doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should be_nil
     end
     
@@ -49,6 +53,7 @@ describe ArangoDB do
       doc = ArangoDB.log_post("#{prefix}-head-status", cmd, :body => "", :headers => { "X-Arango-Async" => "true" })
 
       doc.code.should eq(202)
+      doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
     
@@ -57,6 +62,7 @@ describe ArangoDB do
       doc = ArangoDB.log_get("#{prefix}-get-non-existing", cmd, :headers => { "X-Arango-Async" => "true" })
 
       doc.code.should eq(202)
+      doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
     
@@ -66,6 +72,7 @@ describe ArangoDB do
       doc = ArangoDB.log_post("#{prefix}-post-failing", cmd, :body => body, :headers => { "X-Arango-Async" => "true" })
 
       doc.code.should eq(202)
+      doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
     
@@ -76,8 +83,19 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-get-queue", cmd, :headers => { "X-Arango-Async" => "true" })
 
         doc.code.should eq(202)
+        doc.headers.should_not have_key("x-arango-async-id")
         doc.response.body.should eq ""
       end
+    end
+
+    it "checks whether setting x-arango-async to 'store' returns a job id" do
+      cmd = "/_api/version"
+      doc = ArangoDB.log_get("#{prefix}-get-check-id", cmd, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      doc.headers["x-arango-async-id"].should match(/^\d+$/)
+      doc.response.body.should eq ""
     end
 
   end
