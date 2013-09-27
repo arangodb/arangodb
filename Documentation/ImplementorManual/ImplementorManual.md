@@ -20,6 +20,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{HttpBatch}
 @CHAPTER_REF{HttpSystem}
 @CHAPTER_REF{HttpUser}
+@CHAPTER_REF{HttpJob}
 @CHAPTER_REF{HttpEndpoint}
 @CHAPTER_REF{HttpMisc}
 @CHAPTER_REF{Communication}

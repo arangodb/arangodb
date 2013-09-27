@@ -44,22 +44,24 @@ import sys, os, json, string
 files = { 
   "js/actions/api-aqlfunction.js" : "aqlfunction",
   "js/actions/api-collection.js" : "collection",
+  "js/actions/api-cursor.js" : "cursor",
   "js/actions/api-database.js" : "database",
   "arangod/RestHandler/RestDocumentHandler.cpp" : "document",
   "arangod/RestHandler/RestEdgeHandler.cpp" : "edge",
   "js/actions/api-edges.js" : "edges",
-  "js/actions/api-graph.js" : "graph",
-  "js/actions/api-user.js" : "user",
-  "js/actions/api-system.js" : "system",
-  "js/actions/api-cursor.js" : "cursor",
+  "js/actions/api-endpoint.js" : "endpoint",
   "js/actions/api-explain.js" : "explain",
+  "js/actions/api-graph.js" : "graph",
   "js/actions/api-index.js" : "index",
+  "lib/Admin/RestJobHandler.cpp" : "job",
+  "js/actions/api-query.js" : "query",
   "arangod/RestHandler/RestReplicationHandler.cpp" : "replication",
   "js/actions/api-simple.js" : "simple",
-  "js/actions/api-query.js" : "query",
   "js/actions/api-structure.js" : "structure",
+  "js/actions/api-system.js" : "system",
   "js/actions/api-transaction.js" : "transaction",
-  "js/actions/api-traversal.js" : "traversal"
+  "js/actions/api-traversal.js" : "traversal",
+  "js/actions/api-user.js" : "user"
 }
 
 if len(sys.argv) < 3:

@@ -31,6 +31,10 @@
             "description": "edges API"
         }, 
         {
+            "path": "api-docs/endpoint.{format}", 
+            "description": "endpoint API"
+        }, 
+        {
             "path": "api-docs/explain.{format}", 
             "description": "explain API"
         }, 
@@ -41,6 +45,10 @@
         {
             "path": "api-docs/index.{format}", 
             "description": "index API"
+        }, 
+        {
+            "path": "api-docs/job.{format}", 
+            "description": "job API"
         }, 
         {
             "path": "api-docs/query.{format}", 

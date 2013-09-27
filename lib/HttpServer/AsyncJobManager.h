@@ -234,7 +234,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the result of an async job
+/// @brief get the result of an async job, and remove it from the list
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpResponse* getJobResult (AsyncJobResult::IdType jobId,
@@ -257,7 +257,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete the result of an async job
+/// @brief delete the result of an async job, without returning it
 ////////////////////////////////////////////////////////////////////////////////
 
         bool deleteJobResult (AsyncJobResult::IdType jobId) {
@@ -270,6 +270,7 @@ namespace triagens {
           }
 
           HttpResponse* response = (*it).second._response;
+
           if (response != 0) {
             delete response;
           }
@@ -280,32 +281,52 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clean up "old" jobs from the list of jobs
+/// @brief delete all results
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t cleanup () { 
-          size_t n = 0;
-
+        void deleteJobResults () {
           WRITE_LOCKER(_lock);
+
           JobList::iterator it = _jobs.begin();
 
-          // iterate the list. the list is sorted by id
           while (it != _jobs.end()) {
-            if ((*it).second._status == AsyncJobResult::JOB_DONE) {
-              if ((*it).second._response != 0) {
-                // remove the response
-                delete (*it).second._response;
-              }
-              
-              // remove the job from the list
-              _jobs.erase(it);
-              ++n;
+            HttpResponse* response = (*it).second._response;
+
+            if (response != 0) {
+              delete response;
             }
 
             ++it;
           }
 
-          return n;
+          _jobs.clear();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete expired results
+////////////////////////////////////////////////////////////////////////////////
+
+        void deleteExpiredJobResults (double stamp) {
+          WRITE_LOCKER(_lock);
+
+          JobList::iterator it = _jobs.begin();
+
+          while (it != _jobs.end()) {
+            AsyncJobResult ajr = (*it).second;
+
+            if (ajr._stamp < stamp) {
+              HttpResponse* response = ajr._response;
+
+              if (response != 0) {
+                delete response;
+              }
+
+              _jobs.erase(it++);
+            }
+            else {
+              ++it;
+            }
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,6 +364,7 @@ namespace triagens {
 
               if ((*it).second._status == status) {
                 jobs.push_back(jobId);
+
                 if (++n >= maxCount) {
                   break;
                 }
@@ -372,6 +394,7 @@ namespace triagens {
           AsyncJobResult ajr(*jobId, 0, TRI_microtime(), AsyncJobResult::JOB_PENDING);
 
           WRITE_LOCKER(_lock);
+
           _jobs[*jobId] = ajr;
         }
 
@@ -395,11 +418,30 @@ namespace triagens {
           WRITE_LOCKER(_lock);
           JobList::iterator it = _jobs.find(jobId); 
           
-          if (it != _jobs.end()) {
+          if (it == _jobs.end()) {
+            // job is already deleted.
+            // do nothing here. the dispatcher will throw away the handler, which
+            // will also dispose the response
+          }
+          else {
             (*it).second._response = handler->stealResponse();
             (*it).second._status = AsyncJobResult::JOB_DONE;
+            (*it).second._stamp = TRI_microtime();
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       private:
 

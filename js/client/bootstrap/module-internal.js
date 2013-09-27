@@ -203,7 +203,7 @@
       if (headers !== undefined && headers !== "") {
         for (i in headers) {
           if (headers.hasOwnProperty(i)) {
-            curl += "--header \'" + i + ":" + headers[i] + "\' ";
+            curl += "--header \'" + i + ": " + headers[i] + "\' ";
           }
         }
       }

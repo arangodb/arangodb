@@ -1,0 +1,100 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned when the list of endpoints can be determined successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the action is not carried out in the system database. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 405</em> if an unsupported HTTP method is used. ",
+                            "code": "405"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns a list of all configured endpoints the server is listening on. For each endpoint, the list of allowed databases is returned too if set. <br><br>The result is a JSON hash which has the endpoints as keys, and the list of mapped database names as values for each endpoint. <br><br>If a list of mapped databases is empty, it means that all databases can be accessed via the endpoint. If a list of mapped databases contains more than one database name, this means that any of the databases might be accessed via the endpoint, and the first database in the list will be treated as the default database for the endpoint. The default database will be used  when an incoming request does not specify a database name in the request  explicitly. <br><br>Note: retrieving the list of all endpoints is allowed in the system database only. Calling this action in any other database will make the server return an error. <br><br>",
+                    "summary": "returns a list of all endpoints",
+                    "httpMethod": "GET",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/endpoint\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ \n  { \n    \"endpoint\" : \"tcp://127.0.0.1:37796\", \n    \"databases\" : [ ] \n  }, \n  { \n    \"endpoint\" : \"tcp://127.0.0.1:8532\", \n    \"databases\" : [ \n      \"mydb1\", \n      \"mydb2\" \n    ] \n  } \n]\n\n</code></pre><br>",
+                    "nickname": "returnsAListOfAllEndpoints"
+                }
+            ],
+            "path": "/_api/endpoint"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned when the endpoint was added or changed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the request is malformed or if the action is not carried out  in the system database. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 405</em> if an unsupported HTTP method is used. ",
+                            "code": "405"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "description",
+                            "description": "A JSON object describing the endpoint. "
+                        }
+                    ],
+                    "notes": "The request body must be JSON hash with the following attributes: <br><br>- <em>endpoint</em>: the endpoint specification, e.g. <em>tcp://127.0.0.1:8530</em><br><br>- <em>databases</em>: a list of database names the endpoint is responsible for.<br><br>If <em>databases</em> is an empty list, all databases present in the server will become accessible via the endpoint, with the <em>_system</em> database being the default database.  <br><br>If <em>databases</em> is non-empty, only the specified databases will become  available via the endpoint. The first database name in the <em>databases</em>  list will also become the default database for the endpoint. The default  database will always be used if a request coming in on the endpoint does  not specify the database name explicitly. <br><br>Note: adding or reconfiguring endpoints is allowed in the system database  only. Calling this action in any other database will make the server  return an error. <br><br>Adding SSL endpoints at runtime is only supported if the server was started  with SSL properly configured (e.g. <em>--server.keyfile</em> must have been set). <br><br>",
+                    "summary": "adds a new endpoint or reconfigures an existing endpoint",
+                    "httpMethod": "POST",
+                    "examples": "Adding an endpoint <em>tcp://127.0.0.1:8532</em> with two mapped databases  (<em>mydb1</em> and <em>mydb2</em>). <em>mydb1</em> will become the default database for the endpoint. <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/endpoint\n{\"endpoint\":\"tcp://127.0.0.1:8532\",\"databases\":[\"mydb1\",\"mydb2\"]}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>Adding an endpoint <em>tcp://127.0.0.1:8533</em> with no database names specified. This will allow access to all databases on this endpoint. The <em>_system</em> database will become the default database for requests that come in on this endpoint and do not specify the database name explicitly. <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/endpoint\n{\"endpoint\":\"tcp://127.0.0.1:8533\",\"databases\":[]}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>Adding an endpoint <em>tcp://127.0.0.1:8533</em> without any databases first, and then updating the databases for the endpoint to <em>testdb1</em>, <em>testdb2</em>, and <em>testdb3</em>. <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/endpoint\n{\"endpoint\":\"tcp://127.0.0.1:8533\",\"databases\":[]}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\nunix> curl -X POST --data @- --dump - http://localhost:8529/_api/endpoint\n{\"endpoint\":\"tcp://127.0.0.1:8533\",\"databases\":[],\"database\":[\"testdb1\",\"testdb2\",\"testdb3\"]}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "addsANewEndpointOrReconfiguresAnExistingEndpoint"
+                }
+            ],
+            "path": "/_api/endpoint"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned when the endpoint was deleted and disconnected successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the request is malformed or if the action is not carried out  in the system database. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the endpoint is not found. ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 405</em> if an unsupported HTTP method is used. ",
+                            "code": "405"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "This operation deletes an existing endpoint from the list of all endpoints, and makes the server stop listening on the endpoint. <br><br>Note: deleting and disconnecting an endpoint is allowed in the system  database only. Calling this action in any other database will make the server  return an error. <br><br>Futhermore, the last remaining endpoint cannot be deleted as this would make the server kaputt. <br><br>",
+                    "summary": "deletes and disconnects an existing endpoint",
+                    "httpMethod": "DELETE",
+                    "examples": "Deleting an existing endpoint <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/endpoint/tcp%3A%2F%2F127.0.0.1%3A8532\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>Deleting a non-existing endpoint <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/endpoint/tcp%3A%2F%2F127.0.0.1%3A8532\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 404, \n  \"errorNum\" : 1231, \n  \"errorMessage\" : \"endpoint not found\" \n}\n\n</code></pre><br>",
+                    "nickname": "deletesAndDisconnectsAnExistingEndpoint"
+                }
+            ],
+            "path": "/_api/endpoint/{endpoint}"
+        }
+    ]
+}
