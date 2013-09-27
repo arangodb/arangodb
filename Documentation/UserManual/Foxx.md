@@ -26,7 +26,7 @@ ArangoDB directly. ArangoDB serves this application, you do not need a
 separate application server.
 
 So given you want to build an application that sends a plain-text response 
-"Worked!" for all requests to `/dev/my_app/meadow`.  How would you achieve that 
+"Hello YourName!" for all requests to `/dev/my_app/hello/YourName`.  How would you achieve that 
 with Foxx?
 
 First, create a directory `apps` somewhere in your filesystem. Let's assume 
@@ -41,9 +41,9 @@ save the following content in a file named `app.js` there:
         var Foxx = require("org/arangodb/foxx"),
             controller = new Foxx.Controller(applicationContext)
     
-        controller.get("/meadow", function(req, res) {
+        controller.get("/hello/:name", function(req, res) {
             res.set("Content-Type", "text/plain");
-            res.body = "Worked!"
+            res.body = "Hello " + req.params("name");
         }); 
     
     }());
@@ -91,9 +91,17 @@ Replace `/home/user/apps` with the apps path that you initially created. This
 is the path that you created the `my_app` directory in. Replace `/tmp/fancy_db` 
 with the directory your database is located in.
 
-Now point your browser to `http://localhost:8529/dev/my_app/meadow` and you should 
-see "Worked!". After this short overview, let's get into the details.
+Now point your browser to `http://localhost:8529/dev/my_app/hello/YourName` and you should 
+see "Hello YourName".  
 
+After this short overview, let's get into the details. There are several example
+apps available on Github. You can install them via Foxx manager (covered in the
+chapter on Foxx manager) or simply clone them from `https://github.com/arangodb/`.
+
+Start with "hello-foxx" (`https://github.com/arangodb/hello-foxx`) as it contains
+several basic usage examples. "aye-aye" and "fugu" are more advanced apps showing how
+to use Backbone, Underscore and Jquery together with Foxx. foxx-authentication shows 
+how to register users, login and check permissions.
 
 Handling Requests{#UserManualFoxxHandlingRequests}
 ==================================================
@@ -569,12 +577,13 @@ This means that you do not have to restart ArangoDB if you change anything
 in your app. It is of course not meant for production, because the reloading 
 makes the app relatively slow.
 
-Deploying on Production
------------------------
+Production Mode
+---------------
+To run a Foxx app in production first copy your app code to the directory given in 
+the config variable `--javascript.app-path`. After that use Foxx manager to mount the app.
+You can also use Foxx manager to find out your current app-path.
 
-*The Production mode is in development right now.*
-
-We will offer the option to process all assets at once and write the files 
+In later versions we will offer the option to process all assets at once and write the files 
 to disk for production with the option to run `Uglify2.js` and similar 
 tools in order to compress them.
 
