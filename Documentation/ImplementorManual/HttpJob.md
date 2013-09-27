@@ -55,9 +55,12 @@ Async Execution and later Result Retrieval {#HttpJobAsync}
 
 By adding the HTTP header `x-arango-async: store` to a request, clients can instruct
 the ArangoDB server to execute the operation asynchronously as @ref HttpJobFireForget
-"above", but also store the operation result in memory for a later retrieval.
+"above", but also store the operation result in memory for a later retrieval. The
+queue and the results are kept in memory, so queued requests and results might be
+lost in case of a crash.
 
-For managing such results, the ArangoDB server provides an HTTP API at `/_api/job`.
+For managing the results of requests marked with `x-arango-async: store`, ArangoDB 
+provides an HTTP API at `/_api/job`, which is described in the following parts.
 
 Clients can ask the ArangoDB server via the async jobs API which results are
 ready for retrieval, and which are not. Clients can also use the async jobs API to
