@@ -11,23 +11,37 @@ v1.4
 * changed HTTP return code of PUT `/_api/cursor` from 400 to 404 in case a
   non-existing cursor is referred to
 
-* added (experimental) support for asynchronous requests
+* added support for asynchronous requests
 
-  Incoming HTTP requests with the header "x-arango-async: true" will be answered
-  by the server instantly with a generic HTTP 202 (Accepted) response. The actual 
-  requests will be queued and processed by the server asynchronously, allowing the 
-  client to continue sending other requests.
+  Incoming HTTP requests with the headers `x-arango-async: true` or 
+  `x-arango-async: store` will be answered by the server instantly with a generic 
+  HTTP 202 (Accepted) response. 
+  
+  The actual requests will be queued and processed by the server asynchronously, 
+  allowing the client to continue sending other requests without waiting for the
+  server to process the actually requested operation.
 
   The exact point in time when a queued request is executed is undefined. If an
   error occurs during execution of an asynchronous request, the client will not
-  be notified.
+  be notified by the server.
 
   The maximum size of the asynchronous task queue can be controlled using the new
   option `--scheduler.maximal-queue-size`. If the queue contains this many number of
   tasks and a new asynchronous request comes in, the server will reject it with an
   HTTP 500 (internal server error) response.
+  
+  Results of incoming requests marked with header `x-arango-async: true` will be
+  discarded by the server immediately. Clients have no way of accessing the result
+  of such asynchronously executed request. This is just _fire and forget_.
 
-  This also introduces the new option `--scheduler.maximal-queue-size`.
+  To later retrieve the result of an asynchronously executed request, clients can
+  mark a request with the header `x-arango-async: keep`. This makes the server
+  store the result of the request in memory until explicitly fetched by a client
+  via the `/_api/job` API. The `/_api/job` API also provides methods for basic
+  inspection of which pending or already finished requests there are on the server,
+  plus ways for garbage collecting unneeded results.
+
+* Added new option `--scheduler.maximal-queue-size`.
 
 * issue #590: Manifest Lint
 
