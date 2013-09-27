@@ -583,10 +583,6 @@ To run a Foxx app in production first copy your app code to the directory given 
 the config variable `--javascript.app-path`. After that use Foxx manager to mount the app.
 You can also use Foxx manager to find out your current app-path.
 
-In later versions we will offer the option to process all assets at once and write the files 
-to disk for production with the option to run `Uglify2.js` and similar 
-tools in order to compress them.
-
 Controlling Access to Foxx Controllers
 ---------------------------------------
 
