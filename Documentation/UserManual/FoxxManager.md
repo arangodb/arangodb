@@ -14,7 +14,7 @@ serves this application, you do not need a separate application server.
 
 In order to share your applications with the community, we have created a central GitHub repository
 
-    https://github.com/triAGENS/foxx-apps
+    https://github.com/arangodb/foxx-apps
 
 where you can register your applications. This repository also contains the hello world application for Foxx.
 
@@ -43,6 +43,8 @@ The most important commands are
   mounts it to a local URL and sets it up
 * `uninstall`: Unmounts a mounted Foxx application and calls its teardown method 
 * `list`: Lists all installed Foxx applications
+* `config`: Get information about the configuration including the path to the
+  app directory.
 
 When dealing with a fresh install of ArangoDB, there should be no installed 
 applications besides the system applications delivered with ArangoDB.
