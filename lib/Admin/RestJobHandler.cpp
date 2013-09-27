@@ -279,9 +279,9 @@ void RestJobHandler::putJob () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the ids of jobs by status
+/// @brief Returns the ids of job results with a specific status
 ///
-/// @RESTHEADER{GET /_api/job/`type`,Returns the list of job ids by status}
+/// @RESTHEADER{GET /_api/job/`type`,Returns the list of job result ids with a specific status}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -347,7 +347,7 @@ void RestJobHandler::putJob () {
 ///     var id = response.headers['x-arango-async-id'];
 ///     require("internal").wait(1);
 ///
-///     response = logCurlRequest('GET', "/_api/job/done");
+///     response = logCurlRequest('GET', "/_api/job/pending");
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 ///
@@ -479,17 +479,16 @@ void RestJobHandler::getJob () {
 ///     logRawResponse(response);
 ///
 ///     require("internal").wait(1);
-///     var stamp = require("internal").time() + 360;
+///     var stamp = parseInt(require("internal").time() + 360, 10);
 ///
 ///     response = logCurlRequest('DELETE', "/_api/job/expired?stamp=" + stamp);
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
+/// Deleting the result of a specific job:
 ///
-/// Fetching the list of pending jobs:
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestJobHandlerGetPending}
+/// @EXAMPLE_ARANGOSH_RUN{RestJobHandlerDeleteId}
 ///     var url = "/_api/version";
 /// 
 ///     var response = logCurlRequest('GET', url, "", { "x-arango-async": "store" });
@@ -502,6 +501,14 @@ void RestJobHandler::getJob () {
 ///
 ///     response = logCurlRequest('DELETE', "/_api/job/" + id);
 ///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Deleting the result of a non-existing job:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestJobHandlerDeleteInvalid}
+///     response = logCurlRequest('DELETE', "/_api/job/foobar");
+///     assert(response.code === 404);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///////////////////////////////////////////////////////////////////////////////
