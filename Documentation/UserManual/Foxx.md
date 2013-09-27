@@ -583,17 +583,16 @@ To run a Foxx app in production first copy your app code to the directory given 
 the config variable `--javascript.app-path`. After that use Foxx manager to mount the app.
 You can also use Foxx manager to find out your current app-path.
 
-Controlling Access to Foxx Controllers
+Controlling Access to Foxx Applications
 ---------------------------------------
 
-At the moment, access to Foxx.Controllers is controlled by the regular 
+Access to Foxx applications is controlled by the regular 
 authentication mechanisms present in ArangoDB.  The server can be run with 
 or without HTTP authentication.
 
-If authentication is turned off, all Foxx.Controllers and routes will be 
-callable by everyone with access to the server.  If authentication is turned on, 
+If authentication is turned on, 
 then every access to the server is authenticated via HTTP authentication. This 
-includes Foxx.Controllers and routes. The global authentication can be toggled 
+includes Foxx applications. The global authentication can be toggled 
 via the configuration option @ref CommandLineArangoDisableAuthentication 
 "server.disable-authentication".
 
@@ -602,16 +601,21 @@ just system API calls, such as `/_api/...` and `/_admin/...`. This option can be
 turned on using the @ref CommandLineArangoAuthenticateSystemOnly 
 "server.authenticate-system-only" configuration option. If it is turned on, 
 then only system API requests need authentication whereas all requests to Foxx 
-applications and routes will not require authentication.
+applications and routes will not require authentication. This is recommended if
+you want your frontend to directly talk to your Foxx application. The other
+option is to turn of the admin and system API completely.
 
-Authentication
---------------
+If you need more fine grained control over the access to your Foxx application,
+we built an authentication system you can use (but you can of course roll your
+own if you want). Deactivate ArangoDB's authentication for your Foxx apps and
+then use Foxx.Authentication.
 
-We built an authentication system you can use in your Foxx application (but you
-can of course roll your own if you want). Currently we only support
-cookie-based authentication, but we will add the possibility to use Auth Tokens
-and external OAuth providers in the near future. To use the authentication in
-your app, first activate it:
+Currently we only support cookie-based authentication, but we will add the
+possibility to use Auth Tokens and external OAuth providers in the near future.
+We also built a small [demo application](https://github.com/arangodb/foxx-authentication)
+for the authentication functionality.
+
+To use the authentication in your app, first activate it:
 
 @copydetails JSF_foxx_controller_activateAuthentication
 
