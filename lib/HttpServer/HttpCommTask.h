@@ -532,12 +532,12 @@ namespace triagens {
 
                 // check for an async request
                 string const& asyncExecution = this->_request->header("x-arango-async", found);
-                if (found && (triagens::basics::StringUtils::boolean(asyncExecution) || asyncExecution == "keep")) {
+                if (found && (asyncExecution == "true" || asyncExecution == "store")) {
                   // we have an async request
                   this->_request = 0;
 
                   uint64_t jobId = 0;
-                  if (asyncExecution == "keep") {
+                  if (asyncExecution == "store") {
                     // persist the responses
                     ok = this->_server->handleRequestAsync(handler, &jobId);
                   }

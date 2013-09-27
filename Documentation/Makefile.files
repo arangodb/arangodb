@@ -45,6 +45,7 @@ WIKI = \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
+	HttpJob \
 	HttpMisc \
 	HttpQuery \
 	HttpReplication \
@@ -329,6 +330,7 @@ examples:
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \
+		@srcdir@/lib/Admin/*.cpp \
 		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http

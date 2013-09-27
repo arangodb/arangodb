@@ -716,7 +716,7 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -796,7 +796,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 /// 
 /// @RESTQUERYPARAMETERS
 ///
@@ -1014,7 +1014,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
