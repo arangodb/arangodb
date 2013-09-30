@@ -23,7 +23,7 @@ Applications are managed using the Foxx manager `foxx-manager`. It is similar to
 First Steps with the Foxx Manager{#UserManualFoxxManagerFirstSteps}
 ===================================================================
 
-The Foxx manager is a shell program. It should have been installed under `/usr/bin` 
+The Foxx manager is a shell program. It should have been installed under `/usr/bin` or `/usr/local/bin`
 when installing the ArangoDB package. An instance of the ArangoDB server must be 
 up and running.
 
@@ -47,7 +47,7 @@ The most important commands are
   app directory.
 
 When dealing with a fresh install of ArangoDB, there should be no installed 
-applications besides the system applications delivered with ArangoDB.
+applications besides the system applications that are shipped with ArangoDB.
 
     unix> foxx-manager list
     Name        Author               Description                                                AppID               Version    Mount               Active    System 
@@ -59,7 +59,7 @@ applications besides the system applications delivered with ArangoDB.
 There is currently one application installed. It is called "aardvark" and it 
 is a system application. You can safely ignore system applications.  
 
-We are now going to install the hello world application. It is called 
+We are now going to install the _hello world_ application. It is called 
 "hello-foxx" - no suprise there.
 
     unix> foxx-manager install hello-foxx /example
@@ -85,7 +85,7 @@ You can install the application again under different mount path.
     unix> foxx-manager install hello-foxx /hello
     Application app:hello-foxx:1.2.2 installed successfully at mount point /hello
 
-You now have to separated instances of the same application. They are 
+You now have two separate instances of the same application. They are 
 completely independent of each other.
 
     unix> foxx-manager list
@@ -109,7 +109,7 @@ Now let's remove the instance mounted under `/hello`.
 Behind the Foxx Manager scenes{#UserManualFoxxManagerBehindScences}
 ===================================================================
 
-In the previous chapter we have seen how to install and install applications. 
+In the previous chapter we have seen how to install and uninstall applications. 
 We now go into more details.
 
 There are five steps when installing or uninstalling applications.
@@ -242,10 +242,26 @@ however, still reachable. We still need to unmount it.
 
     unix> foxx-manager unmount /hello
 
-Frequently Used Options {#UserManualFoxxManagerOptions}
-=======================================================
+Using Multiple Databases {#UserManualFoxxManagerDatabases}
+==========================================================
 
-Use `help` to see all options
+Regular Foxx applications are database-specific. When using multiple databases
+inside the same ArangoDB instance, there can be different Foxx applications in each
+database.
+
+Every operation executed via the `foxx-manager` is run in the context of 
+a single database. By default (i.e. if not specified otherwise), the `foxx-manager`
+will work in the context of the `_system` database.
+
+If you want the `foxx-manager` to work in the context of a different database,
+use the command-line argument `--server.database <database-name>` when invoking
+the `foxx-manager` binary.
+
+
+Foxx Manager Commands {#UserManualFoxxManagerCommands}
+======================================================
+
+Use `help` to see all commands
 
     unix> foxx-manager help
 
@@ -264,4 +280,24 @@ Use `help` to see all options
      info                 displays information about a foxx application
      search               searches the local foxx-apps repository
      update               updates the local foxx-apps repository with data from the central foxx-apps repository
+     config               returns configuration information from the server
      help                 shows this help
+
+Frequently Used Options {#UserManualFoxxManagerOptions}
+=======================================================
+
+Internally, `foxx-manager` is a wrapper around `arangosh`. That means you can
+use the options of `arangosh`. To retrieve a list of the options for `arangosh`, try
+    
+    unix> foxx-manager --help
+
+To most relevant `arangosh` options to pass to the `foxx-manager` will be:
+
+    --server.database <string>                database name to use when connecting (default: "_system")
+    --server.disable-authentication <bool>    disable authentication (will disable password prompt) (default: false)
+    --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
+    --server.password <string>                password to use when connecting (leave empty for prompt)
+    --server.username <string>                username to use when connecting (default: "root")
+
+These options allow you to use the foxx-manager with a different database or with another
+than the default user.

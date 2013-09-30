@@ -49,9 +49,9 @@ can be dropped normally if required. All database management operations such as
 creating new databases, dropping databases, and retrieving the list of existing databases
 can only be carried out from within the `_system` database.
 
-All command-line tools (e.g. _arangosh_, _arangoimp_) will connect to the `_system`
-database by default. They also provide the option `--server.database` to connect to a
-different database, e.g.:
+All command-line tools (e.g. _arangosh_, _arangoimp_, _foxx-manager_) will connect to the 
+`_system` database by default. They also provide the option `--server.database` to connect 
+to a different database, e.g.:
 
     > arangosh --server.database mydb --server.endpoint tcp://127.0.0.1:8529
 
@@ -85,7 +85,17 @@ to the database have been garbage-collected. This is similar to how collections 
 dropped.
 
 
+Foxx applications are also active on a per-database level. Each database in an ArangoDB
+instance can have different Foxx applications installed. To install a Foxx application
+for a specific database, use the `--server.database` option when invoking the _foxx manager_
+binary:
+
+    unix> foxx-manager --server.database mydb update
+    unix> foxx-manager --server.database mydb install hello-foxx /hello-foxx
+
 @copydoc GlossaryDatabaseName
+
+@copydoc GlossaryDatabaseOrganisation
 
 Runtime Endpoint Management {#NewFeatures14Endpoints}
 -----------------------------------------------------
