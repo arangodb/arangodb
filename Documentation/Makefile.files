@@ -312,7 +312,7 @@ man: Doxygen/.setup-directories
 .PHONY: swagger
 
 swagger:
-	(python @srcdir@/Documentation/Scripts/generateSwaggerApi.py @srcdir@ @srcdir@/js/apps/aardvark/api-docs api-docs) > @srcdir@/js/apps/aardvark/api-docs.json	
+	(python @srcdir@/Documentation/Scripts/generateSwaggerApi.py @srcdir@ @srcdir@/js/apps/system/aardvark/api-docs api-docs) > @srcdir@/js/apps/system/aardvark/api-docs.json	
 
 ################################################################################
 ### @brief generate examples
