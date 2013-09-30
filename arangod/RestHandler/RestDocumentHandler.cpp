@@ -167,11 +167,11 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -888,11 +888,11 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -1080,11 +1080,11 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -1338,11 +1338,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// is returned if the document was deleted successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// is returned if the document was deleted successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}
