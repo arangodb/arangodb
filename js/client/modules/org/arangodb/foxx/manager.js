@@ -1270,6 +1270,7 @@ exports.searchJson = function (name) {
     docs = fishbowl.toArray();
   }
   else {
+    name = name.replace(/[^a-zA-Z0-9]/g, ' ');
 
     // get results by looking in "description" attribute
     docs = fishbowl.fulltext("description", "prefix:" + name).toArray();

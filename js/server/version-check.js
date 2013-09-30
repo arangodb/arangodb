@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version check at the start of the server, will optionally perform
@@ -162,6 +162,156 @@
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
+
+    addTask("checkSystemApps", "check Foxx system apps directory", function () {
+      var dir = module.systemAppPath();
+      if (! fs.exists(dir)) {
+        logger.log("creating system apps directory '" + dir + "'");
+        fs.makeDirectory(dir);
+      }
+      else if (! fs.isDirectory(dir)) {
+        logger.error("expected a directory at '" + dir + "', found something else");
+        return false;
+      }
+
+      return true;
+    });
+    
+    addTask("checkProductionApps", "check Foxx apps directory", function () {
+      var dir = module.appPath();
+      if (! fs.exists(dir)) {
+        logger.log("creating apps directory '" + dir + "'");
+        // create base directory first
+        try {
+          internal.print(fs.join(module.basePaths().appPath, 'databases'));
+          fs.makeDirectory(fs.join(module.basePaths().appPath, 'databases'));
+        }
+        catch (err) {
+          // ignore this error intentionally
+        }
+
+        // create per-database apps directory
+        fs.makeDirectory(dir);
+      }
+      else if (! fs.isDirectory(dir)) {
+        logger.error("expected a directory at '" + dir + "', found something else");
+        return false;
+      }
+
+      return true;
+    });
+    
+    addTask("moveProductionApps", "move Foxx apps into per-database directory", function () {
+      var dir = module.appPath();
+
+      if (! fs.exists(dir)) {
+        logger.error("apps directory '" + dir + "' does not exist.");
+        return false;
+      }
+
+      // we only need to move apps in the _system database
+      if (db._name() !== '_system') {
+        return true;
+      }
+
+      var files = fs.listTree(module.basePaths().appPath), i, n = files.length;
+      for (i = 0; i < n; ++i) {
+        var found = files[i];
+
+        if (found === '' || found === 'system' || found === 'databases') {
+          continue;
+        }
+
+        if (found.match(/[\/\\\\]/g)) {
+          // ignore subdirectories too
+          continue;
+        }
+
+        var src = fs.join(module.basePaths().appPath, found);
+        if (! fs.isDirectory(src)) {
+          continue;
+        }
+
+        // we found a directory, now move it
+
+        var dst = fs.join(dir, found);
+        logger.log("renaming directory '" + src + "' to '" + dst + "'");
+        // fs.move() will throw if moving doesn't work
+        fs.move(src, dst);
+      }
+
+      return true;
+    });
+   
+    if (internal.developmentMode) { 
+      // this task only needs to be run in development mode
+      addTask("checkDevelopmentApps", "check Foxx development apps directory", function () {
+        var dir = module.devAppPath();
+        if (! fs.exists(dir)) {
+          logger.log("creating dev apps directory '" + dir + "'");
+          // create base directory first
+          try {
+            fs.makeDirectory(fs.join(module.basePaths().devAppPath, 'databases'));
+          }
+          catch (err) {
+            // ignore this error intentionally
+          }
+
+          // create per-database apps directory
+          fs.makeDirectory(dir);
+        }
+        else if (! fs.isDirectory(dir)) {
+          logger.error("expected a directory at '" + dir + "', found something else");
+          return false;
+        }
+
+        return true;
+      });
+    }
+    
+    if (internal.developmentMode) {
+      addTask("moveDevApps", "move Foxx production apps into per-database directory", function () {
+        var dir = module.devAppPath();
+
+        if (! fs.exists(dir)) {
+          logger.error("dev apps directory '" + dir + "' does not exist.");
+          return false;
+        }
+
+        // we only need to move apps in the _system database
+        if (db._name() !== '_system') {
+          return true;
+        }
+
+        var files = fs.listTree(module.basePaths().devAppPath), i, n = files.length;
+        for (i = 0; i < n; ++i) {
+          var found = files[i];
+
+          if (found === '' || found === 'system' || found === 'databases') {
+            continue;
+          }
+
+          if (found.match(/[\/\\\\]/g)) {
+            // ignore subdirectories too
+            continue;
+          }
+
+          var src = fs.join(module.basePaths().devAppPath, found);
+          if (! fs.isDirectory(src)) {
+            continue;
+          }
+
+          // we found a directory, now move it
+
+          var dst = fs.join(dir, found);
+          logger.log("renaming directory '" + src + "' to '" + dst + "'");
+          // fs.move() will throw if moving doesn't work
+          fs.move(src, dst);
+        }
+
+        return true;
+      });
+    }
 
     // set up the collection _users 
     addTask("setupUsers", "setup _users collection", function () {

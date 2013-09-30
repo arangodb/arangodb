@@ -361,9 +361,17 @@ function require (path) {
       return null;
     }
 
+    var root;
+    if (doc.isSystem) {
+      root = module.systemAppPath();
+    }
+    else {
+      root = module.appPath();
+    }
+
     return {
       appId: doc.app,
-      root: appPath,
+      root: root,
       path: doc.path
     };
   }
@@ -384,7 +392,7 @@ function require (path) {
 
     return {
       appId: appId,
-      root: devAppPath,
+      root: module.devAppPath(),
       path: m[2]
     };
   }
@@ -566,13 +574,36 @@ function require (path) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief basePaths
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.basePaths = function () {
+    'use strict';
+
+    return {
+      appPath: appPath,
+      devAppPath: devAppPath
+    };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief appPath
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.appPath = function () {
     'use strict';
 
-    return appPath;
+    return fs.join(appPath, 'databases', internal.db._name());
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief systemAppPath
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.systemAppPath = function () {
+    'use strict';
+
+    return fs.join(appPath, 'system');
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -582,7 +613,7 @@ function require (path) {
   Module.prototype.devAppPath = function () {
     'use strict';
 
-    return devAppPath;
+    return fs.join(devAppPath, 'databases', internal.db._name());
   };
 
 ////////////////////////////////////////////////////////////////////////////////
