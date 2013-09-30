@@ -1,6 +1,19 @@
 v1.4
 ----
 
+* make the Foxx manager use per-database app directories
+
+  Each database now has its own subdirectory for Foxx applications. Each database
+  can thus use different Foxx applications if required. A Foxx app for a specific
+  database resides in `<app-path>/databases/<database-name>/<app-name>`.
+
+  System apps are shared between all databases. They reside in `<app-path>/system/<app-name>`.
+
+* only trigger an engine reset in development mode for URLs starting with `/dev/`
+
+  This prevents ArangoDB from reloading all Foxx applications when it is not
+  actually necessary.
+
 * changed error code from 10 (bad parameter) to 1232 (invalid key generator) for 
   errors that are due to an invalid key generator specification when creating a new
   collection
