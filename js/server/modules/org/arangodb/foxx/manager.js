@@ -641,7 +641,7 @@ function routingAalApp (app, mount, options) {
         "action" : {
           "do" : "org/arangodb/actions/redirectRequest",
           "options" : {
-            "permanently" : true,
+            "permanently" : (app._id.substr(0,4) !== 'dev'),
             "destination" : p + defaultDocument 
           }
         }

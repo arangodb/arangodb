@@ -313,12 +313,21 @@ extend(RequestContext.prototype, {
 /// @EXAMPLES
 ///
 /// @code
+///
+///
+///     /* define our own error type, FoxxyError */
+///     var FoxxyError = function (message) {
+///       this.message = "the following FoxxyError occurred: ' + message;
+///     };
+///     FoxxyError.prototype = new Error();
+///
 ///     app.get("/foxx", function {
+///       /* throws a FoxxyError */
 ///       throw new FoxxyError();
 ///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
 ///
 ///     app.get("/foxx", function {
-///       throw new FoxxyError();
+///       throw new FoxxyError("oops!");
 ///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
 ///       return {
 ///         code: 123,

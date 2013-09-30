@@ -55,9 +55,12 @@ database only.
 @copydetails JS_NameDatabase
 
 @CLEARPAGE
+@anchor HandlingDatabasesId
+@copydetails JS_IdDatabase
+
+@CLEARPAGE
 @anchor HandlingDatabasesPath
 @copydetails JS_PathDatabase
-
 
 @CLEARPAGE
 @anchor HandlingDatabasesIsSystem

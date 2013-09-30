@@ -52,14 +52,33 @@ ArangoDB directly. ArangoDB serves this application, you do not need a
 separate application server.
 
 So given you want to build an application that sends a plain-text response 
-"Hello YourName!" for all requests to `/dev/my_app/hello/YourName`.  How would you achieve that 
-with Foxx?
+"Hello YourName!" for all requests to `/dev/my_app/hello/YourName`. 
+How would you achieve that with Foxx?
 
-First, create a directory `apps` somewhere in your filesystem. Let's assume 
+First, create a directory `apps` somewhere in your filesystem. This will be
+the Foxx application base directory for your database instance. Let's assume 
 from now on that the absolute path for this directory is `/home/user/apps`.
+When you have created the directory, create a sub-directory `databases` in it.
 
-After that, create a sub-directory `my_app` in the `apps` directory and 
-save the following content in a file named `app.js` there:
+Foxx applications are database-specific, and the `databases` sub-directory is
+used to separate the Foxx applications of different databases running in the
+same ArangoDB instance.
+
+Let's assume for now that you are working in the default database (`_system`), that
+is used when no database name is specified otherwise. To use Foxx applications with
+the `_system`, create a sub-directory `_system` inside the `databases` subdirectory.
+All Foxx applications for the `_system` database will go into this directory.
+
+Finally, we can add a sub-directory `my_app` in the `_system` directory and should
+end up with the following directory layout (starting at `/home/user` in our example):
+
+    apps/
+      databases/
+        _system/
+          my_app/
+
+In the `my_app` directory, create a file named `app.js` and save the following content
+in it:
 
     (function() {
         "use strict";
@@ -94,28 +113,36 @@ You should now have the following files and directories with your
 application (starting at `/home/user` in our example):
 
     apps/
-      my_app/
-        manifest.json
-        app.js
+      databases/
+        _system/
+          my_app/
+            manifest.json
+            app.js
 
-This is your application.
+This is your application, and you're ready to use it.
 
 Testing the application
 -----------------------
 
-Now your application is ready to be tested. Start ArangoDB as follows:
+Start ArangoDB as follows:
 
     $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
-This will start the ArangoDB server in a **development mode** using the
-directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your
-database directory.  In development mode the server automatically monitors the
-workspace and detects any change made to the files. Production application are
-installed using the Foxx manager and changes will not be reloaded automatically.
+If you chose a different directory name, you need to replace `/home/user/apps` 
+with the actual directory name of course. Replace `/tmp/fancy_db` with the
+directory your database data is located in.
 
-Replace `/home/user/apps` with the apps path that you initially created. This 
-is the path that you created the `my_app` directory in. Replace `/tmp/fancy_db` 
-with the directory your database is located in.
+The command will start the ArangoDB server in a **development mode** using the
+directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your
+database directory.  In development mode the server automatically reloads all
+application files on every request, so changes to the underlying files are
+visible instantly. 
+
+Note: the development mode is convenient when developing applications but the
+permanent reloading has an impact on performance. Therefore permanent reloading is
+only performed in development mode and not in production mode. Whenever you think 
+your application is ready for production, you can install it using the Foxx manager
+and avoid the overhead of reloading.
 
 Now point your browser to `http://localhost:8529/dev/my_app/hello/YourName` and you should 
 see "Hello YourName".  
@@ -126,22 +153,55 @@ chapter on Foxx manager) or simply clone them from `https://github.com/arangodb/
 
 Start with "hello-foxx" (`https://github.com/arangodb/hello-foxx`) as it contains
 several basic usage examples. "aye-aye" and "fugu" are more advanced apps showing how
-to use Backbone, Underscore and Jquery together with Foxx. foxx-authentication shows 
+to use Backbone, Underscore and Jquery together with Foxx. "foxx-authentication" shows 
 how to register users, login and check permissions.
 
 Handling Requests{#UserManualFoxxHandlingRequests}
 ==================================================
 
 In development mode all available applications from the application directory 
-`/home/user/apps` are visible under `http://localhost:8529/dev/DIRNAME` where 
-`DIRNAME` is the name of the directory of your application.
+`/home/user/apps/databases/<database name>/` are visible under 
+`http://localhost:8529/dev/<directory name>` where `<database name>` is the 
+name of the current database and `<directory name>` is the directory name of your 
+application.
+
+In our example, `<directory name>` was `my_app` and as we didn't specify a 
+database, `<database name>` defaulted to `_system`.
 
 When applications are installed in production mode, you can change the `/dev` 
 prefix to whatever you like, see @ref UserManualFoxxManager.
 
 If you do not redefine it, all requests that go to the root of your 
-application will be redirected to `index.html`.
+application (i.e. `/`) will be redirected to `index.html`.
 
+This means that if your application does not provide a file `index.html`, 
+calling the application root URL my result in a 404 error.
+In our example, the application root URL is `http://localhost:8529/dev/my_app/hello/`.
+Call it, and you should something like this in return:
+
+    {
+      "error": true,
+      "code": 404,
+      "errorNum": 404,
+      "errorMessage": "unknown path 'dev/my_app/index.html'"
+    }
+
+To fix that, you can give your app a different default document, e.g. "hello/unknown".
+The adjusted manifest now looks like this:
+
+    {
+      "name": "my_app",
+      "version": "0.0.1",
+      "author": "me and myself",
+      "controllers": {
+        "/": "app.js"
+      },
+      "defaultDocument": "hello/unknown"
+    }
+
+Note: browsers tend to cache results of redirections. To see the new default 
+document in effect, first clear your browser's cache and point your browser
+to `http://localhost:8529/dev/my_app/`.
 
 Details on FoxxController{#UserManualFoxxDetailsController}
 =============================================================
@@ -462,25 +522,32 @@ The Manifest File{#UserManualFoxxManifest}
 ==========================================
 
 In the `manifest.json` you define the components of your application. 
-The content is a JSON object with the following keys:
+The content is a JSON object with the following attributes (not all 
+attributes are required though):
 
-* `name`: Name of the application (Meta information)
-* `version`: Current version of the application (Meta information)
-* `description`: A short description of the application (Meta information)
-* `license`: Short form of the license (MIT, GPL...)
-* `author`: the author name
-* `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
-* `thumbnail`: Path to a thumbnail that represents the application (Meta information)
-* `repository`: An object with information about where you can find the repository: `type` and `url`
-* `keywords`: An array of keywords to help people find your Foxx app
-* `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
-* `controllers`: Map routes to FoxxControllers
-* `lib`: Base path for all required modules
-* `files`: Deliver files
 * `assets`: Deliver pre-processed files
+* `author`: The author name
+* `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
+* `controllers`: Map routes to FoxxControllers
+* `defaultDocument`: The default document when the applicated root (`/`) is called (defaults to `index.html`)
+* `description`: A short description of the application (Meta information)
+* `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
+* `files`: Deliver files
 * `isSystem`: Mark an application as a system application
+* `keywords`: An array of keywords to help people find your Foxx app
+* `lib`: Base path for all required modules
+* `license`: Short form of the license (MIT, GPL...)
+* `name`: Name of the application (Meta information)
+* `repository`: An object with information about where you can find the repository: `type` and `url`
 * `setup`: Path to a setup script
 * `teardown`: Path to a teardown script
+* `thumbnail`: Path to a thumbnail that represents the application (Meta information)
+* `version`: Current version of the application (Meta information)
+
+If you install an application using the Foxx manager or are using the
+development mode, your manifest will be checked for completeness and common errors.
+You should have a look at the server log files after changing a manifest file to 
+get informed about potential errors in the manifest.
 
 A more complete example for a Manifest file:
 
@@ -522,6 +589,15 @@ application (or respectively removes it entirely). These scripts have access to
 `appCollection` and `appCollectionName`. Use the `setup` script to create all
 collections your application needs and fill them with initial data if you want
 to. Use the `teardown` script to remove all collections you have created.
+
+Note: the setup script is called on each request in the development mode.
+If your application needs to set up specific collections, you should always 
+check in the setup script whether they are already there.
+
+The teardown script is called when an application is uninstalled. It is good
+practice to drop any collections in the teardown script that the application used 
+exclusively, but this is not enforced. Maybe there are reasons to keep application
+data even after removing an application. It's up to you to decide what to do.
 
 `controllers` is an object that matches routes to files
 ------------------------------------------------
@@ -612,9 +688,8 @@ You can also use Foxx manager to find out your current app-path.
 Controlling Access to Foxx Applications
 ---------------------------------------
 
-Access to Foxx applications is controlled by the regular 
-authentication mechanisms present in ArangoDB.  The server can be run with 
-or without HTTP authentication.
+Access to Foxx applications is controlled by the regular authentication mechanisms 
+present in ArangoDB. The server can be run with or without HTTP authentication.
 
 If authentication is turned on, 
 then every access to the server is authenticated via HTTP authentication. This 
