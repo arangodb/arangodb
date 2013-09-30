@@ -1388,11 +1388,11 @@ function head_api_structure(req, res)  {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// is returned if the document was deleted successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// is returned if the document was deleted successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}
@@ -1517,11 +1517,11 @@ function delete_api_structure (req, res) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -1678,11 +1678,11 @@ function patch_api_structure (req, res) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -1793,11 +1793,11 @@ function put_api_structure (req, res) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created sucessfully and `waitForSync` was
+/// is returned if the document was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
