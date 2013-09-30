@@ -132,13 +132,11 @@ class v8_action_t : public TRI_action_t {
       // determine whether we should force a re-initialistion of the engine in development mode
       bool allowEngineReset;
 
+      allowEngineReset = false;
+
       string const& fullUrl = request->fullUrl();
-      if (fullUrl.find("/_api/") == 0) {
-        // requests starting with /_api/ are system actions and don't need re-initialisation
-        allowEngineReset = false;
-      }
-      else {
-        // all other requests may need a re-initialisation
+      if (fullUrl.find("/dev/") == 0) {
+        // only URLs starting with /dev will trigger an engine reset
         allowEngineReset = true;
       }
       
