@@ -1,5 +1,5 @@
-v1.4.0-alpha2 (2013-09-05)
---------------------------
+v1.4.0-beta1 (2013-09-30)
+-------------------------
 
 * make the Foxx manager use per-database app directories
 
@@ -60,6 +60,10 @@ v1.4.0-alpha2 (2013-09-05)
 
 * issue #590: Manifest Lint
 
+
+v1.4.0-alpha2 (2013-09-05)
+--------------------------
+
 * added data dump and restore tools, arangodump and arangorestore.
 
   arangodump can be used to create a logical dump of an ArangoDB database, or
@@ -70,7 +74,6 @@ v1.4.0-alpha2 (2013-09-05)
   arangorestore currently does not re-create any indexes, and doesn't yet handle
   referenced documents in edges propertly when doing just partial restores.
   This will be fixed until 1.4 stable.
-  
 
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
 
