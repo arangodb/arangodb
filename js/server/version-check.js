@@ -197,6 +197,12 @@
       }
 
       var dst = fs.join(dir, 'aardvark');
+
+      if (fs.isDirectory(dst)) {
+        // destination directory already exists
+        return true;
+      }
+
       logger.log("renaming directory '" + src + "' to '" + dst + "'");
       // fs.move() will throw if moving doesn't work
       fs.move(src, dst);
