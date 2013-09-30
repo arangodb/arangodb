@@ -667,7 +667,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   filter = TRI_Concatenate2String(path, "\\*");
-  if (!filter) {
+  if (! filter) {
     return result;
   }
 
@@ -683,7 +683,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
       TRI_PushBackVectorString(&result, TRI_DuplicateString(fd.name));
     }
   }
-  while(_findnext(handle, &fd) != -1);
+  while (_findnext(handle, &fd) != -1);
 
   _findclose(handle);
 
@@ -749,7 +749,7 @@ int TRI_RenameFile (char const* old, char const* filename) {
 #ifdef _WIN32
   BOOL moveResult = 0;
   moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
-  if (!moveResult) {
+  if (! moveResult) {
     DWORD errorCode = GetLastError();
     res = -1;
   }
@@ -1206,8 +1206,18 @@ int TRI_VerifyLockFile (char const* filename) {
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
+
+  if (fd < 0) {
+    return TRI_set_errno(errno);
+  }
+
   n = TRI_READ(fd, buffer, sizeof(buffer));
+
   TRI_CLOSE(fd);
+  
+  if (n < 0) {
+    return TRI_set_errno(errno);
+  }
 
   // file empty or pid too long
   if (n == 0 || n == sizeof(buffer)) {
@@ -1314,11 +1324,17 @@ int TRI_DestroyLockFile (char const* filename) {
   n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
-    return false;
+    // TODO: what happens if the file does not exist?
+    return TRI_ERROR_NO_ERROR;
   }
 
   fd = TRI_OPEN(filename, O_RDWR);
-  // TODO: what happens if the file does not exist?
+
+  if (fd < 0) {
+    // TODO: what happens if the file does not exist?
+    return TRI_ERROR_NO_ERROR;
+  }
+
   res = flock(fd, LOCK_UN);
   TRI_CLOSE(fd);
 

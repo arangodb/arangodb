@@ -28,8 +28,6 @@
 #ifndef TRIAGENS_REST_REQUEST_USER_H
 #define TRIAGENS_REST_REQUEST_USER_H 1
 
-#include "Rest/RequestUser.h"
-
 namespace triagens {
   namespace rest {
 

@@ -64,6 +64,105 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check a manifest for completeness
+/// this implements issue #590: Manifest Lint
+////////////////////////////////////////////////////////////////////////////////
+
+function checkManifest (filename, mf) {
+  // add some default attributes
+  if (! mf.hasOwnProperty("author")) {
+    // add a default (empty) author
+    mf.author = "";
+  }
+
+  if (! mf.hasOwnProperty("description")) {
+    // add a default (empty) description
+    mf.description = "";
+  }
+  
+  if (mf.hasOwnProperty("apps")) {
+    console.warn("Manifest '%s' still contains the deprecated 'apps' attribute. " +
+                 "Please change the attribute name to 'controllers'.", filename);
+
+    if (! mf.hasOwnProperty("controllers")) {
+      // controllers = apps
+      mf.controllers = mf.apps;
+      delete mf.apps;
+    }
+  }
+
+  // validate all attributes specified in the manifest
+
+  // the following attributes are allowed with these types...
+  var expected = {
+    "assets":             [ false, "object" ],
+    "author":             [ false, "string" ],
+    "contributors":       [ false, "array" ],
+    "controllers":        [ true, "object" ],
+    "defaultDocument":    [ false, "string" ],
+    "description":        [ true, "string" ],
+    "engines":            [ false, "object" ],
+    "files":              [ false, "object" ],
+    "keywords":           [ false, "array" ],
+    "isSystem":           [ false, "boolean" ],
+    "lib":                [ false, "string" ],
+    "license":            [ false, "string" ],
+    "name":               [ true, "string" ],
+    "repository":         [ false, "object" ],
+    "setup":              [ false, "string" ],
+    "teardown":           [ false, "string" ],
+    "thumbnail":          [ false, "string" ],
+    "version":            [ true, "string" ]
+  };
+
+  var att, failed = false;
+  for (att in expected) {
+    if (expected.hasOwnProperty(att)) {
+      if (mf.hasOwnProperty(att)) {
+        // attribute is present in manifest, now check data type
+        var expectedType = expected[att][1];
+        var actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
+
+        if (actualType !== expectedType) {
+          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'", 
+                        filename, 
+                        actualType,
+                        expectedType,
+                        att);
+          failed = true;
+        }
+      }
+      else {
+        // attribute not present in manifest
+        if (expected[att][0]) {
+          // required attribute
+          console.error("Manifest '%s' does not provide required attribute '%s'", 
+                        filename, 
+                        att);
+
+          failed = true;
+        }
+      }
+    }
+  }
+  
+  if (failed) {
+    throw new Error("Manifest '%s' is invalid/incompatible. Please check the error logs.");
+  }
+
+  // additionally check if there are superfluous attributes in the manifest
+  for (att in mf) {
+    if (mf.hasOwnProperty(att)) {
+      if (! expected.hasOwnProperty(att)) {
+        console.warn("Manifest '%s' contains an unknown attribute '%s'", 
+                      filename, 
+                      att);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extend a context with some helper functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -255,9 +354,31 @@ function installAssets (app, routes) {
 
         if (asset.hasOwnProperty('files')) {
           var content = buildAssetContent(app, asset.files, basePath);
+          var type;
 
           normalized = arangodb.normalizeURL("/" + path);
-          var type = arangodb.guessContentType(normalized);
+
+          // content-type detection
+          // ----------------------
+
+          if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
+            // contentType explicitly specified for asset
+            type = asset.contentType;
+          }
+          else if (normalized.match(/\.[a-zA-Z0-9]+$/)) {
+            // path contains a dot
+            // derive content type from path 
+            type = arangodb.guessContentType(normalized);
+          }
+          else if (asset.files.length > 0) {
+            // path does not contain a dot
+            // derive content type from included asset names
+            type = arangodb.guessContentType(asset.files[0]);
+          }
+          else {
+            // use built-in defaulti content-type
+            type = arangodb.guessContentType("");
+          }
 
           route = {
             url: { match: normalized },
@@ -308,7 +429,10 @@ function executeAppScript (app, name, mount, prefix) {
   var root;
   var devel = false;
 
-  if (app._id.substr(0,4) === "app:") {
+  if (app._manifest.isSystem) {
+    root = module.systemAppPath();
+  }
+  else if (app._id.substr(0,4) === "app:") {
     root = module.appPath();
   }
   else if (app._id.substr(0,4) === "dev:") {
@@ -385,7 +509,7 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
   }
   else {
     // check if something was changed
-    if (JSON.stringify(manifest) !== JSON.stringifiy(doc.manifest) ||
+    if (JSON.stringify(manifest) !== JSON.stringify(doc.manifest) ||
         path !== doc.path ||
         thumbnail !== doc.thumbnail) {
 
@@ -510,16 +634,19 @@ function routingAalApp (app, mount, options) {
       p = mount + "/";
     }
 
-    routes.routes.push({
-      "url" : { match: "/" },
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : true,
-          "destination" : p + defaultDocument 
+    if ((p + defaultDocument) !== p) {
+      // only add redirection if src and target are not the same
+      routes.routes.push({
+        "url" : { match: "/" },
+        "action" : {
+          "do" : "org/arangodb/actions/redirectRequest",
+          "options" : {
+            "permanently" : (app._id.substr(0,4) !== 'dev'),
+            "destination" : p + defaultDocument 
+          }
         }
-      }
-    });
+      });
+    }
 
     // mount all applications
     var controllers = app._manifest.controllers;
@@ -530,7 +657,10 @@ function routingAalApp (app, mount, options) {
         var devel = false;
         var root;
 
-        if (app._id.substr(0,4) === "dev:") {
+        if (app._manifest.isSystem) {
+          root = module.systemAppPath();
+        }
+        else if (app._id.substr(0,4) === "dev:") {
           devel = true;
           root = module.devAppPath();
         }
@@ -619,23 +749,12 @@ function routingAalApp (app, mount, options) {
   return null;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scans fetched FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.scanAppDirectory = function () {
-  'use strict';
-
+function scanDirectory (path) {
   var j;
-
-  var path = module.appPath();
-  var aal = getStorage();
-
-  aal.removeByExample({ type: "app" });
 
   if (typeof path === "undefined") {
     return;
@@ -646,23 +765,18 @@ exports.scanAppDirectory = function () {
   // note: files do not have a determinstic order, but it doesn't matter here
   // as we're treating individual Foxx apps and their order is irrelevant
 
+
   for (j = 0;  j < files.length;  ++j) {
     var m = fs.join(path, files[j], "manifest.json");
 
     if (fs.exists(m)) {
       try {
         var thumbnail;
-        
+
         thumbnail = undefined;
         var mf = JSON.parse(fs.read(m));
 
-        // add some default attributes
-        if (! mf.hasOwnProperty("author")) {
-          mf.author = "";
-        }
-        if (! mf.hasOwnProperty("description")) {
-          mf.description = "";
-        }
+        checkManifest(m, mf);
 
         if (mf.hasOwnProperty('thumbnail') && mf.thumbnail !== null && mf.thumbnail !== '') {
           var p = fs.join(path, files[j], mf.thumbnail);
@@ -671,7 +785,9 @@ exports.scanAppDirectory = function () {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.error("Cannot read thumbnail: %s", String(err2.stack || err2));
+            console.error("Cannot read thumbnail referenced by manifest '%s': %s", 
+                          m, 
+                          String(err2.stack || err2));
           }
         }
 
@@ -682,6 +798,28 @@ exports.scanAppDirectory = function () {
       }
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scans fetched FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.scanAppDirectory = function () {
+  'use strict';
+  
+  var aal = getStorage();
+
+  // remove all loaded apps first
+  aal.removeByExample({ type: "app" });
+
+  // now re-scan, starting with system apps
+  scanDirectory(module.systemAppPath()); 
+  // now scan database-specific apps
+  scanDirectory(module.appPath()); 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -707,8 +845,6 @@ exports.mount = function (appId, mount, options) {
     [ [ "Application identifier", "string" ],
       [ "Mount path", "string" ] ],
     [ appId, mount ] );
-
-  var aal = getStorage();
 
   // .............................................................................
   // locate the application
@@ -737,6 +873,7 @@ exports.mount = function (appId, mount, options) {
   }
   catch (err) {
     if (doc !== undefined) {
+      var aal = getStorage();
       var desc = aal.document(doc._key)._shallowCopy;
 
       desc.error = String(err);
@@ -883,6 +1020,7 @@ exports.purge = function (key) {
     throw new Error("Cannot find application '" + key + "'");
   }
 
+  // system apps cannot be removed
   if (doc.isSystem) {
     throw new Error("Cannot purge system application");
   }
@@ -905,6 +1043,7 @@ exports.purge = function (key) {
 
   executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
+  // we can be sure this is a database-specific app and no system app
   var path = fs.join(module.appPath(), doc.path);
   fs.removeDirectoryRecursive(path, true);
 
@@ -935,6 +1074,8 @@ exports.devSetup = function (filename) {
   if (fs.exists(m)) {
     try {
       var mf = JSON.parse(fs.read(m));
+
+      checkManifest(m, mf);
 
       var appId = "dev:" + mf.name + ":" + filename;
       var mount = "/dev/" + filename;
@@ -981,6 +1122,8 @@ exports.devTeardown = function (filename) {
   if (fs.exists(m)) {
     try {
       var mf = JSON.parse(fs.read(m));
+
+      checkManifest(m, mf);
 
       var appId = "dev:" + mf.name + ":" + filename;
       var mount = "/dev/" + filename;
@@ -1070,6 +1213,8 @@ exports.developmentRoutes = function () {
     if (fs.exists(m)) {
       try {
         var mf = JSON.parse(fs.read(m));
+      
+        checkManifest(m, mf);
 
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];

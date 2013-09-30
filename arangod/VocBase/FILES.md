@@ -6,7 +6,7 @@ startup and shutdown, and what the role of these files is.
 
 All files mentioned are placed in the vocbase database directory.
 
-lock
+LOCK
 ====
 
 A lock file containing the process id of a running ArangoDB.
@@ -21,6 +21,7 @@ The lock file will be flocked on Linux, and thus can't be put into a filesystem
 that doesn't support flock.
 
 The lock file is used since ArangoDB 1.0.
+In ArangoDB 1.4 it was renamed from "lock" to "LOCK"
 
 
 VERSION

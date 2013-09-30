@@ -30,12 +30,16 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "VocBase/edge-collection.h"
+#include "VocBase/replication-common.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
+struct TRI_json_s;
 struct TRI_replication_log_state_s;
+struct TRI_transaction_collection_s;
 struct TRI_vocbase_col_s;
 
 // -----------------------------------------------------------------------------
@@ -75,7 +79,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestReplicationHandler (rest::HttpRequest*, struct TRI_vocbase_s*);
+        RestReplicationHandler (rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -97,18 +101,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        string const& queue () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -239,16 +231,43 @@ namespace triagens {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestore (struct TRI_json_s* const,
-                            bool,
-                            TRI_server_id_t,
-                            std::string&);
+        int processRestoreCollection (struct TRI_json_s* const,
+                                      bool,
+                                      TRI_server_id_t,
+                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a restore command for a specific collection
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleCommandRestoreCollection ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply a single marker from the collection dump
+////////////////////////////////////////////////////////////////////////////////
+
+        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+                                       TRI_replication_operation_e,
+                                       const TRI_voc_key_t,
+                                       const TRI_voc_rid_t,
+                                       struct TRI_json_s const*,
+                                       std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+        int processRestoreDataBatch (struct TRI_transaction_collection_s*,
+                                     TRI_server_id_t,
+                                     std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO
+////////////////////////////////////////////////////////////////////////////////
+
+        int processRestoreData (TRI_voc_cid_t,
+                                TRI_server_id_t,
+                                std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a restore command for a specific collection

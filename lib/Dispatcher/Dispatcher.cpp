@@ -119,16 +119,21 @@ bool Dispatcher::isRunning () {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (std::string const& name, size_t nrThreads) {
-  _queues[name] = new DispatcherQueue(this, name, defaultDispatcherThread, nrThreads);
+void Dispatcher::addQueue (std::string const& name, 
+                           size_t nrThreads,
+                           size_t maxSize) {
+  _queues[name] = new DispatcherQueue(this, name, defaultDispatcherThread, nrThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a queue which given dispatcher thread type
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (std::string const& name, newDispatcherThread_fptr func, size_t nrThreads) {
-  _queues[name] = new DispatcherQueue(this, name, func, nrThreads);
+void Dispatcher::addQueue (std::string const& name, 
+                           newDispatcherThread_fptr func, 
+                           size_t nrThreads,
+                           size_t maxSize) {
+  _queues[name] = new DispatcherQueue(this, name, func, nrThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,19 +149,23 @@ bool Dispatcher::addJob (Job* job) {
   }
 
   // try to find a suitable queue
-  DispatcherQueue* queue = lookupQueue(job->queue());
+  const string& name = job->queue();
+  DispatcherQueue* queue = lookupQueue(name);
 
   if (queue == 0) {
-    LOGGER_WARNING("unknown queue '" << job->queue() << "'");
+    LOGGER_WARNING("unknown queue '" << name << "'");
     return false;
   }
 
   // log success, but do this BEFORE the real add, because the addJob might execute
   // and delete the job before we have a chance to log something
-  LOGGER_TRACE("added job " << job << " to queue " << job->queue());
+  LOGGER_TRACE("added job " << job << " to queue " << name);
 
   // add the job to the list of ready jobs
-  queue->addJob(job);
+  if (! queue->addJob(job)) {
+    // queue full etc.
+    return false;
+  }
 
   // indicate success, BUT never access job after it has been added to the queue
   return true;

@@ -75,7 +75,6 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
-	arangod/RestServer/VocbaseManager.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
@@ -106,14 +105,14 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/replication-dump.c \
 	arangod/VocBase/replication-logger.c \
 	arangod/VocBase/replication-master.c \
-	arangod/VocBase/server-id.c \
-	arangod/VocBase/shadow-data.c \
+	arangod/VocBase/server.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/transaction.c \
 	arangod/VocBase/update-policy.c \
 	arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c
+	arangod/VocBase/vocbase.c \
+	arangod/VocBase/vocbase-defaults.c
 
 if ENABLE_MRUBY
 

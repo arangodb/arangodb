@@ -89,7 +89,6 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   }
 
   _client->setLocationRewriter(this, &rewriteLocation);
-
   _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
@@ -175,10 +174,16 @@ V8ClientConnection::~V8ClientConnection () {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-string V8ClientConnection::rewriteLocation (void* data, const string& location) {
+string V8ClientConnection::rewriteLocation (void* data, 
+                                            const string& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
   assert(c != 0);
+
+  if (c->_databaseName.empty()) {
+    // no database name provided
+    return location;
+  }
 
   if (location.substr(0, 5) == "/_db/") {
     // location already contains /_db/
@@ -606,16 +611,16 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
     // got a body, copy it into the result
     if (_httpResult->getBody().str().length() > 0) {
-      v8::Handle<v8::String> body = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
+      v8::Handle<v8::String> b = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
 
-      result->Set(v8::String::New("body"), body);
+      result->Set(v8::String::New("body"), b);
     }
 
     // copy all headers
     v8::Handle<v8::Object> headers = v8::Object::New();
-    const map<string, string>& headerFields = _httpResult->getHeaderFields();
+    const map<string, string>& hf = _httpResult->getHeaderFields();
 
-    for (map<string, string>::const_iterator i = headerFields.begin();  i != headerFields.end();  ++i) {
+    for (map<string, string>::const_iterator i = hf.begin();  i != hf.end();  ++i) {
       v8::Handle<v8::String> key = v8::String::New(i->first.c_str());
       v8::Handle<v8::String> val = v8::String::New(i->second.c_str());
 

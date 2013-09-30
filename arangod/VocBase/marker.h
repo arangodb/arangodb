@@ -64,7 +64,7 @@ void TRI_CloneMarker (TRI_df_marker_t*,
 /// @brief initialises a marker with the most basic information
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMarker (TRI_df_marker_t*,
+void TRI_InitMarker (char*,
                      TRI_df_marker_type_e,
                      TRI_voc_size_t);
 

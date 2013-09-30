@@ -28,6 +28,22 @@ function ModelSpec () {
       assertEqual(instance.get("a"), 1);
     },
 
+    testSettingMultipleAttributes: function () {
+      instance = new FoxxModel({
+        a: 1,
+        b: 9
+      });
+
+      instance.set({
+        b: 2,
+        c: 3
+      });
+
+      assertEqual(instance.get("a"), 1);
+      assertEqual(instance.get("b"), 2);
+      assertEqual(instance.get("c"), 3);
+    },
+
     testAddingAMethodWithExtend: function () {
       TestModel = FoxxModel.extend({
         getA: function() {
@@ -81,6 +97,96 @@ function ModelSpec () {
   };
 }
 
+function ModelAnnotationSpec () {
+  var FoxxModel, TestModel, jsonSchema, instance;
+
+  return {
+    setUp: function () {
+      FoxxModel = require('org/arangodb/foxx/model').Model;
+    },
+
+    testGetEmptyJSONSchema: function () {
+      TestModel = FoxxModel.extend({});
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.properties, {});
+    },
+
+    testAttributesOfAPlainModel: function () {
+      attributes = {a: 1, b: 2};
+      TestModel = FoxxModel.extend({});
+      instance = new TestModel(attributes);
+      assertEqual(instance.attributes, attributes);
+    },
+
+    testAddOptionalAttributeToJSONSchemaInLongForm: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          x: { type: "string" }
+        }
+      });
+
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.properties.x.type, "string");
+    },
+
+    testAddOptionalAttributeToJSONSchemaInShortForm: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          x: "string"
+        }
+      });
+
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.properties.x.type, "string");
+    },
+
+    testAddRequiredAttributeToJSONSchema: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          x: { type: "string", required: true }
+        }
+      });
+
+      jsonSchema = TestModel.toJSONSchema("myname");
+      assertEqual(jsonSchema.id, "myname");
+      assertEqual(jsonSchema.properties.x.type, "string");
+      assertEqual(jsonSchema.required, ["x"]);
+    },
+
+    testWhitelistConstructorAttributesInAnnotatedModel: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          a: { type: "string", required: true },
+          b: { type: "string" }
+        }
+      });
+
+      instance = new TestModel({ a: "a", b: "b", c: "c" });
+      assertEqual(instance.attributes, { a: "a", b: "b" });
+    },
+
+    testSetDefaultAttributesInAnnotatedModel: function () {
+      TestModel = FoxxModel.extend({}, {
+        attributes: {
+          a: { type: "string", defaultValue: "test" },
+          b: { type: "string", defaultValue: "test" },
+          c: { type: "string" }
+        }
+      });
+
+      instance = new TestModel({ a: "a", c: "c" });
+      assertEqual(instance.attributes, { a: "a", c: "c", b: "test" });
+    }
+  };
+}
+
 jsunity.run(ModelSpec);
+jsunity.run(ModelAnnotationSpec);
 
 return jsunity.done();

@@ -43,6 +43,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_primary_collection_s;
 struct TRI_skiplist_node_s;
 
 // -----------------------------------------------------------------------------
@@ -102,6 +103,10 @@ TRI_skiplist_node_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_base_s {
+  struct TRI_primary_collection_s* _collection;
+
+  size_t _numFields;
+
   // ...........................................................................
   // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
   // stored in the skip list.
@@ -158,7 +163,7 @@ TRI_skiplist_base_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_s {
-  TRI_skiplist_base_t _base;
+  TRI_skiplist_base_t base;
 
   // ...........................................................................
   // callback compare function
@@ -173,28 +178,12 @@ typedef struct TRI_skiplist_s {
                                 int);
 
   int (*compareKeyElement) (struct TRI_skiplist_s*,
+                            size_t,
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
                             int);    
 }
 TRI_skiplist_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a skip list which only accepts unique entries and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// structure for a skiplist which allows unique entries -- with locking
-// available for its nearest neighbours.
-// TODO: implement locking for nearest neighbours rather than for all of index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_synced_s {
-  TRI_skiplist_t _base;
-  TRI_read_write_lock_t _lock;
-} TRI_skiplist_synced_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -214,9 +203,11 @@ typedef struct TRI_skiplist_synced_s {
 /// @brief initialises a skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSkipList (TRI_skiplist_t*,
-                       TRI_skiplist_prob_e,
-                       uint32_t);
+int TRI_InitSkipList (TRI_skiplist_t*,
+                      struct TRI_primary_collection_s*,
+                      size_t,
+                      TRI_skiplist_prob_e,
+                      uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a skip list, but does not free the pointer
@@ -264,14 +255,16 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                                  TRI_skiplist_index_key_t* key);
+                                                  TRI_skiplist_index_key_t* key,
+                                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key, returns null if not found
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                              TRI_skiplist_index_key_t* key);
+                                              TRI_skiplist_index_key_t* key,
+                                              size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
@@ -300,7 +293,8 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
-                                                   TRI_skiplist_index_key_t* key);
+                                                   TRI_skiplist_index_key_t* key,
+                                                   size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the start node  which belongs to a skiplist
@@ -326,7 +320,7 @@ void* TRI_StartNodeSkipList (TRI_skiplist_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_multi_s {
-  TRI_skiplist_base_t _base;
+  TRI_skiplist_base_t base;
 
   // ...........................................................................
   // callback compare function
@@ -341,6 +335,7 @@ typedef struct TRI_skiplist_multi_s {
                                 int);
 
   int (*compareKeyElement) (struct TRI_skiplist_multi_s*,
+                            size_t,
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
                             int);
@@ -355,15 +350,6 @@ typedef struct TRI_skiplist_multi_s {
                                TRI_skiplist_index_element_t*);
 }
 TRI_skiplist_multi_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a multi skip list and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_synced_multi_s {
-  TRI_skiplist_t _base;
-  TRI_read_write_lock_t _lock;
-} TRI_skiplist_synced_multi_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -382,9 +368,11 @@ typedef struct TRI_skiplist_synced_multi_s {
 /// @brief initialises a skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
-                            TRI_skiplist_prob_e,
-                            uint32_t);
+int TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
+                           struct TRI_primary_collection_s*,
+                           size_t,
+                           TRI_skiplist_prob_e,
+                           uint32_t);
                                               
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a multi skip list, but does not free the pointer
@@ -430,7 +418,8 @@ int TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* skiplist,
-                                                       TRI_skiplist_index_key_t* key);
+                                                       TRI_skiplist_index_key_t* key,
+                                                       size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
@@ -459,7 +448,8 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist,
-                                                       TRI_skiplist_index_key_t* key);
+                                                       TRI_skiplist_index_key_t* key,
+                                                       size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the start node  which belongs to a skiplist

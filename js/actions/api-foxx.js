@@ -242,7 +242,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief purgesp a FOXX application
+/// @brief purges a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -258,6 +258,25 @@ actions.defineHttp({
       return foxxManager.purge(name);
     }
   })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns directory information
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/config",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var result = {
+      appPath: module.appPath(),
+      devAppPath: module.devAppPath()
+    };
+
+    actions.resultOk(req, res, actions.HTTP_OK, { result: result });
+  }
 });
 
 // -----------------------------------------------------------------------------

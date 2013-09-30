@@ -286,7 +286,7 @@ void ContinuousSyncer::abortOngoingTransaction () {
 
 TRI_transaction_t* ContinuousSyncer::createSingleOperationTransaction (TRI_voc_cid_t cid,
                                                                        int* result) {
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase,
                                                  _masterInfo._serverId,
                                                  false, 
                                                  0.0, 
@@ -472,7 +472,7 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   }
   
   LOGGER_TRACE("starting replication transaction " << tid); 
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase, 
                                                  _masterInfo._serverId,
                                                  false, 
                                                  0.0, 
@@ -595,7 +595,11 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return TRI_RenameCollectionVocBase(_vocbase, col, name.c_str(), _masterInfo._serverId);
+  return TRI_RenameCollectionVocBase(_vocbase, 
+                                     col, 
+                                     name.c_str(), 
+                                     true, 
+                                     _masterInfo._serverId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

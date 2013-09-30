@@ -12,11 +12,37 @@ ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If
 Foxx is Sinatra, @ref UserManualActions are the corresponding `Rack`. 
 They provide all the HTTP goodness.
 
-If you just want to install an existiting application, please use the 
+If you just want to install an existing application, please use the 
 @ref UserManualFoxxManager. If you want to create your own application, 
 please continue.
 
 So let's get started, shall we?
+
+Overview
+--------
+
+The typical request to a Foxx application will work as follows (only conceptually,
+a lot of the steps are cached in reality):
+
+1. The request is routed to a Foxx application depending on the mount point
+2. The according controller of this application is determined (via something called the manifest file)
+3. The request is then routed to a specific handler in this controller
+
+The handler will now parse the request. This includes determining all parameters
+from the body (which is typically JSON encoded) to the path parameters of the URL.
+It is then up to you to handle this request and generate a response. In this process
+you will probably access the database. This is done via the **Repository**: This is an
+entity that is responsible for a collection and specifically:
+
+1. Creating new entries in this collection
+2. Modify or delete existing entries in this collection
+3. Search for entries in this collection
+
+To represent an entry in this collection it will use a **Model**, which is a wrapper around
+the raw data from the database. Here you can implement helper functions or simple access
+methods.
+
+Now let's get into the details.
 
 Creating the application files
 ------------------------------
@@ -26,22 +52,46 @@ ArangoDB directly. ArangoDB serves this application, you do not need a
 separate application server.
 
 So given you want to build an application that sends a plain-text response 
-"Worked!" for all requests to `/dev/meadow`.  How would you achieve that 
-with Foxx?
+"Hello YourName!" for all requests to `/dev/my_app/hello/YourName`. 
+How would you achieve that with Foxx?
 
-First, create a directory `apps` somewhere in your filesystem. Let's assume 
+First, create a directory `apps` somewhere in your filesystem. This will be
+the Foxx application base directory for your database instance. Let's assume 
 from now on that the absolute path for this directory is `/home/user/apps`.
+When you have created the directory, create a sub-directory `databases` in it.
 
-After that, create a sub-directory `my_app` in the `apps` directory and 
-save the following content in a file named `app.js` there:
+Foxx applications are database-specific, and the `databases` sub-directory is
+used to separate the Foxx applications of different databases running in the
+same ArangoDB instance.
 
-    var Foxx = require("org/arangodb/foxx");
-    var app = new Foxx.Controller(applicationContext);
+Let's assume for now that you are working in the default database (`_system`), that
+is used when no database name is specified otherwise. To use Foxx applications with
+the `_system`, create a sub-directory `_system` inside the `databases` subdirectory.
+All Foxx applications for the `_system` database will go into this directory.
+
+Finally, we can add a sub-directory `my_app` in the `_system` directory and should
+end up with the following directory layout (starting at `/home/user` in our example):
+
+    apps/
+      databases/
+        _system/
+          my_app/
+
+In the `my_app` directory, create a file named `app.js` and save the following content
+in it:
+
+    (function() {
+        "use strict";
     
-    app.get("/meadow", function(req, res) {
-      res.set("Content-Type", "text/plain");
-      res.body = "Worked!"
-    });
+        var Foxx = require("org/arangodb/foxx"),
+            controller = new Foxx.Controller(applicationContext)
+    
+        controller.get("/hello/:name", function(req, res) {
+            res.set("Content-Type", "text/plain");
+            res.body = "Hello " + req.params("name");
+        }); 
+    
+    }());
 
 Beside the `app.js` we need a manifest file. In order to achieve that, we 
 create a file called `manifest.json` in our `my_app` directory with the 
@@ -63,46 +113,95 @@ You should now have the following files and directories with your
 application (starting at `/home/user` in our example):
 
     apps/
-      my_app/
-        manifest.json
-        app.js
+      databases/
+        _system/
+          my_app/
+            manifest.json
+            app.js
 
-This is your application.
+This is your application, and you're ready to use it.
 
 Testing the application
 -----------------------
 
-Now your application is ready to be tested. Start ArangoDB as follows:
+Start ArangoDB as follows:
 
     $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
-This will start the ArangoDB server in a **development mode** using the 
-directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your 
-database directory. Production application are installed using the Foxx 
-manager and should not be changed. In development mode the server
-automatically monitors the workspace and detects any change made to the files.
+If you chose a different directory name, you need to replace `/home/user/apps` 
+with the actual directory name of course. Replace `/tmp/fancy_db` with the
+directory your database data is located in.
 
-Replace `/home/user/apps` with the apps path that you initially created. This 
-is the path that you created the `my_app` directory in. Replace `/tmp/fancy_db` 
-with the directory your database is located in.
+The command will start the ArangoDB server in a **development mode** using the
+directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your
+database directory.  In development mode the server automatically reloads all
+application files on every request, so changes to the underlying files are
+visible instantly. 
 
-Now point your browser to `http://localhost:8529/dev/meadow` and you should 
-see "Worked!". After this short overview, let's get into the details.
+Note: the development mode is convenient when developing applications but the
+permanent reloading has an impact on performance. Therefore permanent reloading is
+only performed in development mode and not in production mode. Whenever you think 
+your application is ready for production, you can install it using the Foxx manager
+and avoid the overhead of reloading.
 
+Now point your browser to `http://localhost:8529/dev/my_app/hello/YourName` and you should 
+see "Hello YourName".  
+
+After this short overview, let's get into the details. There are several example
+apps available on Github. You can install them via Foxx manager (covered in the
+chapter on Foxx manager) or simply clone them from `https://github.com/arangodb/`.
+
+Start with "hello-foxx" (`https://github.com/arangodb/hello-foxx`) as it contains
+several basic usage examples. "aye-aye" and "fugu" are more advanced apps showing how
+to use Backbone, Underscore and Jquery together with Foxx. "foxx-authentication" shows 
+how to register users, login and check permissions.
 
 Handling Requests{#UserManualFoxxHandlingRequests}
 ==================================================
 
 In development mode all available applications from the application directory 
-`/home/user/apps` are visible under `http://localhost:8529/dev/DIRNAME` where 
-`DIRNAME` is the name of the directory of your application.
+`/home/user/apps/databases/<database name>/` are visible under 
+`http://localhost:8529/dev/<directory name>` where `<database name>` is the 
+name of the current database and `<directory name>` is the directory name of your 
+application.
+
+In our example, `<directory name>` was `my_app` and as we didn't specify a 
+database, `<database name>` defaulted to `_system`.
 
 When applications are installed in production mode, you can change the `/dev` 
 prefix to whatever you like, see @ref UserManualFoxxManager.
 
 If you do not redefine it, all requests that go to the root of your 
-application will be redirected to `index.html`.
+application (i.e. `/`) will be redirected to `index.html`.
 
+This means that if your application does not provide a file `index.html`, 
+calling the application root URL my result in a 404 error.
+In our example, the application root URL is `http://localhost:8529/dev/my_app/hello/`.
+Call it, and you should something like this in return:
+
+    {
+      "error": true,
+      "code": 404,
+      "errorNum": 404,
+      "errorMessage": "unknown path 'dev/my_app/index.html'"
+    }
+
+To fix that, you can give your app a different default document, e.g. "hello/unknown".
+The adjusted manifest now looks like this:
+
+    {
+      "name": "my_app",
+      "version": "0.0.1",
+      "author": "me and myself",
+      "controllers": {
+        "/": "app.js"
+      },
+      "defaultDocument": "hello/unknown"
+    }
+
+Note: browsers tend to cache results of redirections. To see the new default 
+document in effect, first clear your browser's cache and point your browser
+to `http://localhost:8529/dev/my_app/`.
 
 Details on FoxxController{#UserManualFoxxDetailsController}
 =============================================================
@@ -136,8 +235,8 @@ HTTP Methods
 
 @copydetails JSF_foxx_controller_delete
 
-Documenting and Constraining the Routes
----------------------------------------
+Documenting and constraining a specific route
+---------------------------------------------
 
 If you now want to document your route, you can use JSDoc style comments (a 
 multiline comment block with the first line starting with `/**` instead 
@@ -167,6 +266,10 @@ API by chaining the following methods onto your path definition:
 
 @copydetails JSF_foxx_RequestContext_queryParam
 
+### Body Param
+
+@copydetails JSF_foxx_RequestContext_bodyParam
+
 ### Error Response
 
 @copydetails JSF_foxx_RequestContext_errorResponse
@@ -178,6 +281,26 @@ API by chaining the following methods onto your path definition:
 ### onlyIfAuthenticated
 
 @copydetails JSF_foxx_RequestContext_onlyIfAuthenticated
+
+Documenting and constraining all routes of a controller
+-------------------------------------------------------
+
+In addition to documenting a specific route, you can also
+do the same for all routes of a controller. For this purpose
+use the `allRoutes` object of the according controller.
+The following methods are available:
+
+### Error Response
+
+@copydetails JSF_foxx_RequestContextBuffer_errorResponse
+
+### onlyIf
+
+@copydetails JSF_foxx_RequestContextBuffer_onlyIf
+
+### onlyIfAuthenticated
+
+@copydetails JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 
 Before and After Hooks
 ----------------------
@@ -266,6 +389,39 @@ your model file, export the model as `model`.
 
 A Foxx Model can be initialized with an object of attributes and their values.
 
+There's also the possibility of annotation: The second hash you give to the
+extend method are properties of the prototype. You can define an attributes 
+property there:
+
+    var Foxx = require("org/arangodb/foxx");
+    
+    var PersonModel = Foxx.Model.extend({
+      // Your instance properties
+    }, {
+      // Your prototype properties
+      attributes: {
+        name: { type: "string", required: true },
+        age: { type: "integer" },
+        active: { type: "boolean", defaultValue: true }
+    });
+    
+    exports.model = TodoModel;
+
+This has two effects: On the one hand it provides documentation. If you annotated
+your model, you can use it in the `bodyParam` method for documentation.
+On the other hand it will influence the behavior of the constructor: If you provide
+an object to the constructor, it will only take those attributes that are listed
+in the attributes object. This is especially useful if you want to to initialize
+the Model from user input. On the other hand it will set the default value for all
+attributes that have not been set by hand. An example:
+
+    var person = new PersonModel({
+      name: "Pete",
+      admin: true
+    });
+
+    person.attributes // => { name: "Pete", active: true }
+
 ### Extend
 
 @copydetails JSF_foxx_model_extend
@@ -330,39 +486,35 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_modelPrototype
 
-### Remove
+### Save
 
-@copydetails JSF_foxx_repository_remove
+@copydetails JSF_foxx_repository_save
 
-### Replace
+### Remove By Id
 
-@copydetails JSF_foxx_repository_replace
-
-### Update
-
-@copydetails JSF_foxx_repository_update
+@copydetails JSF_foxx_repository_removeById
 
 ### Remove By Example
 
 @copydetails JSF_foxx_repository_removeByExample
 
-### ReplaceByExample
+### Replace
 
-@copydetails JSF_foxx_repository_replaceByExample
+@copydetails JSF_foxx_repository_replace
 
-### UpdateByExample
+### ReplaceById
 
-@copydetails JSF_foxx_repository_updateByExample
+@copydetails JSF_foxx_repository_replaceById
 
-### All
+### By Id
 
-@copydetails JSF_foxx_repository_all
+@copydetails JSF_foxx_repository_byId
 
-### ByExample
+### By Example
 
 @copydetails JSF_foxx_repository_byExample
 
-### FirstExample
+### First Example
 
 @copydetails JSF_foxx_repository_firstExample
 
@@ -370,24 +522,32 @@ The Manifest File{#UserManualFoxxManifest}
 ==========================================
 
 In the `manifest.json` you define the components of your application. 
-The content is a JSON object with the following keys:
+The content is a JSON object with the following attributes (not all 
+attributes are required though):
 
-* `name`: Name of the application (Meta information)
-* `version`: Current version of the application (Meta information)
-* `description`: A short description of the application (Meta information)
-* `license`: Short form of the license (MIT, GPL...)
-* `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
-* `thumbnail`: Path to a thumbnail that represents the application (Meta information)
-* `repository`: An object with information about where you can find the repository: `type` and `url`
-* `keywords`: An array of keywords to help people find your Foxx app
-* `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
-* `controllers`: Map routes to FoxxControllers
-* `lib`: Base path for all required modules
-* `files`: Deliver files
 * `assets`: Deliver pre-processed files
-* `system`: Mark an application as a system application
+* `author`: The author name
+* `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
+* `controllers`: Map routes to FoxxControllers
+* `defaultDocument`: The default document when the applicated root (`/`) is called (defaults to `index.html`)
+* `description`: A short description of the application (Meta information)
+* `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
+* `files`: Deliver files
+* `isSystem`: Mark an application as a system application
+* `keywords`: An array of keywords to help people find your Foxx app
+* `lib`: Base path for all required modules
+* `license`: Short form of the license (MIT, GPL...)
+* `name`: Name of the application (Meta information)
+* `repository`: An object with information about where you can find the repository: `type` and `url`
 * `setup`: Path to a setup script
 * `teardown`: Path to a teardown script
+* `thumbnail`: Path to a thumbnail that represents the application (Meta information)
+* `version`: Current version of the application (Meta information)
+
+If you install an application using the Foxx manager or are using the
+development mode, your manifest will be checked for completeness and common errors.
+You should have a look at the server log files after changing a manifest file to 
+get informed about potential errors in the manifest.
 
 A more complete example for a Manifest file:
 
@@ -397,7 +557,7 @@ A more complete example for a Manifest file:
       "description": "My Website with a blog and a shop",
       "thumnail": "images/website-logo.png",
 
-      "apps": {
+      "controllers": {
         "/blog": "apps/blog.js",
         "/shop": "apps/shop.js"
       },
@@ -424,12 +584,20 @@ A more complete example for a Manifest file:
 The `setup` and `teardown` scripts
 ----------------------------------
 
-You can provide a path to a JavaScript file that prepares ArangoDB for your 
-application (or respectively removes it entirely). These scripts have access 
-to `appCollection` and `appCollectionName` just like models. Use the `setup` 
-script to create all collections your application needs and fill them with 
-initial data if you want to. Use the `teardown` script to remove all 
-collections you have created.
+You can provide a path to a JavaScript file that prepares ArangoDB for your
+application (or respectively removes it entirely). These scripts have access to
+`appCollection` and `appCollectionName`. Use the `setup` script to create all
+collections your application needs and fill them with initial data if you want
+to. Use the `teardown` script to remove all collections you have created.
+
+Note: the setup script is called on each request in the development mode.
+If your application needs to set up specific collections, you should always 
+check in the setup script whether they are already there.
+
+The teardown script is called when an application is uninstalled. It is good
+practice to drop any collections in the teardown script that the application used 
+exclusively, but this is not enforced. Maybe there are reasons to keep application
+data even after removing an application. It's up to you to decide what to do.
 
 `controllers` is an object that matches routes to files
 ------------------------------------------------
@@ -471,6 +639,27 @@ array provided will be processed one element at a time. The elements are
 paths to files (with the option to use wildcards). The files will be 
 concatenated and delivered as a single file.
 
+The content-type (or mime type) of the HTTP response when requesting 
+`application.js` is automatically determined by looking at the filename 
+extension in the asset name (`application.js` in the above example). 
+If the asset does not have a filename extension, the content-type is 
+determined by looking at the filename extension of the first file in the 
+`files` list. If no file extension can be determined, the asset will be
+delived with a content-type of `text/plain`.
+
+It is possible to explicitly override the content-type for an asset by
+setting the optional `contentType` attribute of an asset as follows:
+
+  "assets": {
+    "myincludes": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ],
+      "contentType": "text/javascript"
+    }
+  }
+
 Development Mode
 ----------------
 
@@ -490,26 +679,21 @@ This means that you do not have to restart ArangoDB if you change anything
 in your app. It is of course not meant for production, because the reloading 
 makes the app relatively slow.
 
-Deploying on Production
------------------------
+Production Mode
+---------------
+To run a Foxx app in production first copy your app code to the directory given in 
+the config variable `--javascript.app-path`. After that use Foxx manager to mount the app.
+You can also use Foxx manager to find out your current app-path.
 
-*The Production mode is in development right now.*
-
-We will offer the option to process all assets at once and write the files 
-to disk for production with the option to run `Uglify2.js` and similar 
-tools in order to compress them.
-
-Controlling Access to Foxx Controllers
+Controlling Access to Foxx Applications
 ---------------------------------------
 
-At the moment, access to Foxx.Controllers is controlled by the regular 
-authentication mechanisms present in ArangoDB.  The server can be run with 
-or without HTTP authentication.
+Access to Foxx applications is controlled by the regular authentication mechanisms 
+present in ArangoDB. The server can be run with or without HTTP authentication.
 
-If authentication is turned off, all Foxx.Controllers and routes will be 
-callable by everyone with access to the server.  If authentication is turned on, 
+If authentication is turned on, 
 then every access to the server is authenticated via HTTP authentication. This 
-includes Foxx.Controllers and routes. The global authentication can be toggled 
+includes Foxx applications. The global authentication can be toggled 
 via the configuration option @ref CommandLineArangoDisableAuthentication 
 "server.disable-authentication".
 
@@ -518,9 +702,39 @@ just system API calls, such as `/_api/...` and `/_admin/...`. This option can be
 turned on using the @ref CommandLineArangoAuthenticateSystemOnly 
 "server.authenticate-system-only" configuration option. If it is turned on, 
 then only system API requests need authentication whereas all requests to Foxx 
-applications and routes will not require authentication.
+applications and routes will not require authentication. This is recommended if
+you want your frontend to directly talk to your Foxx application. The other
+option is to turn of the admin and system API completely.
 
-More fine-grained authentication control might be added in the future.
+If you need more fine grained control over the access to your Foxx application,
+we built an authentication system you can use (but you can of course roll your
+own if you want). Deactivate ArangoDB's authentication for your Foxx apps and
+then use Foxx.Authentication.
+
+Currently we only support cookie-based authentication, but we will add the
+possibility to use Auth Tokens and external OAuth providers in the near future.
+We also built a small [demo application](https://github.com/arangodb/foxx-authentication)
+for the authentication functionality.
+
+To use the authentication in your app, first activate it:
+
+@copydetails JSF_foxx_controller_activateAuthentication
+
+### Adding a login route
+
+@copydetails JSF_foxx_controller_login
+
+### Adding a logout route
+
+@copydetails JSF_foxx_controller_logout
+
+### Adding a register route
+
+@copydetails JSF_foxx_controller_register
+
+### Restricting routes
+
+To restrict routes, see the documentation for Documenting and Restraining the routes.
 
 Optional Functionality: FormatMiddleware
 ----------------------------------------
@@ -548,29 +762,6 @@ Use it by calling:
 In both forms you can give a default format as a second parameter, if no 
 format could be determined. If you give no `defaultFormat` this case will be 
 handled as an error.
-
-Authentication
---------------
-
-We built an authentication system you can use in your Foxx application (but you can of course roll your own if you want). Currently we only support cookie-based authentication, but we will add the possibility to use Auth Tokens and external OAuth providers in the near future. To use the authentication in your app, first activate it:
-
-@copydetails JSF_foxx_controller_activateAuthentication
-
-### Adding a login route
-
-@copydetails JSF_foxx_controller_login
-
-### Adding a logout route
-
-@copydetails JSF_foxx_controller_logout
-
-### Adding a register route
-
-@copydetails JSF_foxx_controller_register
-
-### Restricting routes
-
-To restrict routes, see the documentation for Documenting and Restraining the routes.
 
 Optional Functionality: TemplateMiddleware
 ------------------------------------------

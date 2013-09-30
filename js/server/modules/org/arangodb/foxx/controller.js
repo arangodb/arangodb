@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,6 +30,7 @@
 
 var Controller,
   RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
+  RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
   _ = require("underscore"),
@@ -110,6 +111,8 @@ Controller = function (context, options) {
     }
   ];
 
+  this.allRoutes = new RequestContextBuffer();
+
   context.foxxes.push(this);
 
   this.applicationContext = context;
@@ -128,6 +131,7 @@ extend(Controller.prototype, {
     } else {
       cname = prefix + "_" + name;
     }
+    cname = cname.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
 
     collection = db._collection(cname);
 
@@ -152,7 +156,7 @@ extend(Controller.prototype, {
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback),
-      requestContext = new RequestContext(newRoute),
+      requestContext = new RequestContext(this.allRoutes, this.models, newRoute),
       summary;
 
     this.routingInfo.routes.push(newRoute);

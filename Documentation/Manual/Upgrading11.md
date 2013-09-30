@@ -316,7 +316,7 @@ If necessary, stop the server, copy the files using
 
     cp /var/arangodb/* /var/lib/arangodb
 
-and start the server agaib.
+and start the server again.
 
 Removed Features {#Upgrading11RemovedFeatures}
 ==============================================

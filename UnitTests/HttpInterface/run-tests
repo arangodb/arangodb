@@ -5,11 +5,12 @@ rspec --color --format d \
 	api-http-spec.rb \
 	api-admin-spec.rb \
 	api-aqlfunction-spec.rb \
+	api-async-spec.rb \
 	api-attributes-spec.rb \
 	api-batch-spec.rb \
 	api-collection-spec.rb \
+	api-database-spec.rb \
 	api-documents-spec.rb \
-	api-current-database-spec.rb \
 	api-graph-spec.rb \
 	rest-key-spec.rb \
 	rest-create-document-spec.rb \

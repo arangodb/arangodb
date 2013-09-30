@@ -237,10 +237,8 @@ static void setAttributeWeight (voc_shaper_t* shaper,
 
   *weighted = false;
 
-  if (item == NULL && shaper == NULL) { // oops
-    assert(false);
-    return;
-  }
+  assert(item != NULL);
+  assert(shaper != NULL);
 
   *searchResult = sortedIndexOf(shaper, item);
 
@@ -345,6 +343,7 @@ static void fullSetAttributeWeight (voc_shaper_t* shaper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* name) {
+  char* mem;
   TRI_df_attribute_marker_t* marker;
   TRI_df_marker_t* result;
   TRI_df_attribute_marker_t* markerResult;
@@ -359,6 +358,8 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   bool weighted;
   attribute_weight_t* weightedAttribute;
 
+  assert(name != NULL);
+
   s = (voc_shaper_t*) shaper;
   p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
@@ -370,19 +371,23 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   n = strlen(name) + 1;
   
   totalSize = sizeof(TRI_df_attribute_marker_t) + n;
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return 0;
   }
 
+  // marker points to mem, but has a different type
+  marker = (TRI_df_attribute_marker_t*) mem;
+  assert(marker != NULL);
+
   // init attribute marker
-  TRI_InitMarker(&marker->base, TRI_DF_MARKER_ATTRIBUTE, totalSize);
+  TRI_InitMarker(mem, TRI_DF_MARKER_ATTRIBUTE, totalSize);
   
   // copy attribute name into marker
-  memcpy(((char*) marker) + sizeof(TRI_df_attribute_marker_t), name, n);
+  memcpy(mem + sizeof(TRI_df_attribute_marker_t), name, n);
   marker->_size = n;
 
   // lock the index and check that the element is still missing
@@ -393,7 +398,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   // if the element appeared, return the aid
   if (p != NULL) {
     TRI_UnlockMutex(&s->_attributeLock);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
 
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
   }
@@ -405,7 +410,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
  
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_attributeLock);
@@ -427,7 +432,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   // weight corresponds to the natural ordering of the attribute strings
   // ...........................................................................
 
-  markerResult = (TRI_df_attribute_marker_t*)(result);
+  markerResult = (TRI_df_attribute_marker_t*) result;
 
   weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
 
@@ -605,9 +610,14 @@ static bool EqualElementShape (TRI_associative_synced_t* array, void const* left
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a shape
+/// if the function returns non-NULL, the return value is a pointer to an
+/// already existing shape and the value must not be freed
+/// if the function returns NULL, it has not found the shape and was not able
+/// to create it. The value must then be freed by the caller
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
+  char* mem;
   TRI_df_marker_t* result;
   TRI_df_shape_marker_t* marker;
   TRI_voc_size_t totalSize;
@@ -629,18 +639,21 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // initialise a new shape marker
   totalSize = sizeof(TRI_df_shape_marker_t) + shape->_size;
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return NULL;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DF_MARKER_SHAPE, totalSize);
+  marker = (TRI_df_shape_marker_t*) mem;
+  assert(marker != NULL);
+
+  TRI_InitMarker(mem, TRI_DF_MARKER_SHAPE, totalSize);
   
   // copy shape into the marker
-  memcpy(((char*) marker) + sizeof(TRI_df_shape_marker_t), shape, shape->_size);
+  memcpy(mem + sizeof(TRI_df_shape_marker_t), shape, shape->_size);
 
 
   // lock the index and check the element is still missing
@@ -652,13 +665,13 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
     TRI_UnlockMutex(&s->_shapeLock);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
 
     return found;
   }
 
   // get next shape number and write into marker
-  ((TRI_shape_t*) (((char*) marker) + sizeof(TRI_df_shape_marker_t)))->_sid = s->_nextSid++;
+  ((TRI_shape_t*) (mem + sizeof(TRI_df_shape_marker_t)))->_sid = s->_nextSid++;
 
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
@@ -669,10 +682,12 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
     LOG_ERROR("an error occurred while writing shape data into shapes collection: %s", 
               TRI_errno_string(res));
   
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
 
     return NULL;
   }
+
+  assert(result != NULL);
 
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
@@ -685,7 +700,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   TRI_UnlockMutex(&s->_shapeLock);
   
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
   return l;
@@ -1314,7 +1329,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  res = TRI_SaveCollectionInfo(collection->base._directory, &parameter, vocbase->_forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->base._directory, &parameter, vocbase->_settings.forceSyncProperties);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot save collection parameters in directory '%s': %s", collection->base._directory, TRI_last_error());
@@ -1658,14 +1673,26 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   }
     
   // get shape and type
-  leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
-  rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+  if (leftShaper == rightShaper && left._sid == right._sid) {
+    // identical collection and shape
+    leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
+  }
+  else {
+    // different shapes
+    leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
+    rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+  }
+
+  if (leftShape == NULL || rightShape == NULL) {
+    LOG_ERROR("shape not found");
+    assert(false);
+  }
 
   leftType   = leftShape->_type;
   rightType  = rightShape->_type;
 
   // .............................................................................
-  // check ALL combination of leftType and rightType
+  // check ALL combinations of leftType and rightType
   // .............................................................................
 
   switch (leftType) {

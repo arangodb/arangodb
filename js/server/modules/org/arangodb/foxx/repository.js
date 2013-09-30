@@ -44,9 +44,9 @@ var Repository,
 ///
 /// Create a new instance of Repository
 ///
-/// A Foxx Repository is always initialized with a collection object. You can
-/// your collection object by asking your Foxx.Controller for it via the
-/// `collection` method that takes the name of the collection (and will prepend
+/// A Foxx Repository is always initialized with a collection object. You can get
+/// your collection object by asking your Foxx.Controller for it: the
+/// `collection` method takes the name of the collection (and will prepend
 /// the prefix of your application). It also takes two optional arguments:
 ///
 /// 1. Model: The prototype of a model. If you do not provide it, it will default
@@ -101,102 +101,111 @@ Repository = function (collection, opts) {
 
 _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_remove
-/// @brief See the documentation of collection.
+/// @fn JSF_foxx_repository_save
+/// @brief Save a model into the database
 ///
-/// See the documentation of collection.
+/// Expects a model. Will set the ID and Rev on the model.
+/// Returns the model (for convenience).
 ////////////////////////////////////////////////////////////////////////////////
-  remove: function () {
+  save: function (model) {
     'use strict';
-    this.collection.remove.apply(this.collection, arguments);
+    var id_and_rev = this.collection.save(model.forDB());
+    model.set(id_and_rev);
+    return model;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replace
-/// @brief See the documentation of collection.
+/// @fn JSF_foxx_repository_removeById
+/// @brief Remove the document with the given ID
 ///
-/// See the documentation of collection.
+/// Expects an ID of an existing document.
 ////////////////////////////////////////////////////////////////////////////////
-  replace: function () {
+  removeById: function (id) {
     'use strict';
-    this.collection.replace.apply(this.collection, arguments);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_update
-/// @brief See the documentation of collection.
-///
-/// See the documentation of collection.
-////////////////////////////////////////////////////////////////////////////////
-  update: function () {
-    'use strict';
-    this.collection.update.apply(this.collection, arguments);
+    this.collection.remove(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_removeByExample
-/// @brief See the documentation of collection.
+/// @brief Remove all documents that match the example
 ///
-/// See the documentation of collection.
+/// Find all documents that fit this example and remove them.
 ////////////////////////////////////////////////////////////////////////////////
-  removeByExample: function () {
+  removeByExample: function (example) {
     'use strict';
-    this.collection.removeByExample.apply(this.collection, arguments);
+    this.collection.removeByExample(example);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replaceByExample
-/// @brief See the documentation of collection.
+/// @fn JSF_foxx_repository_replace
+/// @brief Replace a model in the database
 ///
-/// See the documentation of collection.
+/// Find the model in the database by its `_id` and replace it with this version.
+/// Expects a model. Sets the Revision of the model.
+/// Returns the model (for convenience).
 ////////////////////////////////////////////////////////////////////////////////
-  replaceByExample: function () {
+  replace: function (model) {
     'use strict';
-    this.collection.replaceByExample.apply(this.collection, arguments);
+    var id = model.get("_id"),
+      data = model.forDB(),
+      id_and_rev = this.collection.replace(id, data);
+    model.set(id_and_rev);
+    return model;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_updateByExample
-/// @brief See the documentation of collection.
+/// @fn JSF_foxx_repository_replaceById
+/// @brief Find an item by ID and replace it with the given model
 ///
-/// See the documentation of collection.
+/// Find the model in the database by the given ID and replace it with the given.
+/// model.
+/// Expects a model. Sets the ID and Revision of the model.
+/// Returns the model (for convenience).
 ////////////////////////////////////////////////////////////////////////////////
-  updateByExample: function () {
+  replaceById: function (id, model) {
     'use strict';
-    this.collection.updateByExample.apply(this.collection, arguments);
+    var data = model.forDB(),
+      id_and_rev = this.collection.replace(id, data);
+    model.set(id_and_rev);
+    return model;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_all
-/// @brief See the documentation of collection.
+/// @fn JSF_foxx_repository_byId
+/// @brief Find a model by its ID
 ///
-/// See the documentation of collection.
+/// Returns the model for the given ID.
 ////////////////////////////////////////////////////////////////////////////////
-  all: function () {
+  byId: function (id) {
     'use strict';
-    this.collection.all.apply(this.collection, arguments);
+    var data = this.collection.document(id);
+    return (new this.modelPrototype(data));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_byExample
-/// @brief See the documentation of collection.
+/// @brief Find all models by an example
 ///
-/// See the documentation of collection.
+/// Returns an array of models for the given ID.
 ////////////////////////////////////////////////////////////////////////////////
-  byExample: function () {
+  byExample: function (example) {
     'use strict';
-    this.collection.byExample.apply(this.collection, arguments);
+    var rawDocuments = this.collection.byExample(example).toArray();
+    return _.map(rawDocuments, function (rawDocument) {
+      return (new this.modelPrototype(rawDocument));
+    }, this);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_firstExample
-/// @brief See the documentation of collection.
+/// @brief Find the first model that matches the example.
 ///
-/// See the documentation of collection.
+/// Returns a model that matches the given example.
 ////////////////////////////////////////////////////////////////////////////////
-  firstExample: function () {
+  firstExample: function (example) {
     'use strict';
-    this.collection.firstExample.apply(this.collection, arguments);
+    var rawDocument = this.collection.firstExample(example);
+    return (new this.modelPrototype(rawDocument));
   }
 });
 

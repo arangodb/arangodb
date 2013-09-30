@@ -46,9 +46,7 @@
 
 #ifdef STRING_BUFFER_MACROS
 
-#define DEFSTR(a,b) static const char __STRING_ ## a [] = b
 #define STR(a) __STRING_ ## a
-#define LENSTR(a) (sizeof(__STRING_ ## a) - 1)
 
 #endif
 

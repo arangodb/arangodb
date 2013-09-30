@@ -33,17 +33,19 @@ WIKI = \
 	HandlingDatabases \
 	HandlingDocuments \
 	HandlingEdges \
+	HandlingEndpoints \
 	HandlingIndexes \
 	Home \
 	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
-	HttpCurrentDatabase \
 	HttpCursor \
 	HttpDatabase \
+	HttpEndpoint \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
+	HttpJob \
 	HttpMisc \
 	HttpQuery \
 	HttpReplication \
@@ -58,15 +60,10 @@ WIKI = \
 	ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
-	IndexCapHttp \
 	IndexFulltext \
-	IndexFulltextHttp \
 	IndexGeo \
-	IndexGeoHttp \
 	IndexHash \
-	IndexHashHttp \
 	IndexSkiplist \
-	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \
@@ -120,12 +117,14 @@ DOXYGEN_TOC = \
 
 dist_man_MANS += \
 	Documentation/man/man1/arangob.1 \
+	Documentation/man/man1/arangodump.1 \
 	Documentation/man/man1/arangoimp.1 \
+	Documentation/man/man1/arangorestore.1 \
 	Documentation/man/man1/arangosh.1 \
-        Documentation/man/man8/rcarangod.8 \
-        Documentation/man/man8/arangod.8 \
-        Documentation/man/man8/arango-dfdb.8 \
-        Documentation/man/man8/foxx-manager.8 
+	Documentation/man/man8/rcarangod.8 \
+	Documentation/man/man8/arangod.8 \
+	Documentation/man/man8/arango-dfdb.8 \
+	Documentation/man/man8/foxx-manager.8 
 
 ################################################################################
 ### @brief JavaScript files
@@ -134,10 +133,10 @@ dist_man_MANS += \
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
-	Doxygen/js/actions/api-current-database.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-database.c \
 	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-endpoint.c \
 	Doxygen/js/actions/api-explain.c \
 	Doxygen/js/actions/api-foxx.c \
 	Doxygen/js/actions/api-graph.c \
@@ -331,6 +330,7 @@ examples:
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \
+		@srcdir@/lib/Admin/*.cpp \
 		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http

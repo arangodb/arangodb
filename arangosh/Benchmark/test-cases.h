@@ -1084,7 +1084,8 @@ static bool DeleteCollection (SimpleHttpClient* client, const string& name) {
 
   bool failed = true;
   if (result != 0) {
-    if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 404) {
+    int statusCode = result->getHttpReturnCode();
+    if (statusCode == 200 || statusCode == 201 || statusCode == 202 || statusCode == 404) {
       failed = false;
     }
 
@@ -1114,7 +1115,8 @@ static bool CreateCollection (SimpleHttpClient* client,
   bool failed = true;
 
   if (result != 0) {
-    if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
+    int statusCode = result->getHttpReturnCode();
+    if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
       failed = false;
     }
 

@@ -56,7 +56,7 @@ BaseMiddleware = function () {
 ///
 /// @FUN{request.body()}
 ///
-/// Get the JSON parsed body of the request – if you need the raw version, please
+/// Get the JSON parsed body of the request. If you need the raw version, please
 /// refer to the `rawBody` function.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,7 +70,7 @@ BaseMiddleware = function () {
 ///
 /// @FUN{request.rawBody()}
 ///
-/// The raw request body, not parsed – just a String.
+/// The raw request body, not parsed. Just a String.
 ////////////////////////////////////////////////////////////////////////////////
 
       rawBody: function () {

@@ -75,10 +75,11 @@ namespace triagens {
 
         GeneralHttpServer (Scheduler* scheduler,
                            Dispatcher* dispatcher,
+                           AsyncJobManager* jobManager,
                            double keepAliveTimeout,
                            HF* handlerFactory)
         : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
-          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher, keepAliveTimeout),
+          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher, jobManager, keepAliveTimeout),
           _handlerFactory(handlerFactory) {
         }
 
@@ -96,14 +97,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the protocol to be used
-////////////////////////////////////////////////////////////////////////////////
-
-        Endpoint::ProtocolType getProtocol () const {
-          return Endpoint::PROTOCOL_HTTP;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the handler factory

@@ -496,10 +496,8 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   struct timeval tp;
   uint64_t x, y;
 
-  rc = gettimeofday(&tp, NULL);
-
-  if (rc != 0) {
-    LOG_FATAL_AND_EXIT("could not get time of day for the condition: %s", strerror(rc));
+  if (gettimeofday(&tp, NULL) != 0) {
+    LOG_FATAL_AND_EXIT("could not get time of day");
   }
 
   // Convert from timeval to timespec

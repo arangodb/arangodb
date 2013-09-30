@@ -710,7 +710,7 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
     const string progress = "syncing data for " + collectionMsg;
     setProgress(progress.c_str());
   
-    TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+    TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase,
                                                    _masterInfo._serverId,
                                                    false, 
                                                    0.0, 

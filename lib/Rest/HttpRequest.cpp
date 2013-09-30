@@ -73,15 +73,19 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0) {
+    _requestContext(0),
+    _isRequestContextOwner(false) {
 
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
 
   char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
-  _freeables.push_back(request);
 
-  parseHeader(request, length);
+  if (request != 0) {
+    _freeables.push_back(request);
+
+    parseHeader(request, length);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +109,8 @@ HttpRequest::HttpRequest ()
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0) {
+    _requestContext(0),
+    _isRequestContextOwner(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +135,8 @@ HttpRequest::~HttpRequest () {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
   
-  if (_requestContext) {
+  if (_requestContext != 0 && _isRequestContextOwner) {
+    // only delete if we are the owner of the context
     delete _requestContext;
   }
 }
@@ -590,11 +596,6 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& HttpRequest::databaseName () const {
-  if (_databaseName == "") {
-    static const string defaultName("_system");
- 
-    return defaultName;
-  }
   return _databaseName;
 }
 
@@ -900,12 +901,6 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           start = end;
         }
 
-        // skip \r
-        if (keyBegin < valueEnd && keyEnd[-1] == '\r') {
-          --keyEnd;
-          *keyEnd = '\0';
-        }
-
         // check the key
         _type = getRequestType(keyBegin, keyEnd - keyBegin);
       }
@@ -1208,15 +1203,22 @@ void HttpRequest::addSuffix (char const* part) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add request context
+/// @brief set the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::addRequestContext (RequestContext* requestContext) {
+void HttpRequest::setRequestContext (RequestContext* requestContext,
+                                     bool isRequestContextOwner) {
   if (_requestContext) {
+    // if we have a shared context, we should not have got here
+    assert(isRequestContextOwner);
+
+    // delete any previous context
+    assert(false);
     delete _requestContext;
   }
 
-  _requestContext = requestContext;
+  _requestContext        = requestContext;
+  _isRequestContextOwner = isRequestContextOwner;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1467,11 +1469,8 @@ void HttpRequest::parseCookies (const char* buffer) {
     }
 
     setCookie(keyBegin, key - keyBegin, valueBegin);
-
   }
 }
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

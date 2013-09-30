@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, TRANSACTION, CREATE_DATABASE, DROP_DATABASE, USE_DATABASE, 
-  LIST_DATABASES */
+/*global require, exports, TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -121,51 +120,6 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
     options: options || undefined
   };
   return new ArangoStatement(this, payload).execute();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                database functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new database
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._createDatabase = function (name, options) { 
-  return CREATE_DATABASE(name, options);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete an existing database
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._dropDatabase = function (name) {
-  return DROP_DATABASE(name);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lists all existing databases
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._listDatabases = function () {
-  return LIST_DATABASES();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use a different database
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._useDatabase = function (name) {
-  return USE_DATABASE(name);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +359,7 @@ ArangoDatabase.prototype._index = function(id) {
 /// @verbinclude shell_index-drop-index-db
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._dropIndex = function(id) {
+ArangoDatabase.prototype._dropIndex = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -430,6 +384,87 @@ ArangoDatabase.prototype._dropIndex = function(id) {
   }
 
   return col.dropIndex(id);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                endpoint functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list of all endpoints
+///
+/// @FUN{db._listEndpoints()}
+///
+/// Returns a list of all endpoints and their mapped databases.
+///
+/// Please note that managing endpoints can only be performed from out of the
+/// `_system` database. When not in the default database, you must first switch 
+/// to it using the @ref JS_UseDatabase "db._useDatabase" method.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._listEndpoints = function () {
+  return internal._listEndpoints();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds and connects a new endpoint
+///
+/// @FUN{db._configureEndpoint(@FA{endpoint}, @FA{databases})}
+///
+/// Adds and connects or updates the @FA{endpoint}. 
+///
+/// The optional @FA{databases} argument allows restricting the endpoint for 
+/// use with specific databases only. The first database in the list will 
+/// automatically become the default database for the endpoint. The default
+/// database will be used for incoming requests that do not specify the database
+/// name explicitly.
+///
+/// If @FA{databases} is an empty list, the endpoint will allow access to all
+/// existing databases.
+///
+/// The adjusted list of endpoints is saved in a file `ENDPOINTS` in the
+/// database directory. The endpoints are restored from the file at server 
+/// start.
+///
+/// Please note that managing endpoints can only be performed from out of the
+/// `_system` database. When not in the default database, you must first switch 
+/// to it using the @ref JS_UseDatabase "db._useDatabase" method.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
+  return internal._configureEndpoint(endpoint, databases || [ ]);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnects and removes a specific endpoint
+///
+/// @FUN{db._removeEndpoint(@FA{endpoint})}
+///
+/// Disconnects and removes the @FA{endpoint}. If the endpoint was not 
+/// configured before, the operation will fail. If the endpoint happens to be
+/// the last bound endpoint, the operation will also fail as disconnecting 
+/// would make the server unable to communicate with any clients.
+///
+/// The adjusted list of endpoints is saved in a file `ENDPOINTS` in the
+/// database directory. The endpoints are restored from the file at server 
+/// start.
+///
+/// Please note that managing endpoints can only be performed from out of the
+/// `_system` database. When not in the default database, you must first switch 
+/// to it using the @ref JS_UseDatabase "db._useDatabase" method.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
+  return internal._removeEndpoint(endpoint);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

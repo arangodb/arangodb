@@ -42,6 +42,7 @@
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
 #include "VocBase/replication-logger.h"
+#include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
 
@@ -282,22 +283,26 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
                                  TRI_voc_size_t* totalSize,
                                  char* keyBody,
                                  TRI_voc_size_t keyBodySize) {
+  char* mem;
   TRI_doc_deletion_key_marker_t* marker;
 
   *result = NULL;
   *totalSize = sizeof(TRI_doc_deletion_key_marker_t) + keyBodySize + 1;
   
   if (tick == 0) {
-    tick = TRI_NewTickVocBase();
+    tick = TRI_NewTickServer();
   }
 
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  marker = (TRI_doc_deletion_key_marker_t*) mem;
+  assert(marker != NULL);
    
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_KEY_DELETION, *totalSize);
+  TRI_InitMarker(mem, TRI_DOC_MARKER_KEY_DELETION, *totalSize);
   assert(marker->_rid == 0);
   marker->_rid = (TRI_voc_rid_t) tick;
   
@@ -306,7 +311,7 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
   marker->_offsetKey = sizeof(TRI_doc_deletion_key_marker_t);
 
   // copy the key into the marker
-  memcpy(((char*) marker) + marker->_offsetKey, keyBody, keyBodySize + 1);
+  memcpy(mem + marker->_offsetKey, keyBody, keyBodySize + 1);
   
   *result = marker;
 
@@ -326,6 +331,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
                                 const TRI_df_marker_type_e markerType,
                                 TRI_shaped_json_t const* shaped) {
 
+  char* mem;
   TRI_doc_document_key_marker_t* marker;
   size_t baseLength;
 
@@ -359,15 +365,19 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
   *totalSize = baseLength + shaped->_data.length;
-  
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+ 
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  // marker points to mem, but has a different type
+  marker = (TRI_doc_document_key_marker_t*) mem;
+  assert(marker != NULL);
+
   if (tick == 0) {
-    tick = TRI_NewTickVocBase();
+    tick = TRI_NewTickServer();
   }
 
   // copy non-changed data (e.g. key(s)) from old marker into new marker
@@ -381,7 +391,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   marker->_shape = shaped->_sid;
 
   // copy shaped json into the marker
-  memcpy(((char*) marker) + baseLength, (char*) shaped->_data.data, shaped->_data.length);
+  memcpy(mem + baseLength, (char*) shaped->_data.data, shaped->_data.length);
   
   // no need to adjust _offsetKey, _offsetJson etc. as we copied it from the old marker
   
@@ -420,6 +430,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                  TRI_voc_key_t key,
                                  TRI_shaped_json_t const* shaped, 
                                  void const* data) {
+  char* mem;
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
   char* position;
@@ -434,7 +445,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   *result = NULL;
 
   if (tick == 0) {
-    tick = TRI_NewTickVocBase();
+    tick = TRI_NewTickServer();
   }
 
   // generate the key
@@ -483,21 +494,24 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
   *totalSize = markerSize + keyBodySize + shaped->_data.length;
-  
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+ 
+  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
-  if (marker == NULL) {
+  if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  marker = (TRI_doc_document_key_marker_t*) mem;
+  assert(marker != NULL);
+
   // set the marker type, size, revision id etc. 
-  TRI_InitMarker(&marker->base, markerType, *totalSize);
+  TRI_InitMarker(mem, markerType, *totalSize);
   assert(marker->_rid == 0);
   marker->_rid   = (TRI_voc_rid_t) tick; 
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
-  *keyBody = ((char*) marker) + markerSize;
+  *keyBody = mem + markerSize;
 
   // copy the key into the marker
   position = *keyBody;
@@ -520,7 +534,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   }
 
   // copy shaped json into the marker
-  position = ((char*) marker) + markerSize + keyBodySize;
+  position = mem + markerSize + keyBodySize;
   memcpy(position, (char*) shaped->_data.data, shaped->_data.length);
   
   // set the offsets for _key and shaped json
@@ -1447,6 +1461,36 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a resize hint to all indexes
+/// must be called under the collection's write-lock
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+static bool ResizeIndexes (TRI_document_collection_t* document,
+                           int64_t numDocuments) {
+  size_t i, n;
+  bool result;
+
+  result = true;
+
+  n = document->_allIndexes._length;
+  for (i = 0 ; i < n ; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
+
+    if (idx->reserve != NULL) {
+      result = idx->reserve(idx, numDocuments);
+
+      if (! result) {
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debug output for headers
@@ -2661,31 +2705,20 @@ static bool FillInternalIndexes (TRI_document_collection_t* document) {
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIndexIterator (char const* filename, void* data) {
+static bool OpenIndexIterator (char const* filename, 
+                               void* data) {
   TRI_json_t* json;
-  char* error;
   int res;
 
-  error = NULL;
-
   // load json description of the index
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   
   // json must be a index description
-  if (json == NULL) {
-    if (error != NULL) {
-      LOG_ERROR("cannot read index definition from '%s': %s", filename, error);
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
+  if (! TRI_IsArrayJson(json)) {
+    LOG_ERROR("cannot read index definition from '%s'", filename);
+    if (json != NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
-    else {
-      LOG_ERROR("cannot read index definition from '%s'", filename);
-    }
-    return false;
-  }
-  
-  if (json->_type != TRI_JSON_ARRAY) {
-    LOG_ERROR("cannot read index definition from '%s': expecting an array", filename);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return false;
   }
@@ -2815,8 +2848,11 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   // we do not require an initial journal
   document->_journalRequested      = false;
-  document->_rotateRequested      = false;
+  document->_rotateRequested       = false;
   document->cleanupIndexes         = CleanupIndexes;
+#if 0  
+  document->reserveIndexes         = ResizeIndexes;
+#endif
 
   return true;
 }
@@ -2885,18 +2921,18 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   bool isVolatile;
 
   if (cid > 0) {
-    TRI_UpdateTickVocBase(cid);
+    TRI_UpdateTickServer(cid);
   }
   else {
-    cid = TRI_NewTickVocBase();
+    cid = TRI_NewTickServer();
   }
+
   parameter->_cid = cid;
 
   // check if we can generate the key generator
   res = TRI_CreateKeyGenerator(parameter->_keyOptions, &keyGenerator);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("cannot create key generator for document collection: %s", TRI_errno_string(res));
     TRI_set_errno(res);
 
     return NULL;
@@ -2921,7 +2957,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
-    LOG_WARNING("cannot create key generator for document collection: %s", TRI_errno_string(res));
+    LOG_WARNING("cannot initialise collection: %s", TRI_errno_string(res));
     TRI_set_errno(res);
 
     return NULL;
@@ -2939,7 +2975,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   // then the shape collection
-  waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+  waitForSync = (vocbase->_settings.forceSyncShapes || parameter->_waitForSync);
   isVolatile  = parameter->_isVolatile;
 
   // if the collection has the _volatile flag, the shapes collection is also volatile.
@@ -2972,7 +3008,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   document->base._keyGenerator = keyGenerator;
 
   // save the parameter block (within create, no need to lock)
-  res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_settings.forceSyncProperties);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
@@ -3082,7 +3118,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
     return TRI_ERROR_INTERNAL;
   }
     
-  TRI_UpdateTickVocBase(iid);
+  TRI_UpdateTickServer(iid);
 
   // ...........................................................................
   // CAP CONSTRAINT
@@ -3400,7 +3436,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   shapeCollection = TRI_CollectionVocShaper(shaper);
 
   if (shapeCollection != NULL) {
-    bool syncShapes = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
+    bool syncShapes = (vocbase->_settings.forceSyncShapes || collection->_info._waitForSync);
 
     shapeCollection->base._info._waitForSync = syncShapes;
   }
@@ -4148,7 +4184,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
     idx = document->_allIndexes._buffer[i];
 
-    json = idx->json(idx, (TRI_primary_collection_t*) document);
+    json = idx->json(idx);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);
@@ -4443,12 +4479,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   idx = CreateCapConstraintDocumentCollection(document, count, size, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -4460,6 +4490,12 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -4861,12 +4897,6 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -4878,6 +4908,12 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -4910,12 +4946,6 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -4927,6 +4957,12 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5135,12 +5171,6 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   // given the list of attributes (as strings)
   idx = CreateHashIndexDocumentCollection(document, attributes, 0, unique, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5152,6 +5182,12 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5349,12 +5385,6 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   idx = CreateSkiplistIndexDocumentCollection(document, attributes, 0, unique, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5366,6 +5396,12 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5628,12 +5664,6 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5645,6 +5675,12 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5894,12 +5930,6 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
   // Given the list of attributes (as strings)
   idx = CreatePriorityQueueIndexDocumentCollection(document, attributes, 0, unique, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5911,6 +5941,12 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -6015,18 +6051,6 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
 
-
-  // ...........................................................................
-  // Perhaps the index was not created in the function TRI_CreateBitarrayIndex
-  // ...........................................................................
-
-  if (idx == NULL) {
-    LOG_TRACE("bitarray index could not be created in TRI_CreateBitarrayIndex");
-    if (created != NULL) {
-      *created = false;
-    }
-    return idx;
-  }
 
   // ...........................................................................
   // If an index id given, use it otherwise use the default (generate one)
@@ -6187,19 +6211,8 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   // .............................................................................
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
+  
   idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, 0, supportUndef, created, errorCode, errorStr);
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
-
-  // .............................................................................
-  // The index is 'new' so save it
-  // .............................................................................
 
   if (idx != NULL) {
     if (created) {
@@ -6219,6 +6232,12 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 

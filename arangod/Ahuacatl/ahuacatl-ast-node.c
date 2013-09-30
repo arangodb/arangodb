@@ -32,6 +32,7 @@
 #include "Ahuacatl/ahuacatl-parser-functions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-variable.h"
+#include "VocBase/collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -481,7 +482,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
     return NULL;
   }
   else {
-    if (! TRI_IsAllowedCollectionName(true, name)) {
+    if (! TRI_IsAllowedNameCollection(true, name)) {
       TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
 
       return NULL;

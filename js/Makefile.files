@@ -9,31 +9,31 @@
 ################################################################################
 
 JAVASCRIPT_BROWSER = \
-	js/apps/aardvark/frontend/js/modules/org/arangodb.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-collection.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-database.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-query-cursor.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-statement.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arangosh.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/graph.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-collection.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-database.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-query-cursor.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arangosh.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
 	\
-	js/apps/aardvark/frontend/js/modules/org/arangodb-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-collection-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/replication.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/simple-query-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-collection-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/replication.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/simple-query-common.js \
 	\
-	js/apps/aardvark/frontend/js/bootstrap/errors.js \
-	js/apps/aardvark/frontend/js/bootstrap/monkeypatches.js \
-	js/apps/aardvark/frontend/js/bootstrap/module-internal.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/errors.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/monkeypatches.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/module-internal.js \
 	\
-	js/apps/aardvark/frontend/js/client/client.js \
-	js/apps/aardvark/frontend/js/client/bootstrap/module-internal.js
+	js/apps/system/aardvark/frontend/js/client/client.js \
+	js/apps/system/aardvark/frontend/js/client/bootstrap/module-internal.js
 
 BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
 
@@ -50,16 +50,16 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/models -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/views -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/collections -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/routers -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/models -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/views -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/collections -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/routers -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/js/apps/aardvark/frontend/js/shell/browser.js 
+	@srcdir@/js/apps/system/aardvark/frontend/js/shell/browser.js 
 
 ################################################################################
 ### @brief executes jslint
@@ -86,33 +86,33 @@ jslint:
 BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
-	@test -d js/apps/aardvark/frontend/js/modules/org/arangodb/graph || mkdir -p js/apps/aardvark/frontend/js/modules/org/arangodb/graph
-	@test -d js/apps/aardvark/frontend/js/modules/org/arangodb/aql || mkdir -p js/apps/aardvark/frontend/js/modules/org/arangodb/aql
-	@test -d js/apps/aardvark/frontend/js/bootstrap || mkdir -p js/apps/aardvark/frontend/js/bootstrap
-	@test -d js/apps/aardvark/frontend/js/client/bootstrap || mkdir -p js/apps/aardvark/frontend/js/client/bootstrap
+	@test -d js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph || mkdir -p js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph
+	@test -d js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql || mkdir -p js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql
+	@test -d js/apps/system/aardvark/frontend/js/bootstrap || mkdir -p js/apps/system/aardvark/frontend/js/bootstrap
+	@test -d js/apps/system/aardvark/frontend/js/client/bootstrap || mkdir -p js/apps/system/aardvark/frontend/js/client/bootstrap
 	@touch $@
 
 ################################################################################
 ### @brief copy JavaScript files
 ################################################################################
 
-js/apps/aardvark/frontend/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
 	cat $< > $@
 
-js/apps/aardvark/frontend/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
 	cat $< > $@
 
-js/apps/aardvark/frontend/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
 	cat $< > $@
 
 ################################################################################
 ### @brief converts JavaScript files to header files
 ################################################################################
 
-js/apps/aardvark/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/common/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
-js/apps/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 ## -----------------------------------------------------------------------------

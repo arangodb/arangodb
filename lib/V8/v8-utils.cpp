@@ -36,6 +36,8 @@
 #include <fstream>
 #include <locale>
 
+#include <regex.h>
+
 #include "Basics/Dictionary.h"
 #include "Basics/Nonce.h"
 #include "Basics/RandomGenerator.h"
@@ -64,6 +66,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
+using namespace triagens::arango;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
@@ -1335,26 +1338,27 @@ static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "md5(<text>)");
   }
 
-  string key = TRI_ObjectToString(argv[0]);
+  v8::String::Utf8Value str(argv[0]);
+
+  if (*str == 0) {
+    return scope.Close(v8::Undefined());
+  }
 
   // create md5
-  char* hash = 0;
-  size_t hashLen;
+  char hash[17];
+  char* p = &hash[0];
+  size_t length;
 
-  SslInterface::sslMD5(key.c_str(), key.size(), hash, hashLen);
+  SslInterface::sslMD5(*str, str.length(), p, length);
 
   // as hex
-  char* hex = 0;
-  size_t hexLen;
+  char hex[33];
+  p = &hex[0];
 
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  SslInterface::sslHEX(hash, 16, p, length);
 
   // and return
-  v8::Handle<v8::String> hashStr = v8::String::New(hex, hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, 32);
 
   return scope.Close(hashStr);
 }

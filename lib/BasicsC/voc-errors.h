@@ -101,19 +101,23 @@ extern "C" {
 /// - 1106: @LIT{cannot create/rename datafile because it already exists}
 ///   Will be raised when the datafile cannot be created or renamed because a
 ///   file of the same name already exists.
-/// - 1107: @LIT{database is locked}
-///   Will be raised when the database is locked by a different process.
+/// - 1107: @LIT{database directory is locked}
+///   Will be raised when the database directory is locked by a different
+///   process.
 /// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
 /// - 1109: @LIT{msync failed}
 ///   Will be raised when the system call msync failed.
+/// - 1110: @LIT{cannot lock database directory}
+///   Will be raised when the server cannot lock the database directory on
+///   startup.
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
-/// - 1201: @LIT{wrong path for database}
-///   Will be raised when a non-existing directory was specified as path for
-///   the database.
+/// - 1201: @LIT{invalid database directory}
+///   Will be raised when a non-existing database directory was specified when
+///   starting the database.
 /// - 1202: @LIT{document not found}
 ///   Will be raised when a document with a given identifier or handle is
 ///   unknown.
@@ -161,12 +165,9 @@ extern "C" {
 /// - 1222: @LIT{unexpected document key}
 ///   Will be raised when a user-defined document key is supplied for
 ///   collections with auto key generation.
-/// - 1223: @LIT{index needs resizing}
-///   Will be raised when an index is full and should be resized to contain
-///   more data.
-/// - 1224: @LIT{database directory not writable}
-///   Will be raised when the database directory is not writable for the
-///   current user.
+/// - 1224: @LIT{server database directory not writable}
+///   Will be raised when the server's database directory is not writable for
+///   the current user.
 /// - 1225: @LIT{out of keys}
 ///   Will be raised when a key generator runs out of keys.
 /// - 1226: @LIT{missing document key}
@@ -176,17 +177,15 @@ extern "C" {
 ///   invalid type.
 /// - 1228: @LIT{database not found}
 ///   Will be raised when a non-existing database is accessed.
-/// - 1229: @LIT{database name already used}
-///   Will be raised when a duplicate database name is used.
-/// - 1230: @LIT{database path already used}
-///   Will be raised when a duplicate database path is used.
-/// - 1231: @LIT{database name invalid}
+/// - 1229: @LIT{database name invalid}
 ///   Will be raised when an invalid database name is used.
-/// - 1232: @LIT{database path invalid}
-///   Will be raised when an invalid database path is used.
-/// - 1233: @LIT{operation only allowed in system database}
+/// - 1230: @LIT{operation only allowed in system database}
 ///   Will be raised when an operation is requested in a database other than
 ///   the system database.
+/// - 1231: @LIT{endpoint not found}
+///   Will be raised when there is an attempt to delete a non-existing endpoint.
+/// - 1232: @LIT{invalid key generator}
+///   Will be raised when an invalid key generator description is used.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -323,17 +322,14 @@ extern "C" {
 ///   Will be raised when a user name already exists
 /// - 1703: @LIT{user not found}
 ///   Will be raised when a user name is updated that does not exist
-/// - 1750: @LIT{application not found}
-///   Will be raised when an application is not found or not present in the
-///   specified version.
-/// - 1751: @LIT{invalid application name}
+/// - 1750: @LIT{invalid application name}
 ///   Will be raised when an invalid application name is specified.
-/// - 1752: @LIT{invalid mount}
+/// - 1751: @LIT{invalid mount}
 ///   Will be raised when an invalid mount is specified.
-/// - 1753: @LIT{application download failed}
+/// - 1752: @LIT{application download failed}
 ///   Will be raised when an application download from the central repository
 ///   failed.
-/// - 1754: @LIT{application upload failed}
+/// - 1753: @LIT{application upload failed}
 ///   Will be raised when an application upload from the client to the ArangoDB
 ///   server failed.
 /// - 1800: @LIT{invalid key declaration}
@@ -913,14 +909,14 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS                          (1106)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1107: ERROR_ARANGO_DATABASE_LOCKED
+/// @brief 1107: ERROR_ARANGO_DATADIR_LOCKED
 ///
-/// database is locked
+/// database directory is locked
 ///
-/// Will be raised when the database is locked by a different process.
+/// Will be raised when the database directory is locked by a different process.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_LOCKED                                  (1107)
+#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1107)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS
@@ -944,6 +940,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_MSYNC_FAILED                                     (1109)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1110: ERROR_ARANGO_DATADIR_UNLOCKABLE
+///
+/// cannot lock database directory
+///
+/// Will be raised when the server cannot lock the database directory on
+/// startup.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1110)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT
 ///
 /// conflict
@@ -955,15 +962,15 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_CONFLICT                                         (1200)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1201: ERROR_ARANGO_WRONG_VOCBASE_PATH
+/// @brief 1201: ERROR_ARANGO_DATADIR_INVALID
 ///
-/// wrong path for database
+/// invalid database directory
 ///
-/// Will be raised when a non-existing directory was specified as path for the
-/// database.
+/// Will be raised when a non-existing database directory was specified when
+/// starting the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH                               (1201)
+#define TRI_ERROR_ARANGO_DATADIR_INVALID                                  (1201)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
@@ -1179,23 +1186,12 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED                          (1222)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1223: ERROR_ARANGO_INDEX_NEEDS_RESIZE
-///
-/// index needs resizing
-///
-/// Will be raised when an index is full and should be resized to contain more
-/// data.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE                               (1223)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1224: ERROR_ARANGO_DATADIR_NOT_WRITABLE
 ///
-/// database directory not writable
+/// server database directory not writable
 ///
-/// Will be raised when the database directory is not writable for the current
-/// user.
+/// Will be raised when the server's database directory is not writable for the
+/// current user.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE                             (1224)
@@ -1242,47 +1238,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATABASE_NOT_FOUND                               (1228)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1229: ERROR_ARANGO_DATABASE_NAME_USED
-///
-/// database name already used
-///
-/// Will be raised when a duplicate database name is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATABASE_NAME_USED                               (1229)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1230: ERROR_ARANGO_DATABASE_PATH_USED
-///
-/// database path already used
-///
-/// Will be raised when a duplicate database path is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATABASE_PATH_USED                               (1230)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1231: ERROR_ARANGO_DATABASE_NAME_INVALID
+/// @brief 1229: ERROR_ARANGO_DATABASE_NAME_INVALID
 ///
 /// database name invalid
 ///
 /// Will be raised when an invalid database name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1231)
+#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1229)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1232: ERROR_ARANGO_DATABASE_PATH_INVALID
-///
-/// database path invalid
-///
-/// Will be raised when an invalid database path is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DATABASE_PATH_INVALID                            (1232)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1233: ERROR_ARANGO_USE_SYSTEM_DATABASE
+/// @brief 1230: ERROR_ARANGO_USE_SYSTEM_DATABASE
 ///
 /// operation only allowed in system database
 ///
@@ -1290,7 +1256,27 @@ void TRI_InitialiseErrorMessages (void);
 /// system database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1233)
+#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1230)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1231: ERROR_ARANGO_ENDPOINT_NOT_FOUND
+///
+/// endpoint not found
+///
+/// Will be raised when there is an attempt to delete a non-existing endpoint.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND                               (1231)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1232: ERROR_ARANGO_INVALID_KEY_GENERATOR
+///
+/// invalid key generator
+///
+/// Will be raised when an invalid key generator description is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR                            (1232)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -1847,38 +1833,27 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_USER_NOT_FOUND                                          (1703)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1750: ERROR_APPLICATION_NOT_FOUND
-///
-/// application not found
-///
-/// Will be raised when an application is not found or not present in the
-/// specified version.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1751: ERROR_APPLICATION_INVALID_NAME
+/// @brief 1750: ERROR_APPLICATION_INVALID_NAME
 ///
 /// invalid application name
 ///
 /// Will be raised when an invalid application name is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1751)
+#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1752: ERROR_APPLICATION_INVALID_MOUNT
+/// @brief 1751: ERROR_APPLICATION_INVALID_MOUNT
 ///
 /// invalid mount
 ///
 /// Will be raised when an invalid mount is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1752)
+#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1751)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1753: ERROR_APPLICATION_DOWNLOAD_FAILED
+/// @brief 1752: ERROR_APPLICATION_DOWNLOAD_FAILED
 ///
 /// application download failed
 ///
@@ -1886,10 +1861,10 @@ void TRI_InitialiseErrorMessages (void);
 /// failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
+#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1752)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1754: ERROR_APPLICATION_UPLOAD_FAILED
+/// @brief 1753: ERROR_APPLICATION_UPLOAD_FAILED
 ///
 /// application upload failed
 ///
@@ -1897,7 +1872,7 @@ void TRI_InitialiseErrorMessages (void);
 /// server failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1754)
+#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

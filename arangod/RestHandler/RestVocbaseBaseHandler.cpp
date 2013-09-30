@@ -37,8 +37,6 @@
 #include "Utils/DocumentHelper.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
-
-#include "RestServer/VocbaseManager.h"
 #include "RestServer/VocbaseContext.h"
 
 using namespace std;
@@ -60,64 +58,46 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief result RES-OK
-////////////////////////////////////////////////////////////////////////////////
-
-LoggerData::Extra const RestVocbaseBaseHandler::RES_OK;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result RES-ERR
-////////////////////////////////////////////////////////////////////////////////
-
-LoggerData::Extra const RestVocbaseBaseHandler::RES_ERR;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result RES-ERR
-////////////////////////////////////////////////////////////////////////////////
-
-LoggerData::Extra const RestVocbaseBaseHandler::RES_FAIL;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::BATCH_PATH           = "/_api/batch";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection path
-////////////////////////////////////////////////////////////////////////////////
-
-string RestVocbaseBaseHandler::COLLECTION_PATH      = "/_api/collection";
+const string RestVocbaseBaseHandler::BATCH_PATH           = "/_api/batch";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::DOCUMENT_PATH        = "/_api/document";
+const string RestVocbaseBaseHandler::DOCUMENT_PATH        = "/_api/document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief documents import path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
+const string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::EDGE_PATH            = "/_api/edge";
+const string RestVocbaseBaseHandler::EDGE_PATH            = "/_api/edge";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::REPLICATION_PATH     = "/_api/replication";
+const string RestVocbaseBaseHandler::REPLICATION_PATH     = "/_api/replication";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
+const string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the queue
+////////////////////////////////////////////////////////////////////////////////
+  
+const string RestVocbaseBaseHandler::QUEUE_NAME           = "STANDARD";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -136,23 +116,11 @@ string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, 
-                                                TRI_vocbase_t* vocbase)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request) 
   : RestBaseHandler(request),
-    _vocbase(vocbase),
-    _resolver(vocbase),
-    _databaseName(request->databaseName()),
-    _timing(),
-    _timingResult(RES_FAIL) {
-
-  RequestContext* rc = request->getRequestContext();
-  _context = static_cast<VocbaseContext*>(rc);
-  
-  // overwrite vocbase 
-  if (_context && _context->getVocbase()) {
-    _vocbase = _context->getVocbase();
-    _resolver = _context->getVocbase();
-  }  
+    _context(static_cast<VocbaseContext*>(request->getRequestContext())),
+    _vocbase(_context->getVocbase()),
+    _resolver(_vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +128,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
-  LOGGER_REQUEST_IN_END_I(_timing,  _timingResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +171,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
   TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
                                                                           name.c_str(), 
                                                                           type,
-                                                                          TRI_GetServerId());
+                                                                          TRI_GetIdServer());
 
   if (collection == 0) {
     generateTransactionError(name, TRI_errno());
@@ -233,7 +200,7 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
-    _response->setHeader("location", 8, string("/_db/" + _databaseName + DOCUMENT_PATH + "/" + handle));
+    _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
   }
 
   // _id and _key are safe and do not need to be JSON-encoded
@@ -422,7 +389,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       }
       else {
         // collection name specified but collection not found
-        generateError(HttpResponse::NOT_FOUND, res, "collection " + COLLECTION_PATH + "/" + collectionName + " not found");
+        generateError(HttpResponse::NOT_FOUND, res, "collection '" + collectionName + "' not found");
       }
       return;
 
@@ -575,6 +542,8 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
     return 0;
   }
 
+  assert(errmsg == 0);
+
   if (TRI_HasDuplicateKeyJson(json)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
@@ -602,13 +571,9 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestVocbaseBaseHandler::isDirect () {
-  return false;
+         
+std::string const& RestVocbaseBaseHandler::queue () const {
+  return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

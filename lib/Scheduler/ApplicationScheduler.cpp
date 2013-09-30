@@ -454,6 +454,8 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
 #endif
   ;
 
+  // deprecated option, only remaining for downwards-compatibility
+  // reuse-address is always true
   options[ApplicationServer::OPTIONS_HIDDEN]
     ("server.reuse-address", "try to reuse address")
   ;

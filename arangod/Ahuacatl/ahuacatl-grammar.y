@@ -435,7 +435,8 @@ expression:
       }
 
       subQuery = TRI_CreateNodeSubqueryAql(context);
-      if (! subQuery) {
+
+      if (subQuery == NULL) {
         ABORT_OOM
       }
       
@@ -444,12 +445,12 @@ expression:
       }
 
       nameNode = TRI_AQL_NODE_MEMBER(subQuery, 0);
-      if (! nameNode) {
+      if (nameNode == NULL) {
         ABORT_OOM
       }
 
       result = TRI_CreateNodeReferenceAql(context, TRI_AQL_NODE_STRING(nameNode));
-      if (! result) {
+      if (result == NULL) {
         ABORT_OOM
       }
 
@@ -811,7 +812,7 @@ reference:
       TRI_aql_node_t* node;
       char* varname = TRI_GetNameParseAql(context);
 
-      if (! varname) {
+      if (varname == NULL) {
         ABORT_OOM
       }
       
@@ -839,20 +840,25 @@ reference:
 
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, $4);
+
+      if (expand == NULL) {
+        ABORT_OOM
+      }
       
       if (! TRI_AppendStatementListAql(context->_statements, expand)) {
         ABORT_OOM
       }
 
       nameNode = TRI_AQL_NODE_MEMBER(expand, 1);
-      if (! nameNode) {
+
+      if (nameNode == NULL) {
         ABORT_OOM
       }
 
       // return a reference only
       $$ = TRI_CreateNodeReferenceAql(context, TRI_AQL_NODE_STRING(nameNode));
 
-      if (! $$) {
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
@@ -983,7 +989,7 @@ numeric_value:
       TRI_aql_node_t* node;
       double value;
 
-      if (! $1) {
+      if ($1 == NULL) {
         ABORT_OOM
       }
       
@@ -1059,14 +1065,14 @@ bind_parameter:
 
 array_element_name:
     T_STRING {
-      if (! $1) {
+      if ($1 == NULL) {
         ABORT_OOM
       }
 
       $$ = $1;
     }
   | T_QUOTED_STRING {
-      if (! $1) {
+      if ($1 == NULL) {
         ABORT_OOM
       }
 
@@ -1084,7 +1090,7 @@ integer_value:
       TRI_aql_node_t* node;
       int64_t value;
 
-      if (! $1) {
+      if ($1 == NULL) {
         ABORT_OOM
       }
 

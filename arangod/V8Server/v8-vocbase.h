@@ -33,6 +33,17 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
+extern "C" {
+  struct TRI_server_s;
+  struct TRI_vocbase_s;
+}
+
+namespace triagens {
+  namespace arango {
+    class JSLoader;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -85,11 +96,34 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
 int32_t TRI_GetVocBaseColType ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief run version check
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_V8RunVersionCheck (void*,
+                            triagens::arango::JSLoader*,
+                            v8::Handle<v8::Context>);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize foxx
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_V8InitialiseFoxx (void*, 
+                           v8::Handle<v8::Context>);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads routing
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_V8ReloadRouting (v8::Handle<v8::Context>);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
-                          TRI_vocbase_t*,
+                          struct TRI_server_s*,
+                          struct TRI_vocbase_s*,
+                          triagens::arango::JSLoader*,
                           const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////

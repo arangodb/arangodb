@@ -35,6 +35,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/server.h"
 #include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"
 
@@ -796,7 +797,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 
     LOG_TRACE("freeing collection datafile");
 
-    assert(datafile);
+    assert(datafile != NULL);
     TRI_FreeDatafile(datafile);
   }
 
@@ -928,7 +929,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
   }
-  parameter->_waitForSync   = vocbase->_defaultWaitForSync;
+  parameter->_waitForSync   = vocbase->_settings.defaultWaitForSync;
 
   parameter->_keyOptions    = NULL;
 
@@ -936,7 +937,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameter->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
 
-  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
+  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name) - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -966,7 +967,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
     dst->_keyOptions  = NULL;
   }
 
-  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
+  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name) - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1065,7 +1066,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
     LOG_ERROR("cannot create collection '%s', path is not a directory", path);
 
@@ -1185,19 +1186,12 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
   TRI_json_t* json;
   char* filename;
-  char* error;
 
-  filename = TRI_Concatenate2File(collection->_path, TRI_COL_PARAMETER_FILE);
-
-  error = NULL;
+  filename = TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
 
   // load JSON description of the collection
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  if (error != NULL) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-  }
 
   if (json == NULL) {
     return NULL;
@@ -1363,7 +1357,7 @@ int TRI_LoadCollectionInfo (char const* path,
   parameter->_isVolatile = false;
 
   // find parameter file
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
 
   if (filename == NULL) {
     LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
@@ -1378,7 +1372,11 @@ int TRI_LoadCollectionInfo (char const* path,
 
   json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
 
-  if (json == NULL) {
+  if (! TRI_IsArrayJson(json)) {
+    if (json != NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    }
+
     if (error != NULL) {
       LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
       TRI_FreeString(TRI_CORE_MEM_ZONE, error);
@@ -1387,14 +1385,6 @@ int TRI_LoadCollectionInfo (char const* path,
       LOG_ERROR("cannot open '%s', parameter block not readable", filename);
     }
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
-  }
-
-  if (json->_type != TRI_JSON_ARRAY) {
-    LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
@@ -1431,9 +1421,9 @@ int TRI_LoadCollectionInfo (char const* path,
     }
     else if (TRI_IsStringJson(value)) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
-        TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
+        TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name) - 1);
 
-        parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
+        parameter->_isSystem = TRI_IsSystemNameCollection(parameter->_name);
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
@@ -1466,7 +1456,7 @@ int TRI_LoadCollectionInfo (char const* path,
   if (versionWarning &&
       parameter->_type != TRI_COL_TYPE_SHAPE &&
       parameter->_version < TRI_COL_VERSION) {
-    if (parameter->_name != NULL) {
+    if (parameter->_name[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's not a shape collection
       LOG_WARNING("collection '%s' has an old version and needs to be upgraded.", parameter->_name);
     }
@@ -1489,7 +1479,7 @@ int TRI_SaveCollectionInfo (char const* path,
   char* filename;
   bool ok;
   
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
   json = TRI_CreateJsonCollectionInfo(info);
 
   // save json info to file
@@ -1546,13 +1536,13 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
       if (shapeCollection != NULL) {
         // adjust wait for sync value of underlying shape collection
-        shapeCollection->base._info._waitForSync = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
+        shapeCollection->base._info._waitForSync = (vocbase->_settings.forceSyncShapes || collection->_info._waitForSync);
       }
     }
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_forceSyncProperties);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_settings.forceSyncProperties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1568,14 +1558,14 @@ int TRI_RenameCollection (TRI_collection_t* collection,
   int res;
 
   TRI_CopyCollectionInfo(&new, &collection->_info);
-  TRI_CopyString(new._name, name, sizeof(new._name));
+  TRI_CopyString(new._name, name, sizeof(new._name) - 1);
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_settings.forceSyncProperties);
 
   TRI_FreeCollectionInfoOptions(&new);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_CopyString(collection->_info._name, name, sizeof(collection->_info._name));
+    TRI_CopyString(collection->_info._name, name, sizeof(collection->_info._name) - 1);
   }
 
   return res;
@@ -1691,7 +1681,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   freeCol = false;
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
     LOG_ERROR("cannot open '%s', not a directory or not found", path);
 
@@ -1806,7 +1796,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
   if (regcomp(&re, "^.*\\.new$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   res = TRI_ERROR_NO_ERROR;
@@ -1847,240 +1837,245 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_vector_pointer_t datafiles;
-    TRI_associative_pointer_t primaryIndex;
-    char* outfile;
-    TRI_voc_size_t neededSize;
-    TRI_voc_size_t actualSize;
-    ssize_t written;
-    size_t markers;
-    int fdout;
-
-    outfile = NULL;
-
-    TRI_InitVectorPointer(&datafiles, TRI_CORE_MEM_ZONE);
     // we're interested in these files...
-    regcomp(&re, "^(compactor|journal|datafile)-.*\\.db$", REG_EXTENDED);
-  
-    for (i = 0;  i < n;  ++i) {
-      regmatch_t matches[1];
-      char const* file = files._buffer[i];
-
-      if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-        char* fqn = TRI_Concatenate2File(path, file);
-
-        // open the datafile, and push it into a vector of datafiles
-        TRI_datafile_t* datafile = TRI_OpenDatafile(fqn);
-
-        if (datafile != NULL) {
-          TRI_PushBackVectorPointer(&datafiles, datafile);
-        }
-        else {
-          LOG_WARNING("could not open datafile '%s'", fqn);
-          res = TRI_errno();
-        }
-        
-        TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
-      }
+    if (regcomp(&re, "^(compactor|journal|datafile)-.*\\.db$", REG_EXTENDED) != 0) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
     }
+    else { 
+      TRI_vector_pointer_t datafiles;
+      TRI_associative_pointer_t primaryIndex;
+      char* outfile;
+      TRI_voc_size_t neededSize;
+      TRI_voc_size_t actualSize;
+      ssize_t written;
+      size_t markers;
+      int fdout;
 
-    regfree(&re);
+      outfile = NULL;
+      TRI_InitVectorPointer(&datafiles, TRI_CORE_MEM_ZONE);
+    
+      for (i = 0;  i < n;  ++i) {
+        regmatch_t matches[1];
+        char const* file = files._buffer[i];
 
-    // all datafiles opened
+        if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+          char* fqn = TRI_Concatenate2File(path, file);
 
+          // open the datafile, and push it into a vector of datafiles
+          TRI_datafile_t* datafile = TRI_OpenDatafile(fqn);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      // build an in-memory index of documents
-      res = TRI_InitAssociativePointer(&primaryIndex,
-                                       TRI_UNKNOWN_MEM_ZONE,
-                                       HashKeyHeader,
-                                       HashElementDocument,
-                                       IsEqualKeyDocument,
-                                       0);
-
-      // read all markers in the existing datafiles
-      for (i = 0; i < datafiles._length; ++i) {
-        TRI_datafile_t* df = datafiles._buffer[i];
-
-        TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false, false);
-      }
-
-
-      // calculate the length for the new datafile
-      markers = 0;
-      neededSize = sizeof(TRI_df_header_marker_t) + 
-                   sizeof(TRI_col_header_marker_t) + 
-                   sizeof(TRI_df_footer_marker_t);
-
-      // go over all documents in the index and calculate the total length
-      for (i = 0; i < primaryIndex._nrAlloc; ++i) {
-        old_doc_mptr_t* header = primaryIndex._table[i];
-
-        if (header != NULL && header->_validTo == 0) {
-          TRI_df_marker_t const* marker = header->_data;
-
-          if (marker != NULL) {
-            neededSize += TRI_DF_ALIGN_BLOCK(marker->_size);
-            markers++;
+          if (datafile != NULL) {
+            TRI_PushBackVectorPointer(&datafiles, datafile);
           }
+          else {
+            LOG_WARNING("could not open datafile '%s'", fqn);
+            res = TRI_errno();
+          }
+          
+          TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
         }
       }
 
-      // round up to nearest page size
-      actualSize = ((neededSize + PageSize - 1) / PageSize) * PageSize;
-      written = 0;
+      regfree(&re);
 
-      // generate the name for the new datafile: datafile-xxx.db.new
-      { 
-        char* fidString;
-        char* jname;
+      // all datafiles opened
 
-        fidString = TRI_StringUInt64(TRI_NewTickVocBase());
-        jname = TRI_Concatenate3String("datafile-", fidString, ".db.new");
-        TRI_FreeString(TRI_CORE_MEM_ZONE, fidString);
 
-        outfile = TRI_Concatenate2File(path, jname);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-      }
+      if (res == TRI_ERROR_NO_ERROR) {
+        // build an in-memory index of documents
+        res = TRI_InitAssociativePointer(&primaryIndex,
+                                        TRI_UNKNOWN_MEM_ZONE,
+                                        HashKeyHeader,
+                                        HashElementDocument,
+                                        IsEqualKeyDocument,
+                                        0);
 
-      LOG_INFO("migrating data for collection '%s' (id: %llu, %llu documents) into new datafile '%s'", 
-          info->_name, 
-          (unsigned long long) info->_cid,
-          (unsigned long long) markers,
-          outfile);
+        // read all markers in the existing datafiles
+        for (i = 0; i < datafiles._length; ++i) {
+          TRI_datafile_t* df = datafiles._buffer[i];
 
-      // create the outfile
-      fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+          TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false, false);
+        }
 
-      if (fdout < 0) {
-        res = TRI_ERROR_CANNOT_WRITE_FILE;
-        LOG_ERROR("cannot create new datafile '%s'", outfile);
-      }
-      else {
-        TRI_df_header_marker_t header;
-        TRI_col_header_marker_t cm;
-        TRI_df_footer_marker_t footer;
-        TRI_voc_tick_t tick;
 
-        tick = TRI_NewTickVocBase();
+        // calculate the length for the new datafile
+        markers = 0;
+        neededSize = sizeof(TRI_df_header_marker_t) + 
+                    sizeof(TRI_col_header_marker_t) + 
+                    sizeof(TRI_df_footer_marker_t);
 
-        // datafile header
-        TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
-        header._version     = TRI_DF_VERSION;
-        header._maximalSize = actualSize;
-        header._fid         = tick;
-        header.base._tick   = tick;
-        header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
-
-        written += TRI_WRITE(fdout, &header.base, header.base._size);
-
-        // col header
-        TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
-        cm._type      = (TRI_col_type_t) info->_type;
-        cm._cid       = info->_cid;
-        cm.base._tick = tick;
-        cm.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
-
-        written += TRI_WRITE(fdout, &cm.base, cm.base._size);
-
-        // write all surviving documents into the datafile
+        // go over all documents in the index and calculate the total length
         for (i = 0; i < primaryIndex._nrAlloc; ++i) {
-          old_doc_mptr_t* mptr = primaryIndex._table[i];
+          old_doc_mptr_t* header = primaryIndex._table[i];
 
-          if (mptr != NULL && mptr->_validTo == 0) {
-            TRI_df_marker_t const* marker = mptr->_data;
+          if (header != NULL && header->_validTo == 0) {
+            TRI_df_marker_t const* marker = header->_data;
 
             if (marker != NULL) {
-              TRI_doc_document_key_marker_t* doc;
-              void* buffer;
-              ssize_t w;
-              
-              assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-                     marker->_type == TRI_DOC_MARKER_KEY_EDGE);
-
-              tick = TRI_NewTickVocBase();
-
-              // copy the old marker
-              buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, TRI_DF_ALIGN_BLOCK(marker->_size), true);
-              memcpy(buffer, marker, marker->_size);
-
-              doc = (TRI_doc_document_key_marker_t*) buffer;
-              // reset _tid value to 0
-              doc->_tid = 0;
-              
-              doc->base._tick = tick;
-              // recalc crc
-              doc->base._crc = 0;
-              doc->base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) doc, marker->_size));
-
-              w = TRI_WRITE(fdout, buffer, TRI_DF_ALIGN_BLOCK(marker->_size));
-
-              TRI_Free(TRI_CORE_MEM_ZONE, buffer);
-
-              if (w <= 0) {
-                res = TRI_ERROR_INTERNAL;
-                LOG_ERROR("an error occurred while writing documents into datafile '%s'", outfile);
-                break;
-              }
-
-              written += w;
+              neededSize += TRI_DF_ALIGN_BLOCK(marker->_size);
+              markers++;
             }
           }
         }
-        
-        tick = TRI_NewTickVocBase();
 
-        // datafile footer
-        TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
-        footer.base._tick   = tick;
-        footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
-        written += TRI_WRITE(fdout, &footer.base, footer.base._size);
+        // round up to nearest page size
+        actualSize = ((neededSize + PageSize - 1) / PageSize) * PageSize;
+        written = 0;
 
-        TRI_CLOSE(fdout);
-      }
+        // generate the name for the new datafile: datafile-xxx.db.new
+        { 
+          char* fidString;
+          char* jname;
+
+          fidString = TRI_StringUInt64(TRI_NewTickServer());
+          jname = TRI_Concatenate3String("datafile-", fidString, ".db.new");
+          TRI_FreeString(TRI_CORE_MEM_ZONE, fidString);
+
+          outfile = TRI_Concatenate2File(path, jname);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
+        }
+
+        LOG_INFO("migrating data for collection '%s' (id: %llu, %llu documents) into new datafile '%s'", 
+            info->_name, 
+            (unsigned long long) info->_cid,
+            (unsigned long long) markers,
+            outfile);
+
+        // create the outfile
+        fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+        if (fdout < 0) {
+          res = TRI_ERROR_CANNOT_WRITE_FILE;
+          LOG_ERROR("cannot create new datafile '%s'", outfile);
+        }
+        else {
+          TRI_df_header_marker_t header;
+          TRI_col_header_marker_t cm;
+          TRI_df_footer_marker_t footer;
+          TRI_voc_tick_t tick;
+
+          tick = TRI_NewTickServer();
+
+          // datafile header
+          TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+          header._version     = TRI_DF_VERSION;
+          header._maximalSize = actualSize;
+          header._fid         = tick;
+          header.base._tick   = tick;
+          header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
+
+          written += TRI_WRITE(fdout, &header.base, header.base._size);
+
+          // col header
+          TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+          cm._type      = (TRI_col_type_t) info->_type;
+          cm._cid       = info->_cid;
+          cm.base._tick = tick;
+          cm.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
+
+          written += TRI_WRITE(fdout, &cm.base, cm.base._size);
+
+          // write all surviving documents into the datafile
+          for (i = 0; i < primaryIndex._nrAlloc; ++i) {
+            old_doc_mptr_t* mptr = primaryIndex._table[i];
+
+            if (mptr != NULL && mptr->_validTo == 0) {
+              TRI_df_marker_t const* marker = mptr->_data;
+
+              if (marker != NULL) {
+                TRI_doc_document_key_marker_t* doc;
+                void* buffer;
+                ssize_t w;
                 
-      LOG_DEBUG("rewritten datafile '%s' has size %llu", outfile, (unsigned long long) written);
+                assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+                      marker->_type == TRI_DOC_MARKER_KEY_EDGE);
 
-      TRI_DestroyAssociativePointer(&primaryIndex);
+                tick = TRI_NewTickServer();
 
-      // rename target file (by removing the .new suffix)
-      if (res == TRI_ERROR_NO_ERROR) {
-        char* dst = TRI_DuplicateString2(outfile, strlen(outfile) - strlen(".new"));
+                // copy the old marker
+                buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, TRI_DF_ALIGN_BLOCK(marker->_size), true);
+                memcpy(buffer, marker, marker->_size);
 
-        res = TRI_RenameFile(outfile, dst);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, dst);
+                doc = (TRI_doc_document_key_marker_t*) buffer;
+                // reset _tid value to 0
+                doc->_tid = 0;
+                
+                doc->base._tick = tick;
+                // recalc crc
+                doc->base._crc = 0;
+                doc->base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) doc, marker->_size));
+
+                w = TRI_WRITE(fdout, buffer, TRI_DF_ALIGN_BLOCK(marker->_size));
+
+                TRI_Free(TRI_CORE_MEM_ZONE, buffer);
+
+                if (w <= 0) {
+                  res = TRI_ERROR_INTERNAL;
+                  LOG_ERROR("an error occurred while writing documents into datafile '%s'", outfile);
+                  break;
+                }
+
+                written += w;
+              }
+            }
+          }
+          
+          tick = TRI_NewTickServer();
+
+          // datafile footer
+          TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+          footer.base._tick   = tick;
+          footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
+          written += TRI_WRITE(fdout, &footer.base, footer.base._size);
+
+          TRI_CLOSE(fdout);
+        }
+                  
+        LOG_DEBUG("rewritten datafile '%s' has size %llu", outfile, (unsigned long long) written);
+
+        TRI_DestroyAssociativePointer(&primaryIndex);
+
+        // rename target file (by removing the .new suffix)
+        if (res == TRI_ERROR_NO_ERROR) {
+          char* dst = TRI_DuplicateString2(outfile, strlen(outfile) - strlen(".new"));
+
+          res = TRI_RenameFile(outfile, dst);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, dst);
+        }
+
       }
 
-    }
-
-    if (outfile != NULL) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, outfile);
-    }
-
-    // close "old" datafiles
-    for (i = 0; i < datafiles._length; ++i) {
-      TRI_datafile_t* df = datafiles._buffer[i];
-      char* old;
-
-      old = TRI_DuplicateString(df->getName(df));
-
-      TRI_CloseDatafile(df);
-      TRI_FreeDatafile(df);
-
-      // if no error happened, we'll also rename the old datafiles to ".old"
-      if (res == TRI_ERROR_NO_ERROR) {
-        char* dst;
-
-        dst = TRI_Concatenate2String(old, ".old");
-        res = TRI_RenameFile(old, dst);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, dst);
+      if (outfile != NULL) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, outfile);
       }
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, old);
+      // close "old" datafiles
+      for (i = 0; i < datafiles._length; ++i) {
+        TRI_datafile_t* df = datafiles._buffer[i];
+        char* old;
+
+        old = TRI_DuplicateString(df->getName(df));
+
+        TRI_CloseDatafile(df);
+        TRI_FreeDatafile(df);
+
+        // if no error happened, we'll also rename the old datafiles to ".old"
+        if (res == TRI_ERROR_NO_ERROR) {
+          char* dst;
+
+          dst = TRI_Concatenate2String(old, ".old");
+          res = TRI_RenameFile(old, dst);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, dst);
+        }
+
+        TRI_FreeString(TRI_CORE_MEM_ZONE, old);
+      }
+
+      TRI_DestroyVectorPointer(&datafiles);
     }
 
-    TRI_DestroyVectorPointer(&datafiles);
   }
+
 
   TRI_DestroyVectorString(&files);
 
@@ -2129,12 +2124,53 @@ bool TRI_IterateTicksCollection (const char* const path,
 /// @brief determine whether a collection name is a system collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsSystemCollectionName (char const* name) {
+bool TRI_IsSystemNameCollection (char const* name) {
   if (name == NULL) {
     return false;
   }
 
   return *name == '_';
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a collection name is allowed
+///
+/// Returns true if the name is allowed and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedNameCollection (bool allowSystem, 
+                                  char const* name) {
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is allowed
+  for (ptr = name;  *ptr;  ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+      else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    }
+    else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (! ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

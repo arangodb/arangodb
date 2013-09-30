@@ -1,0 +1,93 @@
+#!/usr/bin/env ruby
+begin
+  require "juicer/merger/javascript_merger"
+rescue LoadError => err
+  puts "Install juicer to build Sinon.JS"
+  if !defined?(Gem)
+    puts "RubyGems is not loaded. Perhaps that is why juicer can not be found?"
+  end
+  exit
+end
+
+require "fileutils"
+require "pathname"
+
+def add_license(file, version)
+  contents = File.read(file)
+
+  File.open(file, "w") do |f|
+    f.puts <<PREAMBLE
+/**
+ * Sinon.JS #{version}, #{Time.now.strftime("%Y/%m/%d")}
+ *
+ * @author Christian Johansen (christian@cjohansen.no)
+ * @author Contributors: https://github.com/cjohansen/Sinon.JS/blob/master/AUTHORS
+ *
+ * #{File.read("LICENSE").split("\n").join("\n * ")}
+ */
+
+"use strict";
+PREAMBLE
+
+    f.puts(contents.gsub("\"use strict\";\n", ""))
+  end
+end
+
+def add_buster_format(file)
+  if !File.exists?("./node_modules/buster-format")
+    puts <<-MSG
+buster-format not found, skipping. To build with buster-format support:
+    mkdir node_modules
+    git submodule add git://gitorious.org/buster/buster-format.git node_modules/buster-format
+    cd node_modules/buster-format
+    npm link
+    MSG
+    return file
+  end
+  contents = File.read(file)
+
+  File.open(file, "w") do |f|
+    f.puts("var sinon = (function () {")
+    f.puts(File.read("./node_modules/buster-format/node_modules/buster-core/lib/buster-core.js"))
+    f.puts(File.read("./node_modules/buster-format/lib/buster-format.js").gsub("var buster = this.buster || {};", ""))
+    f.puts(contents)
+    f.puts("return sinon;}.call(typeof window != 'undefined' && window || {}));")
+  end
+
+  file
+end
+
+Dir.chdir(File.dirname(__FILE__)) do
+  version = File.read("package.json").match(/"version":\s+"(.*)"/)[1]
+  version_string = ARGV[0] == "plain" ? "" : "-#{version}"
+  output = "pkg/sinon#{version_string}.js"
+
+  FileUtils.mkdir("pkg") unless File.exists?("pkg")
+  merger = Juicer::Merger::JavaScriptMerger.new
+  merger << "lib/sinon/test_case.js"
+  merger << "lib/sinon/assert.js"
+  merger.save(output)
+  add_license(add_buster_format(output), version)
+
+  File.open("pkg/sinon-ie#{version_string}.js", "w") do |f|
+    f.puts(File.read("lib/sinon/util/timers_ie.js"))
+    f.puts("\n")
+    f.puts(File.read("lib/sinon/util/xhr_ie.js"))
+  end
+
+  add_license("pkg/sinon-ie#{version_string}.js", version)
+
+  FileUtils.cp("lib/sinon/util/fake_timers.js", "pkg/sinon-timers#{version_string}.js")
+  add_license("pkg/sinon-timers#{version_string}.js", version)
+  FileUtils.cp("lib/sinon/util/timers_ie.js", "pkg/sinon-timers-ie#{version_string}.js")
+  add_license("pkg/sinon-timers-ie#{version_string}.js", version)
+
+  merger = Juicer::Merger::JavaScriptMerger.new
+  merger << "lib/sinon/util/fake_server_with_clock.js"
+  merger.save("pkg/sinon-server#{version_string}.js")
+  add_license("pkg/sinon-server#{version_string}.js", version)
+  `cp #{output} pkg/sinon.js`
+  `cp pkg/sinon-ie#{version_string}.js pkg/sinon-ie.js`
+
+  puts "Built Sinon.JS #{version}"
+end

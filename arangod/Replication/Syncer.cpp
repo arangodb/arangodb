@@ -40,7 +40,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/primary-collection.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -96,7 +96,7 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _databaseName = string(vocbase->_name);
     
   // get our own server-id 
-  _localServerId       = TRI_GetServerId();
+  _localServerId       = TRI_GetIdServer();
   _localServerIdString = StringUtils::itoa(_localServerId);
  
   // init the update policy
@@ -398,8 +398,12 @@ int Syncer::createCollection (TRI_json_t const* json,
                          (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
                          keyOptions);
 
+  if (keyOptions != 0) {
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
+  }
+
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
-  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_defaultWaitForSync);
+  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
   params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
   
   // wait for "old" collection to be dropped
@@ -409,7 +413,7 @@ int Syncer::createCollection (TRI_json_t const* json,
                                              cid);
 
   if (dirName != 0) {
-    char* parameterName = TRI_Concatenate2File(dirName, TRI_COL_PARAMETER_FILE);
+    char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
 
     if (parameterName != 0) {
       int iterations = 0;

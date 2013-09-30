@@ -32,6 +32,7 @@
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "MRServer/mr-actions.h"
+#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::basics;
@@ -121,8 +122,9 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationMR::ApplicationMR (string const& binaryPath)
+ApplicationMR::ApplicationMR (TRI_server_t* server)
   : ApplicationFeature("MRuby"),
+    _server(server),
     _startupPath(),
     _startupModules(),
     _actionPath(),
@@ -137,6 +139,8 @@ ApplicationMR::ApplicationMR (string const& binaryPath)
     _freeContexts(),
     _dirtyContexts(),
     _stopping(0) {
+
+  assert(_server != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,6 +411,8 @@ void ApplicationMR::stop () {
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownMRInstance(i);
   }
+  
+  delete[] _contexts;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,6 +493,8 @@ void ApplicationMR::shutdownMRInstance (size_t i) {
   MR_CloseShell(mrb);
 
   LOGGER_TRACE("closed MR context #" << i);
+  
+  delete context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

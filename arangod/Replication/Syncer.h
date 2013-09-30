@@ -33,7 +33,7 @@
 #include "Logger/Logger.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-master.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 
