@@ -4479,12 +4479,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   idx = CreateCapConstraintDocumentCollection(document, count, size, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -4496,6 +4490,12 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -4897,12 +4897,6 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -4914,6 +4908,12 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -4946,12 +4946,6 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -4963,6 +4957,12 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5171,12 +5171,6 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   // given the list of attributes (as strings)
   idx = CreateHashIndexDocumentCollection(document, attributes, 0, unique, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5188,6 +5182,12 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5385,12 +5385,6 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   idx = CreateSkiplistIndexDocumentCollection(document, attributes, 0, unique, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5402,6 +5396,12 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5664,12 +5664,6 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, 0, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5681,6 +5675,12 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -5930,12 +5930,6 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
   // Given the list of attributes (as strings)
   idx = CreatePriorityQueueIndexDocumentCollection(document, attributes, 0, unique, created);
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
   if (idx != NULL) {
     if (created) {
       int res;
@@ -5947,6 +5941,12 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
@@ -6211,19 +6211,8 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   // .............................................................................
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
+  
   idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, 0, supportUndef, created, errorCode, errorStr);
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
-
-  // .............................................................................
-  // The index is 'new' so save it
-  // .............................................................................
 
   if (idx != NULL) {
     if (created) {
@@ -6243,6 +6232,12 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
       }
     }
   }
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
 
