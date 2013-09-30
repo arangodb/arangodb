@@ -37,6 +37,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -194,7 +195,6 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   TRI_json_t* value;
   char* filename;
-  char* error;
   int res;
    
   TRI_DestroyConfigurationReplicationApplier(config);
@@ -207,15 +207,10 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     return TRI_ERROR_FILE_NOT_FOUND;
   }
   
-  error = NULL;
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
-  
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
-    if (error != NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
-    }
+  if (! TRI_IsArrayJson(json)) {
     if (json != NULL) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
@@ -900,7 +895,7 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
 
-    serverId = TRI_GetServerId();  
+    serverId = TRI_GetIdServer();  
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "server", server);
@@ -1068,7 +1063,6 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   TRI_json_t* serverId;
   char* filename;
-  char* error;
   int res;
   
   TRI_InitStateReplicationApplier(state);
@@ -1088,14 +1082,10 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   
   LOG_TRACE("replication state file '%s' found", filename);
 
-  error = NULL;
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
-    if (error != NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
-    }
+  if (! TRI_IsArrayJson(json)) {
     if (json != NULL) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }

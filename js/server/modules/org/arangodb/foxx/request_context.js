@@ -29,13 +29,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var RequestContext,
+  RequestContextBuffer,
   SwaggerDocs,
-  extend = require("underscore").extend,
+  _ = require("underscore"),
+  extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
   UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
   createErrorBubbleWrap,
+  createBodyParamBubbleWrap,
   addCheck;
+
+createBodyParamBubbleWrap = function (handler, paramName, Proto) {
+  'use strict';
+  return function (req, res) {
+    req.parameters[paramName] = new Proto(req.body());
+    handler(req, res);
+  };
+};
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
   'use strict';
@@ -68,9 +79,10 @@ addCheck = function (handler, check) {
 };
 
 // Wraps the docs object of a route to add swagger compatible documentation
-SwaggerDocs = function (docs) {
+SwaggerDocs = function (docs, models) {
   'use strict';
   this.docs = docs;
+  this.models = models;
 };
 
 extend(SwaggerDocs.prototype, {
@@ -95,6 +107,18 @@ extend(SwaggerDocs.prototype, {
     ));
   },
 
+  addBodyParam: function (paramName, description, jsonSchema) {
+    'use strict';
+    this.models[jsonSchema.id] = jsonSchema;
+
+    this.docs.parameters.push({
+      name: paramName,
+      paramType: "body",
+      description: description,
+      dataType: jsonSchema.id
+    });
+  },
+
   addSummary: function (summary) {
     'use strict';
     this.docs.summary = summary;
@@ -113,15 +137,18 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (route) {
+RequestContext = function (executionBuffer, models, route) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
     "string": "/.+/"
   };
-  this.docs = new SwaggerDocs(this.route.docs);
+
+  this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
+
+  executionBuffer.applyEachFunction(this);
 };
 
 extend(RequestContext.prototype, {
@@ -208,6 +235,30 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_bodyParam
+/// @brief Define a parameter for the body of the request
+///
+/// @FUN{FoxxController::bodyParam(@FA{paramName}, @FA{description}, @FA{Model})}
+///
+/// Expect the body of the request to be a JSON with the attributes you annotated
+/// in your model. It will appear alongside the provided description in your
+/// Documentation.
+/// This will initialize a `Model` with the data and provide it to you via the
+/// params as `paramName`.
+/// For information about how to annotate your models, see the Model section.
+////////////////////////////////////////////////////////////////////////////////
+
+  bodyParam: function (paramName, description, Proto) {
+    'use strict';
+    var handler = this.route.action.callback;
+
+    this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto);
+
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
@@ -262,16 +313,25 @@ extend(RequestContext.prototype, {
 /// @EXAMPLES
 ///
 /// @code
+///
+///
+///     /* define our own error type, FoxxyError */
+///     var FoxxyError = function (message) {
+///       this.message = "the following FoxxyError occurred: ' + message;
+///     };
+///     FoxxyError.prototype = new Error();
+///
 ///     app.get("/foxx", function {
+///       /* throws a FoxxyError */
 ///       throw new FoxxyError();
 ///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
 ///
 ///     app.get("/foxx", function {
-///       throw new FoxxyError();
+///       throw new FoxxyError("oops!");
 ///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
 ///       return {
 ///         code: 123,
-///         desc: e.description
+///         desc: e.message
 ///       };
 ///     });
 /// @endcode
@@ -353,7 +413,95 @@ extend(RequestContext.prototype, {
   }
 });
 
+RequestContextBuffer = function () {
+  'use strict';
+  this.applyChain = [];
+};
+
+extend(RequestContextBuffer.prototype, {
+  applyEachFunction: function (target) {
+    'use strict';
+    _.each(this.applyChain, function (x) {
+      target[x.functionName].apply(target, x.argumentList);
+    });
+  }
+});
+
+_.each([
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_errorResponse
+/// @brief Defines a controller-wide error response
+///
+/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+///
+/// Defines an `errorResponse` for all routes of this controller. For details on
+/// `errorResponse` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "errorResponse",
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_onlyIf
+/// @brief Defines a controller-wide onlyIf
+///
+/// @FUN{RequestContextBuffer::onlyIf(@FA{code}, @FA{reason})}
+///
+/// Defines an `onlyIf` for all routes of this controller. For details on
+/// `onlyIf` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.onlyIf(myPersonalCheck);
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "onlyIf",
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
+/// @brief Defines a controller-wide onlyIfAuthenticated
+///
+/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+///
+/// Defines an `onlyIfAuthenticated` for all routes of this controller. For details on
+/// `onlyIfAuthenticated` see the according method on routes.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
+///
+///     app.get("/foxx", function {
+///       // Do something
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  "onlyIfAuthenticated"
+], function (functionName) {
+  'use strict';
+  extend(RequestContextBuffer.prototype[functionName] = function () {
+    this.applyChain.push({
+      functionName: functionName,
+      argumentList: arguments
+    });
+  });
+});
+
 exports.RequestContext = RequestContext;
+exports.RequestContextBuffer = RequestContextBuffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

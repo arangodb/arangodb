@@ -81,13 +81,12 @@ const std::string EndpointIp::_defaultHost = "127.0.0.1";
 
 EndpointIp::EndpointIp (const Endpoint::EndpointType type,
                         const Endpoint::DomainType domainType,
-                        const Endpoint::ProtocolType protocol,
                         const Endpoint::EncryptionType encryption,
                         const std::string& specification,
                         int listenBacklog,
                         const std::string& host,
                         const uint16_t port) :
-    Endpoint(type, domainType, protocol, encryption, specification, listenBacklog), _host(host), _port(port) {
+    Endpoint(type, domainType, encryption, specification, listenBacklog), _host(host), _port(port) {
 
   assert(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }
@@ -117,7 +116,9 @@ EndpointIp::~EndpointIp () {
 
 TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTimeout, double requestTimeout) {
   // set address and port
-  char host[NI_MAXHOST], serv[NI_MAXSERV];
+  char host[NI_MAXHOST];
+  char serv[NI_MAXSERV];
+
   if (::getnameinfo(aip->ai_addr, aip->ai_addrlen,
                   host, sizeof(host),
                   serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
@@ -130,6 +131,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
   listenSocket.fileHandle = ::socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 
   if (listenSocket.fileHandle == INVALID_SOCKET) {
+    LOGGER_ERROR("socket() failed with " << errno << " (" << strerror(errno) << ")");
     listenSocket.fileDescriptor = 0;
     listenSocket.fileHandle = 0;
     return listenSocket;
@@ -139,7 +141,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     // try to reuse address
     int opt = 1;
     if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-      LOGGER_ERROR("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
+      LOGGER_ERROR("setsockopt() failed with " << errno << " (" << strerror(errno) << ")");
 
       TRI_CLOSE_SOCKET(listenSocket);
 
@@ -147,12 +149,14 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
       listenSocket.fileHandle = 0;
       return listenSocket;
     }
-    LOGGER_TRACE("reuse address flag set");
 
     // server needs to bind to socket
     int result = ::bind(listenSocket.fileHandle, aip->ai_addr, aip->ai_addrlen);
+
     if (result != 0) {
       // error
+      LOGGER_ERROR("bind() failed with " << errno << " (" << strerror(errno) << ")");
+
       TRI_CLOSE_SOCKET(listenSocket);
 
       listenSocket.fileDescriptor = 0;
@@ -165,9 +169,10 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     result = ::listen(listenSocket.fileHandle, _listenBacklog);
 
     if (result == INVALID_SOCKET) {
-      TRI_CLOSE_SOCKET(listenSocket);
       // todo: get the correct error code using WSAGetLastError for windows
-      LOGGER_ERROR("listen failed with " << errno << " (" << strerror(errno) << ")");
+      LOGGER_ERROR("listen() failed with " << errno << " (" << strerror(errno) << ")");
+      
+      TRI_CLOSE_SOCKET(listenSocket);
 
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;

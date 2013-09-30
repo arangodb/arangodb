@@ -37,7 +37,7 @@
 ################################################################################
 
 ################################################################################
-### @brief program "arangosh"
+### @brief program "arangob"
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -195,7 +195,8 @@ target_triplet = @target@
 ################################################################################
 @ENABLE_MRUBY_TRUE@am__append_3 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_4 = @MRUBY_LIBS@
-bin_PROGRAMS = bin/arangob$(EXEEXT) bin/arangosh$(EXEEXT) \
+bin_PROGRAMS = bin/arangob$(EXEEXT) bin/arangodump$(EXEEXT) \
+	bin/arangorestore$(EXEEXT) bin/arangosh$(EXEEXT) \
 	bin/arangoimp$(EXEEXT) $(am__EXEEXT_1)
 sbin_PROGRAMS = bin/arangod$(EXEEXT)
 noinst_PROGRAMS = $(am__EXEEXT_2)
@@ -414,7 +415,6 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/BasicsC/lib_libarango_a-mimetypes.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-process-utils.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-random.$(OBJEXT) \
-	lib/BasicsC/lib_libarango_a-skip-list.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-socket-utils.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-string-buffer.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-tri-strings.$(OBJEXT) \
@@ -475,6 +475,7 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Admin/RestAdminBaseHandler.$(OBJEXT) \
 	lib/Admin/RestAdminLogHandler.$(OBJEXT) \
 	lib/Admin/RestBaseHandler.$(OBJEXT) \
+	lib/Admin/RestJobHandler.$(OBJEXT) \
 	lib/Admin/RestVersionHandler.$(OBJEXT) \
 	lib/ApplicationServer/ApplicationFeature.$(OBJEXT) \
 	lib/ApplicationServer/ApplicationServer.$(OBJEXT) \
@@ -640,7 +641,6 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
-	arangod/RestServer/VocbaseManager.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/SkipListsEx/skiplistEx.c \
@@ -663,12 +663,12 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/VocBase/replication-common.c \
 	arangod/VocBase/replication-dump.c \
 	arangod/VocBase/replication-logger.c \
-	arangod/VocBase/replication-master.c \
-	arangod/VocBase/server-id.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/replication-master.c arangod/VocBase/server.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/transaction.c \
 	arangod/VocBase/update-policy.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c arangod/MRServer/ApplicationMR.cpp \
+	arangod/VocBase/vocbase.c arangod/VocBase/vocbase-defaults.c \
+	arangod/MRServer/ApplicationMR.cpp \
 	arangod/MRServer/mr-actions.cpp
 @ENABLE_MRUBY_TRUE@am__objects_1 = arangod/MRServer/bin_arangod-ApplicationMR.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT)
@@ -728,7 +728,6 @@ am_bin_arangod_OBJECTS =  \
 	arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-VocbaseContext.$(OBJEXT) \
-	arangod/RestServer/bin_arangod-VocbaseManager.$(OBJEXT) \
 	arangod/RestServer/bin_arangod-arango.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplist.$(OBJEXT) \
 	arangod/SkipLists/bin_arangod-skiplistIndex.$(OBJEXT) \
@@ -759,18 +758,25 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-replication-dump.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-replication-logger.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-replication-master.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-server-id.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-server.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-transaction.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-update-policy.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-vocbase.$(OBJEXT) $(am__objects_1)
+	arangod/VocBase/bin_arangod-vocbase.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-vocbase-defaults.$(OBJEXT) \
+	$(am__objects_1)
 bin_arangod_OBJECTS = $(am_bin_arangod_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__DEPENDENCIES_3 = lib/libarango_mruby.a
 bin_arangod_DEPENDENCIES = lib/libarango_fe.a lib/libarango_v8.a \
 	lib/libarango.a $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
+am_bin_arangodump_OBJECTS =  \
+	arangosh/ArangoShell/bin_arangodump-ArangoClient.$(OBJEXT) \
+	arangosh/V8Client/bin_arangodump-arangodump.$(OBJEXT)
+bin_arangodump_OBJECTS = $(am_bin_arangodump_OBJECTS)
+bin_arangodump_DEPENDENCIES = lib/libarango_v8.a \
+	lib/libarango_client.a lib/libarango.a $(am__DEPENDENCIES_2)
 am_bin_arangoimp_OBJECTS =  \
 	arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT) \
 	arangosh/V8Client/bin_arangoimp-ImportHelper.$(OBJEXT) \
@@ -791,6 +797,12 @@ bin_arangoirb_OBJECTS = $(am_bin_arangoirb_OBJECTS)
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
 @ENABLE_MRUBY_TRUE@	lib/libarango_client.a lib/libarango.a \
 @ENABLE_MRUBY_TRUE@	$(am__DEPENDENCIES_2)
+am_bin_arangorestore_OBJECTS =  \
+	arangosh/ArangoShell/bin_arangorestore-ArangoClient.$(OBJEXT) \
+	arangosh/V8Client/bin_arangorestore-arangorestore.$(OBJEXT)
+bin_arangorestore_OBJECTS = $(am_bin_arangorestore_OBJECTS)
+bin_arangorestore_DEPENDENCIES = lib/libarango_v8.a \
+	lib/libarango_client.a lib/libarango.a $(am__DEPENDENCIES_2)
 am_bin_arangosh_OBJECTS =  \
 	arangosh/ArangoShell/bin_arangosh-ArangoClient.$(OBJEXT) \
 	arangosh/V8Client/bin_arangosh-ImportHelper.$(OBJEXT) \
@@ -877,8 +889,9 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(UnitTests_basics_suite_SOURCES) \
 	$(UnitTests_geo_suite_SOURCES) $(bin_arangob_SOURCES) \
-	$(bin_arangod_SOURCES) $(bin_arangoimp_SOURCES) \
-	$(bin_arangoirb_SOURCES) $(bin_arangosh_SOURCES)
+	$(bin_arangod_SOURCES) $(bin_arangodump_SOURCES) \
+	$(bin_arangoimp_SOURCES) $(bin_arangoirb_SOURCES) \
+	$(bin_arangorestore_SOURCES) $(bin_arangosh_SOURCES)
 DIST_SOURCES = $(lib_libarango_a_SOURCES) \
 	$(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) \
@@ -886,8 +899,9 @@ DIST_SOURCES = $(lib_libarango_a_SOURCES) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
 	$(am__UnitTests_geo_suite_SOURCES_DIST) $(bin_arangob_SOURCES) \
-	$(am__bin_arangod_SOURCES_DIST) $(bin_arangoimp_SOURCES) \
-	$(am__bin_arangoirb_SOURCES_DIST) $(bin_arangosh_SOURCES)
+	$(am__bin_arangod_SOURCES_DIST) $(bin_arangodump_SOURCES) \
+	$(bin_arangoimp_SOURCES) $(am__bin_arangoirb_SOURCES_DIST) \
+	$(bin_arangorestore_SOURCES) $(bin_arangosh_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -1110,12 +1124,13 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ### @brief sets up the directories
 ################################################################################
 BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
-	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
-	etc/arangodb/arangosh.conf $(am__append_12) \
-	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
-	@builddir@/.setup-js-directories $(am__append_13) \
-	$(am__append_15) $(am__append_16) @ZLIB_LIBS@ $(am__append_17) \
-	$(am__append_19) $(am__append_21) $(am__append_23)
+	etc/arangodb/arangob.conf etc/arangodb/arangod.conf \
+	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
+	$(am__append_12) Doxygen/.setup-directories \
+	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
+	$(am__append_13) $(am__append_15) $(am__append_16) @ZLIB_LIBS@ \
+	$(am__append_17) $(am__append_19) $(am__append_21) \
+	$(am__append_23)
 
 ################################################################################
 ### @brief man pages to install
@@ -1125,7 +1140,9 @@ BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
 ### @brief install man pages
 ################################################################################
 dist_man_MANS = Documentation/man/man1/arangob.1 \
+	Documentation/man/man1/arangodump.1 \
 	Documentation/man/man1/arangoimp.1 \
+	Documentation/man/man1/arangorestore.1 \
 	Documentation/man/man1/arangosh.1 \
 	Documentation/man/man8/rcarangod.8 \
 	Documentation/man/man8/arangod.8 \
@@ -1307,7 +1324,6 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/mimetypes.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
-	lib/BasicsC/skip-list.c \
 	lib/BasicsC/socket-utils.c \
 	lib/BasicsC/string-buffer.c \
 	lib/BasicsC/tri-strings.c \
@@ -1372,6 +1388,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Admin/RestAdminBaseHandler.cpp \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
+	lib/Admin/RestJobHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
 	lib/ApplicationServer/ApplicationFeature.cpp \
 	lib/ApplicationServer/ApplicationServer.cpp \
@@ -1486,7 +1503,6 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
-	arangod/RestServer/VocbaseManager.cpp \
 	arangod/RestServer/arango.cpp arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/SkipListsEx/skiplistEx.c \
@@ -1509,28 +1525,45 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/replication-common.c \
 	arangod/VocBase/replication-dump.c \
 	arangod/VocBase/replication-logger.c \
-	arangod/VocBase/replication-master.c \
-	arangod/VocBase/server-id.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/replication-master.c arangod/VocBase/server.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/transaction.c \
 	arangod/VocBase/update-policy.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c $(am__append_9)
-bin_arangosh_CPPFLAGS = \
+	arangod/VocBase/vocbase.c arangod/VocBase/vocbase-defaults.c \
+	$(am__append_9)
+bin_arangob_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
 
-bin_arangosh_LDADD = \
+bin_arangob_LDADD = \
 	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
 	@V8_LIBS@
 
-bin_arangosh_SOURCES = \
+bin_arangob_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
-	arangosh/V8Client/ImportHelper.cpp \
-	arangosh/V8Client/V8ClientConnection.cpp \
-	arangosh/V8Client/arangosh.cpp
+	arangosh/Benchmark/arangob.cpp
+
+
+################################################################################
+### @brief program "arangodump"
+################################################################################
+bin_arangodump_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangodump_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
+bin_arangodump_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
+	arangosh/V8Client/arangodump.cpp
 
 
 ################################################################################
@@ -1555,22 +1588,43 @@ bin_arangoimp_SOURCES = \
 
 
 ################################################################################
-### @brief program "arangob"
+### @brief program "arangorestore"
 ################################################################################
-bin_arangob_CPPFLAGS = \
+bin_arangorestore_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
 
-bin_arangob_LDADD = \
+bin_arangorestore_LDADD = \
 	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
 	@V8_LIBS@
 
-bin_arangob_SOURCES = \
+bin_arangorestore_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
-	arangosh/Benchmark/arangob.cpp
+	arangosh/V8Client/arangorestore.cpp
+
+
+################################################################################
+### @brief program "arangosh"
+################################################################################
+bin_arangosh_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangosh_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
+bin_arangosh_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
+	arangosh/V8Client/ImportHelper.cpp \
+	arangosh/V8Client/V8ClientConnection.cpp \
+	arangosh/V8Client/arangosh.cpp
 
 @ENABLE_MRUBY_TRUE@bin_arangoirb_CPPFLAGS = \
 @ENABLE_MRUBY_TRUE@	-I@top_srcdir@/arangoirb \
@@ -1727,6 +1781,8 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/compaction.js \
                @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/common/tests/shell-bitarray-index.js \
+               @top_srcdir@/js/server/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
                @top_srcdir@/js/common/tests/shell-foxx-repository.js \
                @top_srcdir@/js/common/tests/shell-foxx-model.js \
@@ -1802,17 +1858,12 @@ UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHEL
 ### @brief SHELL CLIENT TESTS
 ################################################################################
 SHELL_CLIENT_ONLY = \
+	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/client.js
 
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
-
-################################################################################
-### @brief BITARRAY INDEXES TESTS
-################################################################################
-BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
-UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
 
 ################################################################################
 ### @brief tags file
@@ -1844,17 +1895,19 @@ WIKI = \
 	HandlingDatabases \
 	HandlingDocuments \
 	HandlingEdges \
+	HandlingEndpoints \
 	HandlingIndexes \
 	Home \
 	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
-	HttpCurrentDatabase \
 	HttpCursor \
 	HttpDatabase \
+	HttpEndpoint \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
+	HttpJob \
 	HttpMisc \
 	HttpQuery \
 	HttpReplication \
@@ -1869,15 +1922,10 @@ WIKI = \
 	ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
-	IndexCapHttp \
 	IndexFulltext \
-	IndexFulltextHttp \
 	IndexGeo \
-	IndexGeoHttp \
 	IndexHash \
-	IndexHashHttp \
 	IndexSkiplist \
-	IndexSkiplistHttp \
 	InstallManual \
 	Installing \
 	JSModuleActions \
@@ -1932,10 +1980,10 @@ DOXYGEN_TOC = \
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
-	Doxygen/js/actions/api-current-database.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-database.c \
 	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-endpoint.c \
 	Doxygen/js/actions/api-explain.c \
 	Doxygen/js/actions/api-foxx.c \
 	Doxygen/js/actions/api-graph.c \
@@ -1975,31 +2023,31 @@ DOXYGEN = \
 	Doxygen/js/server/server.c
 
 JAVASCRIPT_BROWSER = \
-	js/apps/aardvark/frontend/js/modules/org/arangodb.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-collection.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-database.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-query-cursor.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-statement.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arangosh.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/graph.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-collection.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-database.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-query-cursor.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arangosh.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
 	\
-	js/apps/aardvark/frontend/js/modules/org/arangodb-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-collection-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/replication.js \
-	js/apps/aardvark/frontend/js/modules/org/arangodb/simple-query-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-collection-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/replication.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/simple-query-common.js \
 	\
-	js/apps/aardvark/frontend/js/bootstrap/errors.js \
-	js/apps/aardvark/frontend/js/bootstrap/monkeypatches.js \
-	js/apps/aardvark/frontend/js/bootstrap/module-internal.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/errors.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/monkeypatches.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/module-internal.js \
 	\
-	js/apps/aardvark/frontend/js/client/client.js \
-	js/apps/aardvark/frontend/js/client/bootstrap/module-internal.js
+	js/apps/system/aardvark/frontend/js/client/client.js \
+	js/apps/system/aardvark/frontend/js/client/bootstrap/module-internal.js
 
 
 ################################################################################
@@ -2014,16 +2062,16 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/models -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/views -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/collections -name "*.js"` \
-	`find @srcdir@/js/apps/aardvark/frontend/js/routers -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/models -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/views -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/collections -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/routers -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/js/apps/aardvark/frontend/js/shell/browser.js 
+	@srcdir@/js/apps/system/aardvark/frontend/js/shell/browser.js 
 
 @ENABLE_MRUBY_TRUE@MRUBY_HEADER = \
 @ENABLE_MRUBY_TRUE@	mr/common/bootstrap/mr-error.h \
@@ -2245,9 +2293,6 @@ lib/BasicsC/lib_libarango_a-process-utils.$(OBJEXT):  \
 lib/BasicsC/lib_libarango_a-random.$(OBJEXT):  \
 	lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
-lib/BasicsC/lib_libarango_a-skip-list.$(OBJEXT):  \
-	lib/BasicsC/$(am__dirstamp) \
-	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/lib_libarango_a-socket-utils.$(OBJEXT):  \
 	lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -2455,6 +2500,8 @@ lib/Admin/RestAdminBaseHandler.$(OBJEXT): lib/Admin/$(am__dirstamp) \
 lib/Admin/RestAdminLogHandler.$(OBJEXT): lib/Admin/$(am__dirstamp) \
 	lib/Admin/$(DEPDIR)/$(am__dirstamp)
 lib/Admin/RestBaseHandler.$(OBJEXT): lib/Admin/$(am__dirstamp) \
+	lib/Admin/$(DEPDIR)/$(am__dirstamp)
+lib/Admin/RestJobHandler.$(OBJEXT): lib/Admin/$(am__dirstamp) \
 	lib/Admin/$(DEPDIR)/$(am__dirstamp)
 lib/Admin/RestVersionHandler.$(OBJEXT): lib/Admin/$(am__dirstamp) \
 	lib/Admin/$(DEPDIR)/$(am__dirstamp)
@@ -3046,9 +3093,6 @@ arangod/RestServer/bin_arangod-ArangoServer.$(OBJEXT):  \
 arangod/RestServer/bin_arangod-VocbaseContext.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
-arangod/RestServer/bin_arangod-VocbaseManager.$(OBJEXT):  \
-	arangod/RestServer/$(am__dirstamp) \
-	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 arangod/RestServer/bin_arangod-arango.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -3169,10 +3213,7 @@ arangod/VocBase/bin_arangod-replication-logger.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-replication-master.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/bin_arangod-server-id.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT):  \
+arangod/VocBase/bin_arangod-server.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT):  \
@@ -3193,6 +3234,9 @@ arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-vocbase.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-vocbase-defaults.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/MRServer/$(am__dirstamp):
 	@$(MKDIR_P) arangod/MRServer
 	@: > arangod/MRServer/$(am__dirstamp)
@@ -3209,7 +3253,7 @@ arangod/MRServer/bin_arangod-mr-actions.$(OBJEXT):  \
 bin/arangod$(EXEEXT): $(bin_arangod_OBJECTS) $(bin_arangod_DEPENDENCIES) $(EXTRA_bin_arangod_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangod$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangod_OBJECTS) $(bin_arangod_LDADD) $(LIBS)
-arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT):  \
+arangosh/ArangoShell/bin_arangodump-ArangoClient.$(OBJEXT):  \
 	arangosh/ArangoShell/$(am__dirstamp) \
 	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
 arangosh/V8Client/$(am__dirstamp):
@@ -3218,6 +3262,16 @@ arangosh/V8Client/$(am__dirstamp):
 arangosh/V8Client/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangosh/V8Client/$(DEPDIR)
 	@: > arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
+arangosh/V8Client/bin_arangodump-arangodump.$(OBJEXT):  \
+	arangosh/V8Client/$(am__dirstamp) \
+	arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
+
+bin/arangodump$(EXEEXT): $(bin_arangodump_OBJECTS) $(bin_arangodump_DEPENDENCIES) $(EXTRA_bin_arangodump_DEPENDENCIES) bin/$(am__dirstamp)
+	@rm -f bin/arangodump$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangodump_OBJECTS) $(bin_arangodump_LDADD) $(LIBS)
+arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT):  \
+	arangosh/ArangoShell/$(am__dirstamp) \
+	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
 arangosh/V8Client/bin_arangoimp-ImportHelper.$(OBJEXT):  \
 	arangosh/V8Client/$(am__dirstamp) \
 	arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
@@ -3250,6 +3304,16 @@ arangoirb/MRClient/bin_arangoirb-arangoirb.$(OBJEXT):  \
 bin/arangoirb$(EXEEXT): $(bin_arangoirb_OBJECTS) $(bin_arangoirb_DEPENDENCIES) $(EXTRA_bin_arangoirb_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangoirb$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangoirb_OBJECTS) $(bin_arangoirb_LDADD) $(LIBS)
+arangosh/ArangoShell/bin_arangorestore-ArangoClient.$(OBJEXT):  \
+	arangosh/ArangoShell/$(am__dirstamp) \
+	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
+arangosh/V8Client/bin_arangorestore-arangorestore.$(OBJEXT):  \
+	arangosh/V8Client/$(am__dirstamp) \
+	arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
+
+bin/arangorestore$(EXEEXT): $(bin_arangorestore_OBJECTS) $(bin_arangorestore_DEPENDENCIES) $(EXTRA_bin_arangorestore_DEPENDENCIES) bin/$(am__dirstamp)
+	@rm -f bin/arangorestore$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangorestore_OBJECTS) $(bin_arangorestore_LDADD) $(LIBS)
 arangosh/ArangoShell/bin_arangosh-ArangoClient.$(OBJEXT):  \
 	arangosh/ArangoShell/$(am__dirstamp) \
 	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
@@ -3433,7 +3497,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-ArangoServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseContext.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/bin_arangod-skiplistIndex.Po@am__quote@
@@ -3464,24 +3527,28 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-replication-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-replication-logger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-replication-master.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-synchroniser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-transaction.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-update-policy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-voc-shaper.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-MRubyClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangoimp-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangosh-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/Benchmark/$(DEPDIR)/bin_arangob-arangob.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-V8ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-arangoimp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-V8ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangosh-arangosh.Po@am__quote@
@@ -3489,6 +3556,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestAdminLogHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestBaseHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestJobHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationFeature.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
@@ -3537,7 +3605,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-mimetypes.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-process-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-random.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-socket-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-string-buffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-structures.Po@am__quote@
@@ -3944,20 +4011,6 @@ lib/BasicsC/lib_libarango_a-random.obj: lib/BasicsC/random.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/random.c' object='lib/BasicsC/lib_libarango_a-random.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-random.obj `if test -f 'lib/BasicsC/random.c'; then $(CYGPATH_W) 'lib/BasicsC/random.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/random.c'; fi`
-
-lib/BasicsC/lib_libarango_a-skip-list.o: lib/BasicsC/skip-list.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-skip-list.o -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Tpo -c -o lib/BasicsC/lib_libarango_a-skip-list.o `test -f 'lib/BasicsC/skip-list.c' || echo '$(srcdir)/'`lib/BasicsC/skip-list.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Tpo lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/skip-list.c' object='lib/BasicsC/lib_libarango_a-skip-list.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-skip-list.o `test -f 'lib/BasicsC/skip-list.c' || echo '$(srcdir)/'`lib/BasicsC/skip-list.c
-
-lib/BasicsC/lib_libarango_a-skip-list.obj: lib/BasicsC/skip-list.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-skip-list.obj -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Tpo -c -o lib/BasicsC/lib_libarango_a-skip-list.obj `if test -f 'lib/BasicsC/skip-list.c'; then $(CYGPATH_W) 'lib/BasicsC/skip-list.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/skip-list.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Tpo lib/BasicsC/$(DEPDIR)/lib_libarango_a-skip-list.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/skip-list.c' object='lib/BasicsC/lib_libarango_a-skip-list.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-skip-list.obj `if test -f 'lib/BasicsC/skip-list.c'; then $(CYGPATH_W) 'lib/BasicsC/skip-list.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/skip-list.c'; fi`
 
 lib/BasicsC/lib_libarango_a-socket-utils.o: lib/BasicsC/socket-utils.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-socket-utils.o -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-socket-utils.Tpo -c -o lib/BasicsC/lib_libarango_a-socket-utils.o `test -f 'lib/BasicsC/socket-utils.c' || echo '$(srcdir)/'`lib/BasicsC/socket-utils.c
@@ -5163,33 +5216,19 @@ arangod/VocBase/bin_arangod-replication-master.obj: arangod/VocBase/replication-
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-replication-master.obj `if test -f 'arangod/VocBase/replication-master.c'; then $(CYGPATH_W) 'arangod/VocBase/replication-master.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/replication-master.c'; fi`
 
-arangod/VocBase/bin_arangod-server-id.o: arangod/VocBase/server-id.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-server-id.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Tpo -c -o arangod/VocBase/bin_arangod-server-id.o `test -f 'arangod/VocBase/server-id.c' || echo '$(srcdir)/'`arangod/VocBase/server-id.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/server-id.c' object='arangod/VocBase/bin_arangod-server-id.o' libtool=no @AMDEPBACKSLASH@
+arangod/VocBase/bin_arangod-server.o: arangod/VocBase/server.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-server.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-server.Tpo -c -o arangod/VocBase/bin_arangod-server.o `test -f 'arangod/VocBase/server.c' || echo '$(srcdir)/'`arangod/VocBase/server.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-server.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-server.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/server.c' object='arangod/VocBase/bin_arangod-server.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-server-id.o `test -f 'arangod/VocBase/server-id.c' || echo '$(srcdir)/'`arangod/VocBase/server-id.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-server.o `test -f 'arangod/VocBase/server.c' || echo '$(srcdir)/'`arangod/VocBase/server.c
 
-arangod/VocBase/bin_arangod-server-id.obj: arangod/VocBase/server-id.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-server-id.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Tpo -c -o arangod/VocBase/bin_arangod-server-id.obj `if test -f 'arangod/VocBase/server-id.c'; then $(CYGPATH_W) 'arangod/VocBase/server-id.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/server-id.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-server-id.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/server-id.c' object='arangod/VocBase/bin_arangod-server-id.obj' libtool=no @AMDEPBACKSLASH@
+arangod/VocBase/bin_arangod-server.obj: arangod/VocBase/server.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-server.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-server.Tpo -c -o arangod/VocBase/bin_arangod-server.obj `if test -f 'arangod/VocBase/server.c'; then $(CYGPATH_W) 'arangod/VocBase/server.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/server.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-server.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-server.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/server.c' object='arangod/VocBase/bin_arangod-server.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-server-id.obj `if test -f 'arangod/VocBase/server-id.c'; then $(CYGPATH_W) 'arangod/VocBase/server-id.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/server-id.c'; fi`
-
-arangod/VocBase/bin_arangod-shadow-data.o: arangod/VocBase/shadow-data.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shadow-data.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Tpo -c -o arangod/VocBase/bin_arangod-shadow-data.o `test -f 'arangod/VocBase/shadow-data.c' || echo '$(srcdir)/'`arangod/VocBase/shadow-data.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/shadow-data.c' object='arangod/VocBase/bin_arangod-shadow-data.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-shadow-data.o `test -f 'arangod/VocBase/shadow-data.c' || echo '$(srcdir)/'`arangod/VocBase/shadow-data.c
-
-arangod/VocBase/bin_arangod-shadow-data.obj: arangod/VocBase/shadow-data.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shadow-data.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Tpo -c -o arangod/VocBase/bin_arangod-shadow-data.obj `if test -f 'arangod/VocBase/shadow-data.c'; then $(CYGPATH_W) 'arangod/VocBase/shadow-data.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shadow-data.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/shadow-data.c' object='arangod/VocBase/bin_arangod-shadow-data.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-shadow-data.obj `if test -f 'arangod/VocBase/shadow-data.c'; then $(CYGPATH_W) 'arangod/VocBase/shadow-data.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shadow-data.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-server.obj `if test -f 'arangod/VocBase/server.c'; then $(CYGPATH_W) 'arangod/VocBase/server.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/server.c'; fi`
 
 arangod/VocBase/bin_arangod-shape-collection.o: arangod/VocBase/shape-collection.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shape-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Tpo -c -o arangod/VocBase/bin_arangod-shape-collection.o `test -f 'arangod/VocBase/shape-collection.c' || echo '$(srcdir)/'`arangod/VocBase/shape-collection.c
@@ -5274,6 +5313,20 @@ arangod/VocBase/bin_arangod-vocbase.obj: arangod/VocBase/vocbase.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/vocbase.c' object='arangod/VocBase/bin_arangod-vocbase.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-vocbase.obj `if test -f 'arangod/VocBase/vocbase.c'; then $(CYGPATH_W) 'arangod/VocBase/vocbase.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/vocbase.c'; fi`
+
+arangod/VocBase/bin_arangod-vocbase-defaults.o: arangod/VocBase/vocbase-defaults.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-vocbase-defaults.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Tpo -c -o arangod/VocBase/bin_arangod-vocbase-defaults.o `test -f 'arangod/VocBase/vocbase-defaults.c' || echo '$(srcdir)/'`arangod/VocBase/vocbase-defaults.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/vocbase-defaults.c' object='arangod/VocBase/bin_arangod-vocbase-defaults.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-vocbase-defaults.o `test -f 'arangod/VocBase/vocbase-defaults.c' || echo '$(srcdir)/'`arangod/VocBase/vocbase-defaults.c
+
+arangod/VocBase/bin_arangod-vocbase-defaults.obj: arangod/VocBase/vocbase-defaults.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-vocbase-defaults.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Tpo -c -o arangod/VocBase/bin_arangod-vocbase-defaults.obj `if test -f 'arangod/VocBase/vocbase-defaults.c'; then $(CYGPATH_W) 'arangod/VocBase/vocbase-defaults.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/vocbase-defaults.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase-defaults.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/VocBase/vocbase-defaults.c' object='arangod/VocBase/bin_arangod-vocbase-defaults.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-vocbase-defaults.obj `if test -f 'arangod/VocBase/vocbase-defaults.c'; then $(CYGPATH_W) 'arangod/VocBase/vocbase-defaults.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/vocbase-defaults.c'; fi`
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -6467,20 +6520,6 @@ arangod/RestServer/bin_arangod-VocbaseContext.obj: arangod/RestServer/VocbaseCon
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-VocbaseContext.obj `if test -f 'arangod/RestServer/VocbaseContext.cpp'; then $(CYGPATH_W) 'arangod/RestServer/VocbaseContext.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/VocbaseContext.cpp'; fi`
 
-arangod/RestServer/bin_arangod-VocbaseManager.o: arangod/RestServer/VocbaseManager.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-VocbaseManager.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Tpo -c -o arangod/RestServer/bin_arangod-VocbaseManager.o `test -f 'arangod/RestServer/VocbaseManager.cpp' || echo '$(srcdir)/'`arangod/RestServer/VocbaseManager.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/VocbaseManager.cpp' object='arangod/RestServer/bin_arangod-VocbaseManager.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-VocbaseManager.o `test -f 'arangod/RestServer/VocbaseManager.cpp' || echo '$(srcdir)/'`arangod/RestServer/VocbaseManager.cpp
-
-arangod/RestServer/bin_arangod-VocbaseManager.obj: arangod/RestServer/VocbaseManager.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-VocbaseManager.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Tpo -c -o arangod/RestServer/bin_arangod-VocbaseManager.obj `if test -f 'arangod/RestServer/VocbaseManager.cpp'; then $(CYGPATH_W) 'arangod/RestServer/VocbaseManager.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/VocbaseManager.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-VocbaseManager.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/VocbaseManager.cpp' object='arangod/RestServer/bin_arangod-VocbaseManager.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-VocbaseManager.obj `if test -f 'arangod/RestServer/VocbaseManager.cpp'; then $(CYGPATH_W) 'arangod/RestServer/VocbaseManager.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/VocbaseManager.cpp'; fi`
-
 arangod/RestServer/bin_arangod-arango.o: arangod/RestServer/arango.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-arango.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo -c -o arangod/RestServer/bin_arangod-arango.o `test -f 'arangod/RestServer/arango.cpp' || echo '$(srcdir)/'`arangod/RestServer/arango.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po
@@ -6593,6 +6632,34 @@ arangod/MRServer/bin_arangod-mr-actions.obj: arangod/MRServer/mr-actions.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/MRServer/bin_arangod-mr-actions.obj `if test -f 'arangod/MRServer/mr-actions.cpp'; then $(CYGPATH_W) 'arangod/MRServer/mr-actions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/MRServer/mr-actions.cpp'; fi`
 
+arangosh/ArangoShell/bin_arangodump-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangodump-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangodump-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangodump-ArangoClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangodump-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+
+arangosh/ArangoShell/bin_arangodump-ArangoClient.obj: arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangodump-ArangoClient.obj -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangodump-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangodump-ArangoClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangodump-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+
+arangosh/V8Client/bin_arangodump-arangodump.o: arangosh/V8Client/arangodump.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangodump-arangodump.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Tpo -c -o arangosh/V8Client/bin_arangodump-arangodump.o `test -f 'arangosh/V8Client/arangodump.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangodump.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/arangodump.cpp' object='arangosh/V8Client/bin_arangodump-arangodump.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangodump-arangodump.o `test -f 'arangosh/V8Client/arangodump.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangodump.cpp
+
+arangosh/V8Client/bin_arangodump-arangodump.obj: arangosh/V8Client/arangodump.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangodump-arangodump.obj -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Tpo -c -o arangosh/V8Client/bin_arangodump-arangodump.obj `if test -f 'arangosh/V8Client/arangodump.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangodump.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangodump.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangodump-arangodump.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/arangodump.cpp' object='arangosh/V8Client/bin_arangodump-arangodump.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangodump-arangodump.obj `if test -f 'arangosh/V8Client/arangodump.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangodump.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangodump.cpp'; fi`
+
 arangosh/ArangoShell/bin_arangoimp-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoimp_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangoimp-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangoimp-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangoimp-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangoimp-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangoimp-ArangoClient.Po
@@ -6690,6 +6757,34 @@ arangoirb/MRClient/bin_arangoirb-arangoirb.obj: arangoirb/MRClient/arangoirb.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangoirb/MRClient/arangoirb.cpp' object='arangoirb/MRClient/bin_arangoirb-arangoirb.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangoirb/MRClient/bin_arangoirb-arangoirb.obj `if test -f 'arangoirb/MRClient/arangoirb.cpp'; then $(CYGPATH_W) 'arangoirb/MRClient/arangoirb.cpp'; else $(CYGPATH_W) '$(srcdir)/arangoirb/MRClient/arangoirb.cpp'; fi`
+
+arangosh/ArangoShell/bin_arangorestore-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangorestore-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangorestore-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangorestore-ArangoClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangorestore-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+
+arangosh/ArangoShell/bin_arangorestore-ArangoClient.obj: arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangorestore-ArangoClient.obj -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangorestore-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangorestore-ArangoClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangorestore-ArangoClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangorestore-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+
+arangosh/V8Client/bin_arangorestore-arangorestore.o: arangosh/V8Client/arangorestore.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangorestore-arangorestore.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Tpo -c -o arangosh/V8Client/bin_arangorestore-arangorestore.o `test -f 'arangosh/V8Client/arangorestore.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangorestore.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/arangorestore.cpp' object='arangosh/V8Client/bin_arangorestore-arangorestore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangorestore-arangorestore.o `test -f 'arangosh/V8Client/arangorestore.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangorestore.cpp
+
+arangosh/V8Client/bin_arangorestore-arangorestore.obj: arangosh/V8Client/arangorestore.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangorestore-arangorestore.obj -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Tpo -c -o arangosh/V8Client/bin_arangorestore-arangorestore.obj `if test -f 'arangosh/V8Client/arangorestore.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangorestore.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangorestore.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangorestore-arangorestore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/arangorestore.cpp' object='arangosh/V8Client/bin_arangorestore-arangorestore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangorestore_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangorestore-arangorestore.obj `if test -f 'arangosh/V8Client/arangorestore.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangorestore.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangorestore.cpp'; fi`
 
 arangosh/ArangoShell/bin_arangosh-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangosh_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangosh-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangosh-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangosh-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
@@ -7449,9 +7544,9 @@ start-server:
 	@echo "Server Options: $(SERVER_OPT)"
 	@echo
 
-	rm -f "$(PIDFILE)"
-	rm -rf "$(VOCDIR)"
-	mkdir -p "$(VOCDIR)"
+	@rm -f "$(PIDFILE)"
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	@test -d "$(VOCDIR)"
 
@@ -7475,9 +7570,9 @@ start-slave:
 	@echo "Slave Options: $(SERVER_OPT)"
 	@echo
 
-	rm -f "$(SLAVEPIDFILE)"
-	rm -rf "$(SLAVEDIR)"
-	mkdir -p "$(SLAVEDIR)"
+	@rm -f "$(SLAVEPIDFILE)"
+	@rm -rf "$(SLAVEDIR)"
+	@mkdir -p "$(SLAVEDIR)/databases"
 
 	@test -d "$(SLAVEDIR)"
 
@@ -7556,7 +7651,7 @@ unittests-shell-server:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
@@ -7573,7 +7668,7 @@ unittests-shell-server-only:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
 
@@ -7590,7 +7685,7 @@ unittests-shell-server-ahuacatl:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
@@ -7719,7 +7814,7 @@ unittests-replication-server:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
 
@@ -7793,7 +7888,7 @@ unittests-replication-logger:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 	@echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 	@rm -rf "$(VOCDIR)"
@@ -7815,7 +7910,7 @@ unittests-upgrade:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 	@sleep 2 
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
@@ -7834,7 +7929,7 @@ unittests-upgrade:
 .PHONY: unittests-dfdb
 
 unittests-dfdb:
-	@mkdir -p "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 	@test -d "$(VOCDIR)"
 
 	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
@@ -7867,23 +7962,6 @@ unittests-foxx-manager:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
-.PHONY:	unittests-bitarray-index
-
-unittests-bitarray-index:
-	@echo
-	@echo "================================================================================"
-	@echo "<< BITARRAY INDEX TESTS                                                       >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_BITARRAY) || test "x$(FORCE)" == "x1"
-
-	@ rm -rf "$(VOCDIR)"
-	@echo
-
 ################################################################################
 ### @brief ARANGOB TESTS
 ################################################################################
@@ -7899,6 +7977,8 @@ unittests-arangob:
 	@echo "================================================================================"
 	@echo
 
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 10000 --concurrency 2 --test version --async true || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 20000 --concurrency 1 --test version --async true || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 1000 --batch-size 16 --concurrency 2 --test version || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 0 --concurrency 1 --test version || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 10 --concurrency 2 --test document --complexity 1 || test "x$(FORCE)" == "x1"
@@ -8221,6 +8301,7 @@ examples:
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \
+		@srcdir@/lib/Admin/*.cpp \
 		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
@@ -8288,33 +8369,33 @@ jslint:
 	done
 
 @builddir@/.setup-js-directories:
-	@test -d js/apps/aardvark/frontend/js/modules/org/arangodb/graph || mkdir -p js/apps/aardvark/frontend/js/modules/org/arangodb/graph
-	@test -d js/apps/aardvark/frontend/js/modules/org/arangodb/aql || mkdir -p js/apps/aardvark/frontend/js/modules/org/arangodb/aql
-	@test -d js/apps/aardvark/frontend/js/bootstrap || mkdir -p js/apps/aardvark/frontend/js/bootstrap
-	@test -d js/apps/aardvark/frontend/js/client/bootstrap || mkdir -p js/apps/aardvark/frontend/js/client/bootstrap
+	@test -d js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph || mkdir -p js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph
+	@test -d js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql || mkdir -p js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql
+	@test -d js/apps/system/aardvark/frontend/js/bootstrap || mkdir -p js/apps/system/aardvark/frontend/js/bootstrap
+	@test -d js/apps/system/aardvark/frontend/js/client/bootstrap || mkdir -p js/apps/system/aardvark/frontend/js/client/bootstrap
 	@touch $@
 
 ################################################################################
 ### @brief copy JavaScript files
 ################################################################################
 
-js/apps/aardvark/frontend/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
 	cat $< > $@
 
-js/apps/aardvark/frontend/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
 	cat $< > $@
 
-js/apps/aardvark/frontend/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
 	cat $< > $@
 
 ################################################################################
 ### @brief converts JavaScript files to header files
 ################################################################################
 
-js/apps/aardvark/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/common/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
-js/apps/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
+js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 @ENABLE_MRUBY_TRUE@@builddir@/.setup-mr-directories:

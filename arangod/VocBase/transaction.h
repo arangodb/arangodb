@@ -140,141 +140,6 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               TRANSACTION CONTEXT
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global transaction context typedef
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_transaction_context_s {
-#if 0  
-  TRI_read_write_lock_t     _collectionsLock;
-  TRI_associative_pointer_t _collections;
-#endif
-
-  struct TRI_vocbase_s*     _vocbase;     
-}
-TRI_transaction_context_t;
-
-
-
-typedef struct TRI_transaction_global_stats_s {
-  TRI_voc_tid_t  _lastStartedReader;
-  TRI_voc_tid_t  _lastFinishedReader;
-
-  TRI_voc_tid_t  _lastStartedWriter;
-  TRI_voc_tid_t  _lastAbortedWriter;
-  TRI_voc_tid_t  _lastFinishedWriter;
-}
-TRI_transaction_global_stats_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the stats for a global instance of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-
-typedef struct TRI_transaction_collection_stats_s {
-  TRI_voc_tid_t  _lastStartedReader;
-  TRI_voc_tid_t  _lastFinishedReader;
-
-  TRI_voc_tid_t  _lastStartedWriter;
-  TRI_voc_tid_t  _lastAbortedWriter;
-  TRI_voc_tid_t  _lastFinishedWriter;
-}
-TRI_transaction_collection_stats_t;
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global instance of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-
-typedef struct TRI_transaction_collection_global_s {
-  TRI_voc_cid_t         _cid;
-  TRI_read_write_lock_t _lock;
-
-  TRI_transaction_collection_stats_t _stats;
-}
-TRI_transaction_collection_global_t;
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the global transaction context
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_context_t* TRI_CreateTransactionContext (struct TRI_vocbase_s* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the global transaction context
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeTransactionContext (TRI_transaction_context_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free all data associated with a specific collection
-/// this function must be called for all collections that are dropped
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t*,
-                                             const TRI_voc_cid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief populates a struct with transaction statistics for a collections
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-
-int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t*,
-                                           const TRI_voc_cid_t,
-                                           TRI_transaction_collection_stats_t*);
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                       TRANSACTION
 // -----------------------------------------------------------------------------
 
@@ -310,7 +175,7 @@ TRI_transaction_hint_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_s {
-  TRI_transaction_context_t*           _context;           // global context object
+  struct TRI_vocbase_s*                _vocbase;           // vocbase
   TRI_voc_tid_t                        _id;                // trx id
   TRI_transaction_type_e               _type;              // access type (read|write)
   TRI_transaction_status_e             _status;            // current status
@@ -335,9 +200,6 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e               _accessType;        // access type (read|write)
   int                                  _nestingLevel;      // the transaction level that added this collection
   struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
-#if 0
-  TRI_transaction_collection_global_t* _globalInstance;    // pointer to the global instance
-#endif
   TRI_vector_t*                        _operations;        // buffered CRUD operations
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
@@ -363,7 +225,7 @@ TRI_transaction_collection_t;
 /// @brief create a new transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const,
+TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
                                           TRI_server_id_t,
                                           bool,
                                           double, 
@@ -633,12 +495,6 @@ int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t*,
                                         struct TRI_doc_prepare_transaction_marker_s**);
 
                                         
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns one or more figures associated with transactions
-////////////////////////////////////////////////////////////////////////////////
-                          
-int TRI_GetGlobalTransactionFigures (TRI_transaction_global_stats_t*); 
-                          
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

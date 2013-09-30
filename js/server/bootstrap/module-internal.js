@@ -160,7 +160,7 @@
       fm.scanAppDirectory();
     }
     catch (err) {
-      console.error("cannot initialize FOXX application: %s", String(err));
+      console.error("cannot initialize Foxx application: %s", String(err));
     }
 
     var aal = internal.db._collection("_aal");

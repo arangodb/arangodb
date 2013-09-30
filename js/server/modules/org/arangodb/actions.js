@@ -1596,7 +1596,6 @@ function resultCursor (req, res, cursor, code, options) {
       if (hasNext) {
         cursor.persist();
         cursorId = cursor.id(); 
-        cursor.unuse();
       }
       else {
         cursorId = null;
@@ -1739,12 +1738,20 @@ function resultException (req, res, err, headers, verbose) {
       
       case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND: 
       case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND: 
+      case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND: 
+      case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND: 
+      case arangodb.ERROR_CURSOR_NOT_FOUND: 
+      case arangodb.ERROR_USER_NOT_FOUND: 
         code = exports.HTTP_NOT_FOUND;
         break; 
 
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
         code = exports.HTTP_CONFLICT; 
+        break;
+
+      case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE: 
+        code = exports.HTTP_BAD;
         break;
     }
   }

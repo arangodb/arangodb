@@ -1,0 +1,60 @@
+.TH arangodump 1 "Fr 6. Sep 02:19:07 CEST 2013" "" "ArangoDB"
+.SH NAME
+arangodump - a tool to create logical dumps of an ArangoDB database
+.SH SYNOPSIS
+arangodump [options] 
+.SH DESCRIPTION
+The arangodump binary can be used to create logical dumps of collection
+meta information and collection data (documents) of an ArangoDB database.
+By default, all non-system collections of the specified ArangoDB database
+will be dumped with structural information and data. 
+
+For each collection, a file named "<collection>.structure.json" will be
+created with information about the collection. When data is also dumped,
+an additional file "<collection>.data.json" will also be created.
+All dump files will be placed in a directory, which will be created by
+arangodump when run. If the directory already exists, arangodump will refuse to
+work unless started with the option "--overwrite true".
+
+arangodump will work on the specified database only. If no database name
+is specified, arangodump will work on the default database ("_system").
+
+The dumped files can be re-stored in an ArangoDB database using the
+arangorestore tool.
+.SH OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+.IP "--configuration <string>"
+read configuration from file <string> 
+.IP "--collection <string>"
+name of collection to dump (can be specified multiple times). This can be
+used to restrict the dump to certain collections only. If not specified,
+all collections will be dumped 
+.IP "--dump-data <bool>"
+when set to "true" will dump the data (documents) of the collection 
+.IP "--dump-structure <bool>"
+when set to "true" will dump structural information about the collection 
+.IP "--include-system-collections <bool>"
+when set to "true" will also dump system collections, otherwise they will be excluded 
+.IP "--output-directory <string>"
+directory in which all dump files will be created. If the directory already exists,
+arangodump will refuse to work unless started with option "--overwrite true" 
+.IP "--overwrite <bool>"
+when set to "true", will overwrite any files in an existing output directory 
+.IP "--progress <bool>"
+when set to "true", will display progress information 
+.IP "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port 
+.IP "--server.database <string>"
+database name to use when connection (default: "_system") 
+.IP "--server.username <string>"
+username to use when connecting (default "root") 
+.IP "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt 
+.SH EXAMPLES
+
+.SH AUTHOR
+	    Copyright triAGENS GmbH, Cologne, Germany

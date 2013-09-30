@@ -39,8 +39,6 @@
 #include "mruby/variable.h"
 #endif
 
-#include "Utils/DocumentWrapper.h"
-
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -58,6 +56,7 @@
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
+#include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpHandlerFactory.h"
 
 #include "Logger/Logger.h"
@@ -70,6 +69,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Statistics/statistics.h"
 
@@ -78,8 +78,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
-
-#include "RestServer/VocbaseManager.h"
+#include "VocBase/server.h"
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -109,40 +108,34 @@ using namespace triagens::arango;
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
                                ApplicationAdminServer* admin,
-                               TRI_vocbase_t* vocbase) {
+                               AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api");
+  admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+  
+  // add "/batch" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                            RestHandlerCreator<RestBatchHandler>::createNoData);
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
-                            RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestDocumentHandler>::createNoData);
 
   // add "/edge" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
-                            RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestEdgeHandler>::createNoData);
 
-  // add import handler
+  // add "/import" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
-                            RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestImportHandler>::createNoData);
 
-  // add batch handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                            RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
-
-  // add replication handler
+  // add "/replication" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
-                            RestHandlerCreator<RestReplicationHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestReplicationHandler>::createNoData);
 
-  // add upload handler
+  // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                            RestHandlerCreator<RestUploadHandler>::createData<TRI_vocbase_t*>,
-                            vocbase);
+                            RestHandlerCreator<RestUploadHandler>::createNoData);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,13 +144,104 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
-                                 TRI_vocbase_t* vocbase) {
+                                 AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin");
+  admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the requested database from the request URL
+/// when the database is present in the request and is still "alive", its
+/// reference-counter is increased by one
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
+                                                 TRI_server_t* server) {
+  // get the request endpoint
+  ConnectionInfo ci = request->connectionInfo();
+  const string& endpoint = ci.endpoint;
+  
+  // get the databases mapped to the endpoint
+  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
+  const vector<string> databases = s->getEndpointMapping(endpoint);
+
+  // get database name from request
+  string dbName = request->databaseName();
+
+  if (databases.empty()) {
+    // no databases defined. this means all databases are accessible via the endpoint
+  
+    if (dbName.empty()) {
+      // if no databases was specified in the request, use system database name as a fallback
+      dbName = TRI_VOC_SYSTEM_DATABASE;
+      request->setDatabaseName(dbName);
+    }
+  }
+  else {
+    // only some databases are allowed for this endpoint
+    if (dbName.empty()) {
+      // no specific database requested, so use first mapped database
+      dbName = databases.at(0);
+      request->setDatabaseName(dbName);
+    }
+    else {
+      bool found = false;
+
+      for (size_t i = 0; i < databases.size(); ++i) {
+        if (dbName == databases.at(i)) {
+          found = true;
+          break;
+        }
+      }
+
+      if (! found) {
+        // requested database not found
+        return 0;
+      }
+    }
+  }
+  
+
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, dbName.c_str()); 
+  
+  if (vocbase == 0) {
+    // database not found
+    return 0;
+  } 
+
+  return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add the context to a request
+////////////////////////////////////////////////////////////////////////////////
+
+static bool SetRequestContext (triagens::rest::HttpRequest* request, 
+                               void* data) {
+
+  TRI_server_t* server   = (TRI_server_t*) data;
+  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
+
+  if (vocbase == 0) {
+    // invalid database name specified, database not found etc.
+    return false;
+  }
+
+  VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
+
+  if (ctx == 0) {
+    // out of memory
+    return false;
+  }
+  
+  // the "true" means the request is the owner of the context
+  request->setRequestContext(ctx, true);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,15 +268,20 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
-    _binaryPath(),
     _tempPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+    _jobManager(0),
+#ifdef TRI_ENABLE_MRUBY
+    _applicationMR(0),
+#endif
+    _applicationV8(0),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _dispatcherThreads(8),
+    _dispatcherQueueSize(8192),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
@@ -203,16 +292,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationApplier(false),
     _removeOnCompacted(true),
     _removeOnDrop(true),
-    _vocbase(0) {
+    _server(0) {
 
-  // locate path to binary
-  char* p;
-
-  p = TRI_LocateBinaryPath(argv[0]);
-  _binaryPath = p;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
-
-  p = TRI_GetTempPath();
+  char* p = TRI_GetTempPath();
+  // copy the string
   _tempPath = string(p);
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
@@ -220,6 +303,33 @@ ArangoServer::ArangoServer (int argc, char** argv)
   _workingDirectory = "/var/tmp";
 
   _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+
+ 
+  TRI_InitialiseServer();
+
+  _server = TRI_CreateServer();
+
+  if (_server == 0) {
+    LOG_FATAL_AND_EXIT("could not create server instance");
+  }
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoServer::~ArangoServer () {
+  if (_jobManager != 0) {
+    delete _jobManager;
+  }
+
+  if (_server != 0) {
+    TRI_FreeServer(_server);
+  }
+  
+  TRI_ShutdownServer();
+
+  Nonce::destroy();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,6 +353,10 @@ void ArangoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
+  if (_applicationServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
   _applicationServer->setSystemConfigFile("arangod.conf");
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
@@ -254,6 +368,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
+  if (_applicationScheduler == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationScheduler->allowMultiScheduler(true);
 
   _applicationServer->addFeature(_applicationScheduler);
@@ -263,13 +380,19 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
+  if (_applicationDispatcher == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_binaryPath);
+  _applicationV8 = new ApplicationV8(_server);
+  if (_applicationV8 == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -278,7 +401,10 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_MRUBY
 
-  _applicationMR = new ApplicationMR(_binaryPath);
+  _applicationMR = new ApplicationMR(_server);
+  if (_applicationMR == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationMR);
 
 #else
@@ -293,16 +419,18 @@ void ArangoServer::buildApplicationServer () {
   ;
 
 #endif
-
+  
   // .............................................................................
   // and start a simple admin server
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  _applicationServer->addFeature(_applicationAdminServer);
+  if (_applicationAdminServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
 
+  _applicationServer->addFeature(_applicationAdminServer);
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("arango", TRI_VERSION);
 
   // .............................................................................
   // define server options
@@ -402,18 +530,28 @@ void ArangoServer::buildApplicationServer () {
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
+  
+  additional["Server Options:help-extended"]
+    ("scheduler.maximal-queue-size", &_dispatcherQueueSize, "maximum size of queue for asynchronous operations")
+  ;
 
   // .............................................................................
   // endpoint server
   // .............................................................................
 
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer);
 
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
+                                                             _jobManager,
                                                              "arangodb",
-                                                             TRI_FlushAuthenticationAuthInfo,
-                                                             VocbaseManager::setRequestContext);
+                                                             &SetRequestContext,
+                                                             (void*) _server);
+  if (_applicationEndpointServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -423,7 +561,7 @@ void ArangoServer::buildApplicationServer () {
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
-
+  
   // set the temp-path
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
@@ -463,9 +601,14 @@ void ArangoServer::buildApplicationServer () {
     TRI_ENABLE_STATISTICS = false;
   }
 
+  // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    // validate journal size
-    LOGGER_FATAL_AND_EXIT("invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+    LOGGER_FATAL_AND_EXIT("invalid value for '--database.maximal-journal-size'. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+  }
+
+  // validate queue size
+  if (_dispatcherQueueSize <= 128) {
+    LOGGER_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
   }
 
   // .............................................................................
@@ -486,6 +629,11 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
 
+  // strip trailing separators
+  _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR); 
+  
+  _applicationEndpointServer->setBasePath(_databasePath);
+
   // .............................................................................
   // now run arangod
   // .............................................................................
@@ -494,8 +642,6 @@ void ArangoServer::buildApplicationServer () {
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
   LOGGER_INFO("using default language '" << languageName << "'");
-
-  TRI_SetupReplicationVocBase(_disableReplicationLogger, _disableReplicationApplier);
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
@@ -558,15 +704,8 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
-  v8::HandleScope handle_scope;
-
-  // .............................................................................
-  // open the database
-  // .............................................................................
-
-  openDatabases();
-
-
+  v8::HandleScope scope;
+  
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -574,8 +713,17 @@ int ArangoServer::startupServer () {
   if (_dispatcherThreads < 1) {
     _dispatcherThreads = 1;
   }
+  
 
-  _applicationV8->setVocbase(_vocbase);
+  // open all databases
+  openDatabases();
+
+  // fetch the system database
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  assert(vocbase != 0);
+
+
+  _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
 
   if (_applicationServer->programOptions().has("upgrade")) {
@@ -588,7 +736,7 @@ int ArangoServer::startupServer () {
   }
 
 #if TRI_ENABLE_MRUBY
-  _applicationMR->setVocbase(_vocbase);
+  _applicationMR->setVocbase(vocbase);
   _applicationMR->setConcurrency(_dispatcherThreads);
 #endif
 
@@ -599,15 +747,14 @@ int ArangoServer::startupServer () {
   // create the dispatcher
   // .............................................................................
 
-  _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
-
+  _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
 
   _applicationServer->prepare2();
-
+  
 
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
-  httpOptions._vocbase = _vocbase;
+  httpOptions._vocbase = vocbase;
   httpOptions._queue = "STANDARD";
 
   // create the handlers
@@ -621,8 +768,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _vocbase);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _jobManager);
 
   // add action handler
   handlerFactory->addPrefixHandler(
@@ -637,11 +784,11 @@ int ArangoServer::startupServer () {
   _applicationServer->start();
 
   // load authentication
-  TRI_LoadAuthInfoVocBase(_vocbase);
+  TRI_LoadAuthInfoVocBase(vocbase);
 
   // if the authentication info could not be loaded, but authentication is turned on,
   // then we refuse to start
-  if (! _vocbase->_authInfoLoaded && ! _disableAuthentication) {
+  if (! vocbase->_authInfoLoaded && ! _disableAuthentication) {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
 
@@ -682,18 +829,23 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
-  bool ok;
-
-  // open the database
+  // open all databases
   openDatabases();
-  TRI_vocbase_t* vocbase = _vocbase;
+
+  // fetch the system database
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  if (vocbase == 0) {
+    LOGGER_FATAL_AND_EXIT("cannot start server");
+  }
 
   // load authentication
   TRI_LoadAuthInfoVocBase(vocbase);
 
   // set-up V8 context
-  _applicationV8->setVocbase(_vocbase);
+  _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(1);
+  _applicationV8->disableActions();
 
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
@@ -704,9 +856,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     _applicationV8->skipUpgrade();
   }
 
-  _applicationV8->disableActions();
-
-  ok = _applicationV8->prepare();
+  bool ok = _applicationV8->prepare();
 
   if (! ok) {
     LOGGER_FATAL_AND_EXIT("cannot initialize V8 enigne");
@@ -715,7 +865,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->start();
 
   // enter V8 context
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true, true);
 
   // .............................................................................
   // execute everything with a global scope
@@ -920,7 +1070,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   closeDatabases();
   Random::shutdown();
 
-  if (!ok) {
+  if (! ok) {
     return EXIT_FAILURE;
   }
 
@@ -1009,20 +1159,22 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
 
 
 int ArangoServer::executeRubyConsole () {
-  bool ok;
-
-  // open the database
+  // open all databases
   openDatabases();
 
+  // fetch the system database
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  assert(vocbase != 0);
+
   // load authentication
-  TRI_LoadAuthInfoVocBase(_vocbase);
+  TRI_LoadAuthInfoVocBase(vocbase);
 
   // set-up MRuby context
-  _applicationMR->setVocbase(_vocbase);
+  _applicationMR->setVocbase(vocbase);
   _applicationMR->setConcurrency(1);
   _applicationMR->disableActions();
 
-  ok = _applicationMR->prepare();
+  bool ok = _applicationMR->prepare();
 
   if (! ok) {
     LOGGER_FATAL_AND_EXIT("cannot initialize MRuby enigne");
@@ -1089,7 +1241,6 @@ int ArangoServer::executeRubyConsole () {
 
   // close the database
   closeDatabases();
-
   Random::shutdown();
 
   return EXIT_SUCCESS;
@@ -1098,212 +1249,10 @@ int ArangoServer::executeRubyConsole () {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read database name and configuration from document and
-///        load database
-////////////////////////////////////////////////////////////////////////////////
-
-static bool handleUserDatabase (TRI_doc_mptr_t const* document, 
-                                TRI_primary_collection_t* primary, 
-                                void* data) {
-  
-  DocumentWrapper doc(document, primary);
-  
-  if (! doc.isArrayDocument()) {
-    // wrong document type
-    return true;
-  }
-
-  string databaseName = doc.getStringValue("name", "");
-  string databasePath = doc.getStringValue("path", "");
-
-  int res = VocbaseManager::manager.canAddVocbase(databaseName, databasePath, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOGGER_ERROR("cannot load database: " << string(TRI_errno_string(res)));
-    return true;    
-  }
-  
-  TRI_vocbase_defaults_t* systemDefaults = (TRI_vocbase_defaults_t*) data;
-
-  TRI_vocbase_defaults_t defaults;
-
-  // override defaults with data we found in system collection
-  defaults.removeOnDrop = doc.getBooleanValue("removeOnDrop", 
-          systemDefaults->removeOnDrop);
-  defaults.removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
-          systemDefaults->removeOnCompacted);
-  defaults.defaultMaximalSize = (TRI_voc_size_t) doc.getNumericValue<uint64_t>("defaultMaximalSize", 
-          systemDefaults->defaultMaximalSize);
-  defaults.defaultWaitForSync = doc.getBooleanValue("waitForSync", 
-          systemDefaults->defaultWaitForSync);
-  defaults.forceSyncShapes = doc.getBooleanValue("forceSyncShapes", 
-          systemDefaults->forceSyncShapes);
-  defaults.forceSyncProperties = doc.getBooleanValue("forceSyncProperties", 
-          systemDefaults->forceSyncProperties);
-  defaults.requireAuthentication = doc.getBooleanValue("requireAuthentication", 
-          systemDefaults->requireAuthentication);
-  defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
-          systemDefaults->authenticateSystemOnly);
-  
-  // open/load database
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(databasePath.c_str(), databaseName.c_str(), &defaults);
-  
-  if (userVocbase) {
-    VocbaseManager::manager.addUserVocbase(userVocbase);
-
-    LOGGER_INFO("loaded database '" << databaseName << "' from '" << databasePath << "'");
-  }
-  else {
-    LOGGER_ERROR("unable to load database '" << databaseName << "' from '" << databasePath << "'");
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads user databases found in collection '_databases'
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
-  TRI_vocbase_col_t* collection;
-  TRI_primary_collection_t* primary;
-
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_DATABASES);
-
-  if (collection == NULL) {
-    LOG_INFO("collection '" TRI_COL_NAME_DATABASES "' does not exist, no other databases available");
-    return false;
-  }
-
-  TRI_UseCollectionVocBase(_vocbase, collection);
-
-  primary = collection->_collection;
-
-  if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_DATABASES "' cannot be loaded");
-  }
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
-    TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_DATABASES "' has an unknown collection type");
-  }
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-    
-  TRI_DocumentIteratorPrimaryCollection(primary, data, handleUserDatabase);
-
-  // .............................................................................
-  // outside a read transaction
-  // .............................................................................
-
-  TRI_ReleaseCollectionVocBase(_vocbase, collection);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add an endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static bool handleEnpoint (TRI_doc_mptr_t const* document, 
-                           TRI_primary_collection_t* primary, 
-                           void*) {
-  
-  DocumentWrapper doc(document, primary);
-  
-  if (! doc.isArrayDocument()) {
-    // wrong document type
-    return true;
-  }
-  
-  string endpoint = doc.getStringValue("endpoint", "");
-
-  if (endpoint == "") {
-    // endpoint string not found
-    LOG_WARNING("invalid endpoint specification found");
-    return true;
-  }
-
-  TRI_json_t const* json = doc.getJson();
-
-  vector<std::string> databaseNames;
-
-  if (JsonHelper::isList(json)) {
-    for (size_t i = 0; i < json->_value._objects._length; ++i) {
-      TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-
-      if (JsonHelper::isString(e)) {
-        const string databaseName = JsonHelper::getStringValue(e, "");
-
-        if (! databaseName.empty()) {
-          databaseNames.push_back(databaseName);
-        }
-      }
-    }
-  }
-  else {
-    databaseNames.push_back(TRI_VOC_SYSTEM_DATABASE);
-  }
-
-  VocbaseManager::manager.addEndpoint(endpoint, databaseNames);
- 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start server endpoints found in collection '_endpoints'
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoServer::loadEndpoints () {
-  TRI_vocbase_col_t* collection;
-  TRI_primary_collection_t* primary;
-
-  VocbaseManager::manager.setApplicationEndpointServer(_applicationEndpointServer);
-  
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_ENDPOINTS);
-
-  if (collection == NULL) {
-    // collection '_endpoints' not found
-    return false;
-  }
-
-  TRI_UseCollectionVocBase(_vocbase, collection);
-
-  primary = collection->_collection;
-
-  if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_ENDPOINTS "' cannot be loaded");
-  }
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
-    TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_ENDPOINTS "' has an unknown collection type");
-  }  
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-    
-  TRI_DocumentIteratorPrimaryCollection(primary, 0, handleEnpoint);
-
-  // .............................................................................
-  // outside a read transaction
-  // .............................................................................
-
-  TRI_ReleaseCollectionVocBase(_vocbase, collection);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::openDatabases () {
-  TRI_InitialiseVocBase();
-
   TRI_vocbase_defaults_t defaults;  
 
   // override with command-line options 
@@ -1316,45 +1265,40 @@ void ArangoServer::openDatabases () {
   defaults.requireAuthentication         = ! _disableAuthentication;
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
   
-  // store these settings as initial system defaults
-  TRI_SetSystemDefaultsVocBase(&defaults);
+  assert(_server != 0); 
   
-  // open/load the first database
-  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), TRI_VOC_SYSTEM_DATABASE, &defaults);
-
-  if (_vocbase == 0) {
-    LOGGER_INFO("please use the '--database.directory' option");
-    LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
+  int res = TRI_InitServer(_server, 
+                           _applicationEndpointServer,
+                           _databasePath.c_str(), 
+                           &defaults, 
+                           _disableReplicationLogger, 
+                           _disableReplicationApplier);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
 
-  LOGGER_INFO("loaded database '" TRI_VOC_SYSTEM_DATABASE "' from '" << _databasePath << "'");    
-  
-  // first database is the system database
-  _vocbase->_isSystem = true;
-  
-  VocbaseManager::manager.addSystemVocbase(_vocbase);
-  
-  if (_vocbase->_isSystem) {
-    loadUserDatabases(&defaults);
-    loadEndpoints();
+  const bool isUpgrade = _applicationServer->programOptions().has("upgrade");
+  res = TRI_StartServer(_server, isUpgrade);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
   }
+  
+  LOG_TRACE("found system database");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes the database
+/// @brief closes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabases () {
-  TRI_CleanupActions();
-  TRI_DestroyVocBase(_vocbase, 0);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
-  _vocbase = 0;
-  
-  VocbaseManager::manager.closeUserVocbases();
-  
-  TRI_ShutdownVocBase();
+  assert(_server != 0);
 
-  Nonce::destroy();
+  TRI_CleanupActions();
+
+  TRI_StopServer(_server);
+
 
   LOGGER_INFO("ArangoDB has been shut down");
 }

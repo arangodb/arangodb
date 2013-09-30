@@ -56,11 +56,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
-                                        flush_fptr flushAuthentication,
-                                        context_fptr setContext)
+                                        context_fptr setContext,
+                                        void* setContextData)
   : _authenticationRealm(authenticationRealm),
     _setContext(setContext),
-    _flushAuthentication(flushAuthentication),
+    _setContextData(setContextData),
     _notFound(0) {
 }
 
@@ -71,7 +71,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
     _setContext(that._setContext),
-    _flushAuthentication(that._flushAuthentication),
+    _setContextData(that._setContextData),
     _constructors(that._constructors),
     _datas(that._datas),
     _prefixes(that._prefixes),
@@ -86,7 +86,7 @@ HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& tha
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm,
     _setContext = that._setContext,
-    _flushAuthentication = that._flushAuthentication,
+    _setContextData = that._setContextData,
     _constructors = that._constructors;
     _datas = that._datas;
     _prefixes = that._prefixes;
@@ -117,16 +117,6 @@ HttpHandlerFactory::~HttpHandlerFactory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the authentication cache
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpHandlerFactory::flushAuthentication () {
-  WRITE_LOCKER(_authLock);
-
-  _authCache.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,15 +136,15 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   RequestContext* rc = request->getRequestContext();
 
-  if (! rc) {
+  if (rc == 0) {
     if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
+   
+    rc = request->getRequestContext();
   }
 
-  if (! rc) {
-    return HttpResponse::NOT_FOUND;
-  }
+  assert(rc != 0);
 
   return rc->authenticate();
 }
@@ -163,8 +153,8 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext (HttpRequest * request) {
-  return _setContext(request);
+bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
+  return _setContext(request, _setContextData);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,8 +181,9 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 #endif
 
   HttpRequest* request = new HttpRequest(info, ptr, length);
-  
-  setRequestContext(request);
+  if (request != 0) {
+    setRequestContext(request);
+  }
   
   return request;
 }

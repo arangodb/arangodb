@@ -42,7 +42,7 @@
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
-#include "RestServer/VocbaseManager.h"
+#include "VocBase/server.h"
 #include "Actions/actions.h"
 
 using namespace triagens;
@@ -176,8 +176,9 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::ApplicationV8 (string const& binaryPath) 
+ApplicationV8::ApplicationV8 (TRI_server_t* server) 
   : ApplicationFeature("V8"),
+    _server(server),
     _startupPath(),
     _modulesPath(),
     _packagePath(),
@@ -200,7 +201,10 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _freeContexts(),
     _dirtyContexts(),
     _busyContexts(),
-    _stopping(0) {
+    _stopping(0),
+    _gcThread(0) {
+
+  assert(_server != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +263,9 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, bool initialise) {
+ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, 
+                                                       bool initialise,
+                                                       bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -286,6 +292,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, b
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
+  
+  // set the current database
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
+  v8g->_vocbase = vocbase;
+  v8g->_allowUseDatabase = allowUseDatabase;
+  
 
   LOGGER_TRACE("entering V8 context " << context->_id);
   context->handleGlobalContextMethods();
@@ -299,11 +312,6 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, b
                                 false);
   }
 
-  // set the current database
-  v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
-  v8g->_vocbase = vocbase;
-  
   return context;
 }
 
@@ -322,19 +330,29 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   context->handleGlobalContextMethods();
 
+  ++context->_dirt;
+
+  // exit the context
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
 
-  ++context->_dirt;
+
+  bool performGarbageCollection;
 
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
     LOGGER_TRACE("V8 context has reached GC timeout threshold and will be scheduled for GC");
-    _dirtyContexts.push_back(context);
-    _busyContexts.erase(context);
+    performGarbageCollection = true;
   }
   else if (context->_dirt >= _gcInterval) {
     LOGGER_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
+    performGarbageCollection = true;
+  }
+  else {
+    performGarbageCollection = false;
+  }
+
+  if (performGarbageCollection) {
     _dirtyContexts.push_back(context);
     _busyContexts.erase(context);
   }
@@ -371,6 +389,8 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
   }
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  assert(gc != 0);
+
   V8Context* context = 0;
 
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
@@ -533,8 +553,8 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
-    ("javascript.app-path", &_appPath, "one directory for applications")
-    ("javascript.dev-app-path", &_devAppPath, "one directory for dev applications")
+    ("javascript.app-path", &_appPath, "directory for Foxx applications (normal mode)")
+    ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
     ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
@@ -589,16 +609,39 @@ bool ApplicationV8::prepare () {
   }
   
   // check whether app-paths exist
-  if (! _appPath.empty() && ! FileUtils::isDirectory(_appPath.c_str())) {
-    LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
-    // TODO: decide if we want to abort server start here
+  if (! _appPath.empty()) {
+    if (! FileUtils::isDirectory(_appPath.c_str())) {
+      LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
+      // TODO: decide if we want to abort server start here
+    }
+    else {
+      const string databasesPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "databases";
+
+      if (! FileUtils::isDirectory(databasesPath.c_str())) {
+        LOGGER_ERROR("required app-path sub-directory '" << _appPath << "/databases' does not exist.");
+      }
+      
+      const string systemPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "system";
+      if (! FileUtils::isDirectory(systemPath.c_str())) {
+        LOGGER_ERROR("required app-path sub-directory '" << _appPath << "/system' does not exist.");
+      }
+    }
   }
 
-  if (! _devAppPath.empty() && ! FileUtils::isDirectory(_devAppPath.c_str())) {
-    LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
-    // TODO: decide if we want to abort server start here
+  if (! _devAppPath.empty()) {
+    if (! FileUtils::isDirectory(_devAppPath.c_str())) {
+      LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
+      // TODO: decide if we want to abort server start here
+    }
+    else {
+      const string databasesPath = _devAppPath + TRI_DIR_SEPARATOR_CHAR + "databases";
+
+      if (! FileUtils::isDirectory(databasesPath.c_str())) {
+        LOGGER_ERROR("required dev-app-path sub-directory '" << _devAppPath << "/databases' does not exist.");
+      }
+    }
   }
-  
+ 
   if (_packagePath.empty()) {
     LOGGER_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
     // TODO: decide if we want to abort server start here
@@ -668,7 +711,6 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
-
   // stop GC
   _gcThread->shutdown();
 
@@ -716,6 +758,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   LOGGER_TRACE("initialising V8 context #" << i);
 
   V8Context* context = _contexts[i] = new V8Context();
+
   if (context == 0) {
     LOGGER_FATAL_AND_EXIT("cannot initialize V8 engine");
   }
@@ -735,7 +778,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   context->_context->Enter();
 
-  TRI_InitV8VocBridge(context->_context, _vocbase, i);
+  TRI_InitV8VocBridge(context->_context, _server, _vocbase, &_startupLoader, i);
   TRI_InitV8Queries(context->_context);
 
 
@@ -767,39 +810,35 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
     
     if (! ok) {
-      LOGGER_FATAL_AND_EXIT("cannot load JavaScript utilities from file '" 
-              << files[j] << "'");
+      LOGGER_FATAL_AND_EXIT("cannot load JavaScript utilities from file '" << files[j] << "'");
     }
   }
   
-  vector<TRI_vocbase_t*> vocbases = VocbaseManager::manager.vocbases();
   
   // run upgrade script
   if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG("running database version check");
     
-    VocbaseManager::manager.setStartupLoader(&_startupLoader);
-    
-    vector<TRI_vocbase_t*>::iterator vocbaseIterator = vocbases.begin();    
-    for (; vocbaseIterator != vocbases.end(); ++vocbaseIterator) {
-      
-      // special check script to be run just once in first thread (not in all) 
-      // but for all vocbases
-      
-      bool ok = VocbaseManager::manager.runVersionCheck(*vocbaseIterator, context->_context);
+    // can do this without a lock as this is the startup
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
 
-      const string name = string((*vocbaseIterator)->_name);
+      if (vocbase != 0) {
+        // special check script to be run just once in first thread (not in all) 
+        // but for all databases
+        bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
       
-      if (! ok) {
-        if (_performUpgrade) {
-          LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" + name + "'. Please inspect the logs from the upgrade procedure");
+        if (! ok) {
+          if (_performUpgrade) {
+            LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" << vocbase->_name << "'. Please inspect the logs from the upgrade procedure");
+          }
+          else {
+            LOGGER_FATAL_AND_EXIT("Database version check failed for '" << vocbase->_name << "'. Please start the server with the --upgrade option");
+          }
         }
-        else {
-          LOGGER_FATAL_AND_EXIT("Database version check failed for '" + name + "'. Please start the server with the --upgrade option");
-        }
+  
+        LOGGER_DEBUG("database version check passed for '" << vocbase->_name << "'");
       }
-
-      LOGGER_DEBUG("database version check passed for '" + name + "'");
     }
   }
 
@@ -812,14 +851,17 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
     // regular shutdown... wait for all threads to finish
     
-    vector<TRI_vocbase_t*>::iterator vocbaseIterator = vocbases.begin();    
-    for (; vocbaseIterator != vocbases.end(); ++vocbaseIterator) {
-      TRI_vocbase_t* vocbase = *vocbaseIterator;
-      vocbase->_state = 2;
-      TRI_JoinThread(&vocbase->_synchroniser);
-      TRI_JoinThread(&vocbase->_compactor);
-      vocbase->_state = 3;
-      TRI_JoinThread(&vocbase->_cleanup);
+    // again, can do this without the lock
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+   
+      if (vocbase != 0) {
+        vocbase->_state = 2;
+        TRI_JoinThread(&vocbase->_synchroniser);
+        TRI_JoinThread(&vocbase->_compactor);
+        vocbase->_state = 3;
+        TRI_JoinThread(&vocbase->_cleanup);
+      }
     }
     
     LOGGER_INFO("finished");
@@ -828,9 +870,13 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   // scan for foxx applications
   if (i == 0) {
-    vector<TRI_vocbase_t*>::iterator vocbaseIterator = vocbases.begin();    
-    for (; vocbaseIterator != vocbases.end(); ++vocbaseIterator) {
-      VocbaseManager::manager.initializeFoxx(*vocbaseIterator, context->_context);
+    // once again, we don't need the lock as this is the startup
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+   
+      if (vocbase != 0) {
+        TRI_V8InitialiseFoxx(vocbase, context->_context);
+      }
     }
   }
 

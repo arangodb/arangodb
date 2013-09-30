@@ -49,8 +49,9 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* data)
-  : RestVocbaseBaseHandler(request, data->_vocbase),
+RestActionHandler::RestActionHandler (HttpRequest* request, 
+                                      action_options_t* data)
+  : RestVocbaseBaseHandler(request),
     _action(0),
     _queue(),
     _allowed(false) {
@@ -74,6 +75,11 @@ RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* da
   // use the queue from options if an action is known
   if (_action != 0) {
     _queue = data->_queue;
+  }
+
+  if (_queue.empty()) {
+    // must have a queue
+    _queue = "STANDARD";
   }
 }
 
@@ -102,7 +108,7 @@ bool RestActionHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestActionHandler::queue () const {
+std::string const& RestActionHandler::queue () const {
   return _queue;
 }
 
@@ -111,19 +117,6 @@ string const& RestActionHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestActionHandler::execute () {
-  static LoggerData::Task const logDelete("ACTION [delete]");
-  static LoggerData::Task const logGet("ACTION [get]");
-  static LoggerData::Task const logHead("ACTION [head]");
-  static LoggerData::Task const logIllegal("ACTION [illegal]");
-  static LoggerData::Task const logOptions("ACTION [options]");
-  static LoggerData::Task const logPost("ACTION [post]");
-  static LoggerData::Task const logPut("ACTION [put]");
-  static LoggerData::Task const logPatch("ACTION [patch]");
-
-  LoggerData::Task const * task = &logIllegal;
-
-  bool res = false;
-
   // need an action
   if (_action == 0) {
     generateNotImplemented(_request->requestPath());
@@ -140,24 +133,6 @@ HttpHandler::status_e RestActionHandler::execute () {
     // extract the sub-request type
     HttpRequest::HttpRequestType type = _request->requestType();
 
-    // prepare logging
-    switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE: task = &logDelete; break;
-      case HttpRequest::HTTP_REQUEST_GET: task = &logGet; break;
-      case HttpRequest::HTTP_REQUEST_POST: task = &logPost; break;
-      case HttpRequest::HTTP_REQUEST_PUT: task = &logPut; break;
-      case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
-      case HttpRequest::HTTP_REQUEST_OPTIONS: task = &logOptions; break;
-      case HttpRequest::HTTP_REQUEST_PATCH: task = &logPatch; break;
-      case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
-    }
-
-    _timing << *task;
-#ifdef TRI_ENABLE_LOGGER
-  // if ifdef is not used, the compiler will complain
-    LOGGER_REQUEST_IN_START_I(_timing, "");
-#endif
-
     // execute one of the HTTP methods
     switch (type) {
       case HttpRequest::HTTP_REQUEST_GET:
@@ -167,18 +142,15 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_HEAD:
       case HttpRequest::HTTP_REQUEST_OPTIONS:
       case HttpRequest::HTTP_REQUEST_PATCH: {
-        res = executeAction();
+        executeAction();
         break;
       }
 
       default:
-        res = false;
         generateNotImplemented("METHOD");
         break;
     }
   }
-
-  _timingResult = res ? RES_ERR : RES_OK;
 
   // this handler is done
   return HANDLER_DONE;

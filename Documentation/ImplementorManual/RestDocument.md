@@ -1,4 +1,4 @@
-REST Interface for Documents {#RestDocument}
+HTTP Interface for Documents {#RestDocument}
 ============================================
 
 @NAVIGATE_RestDocument

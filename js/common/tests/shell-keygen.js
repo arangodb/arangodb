@@ -66,7 +66,7 @@ function AutoIncrementSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
       }
     },
 
@@ -80,7 +80,7 @@ function AutoIncrementSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
       }
     },
 
@@ -94,7 +94,7 @@ function AutoIncrementSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
       }
     },
 
@@ -102,13 +102,13 @@ function AutoIncrementSuite () {
 /// @brief create with invalid increment
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidIncrement2 : function () {
+    testCreateInvalidIncrement3 : function () {
       try {
         db._create(cn, { keyOptions: { type: "autoincrement", increment: 9999999999999 } });
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
       }
     },
 

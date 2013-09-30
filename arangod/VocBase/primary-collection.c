@@ -32,8 +32,8 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-
 #include "VocBase/key-generator.h"
+#include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -240,7 +240,7 @@ static TRI_datafile_t* CreateCompactor (TRI_primary_collection_t* primary,
   }
 
 
-  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
@@ -276,7 +276,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
   collection = &primary->base;
 
-  fid = (TRI_voc_fid_t) TRI_NewTickVocBase();
+  fid = (TRI_voc_fid_t) TRI_NewTickServer();
 
   if (collection->_info._isVolatile) {
     // in-memory collection
@@ -328,7 +328,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
   }
 
 
-  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;

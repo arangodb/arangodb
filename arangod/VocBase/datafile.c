@@ -36,8 +36,8 @@
 #include "BasicsC/memory-map.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
-
 #include "VocBase/marker.h"
+#include "VocBase/server.h"
 
 
 // #define DEBUG_DATAFILE 1
@@ -120,7 +120,7 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
     return true;
   }
 
-  return TRI_msync(datafile->_fd, mmHandle, begin, end);
+  return TRI_MSync(datafile->_fd, mmHandle, begin, end);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,12 +363,12 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   TRI_CLOSE(datafile->_fd);
 
-
   datafile->_data = data;
   datafile->_next = (char*)(data) + vocSize;
   datafile->_maximalSize = maximalSize;
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
+  datafile->_state = TRI_DF_STATE_CLOSED;
 
   // rename files
   oldname = TRI_Concatenate2String(datafile->_filename, ".corrupted");
@@ -604,7 +604,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
         return false;
       }
 
-      TRI_UpdateTickVocBase(marker->_tick);
+      TRI_UpdateTickServer(marker->_tick);
     }
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
@@ -829,7 +829,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   datafile->_state = TRI_DF_STATE_WRITE;
 
   // create the header
-  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+  TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
   header.base._tick = (TRI_voc_tick_t) fid;
 
   header._version     = TRI_DF_VERSION;
@@ -953,7 +953,8 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
   assert(filename != NULL);
 
   fd = CreateSparseFile(filename, maximalSize);
-  if (fd <= 0) {
+
+  if (fd < 0) {
     // an error occurred
     return NULL;
   }
@@ -1311,7 +1312,7 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  bool forceSync) {
   if (marker->_tick == 0) {
     // set a tick value for the marker
-    marker->_tick = TRI_NewTickVocBase();
+    marker->_tick = TRI_NewTickServer();
   }
 
   if (datafile->isPhysical(datafile)) {
@@ -1569,7 +1570,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
 
   // create the footer
-  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+  TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
   // set a proper tick value
   footer.base._tick = datafile->_tickMax;
 
@@ -1651,7 +1652,8 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 /// @brief truncates a datafile and seals it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
+int TRI_TruncateDatafile (char const* path, 
+                          TRI_voc_size_t position) {
   TRI_datafile_t* datafile;
   int res;
 
@@ -1666,6 +1668,7 @@ int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
 
   res = TruncateAndSealDatafile(datafile, position);
   TRI_CloseDatafile(datafile);
+  TRI_FreeDatafile(datafile);
 
   return res;
 }
@@ -1683,9 +1686,10 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path) {
 
   datafile = OpenDatafile(path, true);
 
-  if (datafile != 0) {
+  if (datafile != NULL) {
     scan = ScanDatafile(datafile);
     TRI_CloseDatafile(datafile);
+    TRI_FreeDatafile(datafile);
   }
   else {
     scan._currentSize = 0;

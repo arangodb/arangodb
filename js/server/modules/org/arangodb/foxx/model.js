@@ -30,7 +30,10 @@
 
 var Model,
   _ = require("underscore"),
-  backbone_helpers = require("backbone");
+  is = require("org/arangodb/is"),
+  backbone_helpers = require("backbone"),
+  parseAttributes,
+  parseRequiredAttributes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Model
@@ -53,6 +56,33 @@ var Model,
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
+var whitelistProperties = function (properties, constructorProperties) {
+  'use strict';
+  var filteredProperties,
+    whitelistedProperties = _.keys(constructorProperties);
+
+  if (whitelistedProperties) {
+    filteredProperties = _.pick(properties, whitelistedProperties);
+  } else {
+    filteredProperties = properties;
+  }
+
+  return filteredProperties;
+};
+
+var fillInDefaults = function (properties, constructorProperties) {
+  'use strict';
+  var defaults = _.reduce(constructorProperties, function (result, value, key) {
+    if (_.has(value, "defaultValue")) {
+      result[key] = value.defaultValue;
+    }
+
+    return result;
+  }, {});
+
+  return _.defaults(properties, defaults);
+};
+
 Model = function (attributes) {
   'use strict';
 
@@ -61,11 +91,64 @@ Model = function (attributes) {
 /// @brief The attributes property is the internal hash containing the model's state.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.attributes = attributes || {};
+  if (is.object(this.constructor.attributes)) {
+    this.attributes = whitelistProperties(attributes, this.constructor.attributes);
+    this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
+  } else {
+    this.attributes = attributes || {};
+  }
 };
 
-_.extend(Model.prototype, {
+parseAttributes = function (rawAttributes) {
+  'use strict';
+  var properties = {};
 
+  _.each(rawAttributes, function (value, key) {
+    if (_.isString(value)) {
+      properties[key] = {
+        type: value
+      };
+    } else {
+      properties[key] = {
+        type: value.type
+      };
+    }
+  });
+
+  return properties;
+};
+
+parseRequiredAttributes = function (rawAttributes) {
+  'use strict';
+  var requiredProperties = [];
+
+  _.each(rawAttributes, function (value, key) {
+    if (_.isObject(value) && value.required) {
+      requiredProperties.push(key);
+    }
+  });
+
+  return requiredProperties;
+};
+
+// "Class" Properties
+_.extend(Model, {
+  // TODO: Docs
+
+  toJSONSchema: function (id) {
+    'use strict';
+    var attributes = this.attributes;
+
+    return {
+      id: id,
+      required: parseRequiredAttributes(attributes),
+      properties: parseAttributes(attributes)
+    };
+  }
+});
+
+// Instance Properties
+_.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_get
 /// @brief Get the value of an attribute
@@ -96,8 +179,8 @@ _.extend(Model.prototype, {
 ///
 /// @FUN{FoxxModel::set(@FA{name}, @FA{value})}
 ///
-/// Set the value of an attribute
-/// 
+/// Set the value of an attribute or multiple attributes at once
+///
 /// @EXAMPLES
 ///
 /// @code
@@ -106,12 +189,19 @@ _.extend(Model.prototype, {
 ///     });
 ///
 ///     instance.set("a", 2);
+///     instance.set({
+///       b: 2
+///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   set: function (attributeName, value) {
     'use strict';
-    this.attributes[attributeName] = value;
+    if (is.object(attributeName)) {
+      _.extend(this.attributes, attributeName);
+    } else {
+      this.attributes[attributeName] = value;
+    }
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,9 +263,11 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_extend
 /// @brief Extend the Model prototype to add or overwrite methods.
 ///
-/// @FUN{FoxxModel::extent(@FA{prototype})}
+/// @FUN{FoxxModel::extend(@FA{instanceProperties}, @FA{classProperties})}
 ///
 /// Extend the Model prototype to add or overwrite methods.
+/// The first object contains the properties to be defined on the instance,
+/// the second object those to be defined on the prototype.
 ////////////////////////////////////////////////////////////////////////////////
 
 Model.extend = backbone_helpers.extend;

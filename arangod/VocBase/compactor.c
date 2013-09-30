@@ -37,6 +37,7 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/marker.h"
+#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
@@ -154,15 +155,24 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
                                         TRI_voc_size_t maximalSize) {
   TRI_collection_t* collection;
   TRI_datafile_t* compactor;
-
+  
   collection = &document->base.base;
-    
+  
+  // reserve room for one additional entry
+  if (TRI_ReserveVectorPointer(&collection->_compactors, 1) != TRI_ERROR_NO_ERROR) {
+    // could not get memory, exit early
+    return NULL;
+  }
+  
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   compactor = TRI_CreateCompactorPrimaryCollection(&document->base, fid, maximalSize);
 
   if (compactor != NULL) {
-    TRI_PushBackVectorPointer(&collection->_compactors, compactor);
+    int res = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
+
+    // we have reserved space before, so we can be sure the push succeeds
+    assert(res == TRI_ERROR_NO_ERROR);
   }
     
   // we still must wake up the other thread from time to time, otherwise we'll deadlock
@@ -264,7 +274,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
               TRI_last_error());
   }
   else if (datafile->isPhysical(datafile)) {
-    if (primary->base._vocbase->_removeOnCompacted) {
+    if (primary->base._vocbase->_settings.removeOnCompacted) {
       int res;
 
       LOG_DEBUG("wiping compacted datafile from disk");
@@ -1141,7 +1151,7 @@ int TRI_InsertBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  blocker._id      = TRI_NewTickVocBase();
+  blocker._id      = TRI_NewTickServer();
   blocker._expires = TRI_microtime() + lifetime;
 
   LockCompaction(vocbase);

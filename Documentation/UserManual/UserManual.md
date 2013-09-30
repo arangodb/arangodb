@@ -18,7 +18,8 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{Graphs}
 @CHAPTER_REF{Transactions}
 @CHAPTER_REF{UserManualReplication}
-@CHAPTER_REF{UserManualFoxxManager}
 @CHAPTER_REF{UserManualFoxx}
+@CHAPTER_REF{UserManualFoxxManager}
+@CHAPTER_REF{HandlingEndpoints}
 @CHAPTER_REF{CommandLine}
 @CHAPTER_REF{Glossary}

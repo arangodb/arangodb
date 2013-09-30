@@ -57,11 +57,10 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointUnixDomain::EndpointUnixDomain (const Endpoint::EndpointType type,
-                                        const Endpoint::ProtocolType protocol,
                                         const std::string& specification,
                                         int listenBacklog,
                                         const std::string& path) :
-    Endpoint(type, DOMAIN_UNIX, protocol, ENCRYPTION_NONE, specification, listenBacklog),
+    Endpoint(type, DOMAIN_UNIX, ENCRYPTION_NONE, specification, listenBacklog),
     _path(path) {
 }
 
@@ -120,6 +119,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
 
   listenSocket.fileHandle = socket(AF_UNIX, SOCK_STREAM, 0);
   if (listenSocket.fileHandle == -1) {
+    LOGGER_ERROR("socket() failed with " << errno << " (" << strerror(errno) << ")");
     listenSocket.fileDescriptor = 0;
     listenSocket.fileHandle = 0;
     return listenSocket;
@@ -129,7 +129,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
   int opt = 1;
 
   if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-    LOGGER_ERROR("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
+    LOGGER_ERROR("setsockopt() failed with " << errno << " (" << strerror(errno) << ")");
 
     TRI_CLOSE_SOCKET(listenSocket);
     listenSocket.fileDescriptor = 0;
@@ -148,6 +148,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     int result = bind(listenSocket.fileHandle, (struct sockaddr*) &address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
+      LOGGER_ERROR("bind() failed with " << errno << " (" << strerror(errno) << ")");
       TRI_CLOSE_SOCKET(listenSocket);
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;
@@ -159,8 +160,8 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     result = listen(listenSocket.fileHandle, _listenBacklog);
 
     if (result < 0) {
+      LOGGER_ERROR("listen() failed with " << errno << " (" << strerror(errno) << ")");
       TRI_CLOSE_SOCKET(listenSocket);
-      LOGGER_ERROR("listen failed with " << errno << " (" << strerror(errno) << ")");
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;
       return listenSocket;
@@ -214,7 +215,9 @@ void EndpointUnixDomain::disconnect () {
 
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
-      FileUtils::remove(_path, &error);
+      if (! FileUtils::remove(_path, &error)) {
+        LOGGER_TRACE("unable to remove socket file '" << _path << "'");
+      }
     }
   }
 }

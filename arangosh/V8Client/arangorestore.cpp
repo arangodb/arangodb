@@ -129,7 +129,7 @@ static bool Progress = false;
 /// @brief overwrite collections if they exist
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Overwrite = false;
+static bool Overwrite = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -153,11 +153,11 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
-    ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
+    ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("import-data", &ImportData, "import data into collection")
     ("create-collection", &ImportStructure, "create collection structure")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
-    ("input-directory", &InputDirectory, "output directory")
+    ("input-directory", &InputDirectory, "input directory")
     ("overwrite", &Overwrite, "overwrite collections if they exist")
     ("progress", &Progress, "show progress")
   ;
@@ -253,6 +253,33 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract an error message from a response
+////////////////////////////////////////////////////////////////////////////////
+    
+static string GetHttpErrorMessage (SimpleHttpResult* result) {
+  const string body = result->getBody().str();
+  string details;
+
+  TRI_json_t* json = JsonHelper::fromString(body);
+
+  if (json != 0) {
+    const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
+    const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    if (errorMessage != "" && errorNum > 0) {
+      details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+    }
+  }
+      
+  return "got error from server: HTTP " + 
+         StringUtils::itoa(result->getHttpReturnCode()) + 
+         " (" + result->getHttpReturnMessage() + ")" +
+         details;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -331,15 +358,53 @@ static int SendRestoreCollection (TRI_json_t* const json,
   }
 
   if (response->wasHttpError()) {
-    // TODO: include "real" error message
-    errorMsg = "got invalid response from server: HTTP " + 
-               StringUtils::itoa(response->getHttpReturnCode()) + 
-               ": " + response->getHttpReturnMessage();
-      
+    errorMsg = GetHttpErrorMessage(response);
     delete response;
 
     return TRI_ERROR_INTERNAL;
   }
+  
+  delete response;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send the request to re-create data for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int SendRestoreData (string const& cid,
+                            string const& buffer,
+                            string& errorMsg) {
+  map<string, string> headers;
+
+  const string url = "/_api/replication/restore-data?collection=" + cid;
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+                                               url,
+                                               buffer.c_str(), 
+                                               buffer.size(),  
+                                               headers); 
+
+
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "got invalid response from server: " + Client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (response->wasHttpError()) {
+    errorMsg = GetHttpErrorMessage(response);
+    delete response;
+
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -418,11 +483,13 @@ static int ProcessInputDirectory (string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    // TODO: remove this line
-    cout << "FOUND FILE " << files[i] << "\n";
-
     if (ImportStructure) {
       // re-create collection
+    
+      if (Progress) {
+        cout << "Re-creating collection '" << cname << "'..." << endl;
+      }
+
       int res = SendRestoreCollection(json, errorMsg);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -439,6 +506,10 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       if (TRI_ExistsFile(datafile.c_str())) {
         // found a datafile
+      
+        if (Progress) {
+          cout << "Re-loading data into collection '" << name << "'..." << endl;
+        }
 
         ifstream ifs;
   
@@ -451,12 +522,40 @@ static int ProcessInputDirectory (string& errorMsg) {
           return TRI_ERROR_INTERNAL;
         }
 
+        string buffer;
+        uint64_t totalLength = 0;
+        
         while (ifs.good()) {
           string line;
 
           std::getline(ifs, line, '\n');
+          size_t length = line.size() + 1;
 
-          // std::cout << "FOUND LINE: " << line << "\n";
+          if (line.size() > 2) {
+            buffer += line + '\n';
+            totalLength += (uint64_t) length;
+
+            if (totalLength > ChunkSize) {
+              int res = SendRestoreData(cid, buffer, errorMsg);
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                ifs.close();
+                return res;
+              }
+
+              totalLength = 0;
+              buffer.clear();
+            }
+          }
+        }
+
+        if (! buffer.empty()) {
+          int res = SendRestoreData(cid, buffer, errorMsg);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            ifs.close();
+            return res;
+          }
         }
 
         ifs.close();
@@ -467,6 +566,24 @@ static int ProcessInputDirectory (string& errorMsg) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+static string rewriteLocation (void* data, const string& location) {
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + BaseClient.databaseName() + location;
+  }
+  else {
+    return "/_db/" + BaseClient.databaseName() + "/" + location;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,8 +604,6 @@ int main (int argc, char* argv[]) {
   // set defaults
   // .............................................................................
 
-  int err = 0;
-  InputDirectory = FileUtils::currentDirectory(&err).append(TRI_DIR_SEPARATOR_STR).append("dump");
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 
   // .............................................................................
@@ -539,6 +654,7 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
+  Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
   const string version = GetVersion();
@@ -555,7 +671,6 @@ int main (int argc, char* argv[]) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
   }
 
-#if 0
   string errorMsg = "";
   int res = ProcessInputDirectory(errorMsg);
 
@@ -563,7 +678,6 @@ int main (int argc, char* argv[]) {
     cerr << errorMsg << endl;
     ret = EXIT_FAILURE;
   }
-#endif
 
   TRIAGENS_REST_SHUTDOWN;
 

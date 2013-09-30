@@ -86,11 +86,11 @@ function RequireModuleSuite () {
 
     var desc = {
       name: "/test-" + testPath,
-      packageLib: [ lib ],
+      rootPath: lib,
       content: ""
     };
 
-    var pkg = module.createPackage(module._package, desc);
+    var pkg = module.createPackageModule(module._package, desc);
 
     desc = {
       name: "/test",

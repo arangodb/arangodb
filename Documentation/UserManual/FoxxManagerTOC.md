@@ -5,4 +5,6 @@ TOC {#UserManualFoxxManagerTOC}
   - @ref UserManualFoxxManagerIntro
   - @ref UserManualFoxxManagerFirstSteps
   - @ref UserManualFoxxManagerBehindScences
+  - @ref UserManualFoxxManagerDatabases
+  - @ref UserManualFoxxManagerCommands
   - @ref UserManualFoxxManagerOptions

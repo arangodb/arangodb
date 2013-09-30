@@ -82,7 +82,7 @@ V8ClientConnection* ClientConnection = 0;
 /// @brief max size body size (used for imports)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t MaxUploadSize = 1024 * 1024;
+static uint64_t ChunkSize = 1024 * 1024 * 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quote character(s)
@@ -144,17 +144,24 @@ static bool Progress = false;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseProgramOptions (int argc, char* argv[]) {
+  ProgramOptionsDescription deprecatedOptions("DEPRECATED options");
+
+  deprecatedOptions
+    ("max-upload-size", &ChunkSize, "size for individual data batches (in bytes)")
+  ;
+
   ProgramOptionsDescription description("STANDARD options");
 
   description
     ("file", &FileName, "file name (\"-\" for STDIN)")
+    ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
-    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
     ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
     ("quote", &Quote, "quote character(s)")
     ("separator", &Separator, "separator")
     ("progress", &Progress, "show progress")
+    (deprecatedOptions, true)
   ;
 
   BaseClient.setupGeneral(description);
@@ -324,7 +331,7 @@ int main (int argc, char* argv[]) {
   cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
   cout << "----------------------------------------" << endl;
 
-  ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
+  ImportHelper ih(ClientConnection->getHttpClient(), ChunkSize);
 
   // create colletion
   if (CreateCollection) {

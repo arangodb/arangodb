@@ -226,7 +226,11 @@ void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t*
 void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key) {
   uint64_t hash;
   uint64_t i;
-
+  
+  if (array->_nrUsed == 0) {
+    return NULL;
+  }
+  
   // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
@@ -258,8 +262,10 @@ void* TRI_FindByKeyAssociativeArray (TRI_associative_array_t* array, void* key) 
 
   element = TRI_LookupByKeyAssociativeArray(array, key);
 
-  if (! array->isEmptyElement(array, element)) {
-    return element;
+  if (element != NULL) {
+    if (! array->isEmptyElement(array, element)) {
+      return element;
+    }
   }
 
   return NULL;
@@ -304,8 +310,10 @@ void* TRI_FindByElementAssociativeArray (TRI_associative_array_t* array, void* e
 
   element2 = TRI_LookupByElementAssociativeArray(array, element);
 
-  if (! array->isEmptyElement(array, element2)) {
-    return element2;
+  if (element2 != NULL) {
+    if (! array->isEmptyElement(array, element2)) {
+      return element2;
+    }
   }
 
   return NULL;
@@ -596,7 +604,8 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ResizeAssociativePointer (TRI_associative_pointer_t* array) {
+static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
+                                      uint32_t targetSize) {
   void** oldTable;
   uint32_t oldAlloc;
   uint32_t j;
@@ -604,12 +613,12 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = 2 * array->_nrAlloc + 1;
+  array->_nrAlloc = targetSize; 
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
 #endif
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
+  array->_table = TRI_Allocate(array->_memoryZone, (size_t) (array->_nrAlloc * sizeof(void*)), true);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -746,6 +755,23 @@ bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reserves space in the array for extra elements
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReserveAssociativePointer (TRI_associative_pointer_t* array,
+                                    int32_t nrElements) {
+  uint32_t targetSize = array->_nrUsed + nrElements;
+
+  if (array->_nrAlloc < 2 * targetSize) {
+    // we must resize
+    return ResizeAssociativePointer(array, (uint32_t) (2 * targetSize) + 1);
+  }
+
+  // no seed to resize
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -753,6 +779,10 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
                                          void const* key) {
   uint64_t hash;
   uint64_t i;
+
+  if (array->_nrUsed == 0) {
+    return NULL;
+  }
 
   // compute the hash
   hash = array->hashKey(array, key);
@@ -856,7 +886,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativePointer(array);
+    ResizeAssociativePointer(array, (uint32_t) (2 * array->_nrAlloc) + 1);
   }
 
   return NULL;
@@ -914,7 +944,7 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativePointer(array);
+    ResizeAssociativePointer(array, (uint32_t) (2 * array->_nrAlloc) + 1);
   }
 
   return NULL;
@@ -969,17 +999,27 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
 
     return TRI_ERROR_NO_ERROR;
   }
-    
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    if (! ResizeAssociativePointer(array)) {
+    if (! ResizeAssociativePointer(array, (uint32_t) (2 * array->_nrAlloc) + 1)) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
+
+    // now we need to recalc the position
+    i = hash % array->_nrAlloc;
+    // search the table
+    while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+      i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
+      array->_nrProbesA++;
+#endif
+    }
   }
+  
+  // add a new element to the associative array
+  array->_table[i] = element;
+  array->_nrUsed++;
 
   return TRI_ERROR_NO_ERROR; 
 }
@@ -1377,7 +1417,7 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrAdds++;
 #endif
 
-  // search the table, TODO optimise the locks
+  // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {

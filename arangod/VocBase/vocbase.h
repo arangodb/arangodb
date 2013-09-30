@@ -35,7 +35,7 @@
 #include "BasicsC/threads.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/voc-errors.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/vocbase-defaults.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,12 +47,14 @@ extern "C" {
 
 struct TRI_primary_collection_s;
 struct TRI_col_info_s;
+struct TRI_general_cursor_store_s;
 struct TRI_json_s;
 struct TRI_replication_applier_s;
 struct TRI_replication_logger_s;
-struct TRI_shadow_store_s;
-struct TRI_transaction_context_s;
+struct TRI_server_s;
 struct TRI_vector_pointer_s;
+struct TRI_vector_string_s;
+struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -187,12 +189,6 @@ struct TRI_vector_pointer_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief page size
-////////////////////////////////////////////////////////////////////////////////
-
-extern size_t PageSize;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _from attribute
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -221,12 +217,6 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_VOC_SYSTEM_DATABASE "_system"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief id regex
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_VOC_ID_REGEX        "[0-9][0-9]*"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal path length
@@ -323,21 +313,17 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
-  char*                      _path;                // path to the data directory
-
-  TRI_voc_size_t             _defaultMaximalSize;
-  bool                       _removeOnDrop;        // wipe collection from disk after dropping
-  bool                       _removeOnCompacted;   // wipe datafile from disk after compaction
-  bool                       _defaultWaitForSync;
-  bool                       _forceSyncShapes;     // force syncing of shape data to disk
-  bool                       _forceSyncProperties; // force syncing of shape data to disk
-  bool                       _isSystem;
-  bool                       _requireAuthentication;  
-  bool                       _authenticateSystemOnly;
-
-  bool                       _canUse;             // this is set to false during deletion of a database
-  
+  TRI_voc_tick_t             _id;                 // internal database id
+  char*                      _path;               // path to the data directory
   char*                      _name;               // database name
+
+  struct {
+    TRI_spin_t               _lock;               // a lock protecting the usage information
+    uint32_t                 _refCount;           // reference counter 
+    bool                     _isDeleted;          // flag if database is marked as deleted
+  }                          _usage;
+
+  TRI_vocbase_defaults_t     _settings;
 
   TRI_read_write_lock_t      _lock;               // collection iterator lock
   TRI_vector_pointer_t       _collections;        // pointers to ALL collections
@@ -349,11 +335,9 @@ typedef struct TRI_vocbase_s {
   TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
 
   TRI_associative_pointer_t  _authInfo;
+  TRI_associative_pointer_t  _authCache;
   TRI_read_write_lock_t      _authInfoLock;
-  bool                       _authInfoFlush;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
-
-  struct TRI_transaction_context_s* _transactionContext;
 
   struct TRI_replication_logger_s*  _replicationLogger;
   struct TRI_replication_applier_s* _replicationApplier;
@@ -374,7 +358,7 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t               _indexGC;
 #endif  
   
-  struct TRI_shadow_store_s* _cursors;
+  struct TRI_general_cursor_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 
   struct {
@@ -386,9 +370,6 @@ typedef struct TRI_vocbase_s {
   TRI_condition_t            _cleanupCondition;
   TRI_condition_t            _syncWaitersCondition;
   int64_t                    _syncWaiters;
-  
-  char*                      _lockFile;
-  char*                      _shutdownFilename;   // absolute filename of the file that contains the shutdown information
 }
 TRI_vocbase_t;
 
@@ -435,22 +416,6 @@ typedef struct TRI_vocbase_col_s {
 TRI_vocbase_col_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default settings
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_vocbase_defaults_s {
-  TRI_voc_size_t        defaultMaximalSize;
-  bool                  removeOnDrop;
-  bool                  removeOnCompacted;
-  bool                  defaultWaitForSync;
-  bool                  forceSyncShapes;
-  bool                  forceSyncProperties;
-  bool                  requireAuthentication;
-  bool                  authenticateSystemOnly;
-}
-TRI_vocbase_defaults_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -476,99 +441,21 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t*);
 void TRI_FreeCollectionsVocBase (struct TRI_vector_pointer_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether or not the vocbase can be used
+/// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CanUseVocBase (TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a collection name is allowed
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedCollectionName (bool, 
-                                  char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database name is allowed
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedDatabaseName (bool, 
-                                char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new tick
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_NewTickVocBase (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateTickVocBase (TRI_voc_tick_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_CurrentTickVocBase (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief msyncs a memory block between begin (incl) and end (excl)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_msync (int, 
-                void*, 
-                char const*, 
-                char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to deactivate replication features at startup
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetupReplicationVocBase (bool,
-                                  bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an exiting database, loads all collections
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_OpenVocBase (char const*, 
-                                char const*, 
-                                TRI_vocbase_defaults_t*);
+TRI_vocbase_t* TRI_OpenVocBase (struct TRI_server_s*,
+                                char const*,
+                                TRI_voc_tick_t,
+                                char const*,
+                                struct TRI_vocbase_defaults_s const*,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyVocBase (TRI_vocbase_t*, 
-                         struct TRI_vector_pointer_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the system defaults
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetSystemDefaultsVocBase (TRI_vocbase_defaults_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the system defaults
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GetDefaultsVocBase (TRI_vocbase_t const*,  
-                             TRI_vocbase_defaults_t*);
+void TRI_DestroyVocBase (TRI_vocbase_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load authentication information
@@ -581,6 +468,12 @@ void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns names of all known collections
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
@@ -600,13 +493,15 @@ struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
 /// it is the caller's responsibility to free the name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*, const TRI_voc_cid_t);
+char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*, 
+                                        const TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const*);
+TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, 
+                                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by identifier
@@ -655,6 +550,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t*,
 int TRI_RenameCollectionVocBase (TRI_vocbase_t*, 
                                  TRI_vocbase_col_t*, 
                                  char const*,
+                                 bool,
                                  TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -697,33 +593,47 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t*,
                                    TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief increase the reference counter for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+bool TRI_UseVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief decrease the reference counter for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the voc database components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseVocBase (void);
+void TRI_ReleaseVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the voc database components
+/// @brief marks a database as deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownVocBase (void);
+bool TRI_DropVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether any references are held on a database
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsUsedVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether the database can be removed
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CanRemoveVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether the database is the system database
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSystemVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a database name is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedNameVocBase (bool, 
+                               char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

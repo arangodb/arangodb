@@ -40,6 +40,8 @@
 using namespace std;
 using namespace triagens::basics;
 
+// #define DEBUG_JSON_SHAPER 1
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -288,7 +290,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   e = values + n;
 
   for (i = 0;  i < n;  ++i, ++p) {
-    v8::Local<v8::Value> el = json->Get(i);
+    v8::Handle<v8::Value> el = json->Get(i);
     bool ok = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects);
 
     if (! ok) {
@@ -422,6 +424,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
+    // if found returns non-NULL, it will free the shape!!
     found = shaper->findShape(shaper, &shape->base);
 
     if (found == 0) {
@@ -430,11 +433,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
           TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
+      
+      LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
 
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
-
-      LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
       return false;
     }
 
@@ -584,7 +587,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   total = 0;
   f = 0;
   v = 0;
-
+  
   for (i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = json->Get(key);
@@ -639,6 +642,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
   }
 
+  // adjust n
   n = f + v;
 
   // add variable offset table size
@@ -652,7 +656,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
          (unsigned int) n,
          (unsigned int) f,
          (unsigned int) v);
-  PrintShapeValues(values, n);
+  TRI_PrintShapeValues(values, n);
   printf("\n");
 #endif
 
@@ -790,7 +794,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      LOG_TRACE("found hash %d", hash);
+      // LOG_TRACE("found hash %d", hash);
 
       for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
         if (json->StrictEquals(*i)) {

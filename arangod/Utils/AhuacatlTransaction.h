@@ -30,8 +30,7 @@
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 
 struct TRI_vocbase_s;
@@ -65,7 +64,7 @@ namespace triagens {
         AhuacatlTransaction (struct TRI_vocbase_s* const vocbase,
                              const triagens::arango::CollectionNameResolver& resolver,
                              TRI_aql_context_t* const context) :
-          Transaction<T>(vocbase, TRI_GetServerId(), resolver, false) {
+          Transaction<T>(vocbase, TRI_GetIdServer(), resolver, false) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 

@@ -35,7 +35,6 @@
 #include "BasicsC/vector.h"
 
 #include "VocBase/replication-common.h"
-#include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 

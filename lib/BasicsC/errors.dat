@@ -68,9 +68,10 @@ ERROR_ARANGO_MMAP_FAILED,1103,"mmap failed","Will be raised when the system call
 ERROR_ARANGO_FILESYSTEM_FULL,1104,"filesystem full","Will be raised when the filesystem is full."
 ERROR_ARANGO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot be created."
 ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
-ERROR_ARANGO_DATABASE_LOCKED,1107,"database is locked","Will be raised when the database is locked by a different process."
+ERROR_ARANGO_DATADIR_LOCKED,1107,"database directory is locked","Will be raised when the database directory is locked by a different process."
 ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
 ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
+ERROR_ARANGO_DATADIR_UNLOCKABLE,1110,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -79,7 +80,7 @@ ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system ca
 ################################################################################
 
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
-ERROR_ARANGO_WRONG_VOCBASE_PATH,1201,"wrong path for database","Will be raised when a non-existing directory was specified as path for the database."
+ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier or handle is unknown."
 ERROR_ARANGO_COLLECTION_NOT_FOUND,1203,"collection not found","Will be raised when a collection with a given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
@@ -101,17 +102,15 @@ ERROR_ARANGO_VALIDATION_FAILED,1219,"validator failed","Will be raised when the 
 ERROR_ARANGO_PARSER_FAILED,1220,"parser failed","Will be raised when the parsing of an attribute of a structure failed."
 ERROR_ARANGO_DOCUMENT_KEY_BAD,1221,"illegal document key","Will be raised when a document key is corrupt."
 ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED,1222,"unexpected document key","Will be raised when a user-defined document key is supplied for collections with auto key generation."
-ERROR_ARANGO_INDEX_NEEDS_RESIZE,1223,"index needs resizing","Will be raised when an index is full and should be resized to contain more data."
-ERROR_ARANGO_DATADIR_NOT_WRITABLE,1224,"database directory not writable","Will be raised when the database directory is not writable for the current user."
+ERROR_ARANGO_DATADIR_NOT_WRITABLE,1224,"server database directory not writable","Will be raised when the server's database directory is not writable for the current user."
 ERROR_ARANGO_OUT_OF_KEYS,1225,"out of keys","Will be raised when a key generator runs out of keys."
 ERROR_ARANGO_DOCUMENT_KEY_MISSING,1226,"missing document key","Will be raised when a document key is missing."
 ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised when there is an attempt to create a document with an invalid type."
 ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a non-existing database is accessed."
-ERROR_ARANGO_DATABASE_NAME_USED,1229,"database name already used","Will be raised when a duplicate database name is used."
-ERROR_ARANGO_DATABASE_PATH_USED,1230,"database path already used","Will be raised when a duplicate database path is used."
-ERROR_ARANGO_DATABASE_NAME_INVALID,1231,"database name invalid","Will be raised when an invalid database name is used."
-ERROR_ARANGO_DATABASE_PATH_INVALID,1232,"database path invalid","Will be raised when an invalid database path is used."
-ERROR_ARANGO_USE_SYSTEM_DATABASE,1233,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
+ERROR_ARANGO_DATABASE_NAME_INVALID,1229,"database name invalid","Will be raised when an invalid database name is used."
+ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
+ERROR_ARANGO_ENDPOINT_NOT_FOUND,1231,"endpoint not found","Will be raised when there is an attempt to delete a non-existing endpoint."
+ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised when an invalid key generator description is used."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -207,11 +206,10 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ## Application management
 ################################################################################
 
-ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an application is not found or not present in the specified version."
-ERROR_APPLICATION_INVALID_NAME,1751,"invalid application name","Will be raised when an invalid application name is specified."
-ERROR_APPLICATION_INVALID_MOUNT,1752,"invalid mount","Will be raised when an invalid mount is specified."
-ERROR_APPLICATION_DOWNLOAD_FAILED,1753,"application download failed","Will be raised when an application download from the central repository failed."
-ERROR_APPLICATION_UPLOAD_FAILED,1754,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
+ERROR_APPLICATION_INVALID_NAME,1750,"invalid application name","Will be raised when an invalid application name is specified."
+ERROR_APPLICATION_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
+ERROR_APPLICATION_DOWNLOAD_FAILED,1752,"application download failed","Will be raised when an application download from the central repository failed."
+ERROR_APPLICATION_UPLOAD_FAILED,1753,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
 
 ################################################################################
 ## Key value access

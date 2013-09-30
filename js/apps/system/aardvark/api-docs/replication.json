@@ -1,0 +1,630 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger was started successfully, or was already running. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if the logger could not be started. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Starts the server's replication logger. Will do nothing if the replication logger is already running. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>true</em><br><br>",
+                    "summary": "starts the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-start\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"running\" : true \n}\n\n</code></pre><br>",
+                    "nickname": "startsTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-start"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger was stopped successfully, or was not running before. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if the logger could not be stopped. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Stops the server's replication logger. Will do nothing if the replication logger is not running. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>false</em><br><br>",
+                    "summary": "stops the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-stop\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"running\" : false \n}\n\n</code></pre><br>",
+                    "nickname": "stopsTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-stop"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger state could be determined successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if the logger state could not be determined. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the current state of the server's replication logger. The state will include information about whether the logger is running and about the last logged tick value. This tick value is important for incremental fetching of data. <br><br>The state API can be called regardless of whether the logger is currently running or not. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>state</em>: the current logger state as a JSON hash array with the following  sub-attributes: <br><br>  - <em>running</em>: whether or not the logger is running <br><br>  - <em>lastLogTick</em>: the tick value of the latest tick the logger has logged.      This value can be used for incremental fetching of log data. <br><br>  - <em>totalEvents</em>: total number of events logged since the server was started.     The value is not reset between multiple stops and re-starts of the logger. <br><br>  - <em>time</em>: the current date and time on the logger server <br><br>- <em>server</em>: a JSON hash with the following sub-attributes:<br><br>  - <em>version</em>: the logger server's version <br><br>  - <em>serverId</em>: the logger server's id <br><br>- <em>clients</em>: a list of all replication clients that ever connected to  the logger since it was started. This list can be used to determine    approximately how much data the individual clients have already fetched    from the logger server. Each entry in the list contains a <em>time</em> value   indicating the server time the client last fetched data from the   replication logger. The <em>lastServedTick</em> value of each client indicates   the latest tick value sent to the client upon a client request to the   replication logger. <br><br>",
+                    "summary": "returns the replication logger state",
+                    "httpMethod": "GET",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "Returns the state of an inactive replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"368329127\", \n    \"totalEvents\" : 2, \n    \"time\" : \"2013-09-05T11:02:08Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.0-alpha1\", \n    \"serverId\" : \"190048212006786\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>Returns the state of an active replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastLogTick\" : \"368656807\", \n    \"totalEvents\" : 3, \n    \"time\" : \"2013-09-05T11:02:08Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.0-alpha1\", \n    \"serverId\" : \"190048212006786\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>",
+=======
+                    "examples": "Returns the state of an inactive replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"370241683\", \n    \"totalEvents\" : 2, \n    \"time\" : \"2013-09-27T22:52:06Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"18400157376892\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>Returns the state of an active replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastLogTick\" : \"370569363\", \n    \"totalEvents\" : 3, \n    \"time\" : \"2013-09-27T22:52:06Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"18400157376892\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "returnsTheReplicationLoggerState"
+                }
+            ],
+            "path": "/_api/replication/logger-state"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the configuration of the replication logger. <br><br>The body of the response is a JSON hash with the configuration. The following attributes may be present in the configuration: <br><br>- <em>autoStart</em>: whether or not to automatically start the replication logger   on server startup <br><br>- <em>logRemoteChanges</em>: whether or not externally created changes should be   logged by the local logger <br><br>- <em>maxEvents</em>: the maximum number of log events kept by the replication    logger before deleting oldest events. A value of <em>0</em> means that the    number of events is not restricted. <br><br>- <em>maxEventsSize</em>: the maximum cumulated size of log event data kept by the    replication logger before deleting oldest events. A value of <em>0</em> means    that the cumulated size of events is not restricted. <br><br>",
+                    "summary": "returns the configuration of the replication logger",
+                    "httpMethod": "GET",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-config\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"autoStart\" : false, \n  \"logRemoteChanges\" : false, \n  \"maxEvents\" : 1048576, \n  \"maxEventsSize\" : 134217728 \n}\n\n</code></pre><br>",
+                    "nickname": "returnsTheConfigurationOfTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-config"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the configuration is incomplete or malformed. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "configuration",
+                            "description": "A JSON representation of the configuration. "
+                        }
+                    ],
+                    "notes": "Sets the configuration of the replication logger.  <br><br>The body of the request must be JSON hash with the configuration. The following attributes are allowed for the configuration: <br><br>- <em>autoStart</em>: whether or not to automatically start the replication logger   on server startup <br><br>- <em>logRemoteChanges</em>: whether or not externally created changes should be   logged by the local logger <br><br>- <em>maxEvents</em>: the maximum number of log events kept by the replication    logger before deleting oldest events. Use a value of <em>0</em> to not restrict    the number of events. <br><br>- <em>maxEventsSize</em>: the maximum cumulated size of log event data kept by the    replication logger before deleting oldest events. Use a value of <em>0</em> to     not restrict the size. <br><br>Note that when setting both <em>maxEvents</em> and <em>maxEventsSize</em>, reaching  either limitation will trigger a deletion of the \"oldest\" log events from the replication log. <br><br>In case of success, the body of the response is a JSON hash with the updated configuration. <br><br>",
+                    "summary": "adjusts the configuration of the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/replication/logger-config\n{\"logRemoteChanges\":true,\"maxEvents\":1048576}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"autoStart\" : false, \n  \"logRemoteChanges\" : true, \n  \"maxEvents\" : 1048576, \n  \"maxEventsSize\" : 134217728 \n}\n\n</code></pre><br><br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/replication/logger-config\n{\"logRemoteChanges\":false,\"maxEvents\":16384,\"maxEventsSize\":16777216}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"autoStart\" : false, \n  \"logRemoteChanges\" : false, \n  \"maxEvents\" : 16384, \n  \"maxEventsSize\" : 16777216 \n}\n\n</code></pre><br>",
+                    "nickname": "adjustsTheConfigurationOfTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-config"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the batch was created successfully. ",
+                            "code": "204"
+                        },
+                        {
+                            "reason": "is returned if the ttl value is invalid. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Creates a new dump batch and returns the batch's id. <br><br>The body of the request must be a JSON hash with the following attributes: <br><br>- <em>ttl</em>: the time-to-live for the new batch (in seconds)<br><br>The response is a JSON hash with the following attributes: <br><br>- <em>id</em>: the id of the batch<br><br>",
+                    "summary": "creates a new dump batch",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "createsANewDumpBatch"
+                }
+            ],
+            "path": "/_api/replication/batch"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the batch's ttl was extended successfully. ",
+                            "code": "204"
+                        },
+                        {
+                            "reason": "is returned if the ttl value is invalid or the batch was not found. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Extends the ttl of an existing dump batch, using the batch's id and  the provided ttl value. <br><br>The body of the request must be a JSON hash with the following attributes: <br><br>- <em>ttl</em>: the time-to-live for the batch (in seconds)<br><br>If the batch's ttl can be extended successully, the response is empty. <br><br>",
+                    "summary": "prolongs an existing dump batch",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "prolongsAnExistingDumpBatch"
+                }
+            ],
+            "path": "/_api/replication/{id}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the batch was deleted successfully. ",
+                            "code": "204"
+                        },
+                        {
+                            "reason": "is returned if the batch was not found. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Deletes the existing dump batch, allowing compaction and cleanup to resume. <br><br>",
+                    "summary": "deletes an existing dump batch",
+                    "httpMethod": "DELETE",
+                    "examples": "",
+                    "nickname": "deletesAnExistingDumpBatch"
+                }
+            ],
+            "path": "/_api/replication/{id}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully, and there are log events available for the requested range. The response body will not be empty in this case. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the request was executed successfully, but there are no log events available for the requested range. The response body will be empty in this case. ",
+                            "code": "204"
+                        },
+                        {
+                            "reason": "is returned if either the <em>from</em> or <em>to</em> values are invalid. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "from",
+                            "description": "Lower bound tick value for results. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "to",
+                            "description": "Upper bound tick value for results. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "chunkSize",
+                            "description": "Approximate maximum size of the returned result. "
+                        }
+                    ],
+                    "notes": "Returns data from the server's replication log. This method can be called by replication clients after an initial synchronisation of data. The method  will return all \"recent\" log entries from the logger server, and the clients can replay and apply these entries locally so they get to the same data state as the logger server. <br><br>Clients can call this method repeatedly to incrementally fetch all changes from the logger server. In this case, they should provide the <em>from</em> value so they will only get returned the log events since their last fetch. <br><br>When the <em>from</em> URL parameter is not used, the logger server will return log  entries starting at the beginning of its replication log. When the <em>from</em> parameter is used, the logger server will only return log entries which have  higher tick values than the specified <em>from</em> value (note: the log entry with a tick value equal to <em>from</em> will be excluded). Use the <em>from</em> value when incrementally fetching log data. <br><br>The <em>to</em> URL parameter can be used to optionally restrict the upper bound of the result to a certain tick value. If used, the result will contain only log events with tick values up to (including) <em>to</em>. In incremental fetching, there is no need to use the <em>to</em> parameter. It only makes sense in special situations,  when only parts of the change log are required. <br><br>The <em>chunkSize</em> URL parameter can be used to control the size of the result.  It must be specified in bytes. The <em>chunkSize</em> value will only be honored  approximately. Otherwise a too low <em>chunkSize</em> value could cause the server  to not be able to put just one log entry into the result and return it.  Therefore, the <em>chunkSize</em> value will only be consulted after a log entry has been written into the result. If the result size is then bigger than  <em>chunkSize</em>, the server will respond with as many log entries as there are in the response already. If the result size is still smaller than <em>chunkSize</em>, the server will try to return more data if there's more data left to return. <br><br>If <em>chunkSize</em> is not specified, some server-side default value will be used. <br><br>The <em>Content-Type</em> of the result is <em>application/x-arango-dump</em>. This is an  easy-to-process format, with all log events going onto separate lines in the response body. Each log event itself is a JSON hash, with at least the  following attributes: <br><br>- <em>tick</em>: the log event tick value<br><br>- <em>type</em>: the log event type<br><br>Individual log events will also have additional attributes, depending on the event type. A few common attributes which are used for multiple events types are: <br><br>- <em>cid</em>: id of the collection the event was for<br><br>- <em>tid</em>: id of the transaction the event was contained in<br><br>- <em>key</em>: document key<br><br>- <em>rev</em>: document revision id<br><br>- <em>data</em>: the original document data<br><br>A more detailed description of the individual replication event types and their  data structures can be found in the manual. <br><br>The response will also contain the following HTTP headers: <br><br>- <em>x-arango-replication-active</em>: whether or not the logger is active. Clients  can use this flag as an indication for their polling frequency. If the    logger is not active and there are no more replication events available, it   might be sensible for a client to abort, or to go to sleep for a long time   and try again later to check whether the logger has been activated. <br><br>- <em>x-arango-replication-lastincluded</em>: the tick value of the last included  value in the result. In incremental log fetching, this value can be used    as the <em>from</em> value for the following request. Note that if the result is   empty, the value will be <em>0</em>. This value should not be used as <em>from</em> value   by clients in the next request (otherwise the server would return the log   events from the start of the log again). <br><br>- <em>x-arango-replication-lasttick</em>: the last tick value the logger server has  logged (not necessarily included in the result). By comparing the the last   tick and last included tick values, clients have an approximate indication of   how many events there are still left to fetch. <br><br>- <em>x-arango-replication-checkmore</em>: whether or not there already exists more  log data which the client could fetch immediately. If there is more log data   available, the client could call <em>logger-follow</em> again with an adjusted <em>from</em>   value to fetch remaining log entries until there are no more. <br><br>  If there isn't any more log data to fetch, the client might decide to go   to sleep for a while before calling the logger again.  <br><br>",
+                    "summary": "returns recent log entries from the replication log",
+                    "httpMethod": "GET",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "No log events available: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=369050023\n\nHTTP/1.1 204 No Content\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 0\nx-arango-replication-lasttick: 369050023\n\n</code></pre><br>A few log events: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=369443239\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 371999143\nx-arango-replication-lasttick: 371999143\n\n{\"tick\":\"370229671\",\"type\":2000,\"cid\":\"369508775\",\"collection\":{\"version\":4,\"type\":2,\"cid\":\"369508775\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"370753959\",\"type\":2300,\"cid\":\"369508775\",\"key\":\"p1\",\"rev\":\"370491815\",\"data\":{\"_key\":\"p1\",\"_rev\":\"370491815\",\"name\":\"flux compensator\"}}\n{\"tick\":\"371212711\",\"type\":2300,\"cid\":\"369508775\",\"key\":\"p2\",\"rev\":\"371016103\",\"data\":{\"_key\":\"p2\",\"_rev\":\"371016103\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"371540391\",\"type\":2302,\"cid\":\"369508775\",\"key\":\"p1\",\"rev\":\"371343783\",\"oldRev\":\"370491815\"}\n{\"tick\":\"371868071\",\"type\":2300,\"cid\":\"369508775\",\"key\":\"p2\",\"rev\":\"371671463\",\"oldRev\":\"371016103\",\"data\":{\"_key\":\"p2\",\"_rev\":\"371671463\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"371999143\",\"type\":2001,\"cid\":\"369508775\"}\n\n\n</code></pre><br>More events than would fit into the response: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=372392359&chunkSize=400\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: true\nx-arango-replication-lastincluded: 374161831\nx-arango-replication-lasttick: 374948263\n\n{\"tick\":\"373178791\",\"type\":2000,\"cid\":\"372457895\",\"collection\":{\"version\":4,\"type\":2,\"cid\":\"372457895\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"373703079\",\"type\":2300,\"cid\":\"372457895\",\"key\":\"p1\",\"rev\":\"373440935\",\"data\":{\"_key\":\"p1\",\"_rev\":\"373440935\",\"name\":\"flux compensator\"}}\n{\"tick\":\"374161831\",\"type\":2300,\"cid\":\"372457895\",\"key\":\"p2\",\"rev\":\"373965223\",\"data\":{\"_key\":\"p2\",\"_rev\":\"373965223\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n\n\n</code></pre><br>",
+=======
+                    "examples": "No log events available: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=370962579\n\nHTTP/1.1 204 No Content\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 0\nx-arango-replication-lasttick: 370962579\n\n</code></pre><br>A few log events: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=371355795\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 373911699\nx-arango-replication-lasttick: 373911699\n\n{\"tick\":\"372142227\",\"type\":2000,\"cid\":\"371421331\",\"collection\":{\"version\":4,\"type\":2,\"cid\":\"371421331\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"372666515\",\"type\":2300,\"cid\":\"371421331\",\"key\":\"p1\",\"rev\":\"372404371\",\"data\":{\"_key\":\"p1\",\"_rev\":\"372404371\",\"name\":\"flux compensator\"}}\n{\"tick\":\"373125267\",\"type\":2300,\"cid\":\"371421331\",\"key\":\"p2\",\"rev\":\"372928659\",\"data\":{\"_key\":\"p2\",\"_rev\":\"372928659\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"373452947\",\"type\":2302,\"cid\":\"371421331\",\"key\":\"p1\",\"rev\":\"373256339\",\"oldRev\":\"372404371\"}\n{\"tick\":\"373780627\",\"type\":2300,\"cid\":\"371421331\",\"key\":\"p2\",\"rev\":\"373584019\",\"oldRev\":\"372928659\",\"data\":{\"_key\":\"p2\",\"_rev\":\"373584019\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"373911699\",\"type\":2001,\"cid\":\"371421331\"}\n\n\n</code></pre><br>More events than would fit into the response: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=374304915&chunkSize=400\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: true\nx-arango-replication-lastincluded: 376074387\nx-arango-replication-lasttick: 376860819\n\n{\"tick\":\"375091347\",\"type\":2000,\"cid\":\"374370451\",\"collection\":{\"version\":4,\"type\":2,\"cid\":\"374370451\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"375615635\",\"type\":2300,\"cid\":\"374370451\",\"key\":\"p1\",\"rev\":\"375353491\",\"data\":{\"_key\":\"p1\",\"_rev\":\"375353491\",\"name\":\"flux compensator\"}}\n{\"tick\":\"376074387\",\"type\":2300,\"cid\":\"374370451\",\"key\":\"p2\",\"rev\":\"375877779\",\"data\":{\"_key\":\"p2\",\"_rev\":\"375877779\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "returnsRecentLogEntriesFromTheReplicationLog"
+                }
+            ],
+            "path": "/_api/replication/logger-follow"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "includeSystem",
+                            "description": "Include system collections in the result. The default value is <em>false</em>. "
+                        }
+                    ],
+                    "notes": "Returns the list of collections and indexes available on the server. This list can be used by replication clients to initiate an initial sync with the server. <br><br>The response will contain a JSON hash array with the <em>collection</em> and <em>state</em> attributes. <br><br><em>collections</em> is a list of collections with the following sub-attributes: <br><br>- <em>parameters</em>: the collection properties<br><br>- <em>indexes</em>: a list of the indexes of a the collection. Primary indexes and edges indexes   are not included in this list. <br><br><em>tick</em>: the system-wide tick value at the start of the dump <br><br>The <em>state</em> attribute contains the current state of the replication logger. It contains the following sub-attributes: <br><br>- <em>running</em>: whether or not the replication logger is currently active<br><br>- <em>lastLogTick</em>: the value of the last tick the replication logger has written  <br><br>- <em>time</em>: the current time on the server<br><br>Replication clients should note the <em>lastLogTick</em> value returned. They can then fetch collections' data using the dump method up to the value of lastLogTick, and query the continuous replication log for log events after this tick value. <br><br>To create a full copy of the collections on the logger server, a replication client can execute these steps: <br><br>- call the <em>/inventory</em> API method. This returns the <em>lastLogTick</em> value and the   list of collections and indexes from the logger server. <br><br>- for each collection returned by <em>/inventory</em>, create the collection locally and   call <em>/dump</em> to stream the collection data to the client, up to the value of    <em>lastLogTick</em>.    After that, the client can create the indexes on the collections as they were    reported by <em>/inventory</em>. <br><br>If the clients wants to continuously stream replication log events from the logger server, the following additional steps need to be carried out: <br><br>- the client should call <em>/logger-follow</em> initially to fetch the first batch of   replication events that were logged after the client's call to <em>/inventory</em>. <br><br>  The call to <em>/logger-follow</em> should use a <em>from</em> parameter with the value of the   <em>lastLogTick</em> as reported by <em>/inventory</em>. The call to <em>/logger-follow</em> will return the    <em>x-arango-replication-lastincluded</em> which will contain the last tick value included    in the response. <br><br>- the client can then continuously call <em>/logger-follow</em> to incrementally fetch new   replication events that occurred after the last transfer. <br><br>  Calls should use a <em>from</em> parameter with the value of the <em>x-arango-replication-lastincluded</em>   header of the previous response. If there are no more replication events, the    response will be empty and clients can go to sleep for a while and try again   later.   <br><br>",
+                    "summary": "returns an inventory of collections and indexes",
+                    "httpMethod": "GET",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/inventory\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"collections\" : [ \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"22888871\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"animals\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"21447079\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"demo\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"126960039\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"vertices1\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 3, \n        \"cid\" : \"129712551\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"edges2\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    } \n  ], \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"375013799\", \n    \"totalEvents\" : 22, \n    \"time\" : \"2013-09-05T11:02:09Z\" \n  }, \n  \"tick\" : \"375079335\" \n}\n\n</code></pre><br>With some additional indexes: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/inventory\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"collections\" : [ \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"22888871\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"animals\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"21447079\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"demo\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"375144871\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"IndexedCollection1\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ \n        { \n          \"id\" : \"375931303\", \n          \"type\" : \"hash\", \n          \"unique\" : false, \n          \"fields\" : [ \n            \"name\" \n          ] \n        }, \n        { \n          \"id\" : \"376193447\", \n          \"type\" : \"skiplist\", \n          \"unique\" : true, \n          \"fields\" : [ \n            \"a\", \n            \"b\" \n          ] \n        }, \n        { \n          \"id\" : \"376258983\", \n          \"type\" : \"cap\", \n          \"unique\" : false, \n          \"size\" : 500, \n          \"byteSize\" : 0 \n        } \n      ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"376324519\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"IndexedCollection2\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ \n        { \n          \"id\" : \"377110951\", \n          \"type\" : \"fulltext\", \n          \"unique\" : false, \n          \"minLength\" : 10, \n          \"fields\" : [ \n            \"text\" \n          ] \n        }, \n        { \n          \"id\" : \"377307559\", \n          \"type\" : \"skiplist\", \n          \"unique\" : false, \n          \"fields\" : [ \n            \"a\" \n          ] \n        }, \n        { \n          \"id\" : \"377373095\", \n          \"type\" : \"cap\", \n          \"unique\" : false, \n          \"size\" : 0, \n          \"byteSize\" : 1048576 \n        } \n      ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"126960039\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"vertices1\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 3, \n        \"cid\" : \"129712551\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"edges2\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    } \n  ], \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"375013799\", \n    \"totalEvents\" : 22, \n    \"time\" : \"2013-09-05T11:02:09Z\" \n  }, \n  \"tick\" : \"377373095\" \n}\n\n</code></pre><br>",
+=======
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/inventory\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"collections\" : [ \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"20672659\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"animals\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"19230867\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"demo\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"128872595\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"vertices1\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 3, \n        \"cid\" : \"131625107\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"edges2\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    } \n  ], \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"376926355\", \n    \"totalEvents\" : 22, \n    \"time\" : \"2013-09-27T22:52:06Z\" \n  }, \n  \"tick\" : \"376991891\" \n}\n\n</code></pre><br>With some additional indexes: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/inventory\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"collections\" : [ \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"20672659\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"animals\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"19230867\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"demo\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"377057427\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"IndexedCollection1\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ \n        { \n          \"id\" : \"377843859\", \n          \"type\" : \"hash\", \n          \"unique\" : false, \n          \"fields\" : [ \n            \"name\" \n          ] \n        }, \n        { \n          \"id\" : \"378106003\", \n          \"type\" : \"skiplist\", \n          \"unique\" : true, \n          \"fields\" : [ \n            \"a\", \n            \"b\" \n          ] \n        }, \n        { \n          \"id\" : \"378171539\", \n          \"type\" : \"cap\", \n          \"unique\" : false, \n          \"size\" : 500, \n          \"byteSize\" : 0 \n        } \n      ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"378237075\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"IndexedCollection2\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ \n        { \n          \"id\" : \"379023507\", \n          \"type\" : \"fulltext\", \n          \"unique\" : false, \n          \"minLength\" : 10, \n          \"fields\" : [ \n            \"text\" \n          ] \n        }, \n        { \n          \"id\" : \"379220115\", \n          \"type\" : \"skiplist\", \n          \"unique\" : false, \n          \"fields\" : [ \n            \"a\" \n          ] \n        }, \n        { \n          \"id\" : \"379285651\", \n          \"type\" : \"cap\", \n          \"unique\" : false, \n          \"size\" : 0, \n          \"byteSize\" : 1048576 \n        } \n      ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 2, \n        \"cid\" : \"128872595\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"vertices1\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    }, \n    { \n      \"parameters\" : { \n        \"version\" : 4, \n        \"type\" : 3, \n        \"cid\" : \"131625107\", \n        \"deleted\" : false, \n        \"doCompact\" : true, \n        \"maximalSize\" : 1048576, \n        \"name\" : \"edges2\", \n        \"isVolatile\" : false, \n        \"waitForSync\" : false \n      }, \n      \"indexes\" : [ ] \n    } \n  ], \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"376926355\", \n    \"totalEvents\" : 22, \n    \"time\" : \"2013-09-27T22:52:07Z\" \n  }, \n  \"tick\" : \"379285651\" \n}\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "returnsAnInventoryOfCollectionsAndIndexes"
+                }
+            ],
+            "path": "/_api/replication/inventory"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if either the <em>from</em> or <em>to</em> values are invalid. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned when the collection could not be found. ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The name or id of the collection to dump. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "from",
+                            "description": "Lower bound tick value for results. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "to",
+                            "description": "Upper bound tick value for results. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "chunkSize",
+                            "description": "Approximate maximum size of the returned result. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "ticks",
+                            "description": "Whether or not to include tick values in the dump. Default value is <em>true</em>. "
+                        }
+                    ],
+                    "notes": "Returns the data from the collection for the requested range. <br><br>When the <em>from</em> URL parameter is not used, collection events are returned from the beginning. When the <em>from</em> parameter is used, the result will only contain collection entries which have higher tick values than the specified <em>from</em> value  (note: the log entry with a tick value equal to <em>from</em> will be excluded).  <br><br>The <em>to</em> URL parameter can be used to optionally restrict the upper bound of the result to a certain tick value. If used, the result will only contain collection entries with tick values up to (including) <em>to</em>.  <br><br>The <em>chunkSize</em> URL parameter can be used to control the size of the result.  It must be specified in bytes. The <em>chunkSize</em> value will only be honored  approximately. Otherwise a too low <em>chunkSize</em> value could cause the server  to not be able to put just one entry into the result and return it.  Therefore, the <em>chunkSize</em> value will only be consulted after an entry has been written into the result. If the result size is then bigger than  <em>chunkSize</em>, the server will respond with as many entries as there are in the response already. If the result size is still smaller than <em>chunkSize</em>, the server will try to return more data if there's more data left to return. <br><br>If <em>chunkSize</em> is not specified, some server-side default value will be used. <br><br>The <em>Content-Type</em> of the result is <em>application/x-arango-dump</em>. This is an  easy-to-process format, with all entries going onto separate lines in the response body.  <br><br>Each line itself is a JSON hash, with at least the following attributes: <br><br>- <em>type</em>: the type of entry. Possible values for <em>type</em> are:<br><br>  - 2300: document insertion/update <br><br>  - 2301: edge insertion/update <br><br>  - 2302: document/edge deletion <br><br>- <em>key</em>: the key of the document/edge or the key used in the deletion operation<br><br>- <em>rev</em>: the revision id of the document/edge or the deletion operation<br><br>- <em>data</em>: the actual document/edge data for types 2300 and 2301. The full  document/edge data will be returned even for updates. <br><br>A more detailed description of the different entry types and their  data structures can be found in the manual. <br><br>Note: there will be no distinction between inserts and updates when calling this method. <br><br>",
+                    "summary": "returns the data of a collection",
+                    "httpMethod": "GET",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "Empty collection: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection\n\nHTTP/1.1 204 No Content\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 0\n\n</code></pre><br>Non-empty collection: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 380518823\n\n{\"tick\":\"379142567\",\"type\":2300,\"key\":\"abcdef\",\"rev\":\"379011495\",\"data\":{\"_key\":\"abcdef\",\"_rev\":\"379011495\",\"test\":true,\"a\":\"abc\"}}\n{\"tick\":\"379535783\",\"type\":2300,\"key\":\"123456\",\"rev\":\"379470247\",\"data\":{\"_key\":\"123456\",\"_rev\":\"379470247\",\"c\":false,\"b\":1}}\n{\"tick\":\"379863463\",\"type\":2300,\"key\":\"123456\",\"rev\":\"379797927\",\"data\":{\"_key\":\"123456\",\"_rev\":\"379797927\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"380125607\",\"type\":2300,\"key\":\"foobar\",\"rev\":\"380060071\",\"data\":{\"_key\":\"foobar\",\"_rev\":\"380060071\"}}\n{\"tick\":\"380322215\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"380256679\"}\n{\"tick\":\"380518823\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"380453287\"}\n\n\n</code></pre><br>",
+=======
+                    "examples": "Empty collection: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection\n\nHTTP/1.1 204 No Content\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 0\n\n</code></pre><br>Non-empty collection: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 382431379\n\n{\"tick\":\"381055123\",\"type\":2300,\"key\":\"abcdef\",\"rev\":\"380924051\",\"data\":{\"_key\":\"abcdef\",\"_rev\":\"380924051\",\"test\":true,\"a\":\"abc\"}}\n{\"tick\":\"381448339\",\"type\":2300,\"key\":\"123456\",\"rev\":\"381382803\",\"data\":{\"_key\":\"123456\",\"_rev\":\"381382803\",\"c\":false,\"b\":1}}\n{\"tick\":\"381776019\",\"type\":2300,\"key\":\"123456\",\"rev\":\"381710483\",\"data\":{\"_key\":\"123456\",\"_rev\":\"381710483\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"382038163\",\"type\":2300,\"key\":\"foobar\",\"rev\":\"381972627\",\"data\":{\"_key\":\"foobar\",\"_rev\":\"381972627\"}}\n{\"tick\":\"382234771\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"382169235\"}\n{\"tick\":\"382431379\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"382365843\"}\n\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "returnsTheDataOfACollection"
+                }
+            ],
+            "path": "/_api/replication/dump"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the configuration is incomplete or malformed. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "configuration",
+                            "description": "A JSON representation of the configuration. "
+                        }
+                    ],
+                    "notes": "Starts a full data synchronisation from a remote endpoint into the local ArangoDB database. <br><br>The body of the request must be JSON hash with the configuration. The following attributes are allowed for the configuration: <br><br>- <em>endpoint</em>: the endpoint to connect to (e.g. \"tcp://192.168.173.13:8529\").<br><br>- <em>username</em>: an optional ArangoDB username to use when connecting to the endpoint.<br><br>- <em>password</em>: the password to use when connecting to the endpoint.<br><br>- <em>restrictType</em>: an optional string value for collection filtering. When   specified, the allowed values are <em>include</em> or <em>exclude</em>. <br><br>- <em>restrictCollections</em>: an optional list of collections for use with   <em>restrictType</em>. If <em>restrictType</em> is <em>include</em>, only the specified collections    will be sychronised. If <em>restrictType</em> is <em>exclude</em>, all but the specified    collections will be synchronised. <br><br>In case of success, the body of the response is a JSON hash with the following attributes:  <br><br>- <em>collections</em>: a list of collections that were transferred from the endpoint <br><br>- <em>lastLogTick</em>: the last log tick on the endpoint at the time the transfer  was started. Use this value as the <em>from</em> value when starting the continuous    synchronisation later. <br><br>WARNING: calling this method will sychronise data from the collections found on the remote endpoint to the local ArangoDB database. All data in the local collections will be purged and replaced with data from the endpoint.  <br><br>Use with caution! <br><br>",
+                    "summary": "synchronises data from a remote endpoint",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "synchronisesDataFromARemoteEndpoint"
+                }
+            ],
+            "path": "/_api/replication/sync"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the servers id. The id is also returned by other replication API methods, and this method is an easy means of determining a server's id. <br><br>The body of the response is a JSON hash with the attribute <em>serverId</em>. The server id is returned as a string. <br><br>",
+                    "summary": "returns the servers id",
+                    "httpMethod": "GET",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/server-id\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"serverId\" : \"190048212006786\" \n}\n\n</code></pre><br>",
+=======
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/server-id\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"serverId\" : \"18400157376892\" \n}\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "returnsTheServersId"
+                }
+            ],
+            "path": "/_api/replication/server-id"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the configuration of the replication applier. <br><br>The body of the response is a JSON hash with the configuration. The following attributes may be present in the configuration: <br><br>- <em>endpoint</em>: the logger server to connect to (e.g. \"tcp://192.168.173.13:8529\").<br><br>- <em>username</em>: an optional ArangoDB username to use when connecting to the endpoint.<br><br>- <em>password</em>: the password to use when connecting to the endpoint.<br><br>- <em>maxConnectRetries</em>: the maximum number of connection attempts the applier   will make in a row. If the applier cannot establish a connection to the    endpoint in this number of attempts, it will stop itself. <br><br>- <em>connectTimeout</em>: the timeout (in seconds) when attempting to connect to the  endpoint. This value is used for each connection attempt. <br><br>- <em>requestTimeout</em>: the timeout (in seconds) for individual requests to the endpoint.<br><br>- <em>chunkSize</em>: the requested maximum size for log transfer packets that  is used when the endpoint is contacted. <br><br>- <em>autoStart</em>: whether or not to auto-start the replication applier on  (next and following) server starts <br><br>- <em>adaptivePolling</em>: whether or not the replication applier will use  adaptive polling. <br><br>",
+                    "summary": "returns the configuration of the replication applier",
+                    "httpMethod": "GET",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/applier-config\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"requestTimeout\" : 300, \n  \"connectTimeout\" : 10, \n  \"maxConnectRetries\" : 100, \n  \"chunkSize\" : 0, \n  \"autoStart\" : false, \n  \"adaptivePolling\" : true \n}\n\n</code></pre><br>",
+                    "nickname": "returnsTheConfigurationOfTheReplicationApplier"
+                }
+            ],
+            "path": "/_api/replication/applier-config"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the configuration is incomplete or malformed, or if the replication applier is currently running. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "configuration",
+                            "description": "A JSON representation of the configuration. "
+                        }
+                    ],
+                    "notes": "Sets the configuration of the replication applier. The configuration can only be changed while the applier is not running. The updated configuration  will be saved immediately but only become active with the next start of the  applier. <br><br>The body of the request must be JSON hash with the configuration. The following attributes are allowed for the configuration: <br><br>- <em>endpoint</em>: the logger server to connect to (e.g. \"tcp://192.168.173.13:8529\").  The endpoint must be specified. <br><br>- <em>username</em>: an optional ArangoDB username to use when connecting to the endpoint.<br><br>- <em>password</em>: the password to use when connecting to the endpoint.<br><br>- <em>maxConnectRetries</em>: the maximum number of connection attempts the applier   will make in a row. If the applier cannot establish a connection to the    endpoint in this number of attempts, it will stop itself. <br><br>- <em>connectTimeout</em>: the timeout (in seconds) when attempting to connect to the  endpoint. This value is used for each connection attempt. <br><br>- <em>requestTimeout</em>: the timeout (in seconds) for individual requests to the endpoint.<br><br>- <em>chunkSize</em>: the requested maximum size for log transfer packets that  is used when the endpoint is contacted. <br><br>- <em>autoStart</em>: whether or not to auto-start the replication applier on  (next and following) server starts <br><br>- <em>adaptivePolling</em>: if set to <em>true</em>, the replication applier will fall  to sleep for an increasingly long period in case the logger server at the   endpoint does not have any more replication events to apply. Using   adaptive polling is thus useful to reduce the amount of work for both the   applier and the logger server for cases when there are only infrequent   changes. The downside is that when using adaptive polling, it might take   longer for the replication applier to detect that there are new replication   events on the logger server. <br><br>  Setting <em>adaptivePolling</em> to false will make the replication applier    contact the logger server in a constant interval, regardless of whether   the logger server provides updates frequently or seldomly. <br><br>In case of success, the body of the response is a JSON hash with the updated configuration. <br><br>",
+                    "summary": "adjusts the configuration of the replication applier",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/replication/applier-config\n{\"endpoint\":\"tcp://127.0.0.1:8529\",\"username\":\"replicationApplier\",\"password\":\"applier1234@foxx\",\"chunkSize\":4194304,\"autoStart\":false,\"adaptivePolling\":true}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"endpoint\" : \"tcp://127.0.0.1:8529\", \n  \"username\" : \"replicationApplier\", \n  \"requestTimeout\" : 300, \n  \"connectTimeout\" : 10, \n  \"maxConnectRetries\" : 100, \n  \"chunkSize\" : 4194304, \n  \"autoStart\" : false, \n  \"adaptivePolling\" : true \n}\n\n</code></pre><br>",
+                    "nickname": "adjustsTheConfigurationOfTheReplicationApplier"
+                }
+            ],
+            "path": "/_api/replication/applier-config"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the replication applier is not fully configured or the configuration is invalid. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "from",
+                            "description": "The remote <em>lastLogTick</em> value from which to start applying. If not specified, the last saved tick from the previous applier run is used. If there is no previous applier state saved, the applier will start at the beginning of the logger server's log. "
+                        }
+                    ],
+                    "notes": "Starts the replication applier. This will return immediately if the replication applier is already running. <br><br>If the replication applier is not already running, the applier configuration will be checked, and if it is complete, the applier will be started in a background thread. This means that even if the applier will encounter any errors while running, they will not be reported in the response to this  method.  <br><br>To detect replication applier errors after the applier was started, use the  <em>/_api/replication/applier-state</em> API instead. <br><br>",
+                    "summary": "starts the replication applier",
+                    "httpMethod": "PUT",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-start\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-05T11:01:31Z\", \n      \"message\" : \"applier created\", \n      \"failedConnects\" : 0 \n    }, \n    \"totalRequests\" : 0, \n    \"totalFailedConnects\" : 0, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"errorNum\" : 0 \n    }, \n    \"time\" : \"2013-09-05T11:02:09Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.0-alpha1\", \n    \"serverId\" : \"190048212006786\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>",
+=======
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-start\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-27T22:51:41Z\", \n      \"message\" : \"applier created\", \n      \"failedConnects\" : 0 \n    }, \n    \"totalRequests\" : 0, \n    \"totalFailedConnects\" : 0, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"errorNum\" : 0 \n    }, \n    \"time\" : \"2013-09-27T22:52:07Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"18400157376892\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "startsTheReplicationApplier"
+                }
+            ],
+            "path": "/_api/replication/applier-start"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Stops the replication applier. This will return immediately if the replication applier is not running. <br><br>",
+                    "summary": "stops the replication applier",
+                    "httpMethod": "PUT",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-stop\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-05T11:02:09Z\", \n      \"message\" : \"applier stopped\", \n      \"failedConnects\" : 1 \n    }, \n    \"totalRequests\" : 2, \n    \"totalFailedConnects\" : 2, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"time\" : \"2013-09-05T11:02:09Z\", \n      \"errorMessage\" : \"could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp:/...\", \n      \"errorNum\" : 1412 \n    }, \n    \"time\" : \"2013-09-05T11:02:09Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.0-alpha1\", \n    \"serverId\" : \"190048212006786\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>",
+=======
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-stop\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-27T22:52:07Z\", \n      \"message\" : \"applier stopped\", \n      \"failedConnects\" : 0 \n    }, \n    \"totalRequests\" : 2, \n    \"totalFailedConnects\" : 0, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"time\" : \"2013-09-27T22:52:07Z\", \n      \"errorMessage\" : \"no start tick\", \n      \"errorNum\" : 1413 \n    }, \n    \"time\" : \"2013-09-27T22:52:07Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"18400157376892\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "stopsTheReplicationApplier"
+                }
+            ],
+            "path": "/_api/replication/applier-stop"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the request was executed successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned when an invalid HTTP method is used. ",
+                            "code": "405"
+                        },
+                        {
+                            "reason": "is returned if an error occurred while assembling the response. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the state of the replication applier, regardless of whether the applier is currently running or not. <br><br>The response is a JSON hash with the following attributes: <br><br>- <em>state</em>: a JSON hash with the following sub-attributes:<br><br>  - <em>running</em>: whether or not the applier is active and running <br><br>  - <em>lastAppliedContinuousTick</em>: the last tick value from the continuous     replication log the applier has applied. <br><br>  - <em>lastProcessedContinuousTick</em>: the last tick value from the continuous     replication log the applier has processed.  <br><br>    Regularly, the last applied and last processed tick values should be     identical. For transactional operations, the replication applier will first     process incoming log events before applying them, so the processed tick     value might be higher than the applied tick value. This will be the case     until the applier encounters the <em>transaction commit</em> log event for the     transaction. <br><br>  - <em>lastAvailableContinuousTick</em>: the last tick value the logger server can     provide. <br><br>  - <em>time</em>: the time on the applier server. <br><br>  - <em>totalRequests</em>: the total number of requests the applier has made to the     endpoint. <br><br>  - <em>totalFailedConnects</em>: the total number of failed connection attempts the     applier has made. <br><br>  - <em>totalEvents</em>: the total number of log events the applier has processed. <br><br>  - <em>progress</em>: a JSON hash with details about the replication applier progress.     It contains the following sub-attributes if there is progress to report: <br><br>    - <em>message</em>: a textual description of the progress <br><br>    - <em>time</em>: the date and time the progress was logged <br><br>    - <em>failedConnects</em>: the current number of failed connection attempts <br><br>  - <em>lastError</em>: a JSON hash with details about the last error that happened on     the applier. It contains the following sub-attributes if there was an error: <br><br>    - <em>errorNum</em>: a numerical error code <br><br>    - <em>errorMessage</em>: a textual error description <br><br>    - <em>time</em>: the date and time the error occurred <br><br>    In case no error has occurred, <em>lastError</em> will be empty. <br><br>- <em>server</em>: a JSON hash with the following sub-attributes:<br><br>  - <em>version</em>: the applier server's version <br><br>  - <em>serverId</em>: the applier server's id <br><br>- <em>endpoint</em>: the endpoint the applier is connected to (if applier is  active) or will connect to (if applier is currently inactive) <br><br>",
+                    "summary": "returns the state of the replication applier",
+                    "httpMethod": "GET",
+<<<<<<< HEAD:js/apps/aardvark/api-docs/replication.json
+                    "examples": "Fetching the state of an inactive applier: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/applier-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-05T11:02:09Z\", \n      \"message\" : \"applier stopped\", \n      \"failedConnects\" : 1 \n    }, \n    \"totalRequests\" : 2, \n    \"totalFailedConnects\" : 2, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"time\" : \"2013-09-05T11:02:09Z\", \n      \"errorMessage\" : \"could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp:/...\", \n      \"errorNum\" : 1412 \n    }, \n    \"time\" : \"2013-09-05T11:02:09Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.0-alpha1\", \n    \"serverId\" : \"190048212006786\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>Fetching the state of an active applier: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/applier-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-05T11:02:09Z\", \n      \"message\" : \"fetching master state information\", \n      \"failedConnects\" : 1 \n    }, \n    \"totalRequests\" : 3, \n    \"totalFailedConnects\" : 3, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"errorNum\" : 0 \n    }, \n    \"time\" : \"2013-09-05T11:02:09Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.0-alpha1\", \n    \"serverId\" : \"190048212006786\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>",
+=======
+                    "examples": "Fetching the state of an inactive applier: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/applier-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-27T22:52:07Z\", \n      \"message\" : \"applier stopped\", \n      \"failedConnects\" : 0 \n    }, \n    \"totalRequests\" : 2, \n    \"totalFailedConnects\" : 0, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"time\" : \"2013-09-27T22:52:07Z\", \n      \"errorMessage\" : \"no start tick\", \n      \"errorNum\" : 1413 \n    }, \n    \"time\" : \"2013-09-27T22:52:07Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"18400157376892\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>Fetching the state of an active applier: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/applier-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastAppliedContinuousTick\" : null, \n    \"lastProcessedContinuousTick\" : null, \n    \"lastAvailableContinuousTick\" : null, \n    \"progress\" : { \n      \"time\" : \"2013-09-27T22:52:07Z\", \n      \"message\" : \"applier stopped\", \n      \"failedConnects\" : 0 \n    }, \n    \"totalRequests\" : 2, \n    \"totalFailedConnects\" : 0, \n    \"totalEvents\" : 0, \n    \"lastError\" : { \n      \"errorNum\" : 0 \n    }, \n    \"time\" : \"2013-09-27T22:52:07Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"18400157376892\" \n  }, \n  \"endpoint\" : \"tcp://127.0.0.1:8529\" \n}\n\n</code></pre><br>",
+>>>>>>> 011f8776ed71a5effb81f3f1f7d090b9fc8d29b4:js/apps/system/aardvark/api-docs/replication.json
+                    "nickname": "returnsTheStateOfTheReplicationApplier"
+                }
+            ],
+            "path": "/_api/replication/applier-state"
+        }
+    ]
+}

@@ -109,7 +109,8 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    void createCallback (v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
+    void createCallback (v8::Isolate* isolate, 
+                         v8::Handle<v8::Function> callback) {
       WRITE_LOCKER(_callbacksLock);
 
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(isolate);
@@ -125,8 +126,21 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, false);
+    HttpResponse* execute (TRI_vocbase_t* vocbase, 
+                           HttpRequest* request) {
+
+      // determine whether we should force a re-initialistion of the engine in development mode
+      bool allowEngineReset;
+
+      allowEngineReset = false;
+
+      string const& fullUrl = request->fullUrl();
+      if (fullUrl.find("/dev/") == 0) {
+        // only URLs starting with /dev will trigger an engine reset
+        allowEngineReset = true;
+      }
+      
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, ! allowEngineReset, false);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
@@ -274,7 +288,9 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 /// @brief add cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-static void addCookie (TRI_v8_global_t* v8g, HttpResponse* response, v8::Handle<v8::Object> data) {
+static void AddCookie (TRI_v8_global_t* v8g, 
+                       HttpResponse* response, 
+                       v8::Handle<v8::Object> data) {
   
   string name;
   string value;
@@ -384,8 +400,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
   }
   
-  // create database
+  // create database attribute
   string const& database = request->databaseName();
+  assert(! database.empty());
+
   req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), database.size()));
 
   // set the full url
@@ -731,13 +749,13 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         for (uint32_t i = 0; i < v8Array->Length(); i++) {
           v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
           if (v8Cookie->IsObject()) {
-            addCookie(v8g, response, v8Cookie.As<v8::Object>());
+            AddCookie(v8g, response, v8Cookie.As<v8::Object>());
           }
         }
       }
       else if (v8Cookies->IsObject()) {
         // one cookie
-        addCookie(v8g, response, v8Cookies);               
+        AddCookie(v8g, response, v8Cookies);               
       }
     }
     

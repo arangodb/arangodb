@@ -57,6 +57,7 @@ using namespace triagens::rest;
 
 Scheduler::Scheduler (size_t nrThreads)
   : nrThreads(nrThreads),
+    threads(0),
     stopping(0),
     nextLoop(0),
     _active(true) {

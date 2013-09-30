@@ -86,7 +86,7 @@ TRI_index_operator_t;
 //................................................................................
 
 typedef struct TRI_logical_index_operator_s {
-  TRI_index_operator_t _base;
+  TRI_index_operator_t base;
   TRI_index_operator_t* _left;  // could be a relation or another logical operator
   TRI_index_operator_t* _right; // could be a relation or another logical operator or null
 }
@@ -98,12 +98,11 @@ TRI_logical_index_operator_t;
 //................................................................................
 
 typedef struct TRI_relation_index_operator_s {
-  TRI_index_operator_t _base;
+  TRI_index_operator_t base;
   TRI_json_t* _parameters;    // parameters with which this relation was called with
   TRI_shaped_json_t* _fields; // actual data from the parameters converted from
                               // a json array to a shaped json array
   size_t _numFields;          // number of fields in the array above
-  void* _collection;          // required for the computation of the order operation
 }
 TRI_relation_index_operator_t;
 

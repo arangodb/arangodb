@@ -136,28 +136,31 @@ Dispatcher* ApplicationDispatcher::dispatcher () const {
 /// @brief builds the dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
+void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
+                                                size_t maxSize) {
   if (_dispatcher == 0) {
     LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
   LOGGER_TRACE("setting up a standard queue with " << nrThreads << " threads ");
 
-  _dispatcher->addQueue("STANDARD", nrThreads);
+  _dispatcher->addQueue("STANDARD", nrThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the named dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildNamedQueue (string const& name, size_t nrThreads) {
+void ApplicationDispatcher::buildNamedQueue (string const& name, 
+                                             size_t nrThreads,
+                                             size_t maxSize) {
   if (_dispatcher == 0) {
     LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
   LOGGER_TRACE("setting up a named queue '" << name << "' with " << nrThreads << " threads ");
 
-  _dispatcher->addQueue(name, nrThreads);
+  _dispatcher->addQueue(name, nrThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

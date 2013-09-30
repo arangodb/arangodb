@@ -36,25 +36,6 @@
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default auth info
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_t* DefaultAuthInfo = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -62,6 +43,65 @@ static TRI_vocbase_t* DefaultAuthInfo = 0;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a string
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKey (TRI_associative_pointer_t* array, 
+                         void const* key) {
+  char const* k = (char const*) key;
+
+  return TRI_FnvHashString(k);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes the auth info
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, 
+                                     void const* element) {
+  TRI_vocbase_auth_t const* e = element;
+
+  return TRI_FnvHashString(e->_username);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares an auth info and a username
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array, 
+                              void const* key, 
+                              void const* element) {
+  char const* k = (char const*) key;
+  TRI_vocbase_auth_t const* e = element;
+
+  return TRI_EqualString(k, e->_username);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes the cache entry
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array, 
+                                      void const* element) {
+  TRI_vocbase_auth_cache_t const* e = element;
+
+  return TRI_FnvHashString(e->_hash);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a auth cache entry and a hash
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualKeyAuthCache (TRI_associative_pointer_t* array, 
+                               void const* key, 
+                               void const* element) {
+  char const* k = (char const*) key;
+  TRI_vocbase_auth_cache_t const* e = element;
+
+  return TRI_EqualString(k, e->_hash);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a string
@@ -164,6 +204,22 @@ static void FreeAuthInfo (TRI_vocbase_auth_t* auth) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the cache information
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
+  if (cached->_hash != NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, cached->_hash);
+  }
+
+  if (cached->_username == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, cached->_username);
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, cached);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the auth information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -235,6 +291,42 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises the authentication info
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {
+  TRI_InitAssociativePointer(&vocbase->_authInfo,
+                             TRI_CORE_MEM_ZONE,
+                             HashKey,
+                             HashElementAuthInfo,
+                             EqualKeyAuthInfo,
+                             NULL);
+  
+  TRI_InitAssociativePointer(&vocbase->_authCache,
+                             TRI_CORE_MEM_ZONE,
+                             HashKey,
+                             HashElementAuthCache,
+                             EqualKeyAuthCache,
+                             NULL);
+  
+  TRI_InitReadWriteLock(&vocbase->_authInfoLock);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the authentication info
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
+  TRI_ClearAuthInfo(vocbase);
+
+  TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
+  TRI_DestroyAssociativePointer(&vocbase->_authCache);
+  TRI_DestroyAssociativePointer(&vocbase->_authInfo);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads the authentication info
@@ -311,7 +403,6 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   // outside a write transaction
   // .............................................................................
 
-  vocbase->_authInfoFlush = true;
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
@@ -320,35 +411,28 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the default authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DefaultAuthInfo (TRI_vocbase_t* vocbase) {
-  DefaultAuthInfo = vocbase;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info
 /// this must be executed after the underlying _users collection is modified
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_DestroyAuthInfo(vocbase);
+  TRI_ClearAuthInfo(vocbase);
 
   return TRI_LoadAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the default authentication info
+/// @brief clears the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
+void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
   void** beg;
   void** end;
   void** ptr;
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
+  // clear auth info table
   beg = vocbase->_authInfo._table;
   end = vocbase->_authInfo._table + vocbase->_authInfo._nrAlloc;
   ptr = beg;
@@ -362,38 +446,58 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
     }
   }
 
-  vocbase->_authInfo._nrUsed   = 0;
+  vocbase->_authInfo._nrUsed = 0;
+  
+  // clear cache
+  beg = vocbase->_authCache._table;
+  end = vocbase->_authCache._table + vocbase->_authCache._nrAlloc;
+  ptr = beg;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr) {
+      TRI_vocbase_auth_cache_t* auth = *ptr;
+
+      FreeAuthCacheInfo(auth);
+      *ptr = NULL;
+    }
+  }
+
+  vocbase->_authCache._nrUsed = 0;
 
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether some externally cached authentication info 
-/// should be flushed, by querying the internal flush flag
-/// checking the information may also change the state of the flag
+/// @brief looks up authentication data in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_FlushAuthenticationAuthInfo () {
-  bool res;
+char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
+                              char const* hash) {
+  TRI_vocbase_auth_cache_t* cached;
+  char* username;
 
-  TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-  res = DefaultAuthInfo->_authInfoFlush;
-  TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+  username = NULL;
 
-  if (res) {
-    TRI_WriteLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-    DefaultAuthInfo->_authInfoFlush = false;
-    TRI_WriteUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+  TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
+  cached = TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash);
+
+  if (cached != NULL) {
+    username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
   }
 
-  return res;
+  TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
+
+  // might be NULL
+  return username;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckAuthenticationAuthInfo (char const* username,
+bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
+                                      char const* hash,
+                                      char const* username,
                                       char const* password) {
   TRI_vocbase_auth_t* auth;
   bool res;
@@ -403,91 +507,13 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
   size_t len;
   size_t sha256Len;
 
-  assert(DefaultAuthInfo);
-
-  // look up username
-  TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-  auth = TRI_LookupByKeyAssociativePointer(&DefaultAuthInfo->_authInfo, username);
-
-  if (auth == NULL || ! auth->_active) {
-    TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-    return false;
-  }
-
-  // convert password
-  res = false;
-
-  if (TRI_IsPrefixString(auth->_password, "$1$")) {
-    if (strlen(auth->_password) < 12 || auth->_password[11] != '$') {
-      LOG_WARNING("found corrupted password for user '%s'", username);
-    }
-    else {
-      char* salted;
-
-      len = 8 + strlen(password);
-      salted = TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false);
-      memcpy(salted, auth->_password + 3, 8);
-      memcpy(salted + 8, password, len - 8);
-      salted[len] = '\0';
-
-      sha256 = TRI_SHA256String(salted, len, &sha256Len);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, salted);
-
-      hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
-
-      LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
-                username,
-                auth->_password + 12,
-                hex);
-
-      res = TRI_EqualString(auth->_password + 12, hex);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
-    }
-  }
-  else {
-    len = strlen(password);
-    sha256 = TRI_SHA256String(password, len, &sha256Len);
-
-    hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
-
-    LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
-              username,
-              auth->_password + 12,
-              hex);
-
-    res = TRI_EqualString(auth->_password, hex);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
-  }
-
-  TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
-                                       char const* username,
-                                       char const* password) {
-  TRI_vocbase_auth_t* auth;
-  bool res;
-  char* hex;
-  char* sha256;
-  size_t hexLen;
-  size_t len;
-  size_t sha256Len;
-
-  assert(vocbase);
+  assert(vocbase != NULL);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   auth = TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username);
 
-  if (auth == 0 || ! auth->_active) {
+  if (auth == NULL || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }
@@ -540,6 +566,35 @@ bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
   }
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
+
+  if (res) {
+    // insert item into the cache
+    TRI_vocbase_auth_cache_t* cached;
+
+    cached = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false);
+
+    if (cached != NULL) {
+      void* old;
+
+      cached->_hash     = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
+      cached->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
+
+      if (cached->_hash == NULL || cached->_username == NULL) {
+        FreeAuthCacheInfo(cached);
+        return res;
+      }
+
+      TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
+      old = TRI_InsertKeyAssociativePointer(&vocbase->_authCache, cached->_hash, cached, false);
+
+      // duplicate entry?
+      if (old != NULL) {
+        FreeAuthCacheInfo(cached);
+      }
+
+      TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
+    }
+  }
 
   return res;
 }

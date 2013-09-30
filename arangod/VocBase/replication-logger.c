@@ -37,7 +37,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server-id.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -274,7 +274,7 @@ static void FreeCap (TRI_replication_logger_t* logger) {
 
     TRI_DropIndex2DocumentCollection((TRI_document_collection_t*) primary,
                                      logger->_cap->_iid,
-                                     TRI_GetServerId());
+                                     TRI_GetIdServer());
 
     logger->_cap = NULL;
   }
@@ -325,7 +325,7 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
                                                   maxEvents,
                                                   maxEventsSize,
                                                   NULL,
-                                                  TRI_GetServerId());
+                                                  TRI_GetIdServer());
 
   if (idx == NULL) {
     LOG_WARNING("creating cap constraint for '%s' failed", TRI_COL_NAME_REPLICATION);
@@ -433,8 +433,6 @@ static int LogEvent (TRI_replication_logger_t* logger,
   // this type of operation will be synced. all other operations will not be synced.
   forceSync = (type == REPLICATION_STOP);
  
-  // TODO: instead of using JSON here, we should directly use ShapedJson.
-  // this will be a performance optimisation
   TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &json, withTid ? 3 : 2);
 
   // add "type" attribute
@@ -902,12 +900,12 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
                            &parameter, 
                            TRI_COL_NAME_REPLICATION,
                            (TRI_col_type_e) TRI_COL_TYPE_DOCUMENT, 
-                           (TRI_voc_size_t) vocbase->_defaultMaximalSize, 
+                           (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize, 
                            NULL);
     
     parameter._isSystem = true;
 
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, TRI_GetServerId());
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, TRI_GetIdServer());
     TRI_FreeCollectionInfoOptions(&parameter);
     
     if (collection != NULL) {
@@ -923,7 +921,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
   cid = collection->_cid;
 
-  trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_GetServerId(), false, 0.0, false);
+  trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), false, 0.0, false);
 
   if (trx == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1373,7 +1371,7 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   logger->_configuration._maxEventsSize    = (uint64_t) TRI_REPLICATION_LOGGER_SIZE_DEFAULT;
   logger->_configuration._autoStart        = false; 
 
-  logger->_localServerId                   = TRI_GetServerId();
+  logger->_localServerId                   = TRI_GetIdServer();
   logger->_databaseName                    = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
 
   assert(logger->_databaseName != NULL);
@@ -1385,47 +1383,41 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
     LOG_TRACE("looking for replication logger configuration in '%s'", filename);
 
     if (TRI_ExistsFile(filename)) {
-      char* error;
       TRI_json_t* json;
 
       LOG_TRACE("loading replication logger configuration from '%s'", filename);
 
-      error = NULL;
-      json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+      json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
 
-      if (error != NULL) {
-        TRI_Free(TRI_CORE_MEM_ZONE, error);
+      if (TRI_IsArrayJson(json)) {
+        TRI_json_t const* value;
+
+        value =  TRI_LookupArrayJson(json, "autoStart");
+
+        if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
+          logger->_configuration._autoStart = value->_value._boolean;
+        }
+
+        value =  TRI_LookupArrayJson(json, "logRemoteChanges");
+
+        if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
+          logger->_configuration._logRemoteChanges = value->_value._boolean;
+        }
+
+        value =  TRI_LookupArrayJson(json, "maxEvents");
+
+        if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+          logger->_configuration._maxEvents = (uint64_t) value->_value._number;
+        }
+
+        value =  TRI_LookupArrayJson(json, "maxEventsSize");
+
+        if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+          logger->_configuration._maxEventsSize = (uint64_t) value->_value._number;
+        }
       }
 
       if (json != NULL) {
-        if (json->_type == TRI_JSON_ARRAY) {
-          TRI_json_t const* value;
-
-          value =  TRI_LookupArrayJson(json, "autoStart");
-
-          if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
-            logger->_configuration._autoStart = value->_value._boolean;
-          }
-
-          value =  TRI_LookupArrayJson(json, "logRemoteChanges");
-
-          if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
-            logger->_configuration._logRemoteChanges = value->_value._boolean;
-          }
-
-          value =  TRI_LookupArrayJson(json, "maxEvents");
-
-          if (value != NULL && value->_type == TRI_JSON_NUMBER) {
-            logger->_configuration._maxEvents = (uint64_t) value->_value._number;
-          }
-
-          value =  TRI_LookupArrayJson(json, "maxEventsSize");
-
-          if (value != NULL && value->_type == TRI_JSON_NUMBER) {
-            logger->_configuration._maxEventsSize = (uint64_t) value->_value._number;
-          }
-        }
-
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       }
     }
@@ -1672,7 +1664,8 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
     FreeClient((logger_client_t*) found); 
   }
 
-  client = TRI_InsertKeyAssociativePointer(&logger->_clients, &client->_serverId, (void*) client, false);
+  found = TRI_InsertKeyAssociativePointer(&logger->_clients, &client->_serverId, (void*) client, false);
+  assert(found == NULL);
 
   TRI_WriteUnlockReadWriteLock(&logger->_clientsLock);
 }
@@ -1805,7 +1798,7 @@ TRI_json_t* TRI_JsonReplicationLogger (TRI_replication_logger_t* logger) {
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
 
-    serverId = TRI_GetServerId();  
+    serverId = TRI_GetIdServer();  
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "server", server);

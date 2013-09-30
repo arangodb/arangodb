@@ -51,6 +51,7 @@ var arangosh = require("org/arangodb/arangosh");
 
 function ArangoQueryCursor (database, data) {
   this._database = database;
+  this._dbName = database._name();
   this.data = data;
   this._hasNext = false;
   this._hasMore = false;
@@ -264,7 +265,8 @@ ArangoQueryCursor.prototype.getExtra = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype._baseurl = function () {
-  return "/_api/cursor/"+ encodeURIComponent(this.data.id);
+  return "/_db/" + encodeURIComponent(this._dbName) + 
+         "/_api/cursor/" + encodeURIComponent(this.data.id);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

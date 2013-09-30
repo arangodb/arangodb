@@ -970,8 +970,6 @@ namespace triagens {
             return res;
           }
 
-          TRI_doc_update_policy_t updatePolicy;
-          TRI_InitUpdatePolicy(&updatePolicy, TRI_DOC_UPDATE_LAST_WRITE, 0, NULL);
           const size_t n = ids.size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -980,9 +978,10 @@ namespace triagens {
             res = primary->remove(trxCollection,
                                   (const TRI_voc_key_t) id.c_str(), 
                                   0,
-                                  &updatePolicy, 
+                                  0, // policy
                                   false,
                                   forceSync);
+
 
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error
@@ -1119,7 +1118,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+          _trx = TRI_CreateTransaction(_vocbase,
                                        _generatingServer,
                                        _replicate, 
                                        _timeout, 

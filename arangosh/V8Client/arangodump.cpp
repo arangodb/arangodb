@@ -165,7 +165,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
-    ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
+    ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("dump-structure", &DumpStructure, "dump collection structure")
     ("dump-data", &DumpData, "dump collection data")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
@@ -267,6 +267,33 @@ static void arangodumpExitFunction (int exitCode, void* data) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract an error message from a response
+////////////////////////////////////////////////////////////////////////////////
+
+static string GetHttpErrorMessage (SimpleHttpResult* result) {
+  const string body = result->getBody().str();
+  string details;
+
+  TRI_json_t* json = JsonHelper::fromString(body);
+
+  if (json != 0) {
+    const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
+    const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    if (errorMessage != "" && errorNum > 0) {
+      details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+    }
+  }
+      
+  return "got error from server: HTTP " + 
+         StringUtils::itoa(result->getHttpReturnCode()) + 
+         " (" + result->getHttpReturnMessage() + ")" +
+         details;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -358,10 +385,7 @@ static int DumpCollection (ofstream& outFile,
     }
 
     if (response->wasHttpError()) {
-      errorMsg = "got invalid response from server: HTTP " + 
-                 StringUtils::itoa(response->getHttpReturnCode()) + 
-                 ": " + response->getHttpReturnMessage();
-      
+      errorMsg = GetHttpErrorMessage(response);
       delete response;
 
       return TRI_ERROR_INTERNAL;
@@ -616,6 +640,24 @@ static int GetInventory (string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+static string rewriteLocation (void* data, const string& location) {
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + BaseClient.databaseName() + location;
+  }
+  else {
+    return "/_db/" + BaseClient.databaseName() + "/" + location;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief main
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -714,6 +756,7 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
+  Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
   const string version = GetVersion();

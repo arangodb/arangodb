@@ -33,6 +33,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 var db = arangodb.db;
+var ERRORS = arangodb.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           statement-related tests
@@ -50,6 +51,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      db._useDatabase("_system");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +59,12 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      try {
+        db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err) {
+        // ignore this error
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,6 +481,101 @@ function StatementSuite () {
       
       st.setOptions({ baz: true });
       assertEqual({ baz: true }, st.getOptions());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test incremental fetch
+////////////////////////////////////////////////////////////////////////////////
+
+    testIncremental : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+
+      var c = st.execute();
+
+      var result = [ ];
+      while (c.hasNext()) {
+        result.push(c.next());
+      }
+
+      assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test dispose
+////////////////////////////////////////////////////////////////////////////////
+
+    testDispose1 : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+
+      var c = st.execute();
+
+      c.dispose();
+
+      try {
+        // cursor does not exist anymore
+        c.next();
+      }
+      catch (err) {
+        require("internal").print(err);
+        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test dispose
+////////////////////////////////////////////////////////////////////////////////
+
+    testDispose2 : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+
+      var c = st.execute();
+
+      while (c.hasNext()) {
+        c.next();
+      }
+      // this should have auto-disposed the cursor
+
+      try {
+        c.dispose();
+      }
+      catch (err) {
+        require("internal").print(err);
+        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test database change
+////////////////////////////////////////////////////////////////////////////////
+
+    testDatabaseChange : function () {
+      assertEqual("_system", db._name());
+
+      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+
+      var c = st.execute();
+      var result = [ ];
+
+      try {
+        db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err) {
+      }
+
+      db._createDatabase("UnitTestsDatabase0");
+      db._useDatabase("UnitTestsDatabase0");
+
+      // now we have changed the database and should still be able to use the cursor from the
+      // other...
+
+      while (c.hasNext()) {
+        result.push(c.next());
+      }
+      
+      assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result);
+        
+      db._useDatabase("_system");
+      db._dropDatabase("UnitTestsDatabase0");
     }
 
   };

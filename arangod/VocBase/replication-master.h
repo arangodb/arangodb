@@ -32,7 +32,6 @@
 
 #include "VocBase/replication-common.h"
 #include "VocBase/replication-logger.h"
-#include "VocBase/server-id.h"
 
 #ifdef __cplusplus
 extern "C" {

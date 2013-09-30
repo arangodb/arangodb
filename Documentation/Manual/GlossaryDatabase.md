@@ -2,9 +2,14 @@ Database {#GlossaryDatabase}
 ============================
 
 @GE{Database}: ArangoDB can handle multiple databases in the same server
-instance. Databases can be used to logically separate data. An ArangoDB
+instance. Databases can be used to logically group and separate data. An ArangoDB
 database consists of collections and dedicated database-specific worker processes.
 There will always be at least one database in ArangoDB. This is the default
-database, named `_system`. Users can create additional databases and give them
-unique names to access them later.
-Any databases but the default database can be dropped.
+database, named `_system`. This database cannot be dropped, and provides special
+operations for creating, dropping, and enumerating databases.
+Users can create additional databases and give them unique names to access them later.
+Database management operations cannot be initiated from out of user-defined databases.
+
+When ArangoDB is accessed via its HTTP REST API, the database name is read from the
+request URI. If the request URI does not contain a database name, the database name
+is automatically determined by some algorithm.

@@ -31,7 +31,9 @@
 
 #include "Basics/delete_object.h"
 #include "Basics/ssl-helper.h"
+#include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
+#include "BasicsC/json.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
@@ -80,18 +82,21 @@ namespace {
 ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applicationServer,
                                                       ApplicationScheduler* applicationScheduler,
                                                       ApplicationDispatcher* applicationDispatcher,
+                                                      AsyncJobManager* jobManager,
                                                       std::string const& authenticationRealm,
-                                                      HttpHandlerFactory::flush_fptr flushAuthentication,
-                                                      HttpHandlerFactory::context_fptr setContext)
+                                                      HttpHandlerFactory::context_fptr setContext,
+                                                      void* contextData)
   : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
+    _jobManager(jobManager),
     _authenticationRealm(authenticationRealm),
     _setContext(setContext),
-    _flushAuthentication(flushAuthentication),
+    _contextData(contextData),
     _handlerFactory(0),
     _servers(),
+    _basePath(),
     _endpointList(),
     _httpPort(),
     _endpoints(),
@@ -151,19 +156,17 @@ bool ApplicationEndpointServer::buildServers () {
   EndpointServer* server;
 
   // unencrypted endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
-    // http endpoints
-    server = new HttpServer(_applicationScheduler->scheduler(),
-                            _applicationDispatcher->dispatcher(),
-                            _keepAliveTimeout,
-                            _handlerFactory);
+  server = new HttpServer(_applicationScheduler->scheduler(),
+                          _applicationDispatcher->dispatcher(),
+                          _jobManager,
+                          _keepAliveTimeout,
+                          _handlerFactory);
 
-    server->setEndpointList(&_endpointList);
-    _servers.push_back(server);
-  }
+  server->setEndpointList(&_endpointList);
+  _servers.push_back(server);
 
   // ssl endpoints
-  if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
+  if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
     // check the ssl context
     if (_sslContext == 0) {
       LOGGER_INFO("please use the --server.keyfile option");
@@ -173,6 +176,7 @@ bool ApplicationEndpointServer::buildServers () {
     // https
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
+                             _jobManager,
                              _keepAliveTimeout,
                              _handlerFactory,
                              _sslContext);
@@ -180,7 +184,7 @@ bool ApplicationEndpointServer::buildServers () {
     server->setEndpointList(&_endpointList);
     _servers.push_back(server);
   }
-
+  
   return true;
 }
 
@@ -216,7 +220,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
     ("server.backlog-size", &_backlogSize, "listen backlog size")
   ;
 
-  options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
+  options[ApplicationServer::OPTIONS_SSL]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
@@ -248,64 +252,279 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     _endpoints.push_back(httpEndpoint);
   }
 
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
-  if (_endpoints.empty() && mode == OperationMode::MODE_SERVER) {
-    LOGGER_INFO("please use the '--server.endpoint' option");
-    LOGGER_FATAL_AND_EXIT("no endpoint has been specified, giving up");
-  }
+  const vector<string> dbNames;
 
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    Endpoint* endpoint = Endpoint::serverFactory(*i, _backlogSize);
-
-    if (endpoint == 0) {
-      LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
-    }
-
-    assert(endpoint);
-
-    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint, true);
+    bool ok = _endpointList.add((*i), dbNames, _backlogSize);
 
     if (! ok) {
       LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
     }
   }
 
+
   // and return
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief return the name of the endpoints file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
-  // create the ssl context (if possible)
-  bool ok = createSslContext();
+std::string ApplicationEndpointServer::getEndpointsFilename () const {
+  return _basePath + TRI_DIR_SEPARATOR_CHAR + "ENDPOINTS";
+}
 
-  if (! ok) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a list of all endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, std::vector<std::string> > ApplicationEndpointServer::getEndpoints () {
+  READ_LOCKER(_endpointsLock);
+
+  return _endpointList.getAll();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new endpoint at runtime, and connects to it
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
+                                             vector<string> const& dbNames,
+                                             bool save) {
+  // validate...
+  const string unified = Endpoint::getUnifiedForm(newEndpoint);
+
+  if (unified.empty()) {
+    // invalid endpoint
     return false;
   }
 
-  Endpoint* endpoint = Endpoint::serverFactory(newEndpoint, _backlogSize);
-
-  if (endpoint != 0) {
-    ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint, false);
-
-    if (ok) {
-      _endpoints.push_back(newEndpoint);
-    }
+  Endpoint::EncryptionType encryption;
+  if (unified.substr(0, 6) == "ssl://") {
+    encryption = Endpoint::ENCRYPTION_SSL;
   }
   else {
-    ok = false;
+    encryption = Endpoint::ENCRYPTION_NONE;
   }
 
-  if (! ok) {
-    LOGGER_WARNING("Could not add endpoint '" << newEndpoint << "'");
+  // find the correct server (HTTP or HTTPS)
+  for (size_t i = 0; i < _servers.size(); ++i) {
+    if (_servers[i]->getEncryption() == encryption) {
+      // found the correct server
+      WRITE_LOCKER(_endpointsLock);
+
+      Endpoint* endpoint;
+      bool ok = _endpointList.add(newEndpoint, dbNames, _backlogSize, &endpoint);
+
+      if (! ok) {
+        return false;
+      }
+
+      if (endpoint == 0) {
+        if (save) {
+          saveEndpoints();
+        }
+        
+        LOGGER_DEBUG("reconfigured endpoint '" << newEndpoint << "'");
+        // in this case, we updated an existing endpoint and are done
+        return true;
+      }
+
+      // this connects the new endpoint
+      ok = _servers[i]->addEndpoint(endpoint);
+
+      if (ok) {
+        if (save) {
+          saveEndpoints();
+        }
+        LOGGER_DEBUG("bound to endpoint '" << newEndpoint << "'");
+        return true;
+      }
+      
+      LOGGER_WARNING("failed to bind to endpoint '" << newEndpoint << "'");
+      return false;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an existing endpoint, and disconnects from it
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) {
+  // validate...
+  const string unified = Endpoint::getUnifiedForm(oldEndpoint);
+
+  if (unified.empty()) {
+    // invalid endpoint
     return false;
   }
   
+  Endpoint::EncryptionType encryption;
+  if (unified.substr(0, 6) == "ssl://") {
+    encryption = Endpoint::ENCRYPTION_SSL;
+  }
+  else {
+    encryption = Endpoint::ENCRYPTION_NONE;
+  }
+
+  // find the correct server (HTTP or HTTPS)
+  for (size_t i = 0; i < _servers.size(); ++i) {
+    if (_servers[i]->getEncryption() == encryption) {
+      // found the correct server
+      WRITE_LOCKER(_endpointsLock);
+
+      Endpoint* endpoint;
+      bool ok = _endpointList.remove(unified, &endpoint); 
+
+      if (! ok) {
+        LOGGER_WARNING("could not remove endpoint '" << oldEndpoint << "'");
+        return false;
+      }
+
+      // this disconnects the new endpoint
+      ok = _servers[i]->removeEndpoint(endpoint);
+      delete endpoint;
+
+      if (ok) {
+        saveEndpoints();
+        LOGGER_DEBUG("removed endpoint '" << oldEndpoint << "'");
+      }
+      else {
+        LOGGER_WARNING("failed to remove endpoint '" << oldEndpoint << "'");
+      }
+
+      return ok;
+    }
+  }
+
+  return false;
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the endpoint list
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::loadEndpoints () {
+  const string filename = getEndpointsFilename();
+
+  if (! FileUtils::exists(filename)) {
+    return false;
+  }
+
+  LOGGER_TRACE("loading endpoint list from file '" << filename << "'"); 
+
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename.c_str(), 0);
+
+  if (json == 0) {
+    return false;
+  }
+  
+  std::map<std::string, std::vector<std::string> > endpoints;
+
+  if (! TRI_IsArrayJson(json)) {
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    return false;
+  }
+
+  const size_t n = json->_value._objects._length;
+  for (size_t i = 0; i < n; i += 2) {
+    TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+
+    if (! TRI_IsStringJson(e) || ! TRI_IsListJson(v)) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      return false;
+    }
+    
+    const string endpoint = string(e->_value._string.data, e->_value._string.length - 1);
+
+    vector<string> dbNames;
+    for (size_t j = 0; j < v->_value._objects._length; ++j) {
+      TRI_json_t const* d = (TRI_json_t const*) TRI_AtVector(&v->_value._objects, j);
+
+      if (! TRI_IsStringJson(d)) {
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        return false;
+      }
+
+      const string dbName = string(d->_value._string.data, d->_value._string.length - 1);
+      dbNames.push_back(dbName);
+    }
+
+    endpoints[endpoint] = dbNames;
+  }
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+
+  std::map<std::string, std::vector<std::string> >::const_iterator it;
+  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
+      
+    bool ok = _endpointList.add((*it).first, (*it).second, _backlogSize);
+
+    if (! ok) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief persists the endpoint list
+/// this method must be called under the _endpointsLock
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::saveEndpoints () {
+  const std::map<std::string, std::vector<std::string> > endpoints = _endpointList.getAll();
+  
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (json == 0) {
+    return false;
+  }
+
+  std::map<std::string, std::vector<std::string> >::const_iterator it;
+  
+  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
+    TRI_json_t* list = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+    if (list == 0) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+      return false;
+    }
+
+    for (size_t i = 0; i < (*it).second.size(); ++i) {
+      const string e = (*it).second.at(i);
+
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, list, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
+    }
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
+  }
+ 
+  const string filename = getEndpointsFilename();
+  LOGGER_TRACE("saving endpoint list in file '" << filename << "'"); 
+  bool ok = TRI_SaveJson(filename.c_str(), json, true);  
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
   return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the list of databases for an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+const std::vector<std::string> ApplicationEndpointServer::getEndpointMapping (std::string const& endpoint) {
+  READ_LOCKER(_endpointsLock);
+
+  return _endpointList.getMapping(endpoint);
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,12 +532,19 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare () {
-  // dump used endpoints for user information
+  loadEndpoints();
+  
+  if (_endpointList.empty()) { 
+    LOGGER_INFO("please use the '--server.endpoint' option");
+    LOGGER_FATAL_AND_EXIT("no endpoints have been specified, giving up");
+  }
+
+  // dump all endpoints for user information
   _endpointList.dump();
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
-                                           _flushAuthentication, 
-                                           _setContext);
+                                           _setContext,
+                                           _contextData);
 
   return true;
 }
@@ -332,7 +558,7 @@ bool ApplicationEndpointServer::prepare2 () {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create http server");
+    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create server");
 
     return false;
   }

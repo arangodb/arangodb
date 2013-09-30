@@ -80,6 +80,7 @@ namespace triagens {
         int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
 
         if (fd == -1) {
+          TRI_set_errno(errno);
           THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
         }
 

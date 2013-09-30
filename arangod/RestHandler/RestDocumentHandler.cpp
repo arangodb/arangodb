@@ -36,7 +36,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
-#include "Utilities/ResourceHolder.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -56,8 +55,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestDocumentHandler::RestDocumentHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase) {
+RestDocumentHandler::RestDocumentHandler (HttpRequest* request) 
+  : RestVocbaseBaseHandler(request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,68 +76,18 @@ RestDocumentHandler::RestDocumentHandler (HttpRequest* request, TRI_vocbase_t* v
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::isDirect () {
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-string const& RestDocumentHandler::queue () const {
-  static string const client = "STANDARD";
-
-  return client;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 HttpHandler::status_e RestDocumentHandler::execute () {
-
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
-  // prepare logging
-  static LoggerData::Task const logCreate(DOCUMENT_PATH + " [create]");
-  static LoggerData::Task const logRead(DOCUMENT_PATH + " [read]");
-  static LoggerData::Task const logUpdate(DOCUMENT_PATH + " [update]");
-  static LoggerData::Task const logDelete(DOCUMENT_PATH + " [delete]");
-  static LoggerData::Task const logHead(DOCUMENT_PATH + " [head]");
-  static LoggerData::Task const logOptions(DOCUMENT_PATH + " [options]");
-  static LoggerData::Task const logPatch(DOCUMENT_PATH + " [patch]");
-  static LoggerData::Task const logIllegal(DOCUMENT_PATH + " [illegal]");
-
-  LoggerData::Task const * task = &logCreate;
-
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: task = &logDelete; break;
-    case HttpRequest::HTTP_REQUEST_GET: task = &logRead; break;
-    case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
-    case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
-    case HttpRequest::HTTP_REQUEST_OPTIONS: task = &logOptions; break;
-    case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
-    case HttpRequest::HTTP_REQUEST_PUT: task = &logUpdate; break;
-    case HttpRequest::HTTP_REQUEST_PATCH: task = &logUpdate; break;
-  }
-
-  _timing << *task;
-#ifdef TRI_ENABLE_LOGGER
-  // if logger is not activated, the compiler will complain, so enclose it in ifdef
-  LOGGER_REQUEST_IN_START_I(_timing, "");
-#endif
-
   // execute one of the CRUD methods
-  bool res = false;
-
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
-    case HttpRequest::HTTP_REQUEST_GET:    res = readDocument(); break;
-    case HttpRequest::HTTP_REQUEST_HEAD:   res = checkDocument(); break;
-    case HttpRequest::HTTP_REQUEST_POST:   res = createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT:    res = replaceDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PATCH:  res = updateDocument(); break;
+    case HttpRequest::HTTP_REQUEST_DELETE: deleteDocument(); break;
+    case HttpRequest::HTTP_REQUEST_GET:    readDocument(); break;
+    case HttpRequest::HTTP_REQUEST_HEAD:   checkDocument(); break;
+    case HttpRequest::HTTP_REQUEST_POST:   createDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT:    replaceDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PATCH:  updateDocument(); break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
@@ -146,8 +95,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
       break;
     }
   }
-
-  _timingResult = res ? RES_ERR : RES_OK;
 
   // this handler is done
   return HANDLER_DONE;
@@ -364,19 +311,19 @@ bool RestDocumentHandler::createDocument () {
 
   const bool waitForSync = extractWaitForSync();
 
-  // auto-ptr that will free JSON data when scope is left
-  ResourceHolder holder;
-
   TRI_json_t* json = parseJsonBody();
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+
+  if (json == 0) {
     return false;
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
   if (json->_type != TRI_JSON_ARRAY) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
@@ -391,12 +338,14 @@ bool RestDocumentHandler::createDocument () {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, res);
     return false;
   }
 
   if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
@@ -407,6 +356,8 @@ bool RestDocumentHandler::createDocument () {
   res = trx.createDocument(&document, json, waitForSync);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
+    
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
   // outside write transaction
@@ -765,7 +716,7 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -845,7 +796,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 /// 
 /// @RESTQUERYPARAMETERS
 ///
@@ -1063,7 +1014,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1205,17 +1156,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const string& collection = suffix[0];
   const string& key = suffix[1];
 
-  // auto-ptr that will free JSON data when scope is left
-  ResourceHolder holder;
-
   TRI_json_t* json = parseJsonBody();
 
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
-    return false;
-  }
-  
-  if (json->_type != TRI_JSON_ARRAY) {
+  if (! TRI_IsArrayJson(json)) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return false;
   }
 
@@ -1239,6 +1186,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -1274,6 +1222,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
     }
@@ -1281,6 +1230,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (oldDocument._key == 0 || oldDocument._data == 0) {
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
     }
@@ -1289,24 +1239,39 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
-    if (holder.registerJson(shaper->_memoryZone, old)) {
-      TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+    if (old == 0) {
+      trx.abort();
+      generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-      if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
-        // do not acquire an extra lock
-        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
-      }
+      return false;
     }
+
+    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+    TRI_FreeJson(shaper->_memoryZone, old);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    if (patchedJson == 0) {
+      trx.abort();
+      generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+
+      return false;
+    }
+
+    // do not acquire an extra lock
+    res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
   }
   else {
     // replacing an existing document, using a lock
     res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
   const bool wasSynchronous = trx.synchronous();
 
   res = trx.finish(res);
-
+    
   // .............................................................................
   // outside write transaction
   // .............................................................................

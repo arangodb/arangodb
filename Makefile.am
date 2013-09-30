@@ -184,6 +184,8 @@ noinst_LIBRARIES = \
 
 bin_PROGRAMS = \
 	bin/arangob \
+	bin/arangodump \
+	bin/arangorestore \
 	bin/arangosh \
 	bin/arangoimp 
 

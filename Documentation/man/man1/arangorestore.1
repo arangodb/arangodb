@@ -1,0 +1,49 @@
+.TH arangorestore 1 "Fr 6. Sep 02:19:07 CEST 2013" "" "ArangoDB"
+.SH NAME
+arangorestore - a data restore tool for the ArangoDB database
+.SH SYNOPSIS
+arangorestore [options] 
+.SH DESCRIPTION
+The arangorestore binary can be used to restore data from logical dumps created
+with the arangodump tool.
+ArangoDB database. Input data be present in the input file in either CSV
+format with column headlines, or in JSON format. If JSON format is used,
+each line in the input file must contain exactly one JSON document with 
+the attribute name/value pairs to import.
+.SH OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+.IP "--configuration <string>"
+read configuration from file <string> 
+.IP "--collection <string>"
+name of collection to restore (can be specified multiple times). This can be
+used to restrict the restore operation to certain collections only. If not 
+specified, all collections from the "--input-directory" will be restored 
+.IP "--create-collection <bool>"
+set to "true" if collections should be created 
+.IP "--import-data <bool>"
+when set to "true" will restore the data (documents) of the collection 
+.IP "--include-system-collections <bool>"
+when set to "true" will also restore system collections, otherwise they will be 
+excluded 
+.IP "--input-directory <string>"
+input directory in which to look for dump files. 
+.IP "--overwrite <bool>"
+when set to "true", will drop an existing collection before re-creating it 
+.IP "--progress <bool>"
+when set to "true", will display progress information 
+.IP "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port 
+.IP "--server.database <string>"
+database name to use when connection (default: "_system") 
+.IP "--server.username <string>"
+username to use when connecting (default "root") 
+.IP "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt 
+.SH EXAMPLES
+
+.SH AUTHOR
+	    Copyright triAGENS GmbH, Cologne, Germany

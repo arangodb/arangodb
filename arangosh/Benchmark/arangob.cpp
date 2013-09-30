@@ -87,22 +87,10 @@ static volatile int Started = 0;
 Mutex StartMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use a startup delay
+/// @brief send asychronous requests
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Delay = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief concurrency
-////////////////////////////////////////////////////////////////////////////////
-
-static int Concurrency = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of operations to perform
-////////////////////////////////////////////////////////////////////////////////
-
-static int Operations = 1000;
+static bool Async = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of operations in one batch
@@ -111,22 +99,40 @@ static int Operations = 1000;
 static int BatchSize = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief complexity parameter for tests
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t Complexity = 1;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection to use
 ////////////////////////////////////////////////////////////////////////////////
 
 static string Collection = "ArangoBenchmark";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test case to use
+/// @brief complexity parameter for tests
 ////////////////////////////////////////////////////////////////////////////////
 
-static string TestCase = "version";
+static uint64_t Complexity = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concurrency
+////////////////////////////////////////////////////////////////////////////////
+
+static int Concurrency = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use a startup delay
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Delay = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use HTTP keep-alive
+////////////////////////////////////////////////////////////////////////////////
+
+static bool KeepAlive = true;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of operations to perform
+////////////////////////////////////////////////////////////////////////////////
+
+static int Operations = 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief display progress
@@ -135,10 +141,10 @@ static string TestCase = "version";
 static bool Progress = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use HTTP keep-alive
+/// @brief test case to use
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool KeepAlive = true;
+static string TestCase = "version";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -196,6 +202,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
 
   description
+    ("async", &Async, "send asychronous requests")
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
@@ -302,7 +309,8 @@ int main (int argc, char* argv[]) {
         BaseClient.password(),
         BaseClient.requestTimeout(),
         BaseClient.connectTimeout(),
-        KeepAlive);
+        KeepAlive, 
+        Async);
 
     threads.push_back(thread);
     thread->setOffset(i * realStep);
@@ -360,8 +368,19 @@ int main (int argc, char* argv[]) {
   size_t failures = operationsCounter.failures();
 
   cout << endl;
-  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
-  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", database: '" << BaseClient.databaseName() << "', collection: '" << Collection << "'" << endl;
+  cout << "Total number of operations: " << Operations << 
+          ", keep alive: " << (KeepAlive ? "yes" : "no") << 
+          ", async: " << (Async ? "yes" : "no")  << 
+          ", batch size: " << BatchSize << 
+          ", concurrency level (threads): " << Concurrency << 
+          endl;
+
+  cout << "Test case: " << TestCase << 
+          ", complexity: " << Complexity << 
+          ", database: '" << BaseClient.databaseName() << 
+          "', collection: '" << Collection << "'" << 
+          endl;
+
   cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
   cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
   cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
