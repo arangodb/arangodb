@@ -94,4 +94,4 @@ nbproject/
 test.cpp.txt
 
 js/apps/*
-!js/apps/aardvark
+!js/apps/system/aardvark

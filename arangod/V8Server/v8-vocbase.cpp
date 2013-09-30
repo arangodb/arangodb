@@ -7250,6 +7250,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_dropDatabase()"));
   result->Set(j++, v8::String::New("_executeTransaction()"));
   result->Set(j++, v8::String::New("_exists()"));
+  result->Set(j++, v8::String::New("_id"));
   result->Set(j++, v8::String::New("_isSystem()"));
   result->Set(j++, v8::String::New("_listDatabases()"));
   result->Set(j++, v8::String::New("_name()"));
@@ -7646,6 +7647,26 @@ static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
   }
   
   return scope.Close(v8::String::New(vocbase->_path));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database id
+///
+/// @FUN{@FA{db}._id()}
+///
+/// Returns the id of the current database as a string. 
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IdDatabase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  return scope.Close(V8TickId(vocbase->_id));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8845,6 +8866,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "_version", JS_VersionServer);
 
+  TRI_AddMethodVocbase(rt, "_id", JS_IdDatabase);
   TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemDatabase);
   TRI_AddMethodVocbase(rt, "_name", JS_NameDatabase);
   TRI_AddMethodVocbase(rt, "_path", JS_PathDatabase);

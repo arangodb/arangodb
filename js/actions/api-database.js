@@ -90,6 +90,8 @@ var API = "_api/database";
 /// 
 /// - `name`: the name of the current database
 ///
+/// - `id`: the id of the current database
+///
 /// - `path`: the filesystem path of the current database
 ///
 /// - `isSystem`: whether or not the current database is the `_system` database
@@ -137,6 +139,7 @@ function get_api_database (req, res) {
     // information about the current database
     result = {
       name: arangodb.db._name(),
+      id: arangodb.db._id(),
       path: arangodb.db._path(),
       isSystem: arangodb.db._isSystem()
     };
