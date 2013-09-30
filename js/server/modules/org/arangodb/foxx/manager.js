@@ -429,7 +429,10 @@ function executeAppScript (app, name, mount, prefix) {
   var root;
   var devel = false;
 
-  if (app._id.substr(0,4) === "app:") {
+  if (app._manifest.isSystem) {
+    root = module.systemAppPath();
+  }
+  else if (app._id.substr(0,4) === "app:") {
     root = module.appPath();
   }
   else if (app._id.substr(0,4) === "dev:") {
@@ -654,7 +657,10 @@ function routingAalApp (app, mount, options) {
         var devel = false;
         var root;
 
-        if (app._id.substr(0,4) === "dev:") {
+        if (app._manifest.isSystem) {
+          root = module.systemAppPath();
+        }
+        else if (app._id.substr(0,4) === "dev:") {
           devel = true;
           root = module.devAppPath();
         }
@@ -743,23 +749,12 @@ function routingAalApp (app, mount, options) {
   return null;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scans fetched FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.scanAppDirectory = function () {
-  'use strict';
-
+function scanDirectory (path) {
   var j;
-
-  var path = module.appPath();
-  var aal = getStorage();
-
-  aal.removeByExample({ type: "app" });
 
   if (typeof path === "undefined") {
     return;
@@ -770,13 +765,14 @@ exports.scanAppDirectory = function () {
   // note: files do not have a determinstic order, but it doesn't matter here
   // as we're treating individual Foxx apps and their order is irrelevant
 
+
   for (j = 0;  j < files.length;  ++j) {
     var m = fs.join(path, files[j], "manifest.json");
 
     if (fs.exists(m)) {
       try {
         var thumbnail;
-        
+
         thumbnail = undefined;
         var mf = JSON.parse(fs.read(m));
 
@@ -802,6 +798,28 @@ exports.scanAppDirectory = function () {
       }
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scans fetched FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.scanAppDirectory = function () {
+  'use strict';
+  
+  var aal = getStorage();
+
+  // remove all loaded apps first
+  aal.removeByExample({ type: "app" });
+
+  // now re-scan, starting with system apps
+  scanDirectory(module.systemAppPath()); 
+  // now scan database-specific apps
+  scanDirectory(module.appPath()); 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -827,8 +845,6 @@ exports.mount = function (appId, mount, options) {
     [ [ "Application identifier", "string" ],
       [ "Mount path", "string" ] ],
     [ appId, mount ] );
-
-  var aal = getStorage();
 
   // .............................................................................
   // locate the application
@@ -857,6 +873,7 @@ exports.mount = function (appId, mount, options) {
   }
   catch (err) {
     if (doc !== undefined) {
+      var aal = getStorage();
       var desc = aal.document(doc._key)._shallowCopy;
 
       desc.error = String(err);
@@ -1003,6 +1020,7 @@ exports.purge = function (key) {
     throw new Error("Cannot find application '" + key + "'");
   }
 
+  // system apps cannot be removed
   if (doc.isSystem) {
     throw new Error("Cannot purge system application");
   }
@@ -1025,6 +1043,7 @@ exports.purge = function (key) {
 
   executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
+  // we can be sure this is a database-specific app and no system app
   var path = fs.join(module.appPath(), doc.path);
   fs.removeDirectoryRecursive(path, true);
 
