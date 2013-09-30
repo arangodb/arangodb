@@ -177,6 +177,33 @@
       return true;
     });
     
+    addTask("moveSystemApp", "move Foxx system app into system directory", function () {
+      var dir = module.systemAppPath();
+
+      if (! fs.exists(dir)) {
+        logger.error("apps directory '" + dir + "' does not exist.");
+        return false;
+      }
+
+      // we only need to move apps in the _system database
+      if (db._name() !== '_system') {
+        return true;
+      }
+
+      var src = fs.join(module.basePaths().appPath, 'aardvark');
+      if (! fs.isDirectory(src)) {
+        // aardvark app not found, ignore this error
+        return true;
+      }
+
+      var dst = fs.join(dir, 'aardvark');
+      logger.log("renaming directory '" + src + "' to '" + dst + "'");
+      // fs.move() will throw if moving doesn't work
+      fs.move(src, dst);
+
+      return true;
+    });
+    
     addTask("checkProductionApps", "check Foxx apps directory", function () {
       var dir = module.appPath();
       if (! fs.exists(dir)) {
@@ -218,7 +245,11 @@
       for (i = 0; i < n; ++i) {
         var found = files[i];
 
-        if (found === '' || found === 'system' || found === 'databases') {
+        if (found === '' || 
+            found === 'system' || 
+            found === 'databases' || 
+            found === 'aardvark' ||
+            found[0] === '.') {
           continue;
         }
 
@@ -287,7 +318,11 @@
         for (i = 0; i < n; ++i) {
           var found = files[i];
 
-          if (found === '' || found === 'system' || found === 'databases') {
+          if (found === '' || 
+              found === 'system' || 
+              found === 'databases' || 
+              found === 'aardvark' || 
+              found[0] === '.') {
             continue;
           }
 
