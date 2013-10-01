@@ -335,8 +335,39 @@ by the `BaseMiddleware` provided by Foxx.
 The Request Object
 ------------------
 
-Every request object has the `path` method from the underlying Actions. 
-This is the complete path as supplied by the user as a String.
+The `request` object inherits several attributes from the underlying Actions:
+
+* `user`: the name of the current ArangoDB user. This will be populated only
+  if authentication is turned on, and will be `null` otherwise.
+
+* `database`: the name of the current database (e.g. `_system`)
+
+* `protocol`: `http` or `https`
+    
+* `server`: a JSON object with sub-attributes `address` (containing server 
+  host name or IP address) and `port` (server port).
+
+* `path`: request URI path, with potential database name stripped off.
+
+* `url`: request URI path + query string, with potential database name 
+   stripped off
+
+* `headers`: a JSON object with the request headers as key/value pairs
+    
+* `cookies`: a JSON object with the request cookies as key/value pairs
+
+* `requestType`: the request method (e.g. "GET", "POST", "PUT", ...)
+
+* `requestBody`: the complete body of the request as a string
+
+* `parameters`: a JSON object with all parameters set in the URL as key/value
+  pairs
+
+* `urlParameters`: a JSON object with all named parameters defined for the
+  route as key/value pairs.
+
+In addition to these attributes, a Foxx request objects provides the following
+convenience methods:
 
 ### Body
 
@@ -357,7 +388,7 @@ The Response Object
 Every response object has the body attribute from the underlying Actions
 to set the raw body by hand.
 
-You provide your response body as a String here.
+You provide your response body as a string here.
 
 ### Status
 
@@ -749,7 +780,7 @@ the URL or the accept header. Say you request an URL like `/people.json`:
 The `FormatMiddleware` will set the format of the request to JSON and then 
 delete the `.json` from the request. You can therefore write handlers that 
 do not take an `extension` into consideration and instead handle the 
-format via a simple String. To determine the format of the request it 
+format via a simple string. To determine the format of the request it 
 checks the URL and then the `accept` header. If one of them gives a format 
 or both give the same, the format is set. If the formats are not the same, 
 an error is raised.

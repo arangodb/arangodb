@@ -13,3 +13,4 @@ TOC {#HandlingDatabasesTOC}
       - @ref HandlingDatabasesList "db._listDatabases"
       - @ref HandlingDatabasesCreate "db._createDatabase"
       - @ref HandlingDatabasesDrop "db._dropDatabase"
+    - @ref HandlingDatabasesGlossary

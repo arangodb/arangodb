@@ -15,7 +15,28 @@ for details.
 Foxx {#NewFeatures14Foxx}
 -------------------------
 
+### Foxx Improvements
+
 TODO
+
+### Standard Authentication
+
+TODO
+
+### Foxx Manager
+
+ArangoDB builds now ship with an additional binary `foxx-manager` that can be used
+to conveniently manage Foxx application in an ArangoDB instance. To make it easy to 
+start with Foxx, the `foxx-manager` provides commands to download example Foxx
+applications from a central repository at `https://github.com/arangodb/foxx-apps`,
+and install them locally:
+
+    > foxx-manager update
+    > foxx-manager install hello-foxx /hello-foxx
+
+This will first mirror the central list of available Foxx applications locally, and
+after that make the `hello-foxx` application available in the local ArangoDB database
+under the URL prefix `/hello-foxx`.
 
 Multiple Databases {#NewFeatures14MultipleDatabases}
 ----------------------------------------------------
@@ -97,10 +118,6 @@ binary:
 
     unix> foxx-manager --server.database mydb update
     unix> foxx-manager --server.database mydb install hello-foxx /hello-foxx
-
-@copydoc GlossaryDatabaseName
-
-@copydoc GlossaryDatabaseOrganisation
 
 Runtime Endpoint Management {#NewFeatures14Endpoints}
 -----------------------------------------------------
