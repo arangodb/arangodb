@@ -546,14 +546,30 @@ void ArangoClient::printByeBye () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log output
+/// @brief log output, without prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::log (const char* format, const char* str) {
+void ArangoClient::log (const char* format, 
+                        const char* str) {
   if (_log) {
     if (*str != '\x1b') {
       // do not print terminal escape sequences into log
       fprintf(_log, format, str);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log output, with prompt
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::log (const char* format, 
+                        const char* prompt, 
+                        const char* str) {
+  if (_log) {
+    if (*str != '\x1b') {
+      // do not print terminal escape sequences into log
+      fprintf(_log, format, prompt, str);
     }
   }
 }
