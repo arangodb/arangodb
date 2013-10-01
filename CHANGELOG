@@ -1,6 +1,18 @@
 v1.4
 ----
 
+* issue #601: Show DB in prompt
+
+  arangosh now displays the database name as part of the prompt by default.
+  
+  Can change the prompt by using the `--prompt` option, e.g.
+
+      > arangosh --prompt "my db is named \"%d\"> "
+
+
+v1.4.0-beta (2013-10-01)
+------------------------
+
 * make the Foxx manager use per-database app directories
 
   Each database now has its own subdirectory for Foxx applications. Each database
