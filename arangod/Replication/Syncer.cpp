@@ -94,9 +94,11 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _client(0) {
 
   if (configuration->_database != 0) {
+    // use name from configuration
     _databaseName = string(configuration->_database); 
   }
   else {
+    // use name of current database
     _databaseName = string(vocbase->_name);
   }
     

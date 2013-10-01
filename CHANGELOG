@@ -1,6 +1,10 @@
 v1.4
 ----
 
+* allow specification of database name for replication sync command replication applier
+
+  This allows syncing from a master database with a different name than the slave database.
+
 * issue #601: Show DB in prompt
 
   arangosh now displays the database name as part of the prompt by default.

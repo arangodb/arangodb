@@ -3495,6 +3495,14 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
         config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
       }
     }
+    else {
+      if (config._database == 0) {
+        // no database set, use current
+        config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+      }
+    }
+
+    assert(config._database != 0);
     
     if (object->Has(TRI_V8_SYMBOL("username"))) {
       if (object->Get(TRI_V8_SYMBOL("username"))->IsString()) {
