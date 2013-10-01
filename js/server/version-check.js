@@ -216,7 +216,6 @@
         logger.log("creating apps directory '" + dir + "'");
         // create base directory first
         try {
-          internal.print(fs.join(module.basePaths().appPath, 'databases'));
           fs.makeDirectory(fs.join(module.basePaths().appPath, 'databases'));
         }
         catch (err) {
