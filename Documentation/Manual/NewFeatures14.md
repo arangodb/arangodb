@@ -12,6 +12,11 @@ ArangoDB 1.4.  ArangoDB 1.4 also contains several bugfixes that are not listed
 here - see the @EXTREF{https://github.com/triAGENS/ArangoDB/blob/devel/CHANGELOG,CHANGELOG} 
 for details.
 
+Foxx {#NewFeatures14Foxx}
+-------------------------
+
+TODO
+
 Multiple Databases {#NewFeatures14MultipleDatabases}
 ----------------------------------------------------
 
@@ -126,7 +131,7 @@ working earlier without waiting for the operation to finish.
 
 Asynchronous requests are queued on the server and executed by the server as soon 
 as possible. The maximum size of the queue can be bounded by using the startup option
-`-scheduler.maximal-queue-size`. 
+`--scheduler.maximal-queue-size`. 
 
 The results of asynchronously executed requests are either dropped immediately by the
 server (i.e. _fire and forget_) or are stored in memory for later retrieval by the
@@ -139,3 +144,68 @@ Replication{#NewFeatures14Replication}
 --------------------------------------
 
 See @ref UserManualReplication for details.
+
+Web Interface Improvements {#NewFeatures14WebInterface}
+-------------------------------------------------------
+
+The web interface now provides a graph viewer on the **Graphs** tab. The graph viewer
+can be used to explore and navigate an existing ArangoDB graph. It supports both
+graphs in the `_graphs` system collection as well as user-defined graphs that are
+composed of an arbitrary vertex and edge collection.
+
+The **Dashboard** tab in the web interface provides an overview of server figures, which
+can be adjusted to user needs. New figures are polled by the web interface in a 
+configurable interval, and can be graphed as time-series.
+
+The new **API** provides the full documentation of ArangoDB's built-in HTTP API. 
+This allows browsing the ArangoDB API locally without the need to refer to the 
+arangodb.org website for documentation.
+
+The **Applications** tab in the web interface provides an improved overview of installed 
+and available Foxx applications.
+
+The **AQL Editor** now provides some example queries and allows saving user-defined queries
+for later reuse.
+
+The details view of collections in the web interface now shows more detailed figures 
+and also a collection's available indexes. Indexes can be created and deleted directly
+from the web interface now.
+
+Command-Line Options added {#NewFeatures14Options}
+--------------------------------------------------
+
+The following command-line options have been added for _arangod_ in ArangoDB 1.4:
+
+  * `--scheduler.maximal-queue-size`: limits the size of the asynchronous request
+    execution queue. Please have a look at @ref NewFeatures14Async for more details.
+
+  * `--server.authenticate-system-only`: require authentication only for requests 
+    going to internal APIs, that is URLs starting with `/_` (e.g. `/_api/...`).
+
+  * `--server.disable-replication-applier`: start the server with all replication 
+    appliers disabled. This might be useful if you want to fix a replication setup problem.
+
+  * `--server.disable-replication-logger`: start the server with all replication 
+    loggers disabled. This might be useful if you want to fix a replication setup problem.
+  
+  * `--log.requests-file`: log incoming HTTP requests to a file
+
+  * `--log.content-filter`: restrict log output to messages containing a specific
+    string only. This is a debugging option.
+
+  * `--log.source-filter` (renamed from `--log.filter`): restrict trace/debug log 
+    output to messages originated by specific C/C++ source files. This is a debugging option.
+
+ 
+The following command-line options have been added for _arangosh_ in 1.4:
+
+  * `--server.database`: allows specifying the database name for the connection
+
+  * `--prompt`: allows setting a user-defined prompt in arangosh. A `%d` in the
+    prompt will be replaced with the name of the current database. 
+
+
+The following command-line options have been added for _arangoimp_ in 1.4:
+
+  * `--server.database`: allows specifying the database name for the connection
+
