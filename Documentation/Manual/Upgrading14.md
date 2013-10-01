@@ -114,6 +114,32 @@ There is also the option of using so-called *system applications*. These are not
 database-specific but shared between all databases. ArangoDB is shipped with one
 system application named *aardvark*, which is ArangoDB's web-based admin interface.
 
+Addressing specific Databases in Requests {#Upgrading14Databases}
+=================================================================
+
+In pre-1.4, an ArangoDB instance only managed a single database, so there was no need
+to specify a database name in any of the incoming HTTP requests. In ArangoDB 1.4, the 
+server can manage multiple datbases, and it may be necessary in a request to specify
+which database the request should be executed in.
+
+A specific ArangoDB database can be explicitly addressed by putting the database name
+into the URL. If the first part of the URL path is `/_db/...`, ArangoDB will interpret
+the `...` as the database name, and strip off the database name from the URL path for
+further processing. This allows any actions that use URL paths to remain fully functional.
+
+If no database name is specified in the URL path, ArangoDB will use the algorithm 
+described in @ref HttpDatabaseMapping to determine the database context for the request.
+If no extra endpoints are used, the algorithm will default to the `_system` database.
+A just upgraded ArangoDB instance will have all its collections and applications be 
+mapped to the `_system` database too, meaning an upgraded ArangoDB instance should remain
+fully functional.
+
+ArangoDB clients and drivers are not forced to supplydatabase names as part of the ArangoDB
+URLs they call because of this compatibility functionaltiy. However, if clients need to 
+access a specific database in a multiple database context, they will be required to supply
+the database name as part of the URLs. Most clients will use just one database most of the
+time, making it sufficient to set the database name when the connection to the server is
+established and then prefixing all requests with the database name initially set.
 
 Troubleshooting {#Upgrading14Troubleshooting}
 =============================================

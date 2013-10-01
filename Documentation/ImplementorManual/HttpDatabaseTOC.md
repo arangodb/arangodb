@@ -10,3 +10,4 @@ TOC {#HttpDatabaseTOC}
     - @ref HttpDatabaseList "GET /_api/database"
     - @ref HttpDatabaseCreate "POST /_api/database"
     - @ref HttpDatabaseDelete "DELETE /_api/database/database-name"
+  - @ref HttpDatabaseGlossary
