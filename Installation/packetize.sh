@@ -26,7 +26,7 @@ SUBLIST="Installation/epm/${project_name}.sublist"
 START_SCRIPT="";
 
 arangodb_version=`cat VERSION | awk -F"." '{print $1 "." $2}'`
-arangodb_release=`cat VERSION | awk -F"." '{print $3}'`  
+arangodb_release=`cat VERSION | awk -F"." '{print $3}' | tr -d "-"`  
 
 ostype=`uname -s | tr '[:upper:]' '[:lower:]'`
 osvers=`uname -r | awk -F"." '{print $1 "." $2}'`
@@ -313,8 +313,8 @@ export systemddir
 echo 
 echo "########################################################"
 echo "Call EPM to build the package."
-echo "  sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
-sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
+echo "  sudo -E epm -v -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
+sudo -E epm -v -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
 echo "########################################################"
 echo 
 
