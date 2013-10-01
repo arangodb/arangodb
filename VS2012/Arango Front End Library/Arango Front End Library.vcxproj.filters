@@ -185,6 +185,12 @@
     <ClInclude Include="..\..\lib\GeneralServer\SslAsyncCommTask.h">
       <Filter>Http Server Header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\AsyncJobManager.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestJobHandler.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp">
@@ -276,6 +282,9 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\VisualStudio\libev\evwrap.c">
       <Filter>Libev source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Admin\RestJobHandler.cpp">
+      <Filter>Admin Source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
