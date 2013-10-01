@@ -167,7 +167,7 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
           return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, node->_value._value._string);
       }
       assert(false);
-      break;
+      return NULL;
     }
     case TRI_AQL_NODE_LIST: {
       const size_t n = node->_members._length;
