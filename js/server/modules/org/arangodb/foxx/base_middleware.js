@@ -209,18 +209,21 @@ BaseMiddleware = function () {
 
     if (trace) {
       if (response.hasOwnProperty("body")) {
-        console.log("%s, outgoing response of type %s, body length: %d",
+        console.log("%s, outgoing response with status %s of type %s, body length: %d",
                     options.mount,
+                    response.responseCode,
                     response.contentType,
                     parseInt(response.body.length, 10));
       } else if (response.hasOwnProperty("bodyFromFile")) {
-        console.log("%s, outgoing response of type %s, body file: %s",
+        console.log("%s, outgoing response with status %s of type %s, body file: %s",
                     options.mount,
+                    response.responseCode,
                     response.contentType,
                     response.bodyFromFile);
       } else {
-        console.log("%s, outgoing response of type %s, no body",
+        console.log("%s, outgoing response with status %s of type %s, no body",
                     options.mount,
+                    response.responseCode,
                     response.contentType);
       }
     }
