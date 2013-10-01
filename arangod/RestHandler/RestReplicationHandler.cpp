@@ -2265,6 +2265,9 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// - `endpoint`: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
 ///
+/// - `database`: the database name on the master (if not specified, defaults to the
+///   name of the local current database).
+///
 /// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
 ///
 /// - `password`: the password to use when connecting to the endpoint.
@@ -2316,6 +2319,7 @@ void RestReplicationHandler::handleCommandSync () {
   }
   
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
+  const string database = JsonHelper::getStringValue(json, "database", _vocbase->_name);
   const string username = JsonHelper::getStringValue(json, "username", "");
   const string password = JsonHelper::getStringValue(json, "password", "");
   
@@ -2356,6 +2360,7 @@ void RestReplicationHandler::handleCommandSync () {
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
 
@@ -2480,6 +2485,8 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - `endpoint`: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
 ///
+/// - `database`: the name of the database to connect to (e.g. "_system").
+///
 /// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
 ///
 /// - `password`: the password to use when connecting to the endpoint.
@@ -2565,6 +2572,9 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - `endpoint`: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
 ///   The endpoint must be specified.
+///
+/// - `database`: the name of the database on the endpoint. If not specified, defaults
+///   to the current local database name.
 ///
 /// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
 ///
@@ -2664,6 +2674,17 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
     }
     config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  }
+  
+  value = JsonHelper::getArrayElement(json, "database");
+  if (JsonHelper::isString(value)) {
+    if (config._database != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
+    }
+    config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
+  }
+  else {
+    config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, _vocbase->_name);
   }
   
   value = JsonHelper::getArrayElement(json, "username");
@@ -2927,6 +2948,9 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///   - `serverId`: the applier server's id
 ///  
 /// - `endpoint`: the endpoint the applier is connected to (if applier is
+///   active) or will connect to (if applier is currently inactive)
+///
+/// - `database`: the name of the database the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
 /// @RESTRETURNCODES
