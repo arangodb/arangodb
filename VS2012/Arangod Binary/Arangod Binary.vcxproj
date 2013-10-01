@@ -262,7 +262,6 @@
     <ClCompile Include="..\..\arangod\RestServer\arango.cpp" />
     <ClCompile Include="..\..\arangod\RestServer\ArangoServer.cpp" />
     <ClCompile Include="..\..\arangod\RestServer\VocbaseContext.cpp" />
-    <ClCompile Include="..\..\arangod\RestServer\VocbaseManager.cpp" />
     <ClCompile Include="..\..\arangod\SkipListsEx\skiplistEx.c" />
     <ClCompile Include="..\..\arangod\SkipListsEx\skiplistExIndex.c" />
     <ClCompile Include="..\..\arangod\SkipLists\skiplist.c" />
@@ -292,13 +291,13 @@
     <ClCompile Include="..\..\arangod\VocBase\replication-dump.c" />
     <ClCompile Include="..\..\arangod\VocBase\replication-logger.c" />
     <ClCompile Include="..\..\arangod\VocBase\replication-master.c" />
-    <ClCompile Include="..\..\arangod\VocBase\server-id.c" />
-    <ClCompile Include="..\..\arangod\VocBase\shadow-data.c" />
+    <ClCompile Include="..\..\arangod\VocBase\server.c" />
     <ClCompile Include="..\..\arangod\VocBase\shape-collection.c" />
     <ClCompile Include="..\..\arangod\VocBase\synchroniser.c" />
     <ClCompile Include="..\..\arangod\VocBase\transaction.c" />
     <ClCompile Include="..\..\arangod\VocBase\update-policy.c" />
     <ClCompile Include="..\..\arangod\VocBase\voc-shaper.c" />
+    <ClCompile Include="..\..\arangod\VocBase\vocbase-defaults.c" />
     <ClCompile Include="..\..\arangod\VocBase\vocbase.c" />
   </ItemGroup>
   <ItemGroup>
@@ -358,7 +357,6 @@
     <ClInclude Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.h" />
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h" />
     <ClInclude Include="..\..\arangod\RestServer\VocbaseContext.h" />
-    <ClInclude Include="..\..\arangod\RestServer\VocbaseManager.h" />
     <ClInclude Include="..\..\arangod\SkipListsEx\compareEx.h" />
     <ClInclude Include="..\..\arangod\SkipListsEx\skiplistEx.h" />
     <ClInclude Include="..\..\arangod\SkipListsEx\skiplistExIndex.h" />
@@ -401,13 +399,13 @@
     <ClInclude Include="..\..\arangod\VocBase\replication-dump.h" />
     <ClInclude Include="..\..\arangod\VocBase\replication-logger.h" />
     <ClInclude Include="..\..\arangod\VocBase\replication-master.h" />
-    <ClInclude Include="..\..\arangod\VocBase\server-id.h" />
-    <ClInclude Include="..\..\arangod\VocBase\shadow-data.h" />
+    <ClInclude Include="..\..\arangod\VocBase\server.h" />
     <ClInclude Include="..\..\arangod\VocBase\shape-collection.h" />
     <ClInclude Include="..\..\arangod\VocBase\synchroniser.h" />
     <ClInclude Include="..\..\arangod\VocBase\transaction.h" />
     <ClInclude Include="..\..\arangod\VocBase\update-policy.h" />
     <ClInclude Include="..\..\arangod\VocBase\voc-shaper.h" />
+    <ClInclude Include="..\..\arangod\VocBase\vocbase-defaults.h" />
     <ClInclude Include="..\..\arangod\VocBase\vocbase.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

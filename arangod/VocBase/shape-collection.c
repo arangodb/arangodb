@@ -196,7 +196,7 @@ static int CloseJournal (TRI_shape_collection_t* collection,
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
 
-    df = collection->base._journals._buffer[i];
+    df = (TRI_datafile_t*) collection->base._journals._buffer[i];
 
     if (journal == df) {
       break;
@@ -289,7 +289,7 @@ static int SelectJournal (TRI_shape_collection_t* collection,
   }
 
   // select first datafile
-  datafile = collection->base._journals._buffer[0];
+  datafile = (TRI_datafile_t*) collection->base._journals._buffer[0];
 
   // try to reserve space
   res = TRI_ReserveElementDatafile(datafile, size, result, targetSize);
@@ -312,7 +312,7 @@ static int SelectJournal (TRI_shape_collection_t* collection,
       return TRI_ERROR_INTERNAL;
     }
 
-    datafile = collection->base._journals._buffer[0];
+    datafile = (TRI_datafile_t*) collection->base._journals._buffer[0];
 
     res = TRI_ReserveElementDatafile(datafile, size, result, targetSize);
   }
@@ -390,7 +390,7 @@ TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
   TRI_shape_collection_t* shape;
   TRI_collection_t* collection;
 
-  shape = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_collection_t), false);
+  shape = (TRI_shape_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_collection_t), false);
 
   if (shape == NULL) {
     return NULL;
@@ -531,7 +531,7 @@ TRI_shape_collection_t* TRI_OpenShapeCollection (TRI_vocbase_t* vocbase,
 
   assert(path != NULL);
 
-  shape = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_collection_t), false);
+  shape = (TRI_shape_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_collection_t), false);
 
   if (shape == NULL) {
     return NULL;
