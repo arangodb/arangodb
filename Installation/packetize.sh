@@ -467,6 +467,7 @@ echo "########################################################"
 echo "Request version number "
 echo "   $curl_version"
 answer=$( $curl_version )
+answer=`echo "$answer" | tr -d "-"` # remove "-" from version string for comparison
 expect='{"server":"arango","version":"'$arangodb_version.$arangodb_release'"}'
 if [ "x$answer" == "x$expect" ]; then 
   echo "ok: $answer"
