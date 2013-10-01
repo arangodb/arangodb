@@ -82,6 +82,12 @@ Start ArangoDB service:
   > /etc/init.d/arangodb start
 "
 
+# message for logfile
+log_message="
+ArangoDB writes a log file. Please consult this log file in case of errors: 
+  /var/log/arangodb/arangod.log
+"
+
 echo
 echo "########################################################"
 echo "Packetize on $TRI_OS_LONG"
@@ -103,7 +109,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export chkconf="true"
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
     ;;
 
   Darwin*)
@@ -130,7 +136,7 @@ case $TRI_OS_LONG in
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
 
     ;;
 
@@ -143,7 +149,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export use_systemd="true"
-    install_message="${install_message}${start_systemd_message}"
+    install_message="${install_message}${start_systemd_message}${log_message}"
     ;;
 
   Linux-LinuxMint-*)
@@ -155,7 +161,7 @@ case $TRI_OS_LONG in
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
 
     ;;
 
@@ -168,7 +174,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export use_systemd="true"
-    install_message="${install_message}${start_systemd_message}"
+    install_message="${install_message}${start_systemd_message}${log_message}"
     ;;
 
   Linux-openSUSE*)
@@ -180,7 +186,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export insserv="true"
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
     ;;
 
   Linux-Ubuntu-*)
@@ -192,7 +198,7 @@ case $TRI_OS_LONG in
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
 
     ;;
 
