@@ -247,17 +247,6 @@ echo "Call mkepmlist to create a sublist"
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man8 ${sfolder_name}/Doxygen/man/man8/*.8 >> ${SUBLIST}
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/js ${sfolder_name}/js >> ${SUBLIST}
 
-  for dir in . css css/images media media/icons media/images js js/modules; do
-    for typ in css html js png gif ico;  do
-      FILES=${sfolder_name}/html/admin/${dir}/*.${typ}
-
-      if test "${FILES}" != "${sfolder_name}/html/admin/${dir}/\*.${typ}";  then
-        # echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}"
-        mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}
-      fi
-    done
-  done
-
 echo "########################################################"
 echo 
 
