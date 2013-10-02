@@ -1,6 +1,10 @@
 v1.4
 ----
 
+* show current database name in web interface (bottom right corner)
+
+* added missing documentation for /_api/import in swagger API docs 
+
 * allow specification of database name for replication sync command replication applier
 
   This allows syncing from a master database with a different name than the slave database.
