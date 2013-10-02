@@ -65,7 +65,7 @@ function ReplicationSuite () {
   };
 
   var collectionChecksum = function (name) {
-    var c = db._collection(name).checksum(true);
+    var c = db._collection(name).checksum(true, true);
     return c.checksum + "-" + c.revision;
   };
   

@@ -195,6 +195,53 @@ can use a Bash script like this:
 The above script should print out the names of all databases and collections 
 with their corresponding directory names.
 
+Problem: AQL user-function does not work anymore
+------------------------------------------------
+
+The namespace resolution operator for AQL user-defined functions has changed from `:` 
+to `::`. Names of user-defined function names need to be adjusted in AQL queries.
+Please refer to @ref Upgrading14ChangedBehavior for details.
+
+Changed Behavior {#Upgrading14ChangedBehavior}
+==============================================
+
+The namespace resolution operator for AQL user-defined functions has been changed from 
+`:` to `::`.
+
+AQL user-defined functions were introduced in ArangoDB 1.3, and the namespace resolution
+perator for them has been the single colon (`:`) in 1.3. A call to a user-defined function
+in an AQL query looked like this:
+
+    RETURN mygroup:myfunc()
+
+The single colon caused an ambiguity in the AQL grammar, making it indistinguishable from
+named attributes or the ternary operator in some cases, e.g.
+
+    { mygroup:myfunc ? mygroup:myfunc }
+
+To fix this ambiguity, the namespace resolution operator in 1.4 is changed from `:` to `::`, 
+so the above call will in 1.4 look like this:
+
+    RETURN mygroup::myfunc()
+
+Names of existing user-defined AQL functions in the database will automatically be fixed 
+when starting ArangoDB 1.4 with the `--upgrade` option. 
+
+Still any AQL query strings assembled on the client side must be adjusted for use with 1.4 
+if they refer to AQL user-defined functions. If AQL queries stored in Foxx applications or
+other server-side actions use the "old" function name sytanx, they must be adjusted manually,
+too. These change should be simple to carry out (replacing the `:` in names of user-defined 
+functions with `::`) but cannot be done automatically by ArangoDB.
+
+If function names are not changed in AQL queries, referring to a function using the old (`:`)
+namespace operator is likely to cause a query parse error in 1.4.
+
+The return value of the AQL `DOCUMENT` function is also changed in 1.4 when called with a
+single argument (a document id or key) in case the sought document cannot be found. 
+In pre-1.4, the function returned `undefined` in this case. As `undefined` is not part of 
+the JSON type system, 1.4 now returns `null` for the same case. The return value for other
+cases has not changed.
+
 Removed Features {#Upgrading14RemovedFeatures}
 ==============================================
 
@@ -216,3 +263,11 @@ configuration / command-line options:
 - The option `--log.filter` was renamed to `--log.source-filter`.
 
   This is a debugging option that should rarely be used by non-developers.
+
+Other removed Features {#Upgrading14RemovedMisc}
+------------------------------------------------
+
+The action deployment tool available in ArangoDB 1.3 has been removed in 
+version 1.4. Installing actions can now be achieved easier by packaging them
+in a Foxx application and deploying them with the `foxx-manager` binary.
+
