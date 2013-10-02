@@ -402,7 +402,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       return;
 
     case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-      generateError(HttpResponse::BAD, res, "geo constraint violated");
+      generateError(HttpResponse::CONFLICT, res, "geo constraint violated");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
