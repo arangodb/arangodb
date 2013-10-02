@@ -64,7 +64,8 @@ var footerView = Backbone.View.extend({
 
   renderVersion: function () {
     if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
-      var tag = 'Server: ' + this.system.name + ' ' + this.system.version + ', Database: ' + this.system.database;
+      var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
+                ', Database: ' + this.system.database;
       $('.footer-right p').html(tag);
     }
   },
