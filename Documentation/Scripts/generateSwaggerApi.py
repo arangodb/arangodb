@@ -52,6 +52,7 @@ files = {
   "js/actions/api-endpoint.js" : "endpoint",
   "js/actions/api-explain.js" : "explain",
   "js/actions/api-graph.js" : "graph",
+  "arangod/RestHandler/RestImportHandler.cpp" : "import",
   "js/actions/api-index.js" : "index",
   "lib/Admin/RestJobHandler.cpp" : "job",
   "js/actions/api-query.js" : "query",
