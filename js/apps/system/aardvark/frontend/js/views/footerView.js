@@ -8,27 +8,26 @@ var footerView = Backbone.View.extend({
 
   initialize: function () {
     //also server online check
-    this.updateVersion();
+    var self = this;
+    window.setInterval(function(){
+      self.getVersion();
+    }, 15000);
+    self.getVersion();
   },
 
   template: new EJS({url: 'js/templates/footerView.ejs'}),
 
-  updateVersion: function () {
-    var self = this;
-    window.setInterval(function(){
-      self.getVersion();
-    }, 10000);
-  },
-
   getVersion: function () {
     var self = this;
+
+    // always retry this call, because it also checks if the server is online
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_admin/version",
+      url: "/_api/version",
       contentType: "application/json",
       processData: false,
-      async: false,
+      async: true,
       success: function(data) {
         if (self.isOffline === true) {
           self.isOffline = false;
@@ -47,11 +46,26 @@ var footerView = Backbone.View.extend({
         arangoHelper.arangoError("Server is offline");
       }
     });
+    
+    if (! self.system.hasOwnProperty('database')) {
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: "/_api/database/current",
+        contentType: "application/json",
+        processData: false,
+        async: true,
+        success: function(data) {
+          self.system.database = data.result.name;
+        }
+      });
+    }
   },
 
   renderVersion: function () {
-    if (this.system.hasOwnProperty('name')) {
-      $('.footer-right p').html(this.system.name + ' : ' + this.system.version);
+    if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
+      var tag = 'Server: ' + this.system.name + ' ' + this.system.version + ', Database: ' + this.system.database;
+      $('.footer-right p').html(tag);
     }
   },
 
