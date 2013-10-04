@@ -114,7 +114,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +122,13 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-    protected:
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the "complete" value
+////////////////////////////////////////////////////////////////////////////////
+
+      bool extractComplete () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log an error document
@@ -134,11 +140,11 @@ namespace triagens {
 /// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool handleSingleDocument (ImportTransactionType&,
-                                 TRI_json_t const*,
-                                 const bool,
-                                 const bool,
-                                 const size_t);
+      int handleSingleDocument (ImportTransactionType&,
+                                TRI_json_t const*,
+                                const bool,
+                                const bool,
+                                const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents by JSON objects

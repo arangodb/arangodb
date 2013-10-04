@@ -172,6 +172,7 @@
     <ClInclude Include="..\..\lib\Admin\RestAdminLogHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestBaseHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestHandlerCreator.h" />
+    <ClInclude Include="..\..\lib\Admin\RestJobHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestVersionHandler.h" />
     <ClInclude Include="..\..\lib\ApplicationServer\ApplicationFeature.h" />
     <ClInclude Include="..\..\lib\ApplicationServer\ApplicationServer.h" />
@@ -192,6 +193,7 @@
     <ClInclude Include="..\..\lib\GeneralServer\SpecificCommTask.h" />
     <ClInclude Include="..\..\lib\GeneralServer\SslAsyncCommTask.h" />
     <ClInclude Include="..\..\lib\HttpServer\ApplicationEndpointServer.h" />
+    <ClInclude Include="..\..\lib\HttpServer\AsyncJobManager.h" />
     <ClInclude Include="..\..\lib\HttpServer\GeneralHttpServer.h" />
     <ClInclude Include="..\..\lib\HttpServer\HttpCommTask.h" />
     <ClInclude Include="..\..\lib\HttpServer\HttpHandler.h" />
@@ -220,6 +222,7 @@
     <ClCompile Include="..\..\lib\Admin\RestAdminBaseHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminLogHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestBaseHandler.cpp" />
+    <ClCompile Include="..\..\lib\Admin\RestJobHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestVersionHandler.cpp" />
     <ClCompile Include="..\..\lib\ApplicationServer\ApplicationFeature.cpp" />
     <ClCompile Include="..\..\lib\ApplicationServer\ApplicationServer.cpp" />

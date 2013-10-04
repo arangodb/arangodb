@@ -186,6 +186,9 @@ extern "C" {
 ///   Will be raised when there is an attempt to delete a non-existing endpoint.
 /// - 1232: @LIT{invalid key generator}
 ///   Will be raised when an invalid key generator description is used.
+/// - 1233: @LIT{edge attribute missing}
+///   will be raised when the _from or _to values of an edge are undefined or
+///   contain an invalid value.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -1277,6 +1280,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR                            (1232)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1233: ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE
+///
+/// edge attribute missing
+///
+/// will be raised when the _from or _to values of an edge are undefined or
+/// contain an invalid value.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE                           (1233)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

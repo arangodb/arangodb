@@ -161,7 +161,6 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-          //window.location.hash = "collection/"+collid+"/documents/1";
           result = true;
       },
       error: function(data) {
@@ -181,7 +180,6 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-          //window.location.hash = "collection/"+collid+"/documents/1";
           result = true;
       },
       error: function(data) {

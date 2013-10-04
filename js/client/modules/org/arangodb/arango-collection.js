@@ -422,8 +422,14 @@ ArangoCollection.prototype.figures = function () {
 /// @brief gets the checksum of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.checksum = function (withData) {
-  var append = withData ? "?withData=true" : "";
+ArangoCollection.prototype.checksum = function (withRevisions, withData) {
+  var append = '';
+  if (withRevisions) {
+    append += '?withRevisions=true';
+  }
+  if (withData) {
+    append += (append === '' ? '?' : '&') + 'withData=true';
+  }
   var requestResult = this._database._connection.GET(this._baseurl("checksum") + append);
 
   arangosh.checkRequestResult(requestResult);

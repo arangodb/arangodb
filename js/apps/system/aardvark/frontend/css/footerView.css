@@ -4,7 +4,7 @@
 
 .footer {
   position: fixed;
-  background-color: #383434;
+  background-color: #333232;
   font-size: 14px;
   text-align: center;
   left: 0;
@@ -73,27 +73,27 @@
 }
 
 .copy {
-  background: none repeat scroll 0 0 #383434;
+  background: none repeat scroll 0 0 #333232;
   color: #FFFFFF;
 }
 
 .footer-left {
-  background: none repeat scroll 0 0 #383434;
+  background: none repeat scroll 0 0 #333232;
   color: #FFFFFF;
   width: 33.3%;
   float: left;
 }
 
 .footer-mid {
-  background: none repeat scroll 0 0 #383434;
+  background: none repeat scroll 0 0 #333232;
   color: #FFFFFF;
   width: 33.3%;
   float: left;
 }
 
 .footer-right {
-  background: none repeat scroll 0 0 #383434;
-  color: #383434;
+  background: none repeat scroll 0 0 #333232;
+  color: #333232;
   float: right;
 }
 

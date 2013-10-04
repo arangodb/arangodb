@@ -9,7 +9,6 @@ window.arangoDocumentModel = Backbone.Model.extend({
   defaults: {
     _id: "",
     _rev: "",
-    _key: "",
-    content: ""
+    _key: ""
   }
 });
