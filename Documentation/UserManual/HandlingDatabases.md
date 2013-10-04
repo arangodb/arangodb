@@ -36,10 +36,6 @@ supported way in ArangoDB is to use one database at a time for a command,
 an action, a script or a query. Operations started in one database must
 not switch the database later and continue operating in another.
 
-@copydoc GlossaryDatabase
-
-@copydoc GlossaryDatabaseName
-
 @CLEARPAGE
 Working with Databases {#HandlingDatabasesShell}
 ================================================
@@ -81,4 +77,24 @@ database only.
 @CLEARPAGE
 @anchor HandlingDatabasesDrop
 @copydetails JS_DropDatabase
+
+@CLEARPAGE
+Notes about Databases {#HandlingDatabasesGlossary}
+--------------------------------------------------
+
+Please keep in mind that each database contains its own system collections,
+which need to set up when a database is created. This will make the creation
+of a database take a while. Replication is configured on a per-database level,
+meaning that any replication logging or applying for the a new database must
+be configured explicitly after a new database has been created. Foxx applications
+are also available only in the context of the database they have been installed 
+in. A new database will only provide access to the system applications shipped
+with ArangoDB (that is the web interface at the moment) and no other Foxx
+applications until they are explicitly installed for the particular database.
+
+@copydoc GlossaryDatabase
+
+@copydoc GlossaryDatabaseName
+
+@copydoc GlossaryDatabaseOrganisation
 

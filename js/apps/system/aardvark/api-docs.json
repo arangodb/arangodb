@@ -43,6 +43,10 @@
             "description": "graph API"
         }, 
         {
+            "path": "api-docs/import.{format}", 
+            "description": "import API"
+        }, 
+        {
             "path": "api-docs/index.{format}", 
             "description": "index API"
         }, 

@@ -2225,36 +2225,40 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
 }
 
 typedef struct collection_checksum_s {
-  uint32_t            _checksum;
   TRI_string_buffer_t _buffer;
+  uint32_t            _checksum;
 }
 collection_checksum_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback for checksum calculation, WD = with data
+/// @brief callback for checksum calculation, WR = with _rid, WD = with data
 ////////////////////////////////////////////////////////////////////////////////
 
-template<bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
-                                                  TRI_primary_collection_t* primary, 
-                                                  void* data) {
+template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
+                                                           TRI_primary_collection_t* primary, 
+                                                           void* data) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    // must convert _rid into string for portability (little vs. big endian etc.)
-    const string key = string(mptr->_key) + StringUtils::itoa(mptr->_rid);
-    localCrc = TRI_Crc32HashPointer(key.c_str(), key.size());
+    localCrc = TRI_Crc32HashString(mptr->_key);
+    if (WR) {
+      localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
+    }
   }
   else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
     // must convert _rid, _fromCid, _toCid into strings for portability
-    const string key = string(mptr->_key) + StringUtils::itoa(mptr->_rid) + 
-                       StringUtils::itoa(e->_toCid) + string(((char*) marker) + e->_offsetToKey) +
-                       StringUtils::itoa(e->_fromCid) + string(((char*) marker) + e->_offsetFromKey); 
+    localCrc = TRI_Crc32HashString(mptr->_key);
+    if (WR) {
+      localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
+    }
+    const string extra = StringUtils::itoa(e->_toCid) + string(((char*) marker) + e->_offsetToKey) +
+                         StringUtils::itoa(e->_fromCid) + string(((char*) marker) + e->_offsetFromKey); 
     
-    localCrc = TRI_Crc32HashPointer(key.c_str(), key.size());
+    localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
   }
   else {
     return true;
@@ -2280,10 +2284,13 @@ template<bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculates a checksum for the data in a collection
 ///
-/// @FUN{@FA{collection}.checksum(@FA{withData})}
+/// @FUN{@FA{collection}.checksum(@FA{withRevisions}, @FA{withData})}
 ///
-/// The @FN{checksum} operation calculates a CRC32 checksum of the meta-data 
-/// (keys and revision ids) contained in collection @FA{collection}. 
+/// The @FN{checksum} operation calculates a CRC32 checksum of the keys 
+/// contained in collection @FA{collection}.
+///
+/// If the optional argument @FA{withRevisions} is set to @LIT{true}, then the 
+/// revision ids of the documents are also included in the checksumming.
 /// 
 /// If the optional argument @FA{withData} is set to @LIT{true}, then the 
 /// actual document data is also checksummed. Including the document data in
@@ -2299,10 +2306,15 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  bool withRevisions = false;
+  if (argv.Length() > 0) {
+    withRevisions = TRI_ObjectToBoolean(argv[0]);
+  }
 
   bool withData = false;
-  if (argv.Length() > 0) {
-    withData = TRI_ObjectToBoolean(argv[0]);
+  if (argv.Length() > 1) {
+    withData = TRI_ObjectToBoolean(argv[1]);
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -2332,12 +2344,22 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
 
-    TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true>);
+    if (withRevisions) {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, true>);
+    }
+    else {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, true>);
+    }
 
     TRI_DestroyStringBuffer(&helper._buffer);
   }
   else {
-    TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false>);
+    if (withRevisions) {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, false>);
+    }
+    else {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, false>);
+    }
   }
 
   trx.finish(res);

@@ -3298,6 +3298,14 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
     endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
   }
+  
+  string database;
+  if (object->Has(TRI_V8_SYMBOL("database"))) {
+    database = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("database")));
+  }
+  else {
+    database = string(vocbase->_name);
+  }
 
   string username;
   if (object->Has(TRI_V8_SYMBOL("username"))) {
@@ -3347,6 +3355,7 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
     
@@ -3475,6 +3484,25 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
         config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
       }
     }
+    
+    if (object->Has(TRI_V8_SYMBOL("database"))) {
+      if (object->Get(TRI_V8_SYMBOL("database"))->IsString()) {
+        string database = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("database")));
+    
+        if (config._database != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, config._database);
+        }
+        config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
+      }
+    }
+    else {
+      if (config._database == 0) {
+        // no database set, use current
+        config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+      }
+    }
+
+    assert(config._database != 0);
     
     if (object->Has(TRI_V8_SYMBOL("username"))) {
       if (object->Get(TRI_V8_SYMBOL("username"))->IsString()) {

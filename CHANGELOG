@@ -1,6 +1,26 @@
 v1.4
 ----
 
+* show current database name in web interface (bottom right corner)
+
+* added missing documentation for /_api/import in swagger API docs 
+
+* allow specification of database name for replication sync command replication applier
+
+  This allows syncing from a master database with a different name than the slave database.
+
+* issue #601: Show DB in prompt
+
+  arangosh now displays the database name as part of the prompt by default.
+  
+  Can change the prompt by using the `--prompt` option, e.g.
+
+      > arangosh --prompt "my db is named \"%d\"> "
+
+
+v1.4.0-beta (2013-10-01)
+------------------------
+
 * make the Foxx manager use per-database app directories
 
   Each database now has its own subdirectory for Foxx applications. Each database
@@ -71,7 +91,6 @@ v1.4
   referenced documents in edges propertly when doing just partial restores.
   This will be fixed until 1.4 stable.
   
-
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
 
   The option allows these client tools to use a certain database for their actions.
@@ -112,7 +131,6 @@ v1.4
   To access a different database (e.g. `test`), the URL pathname would look like this:
 
       /_db/test/document/mycollection/1234
-
 
   New databases can also be created and existing databases can only be dropped from
   within the default database (`_system`). It is not possible to drop the `_system`
@@ -219,7 +237,7 @@ v1.4
   making the journal a datafile. Thus `rotate()` may cause disk space savings, even if
   the datafiles does not qualify for compaction after rotation.
 
-  Note: the journal is asynchronously, so that the actual rotation may be executed
+  Note: rotating the journal is asynchronous, so that the actual rotation may be executed
   after `rotate()` returns to the caller.
 
 * changed compaction to merge small datafiles together (up to 3 datafiles are merged in 

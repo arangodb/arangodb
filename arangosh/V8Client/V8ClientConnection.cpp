@@ -621,8 +621,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
     const map<string, string>& hf = _httpResult->getHeaderFields();
 
     for (map<string, string>::const_iterator i = hf.begin();  i != hf.end();  ++i) {
-      v8::Handle<v8::String> key = v8::String::New(i->first.c_str());
-      v8::Handle<v8::String> val = v8::String::New(i->second.c_str());
+      v8::Handle<v8::String> key = v8::String::New(i->first.c_str(), i->first.size());
+      v8::Handle<v8::String> val = v8::String::New(i->second.c_str(), i->second.size());
 
       headers->Set(key, val);
     }

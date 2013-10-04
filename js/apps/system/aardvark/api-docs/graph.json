@@ -8,11 +8,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the graph was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -38,7 +38,7 @@
                     "notes": "Creates a new graph. <br><br>Returns an object with an attribute <em>graph</em> containing a list of all graph properties. <br><br>",
                     "summary": "create graph",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/\n{\"_key\":\"graph\",\"vertices\":\"vertices\",\"edges\":\"edges\"}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\netag: 126120083\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"126120083\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/\n{\"_key\":\"graph\",\"vertices\":\"vertices\",\"edges\":\"edges\"}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\netag: 123125131\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"123125131\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "createGraph"
                 }
             ],
@@ -89,7 +89,7 @@
                     "notes": "<br><br>If <em>graph-name</em> is specified, returns an object with an attribute <em>graph</em>  containing a JSON hash with all properties of the specified graph. <br><br>If <em>graph-name</em> is not specified, returns a list of graph objects. <br><br>",
                     "summary": "get the properties of a specific or all graphs",
                     "httpMethod": "GET",
-                    "examples": "get graph by name <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 128413843\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"128413843\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>get all graphs <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"graphs\" : [ \n    { \n      \"_id\" : \"_graphs/graph2\", \n      \"_rev\" : \"132870291\", \n      \"_key\" : \"graph2\", \n      \"edges\" : \"edges2\", \n      \"vertices\" : \"vertices2\" \n    }, \n    { \n      \"_id\" : \"_graphs/graph1\", \n      \"_rev\" : \"130773139\", \n      \"_key\" : \"graph1\", \n      \"edges\" : \"edges1\", \n      \"vertices\" : \"vertices1\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "get graph by name <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 125418891\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"125418891\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>get all graphs <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"graphs\" : [ \n    { \n      \"_id\" : \"_graphs/graph2\", \n      \"_rev\" : \"129875339\", \n      \"_key\" : \"graph2\", \n      \"edges\" : \"edges2\", \n      \"vertices\" : \"vertices2\" \n    }, \n    { \n      \"_id\" : \"_graphs/graph1\", \n      \"_rev\" : \"127778187\", \n      \"_key\" : \"graph1\", \n      \"edges\" : \"edges1\", \n      \"vertices\" : \"vertices1\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "getThePropertiesOfASpecificOrAllGraphs"
                 }
             ],
@@ -145,11 +145,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the graph was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         }
                     ],
@@ -178,7 +178,7 @@
                     "notes": "Creates a vertex in a graph. <br><br>Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "create vertex",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertex\n{\"_key\":\"v1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 138375315\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"138375315\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertex\n{\"_key\":\"v1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 135380363\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"135380363\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "createVertex"
                 }
             ],
@@ -235,7 +235,7 @@
                     "notes": "Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "get vertex",
                     "httpMethod": "GET",
-                    "examples": "get vertex properties by name <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 141193363\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"141193363\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "get vertex properties by name <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 138198411\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"138198411\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "getVertex"
                 }
             ],
@@ -303,11 +303,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the vertex was updated sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the vertex was updated sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -356,7 +356,7 @@
                     "notes": "Replaces the vertex properties. <br><br>Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "update vertex",
                     "httpMethod": "PUT",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 148009107\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"148009107\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 145014155\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"145014155\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateVertex"
                 }
             ],
@@ -367,11 +367,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the vertex was updated sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the vertex was updated sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -426,7 +426,7 @@
                     "notes": "Partially updates the vertex properties. <br><br>Setting an attribute value to <em>null</em> in the patch document will cause a value  of <em>null</em> be saved for the attribute by default. If the intention is to  delete existing attributes with the patch command, the URL parameter  <em>keepNull</em> can be used with a value of <em>false</em>.  This will modify the behavior of the patch command to remove any attributes  from the existing document that are contained in the patch document  with an attribute value of <em>null</em>.  Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "update vertex",
                     "httpMethod": "PATCH",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"vertexPatch\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 151351443\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"151351443\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"vertexPatch\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\nunix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":null}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 151875731\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"151875731\", \n    \"_key\" : \"v1\", \n    \"optional1\" : null \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"vertexPatch\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 148356491\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"148356491\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"vertexPatch\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\nunix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":null}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 148880779\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"148880779\", \n    \"_key\" : \"v1\", \n    \"optional1\" : null \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateVertex"
                 }
             ],
@@ -460,7 +460,7 @@
                     "notes": "Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>properties</em>: filter by an array of vertex properties<br><br>The attributes of a property filter - <em>key</em>: filter the result vertices by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
                     "summary": "get vertices",
                     "httpMethod": "POST",
-                    "examples": "Select all vertices <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertices\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v5\", \n      \"_rev\" : \"156004499\", \n      \"_key\" : \"v5\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"155676819\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"154628243\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v3\", \n      \"_rev\" : \"155349139\", \n      \"_key\" : \"v3\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v2\", \n      \"_rev\" : \"155021459\", \n      \"_key\" : \"v2\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "Select all vertices <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertices\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v5\", \n      \"_rev\" : \"153009547\", \n      \"_key\" : \"v5\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"152681867\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"151633291\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v3\", \n      \"_rev\" : \"152354187\", \n      \"_key\" : \"v3\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v2\", \n      \"_rev\" : \"152026507\", \n      \"_key\" : \"v2\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getVertices"
                 }
             ],
@@ -494,7 +494,7 @@
                     "notes": "Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>direction</em>: Filter for inbound (value \"in\") or outbound (value \"out\")  neighbors. Default value is \"any\". - <em>labels</em>: filter by an array of edge labels (empty array means no restriction)- <em>properties</em>: filter neighbors by an array of edge properties<br><br>The attributes of a property filter - <em>key</em>: filter the result vertices by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
                     "summary": "get vertices",
                     "httpMethod": "POST",
-                    "examples": "Select all vertices <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"any\", \"properties\":[] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"158888083\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"159936659\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Select vertices by direction and property filter <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"out\", \"properties\":[ { \"key\": \"optional1\", \"value\": \"val2\", \"compare\" : \"==\" }, ] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"167080083\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val2\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"166031507\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "Select all vertices <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"any\", \"properties\":[] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"155893131\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"156941707\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Select vertices by direction and property filter <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"out\", \"properties\":[ { \"key\": \"optional1\", \"value\": \"val2\", \"compare\" : \"==\" }, ] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"164085131\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val2\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"163036555\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getVertices"
                 }
             ],
@@ -505,11 +505,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the edge was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         }
                     ],
@@ -538,7 +538,7 @@
                     "notes": "Creates an edge in a graph. <br><br>The call expects a JSON hash array as body with the edge properties: <br><br>- <em>_key</em>: The name of the edge.- <em>_from</em>: The name of the from vertex.- <em>_to</em>: The name of the to vertex.- <em>$label</em>: A label for the edge (optional).- further optional attributes.<br><br>Returns an object with an attribute <em>edge</em> containing the list of all edge properties. <br><br>",
                     "summary": "create edge",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edge\n{\"_key\":\"edge1\",\"_from\":\"vert2\",\"_to\":\"vert1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 174289043\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"174289043\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert2\", \n    \"_to\" : \"vertices/vert1\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edge\n{\"_key\":\"edge1\",\"_from\":\"vert2\",\"_to\":\"vert1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 171294091\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"171294091\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert2\", \n    \"_to\" : \"vertices/vert1\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "createEdge"
                 }
             ],
@@ -595,7 +595,7 @@
                     "notes": "Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
                     "summary": "get edge",
                     "httpMethod": "GET",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 178221203\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"178221203\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 175226251\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"175226251\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "getEdge"
                 }
             ],
@@ -606,11 +606,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was deletd sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was deletd successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the edge was deleted sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was deleted successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -663,11 +663,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was updated sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the edge was updated sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -716,7 +716,7 @@
                     "notes": "Replaces the optional edge properties. <br><br>The call expects a JSON hash array as body with the new edge properties. <br><br>Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
                     "summary": "update edge",
                     "httpMethod": "PUT",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 187199635\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"187199635\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 184204683\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"184204683\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateEdge"
                 }
             ],
@@ -727,11 +727,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was updated sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the edge was updated sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -786,7 +786,7 @@
                     "notes": "Partially updates the edge properties. <br><br>Setting an attribute value to <em>null</em> in the patch document will cause a value  of <em>null</em> be saved for the attribute by default. If the intention is to  delete existing attributes with the patch command, the URL parameter  <em>keepNull</em> can be used with a value of <em>false</em>.  This will modify the behavior of the patch command to remove any attributes  from the existing document that are contained in the patch document  with an attribute value of <em>null</em>. <br><br>Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
                     "summary": "update edge",
                     "httpMethod": "PATCH",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional3\":\"val3\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 191721619\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"191721619\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\", \n    \"optional3\" : \"val3\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional3\":\"val3\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 188726667\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"188726667\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\", \n    \"optional3\" : \"val3\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateEdge"
                 }
             ],
@@ -820,7 +820,7 @@
                     "notes": "Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>labels</em>: filter by an array of edge labels- <em>properties</em>: filter by an array of edge properties<br><br>The attributes of a property filter - <em>key</em>: filter the result edges by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
                     "summary": "get edges",
                     "httpMethod": "POST",
-                    "examples": "Select all edges <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edges\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge4\", \n      \"_rev\" : \"198471827\", \n      \"_key\" : \"edge4\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v5\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"196636819\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge2\", \n      \"_rev\" : \"197292179\", \n      \"_key\" : \"edge2\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v3\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"197882003\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "Select all edges <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edges\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge4\", \n      \"_rev\" : \"195476875\", \n      \"_key\" : \"edge4\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v5\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"193641867\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge2\", \n      \"_rev\" : \"194297227\", \n      \"_key\" : \"edge2\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v3\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"194887051\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getEdges"
                 }
             ],
@@ -861,7 +861,7 @@
                     "notes": "<br><br>Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>direction</em>: Filter for inbound (value \"in\") or outbound (value \"out\")  neighbors. Default value is \"any\". - <em>labels</em>: filter by an array of edge labels- <em>properties</em>: filter neighbors by an array of properties<br><br>The attributes of a property filter - <em>key</em>: filter the result vertices by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
                     "summary": "get edges",
                     "httpMethod": "POST",
-                    "examples": "Select all edges <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edges/v2\n{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"any\" }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"203518099\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"204763283\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "Select all edges <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edges/v2\n{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"any\" }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"200523147\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"201768331\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getEdges"
                 }
             ],

@@ -113,7 +113,7 @@ describe ArangoDB do
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['errorNum'].should eq(400)
       end
       
       it "empty body" do
@@ -124,7 +124,7 @@ describe ArangoDB do
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['errorNum'].should eq(400)
       end
       
       it "no documents" do

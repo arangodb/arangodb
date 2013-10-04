@@ -93,7 +93,14 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _connection(0),
   _client(0) {
 
-  _databaseName = string(vocbase->_name);
+  if (configuration->_database != 0) {
+    // use name from configuration
+    _databaseName = string(configuration->_database); 
+  }
+  else {
+    // use name of current database
+    _databaseName = string(vocbase->_name);
+  }
     
   // get our own server-id 
   _localServerId       = TRI_GetIdServer();
