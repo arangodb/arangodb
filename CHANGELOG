@@ -1,6 +1,15 @@
 v1.4
 ----
 
+* added "complete" option for bulk import API
+ 
+  Setting the `complete` URL parameter to `true` in a call to POST `/_api/import` will make
+  the import completely fail if at least one of documents cannot be imported successfully.
+
+  It defaults to `false`, which will make ArangoDB continue importing the other documents
+  from the import even if some documents cannot be imported. This is also the behaviour that
+  previous ArangoDB versions exposed.
+
 * calling `/_api/logs` (or `/_admin/logs`) is only permitted from the `_system` database now.
   
   Calling this API method for/from other database will result in an HTTP 400.
