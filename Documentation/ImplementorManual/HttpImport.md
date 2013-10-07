@@ -40,6 +40,12 @@ If `complete` has a value other than `true`, valid documents will be imported wh
 invalid documents will be rejected, meaning only some of the uploaded documents 
 might have been imported.
 
+The `details` URL parameter can be set to `true` to make the import API return
+details about documents that could not be imported. If `details` is `true`, then
+the result will also contain a `details` attribute which is a list of detailed
+error messages. If the `details` is set to `false` or omitted, no details will be
+returned.
+
 Importing Self-Contained JSON Documents {#HttpImportSelfContained}
 ==================================================================
 
