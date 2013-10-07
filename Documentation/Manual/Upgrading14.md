@@ -125,12 +125,17 @@ which database the request should be executed in.
 A specific ArangoDB database can be explicitly addressed by putting the database name
 into the URL. If the first part of the URL path is `/_db/...`, ArangoDB will interpret
 the `...` as the database name, and strip off the database name from the URL path for
-further processing. This allows any actions that use URL paths to remain fully functional.
+further processing. This allows any existing actions that use URL paths without database
+names to remain fully functional.
 
-If no database name is specified in the URL path, ArangoDB will use the algorithm 
-described in @ref HttpDatabaseMapping to determine the database context for the request.
-If no extra endpoints are used, the algorithm will default to the `_system` database.
-A just upgraded ArangoDB instance will have all its collections and applications be 
+For example, if the request URL is `http://127.0.0.1:8529/_db/mydb/some-method`, then
+ArangoDB will extract the database name `mydb` from the URL, and pass `/some-method` as 
+the URL path to any internal or user-defined functions.
+
+If no database name is specified in the URL path via the `_db` prefix, ArangoDB will use 
+the algorithm described in @ref HttpDatabaseMapping to determine the database context for 
+the request. If no extra endpoints are used, the algorithm will default to the `_system` 
+database. A just upgraded ArangoDB instance will have all its collections and applications be 
 mapped to the `_system` database too, meaning an upgraded ArangoDB instance should remain
 fully functional.
 

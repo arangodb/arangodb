@@ -73,7 +73,8 @@ all their collections be moved into the `_system` database during the upgrade pr
 The `_system` database cannot be dropped, though all user-defined collections in it
 can be dropped normally if required. All database management operations such as
 creating new databases, dropping databases, and retrieving the list of existing databases
-can only be carried out from within the `_system` database.
+can only be carried out from within the `_system` database. Fetching the server logs 
+(via the `/_api/log` API) is also restricted the `_system` database.
 
 All command-line tools (e.g. _arangosh_, _arangoimp_, _foxx-manager_) will connect to the 
 `_system` database by default. They also provide the option `--server.database` to connect 
@@ -118,6 +119,11 @@ binary:
 
     unix> foxx-manager --server.database mydb update
     unix> foxx-manager --server.database mydb install hello-foxx /hello-foxx
+
+Please note that when using the ArangoDB web interface, it will show the results of the
+currently selected database only. This will in many cases be the `_system` database. 
+Please check the @ref Upgrading14Databases "section on how to specify a database in the request"
+to use the web interface with any other than the `_system` database.
 
 Runtime Endpoint Management {#NewFeatures14Endpoints}
 -----------------------------------------------------
@@ -183,6 +189,10 @@ and available Foxx applications.
 
 The **AQL Editor** now provides some example queries and allows saving user-defined queries
 for later reuse.
+
+The **Logs** tab in the web interface is now available in the `_system` database only.
+This prevents the global server logs to be visible from within other than the `_system`
+database.
 
 The details view of collections in the web interface now shows more detailed figures 
 and also a collection's available indexes. Indexes can be created and deleted directly
