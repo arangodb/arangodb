@@ -107,9 +107,59 @@ Then remove the LaunchAgent
     rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
 
 
-Apples App Store {#InstallingMacOSXAppStore}
---------------------------------------------
+Apple's App Store {#InstallingMacOSXAppStore}
+---------------------------------------------
 
 ArangoDB is available in Apple's App-Store. Please note, that it
 sometimes take a few days or weeks until the latest versions will be
 available.
+
+Windows {#InstallingWindows}
+============================
+
+We provide precompiled Windows binaries for ArangoDB. The binaries
+are statically linked with the required libraries such as V8, but 
+they may still require some Windows platform libraries to be present.
+These libraries should be present on a Windows Vista, Windows 7, and
+Windows 8 by default, but there may be issues with other platforms.
+
+The Windows builds are available as `.msi` packages 
+@EXTREF{http://www.arangodb.org/download/,here}.
+Please note that we provide binaries for 32 and 64 bit Windows, and 
+that you need the package that matches your platform.
+
+The msi installer will install the ArangoDB server, shell (arangosh) and 
+the ArangoDB import tool (arangoimp) in a directory of the user's choice.
+
+Included in the distribution are some `.bat` files that can be used 
+to easily start the ArangoDB server and shell. The `.bat` files will be
+installed in the same directory as ArangoDB so they should be easy to find.
+The batch files contain a lot of configuration settings, and you might want 
+to eventually adjust these parameters to match your own environment.
+
+To start the ArangoDB server, use the batch file `serverExample.bat`.
+It will start the ArangoDB server and will wait until you terminate it
+by pressing CTRL-C. Starting ArangoDB for the first time will automatically
+create a database sub-directory in the directory ArangoDB was installed in.
+
+If you already have a previous version of ArangoDB installed and want to
+upgrade to a newer version, use the `upgradeExample.bat` file. This will
+start ArangoDB with the `--upgrade` option and perform a migration of an
+existing database.
+
+To start _arangosh_, use the batch file `shellExample.bat`.
+
+Please note an important limitation when running ArangoDB under Cygwin:
+Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
+CTRL-C will forcefully kill the server process, without giving it a chance to 
+handle the kill signal. In this case, a regular server shutdown is not
+possible, which may leave a file `LOCK` around in the server's data directory.
+This file needs to be removed manually to make ArangoDB start again. 
+Additionally, as ArangoDB does not have a chance to handle the kill signal,
+the server cannot forcefully flush any data to disk on shutdown, leading to
+potential data loss.
+
+Starting ArangoDB from an MS-DOS command prompt does not impose the 
+limitations, and the kill signal will be handled normally by the server, 
+allowing it to shut down normally.
+

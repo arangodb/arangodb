@@ -8,3 +8,4 @@ TOC {#InstallingTOC}
   - @ref InstallingMacOSX
     - @ref InstallingMacOSXHomebrew
     - @ref InstallingMacOSXAppStore
+  - @ref InstallingWindows
