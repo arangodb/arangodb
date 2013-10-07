@@ -1,22 +1,26 @@
 [
   { 
     "name" : "FOR .. FILTER .. RETURN template", 
-    "value": "FOR i IN @collection\n  FILTER i.`attribute` == @value\n  RETURN i"
+    "value": "/* Please insert some values for the @@collection and @value placeholders */\nFOR i IN @@collection\n  FILTER i.`attribute` == @value\n  RETURN i"
   },
   { 
     "name" : "Limit", 
-    "value": "FOR i IN @collection\n  LIMIT @offset, @count\n  RETURN i" 
+    "value": "/* Please insert some values for the @@collection, @offset and @count placeholders */\nFOR i IN @@collection\n  LIMIT @offset, @count\n  RETURN i" 
   },
   { 
     "name" : "Random document", 
-    "value": "FOR i IN @collection\n  SORT RAND()\n  LIMIT 1\n  RETURN i" 
+    "value": "/* Please insert some value for the @@collection placeholder */\nFOR i IN @@collection\n  SORT RAND()\n  LIMIT 1\n  RETURN i" 
   },
   { 
     "name" : "Subquery example",
-    "value": "FOR i IN @collection\n  LET values = (\n    FOR s IN i.`attribute`\n    FILTER s.`attribute` == @value\n    RETURN s\n  )\n  FILTER LENGTH(values) > @count\n  RETURN {\n    i : i,\n    values : values\n  }" 
+    "value": "/* Please insert some values for the @@collection, @value and @count placeholders */\nFOR i IN @@collection\n  LET values = (\n    FOR s IN i.`attribute`\n    FILTER s.`attribute` == @value\n    RETURN s\n  )\n  FILTER LENGTH(values) > @count\n  RETURN {\n    i : i,\n    values : values\n  }" 
   },
   { 
     "name" : "Sequences", 
-    "value": "FOR year IN 2010..2013\n  RETURN year" 
+    "value": "/* Returns the sequence of integers between 2010 and 2013 (including) */FOR year IN 2010..2013\n  RETURN year" 
+  },
+  { 
+    "name" : "Bind parameters", 
+    "value": "/* There are two types of bind parameters:\n   - bind parameter names starting with a single @ character, e.g. @count, @value, @test:\n     These can be used to ship any JSON-encodable data to the server.\n   - bind parameter names starting with two @ characters always refer to collections, e.g. @@collections, @@c:\n     These can be used as placeholders for collection names.\n */\nFOR i IN @collection\n  FILTER i.value == @value\n  RETURN i"
   }
 ]
