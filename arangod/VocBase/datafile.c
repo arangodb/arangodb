@@ -1269,6 +1269,14 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
   }
 
+  // out of bounds check for writing into a datafile
+  if (position < (void*) datafile->_data ||
+      position >= (void*) (datafile->_data + datafile->_maximalSize)) {
+    
+    LOG_ERROR("logic error. writing out of bounds of datafile '%s'", datafile->getName(datafile));
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
+  }
+
   memcpy(position, marker, markerSize);
 
 
