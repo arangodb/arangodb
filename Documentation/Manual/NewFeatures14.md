@@ -410,6 +410,13 @@ Miscellaneous Improvements {#NewFeatures14Misc}
 ArangoDB 1.4 now provides a REST API to execute server-side traversals with custom 
 traversal functions. The API is described @ref HttpTraversals "here".
 
+The bulk import API now provides a `complete` URL parameter that can be used to
+control the behaviour when at least one document cannot be imported. Setting
+`complete` to `true` will abort the whole import and roll back any already imported
+documents. Setting it to `false` or omitting it will make the import continue 
+importing documents even if some documents could not be imported. This is also the
+behaviour that previous ArangoDB versions exposed.
+
 Command-Line Options added {#NewFeatures14Options}
 --------------------------------------------------
 
