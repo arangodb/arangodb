@@ -135,6 +135,7 @@ static int64_t compareIndexOf(MasterTable_t*, size_t, bool*);
 ///////////////////////////////////////////////////////////////////////////////
 
 static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone, bool shared) {
+  int res;
   size_t j;
 
   // ..........................................................................
@@ -190,15 +191,24 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone, 
   // document handle
   // ............................................................................
 
-  TRI_InitAssociativeArray(&((*mt)->_tablePosition),
-                           memoryZone,
-                           sizeof(TRI_master_table_position_t),
-                           tablePositionHashKey,
-                           tablePositionHashElement,
-                           tablePositionClearElement,
-                           tablePositionIsEmptyElement,
-                           tablePositionIsEqualKeyElement,
-                           tablePositionIsEqualElementElement);
+  res = TRI_InitAssociativeArray(&((*mt)->_tablePosition),
+                                 memoryZone,
+                                 sizeof(TRI_master_table_position_t),
+                                 tablePositionHashKey,
+                                 tablePositionHashElement,
+                                 tablePositionClearElement,
+                                 tablePositionIsEmptyElement,
+                                 tablePositionIsEqualKeyElement,
+                                 tablePositionIsEqualElementElement);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if ((*mt)->_blocks == NULL) {
+      TRI_Free(memoryZone, (*mt)->_blocks);
+    }
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, *mt);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
 
   // ............................................................................

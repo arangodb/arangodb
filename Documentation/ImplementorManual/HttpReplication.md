@@ -18,12 +18,17 @@ The HTTP replication interface serves four main purposes:
 - fetch the changelog from a server (used for incremental synchronisation of changes)
 - administer the replication applier (starting, stopping, configuring, querying state)
 
+Please note that all replication operations work on a database level. If an 
+ArangoDB server contains more than one database, the replication system must be
+configured individually per database, and replicating the data of multiple
+databases will require multiple operations.
+
 Replication Dump Commands {#HttpReplicationDumpCommands}
 --------------------------------------------------------
 
-The `inventory` method can be used to query an ArangoDB server's current
+The `inventory` method can be used to query an ArangoDB database's current
 set of collections plus their indexes. Clients can use this method to get an 
-overview of which collections are present on the server. They can use this information
+overview of which collections are present in the database. They can use this information
 to either start a full or a partial synchronisation of data, e.g. to initiate a backup
 or the incremental data synchronisation.
 
@@ -42,16 +47,17 @@ parts of the dump results in the same order as they are served to them.
 @anchor HttpReplicationDump
 @copydetails triagens::arango::RestReplicationHandler::handleCommandDump
 
-The `sync` method can be used by replication clients to connect an ArangoDB server 
+The `sync` method can be used by replication clients to connect an ArangoDB database 
 to a remote endpoint, fetch the remote list of collections and indexes, and collection
 data. 
-It will thus create a local backup of the state of data at the remote ArangoDB server.
+It will thus create a local backup of the state of data at the remote ArangoDB database.
+`sync` works on a database level. 
 
 `sync` will first fetch the list of collections and indexes from the remote endpoint.
-It does so by calling the `inventory` API of the remote server. It will then purge
-data on the local ArangoDB instance, and after start will transfer collection data 
-from the remote server to the local ArangoDB instance. It will extract data from the
-remote server by calling the remote's `dump` API until all data are fetched.
+It does so by calling the `inventory` API of the remote database. It will then purge
+data in the local ArangoDB database, and after start will transfer collection data 
+from the remote database to the local ArangoDB database. It will extract data from the
+remote database by calling the remote database's `dump` API until all data are fetched.
 
 As mentioned, `sync` will remove data from the local instance, and thus must be handled
 with caution.
@@ -63,8 +69,8 @@ with caution.
 Replication Logger Commands {#HttpReplicationLoggerCommands}
 ------------------------------------------------------------
 
-The logger commands allow starting, starting, and fetching the current state of 
-the replication logger. 
+The logger commands allow starting, starting, and fetching the current state of a
+database's replication logger. 
 
 @anchor HttpReplicationLoggerGetConfig
 @copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerGetConfig
@@ -85,11 +91,11 @@ the replication logger.
 @anchor HttpReplicationLoggerState
 @copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerState
 
-To query the latest changes logged by the replication logger, the Http interface
+To query the latest changes logged by the replication logger, the HTTP interface
 also provides the `logger-follow`.
 
 This method should be used by replication clients to incrementally fetch updates 
-from an ArangoDB instance.
+from an ArangoDB database.
 
 @anchor HttpReplicationLoggerFollow
 @copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerFollow
@@ -98,7 +104,7 @@ Replication Applier Commands {#HttpReplicationApplierCommands}
 --------------------------------------------------------------
 
 The applier commands allow to remotely start, stop, and query the state and 
-configuration of an ArangoDB server's replication applier.
+configuration of an ArangoDB database's replication applier.
 
 @anchor HttpReplicationApplierGetConfig
 @copydetails triagens::arango::RestReplicationHandler::handleCommandApplierGetConfig

@@ -78,7 +78,8 @@ TRI_pq_index_element_t;
 typedef struct {
   size_t _numElements;
   TRI_pq_index_element_t* _elements; // simple list of elements
-} PQIndexElements;
+} 
+PQIndexElements;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

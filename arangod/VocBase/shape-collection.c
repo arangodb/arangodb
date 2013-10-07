@@ -157,7 +157,7 @@ static int CreateJournal (TRI_shape_collection_t* collection,
   }
 
   // create the header marker
-  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = tick;
   cm._cid  = collection->base._info._cid;
   cm._type = TRI_COL_TYPE_SHAPE;

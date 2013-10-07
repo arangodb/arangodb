@@ -94,9 +94,9 @@ typedef struct TRI_fulltext_stats_s {
   size_t    _memoryNodes;
   size_t    _memoryFollowers;
   size_t    _memoryDocuments;
+  uint32_t  _numNodes;
 #endif
   size_t    _memoryHandles;
-  uint32_t  _numNodes;
   uint32_t  _numDocuments;
   uint32_t  _numDeleted;
   double    _handleDeletionGrade;

@@ -191,7 +191,8 @@ void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent)
 
 #ifdef DEBUG_JSON_SHAPER
 
-static void PrintShapeValues (TRI_shape_value_t* values, size_t n) {
+static void PrintShapeValues (TRI_shape_value_t* values, 
+                              size_t n) {
   TRI_shape_value_t* p;
   TRI_shape_value_t* e;
 
@@ -1225,6 +1226,8 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   }
 
   if (shaper->_memoryZone->_failed) {
+    TRI_FreeJson(shaper->_memoryZone, array);
+
     return NULL;
   }
 
@@ -1305,6 +1308,8 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   }
 
   if (shaper->_memoryZone->_failed) {
+    TRI_FreeJson(shaper->_memoryZone, list);
+
     return NULL;
   }
 
@@ -1370,6 +1375,8 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   }
 
   if (shaper->_memoryZone->_failed) {
+    TRI_FreeJson(shaper->_memoryZone, list);
+
     return NULL;
   }
 
@@ -2679,6 +2686,19 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
 
   return;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a list of TRI_shape_value_t for debugging
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_JSON_SHAPER
+
+void TRI_PrintShapeValues (TRI_shape_value_t* values,
+                           size_t n) {
+  PrintShapeValues(values, n);
+}
+
+#endif
 
 // Local Variables:
 // mode: outline-minor

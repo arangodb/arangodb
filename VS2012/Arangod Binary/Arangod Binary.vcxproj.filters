@@ -264,9 +264,6 @@
     <ClCompile Include="..\..\arangod\VocBase\primary-collection.c">
       <Filter>VocBase Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\arangod\VocBase\shadow-data.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\arangod\VocBase\shape-collection.c">
       <Filter>VocBase Source</Filter>
     </ClCompile>
@@ -339,9 +336,6 @@
     <ClCompile Include="..\..\arangod\GeoIndex\geo-index.c">
       <Filter>GeoIndex Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\arangod\VocBase\server-id.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c">
       <Filter>GeoIndex Source</Filter>
     </ClCompile>
@@ -358,9 +352,6 @@
       <Filter>RestHandler Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\RestServer\VocbaseContext.cpp">
-      <Filter>RestServer Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestServer\VocbaseManager.cpp">
       <Filter>RestServer Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\Utils\DocumentHelper.cpp">
@@ -395,6 +386,12 @@
     </ClCompile>
     <ClCompile Include="..\..\arangod\Replication\Syncer.cpp">
       <Filter>Replication Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\server.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\vocbase-defaults.c">
+      <Filter>VocBase Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -560,9 +557,6 @@
     <ClInclude Include="..\..\arangod\VocBase\primary-collection.h">
       <Filter>VocBase Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\VocBase\shadow-data.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\VocBase\shape-collection.h">
       <Filter>VocBase Header</Filter>
     </ClInclude>
@@ -665,9 +659,6 @@
     <ClInclude Include="..\..\arangod\GeoIndex\geo-index.h">
       <Filter>GeoIndex Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\VocBase\server-id.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h">
       <Filter>GeoIndex Header</Filter>
     </ClInclude>
@@ -684,9 +675,6 @@
       <Filter>RestHandler Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\RestServer\VocbaseContext.h">
-      <Filter>RestServer Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\RestServer\VocbaseManager.h">
       <Filter>RestServer Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\VocBase\replication-applier.h">
@@ -718,6 +706,12 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\Replication\Syncer.h">
       <Filter>Replication Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\server.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\vocbase-defaults.h">
+      <Filter>VocBase Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

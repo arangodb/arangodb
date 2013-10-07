@@ -232,7 +232,7 @@ static bool CanAvoidSort (TRI_aql_statement_walker_t* const walker,
   bool result;
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope);
+  assert(scope != NULL);
 
   if (scope->_type == TRI_AQL_SCOPE_MAIN) {
     // will not optimise main scope
@@ -295,6 +295,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   }
 
   collection = TRI_GetCollectionAql(context, collectionName);
+
   if (collection == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
@@ -431,7 +432,7 @@ static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
     hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-    assert(scope);
+    assert(scope != NULL);
 
     // check if an index is to be used
     if (hint != NULL) {
@@ -471,7 +472,7 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     TRI_aql_scope_t* scope;
 
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-    assert(scope);
+    assert(scope != NULL);
 
     // check if we can apply a scope limit and push it into the for loop
     if (scope->_limit._status == TRI_AQL_LIMIT_USE) {
@@ -525,7 +526,7 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     // we must now free the sort criteria we collected for the scope
     // otherwise we would get potentially invalid SORT results
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-    assert(scope);
+    assert(scope != NULL);
 
     while (scope->_sorts._length > 0) {
       char* criterion = TRI_RemoveVectorPointer(&scope->_sorts, (size_t) (scope->_sorts._length - 1));
@@ -546,9 +547,15 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
 static TRI_string_buffer_t* RelationCode (const char* const name,
                                           const TRI_aql_node_t* const lhs,
                                           const TRI_aql_node_t* const rhs) {
-  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  TRI_string_buffer_t* buffer;
 
-  if (! lhs || ! rhs) {
+  if (lhs == NULL || rhs == NULL) {
+    return NULL;
+  }
+
+  buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+
+  if (buffer == NULL) {
     return NULL;
   }
 
@@ -798,7 +805,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
   assert(node);
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope);
+  assert(scope != NULL);
 
   limit = TRI_AQL_NODE_MEMBER(node, 1);
 
@@ -920,7 +927,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
 
   // in case we got here, the filter was not optimised away completely
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope);
+  assert(scope != NULL);
 
   // mark in the scope that we found a filter
   scope->_limit._hasFilter = true;
@@ -1170,7 +1177,8 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   }
 
   code = RelationCode(func, lhs, rhs);
-  if (! code) {
+
+  if (code == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
@@ -1580,6 +1588,8 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
   }
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+  assert(scope != NULL);
+
   if (scope->_type != TRI_AQL_SCOPE_MAIN) {
     // will not optimise limit in main scope, e.g. "LIMIT 5, 0 RETURN 1"
     TRI_SetCurrentLimitStatementWalkerAql(walker, offsetValue, limitValue);

@@ -87,8 +87,8 @@ EndpointList::~EndpointList () {
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::add (const string& specification, 
-                        const vector<string>& dbNames,
+bool EndpointList::add (const std::string& specification, 
+                        const std::vector<std::string>& dbNames,
                         int backLogSize,
                         Endpoint** dst) {
   const string key = Endpoint::getUnifiedForm(specification);
@@ -102,7 +102,9 @@ bool EndpointList::add (const string& specification,
   if (it != _endpoints.end()) {
     // already in list, just update
    (*it).second.second = dbNames;
-   *dst = 0;
+   if (dst != 0) {
+     *dst = 0;
+   }
     return true;
   }
 
@@ -125,7 +127,7 @@ bool EndpointList::add (const string& specification,
 /// @brief remove a specific endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::remove (const string& specification,
+bool EndpointList::remove (const std::string& specification,
                            Endpoint** dst) {
   const string key = Endpoint::getUnifiedForm(specification);
   
@@ -155,7 +157,7 @@ bool EndpointList::remove (const string& specification,
 /// @brief return all databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> EndpointList::getMapping (const string& endpoint) const {
+std::vector<std::string> EndpointList::getMapping (const std::string& endpoint) const {
   vector<string> result;
 
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.find(endpoint);

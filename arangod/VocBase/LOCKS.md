@@ -71,6 +71,20 @@ primaryCollection->_lock
 Note: this is the same lock as DATAFILES_DOC_COLLECTION
 TODO
 
+INVENTORY LOCK (R/W)
+====================
+
+This lock must be acquired in shared-read mode when collection meta 
+information (collection name) changes, the collection is dropped, or
+a new collection is created. It must also be held if index meta 
+information changes (indexes added or dropped).
+
+It will be acquired in write-mode to get a consistent overview of all
+objects in a database (collections and their indexes).
+
+vocbase->_inventoryLock
+
+
 COMPACTION LOCK (R/W)
 =====================
 

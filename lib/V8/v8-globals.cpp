@@ -104,11 +104,6 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _RevKey(),
     _ToKey(),
 
-    DocumentIdRegex(),
-    DocumentKeyRegex(),
-    IdRegex(),
-    IndexIdRegex(),
-
     _currentTransaction(0),
     _server(0),
     _vocbase(0),
@@ -179,10 +174,6 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_v8_global_s::~TRI_v8_global_s () {
-  regfree(&DocumentIdRegex);
-  regfree(&DocumentKeyRegex);
-  regfree(&IndexIdRegex);
-  regfree(&IdRegex);
 }
 
 // -----------------------------------------------------------------------------

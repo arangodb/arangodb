@@ -391,9 +391,11 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, string co
   else {
     char const* v = StringUtils::duplicate(value);
 
-    _headers.insert(key, keyLength, v);
+    if (v != 0) {
+      _headers.insert(key, keyLength, v);
 
-    _freeables.push_back(v);
+      _freeables.push_back(v);
+    }
   }
 }
 

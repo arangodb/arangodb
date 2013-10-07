@@ -35,6 +35,7 @@
 #include "Basics/ssl-helper.h"
 #include "Logger/Logger.h"
 
+#include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/GeneralHttpServer.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
@@ -66,12 +67,13 @@ namespace triagens {
 
         HttpsServer (Scheduler* scheduler,
                      Dispatcher* dispatcher,
+                     AsyncJobManager* jobManager,
                      double keepAliveTimeout,
                      HttpHandlerFactory* handlerFactory,
                      SSL_CTX* ctx)
         : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, keepAliveTimeout),
           GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory, ctx),
-          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory) {
+          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, jobManager, keepAliveTimeout, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

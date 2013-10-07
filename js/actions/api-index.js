@@ -208,7 +208,7 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a cap constraint (@ref IndexCapIntro) for the collection `collection-name`,
+/// Creates a cap constraint for the collection `collection-name`,
 /// if it does not already exist. Expects an object containing the index details.
 ///
 /// - `type`: must be equal to `"cap"`.
@@ -877,8 +877,8 @@ function post_api_index_bitarray (req, res, collection, body) {
 /// other attributes may need to specified in the request in order to create
 /// the index.
 ///
-/// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, 
-/// @ref IndexFulltextHttp, and @ref IndexSkiplistHttp for details. 
+/// See @ref HttpIndexCap, @ref HttpIndexGeo, @ref HttpIndexHash, 
+/// @ref HttpIndexFulltext, and @ref HttpIndexSkiplist for details. 
 /// 
 /// Most indexes (a notable exception being the cap constraint) require the
 /// list of attributes to be indexed in the `fields` attribute of the index

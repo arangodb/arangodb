@@ -611,18 +611,18 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
     // got a body, copy it into the result
     if (_httpResult->getBody().str().length() > 0) {
-      v8::Handle<v8::String> body = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
+      v8::Handle<v8::String> b = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
 
-      result->Set(v8::String::New("body"), body);
+      result->Set(v8::String::New("body"), b);
     }
 
     // copy all headers
     v8::Handle<v8::Object> headers = v8::Object::New();
-    const map<string, string>& headerFields = _httpResult->getHeaderFields();
+    const map<string, string>& hf = _httpResult->getHeaderFields();
 
-    for (map<string, string>::const_iterator i = headerFields.begin();  i != headerFields.end();  ++i) {
-      v8::Handle<v8::String> key = v8::String::New(i->first.c_str());
-      v8::Handle<v8::String> val = v8::String::New(i->second.c_str());
+    for (map<string, string>::const_iterator i = hf.begin();  i != hf.end();  ++i) {
+      v8::Handle<v8::String> key = v8::String::New(i->first.c_str(), i->first.size());
+      v8::Handle<v8::String> val = v8::String::New(i->second.c_str(), i->second.size());
 
       headers->Set(key, val);
     }

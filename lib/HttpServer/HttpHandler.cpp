@@ -91,6 +91,16 @@ HttpResponse* HttpHandler::getResponse () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the response
+////////////////////////////////////////////////////////////////////////////////
+
+HttpResponse* HttpHandler::stealResponse () {
+  HttpResponse* tmp = _response;
+  _response = 0;
+  return tmp;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,17 +117,18 @@ HttpResponse* HttpHandler::getResponse () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job* HttpHandler::createJob (AsyncJobServer* server) {
+Job* HttpHandler::createJob (AsyncJobServer* server,
+                             bool isDetached) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
   // check if we are an HTTP server at all
   if (httpServer != 0) {
-    return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
+    return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this, isDetached);
   }
 
   // check if we are an HTTPs server at all
   HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
   if (httpsServer != 0) {
-    return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this);
+    return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this, isDetached);
   }
 
   LOGGER_WARNING("cannot convert AsyncJobServer into a HttpServer");

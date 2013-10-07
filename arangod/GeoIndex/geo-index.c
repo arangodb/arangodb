@@ -249,18 +249,19 @@ static const char* TypeNameGeo1Index (TRI_index_t const* idx) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo1Index (TRI_index_t* idx,
-                                  TRI_primary_collection_t const* collection) {
+static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
+  TRI_primary_collection_t* primary;
   TRI_shape_path_t const* path;
   char const* location;
   TRI_geo_index_t* geo;
 
   geo = (TRI_geo_index_t*) idx;
+  primary = idx->_collection;
 
   // convert location to string
-  path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, geo->_location);
+  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_location);
 
   if (path == 0) {
     return NULL;
@@ -300,19 +301,20 @@ static const char* TypeNameGeo2Index (TRI_index_t const* idx) {
 /// @brief JSON description of a geo index, two attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
-                                  TRI_primary_collection_t const* collection) {
+static TRI_json_t* JsonGeo2Index (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
+  TRI_primary_collection_t* primary;
   TRI_shape_path_t const* path;
   char const* latitude;
   char const* longitude;
   TRI_geo_index_t* geo;
 
   geo = (TRI_geo_index_t*) idx;
+  primary = idx->_collection;
 
   // convert latitude to string
-  path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, geo->_latitude);
+  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_latitude);
 
   if (path == 0) {
     return NULL;
@@ -321,7 +323,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
   latitude = TRI_NAME_SHAPE_PATH(path);
 
   // convert longitude to string
-  path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, geo->_longitude);
+  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_longitude);
 
   if (path == 0) {
     return NULL;

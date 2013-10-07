@@ -132,6 +132,13 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_endpoint));
   }
   
+  if (config->_database != NULL) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                         json, 
+                         "database", 
+                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_database));
+  }
+  
   if (config->_username != NULL) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
                          json, 
@@ -195,7 +202,6 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   TRI_json_t* value;
   char* filename;
-  char* error;
   int res;
    
   TRI_DestroyConfigurationReplicationApplier(config);
@@ -208,15 +214,10 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     return TRI_ERROR_FILE_NOT_FOUND;
   }
   
-  error = NULL;
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
-  
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
-    if (error != NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
-    }
+  if (! TRI_IsArrayJson(json)) {
     if (json != NULL) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
@@ -229,6 +230,10 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   if (config->_endpoint != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
     config->_endpoint = NULL;
+  }
+  if (config->_database != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_database);
+    config->_database = NULL;
   }
   if (config->_username != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_username);
@@ -247,6 +252,19 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   }
   else {
     config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+                                              value->_value._string.data, 
+                                              value->_value._string.length - 1);
+  }
+  
+  // read the database name
+  value = TRI_LookupArrayJson(json, "database");
+
+  if (! TRI_IsStringJson(value)) {
+    config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, 
+                                             vocbase->_name); 
+  }
+  else {
+    config->_database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
                                               value->_value._string.data, 
                                               value->_value._string.length - 1);
   }
@@ -419,6 +437,10 @@ static int StartApplier (TRI_replication_applier_t* applier,
 
   if (applier->_configuration._endpoint == NULL) {
     return SetError(applier, TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+  }
+  
+  if (applier->_configuration._database == NULL) {
+    return SetError(applier, TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
   }
   
   fetcher = (void*) TRI_CreateContinuousSyncerReplication(applier->_vocbase, 
@@ -802,6 +824,11 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
     // no endpoint
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
+  
+  if (config->_database == NULL || strlen(config->_database) == 0) {
+    // no database
+    return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
+  }
 
   TRI_WriteLockReadWriteLock(&applier->_statusLock);
 
@@ -915,6 +942,10 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
 
   if (config._endpoint != NULL) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint));
+  }
+  
+  if (config._database != NULL) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "database", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._database));
   }
 
   TRI_DestroyConfigurationReplicationApplier(&config);
@@ -1069,7 +1100,6 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   TRI_json_t* serverId;
   char* filename;
-  char* error;
   int res;
   
   TRI_InitStateReplicationApplier(state);
@@ -1089,14 +1119,10 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   
   LOG_TRACE("replication state file '%s' found", filename);
 
-  error = NULL;
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
-    if (error != NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
-    }
+  if (! TRI_IsArrayJson(json)) {
     if (json != NULL) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
@@ -1140,6 +1166,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   memset(config, 0, sizeof(TRI_replication_applier_configuration_t));
 
   config->_endpoint          = NULL;
+  config->_database          = NULL;
   config->_username          = NULL;
   config->_password          = NULL;
   config->_requestTimeout    = 300.0;
@@ -1158,6 +1185,11 @@ void TRI_DestroyConfigurationReplicationApplier (TRI_replication_applier_configu
   if (config->_endpoint != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
     config->_endpoint = NULL;
+  }
+  
+  if (config->_database != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_database);
+    config->_database = NULL;
   }
   
   if (config->_username != NULL) {
@@ -1182,6 +1214,13 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   }
   else {
     dst->_endpoint = NULL;
+  }
+  
+  if (src->_database != NULL) {
+    dst->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_database);
+  }
+  else {
+    dst->_database = NULL;
   }
 
   if (src->_username != NULL) {

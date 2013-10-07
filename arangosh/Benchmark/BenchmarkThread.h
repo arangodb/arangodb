@@ -82,7 +82,8 @@ namespace triagens {
                          const string& password,
                          double requestTimeout,
                          double connectTimeout,
-                         bool keepAlive)
+                         bool keepAlive,
+                         bool async)
           : Thread("arangob"),
             _operation(operation),
             _startCondition(condition),
@@ -99,6 +100,7 @@ namespace triagens {
             _requestTimeout(requestTimeout),
             _connectTimeout(connectTimeout),
             _keepAlive(keepAlive),
+            _async(async),
             _client(0),
             _connection(0),
             _offset(0),
@@ -177,16 +179,15 @@ namespace triagens {
 
           delete result;
 
-          if (! _keepAlive) {
-            _client->close();
-          }
-
-
           // if we're the first thread, set up the test
           if (_threadNumber == 0) {
             if (! _operation->setUp(_client)) {
               LOGGER_FATAL_AND_EXIT("could not set up the test");
             }
+          }
+
+          if (_async) {
+            _headers["x-arango-async"] = "true";
           }
 
           _callback();
@@ -209,10 +210,6 @@ namespace triagens {
             }
             else {
               executeBatchRequest(numOps);
-            }
-
-            if (! _keepAlive) {
-              _client->close();
             }
           }
         }
@@ -247,10 +244,10 @@ namespace triagens {
           }
 
           if (location[0] == '/') {
-            return "/_db/" + t->_databaseName + location;
+            return string("/_db/" + t->_databaseName + location);
           }
           else {
-            return "/_db/" + t->_databaseName + "/" + location;
+            return string("/_db/" + t->_databaseName + "/" + location);
           }
         }
 
@@ -527,6 +524,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _keepAlive;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send async requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _async;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief underlying client

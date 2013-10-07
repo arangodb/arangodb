@@ -146,6 +146,9 @@ var internal = require("internal");
 /// The server will respond with `HTTP 404` in case a non-existing collection is
 /// accessed in the query.
 ///
+/// @RESTRETURNCODE{405}
+/// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
+///
 /// @EXAMPLES
 ///
 /// Executes a query and extract the result in a single go:
@@ -325,8 +328,11 @@ function post_api_cursor(req, res) {
 /// @RESTRETURNCODE{200}
 /// The server will respond with `HTTP 200` in case of success. 
 ///
+/// @RESTRETURNCODE{400}
+/// If the cursor identifier is ommitted, the server will respond with `HTTP 404`.
+///
 /// @RESTRETURNCODE{404}
-/// If the cursor identifier is ommitted or somehow invalid, the server will respond
+/// If no cursor with the specified identifier can be found, the server will respond
 /// with `HTTP 404`.
 ///
 /// @EXAMPLES
@@ -380,7 +386,7 @@ function post_api_cursor(req, res) {
 /// 
 ///     var response = logCurlRequest('PUT', url, '');
 /// 
-///     assert(response.code === 400);
+///     assert(response.code === 404);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN

@@ -704,6 +704,7 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
       }
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+        _errorMessage = "error parsing option '" + name + "'";
         return false;
       }
     }

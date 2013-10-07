@@ -95,23 +95,24 @@ function checkManifest (filename, mf) {
 
   // the following attributes are allowed with these types...
   var expected = {
-    "assets":       [ false, "object" ],
-    "author":       [ false, "string" ],
-    "contributors": [ false, "array" ],
-    "controllers":  [ true, "object" ],
-    "description":  [ true, "string" ],
-    "engines":      [ false, "object" ],
-    "files":        [ false, "object" ],
-    "keywords":     [ false, "array" ],
-    "isSystem":     [ false, "boolean" ],
-    "lib":          [ false, "string" ],
-    "license":      [ false, "string" ],
-    "name":         [ true, "string" ],
-    "repository":   [ false, "object" ],
-    "setup":        [ false, "string" ],
-    "teardown":     [ false, "string" ],
-    "thumbnail":    [ false, "string" ],
-    "version":      [ true, "string" ]
+    "assets":             [ false, "object" ],
+    "author":             [ false, "string" ],
+    "contributors":       [ false, "array" ],
+    "controllers":        [ true, "object" ],
+    "defaultDocument":    [ false, "string" ],
+    "description":        [ true, "string" ],
+    "engines":            [ false, "object" ],
+    "files":              [ false, "object" ],
+    "keywords":           [ false, "array" ],
+    "isSystem":           [ false, "boolean" ],
+    "lib":                [ false, "string" ],
+    "license":            [ false, "string" ],
+    "name":               [ true, "string" ],
+    "repository":         [ false, "object" ],
+    "setup":              [ false, "string" ],
+    "teardown":           [ false, "string" ],
+    "thumbnail":          [ false, "string" ],
+    "version":            [ true, "string" ]
   };
 
   var att, failed = false;
@@ -353,9 +354,31 @@ function installAssets (app, routes) {
 
         if (asset.hasOwnProperty('files')) {
           var content = buildAssetContent(app, asset.files, basePath);
+          var type;
 
           normalized = arangodb.normalizeURL("/" + path);
-          var type = arangodb.guessContentType(normalized);
+
+          // content-type detection
+          // ----------------------
+
+          if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
+            // contentType explicitly specified for asset
+            type = asset.contentType;
+          }
+          else if (normalized.match(/\.[a-zA-Z0-9]+$/)) {
+            // path contains a dot
+            // derive content type from path 
+            type = arangodb.guessContentType(normalized);
+          }
+          else if (asset.files.length > 0) {
+            // path does not contain a dot
+            // derive content type from included asset names
+            type = arangodb.guessContentType(asset.files[0]);
+          }
+          else {
+            // use built-in defaulti content-type
+            type = arangodb.guessContentType("");
+          }
 
           route = {
             url: { match: normalized },
@@ -406,7 +429,10 @@ function executeAppScript (app, name, mount, prefix) {
   var root;
   var devel = false;
 
-  if (app._id.substr(0,4) === "app:") {
+  if (app._manifest.isSystem) {
+    root = module.systemAppPath();
+  }
+  else if (app._id.substr(0,4) === "app:") {
     root = module.appPath();
   }
   else if (app._id.substr(0,4) === "dev:") {
@@ -608,16 +634,19 @@ function routingAalApp (app, mount, options) {
       p = mount + "/";
     }
 
-    routes.routes.push({
-      "url" : { match: "/" },
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : true,
-          "destination" : p + defaultDocument 
+    if ((p + defaultDocument) !== p) {
+      // only add redirection if src and target are not the same
+      routes.routes.push({
+        "url" : { match: "/" },
+        "action" : {
+          "do" : "org/arangodb/actions/redirectRequest",
+          "options" : {
+            "permanently" : (app._id.substr(0,4) !== 'dev'),
+            "destination" : p + defaultDocument 
+          }
         }
-      }
-    });
+      });
+    }
 
     // mount all applications
     var controllers = app._manifest.controllers;
@@ -628,7 +657,10 @@ function routingAalApp (app, mount, options) {
         var devel = false;
         var root;
 
-        if (app._id.substr(0,4) === "dev:") {
+        if (app._manifest.isSystem) {
+          root = module.systemAppPath();
+        }
+        else if (app._id.substr(0,4) === "dev:") {
           devel = true;
           root = module.devAppPath();
         }
@@ -717,23 +749,12 @@ function routingAalApp (app, mount, options) {
   return null;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scans fetched FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.scanAppDirectory = function () {
-  'use strict';
-
+function scanDirectory (path) {
   var j;
-
-  var path = module.appPath();
-  var aal = getStorage();
-
-  aal.removeByExample({ type: "app" });
 
   if (typeof path === "undefined") {
     return;
@@ -744,13 +765,14 @@ exports.scanAppDirectory = function () {
   // note: files do not have a determinstic order, but it doesn't matter here
   // as we're treating individual Foxx apps and their order is irrelevant
 
+
   for (j = 0;  j < files.length;  ++j) {
     var m = fs.join(path, files[j], "manifest.json");
 
     if (fs.exists(m)) {
       try {
         var thumbnail;
-        
+
         thumbnail = undefined;
         var mf = JSON.parse(fs.read(m));
 
@@ -763,7 +785,9 @@ exports.scanAppDirectory = function () {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.error("Cannot read thumbnail: %s", String(err2.stack || err2));
+            console.error("Cannot read thumbnail referenced by manifest '%s': %s", 
+                          m, 
+                          String(err2.stack || err2));
           }
         }
 
@@ -774,6 +798,28 @@ exports.scanAppDirectory = function () {
       }
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scans fetched FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.scanAppDirectory = function () {
+  'use strict';
+  
+  var aal = getStorage();
+
+  // remove all loaded apps first
+  aal.removeByExample({ type: "app" });
+
+  // now re-scan, starting with system apps
+  scanDirectory(module.systemAppPath()); 
+  // now scan database-specific apps
+  scanDirectory(module.appPath()); 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -799,8 +845,6 @@ exports.mount = function (appId, mount, options) {
     [ [ "Application identifier", "string" ],
       [ "Mount path", "string" ] ],
     [ appId, mount ] );
-
-  var aal = getStorage();
 
   // .............................................................................
   // locate the application
@@ -829,6 +873,7 @@ exports.mount = function (appId, mount, options) {
   }
   catch (err) {
     if (doc !== undefined) {
+      var aal = getStorage();
       var desc = aal.document(doc._key)._shallowCopy;
 
       desc.error = String(err);
@@ -975,6 +1020,7 @@ exports.purge = function (key) {
     throw new Error("Cannot find application '" + key + "'");
   }
 
+  // system apps cannot be removed
   if (doc.isSystem) {
     throw new Error("Cannot purge system application");
   }
@@ -997,6 +1043,7 @@ exports.purge = function (key) {
 
   executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
+  // we can be sure this is a database-specific app and no system app
   var path = fs.join(module.appPath(), doc.path);
   fs.removeDirectoryRecursive(path, true);
 
@@ -1166,6 +1213,8 @@ exports.developmentRoutes = function () {
     if (fs.exists(m)) {
       try {
         var mf = JSON.parse(fs.read(m));
+      
+        checkManifest(m, mf);
 
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];

@@ -400,7 +400,7 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
     tempResult._elements[j] = *element;
     ok = idx->_pq->remove(idx->_pq, element->pqSlot, false);
 
-    if (!ok) {
+    if (! ok) {
       break;
     }
 

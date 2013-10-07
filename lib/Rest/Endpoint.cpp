@@ -133,11 +133,20 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
     // invalid type
     return "";
   }
+  
+  size_t found;
+  /*
+  // turn "localhost" into "127.0.0.1"
+  // technically this is not always correct, but circumvents obvious problems
+  // when the configuration contains both "127.0.0.1" and "localhost" endpoints
+  found = copy.find("localhost");
+  if (found != string::npos && found >= 6 && found < 10) {
+    copy = copy.replace(found, strlen("localhost"), "127.0.0.1");
+  }
+  */
 
   // tcp/ip or ssl
-  size_t found;
   string temp = copy.substr(6, copy.length()); // strip tcp:// or ssl://
-
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
@@ -304,7 +313,7 @@ const std::string Endpoint::getDefaultEndpoint () {
 /// @brief set socket timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
+bool Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   struct timeval tv;
 
   // shut up Valgrind
@@ -313,8 +322,15 @@ void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
 
   // conversion to (const char*) ensures windows does not complain
-  setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv));
-  setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
+  if (setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
+    return false;
+  }
+
+  if (setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +131,7 @@ extend(Controller.prototype, {
     } else {
       cname = prefix + "_" + name;
     }
+    cname = cname.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
 
     collection = db._collection(cname);
 
@@ -155,7 +156,7 @@ extend(Controller.prototype, {
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback),
-      requestContext = new RequestContext(this.allRoutes, newRoute),
+      requestContext = new RequestContext(this.allRoutes, this.models, newRoute),
       summary;
 
     this.routingInfo.routes.push(newRoute);

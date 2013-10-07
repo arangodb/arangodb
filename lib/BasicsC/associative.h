@@ -310,31 +310,47 @@ uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t*,
 /// @brief General function to determine equality of two string values
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t*, void const*, void const*);
+bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t*, 
+                                           void const*, 
+                                           void const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reserves space in the array for extra elements
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReserveAssociativePointer (TRI_associative_pointer_t*,
+                                    int32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t*, void const* key);
+void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t*, 
+                                         void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t*, void const* element);
+void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t*, 
+                                             void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t*, void* element, bool overwrite);
+void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t*, 
+                                           void* element, 
+                                           bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t*, void const* key, void* element, bool overwrite);
+void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t*, 
+                                       void const* key, 
+                                       void* element, 
+                                       bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
@@ -350,13 +366,15 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t*,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t*, void const* element);
+void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t*, 
+                                           void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*, void const* key);
+void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*, 
+                                       void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of elements from the array

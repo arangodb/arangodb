@@ -214,11 +214,11 @@ function graph_by_request (req) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the graph was created sucessfully and `waitForSync` was
+/// is returned if the graph was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the graph was created sucessfully and `waitForSync` was
+/// is returned if the graph was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -524,11 +524,11 @@ function delete_graph_graph (req, res) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the graph was created sucessfully and `waitForSync` was
+/// is returned if the graph was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the graph was created sucessfully and `waitForSync` was
+/// is returned if the graph was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @EXAMPLES
@@ -870,11 +870,11 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the vertex was updated sucessfully and `waitForSync` was
+/// is returned if the vertex was updated successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the vertex was updated sucessfully and `waitForSync` was
+/// is returned if the vertex was updated successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}
@@ -956,11 +956,11 @@ function put_graph_vertex (req, res, g) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the vertex was updated sucessfully and `waitForSync` was
+/// is returned if the vertex was updated successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the vertex was updated sucessfully and `waitForSync` was
+/// is returned if the vertex was updated successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}
@@ -1386,11 +1386,11 @@ function post_graph_vertex_vertices (req, res, g) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the edge was created sucessfully and `waitForSync` was
+/// is returned if the edge was created successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge was created sucessfully and `waitForSync` was
+/// is returned if the edge was created successfully and `waitForSync` was
 /// `false`.
 ///
 /// @EXAMPLES
@@ -1576,11 +1576,11 @@ function get_graph_edge (req, res, g) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// is returned if the edge was deletd sucessfully and `waitForSync` was
+/// is returned if the edge was deletd successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge was deleted sucessfully and `waitForSync` was
+/// is returned if the edge was deleted successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}
@@ -1747,11 +1747,11 @@ function update_graph_edge (req, res, g, isPatch) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the edge was updated sucessfully and `waitForSync` was
+/// is returned if the edge was updated successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge was updated sucessfully and `waitForSync` was
+/// is returned if the edge was updated successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}
@@ -1835,11 +1835,11 @@ function put_graph_edge (req, res, g) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{201}
-/// is returned if the edge was updated sucessfully and `waitForSync` was
+/// is returned if the edge was updated successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge was updated sucessfully and `waitForSync` was
+/// is returned if the edge was updated successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{404}

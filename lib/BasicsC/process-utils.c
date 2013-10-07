@@ -344,7 +344,7 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
   snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
   fd = open(fn, O_RDONLY);
 
-  if (fd > 0) {
+  if (fd >= 0) {
     char str[1024];
     process_state_t st;
     size_t n;

@@ -66,6 +66,7 @@ struct TRI_vocbase_s;
 
 typedef struct TRI_replication_applier_configuration_s {
   char*         _endpoint;
+  char*         _database;
   char*         _username;
   char*         _password;
   double        _requestTimeout;
