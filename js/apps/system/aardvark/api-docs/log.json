@@ -1,0 +1,76 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if invalid values are specified for <em>upto</em> or <em>level</em>, or if  the method is called in a database other than <em>_system</em>. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "upto",
+                            "description": "Returns all log entries up to log level <em>upto</em>. Note that <em>upto</em> must be: - <em>fatal</em> or <em>0</em> "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "level",
+                            "description": "Returns all log entries of log level <em>level</em>. Note that the URL parameters <em>upto</em> and <em>level</em> are mutually exclusive. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "start",
+                            "description": "Returns all log entries such that their log entry identifier (<em>lid</em> value)  is greater or equal to <em>start</em>. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "size",
+                            "description": "Restricts the result to at most <em>size</em> log entries. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "offset",
+                            "description": "Starts to return log entries skipping the first <em>offset</em> log entries. <em>offset</em> and <em>size</em> can be used for pagination. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "search",
+                            "description": "Only return the log entries containing the text specified in <em>search</em>. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "sort",
+                            "description": "Sort the log entries either ascending (if <em>sort</em> is <em>asc</em>) or descending  (if <em>sort</em> is <em>desc</em>) according to their <em>lid</em> values. Note that the <em>lid</em> imposes a chronological order. The default value is <em>asc</em>. "
+                        }
+                    ],
+                    "notes": "Returns fatal, error, warning or info log messages from the server's global log. The result is a JSON object with the following attributes: <br><br>- <em>lid</em>: a list of log entry identifiers. Each log message is uniquely  identified by its <b>lid</b> and the identifiers are in ascending   order. <br><br>- <em>level</em>: a list of the log-levels for all log entries.<br><br>- <em>timestamp</em>: a list of the timestamps as seconds since 1970-01-01 for all log  entries. <br><br>- <em>text</em> a list of the texts of all log entries<br><br>- <em>totalAmount</em>: the total amount of log entries before pagination.<br><br>",
+                    "summary": "reads the global log from the server",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "readsTheGlobalLogFromTheServer"
+                }
+            ],
+            "path": "/_api/log"
+        }
+    ]
+}

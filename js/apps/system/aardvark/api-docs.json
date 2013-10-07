@@ -55,6 +55,10 @@
             "description": "job API"
         }, 
         {
+            "path": "api-docs/log.{format}", 
+            "description": "log API"
+        }, 
+        {
             "path": "api-docs/query.{format}", 
             "description": "query API"
         }, 
