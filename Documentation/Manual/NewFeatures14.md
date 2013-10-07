@@ -17,11 +17,18 @@ Foxx {#NewFeatures14Foxx}
 
 ### Foxx Improvements
 
-TODO
+Foxx has now left the feature preview state and is now a full feature. It is not backwards
+compatible with the feature preview. Please check the Foxx documentation for details.
+Some of the most important pitfalls when upgrading:
 
-### Standard Authentication
+* `Foxx.Application` is now `Foxx.Controller`
+* In your manifest file: `apps` should now be `controllers`
 
-TODO
+*All future changes will be handled with deprecations beforehand.*
+
+There are a lot of new features including JSDoc Style annotations, an authentication module,
+enhanced standard Repository, new route annotations and a possibility to annotate all routes
+of a controller at once.
 
 ### Foxx Manager
 
