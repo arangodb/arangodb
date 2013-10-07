@@ -1,6 +1,10 @@
 v1.4
 ----
 
+* calling `/_api/logs` (or `/_admin/logs`) is only permitted from the `_system` database now.
+  
+  Calling this API method for/from other database will result in an HTTP 400.
+
 ' ported fix from https://github.com/novus/nvd3/commit/0894152def263b8dee60192f75f66700cea532cc
   
   This prevents JavaScript errors from occurring in Chrome when in the admin interface, 

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, arangoHelper, window*/
+/*global Backbone, EJS, $, arangoHelper, window*/
 
 var footerView = Backbone.View.extend({
   el: '.footer',
@@ -56,7 +56,18 @@ var footerView = Backbone.View.extend({
         processData: false,
         async: true,
         success: function(data) {
-          self.system.database = data.result.name;
+          var name = data.result.name;
+          self.system.database = name;
+          $('#databaseName').html(name);
+          if (name === '_system') {
+            // show "logs" button
+            $('.logs-menu').css('visibility', 'visible');
+          }
+          else {
+            // hide "logs" button
+            $('.logs-menu').css('visibility', 'hidden');
+            $('.logs-menu').css('display', 'none');
+          }
         }
       });
     }

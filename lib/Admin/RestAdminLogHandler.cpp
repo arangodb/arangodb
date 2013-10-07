@@ -112,65 +112,76 @@ bool RestAdminLogHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the log files (inheritDoc)
 ///
-/// @RESTHEADER{GET /_admin/log,reads the log information}
+/// @RESTHEADER{GET /_api/log,reads the global log from the server}
 ///
-/// @REST{GET /_admin/log}
+/// @RESTURLPARAMETERS
 ///
-/// Returns all fatal, error, warning or info log messages.
+/// @RESTURLPARAM{upto,string,optional}
+/// Returns all log entries up to log level `upto`. Note that `upto` must be:
+/// - `fatal` or `0`
+/// - `error` or `1`
+/// - `warning` or `2`
+/// - `info` or `3`
+/// - `debug`  or `4`
+/// The default value is `info`.
 ///
-/// The returned object contains the attributes:
+/// @RESTURLPARAM{level,string,optional}
+/// Returns all log entries of log level `level`. Note that the URL parameters
+/// `upto` and `level` are mutually exclusive.
 ///
-/// - @LIT{lid}: a list of log-entry identifiers. Each log message is uniquely
+/// @RESTURLPARAM{start,number,optional}
+/// Returns all log entries such that their log entry identifier (`lid` value) 
+/// is greater or equal to `start`.
+///
+/// @RESTURLPARAM{size,number,optional}
+/// Restricts the result to at most `size` log entries.
+///
+/// @RESTURLPARAM{offset,number,optional}
+/// Starts to return log entries skipping the first `offset` log entries. `offset`
+/// and `size` can be used for pagination.
+///
+/// @RESTURLPARAM{search,string,optional}
+/// Only return the log entries containing the text specified in `search`.
+///
+/// @RESTURLPARAM{sort,string,optional}
+/// Sort the log entries either ascending (if `sort` is `asc`) or descending 
+/// (if `sort` is `desc`) according to their `lid` values. Note that the `lid`
+/// imposes a chronological order. The default value is `asc`.
+///
+/// @RESTDESCRIPTION
+/// Returns fatal, error, warning or info log messages from the server's global log.
+/// The result is a JSON object with the following attributes:
+///
+/// - `lid`: a list of log entry identifiers. Each log message is uniquely
 ///   identified by its @LIT{lid} and the identifiers are in ascending
 ///   order.
 ///
-/// - @LIT{level}: a list of the log-level of the log-entry.
+/// - `level`: a list of the log-levels for all log entries.
 ///
-/// - @LIT{timestamp}: a list of the timestamp as seconds since
-///   1970-01-01 of the log-entry.
+/// - `timestamp`: a list of the timestamps as seconds since 1970-01-01 for all log
+///   entries.
 ///
-/// - @LIT{text}: a list of the text of the log-entry.
+/// - `text` a list of the texts of all log entries
 ///
-/// - @LIT{totalAmount}: the total amount of log entries before pagination.
+/// - `totalAmount`: the total amount of log entries before pagination.
 ///
-/// @REST{GET /_admin/log?upto=@FA{log-level}}
+/// @RESTRETURNCODES
 ///
-/// Returns all log entries upto @FA{log-level}. Note that @FA{log-level} must
-/// be:
+/// @RESTRETURNCODE{400}
+/// is returned if invalid values are specified for `upto` or `level`, or if 
+/// the method is called in a database other than `_system`.
 ///
-/// - @LIT{fatal} / @LIT{0}
-/// - @LIT{error} / @LIT{1}
-/// - @LIT{warning} / @LIT{2}
-/// - @LIT{info} / @LIT{3}
-/// - @LIT{debug} / @LIT{4}
-///
-/// @REST{GET /_admin/log?level=@FA{log-level}}
-///
-/// Returns all log entries of @FA{log-level}. Note that @LIT{level=} and
-/// @LIT{upto=} are mutably exclusive.
-///
-/// @REST{GET /_admin/log?size=@FA{size}&offset=@FA{offset}}
-///
-/// Paginates the result. Skip the first @FA{offset} entries and limit the
-/// number of returned log-entries to @FA{size}.
-///
-/// @REST{GET /_admin/log?start=@FA{lid}}
-///
-/// Returns all log entries such that their log-entry identifier is greater
-/// or equal to @LIT{lid}.
-///
-/// @REST{GET /_admin/log?sort=@FA{direction}}
-///
-/// Sort the log-entries either ascending if @FA{direction} is @LIT{asc}, or
-/// descending if it is @LIT{desc} according to their @LIT{lid}. Note
-/// that the @LIT{lid} imposes a chronological order.
-///
-/// @REST{GET /_admin/log?search=@FA{text}}
-///
-/// Only return the log-entries containing the @FA{text} string.
+/// @RESTRETURNCODE{500}
+/// is returned if the server cannot generate the result due to an out-of-memory
+/// error.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestAdminLogHandler::execute () {
+  // /log can only be called for the _system database
+  if (_request->databaseName() != "_system") {
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return HANDLER_DONE;
+  }
 
   // .............................................................................
   // check the maximal log level to report
