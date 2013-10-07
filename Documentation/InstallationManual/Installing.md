@@ -163,3 +163,7 @@ Starting ArangoDB from an MS-DOS command prompt does not impose the
 limitations, and the kill signal will be handled normally by the server, 
 allowing it to shut down normally.
 
+Please note that when using ArangoDB's web interface with Internet Explorer
+(IE), you will need IE version 9 or higher to use all features. The web 
+interface partly relies on SVG, which is not available in previous versions 
+of IE.
