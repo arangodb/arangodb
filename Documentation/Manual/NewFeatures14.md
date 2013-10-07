@@ -182,6 +182,9 @@ The web interface now provides a graph viewer on the **Graphs** tab. The graph v
 can be used to explore and navigate an existing ArangoDB graph. It supports both
 graphs in the `_graphs` system collection as well as user-defined graphs that are
 composed of an arbitrary vertex and edge collection.
+Please note that when using ArangoDB's web interface with Internet Explorer
+(IE), you will need IE version 9 or higher. The graph viewer relies on client-side 
+SVG which is not available in previous versions of IE.
 
 The **Dashboard** tab in the web interface provides an overview of server figures, which
 can be adjusted to user needs. New figures are polled by the web interface in a 
