@@ -1,6 +1,11 @@
 v1.4
 ----
 
+' ported fix from https://github.com/novus/nvd3/commit/0894152def263b8dee60192f75f66700cea532cc
+  
+  This prevents JavaScript errors from occurring in Chrome when in the admin interface, 
+  section "Dashboard".
+
 * show current database name in web interface (bottom right corner)
 
 * added missing documentation for /_api/import in swagger API docs 
