@@ -251,7 +251,11 @@ void SchedulerLibev::switchAllocator () {
 
   if (! switched) {
     // set the libev allocator to our own allocator
-    ev_set_allocator(&TRI_WrappedReallocate);
+    ev_set_allocator(
+#ifdef EV_THROW
+      reinterpret_cast<void *(*)(void *ptr, long size) EV_THROW>
+#endif
+      (&TRI_WrappedReallocate));
 
     switched = true;
   }

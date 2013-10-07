@@ -4,11 +4,14 @@ Replication Events{#RefManualReplication}
 @NAVIGATE_RefManualReplication
 @EMBEDTOC{RefManualReplicationTOC}
 
-The replication logger in ArangoDB will log all events into the `_replication`
-system collection. It will only log events when the logger is enabled.
+A database's replication logger in ArangoDB will log all its events into the 
+`_replication` system collection in the same database. The `_replication` 
+collection will therefore only contain events of a single database. 
+Events will only be logged during the time the database's replication logger 
+is enabled.
 
 The following sections describe in detail the structure of the log events
-returned by this API.
+returned by the replication APIs.
 
 Replication Event Types{#RefManualReplicationEventTypes}
 ========================================================

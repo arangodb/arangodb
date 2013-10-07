@@ -39,8 +39,6 @@
 #include "mruby/variable.h"
 #endif
 
-#include "Utils/DocumentWrapper.h"
-
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -58,6 +56,7 @@
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
+#include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpHandlerFactory.h"
 
 #include "Logger/Logger.h"
@@ -108,10 +107,15 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
-                               ApplicationAdminServer* admin) {
+                               ApplicationAdminServer* admin,
+                               AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api");
+  admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+  
+  // add "/batch" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                            RestHandlerCreator<RestBatchHandler>::createNoData);
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
@@ -124,10 +128,6 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/import" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createNoData);
-
-  // add "/batch" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                            RestHandlerCreator<RestBatchHandler>::createNoData);
 
   // add "/replication" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
@@ -143,10 +143,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
-                                 ApplicationAdminServer* admin) {
+                                 ApplicationAdminServer* admin,
+                                 AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin");
+  admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
@@ -272,9 +273,15 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+    _jobManager(0),
+#ifdef TRI_ENABLE_MRUBY
+    _applicationMR(0),
+#endif
+    _applicationV8(0),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _dispatcherThreads(8),
+    _dispatcherQueueSize(8192),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
@@ -306,6 +313,24 @@ ArangoServer::ArangoServer (int argc, char** argv)
     LOG_FATAL_AND_EXIT("could not create server instance");
   }
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoServer::~ArangoServer () {
+  if (_jobManager != 0) {
+    delete _jobManager;
+  }
+
+  if (_server != 0) {
+    TRI_FreeServer(_server);
+  }
+  
+  TRI_ShutdownServer();
+
+  Nonce::destroy();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -328,6 +353,10 @@ void ArangoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
+  if (_applicationServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
   _applicationServer->setSystemConfigFile("arangod.conf");
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
@@ -339,6 +368,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
+  if (_applicationScheduler == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationScheduler->allowMultiScheduler(true);
 
   _applicationServer->addFeature(_applicationScheduler);
@@ -348,6 +380,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
+  if (_applicationDispatcher == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
@@ -355,6 +390,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationV8 = new ApplicationV8(_server);
+  if (_applicationV8 == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -364,6 +402,9 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_ENABLE_MRUBY
 
   _applicationMR = new ApplicationMR(_server);
+  if (_applicationMR == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
   _applicationServer->addFeature(_applicationMR);
 
 #else
@@ -378,16 +419,18 @@ void ArangoServer::buildApplicationServer () {
   ;
 
 #endif
-
+  
   // .............................................................................
   // and start a simple admin server
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  _applicationServer->addFeature(_applicationAdminServer);
+  if (_applicationAdminServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
 
+  _applicationServer->addFeature(_applicationAdminServer);
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("arango", TRI_VERSION);
 
   // .............................................................................
   // define server options
@@ -487,18 +530,28 @@ void ArangoServer::buildApplicationServer () {
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
+  
+  additional["Server Options:help-extended"]
+    ("scheduler.maximal-queue-size", &_dispatcherQueueSize, "maximum size of queue for asynchronous operations")
+  ;
 
   // .............................................................................
   // endpoint server
   // .............................................................................
 
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer);
 
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
+                                                             _jobManager,
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
+  if (_applicationEndpointServer == 0) {
+    LOGGER_FATAL_AND_EXIT("out of memory");
+  }
+
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -508,7 +561,7 @@ void ArangoServer::buildApplicationServer () {
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
-
+  
   // set the temp-path
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
@@ -548,9 +601,14 @@ void ArangoServer::buildApplicationServer () {
     TRI_ENABLE_STATISTICS = false;
   }
 
+  // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    // validate journal size
-    LOGGER_FATAL_AND_EXIT("invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+    LOGGER_FATAL_AND_EXIT("invalid value for '--database.maximal-journal-size'. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+  }
+
+  // validate queue size
+  if (_dispatcherQueueSize <= 128) {
+    LOGGER_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
   }
 
   // .............................................................................
@@ -573,6 +631,8 @@ void ArangoServer::buildApplicationServer () {
 
   // strip trailing separators
   _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR); 
+  
+  _applicationEndpointServer->setBasePath(_databasePath);
 
   // .............................................................................
   // now run arangod
@@ -687,7 +747,7 @@ int ArangoServer::startupServer () {
   // create the dispatcher
   // .............................................................................
 
-  _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
+  _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
 
   _applicationServer->prepare2();
   
@@ -708,8 +768,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _jobManager);
 
   // add action handler
   handlerFactory->addPrefixHandler(
@@ -774,7 +834,10 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
-  assert(vocbase != 0);
+
+  if (vocbase == 0) {
+    LOGGER_FATAL_AND_EXIT("cannot start server");
+  }
 
   // load authentication
   TRI_LoadAuthInfoVocBase(vocbase);
@@ -1215,7 +1278,8 @@ void ArangoServer::openDatabases () {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
 
-  res = TRI_StartServer(_server);
+  const bool isUpgrade = _applicationServer->programOptions().has("upgrade");
+  res = TRI_StartServer(_server, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
@@ -1234,11 +1298,7 @@ void ArangoServer::closeDatabases () {
   TRI_CleanupActions();
 
   TRI_StopServer(_server);
-  TRI_FreeServer(_server);
 
-  TRI_ShutdownServer();
-
-  Nonce::destroy();
 
   LOGGER_INFO("ArangoDB has been shut down");
 }

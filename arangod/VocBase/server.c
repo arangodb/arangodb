@@ -203,7 +203,10 @@ static int ReadServerId (char const* filename) {
 
   json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
 
-  if (json == NULL) {
+  if (! TRI_IsArrayJson(json)) {
+    if (json != NULL) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return TRI_ERROR_INTERNAL;
   }
 
@@ -533,7 +536,6 @@ static int OpenDatabases (TRI_server_t* server) {
     char const* name;
     char* databaseDirectory;
     char* parametersFile;
-    char* error;
     char* databaseName;
     void const* found;
 
@@ -599,14 +601,9 @@ static int OpenDatabases (TRI_server_t* server) {
     LOG_DEBUG("reading database parameters from file '%s'",
               parametersFile);
 
-    error = NULL;
-    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, &error);
+    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, NULL);
 
     if (json == NULL) {
-      if (error != NULL) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-      }
-
       LOG_ERROR("database directory '%s' does not contain a valid parameters file", 
                 databaseDirectory);
       
@@ -671,8 +668,8 @@ static int OpenDatabases (TRI_server_t* server) {
 
     // use defaults and blend them with parameters found in file
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-    TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupArrayJson(json, "properties"));
-    
+    // TODO: decide which parameter from the command-line should win vs. parameter.json
+    // TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupArrayJson(json, "properties"));
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -860,6 +857,46 @@ static int MoveVersionFile (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if there are "old" collections
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HasOldCollections (TRI_server_t* server) {
+  regex_t re;
+  regmatch_t matches[2];
+  TRI_vector_string_t files;
+  bool found;
+  size_t i, n;
+
+  assert(server != NULL);
+
+  if (regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return false;
+  }
+
+  found = false;
+  files = TRI_FilesDirectory(server->_basePath);
+  n = files._length;
+  
+  for (i = 0;  i < n;  ++i) {
+    char const* name = files._buffer[i];
+    assert(name != NULL);
+
+    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      // found "collection-xxxx". we can ignore the rest
+      found = true;
+      break;
+    }
+  }
+  
+  TRI_DestroyVectorString(&files);
+  regfree(&re);
+
+  return found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move collections from the main data directory into the _system 
 /// database subdirectory
 ////////////////////////////////////////////////////////////////////////////////
@@ -961,7 +998,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
   char* file;
   char* tickString;
   TRI_json_t* json;
-  TRI_json_t* properties;
+  // TRI_json_t* properties;
   
   assert(id > 0);
   assert(name != NULL);
@@ -989,7 +1026,9 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+ 
+  // TODO
+  /* 
   properties = TRI_JsonVocBaseDefaults(TRI_CORE_MEM_ZONE, defaults);
 
   if (properties == NULL) {
@@ -999,15 +1038,17 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  */
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
+  // TODO: save properties later when it is clear what they will be used
+  // TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
     
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     
-  if (! TRI_SaveJson(file, json, true)) {
+  if (! TRI_SaveJson(file, json, false)) {
     LOG_ERROR("cannot save database information in file '%s'",
               file);
 
@@ -1153,6 +1194,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
     if (dname == NULL) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
       res = TRI_ERROR_OUT_OF_MEMORY;
+      break;
     }
 
     targetName = TRI_Concatenate2File(server->_databasePath, dname);
@@ -1198,7 +1240,8 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
 /// @brief initialise the list of databases
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InitDatabases (TRI_server_t* server) {
+static int InitDatabases (TRI_server_t* server,
+                          bool isUpgrade) {
   TRI_vector_string_t names;
   int res;
   
@@ -1212,6 +1255,12 @@ static int InitDatabases (TRI_server_t* server) {
     if (names._length == 0) {
       char* name;
 
+      if (! isUpgrade && HasOldCollections(server)) {
+        LOG_ERROR("no databases found. Please start the server with the --upgrade option");
+
+        return TRI_ERROR_ARANGO_DATADIR_INVALID;
+      }
+
       // no databases found, i.e. there is no system database!
       // create a database for the system database
       res = CreateDatabaseDirectory(server, TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE, &server->_defaults, &name);
@@ -1224,7 +1273,7 @@ static int InitDatabases (TRI_server_t* server) {
       }
     }
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_NO_ERROR && isUpgrade) {
       char const* systemName;
 
       assert(names._length > 0);
@@ -1260,23 +1309,20 @@ static void DatabaseManager (void* data) {
 
   while (true) {
     TRI_vocbase_t* database;
-    size_t i;
+    size_t i, n;
 
     TRI_LockMutex(&server->_createLock);
     shutdown = server->_shutdown;
     TRI_UnlockMutex(&server->_createLock);
-
-    if (shutdown) {
-      // done
-      break;
-    }
 
     // check if we have to drop some database
     database = NULL;
 
     TRI_ReadLockReadWriteLock(&server->_databasesLock); 
 
-    for (i = 0; i < server->_droppedDatabases._length; ++i) {
+    n = server->_droppedDatabases._length;
+
+    for (i = 0; i < n; ++i) {
       TRI_vocbase_t* vocbase = TRI_AtVectorPointer(&server->_droppedDatabases, i);
 
       if (! TRI_CanRemoveVocBase(vocbase)) {
@@ -1310,6 +1356,11 @@ static void DatabaseManager (void* data) {
       // directly start next iteration
     }
     else {
+      if (shutdown) {
+        // done
+        break;
+      }
+
       usleep(DATABASE_MANAGER_INTERVAL);
     }
 
@@ -1406,6 +1457,7 @@ int TRI_InitServer (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
   
   // .............................................................................
   // server defaults
@@ -1517,7 +1569,8 @@ TRI_server_id_t TRI_GetIdServer () {
 /// @brief start the server
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartServer (TRI_server_t* server) {
+int TRI_StartServer (TRI_server_t* server,
+                     bool isUpgrade) {
   int res;
 
   if (! TRI_IsDirectory(server->_basePath)) {
@@ -1625,7 +1678,7 @@ int TRI_StartServer (TRI_server_t* server) {
   // perform an eventual migration of the databases. 
   // .............................................................................
 
-  res = InitDatabases(server);
+  res = InitDatabases(server, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("unable to initialise databases: %s", 
@@ -1663,7 +1716,11 @@ int TRI_StartServer (TRI_server_t* server) {
     }
   }
 
+  // we don't yet need the lock here as this is called during startup and no races
+  // are possible. however, this may be changed in the future
+  TRI_LockMutex(&server->_createLock);
   server->_shutdown = false;
+  TRI_UnlockMutex(&server->_createLock);
   
   // start dbm thread
   TRI_InitThread(&server->_databaseManager);
@@ -1808,7 +1865,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     
   TRI_WriteLockReadWriteLock(&server->_databasesLock);
 
-  if (! TRI_ReserveVectorPointer(&server->_droppedDatabases, 1)) {
+  if (TRI_ReserveVectorPointer(&server->_droppedDatabases, 1) != TRI_ERROR_NO_ERROR) {
     // we need space for one more element
     TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
 
@@ -1892,6 +1949,9 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
                                 TRI_vector_string_t* names) {
 
   size_t i, n;
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
 
   TRI_ReadLockReadWriteLock(&server->_databasesLock);
   n = server->_databases._nrAlloc;
@@ -1900,12 +1960,28 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
     TRI_vocbase_t* vocbase = server->_databases._table[i];
 
     if (vocbase != NULL) {
-      TRI_PushBackVectorString(names, TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name));
+      char* copy;
+
+      assert(vocbase->_name != NULL);
+
+      copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
+
+      if (copy == NULL) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
+
+      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
+        // insertion failed.
+        TRI_Free(names->_memoryZone, copy);
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
     }
   }
   TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -31,6 +31,7 @@
 
 #include "HttpServer/GeneralHttpServer.h"
 
+#include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 
 // -----------------------------------------------------------------------------
@@ -63,10 +64,11 @@ namespace triagens {
 
         HttpServer (Scheduler* scheduler,
                     Dispatcher* dispatcher,
+                    AsyncJobManager* jobManager,
                     double keepAliveTimeout,
                     HttpHandlerFactory* handlerFactory)
         : GeneralServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> >(scheduler, keepAliveTimeout),
-          GeneralHttpServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory) {
+          GeneralHttpServer<HttpServer, HttpHandlerFactory, HttpCommTask<HttpServer> >(scheduler, dispatcher, jobManager, keepAliveTimeout, handlerFactory) {
         }
 
 // -----------------------------------------------------------------------------

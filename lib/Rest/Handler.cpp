@@ -79,7 +79,7 @@ Job::JobType Handler::type () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& Handler::queue () const {
-  static string standard = "STANDARD";
+  static string const standard = "STANDARD";
   return standard;
 }
 

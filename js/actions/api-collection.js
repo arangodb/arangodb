@@ -661,25 +661,31 @@ function get_api_collections (req, res) {
 ///
 /// @RESTURLPARAM{collection-name,string,required}
 ///
+/// @RESTURLPARAM{withRevisions,boolean,optional}
+///
 /// @RESTURLPARAM{withData,boolean,optional}
 ///
 /// @RESTDESCRIPTION
-/// Will calculate checksum of the meta-data (keys and revision ids) and 
-/// optionally document data in the collection.
+/// Will calculate a checksum of the meta-data (keys and optionally revision ids) and 
+/// optionally the document data in the collection.
 ///
 /// The checksum can be used to compare if two collections on different ArangoDB
 /// instances contain the same contents. The current revision of the collection is 
 /// returned too so one can make sure the checksums are calculated for the same 
 /// state of data.
 ///
-/// By default, the checksum will only be calculated on the `_key` and `_rev` 
-/// system attributes of the documents contained in the collection. 
-/// For edge collections, the system attributes `_from` and `_to` will also be 
-/// included in the calculation.
+/// By default, the checksum will only be calculated on the `_key` system attribute
+/// of the documents contained in the collection. For edge collections, the system 
+/// attributes `_from` and `_to` will also be included in the calculation.
+///
+/// By setting the optional URL parameter `withRevisions` to `true`, then revision
+/// ids (`_rev` system attributes) are included in the checksumming.
 ///
 /// By providing the optional URL parameter `withData` with a value of `true`, 
 /// the user-defined document attributes will be included in the calculation too. 
 /// Note that including user-defined attributes will make the checksumming slower.
+///
+/// The response is a JSON object with the following attributes:
 ///
 /// - `checksum`: The calculated checksum as a number.
 ///
@@ -702,9 +708,27 @@ function get_api_collections (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionChecksum}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var coll = db._create(cn, { waitForSync: false });
+///     var coll = db._create(cn);
 ///     coll.save({ foo: "bar" });
-///     var url = "/_api/collection/"+ coll._id + "/checksum";
+///     var url = "/_api/collection/" + coll._id + "/checksum";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Retrieving the checksum of a collection including the collection data,
+/// but not the revisions:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionChecksumNoRev}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn);
+///     coll.save({ foo: "bar" });
+///     var url = "/_api/collection/" + coll._id + "/checksum?withRevisions=false&withData=true";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -763,16 +787,25 @@ function get_api_collection (req, res) {
     // .............................................................................
 
     if (sub === "checksum") {
+      var withRevisions = false;
       var withData = false;
+      var value;
+      if (req.parameters.hasOwnProperty('withRevisions')) {
+        value = req.parameters.withRevisions.toLowerCase();
+        if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+          withRevisions = true;
+        }
+      }
+      
       if (req.parameters.hasOwnProperty('withData')) {
-        var value = req.parameters.withData.toLowerCase();
+        value = req.parameters.withData.toLowerCase();
         if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
           withData = true;
         }
       }
 
       result = collectionRepresentation(collection, false, false, false);
-      var checksum = collection.checksum(withData);
+      var checksum = collection.checksum(withRevisions, withData);
       result.checksum = checksum.checksum;
       result.revision = checksum.revision;
       actions.resultOk(req, res, actions.HTTP_OK, result);

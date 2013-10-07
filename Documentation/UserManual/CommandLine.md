@@ -210,6 +210,10 @@ Command-Line Options for Communication {#CommandLineScheduler}
 @copydetails triagens::rest::ApplicationScheduler::_nrSchedulerThreads
 
 @CLEARPAGE
+@anchor CommandLineSchedulerMaximalQueueSize
+@copydetails triagens::arango::ArangoServer::_dispatcherQueueSize
+
+@CLEARPAGE
 @anchor CommandLineSchedulerBackend
 @copydetails triagens::rest::ApplicationScheduler::_backend
 

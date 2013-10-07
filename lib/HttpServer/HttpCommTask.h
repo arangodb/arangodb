@@ -90,6 +90,7 @@ namespace triagens {
                       double keepAliveTimeout)
         : Task("HttpCommTask"),
           GeneralCommTask<S, HttpHandlerFactory>(server, socket, info, keepAliveTimeout),
+          _httpVersion(HttpRequest::HTTP_UNKNOWN),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
           _origin(),
           _denyCredentials(false),
@@ -526,12 +527,45 @@ namespace triagens {
                 if (found) {
                   if (acceptEncoding.find("deflate") != string::npos) {
                     _acceptDeflate = true;
-                  } 
+                  }
+                } 
+
+                // check for an async request
+                string const& asyncExecution = this->_request->header("x-arango-async", found);
+                if (found && (asyncExecution == "true" || asyncExecution == "store")) {
+                  // we have an async request
+                  this->_request = 0;
+
+                  uint64_t jobId = 0;
+                  if (asyncExecution == "store") {
+                    // persist the responses
+                    ok = this->_server->handleRequestAsync(handler, &jobId);
+                  }
+                  else {
+                    // don't persist the responses
+                    ok = this->_server->handleRequestAsync(handler, 0);
+                  }
+                  
+                  if (ok) {
+                    HttpResponse response(HttpResponse::ACCEPTED);
+
+                    if (jobId > 0) {
+                      // return the job id we just created
+                      response.setHeader("x-arango-async-id", 
+                                         strlen("x-arango-async-id"), 
+                                         triagens::basics::StringUtils::itoa(jobId));
+                    }
+
+                    this->handleResponse(&response);
+                  }
                 }
+                else {
+                  // synchronous request
+                  this->_request = 0;
 
-                this->_request = 0;
-                ok = this->_server->handleRequest(this, handler);
-
+                  ok = this->_server->handleRequest(this, handler);
+                }
+                
                 if (! ok) {
                   HttpResponse response(HttpResponse::SERVER_ERROR);
                   this->handleResponse(&response);

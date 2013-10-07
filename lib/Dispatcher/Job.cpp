@@ -106,7 +106,7 @@ void Job::attachObserver (JobObserver* observer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& Job::queue () {
-  static string standard = "STANDARD";
+  static string const standard = "STANDARD";
   return standard;
 }
 

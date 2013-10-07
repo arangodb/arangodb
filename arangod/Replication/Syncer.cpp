@@ -93,7 +93,14 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _connection(0),
   _client(0) {
 
-  _databaseName = string(vocbase->_name);
+  if (configuration->_database != 0) {
+    // use name from configuration
+    _databaseName = string(configuration->_database); 
+  }
+  else {
+    // use name of current database
+    _databaseName = string(vocbase->_name);
+  }
     
   // get our own server-id 
   _localServerId       = TRI_GetIdServer();
@@ -397,6 +404,10 @@ int Syncer::createCollection (TRI_json_t const* json,
                          type,
                          (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
                          keyOptions);
+
+  if (keyOptions != 0) {
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
+  }
 
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);

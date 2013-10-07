@@ -281,6 +281,8 @@ def generateArangoshRun():
         print "var appender = function(text) { output += text; };"
         print "var logCurlRequestRaw = require('internal').appendCurlRequest(appender);"
         print "var logCurlRequest = function () { var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments); db._collections(); return r; };"
+        print "var curlRequestRaw = require('internal').appendCurlRequest(function (text) { });"
+        print "var curlRequest = function () { return curlRequestRaw.apply(curlRequestRaw, arguments); };"
         print "var logJsonResponse = require('internal').appendJsonResponse(appender);"
         print "var logRawResponse = require('internal').appendRawResponse(appender);"
         print "var assert = function(a) { if (! a) { internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); throw new Error('assertion failed'); } };" % ('#' * 80, key, '#' * 80)

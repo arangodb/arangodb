@@ -400,22 +400,19 @@ typedef struct TRI_skip_list_synced_multi_s {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a skip list
 ////////////////////////////////////////////////////////////////////////////////
 
 
 int TRI_InitSkipListMulti (TRI_skip_list_multi_t*,
-                            uint32_t elementSize,
-                            int (*compareElementElement) (TRI_skip_list_multi_t*, void*, void*, int),
-                            int (*compareKeyElement) (TRI_skip_list_multi_t*, void*, void*, int),
-                            bool (*equalElementElement) (TRI_skip_list_multi_t*, void*, void*),
-                            int (*actionElement) (TRI_skip_list_multi_t*, TRI_skip_list_action_e, void*, const void*, void*),
-                            TRI_skip_list_prob_e, uint32_t);
-
-
+                           uint32_t elementSize,
+                           int (*compareElementElement) (TRI_skip_list_multi_t*, void*, void*, int),
+                           int (*compareKeyElement) (TRI_skip_list_multi_t*, void*, void*, int),
+                           bool (*equalElementElement) (TRI_skip_list_multi_t*, void*, void*),
+                           int (*actionElement) (TRI_skip_list_multi_t*, TRI_skip_list_action_e, void*, const void*, void*),
+                           TRI_skip_list_prob_e, 
+                           uint32_t);
                                               
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a multi skip list, but does not free the pointer

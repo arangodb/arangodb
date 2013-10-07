@@ -73,15 +73,19 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0) {
+    _requestContext(0),
+    _isRequestContextOwner(false) {
 
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
 
   char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
-  _freeables.push_back(request);
 
-  parseHeader(request, length);
+  if (request != 0) {
+    _freeables.push_back(request);
+
+    parseHeader(request, length);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +109,8 @@ HttpRequest::HttpRequest ()
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0) {
+    _requestContext(0),
+    _isRequestContextOwner(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -896,12 +901,6 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           start = end;
         }
 
-        // skip \r
-        if (keyBegin < valueEnd && keyEnd[-1] == '\r') {
-          --keyEnd;
-          *keyEnd = '\0';
-        }
-
         // check the key
         _type = getRequestType(keyBegin, keyEnd - keyBegin);
       }
@@ -1470,11 +1469,8 @@ void HttpRequest::parseCookies (const char* buffer) {
     }
 
     setCookie(keyBegin, key - keyBegin, valueBegin);
-
   }
 }
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -113,6 +113,13 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 
   if (pickedIndex == NULL) {
     pickedIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_index_t), false);
+
+    if (pickedIndex == NULL) {
+      // OOM
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return NULL;
+    }
+
     pickedIndex->_idx = NULL;
     pickedIndex->_fieldAccesses = NULL;
   }
@@ -132,6 +139,13 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
   if (pickedIndex->_idx == NULL) {
     pickedIndex->_idx = (TRI_index_t*) idx;
     pickedIndex->_fieldAccesses = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, fieldAccesses);
+
+    if (pickedIndex->_fieldAccesses == NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pickedIndex);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return NULL;
+    }
+
     return pickedIndex;
   }
 
@@ -221,7 +235,14 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
     }
 
     pickedIndex->_idx = (TRI_index_t*) idx;
+
     pickedIndex->_fieldAccesses = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, fieldAccesses);
+    
+    if (pickedIndex->_fieldAccesses == NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pickedIndex);
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return NULL;
+    }
   }
 
   return pickedIndex;

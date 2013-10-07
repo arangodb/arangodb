@@ -219,12 +219,6 @@ struct TRI_vocbase_defaults_s;
 #define TRI_VOC_SYSTEM_DATABASE "_system"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief id regex
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_VOC_ID_REGEX        "[0-9][0-9]*"
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal path length
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -341,8 +335,8 @@ typedef struct TRI_vocbase_s {
   TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
 
   TRI_associative_pointer_t  _authInfo;
+  TRI_associative_pointer_t  _authCache;
   TRI_read_write_lock_t      _authInfoLock;
-  bool                       _authInfoFlush;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
 
   struct TRI_replication_logger_s*  _replicationLogger;

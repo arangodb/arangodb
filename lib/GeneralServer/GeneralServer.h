@@ -195,7 +195,7 @@ namespace triagens {
               LOGGER_DEBUG("bound to endpoint '" << (*i).first << "'");
             }
             else {
-              LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i).first << "'");
+              LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i).first << "'. Please review your endpoints configuration.");
             }
           }
         }
@@ -465,6 +465,7 @@ namespace triagens {
             deleteTask(task);
             return false;
           }
+
           _scheduler->registerTask(task);
           _listenTasks.push_back(task);
 

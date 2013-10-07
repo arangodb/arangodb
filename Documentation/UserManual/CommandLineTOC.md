@@ -60,6 +60,7 @@ TOC {#CommandLineTOC}
       - @ref CommandLineLoggingLogHostName "log.hostname"
   - @ref CommandLineScheduler
     - @ref CommandLineSchedulerThreads "scheduler.threads"
+    - @ref CommandLineSchedulerMaximalQueueSize "scheduler.maximal-queue-size"
     - @ref CommandLineSchedulerBackend "scheduler.backend"
     - @ref CommandLineSchedulerShowIoBackends "show-io-backends"
   - @ref CommandLineRandom

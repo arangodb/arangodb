@@ -233,6 +233,11 @@ typedef struct TRI_document_collection_s {
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_s*);
+
+#if 0
+  // reserve hint function
+  bool (*reserveIndexes)(struct TRI_document_collection_s*, int64_t);
+#endif
 }
 TRI_document_collection_t;
 

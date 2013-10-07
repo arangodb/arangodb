@@ -150,6 +150,12 @@ static vector<string> UnitTests;
 
 static vector<string> JsLint;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief command prompt
+////////////////////////////////////////////////////////////////////////////////
+
+static string Prompt = "arangosh [%d]> ";
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              JavaScript functions
 // -----------------------------------------------------------------------------
@@ -421,6 +427,7 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("chunk-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
+    ("prompt", &Prompt, "command prompt")
     (deprecatedOptions, true)
     (javascript, false)
   ;
@@ -1243,52 +1250,57 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
   console.open(BaseClient.autoComplete());
 
-  // set up prompts
-  string goodPrompt;
-  string badPrompt;
-
-#ifdef __APPLE__
-
-  // ........................................................................................
-  // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
-  // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
-  // we will therefore disable colorful prompts for MacOS.
-  // ........................................................................................
-
-  goodPrompt = badPrompt = string("arangosh> ");
-
-#elif _WIN32
-
-  // ........................................................................................
-  // Windows console is not coloured by escape sequences. So the method given below will not
-  // work. For now we simply ignore the colours until we move the windows version into
-  // a GUI Window.
-  // ........................................................................................
-
-  goodPrompt = badPrompt = string("arangosh> ");
-
-#else
-
-  if (BaseClient.colors()) {
-    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) +
-                 string("arangosh>") +
-                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) +
-                 ' ';
-
-    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) +
-                 string("arangosh>") +
-                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) +
-                 ' ';
-  }
-  else {
-    goodPrompt = badPrompt = string("arangosh> ");
-  }
-
-#endif
-
   cout << endl;
 
   while (true) {
+    // set up prompts
+    string dynamicPrompt;
+    if (ClientConnection != 0) {
+      dynamicPrompt = StringUtils::replace(Prompt, "%d", ClientConnection->getDatabaseName());
+    }
+    else {
+      dynamicPrompt = "-";
+    }
+    
+    string goodPrompt;
+    string badPrompt;
+
+#ifdef __APPLE__
+
+    // ........................................................................................
+    // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
+    // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
+    // we will therefore disable colorful prompts for MacOS.
+    // ........................................................................................
+
+    goodPrompt = badPrompt = dynamicPrompt;
+
+#elif _WIN32
+
+    // ........................................................................................
+    // Windows console is not coloured by escape sequences. So the method given below will not
+    // work. For now we simply ignore the colours until we move the windows version into
+    // a GUI Window.
+    // ........................................................................................
+
+    goodPrompt = badPrompt = dynamicPrompt;
+
+#else
+
+    if (BaseClient.colors()) {
+      goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) +
+                   dynamicPrompt +
+                   string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END);
+
+      badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) +
+                   dynamicPrompt + 
+                   string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END);
+    }
+    else {
+      goodPrompt = badPrompt = dynamicPrompt;
+    }
+
+#endif
 
     // gc
     v8::V8::LowMemoryNotification();
@@ -1302,10 +1314,12 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     }
 
     if (*input == '\0') {
+      // input string is empty, but we must still free it
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       continue;
     }
 
-    BaseClient.log("arangosh> %s\n", input);
+    BaseClient.log("%s%s\n", dynamicPrompt.c_str(), input);
 
     string i = triagens::basics::StringUtils::trim(input);
 
@@ -1872,9 +1886,9 @@ int main (int argc, char* argv[]) {
 
   bool isExecuteScript = false;
   bool isExecuteString = false;
-  bool isCheckScripts = false;
-  bool isUnitTests = false;
-  bool isJsLint = false;
+  bool isCheckScripts  = false;
+  bool isUnitTests     = false;
+  bool isJsLint        = false;
 
   if (! ExecuteScripts.empty()) {
     isExecuteScript = true;
@@ -1883,13 +1897,13 @@ int main (int argc, char* argv[]) {
     isExecuteString = true;
   }
   else if (! CheckScripts.empty()) {
-    isCheckScripts = true;
+    isCheckScripts  = true;
   }
   else if (! UnitTests.empty()) {
-    isUnitTests = true;
+    isUnitTests     = true;
   }
   else if (! JsLint.empty()) {
-    isJsLint = true;
+    isJsLint        = true;
   }
 
   TRI_AddGlobalVariableVocbase(context, "IS_EXECUTE_SCRIPT", v8::Boolean::New(isExecuteScript));

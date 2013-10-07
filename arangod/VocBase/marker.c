@@ -103,9 +103,11 @@ void TRI_CloneMarker (TRI_df_marker_t* dst,
 /// @brief initialises a marker with the most basic information
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMarker (TRI_df_marker_t* marker,
+void TRI_InitMarker (char* marker,
                      TRI_df_marker_type_e type,
                      TRI_voc_size_t size) {
+
+  TRI_df_marker_t* df = (TRI_df_marker_t*) marker;
 
   TRI_ASSERT_MAINTAINER(marker != NULL);
   TRI_ASSERT_MAINTAINER(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
@@ -114,8 +116,8 @@ void TRI_InitMarker (TRI_df_marker_t* marker,
   // initialise the basic bytes
   memset(marker, 0, size);
 
-  marker->_size = size;
-  marker->_type = type;
+  df->_size = size;
+  df->_type = type;
   // not needed because of memset above
   // marker->_crc  = 0;
   // marker->_tick = 0;

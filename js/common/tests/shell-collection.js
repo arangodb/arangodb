@@ -893,7 +893,7 @@ function CollectionSuite () {
       var c1 = db._create(cn);
 
       // empty collection, checksum should be 0
-      var r1 = c1.checksum();
+      var r1 = c1.checksum(true);
       assertTypeOf("string", r1.revision);
       assertTrue(r1.revision !== "");
       assertTrue(r1.revision.match(/^[0-9]+$/));
@@ -902,7 +902,7 @@ function CollectionSuite () {
 
       // inserting a doc, checksum should change
       c1.save({ a : 1 });
-      var r2 = c1.checksum();
+      var r2 = c1.checksum(true);
       assertNotEqual(r1.revision, r2.revision);
       assertTypeOf("string", r2.revision);
       assertTrue(r2.revision !== "");
@@ -912,7 +912,7 @@ function CollectionSuite () {
       
       // inserting another doc, checksum should change
       c1.save({ a : 2 });
-      var r3 = c1.checksum();
+      var r3 = c1.checksum(true);
       assertNotEqual(r1.revision, r3.revision);
       assertNotEqual(r2.revision, r3.revision);
       assertTypeOf("string", r3.revision);
@@ -924,7 +924,7 @@ function CollectionSuite () {
 
       // test after unloading
       c1.unload();
-      var r4 = c1.checksum();
+      var r4 = c1.checksum(true);
       assertTypeOf("string", r4.revision);
       assertEqual(r3.revision, r4.revision);
       assertTypeOf("number", r4.checksum);
@@ -932,7 +932,7 @@ function CollectionSuite () {
       assertEqual(r3.checksum, r4.checksum);
       
       // test withData
-      var r5 = c1.checksum(true);
+      var r5 = c1.checksum(true, true);
       assertTypeOf("string", r5.revision);
       assertEqual(r4.revision, r5.revision);
       assertTypeOf("number", r5.checksum);
@@ -941,7 +941,7 @@ function CollectionSuite () {
 
       // test after truncation
       c1.truncate();
-      var r6 = c1.checksum();
+      var r6 = c1.checksum(true);
       assertTypeOf("string", r6.revision);
       assertNotEqual(r4.revision, r6.revision);
       assertNotEqual(r5.revision, r6.revision);
@@ -964,7 +964,7 @@ function CollectionSuite () {
       db._create(vn);
       var c1 = db._createEdgeCollection(cn);
 
-      var r1 = c1.checksum();
+      var r1 = c1.checksum(true);
       assertTypeOf("string", r1.revision);
       assertTrue(r1.revision !== "");
       assertTrue(r1.revision.match(/^[0-9]+$/));
@@ -972,7 +972,7 @@ function CollectionSuite () {
       assertEqual(0, r1.checksum); 
 
       c1.save(vn + "/1", vn + "/2", { a : 1 });
-      var r2 = c1.checksum();
+      var r2 = c1.checksum(true);
       assertNotEqual(r1.revision, r2.revision);
       assertTypeOf("string", r2.revision);
       assertTrue(r2.revision !== "");
@@ -981,7 +981,7 @@ function CollectionSuite () {
       assertNotEqual(0, r2.checksum); 
       
       c1.save(vn + "/1", vn + "/2", { a : 2 });
-      var r3 = c1.checksum();
+      var r3 = c1.checksum(true);
       assertNotEqual(r1.revision, r3.revision);
       assertNotEqual(r2.revision, r3.revision);
       assertTypeOf("string", r3.revision);
@@ -992,14 +992,14 @@ function CollectionSuite () {
       assertNotEqual(r2.checksum, r3.checksum); 
 
       c1.unload();
-      var r4 = c1.checksum();
+      var r4 = c1.checksum(true);
       assertTypeOf("string", r4.revision);
       assertEqual(r3.revision, r4.revision);
       assertTypeOf("number", r4.checksum);
       assertEqual(r3.checksum, r4.checksum);
       
       // test withData
-      var r5 = c1.checksum(true);
+      var r5 = c1.checksum(true, true);
       assertTypeOf("string", r5.revision);
       assertEqual(r4.revision, r5.revision);
       assertTypeOf("number", r5.checksum);
@@ -1008,7 +1008,7 @@ function CollectionSuite () {
 
       // test after truncation
       c1.truncate();
-      var r6 = c1.checksum();
+      var r6 = c1.checksum(true);
       assertTypeOf("string", r6.revision);
       assertNotEqual(r4.revision, r6.revision);
       assertNotEqual(r5.revision, r6.revision);
@@ -1017,6 +1017,94 @@ function CollectionSuite () {
       
       db._drop(cn);
       db._drop(vn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test checksum two different collections
+////////////////////////////////////////////////////////////////////////////////
+
+    testChecksumDifferent : function () {
+      var cn1 = "example";
+      var cn2 = "example2";
+
+      db._drop(cn1);
+      db._drop(cn2);
+      var c1 = db._create(cn1);
+      var c2 = db._create(cn2);
+
+      // collections are empty, checksums are identical
+      var cs1 = c1.checksum().checksum;
+      var cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+
+      c1.save({ _key: "foobar", value: 123 });
+      c2.save({ _key: "foobar", value: 123 });
+      
+      // keys are the same
+      cs1 = c1.checksum().checksum;
+      cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+      
+      // data is the same
+      cs1 = c1.checksum(false, true).checksum;
+      cs2 = c2.checksum(false, true).checksum;
+
+      assertEqual(cs1, cs2);
+
+      // revisions are different
+      cs1 = c1.checksum(true, false).checksum;
+      cs2 = c2.checksum(true, false).checksum;
+
+      assertNotEqual(cs1, cs2);
+      
+      // revisions are still different
+      cs1 = c1.checksum(true, true).checksum;
+      cs2 = c2.checksum(true, true).checksum;
+
+      assertNotEqual(cs1, cs2);
+
+      // update document in c1, keep data
+      c1.replace("foobar", { value: 123 });
+      
+      // keys are still the same
+      cs1 = c1.checksum().checksum;
+      cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+      
+      // data is still the same
+      cs1 = c1.checksum(false, true).checksum;
+      cs2 = c2.checksum(false, true).checksum;
+
+      assertEqual(cs1, cs2);
+
+      // revisions are still different
+      cs1 = c1.checksum(true, false).checksum;
+      cs2 = c2.checksum(true, false).checksum;
+      
+      // update document in c1, changing data
+      c1.replace("foobar", { value: 124 });
+      
+      // keys are still the same
+      cs1 = c1.checksum().checksum;
+      cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+      
+      // data is not the same
+      cs1 = c1.checksum(false, true).checksum;
+      cs2 = c2.checksum(false, true).checksum;
+
+      assertNotEqual(cs1, cs2);
+
+      // revisions are still different
+      cs1 = c1.checksum(true, false).checksum;
+      cs2 = c2.checksum(true, false).checksum;
+
+      db._drop(cn1);
+      db._drop(cn2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

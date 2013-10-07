@@ -260,20 +260,12 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
       if (*keyStr == 0) {
         *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert attribute path to UTF8");
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-      else if (pids[i] == 0) {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot convert to attribute path");
-        return TRI_ERROR_BAD_PARAMETER;
       }
       else {
         *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                      "cannot convert value to JSON");
-        return TRI_ERROR_BAD_PARAMETER;
       }
-
-      assert(false);
+      return TRI_ERROR_BAD_PARAMETER;
     }
   }
 
@@ -300,12 +292,12 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
   for (size_t i = 1; i <= idx->_fields._length; ++i) {
     v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i - 1]);
 
-    if (!conditions->HasOwnProperty(key)) {
+    if (! conditions->HasOwnProperty(key)) {
       break;
     }
     v8::Handle<v8::Value> fieldConditions = conditions->Get(key);
 
-    if (!fieldConditions->IsArray()) {
+    if (! fieldConditions->IsArray()) {
       // wrong data type for field conditions
       break;
     }
@@ -337,7 +329,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
       TRI_json_t* json = TRI_ObjectToJson(value);
 
-      if (! json) {
+      if (json == 0) {
         goto MEM_ERROR;
       }
 
@@ -346,6 +338,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         // equality comparison
 
         if (lastNonEq > 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
@@ -358,6 +351,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         if (lastNonEq > 0 && lastNonEq != i) {
           // if we already had a range condition and a previous field, we cannot continue
           // because the skiplist interface does not support such queries
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
@@ -376,13 +370,16 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         }
         else {
           // wrong operator type
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
         lastNonEq = i;
 
         TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
         if (cloned == 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
 
@@ -391,6 +388,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         if (numEq) {
           // create equality operator if one is in queue
           TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
           if (clonedParams == 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
             goto MEM_ERROR;
@@ -403,6 +401,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
         // create the operator for the current condition
         current = TRI_CreateIndexOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
+
         if (current == 0) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
           goto MEM_ERROR;
@@ -434,6 +433,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
     assert(lastNonEq == 0);
 
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+
     if (clonedParams == 0) {
       goto MEM_ERROR;
     }
@@ -1067,11 +1067,15 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     skiplistOperator = SetupConditionsSkiplist(idx, shaper, values);
   }
 
-  if (! skiplistOperator) {
+  if (skiplistOperator == 0) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "setting up skiplist operator failed");
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+
+  if (skiplistIterator == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
@@ -2221,36 +2225,40 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
 }
 
 typedef struct collection_checksum_s {
-  uint32_t            _checksum;
   TRI_string_buffer_t _buffer;
+  uint32_t            _checksum;
 }
 collection_checksum_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback for checksum calculation, WD = with data
+/// @brief callback for checksum calculation, WR = with _rid, WD = with data
 ////////////////////////////////////////////////////////////////////////////////
 
-template<bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
-                                                  TRI_primary_collection_t* primary, 
-                                                  void* data) {
+template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
+                                                           TRI_primary_collection_t* primary, 
+                                                           void* data) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    // must convert _rid into string for portability (little vs. big endian etc.)
-    const string key = string(mptr->_key) + StringUtils::itoa(mptr->_rid);
-    localCrc = TRI_Crc32HashPointer(key.c_str(), key.size());
+    localCrc = TRI_Crc32HashString(mptr->_key);
+    if (WR) {
+      localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
+    }
   }
   else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
     // must convert _rid, _fromCid, _toCid into strings for portability
-    const string key = string(mptr->_key) + StringUtils::itoa(mptr->_rid) + 
-                       StringUtils::itoa(e->_toCid) + string(((char*) marker) + e->_offsetToKey) +
-                       StringUtils::itoa(e->_fromCid) + string(((char*) marker) + e->_offsetFromKey); 
+    localCrc = TRI_Crc32HashString(mptr->_key);
+    if (WR) {
+      localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
+    }
+    const string extra = StringUtils::itoa(e->_toCid) + string(((char*) marker) + e->_offsetToKey) +
+                         StringUtils::itoa(e->_fromCid) + string(((char*) marker) + e->_offsetFromKey); 
     
-    localCrc = TRI_Crc32HashPointer(key.c_str(), key.size());
+    localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
   }
   else {
     return true;
@@ -2276,10 +2284,13 @@ template<bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculates a checksum for the data in a collection
 ///
-/// @FUN{@FA{collection}.checksum(@FA{withData})}
+/// @FUN{@FA{collection}.checksum(@FA{withRevisions}, @FA{withData})}
 ///
-/// The @FN{checksum} operation calculates a CRC32 checksum of the meta-data 
-/// (keys and revision ids) contained in collection @FA{collection}. 
+/// The @FN{checksum} operation calculates a CRC32 checksum of the keys 
+/// contained in collection @FA{collection}.
+///
+/// If the optional argument @FA{withRevisions} is set to @LIT{true}, then the 
+/// revision ids of the documents are also included in the checksumming.
 /// 
 /// If the optional argument @FA{withData} is set to @LIT{true}, then the 
 /// actual document data is also checksummed. Including the document data in
@@ -2295,10 +2306,15 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  bool withRevisions = false;
+  if (argv.Length() > 0) {
+    withRevisions = TRI_ObjectToBoolean(argv[0]);
+  }
 
   bool withData = false;
-  if (argv.Length() > 0) {
-    withData = TRI_ObjectToBoolean(argv[0]);
+  if (argv.Length() > 1) {
+    withData = TRI_ObjectToBoolean(argv[1]);
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -2328,12 +2344,22 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
 
-    TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true>);
+    if (withRevisions) {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, true>);
+    }
+    else {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, true>);
+    }
 
     TRI_DestroyStringBuffer(&helper._buffer);
   }
   else {
-    TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false>);
+    if (withRevisions) {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, false>);
+    }
+    else {
+      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, false>);
+    }
   }
 
   trx.finish(res);
@@ -2952,6 +2978,10 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> err;
   TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
+  
+  if (idx == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
 
   if (idx->_type != TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX) {
     trx.finish(res);
@@ -2960,19 +2990,21 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
 
   PQIndexElements* elms = TRI_LookupPriorityQueueIndex(idx, 1);
 
-  if (elms == NULL ) {
+  if (elms == 0) {
     trx.finish(res);
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot execute pqueue query");
   }
 
   if (elms->_numElements == 0) {
     trx.finish(res);
+    TRI_FreeLookupResultPriorityQueueIndex(elms);
     return scope.Close(v8::Undefined());
   }
 
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) col->_collection)->_barrierList);
 
   if (barrier == 0) {
+    TRI_FreeLookupResultPriorityQueueIndex(elms);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -2981,9 +3013,9 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
                                                   (TRI_doc_mptr_t const*) elms->_elements[0]._document,
                                                   barrier);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, elms->_elements);
-
   trx.finish(res);
+  
+  TRI_FreeLookupResultPriorityQueueIndex(elms);
 
   if (result.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);

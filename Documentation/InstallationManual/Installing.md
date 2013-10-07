@@ -74,7 +74,7 @@ You can find the Mac OS X packages here:
 Homebrew {#InstallingMacOSXHomebrew}
 ------------------------------------
 
-If you are using @EXTREF{http://mxcl.github.com/homebrew/,homebrew},
+If you are using @S_EXTREF{http://mxcl.github.com/homebrew/,homebrew},
 then you can install the ArangoDB using `brew` as follows:
 
     brew install arangodb
@@ -92,6 +92,20 @@ The ArangoDB shell will be install as
 If you want to install the latest version use:
 
     brew install --HEAD arangodb
+
+You can unstall ArangoDB using
+
+    brew uninstall arangodb
+
+However, in case you started ArangoDB using the launchctl, then you
+need to unload it before uninstalling the server.
+
+    launchctl unload ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
+
+Then remove the LaunchAgent
+
+    rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
+
 
 Apples App Store {#InstallingMacOSXAppStore}
 --------------------------------------------

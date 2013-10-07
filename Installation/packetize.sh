@@ -26,7 +26,7 @@ SUBLIST="Installation/epm/${project_name}.sublist"
 START_SCRIPT="";
 
 arangodb_version=`cat VERSION | awk -F"." '{print $1 "." $2}'`
-arangodb_release=`cat VERSION | awk -F"." '{print $3}'`  
+arangodb_release=`cat VERSION | awk -F"." '{print $3}' | tr -d "-"`  
 
 ostype=`uname -s | tr '[:upper:]' '[:lower:]'`
 osvers=`uname -r | awk -F"." '{print $1 "." $2}'`
@@ -82,6 +82,12 @@ Start ArangoDB service:
   > /etc/init.d/arangodb start
 "
 
+# message for logfile
+log_message="
+ArangoDB writes a log file. Please consult this log file in case of errors: 
+  /var/log/arangodb/arangod.log
+"
+
 echo
 echo "########################################################"
 echo "Packetize on $TRI_OS_LONG"
@@ -103,7 +109,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export chkconf="true"
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
     ;;
 
   Darwin*)
@@ -130,7 +136,7 @@ case $TRI_OS_LONG in
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
 
     ;;
 
@@ -143,7 +149,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export use_systemd="true"
-    install_message="${install_message}${start_systemd_message}"
+    install_message="${install_message}${start_systemd_message}${log_message}"
     ;;
 
   Linux-LinuxMint-*)
@@ -155,7 +161,7 @@ case $TRI_OS_LONG in
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
 
     ;;
 
@@ -168,7 +174,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export use_systemd="true"
-    install_message="${install_message}${start_systemd_message}"
+    install_message="${install_message}${start_systemd_message}${log_message}"
     ;;
 
   Linux-openSUSE*)
@@ -180,7 +186,7 @@ case $TRI_OS_LONG in
 
     # exports for the epm configuration file
     export insserv="true"
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
     ;;
 
   Linux-Ubuntu-*)
@@ -192,7 +198,7 @@ case $TRI_OS_LONG in
     if [ ${TRI_MACH} == "x86_64" ] ; then
       TRI_MACH="amd64"
     fi
-    install_message="${install_message}${start_initd_message}"
+    install_message="${install_message}${start_initd_message}${log_message}"
 
     ;;
 
@@ -240,17 +246,6 @@ echo "Call mkepmlist to create a sublist"
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man1 ${sfolder_name}/Doxygen/man/man1/*.1 >> ${SUBLIST}
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man8 ${sfolder_name}/Doxygen/man/man8/*.8 >> ${SUBLIST}
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/js ${sfolder_name}/js >> ${SUBLIST}
-
-  for dir in . css css/images media media/icons media/images js js/modules; do
-    for typ in css html js png gif ico;  do
-      FILES=${sfolder_name}/html/admin/${dir}/*.${typ}
-
-      if test "${FILES}" != "${sfolder_name}/html/admin/${dir}/\*.${typ}";  then
-        # echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}"
-        mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}
-      fi
-    done
-  done
 
 echo "########################################################"
 echo 
@@ -318,8 +313,8 @@ export systemddir
 echo 
 echo "########################################################"
 echo "Call EPM to build the package."
-echo "  sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
-sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
+echo "  sudo -E epm -v -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
+sudo -E epm -v -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
 echo "########################################################"
 echo 
 
@@ -472,6 +467,7 @@ echo "########################################################"
 echo "Request version number "
 echo "   $curl_version"
 answer=$( $curl_version )
+answer=`echo "$answer" | tr -d "-"` # remove "-" from version string for comparison
 expect='{"server":"arango","version":"'$arangodb_version.$arangodb_release'"}'
 if [ "x$answer" == "x$expect" ]; then 
   echo "ok: $answer"

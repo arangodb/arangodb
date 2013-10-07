@@ -135,9 +135,9 @@ start-server:
 	@echo "Server Options: $(SERVER_OPT)"
 	@echo
 
-	rm -f "$(PIDFILE)"
-	rm -rf "$(VOCDIR)"
-	mkdir -p "$(VOCDIR)"
+	@rm -f "$(PIDFILE)"
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	@test -d "$(VOCDIR)"
 
@@ -162,9 +162,9 @@ start-slave:
 	@echo "Slave Options: $(SERVER_OPT)"
 	@echo
 
-	rm -f "$(SLAVEPIDFILE)"
-	rm -rf "$(SLAVEDIR)"
-	mkdir -p "$(SLAVEDIR)"
+	@rm -f "$(SLAVEPIDFILE)"
+	@rm -rf "$(SLAVEDIR)"
+	@mkdir -p "$(SLAVEDIR)/databases"
 
 	@test -d "$(SLAVEDIR)"
 
@@ -342,7 +342,7 @@ unittests-shell-server:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
@@ -363,7 +363,7 @@ unittests-shell-server-only:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
 
@@ -437,7 +437,7 @@ unittests-shell-server-ahuacatl:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
@@ -581,7 +581,7 @@ unittests-replication-server:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
 
@@ -655,7 +655,7 @@ unittests-replication-logger:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 	@echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 	@rm -rf "$(VOCDIR)"
@@ -677,7 +677,7 @@ unittests-upgrade:
 	@echo
 
 	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 	@sleep 2 
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
@@ -696,7 +696,7 @@ unittests-upgrade:
 .PHONY: unittests-dfdb
 
 unittests-dfdb:
-	@mkdir -p "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
 	@test -d "$(VOCDIR)"
 
 	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
@@ -744,6 +744,8 @@ unittests-arangob:
 	@echo "================================================================================"
 	@echo
 
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 10000 --concurrency 2 --test version --async true || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 20000 --concurrency 1 --test version --async true || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 1000 --batch-size 16 --concurrency 2 --test version || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 0 --concurrency 1 --test version || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 10 --concurrency 2 --test document --complexity 1 || test "x$(FORCE)" == "x1"

@@ -1,6 +1,83 @@
 v1.4
 ----
 
+* show current database name in web interface (bottom right corner)
+
+* added missing documentation for /_api/import in swagger API docs 
+
+* allow specification of database name for replication sync command replication applier
+
+  This allows syncing from a master database with a different name than the slave database.
+
+* issue #601: Show DB in prompt
+
+  arangosh now displays the database name as part of the prompt by default.
+  
+  Can change the prompt by using the `--prompt` option, e.g.
+
+      > arangosh --prompt "my db is named \"%d\"> "
+
+
+v1.4.0-beta (2013-10-01)
+------------------------
+
+* make the Foxx manager use per-database app directories
+
+  Each database now has its own subdirectory for Foxx applications. Each database
+  can thus use different Foxx applications if required. A Foxx app for a specific
+  database resides in `<app-path>/databases/<database-name>/<app-name>`.
+
+  System apps are shared between all databases. They reside in `<app-path>/system/<app-name>`.
+
+* only trigger an engine reset in development mode for URLs starting with `/dev/`
+
+  This prevents ArangoDB from reloading all Foxx applications when it is not
+  actually necessary.
+
+* changed error code from 10 (bad parameter) to 1232 (invalid key generator) for 
+  errors that are due to an invalid key generator specification when creating a new
+  collection
+
+* automatic detection of content-type / mime-type for Foxx assets based on filenames,
+  added possibility to override auto detection
+
+* added endpoint management API at `/_api/endpoint`
+
+* changed HTTP return code of PUT `/_api/cursor` from 400 to 404 in case a
+  non-existing cursor is referred to
+
+* issue #360: added support for asynchronous requests
+
+  Incoming HTTP requests with the headers `x-arango-async: true` or 
+  `x-arango-async: store` will be answered by the server instantly with a generic 
+  HTTP 202 (Accepted) response. 
+  
+  The actual requests will be queued and processed by the server asynchronously, 
+  allowing the client to continue sending other requests without waiting for the
+  server to process the actually requested operation.
+
+  The exact point in time when a queued request is executed is undefined. If an
+  error occurs during execution of an asynchronous request, the client will not
+  be notified by the server.
+
+  The maximum size of the asynchronous task queue can be controlled using the new
+  option `--scheduler.maximal-queue-size`. If the queue contains this many number of
+  tasks and a new asynchronous request comes in, the server will reject it with an
+  HTTP 500 (internal server error) response.
+  
+  Results of incoming requests marked with header `x-arango-async: true` will be
+  discarded by the server immediately. Clients have no way of accessing the result
+  of such asynchronously executed request. This is just _fire and forget_.
+
+  To later retrieve the result of an asynchronously executed request, clients can
+  mark a request with the header `x-arango-async: keep`. This makes the server
+  store the result of the request in memory until explicitly fetched by a client
+  via the `/_api/job` API. The `/_api/job` API also provides methods for basic
+  inspection of which pending or already finished requests there are on the server,
+  plus ways for garbage collecting unneeded results.
+
+* Added new option `--scheduler.maximal-queue-size`.
+
 * issue #590: Manifest Lint
 
 * added data dump and restore tools, arangodump and arangorestore.
@@ -14,7 +91,6 @@ v1.4
   referenced documents in edges propertly when doing just partial restores.
   This will be fixed until 1.4 stable.
   
-
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
 
   The option allows these client tools to use a certain database for their actions.
@@ -55,7 +131,6 @@ v1.4
   To access a different database (e.g. `test`), the URL pathname would look like this:
 
       /_db/test/document/mycollection/1234
-
 
   New databases can also be created and existing databases can only be dropped from
   within the default database (`_system`). It is not possible to drop the `_system`
@@ -104,7 +179,7 @@ v1.4
   by putting in a redirection from `/` to `/_admin/aardvark/index.html`, and from 
   `/_admin/html/index.html` to `/_admin/aardvark/index.html`.
 
-  This also obsoletes the following configuration options:
+  This also obsoletes the following configuration (command-line) options:
   - `--server.admin-directory`
   - `--server.disable-admin-interface`
 
@@ -162,7 +237,7 @@ v1.4
   making the journal a datafile. Thus `rotate()` may cause disk space savings, even if
   the datafiles does not qualify for compaction after rotation.
 
-  Note: the journal is asynchronously, so that the actual rotation may be executed
+  Note: rotating the journal is asynchronous, so that the actual rotation may be executed
   after `rotate()` returns to the caller.
 
 * changed compaction to merge small datafiles together (up to 3 datafiles are merged in 
@@ -424,7 +499,9 @@ v1.4.0-alpha1 (2013-08-02)
 * added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
 
 * added API `/_api/current-database` to retrieve information about the database the
-  client is currently connected to.
+  client is currently connected to (note: the API `/_api/current-database` has been
+  removed in the meantime. The functionality is accessible via `/_api/database/current` 
+  now).
 
 * ensure a proper order of tick values in datafiles/journals/compactors.
   any new files written will have the _tick values of their markers in order. for
@@ -1751,7 +1828,7 @@ v1.0.beta1 (2012-07-29)
 * INCOMPATIBLE CHANGE: removed startup option "--server.admin-port". 
   The new endpoints feature (see --server.endpoint) allows opening multiple endpoints 
   anyway, and the distinction between admin and "other" endpoints can be emulated 
-  later using privileges
+  later using privileges.
 
 * INCOMPATIBLE CHANGE: removed startup options "--port", "--server.port", and 
   "--server.http-port" for arangod. 
