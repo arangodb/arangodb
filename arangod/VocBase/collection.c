@@ -1692,7 +1692,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot load collection parameter '%s': '%s'", path, TRI_last_error());
+    LOG_ERROR("cannot load collection parameter '%s': %s", path, TRI_last_error());
     return NULL;
   }
 
