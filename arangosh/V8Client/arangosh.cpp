@@ -294,9 +294,9 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
 
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
-    result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
-    result->Set(v8::String::New("errors"), v8::Integer::New(ih.getErrorLines()));
+    result->Set(v8::String::New("lines"), v8::Integer::New((int32_t) ih.getReadLines()));
+    result->Set(v8::String::New("created"), v8::Integer::New((int32_t) ih.getImportedLines()));
+    result->Set(v8::String::New("errors"), v8::Integer::New((int32_t) ih.getErrorLines()));
     return scope.Close(result);
   }
 
@@ -340,9 +340,9 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 
   if (ih.importJson(collectionName, fileName)) {
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
-    result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
-    result->Set(v8::String::New("errors"), v8::Integer::New(ih.getErrorLines()));
+    result->Set(v8::String::New("lines"), v8::Integer::New((int32_t) ih.getReadLines()));
+    result->Set(v8::String::New("created"), v8::Integer::New((int32_t) ih.getImportedLines()));
+    result->Set(v8::String::New("errors"), v8::Integer::New((int32_t) ih.getErrorLines()));
     return scope.Close(result);
   }
 
@@ -543,9 +543,11 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   V8ClientConnection* connection = CreateConnection();
 
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-         << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName() 
-         << "', username: '" << BaseClient.username() << "'" << endl;
+	ostringstream s;
+    s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+      << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName() 
+      << "', username: '" << BaseClient.username() << "'";
+    BaseClient.printLine(s.str());
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
@@ -586,7 +588,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
   string password;
   if (argv.Length() < 4) {
-    cout << "Please specify a password: " << flush;
+	BaseClient.printContinuous("Please specify a password: ");
 
     // now prompt for it
 #ifdef TRI_HAVE_TERMIOS_H
@@ -597,7 +599,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 #else
     getline(cin, password);
 #endif
-    cout << "\n";
+	BaseClient.printLine("");
   }
   else {
     password = TRI_ObjectToString(argv[3]);
@@ -631,9 +633,12 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   V8ClientConnection* newConnection = CreateConnection();
 
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-         << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
-         << "', username: '" << BaseClient.username() << "'" << endl;
+	ostringstream s;
+    s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+      << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+      << "', username: '" << BaseClient.username() << "'";
+
+    BaseClient.printLine(s.str());
 
     argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(newConnection));
 
@@ -653,7 +658,10 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     return scope.Close(v8::True());
   }
   else {
-    cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
+	ostringstream s;
+    s << "Could not connect to endpoint '" << BaseClient.endpointString() << 
+		 "', username: '" << BaseClient.username() << "'";
+    BaseClient.printErrLine(s.str());
     
     string errorMsg = "could not connect";
     if (newConnection->getErrorMessage() != "") {
@@ -1073,7 +1081,7 @@ static v8::Handle<v8::Value> ClientConnection_getEndpoint (v8::Arguments const& 
   }
 
   const string endpoint = BaseClient.endpointString();
-  return scope.Close(v8::String::New(endpoint.c_str(), endpoint.size()));
+  return scope.Close(v8::String::New(endpoint.c_str(), (int) endpoint.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1250,7 +1258,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
   console.open(BaseClient.autoComplete());
 
-  cout << endl;
+  BaseClient.printLine("");
 
   while (true) {
     // set up prompts
@@ -1352,7 +1360,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       // command failed
       string exception(TRI_StringifyV8Exception(&tryCatch));
 
-      cerr << exception;
+	  BaseClient.printErrLine(exception);
       BaseClient.log("%s", exception.c_str());
 
       // this will change the prompt for the next round
@@ -1360,7 +1368,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     }
 
     BaseClient.stopPager();
-    cout << endl;
+	BaseClient.printLine("");
 
     BaseClient.log("%s\n", "");
     // make sure the last command result makes it into the log file
@@ -1369,7 +1377,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
   console.close();
 
-  cout << endl;
+  BaseClient.printLine("");
 
   BaseClient.printByeBye();
 }
@@ -1399,7 +1407,7 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
 
   if (tryCatch.HasCaught()) {
-    cerr << TRI_StringifyV8Exception(&tryCatch);
+    BaseClient.printErrLine(TRI_StringifyV8Exception(&tryCatch));
     ok = false;
   }
   else {
@@ -1424,7 +1432,10 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
   for (size_t i = 0;  i < scripts.size();  ++i) {
     if (! FileUtils::exists(scripts[i])) {
-      cerr << "error: Javascript file not found: '" << scripts[i].c_str() << "'" << endl;
+	  ostringstream s;
+	  s << "error: Javascript file not found: '" << scripts[i].c_str() << "'";
+      BaseClient.printErrLine(s.str());
+	  
       BaseClient.log("error: Javascript file not found: '%s'\n", scripts[i].c_str());
       ok = false;
       break;
@@ -1439,8 +1450,8 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
+	  BaseClient.printErrLine(exception);
 
-      cerr << exception << endl;
       BaseClient.log("%s\n", exception.c_str());
       ok = false;
       break;
@@ -1464,14 +1475,14 @@ static bool RunString (v8::Handle<v8::Context> context,
   bool ok = true;
 
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context,
-                                                             v8::String::New(script.c_str(), script.size()),
+                                                             v8::String::New(script.c_str(), (int) script.size()),
                                                              v8::String::New("(command-line)"),
                                                              false);
 
   if (tryCatch.HasCaught()) {
     string exception(TRI_StringifyV8Exception(&tryCatch));
 
-    cerr << exception << endl;
+	BaseClient.printErrLine(exception);
     BaseClient.log("%s\n", exception.c_str());
     ok = false;
   }
@@ -1516,7 +1527,7 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
 
   if (tryCatch.HasCaught()) {
-    cerr << TRI_StringifyV8Exception(&tryCatch);
+	BaseClient.printErrLine(TRI_StringifyV8Exception(&tryCatch));
     ok = false;
   }
   else {
@@ -1642,7 +1653,11 @@ int main (int argc, char* argv[]) {
     BaseClient.createEndpoint();
 
     if (BaseClient.endpointServer() == 0) {
-      cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
+      ostringstream s;
+	  s << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')";
+
+	  BaseClient.printErrLine(s.str());
+
       TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
     }
 
@@ -1664,7 +1679,7 @@ int main (int argc, char* argv[]) {
   v8::Persistent<v8::Context> context = v8::Context::New(0, global);
 
   if (context.IsEmpty()) {
-    cerr << "cannot initialize V8 engine" << endl;
+    BaseClient.printErrLine("cannot initialize V8 engine");
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
@@ -1765,7 +1780,7 @@ int main (int argc, char* argv[]) {
       }
 
       // not sure about the code page
-      //SetConsoleOutputCP(65001);
+      SetConsoleOutputCP(65001);
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
       printf("                                  ");
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
@@ -1816,7 +1831,7 @@ int main (int argc, char* argv[]) {
       z = "";
     }
 
-    cout << endl;
+    BaseClient.printLine("");
 
     printf("%s                                  %s     _     %s\n", g, r, z);
     printf("%s  __ _ _ __ __ _ _ __   __ _  ___ %s ___| |__  %s\n", g, r, z);
@@ -1826,10 +1841,15 @@ int main (int argc, char* argv[]) {
     printf("%s                       |___/      %s           %s\n", g, r, z);
 
 #endif
+    BaseClient.printLine("");
 
-    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH" << endl;
+    ostringstream s;
+	s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
+
+	BaseClient.printLine(s.str());
 
     ostringstream info;
+	info << "Using ";
 
 #ifdef TRI_V8_VERSION
     info << "Google V8 " << TRI_V8_VERSION << " JavaScript engine";
@@ -1845,27 +1865,36 @@ int main (int argc, char* argv[]) {
     info << ", ICU " << TRI_ICU_VERSION;
 #endif
 
-    cout << "Using " << info.str() << endl << endl;
+    BaseClient.printLine(info.str()); 
+    BaseClient.printLine("");
 
     BaseClient.printWelcomeInfo();
 
     if (useServer) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
-        cout << "Connected to ArangoDB '" << BaseClient.endpointString()
-             << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
-             << "', username: '" << BaseClient.username() << "'" << endl;
+		ostringstream is;
+		is << "Connected to ArangoDB '" << BaseClient.endpointString()
+           << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+           << "', username: '" << BaseClient.username() << "'";
+
+		BaseClient.printLine(is.str());
       }
       else {
-        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
-             << "', database: '" << BaseClient.databaseName() 
-             << "', username: '" << BaseClient.username() << "'" << endl;
+        ostringstream is;
+		is << "Could not connect to endpoint '" << BaseClient.endpointString() 
+           << "', database: '" << BaseClient.databaseName() 
+           << "', username: '" << BaseClient.username() << "'";
+	    BaseClient.printErrLine(is.str());
+
         if (ClientConnection->getErrorMessage() != "") {
-          cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
+          ostringstream is2;
+          is2 << "Error message '" << ClientConnection->getErrorMessage() << "'";
+	      BaseClient.printErrLine(is2.str());
         }
         promptError = true;
       }
 
-      cout << endl;
+	  BaseClient.printLine("");
     }
   }
 
@@ -1943,10 +1972,10 @@ int main (int argc, char* argv[]) {
   // create arguments
   // .............................................................................
 
-  v8::Handle<v8::Array> p = v8::Array::New(positionals.size());
+  v8::Handle<v8::Array> p = v8::Array::New((int) positionals.size());
 
-  for (size_t i = 0;  i < positionals.size();  ++i) {
-    p->Set(i, v8::String::New(positionals[i].c_str()));
+  for (uint32_t i = 0;  i < positionals.size();  ++i) {
+    p->Set(i, v8::String::New(positionals[i].c_str(), (int) positionals[i].size()));
   }
   
   TRI_AddGlobalVariableVocbase(context, "ARGUMENTS", p);
