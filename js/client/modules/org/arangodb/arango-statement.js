@@ -61,30 +61,30 @@ ArangoStatement.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var helpArangoStatement = arangosh.createHelpHeadline("ArangoStatement help") +
-  'Create a select query:                                              ' + "\n" +
-  ' > st = new ArangoStatement(db, { "query" : "for..." });            ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
-  'Set query options:                                                  ' + "\n" +
-  ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
-  '                                 to be transferred per roundtrip    ' + "\n" +
-  ' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  'Get query options:                                                  ' + "\n" +
-  ' > st.setBatchSize();            return the max. number of results  ' + "\n" +
-  '                                 to be transferred per roundtrip    ' + "\n" +
-  ' > st.getCount();                return count flag (return number of' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  ' > st.getQuery();                return query string                ' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  'Bind parameters to a query:                                         ' + "\n" +
-  ' > st.bind(<key>, <value>);      bind single variable               ' + "\n" +
-  ' > st.bind(<values>);            bind multiple variables            ' + "\n" +
-  'Execute query:                                                      ' + "\n" +
-  ' > c = st.execute();             returns a cursor                   ' + "\n" +
-  'Get all results in an array:                                        ' + "\n" +
-  ' > e = c.elements();                                                ' + "\n" +
-  'Or loop over the result set:                                        ' + "\n" +
-  ' > while (c.hasNext()) { print( c.next() ); }                       ';
+  'Create an AQL query:                                                    ' + "\n" +
+  ' > stmt = new ArangoStatement(db, { "query": "FOR..." })                ' + "\n" +
+  ' > stmt = db._createStatement({ "query": "FOR..." })                    ' + "\n" +
+  'Set query options:                                                      ' + "\n" +
+  ' > stmt.setBatchSize(<value>)           set the max. number of results  ' + "\n" +
+  '                                        to be transferred per roundtrip ' + "\n" +
+  ' > stmt.setCount(<value>)               set count flag (return number of' + "\n" +
+  '                                        results in "count" attribute)   ' + "\n" +
+  'Get query options:                                                      ' + "\n" +
+  ' > stmt.setBatchSize()                  return the max. number of results' + "\n" +
+  '                                        to be transferred per roundtrip ' + "\n" +
+  ' > stmt.getCount()                      return count flag (return number' + "\n" +
+  '                                        of results in "count" attribute)' + "\n" +
+  ' > stmt.getQuery()                      return query string             ' + "\n" +
+  '                                        results in "count" attribute)   ' + "\n" +
+  'Bind parameters to a query:                                             ' + "\n" +
+  ' > stmt.bind(<key>, <value>)            bind single variable            ' + "\n" +
+  ' > stmt.bind(<values>)                  bind multiple variables         ' + "\n" +
+  'Execute query:                                                          ' + "\n" +
+  ' > cursor = stmt.execute()              returns a cursor                ' + "\n" +
+  'Get all results in an array:                                            ' + "\n" +
+  ' > docs = cursor.toArray()                                              ' + "\n" +
+  'Or loop over the result set:                                            ' + "\n" +
+  ' > while (cursor.hasNext()) { print(cursor.next()) }                    ';
 
 ArangoStatement.prototype._help = function () {
   internal.print(helpArangoStatement);
