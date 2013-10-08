@@ -7,15 +7,12 @@ break=off
 setlocal enableextensions
 
 
-SET ACTION_DIR=".\js\actions\demo"
-SET ACTION_SYS_DIR=".\js\actions\system"
+SET ACTION_DIR=".\js\actions"
 SET GC=20
 SET STARTUP_MOD=".\js\server\modules;.\js\common\modules;.\js\node"
 SET STARTUP_DIR=".\js"
 SET APP_PATH=".\js\apps"
 SET PACKAGE_PATH=".\js\npm"
-
-
 
 
 SET DATABASE_DIR=".\data"
@@ -40,12 +37,12 @@ if NOT EXIST ".\data" (
 :: # This indicates abnormal termination. 
 :: ##################################################################
 
-if EXIST ".\data\lock" goto DEL_LOCK
+if EXIST ".\data\LOCK" goto DEL_LOCK
 
 :DEL_LOCK
 echo removing lock file
-del /F .\data\lock > NUL
-if EXIST ".\data\lock" (
+del /F .\data\LOCK > NUL
+if EXIST ".\data\LOCK" (
   echo =======================================================================================
   echo ERROR: There appears to be a lock file which is in use. This is generally caused
   echo         by starting a second server instance before the first instance has terminated.
@@ -70,7 +67,7 @@ SET CMD=%CMD% --database.directory %DATABASE_DIR%
 SET CMD=%CMD% --server.disable-authentication true
 SET CMD=%CMD% --log.level %LOG_LEVEL%
 SET CMD=%CMD% --log.severity human 
-SET CMD=%CMD% --javascript.action-directory %ACTION_SYS_DIR%
+SET CMD=%CMD% --javascript.action-directory %ACTION_DIR%
 SET CMD=%CMD% --javascript.modules-path %STARTUP_MOD% 
 SET CMD=%CMD% --javascript.startup-directory %STARTUP_DIR%
 SET CMD=%CMD% --javascript.app-path %APP_PATH% 
@@ -81,14 +78,12 @@ SET CMD=%CMD% --scheduler.threads 4
 :: SET CMD=%CMD% --database.maximal-journal-size 1048576
 SET CMD=%CMD% --console
 
+SET CMD=%CMD% %*
+
 echo starting arangod.exe in server mode   
 echo with %CMD%
 
 arangod.exe %CMD%
-goto END
-
-
 
 
 :END
-

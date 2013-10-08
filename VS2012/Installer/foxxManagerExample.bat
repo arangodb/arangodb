@@ -1,6 +1,6 @@
 @echo off
 :: #################################################################
-:: # script to start the arango server in windows
+:: # script to start the foxx manager in windows
 :: #################################################################
 cls
 break=off
@@ -31,6 +31,7 @@ SET CMD=%CMD% --log.level %LOG_LEVEL%
 SET CMD=%CMD% --javascript.startup-directory %STARTUP_DIR%
 SET CMD=%CMD% --javascript.modules-path %STARTUP_MOD% 
 SET CMD=%CMD% --javascript.package-path %PACKAGE_PATH% 
+SET CMD=%CMD% --javascript.execute-string "require(\"org/arangodb/foxx/manager\").run(ARGUMENTS);"
 
 SET CMD=%CMD% %*
 

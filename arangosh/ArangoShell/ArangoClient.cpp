@@ -392,7 +392,7 @@ void ArangoClient::parse (ProgramOptions& options,
     // no password given on command-line
     if (! _hasPassword) {
       usleep(10 * 1000);
-      cout << "Please specify a password: " << flush;
+      printContinuous("Please specify a password: ");
 
       // now prompt for it
 #ifdef TRI_HAVE_TERMIOS_H
@@ -403,9 +403,45 @@ void ArangoClient::parse (ProgramOptions& options,
 #else
       getline(cin, _password);
 #endif
-      cout << "\n";
+	  printLine("");
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a string and a newline to stderr
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::printErrLine (const string& s) {
+#ifdef _WIN32
+  // no, we can use std::cerr as this doesn't support UTF-8 on Windows
+  fprintf(stderr, "%s\r\n", s.c_str());
+#else
+  fprintf(stderr, "%s\n", s.c_str());
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a string and a newline to stdout
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::printLine (const string& s) {
+#ifdef _WIN32
+  // no, we can use std::cout as this doesn't support UTF-8 on Windows
+  fprintf(stdout, "%s\r\n", s.c_str());
+#else
+  fprintf(stdout, "%s\n", s.c_str());
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a string to stdout, without a newline
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::printContinuous (const string& s) {
+  // no, we can use std::cout as this doesn't support UTF-8 on Windows
+  fprintf(stdout, "%s", s.c_str());
+  fflush(stdout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,11 +537,15 @@ void ArangoClient::internalPrint (const char* format, const char* str) {
 void ArangoClient::openLog () {
   if (! _logFile.empty()) {
     _log = fopen(_logFile.c_str(), "w");
+
+	ostringstream s;
     if (_log == 0) {
-      cerr << "Cannot open file '" << _logFile << "' for logging." << endl;
+      s << "Cannot open file '" << _logFile << "' for logging.";
+	  printErrLine(s.str());
     }
     else {
-      cout << "Logging input and output to '" << _logFile << "'." << endl;
+      s << "Logging input and output to '" << _logFile << "'.";
+	  printLine(s.str());
     }
   }
 }
@@ -527,11 +567,14 @@ void ArangoClient::closeLog () {
 
 void ArangoClient::printWelcomeInfo () {
   if (_usePager) {
-    cout << "Using pager '" << _outputPager << "' for output buffering." << endl;
+	ostringstream s;
+	s << "Using pager '" << _outputPager << "' for output buffering.";
+
+	printLine(s.str());
   }
 
   if (_prettyPrint) {
-    cout << "Pretty printing values." << endl;
+	printLine("Pretty printing values.");
   }
 }
 
@@ -541,7 +584,8 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-    cout << "<ctrl-D>" << endl << TRI_BYE_MESSAGE << endl;
+	printLine("<ctrl-D>");
+    printLine(TRI_BYE_MESSAGE);
   }
 }
 
