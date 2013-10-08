@@ -214,10 +214,12 @@ function repackZipFile (source) {
   // locate the manifest file
   // .............................................................................
 
-  var tree = fs.listTree(path).sort(function(a,b) { return a.length - b.length; });
+  var tree = fs.listTree(path).sort(function(a,b) { 
+    return a.length - b.length; 
+  });
   var found;
   var mf = "manifest.json";
-  var re = /\/manifest\.json$/;
+  var re = /[\/\\\\]manifest\.json$/; // Windows!
 
   for (i = 0;  i < tree.length && found === undefined;  ++i) {
     var tf = tree[i];
@@ -227,7 +229,7 @@ function repackZipFile (source) {
     }
   }
 
-  if (found === "undefined") {
+  if (typeof found === "undefined") {
     throwFileNotFound("Cannot find manifest file '" + filename + "'");
   }
 
