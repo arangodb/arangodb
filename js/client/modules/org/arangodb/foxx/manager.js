@@ -38,7 +38,7 @@ var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 var db = arangodb.db;
 var throwDownloadError = arangodb.throwDownloadError;
-var throwFileNoteFound = arangodb.throwFileNoteFound;
+var throwFileNotFound = arangodb.throwFileNotFound;
 var throwBadParameter = arangodb.throwBadParameter;
 var checkParameter = arangodb.checkParameter;
 
@@ -160,7 +160,7 @@ function processDirectory (source) {
   var location = source.location;
 
   if (! fs.exists(location) || ! fs.isDirectory(location)) {
-    throwFileNoteFound("'" + String(location) + "' is not a directory");
+    throwFileNotFound("'" + String(location) + "' is not a directory");
   }
   
   // .............................................................................
@@ -186,7 +186,7 @@ function processDirectory (source) {
   }
 
   if (files.length === 0) {
-    throwFileNoteFound("Directory '" + String(location) + "' is empty");
+    throwFileNotFound("Directory '" + String(location) + "' is empty");
   }
 
   var tempFile = fs.getTempFile("downloads", false); 
@@ -228,7 +228,7 @@ function repackZipFile (source) {
   }
 
   if (found === "undefined") {
-    throwFileNoteFound("Cannot find manifest file '" + filename + "'");
+    throwFileNotFound("Cannot find manifest file '" + filename + "'");
   }
 
   var mp;
@@ -291,7 +291,7 @@ function processZip (source) {
   var location = source.location;
 
   if (! fs.exists(location) || ! fs.isFile(location)) {
-    throwFileNoteFound("Cannot find zip file '" + String(location) + "'");
+    throwFileNotFound("Cannot find zip file '" + String(location) + "'");
   }
 
   source.filename = source.location;
