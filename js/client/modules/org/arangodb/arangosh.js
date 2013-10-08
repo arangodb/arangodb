@@ -134,33 +134,33 @@ exports.checkRequestResult = function (requestResult) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.HELP = exports.createHelpHeadline("Help") +
-  'Predefined objects:                                                 ' + "\n" +
-  '  arango:                                ArangoConnection           ' + "\n" +
-  '  db:                                    ArangoDatabase             ' + "\n" +
-  '  fm:                                    FoxxManager                ' + "\n" +
-  'Example:                                                            ' + "\n" +
-  ' > db._collections();                    list all collections       ' + "\n" +
-  ' > db._create(<coll_name>);              create a new collection    ' + "\n" +
-  ' > db._drop(<coll_name>);                drop a collection          ' + "\n" +
-  ' > db.<coll_name>.all().toArray();       list all documents         ' + "\n" +
-  ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
-  ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
-  ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
-  ' > db.<coll_name>.replace(<_id>, {...}); overwrite a document       ' + "\n" +
-  ' > db.<coll_name>.update(<_id>, {...});  partially update a document' + "\n" +
-  ' > db._query(<query>).toArray();         execute an AQL query       ' + "\n" +
-  ' > help                                  show help pages            ' + "\n" +
-  ' > exit                                                             ' + "\n" +
-  'Note: collection names may be cached in arangosh. To refresh them, issue: ' + "\n" +
-  ' > db._collections();                                               ' + "\n" +
-  '                                                                          ' + "\n" +
+  'Predefined objects:                                                ' + "\n" +
+  '  arango:                               ArangoConnection           ' + "\n" +
+  '  db:                                   ArangoDatabase             ' + "\n" +
+  '  fm:                                   FoxxManager                ' + "\n" +
+  'Example:                                                           ' + "\n" +
+  ' > db._collections();                   list all collections       ' + "\n" +
+  ' > db._create(<coll_name>);             create a new collection    ' + "\n" +
+  ' > db._drop(<coll_name>);               drop a collection          ' + "\n" +
+  ' > db.<coll_name>.all().toArray();      list all documents         ' + "\n" +
+  ' > id = db.<coll_name>.save({ ... });   save a document            ' + "\n" +
+  ' > db.<coll_name>.remove(<_id>);        delete a document          ' + "\n" +
+  ' > db.<coll_name>.document(<_id>);      get a document             ' + "\n" +
+  ' > db.<coll_name>.replace(<_id>, {...});overwrite a document       ' + "\n" +
+  ' > db.<coll_name>.update(<_id>, {...}); partially update a document' + "\n" +
+  ' > db._query(<query>).toArray();        execute an AQL query       ' + "\n" +
+  ' > help                                 show help pages            ' + "\n" +
+  ' > exit                                                            ' + "\n" +
+  'Note: collection names may be cached in arangosh. To refresh, use: ' + "\n" +
+  ' > db._collections();                                              ' + "\n" +
+  '                                                                   ' + "\n" +
   (internal.printBrowser ?
-  'To cancel the current prompt, press CTRL + z.                       ' + "\n" +
-  '                                                                          ' + "\n" +
-  'Please note that all variables defined with the var keyword will disappear' + "\n" +
-  'when the command is finished. To introduce variables that are persisted   ' + "\n" +
-  'until the next command, you should omit the var keyword.                  ' + "\n" : 
-  'To cancel the current prompt, press CTRL + d.                       ' + "\n");
+  'To cancel the current prompt, press CTRL + z.                      ' + "\n" +
+  '                                                                   ' + "\n" +
+  'Please note that all variables defined with the var keyword will   ' + "\n" +
+  'disapper when the command is finished. To introduce variables that ' + "\n" +
+  'are persisting until the next command, omit the var keyword.       ' + "\n" : 
+  'To cancel the current prompt, press CTRL + d.                      ' + "\n");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query help
@@ -172,20 +172,19 @@ exports.HELP = exports.createHelpHeadline("Help") +
 
 exports.helpExtended = exports.createHelpHeadline("More help") +
   'Pager:                                                              ' + "\n" +
-  ' > stop_pager()                        stop the pager output        ' + "\n" +
-  ' > start_pager()                       start the pager              ' + "\n" +
+  ' > stop_pager()                         stop the pager output       ' + "\n" +
+  ' > start_pager()                        start the pager             ' + "\n" +
   'Pretty printing:                                                    ' + "\n" +
-  ' > stop_pretty_print()                 stop pretty printing         ' + "\n" +
-  ' > start_pretty_print()                start pretty printing        ' + "\n" +
+  ' > stop_pretty_print()                  stop pretty printing        ' + "\n" +
+  ' > start_pretty_print()                 start pretty printing       ' + "\n" +
   'Color output:                                                       ' + "\n" +
-  ' > stop_color_print()                  stop color printing          ' + "\n" +
-  ' > start_color_print()                 start color printing         ' + "\n" +
-  ' > start_color_print(COLOR_BLUE)       set color                    ' + "\n" +
+  ' > stop_color_print()                   stop color printing         ' + "\n" +
+  ' > start_color_print()                  start color printing        ' + "\n" +
   'Print function:                                                     ' + "\n" +
-  ' > print(x)                            std. print function          ' + "\n" +
-  ' > print_plain(x)                      print without pretty printing' + "\n" +
-  '                                       and without colors           ' + "\n" +
-  ' > clear()                             clear screen                 ' ;
+  ' > print(x)                             std. print function         ' + "\n" +
+  ' > print_plain(x)                       print without prettifying   ' + "\n" +
+  '                                        and without colors          ' + "\n" +
+  ' > clear()                              clear screen                ' ;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
