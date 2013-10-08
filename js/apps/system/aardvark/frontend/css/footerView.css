@@ -80,20 +80,21 @@
 .footer-left {
   background: none repeat scroll 0 0 #333232;
   color: #FFFFFF;
-  width: 33.3%;
+  width: 45%;
   float: left;
 }
 
 .footer-mid {
   background: none repeat scroll 0 0 #333232;
   color: #FFFFFF;
-  width: 33.3%;
+  width: 45%;
   float: left;
 }
 
 .footer-right {
   background: none repeat scroll 0 0 #333232;
   color: #333232;
+  width: 45%;
   float: right;
 }
 

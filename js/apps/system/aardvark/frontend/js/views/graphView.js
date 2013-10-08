@@ -61,12 +61,28 @@ window.graphView = Backbone.View.extend({
       width,
       self = this;
 
-    ecol = $("#edgeCollection").val();
-    ncol = $("#nodeCollection").val();
     undirected = !!$("#undirected").attr("checked");
     label = $("#nodeLabel").val();
     color = $("#nodeColor").val();
     randomStart = !!$("#randomStart").attr("checked");
+    
+    var selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
+    if (selected === "collections") {
+      // selected two individual collections
+      ecol = $("#edgeCollection").val();
+      ncol = $("#nodeCollection").val();
+    }
+    else {
+      // selected a "graph"
+      var graphName = $("#graph").val(),
+          graph = _.find(this.graphs, function(g) { return g._key === graphName; });
+
+      if (graph) {
+        ecol = graph.edges;
+        ncol = graph.vertices;
+      }
+
+    }
 
     groupByAttribute = [];
     $("#group_by_list input").each(function() {
@@ -103,6 +119,7 @@ window.graphView = Backbone.View.extend({
       };
     }
     width = this.width || $("#content").width();
+
     $("#background").remove();
     if (randomStart) {
       $.ajax({
@@ -119,7 +136,7 @@ window.graphView = Backbone.View.extend({
                                       width, 
                                       680, 
                                       config, 
-                                      data.document._id);
+                                      (data.document && data.document._id));
         }
       });
     } else {
@@ -142,8 +159,11 @@ window.graphView = Backbone.View.extend({
       url: "/_api/graph",
       contentType: "application/json",
       success: function(data) {
-        self.graphs = _.pluck(data.graphs, "_key");
-        $(self.el).html(self.template.render({col: self.collection, gs: self.graphs}));
+        self.graphs = data.graphs;
+        $(self.el).html(self.template.render({
+          col: self.collection, 
+          gs: _.pluck(self.graphs, "_key")
+        }));
         delete self.ui;
       }
     });
