@@ -1,6 +1,21 @@
 v1.4
 ----
 
+* added startup option `--server.allow-method-override`
+
+  This option can be set to allow overriding the HTTP request method in a request using
+  one of the following custom headers:
+
+  - x-http-method-override
+  - x-http-method
+  - x-method-override
+
+  This allows bypassing proxies and tools that would otherwise just let certain types of
+  requests pass. Enabling this option may impose a security risk, so it should only be
+  used in very controlled environments.
+
+  The default value for this option is `false` (no method overriding allowed).
+
 * added "details" URL parameter for bulk import API
   
   Setting the `details` URL parameter to `true` in a call to POST `/_api/import` will make
