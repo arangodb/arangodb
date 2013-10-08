@@ -84,6 +84,10 @@
   float: left;
 }
 
+.footer-left p {
+  float:left;
+}
+
 .footer-mid {
   background: none repeat scroll 0 0 #333232;
   color: #FFFFFF;
@@ -100,6 +104,7 @@
 
 .footer-right p {
   color: white;
+  float: right;
 }
 
 .footer-inviisble {
