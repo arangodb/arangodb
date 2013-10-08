@@ -470,6 +470,9 @@ var dashboardView = Backbone.View.extend({
     });
 
     this.loadGraphState();
+
+    //fix position for last value label in detailgraph
+    $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
   },
 
   calculateSeries: function (flush) {
