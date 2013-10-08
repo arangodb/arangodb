@@ -117,6 +117,10 @@ Command-Line Options for arangod {#CommandLineArangod}
 @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 
 @CLEARPAGE
+@anchor CommandLineArangoAllowMethodOverride
+@copydetails triagens::rest::ApplicationEndpointServer::_allowMethodOverride
+
+@CLEARPAGE
 @anchor CommandLineArangoKeyFile
 @copydetails triagens::rest::ApplicationEndpointServer::_httpsKeyfile
 

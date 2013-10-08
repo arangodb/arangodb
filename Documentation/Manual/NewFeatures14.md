@@ -425,6 +425,16 @@ Command-Line Options added {#NewFeatures14Options}
 
 The following command-line options have been added for _arangod_ in ArangoDB 1.4:
 
+  * `--server.allow-method-override`: this option can be set to allow overriding the 
+    HTTP request method in a request using one of the following custom headers:
+    - x-http-method-override
+    - x-http-method
+    - x-method-override
+    Using this option allows bypassing proxies and tools that would otherwise just 
+    let certain types of requests pass. Enabling this option may impose a security 
+    risk, so it should only be used in very controlled environments.
+    The default value for this option is `false` (no method overriding allowed).
+
   * `--scheduler.maximal-queue-size`: limits the size of the asynchronous request
     execution queue. Please have a look at @ref NewFeatures14Async for more details.
 
