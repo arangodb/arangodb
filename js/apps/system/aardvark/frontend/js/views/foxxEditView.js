@@ -27,7 +27,7 @@ window.foxxEditView = Backbone.View.extend({
   },
   
   uninstall: function () {
-    this.model.destroy();
+    this.model.destroy({ wait: true });
     this.hideModal();
   },
   
