@@ -68,6 +68,7 @@ var footerView = Backbone.View.extend({
             $('.logs-menu').css('visibility', 'hidden');
             $('.logs-menu').css('display', 'none');
           }
+          self.renderVersion();
         }
       });
     }

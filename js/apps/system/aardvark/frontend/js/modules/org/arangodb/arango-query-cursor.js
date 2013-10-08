@@ -121,21 +121,21 @@ ArangoQueryCursor.prototype.elements = function () {
 
 var helpArangoQueryCursor = arangosh.createHelpHeadline("ArangoQueryCursor help") +
   'ArangoQueryCursor constructor:                                      ' + "\n" +
-  ' > cu1 = qi1.execute();                                             ' + "\n" +
+  ' > cursor = stmt.execute()                                          ' + "\n" +
   'Functions:                                                          ' + "\n" +
-  '  hasNext();                            returns true if there       ' + "\n" +
-  '                                        are more results            ' + "\n" +
-  '  next();                               returns the next document   ' + "\n" +
-  '  elements();                           returns all documents       ' + "\n" +
-  '  _help();                              this help                   ' + "\n" +
+  '  hasNext()                             returns true if there are   ' + "\n" +
+  '                                        more results to fetch       ' + "\n" +
+  '  next()                                returns the next document   ' + "\n" +
+  '  toArray()                             returns all data from the cursor' + "\n" +
+  '  _help()                               this help                   ' + "\n" +
   'Attributes:                                                         ' + "\n" +
   '  _database                             database object             ' + "\n" +
   'Example:                                                            ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for c in coll return c" });' + "\n" +
-  ' > c = st.execute();                                                ' + "\n" +
-  ' > documents = c.elements();                                        ' + "\n" +
-  ' > c = st.execute();                                                ' + "\n" +
-  ' > while (c.hasNext()) { print( c.next() ); }                       ';
+  ' > stmt = db._createStatement({ "query": "FOR c IN coll RETURN c" })' + "\n" +
+  ' > cursor = stmt.execute()                                          ' + "\n" +
+  ' > documents = cursor.toArray()                                     ' + "\n" +
+  ' > cursor = stmt.execute()                                          ' + "\n" +
+  ' > while (cursor.hasNext()) { print(cursor.next())  }               ';
 
 ArangoQueryCursor.prototype._help = function () {
   internal.print(helpArangoQueryCursor);

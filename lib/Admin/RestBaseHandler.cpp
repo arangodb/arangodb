@@ -91,8 +91,17 @@ void RestBaseHandler::handleError (TriagensError const& error) {
 /// @brief generates a result from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult (TRI_json_t* json) {
-  _response = createResponse(HttpResponse::OK);
+void RestBaseHandler::generateResult (TRI_json_t const* json) {
+  generateResult(HttpResponse::OK, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
+                                      TRI_json_t const* json) {
+  _response = createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
   int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
@@ -108,7 +117,8 @@ void RestBaseHandler::generateResult (TRI_json_t* json) {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode) {
+void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, 
+                                     int errorCode) {
   char const* message = TRI_errno_string(errorCode);
 
   if (message) {
