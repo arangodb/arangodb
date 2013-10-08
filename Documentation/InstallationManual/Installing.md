@@ -149,7 +149,7 @@ existing database.
 
 To start _arangosh_, use the batch file `shellExample.bat`.
 
-Please note an important limitation when running ArangoDB under Cygwin:
+Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
 CTRL-C will forcefully kill the server process, without giving it a chance to 
 handle the kill signal. In this case, a regular server shutdown is not
@@ -158,10 +158,14 @@ This file needs to be removed manually to make ArangoDB start again.
 Additionally, as ArangoDB does not have a chance to handle the kill signal,
 the server cannot forcefully flush any data to disk on shutdown, leading to
 potential data loss.
+When starting ArangoDB from a Cygwin terminal it might also happen that no
+errors are printed in the terminal output.
+Starting ArangoDB from an MS-DOS command prompt does not impose these 
+limitations and is thus the preferred method.
 
-Starting ArangoDB from an MS-DOS command prompt does not impose the 
-limitations, and the kill signal will be handled normally by the server, 
-allowing it to shut down normally.
+Please note that ArangoDB uses UTF-8 as its internal encoding and that the
+system console must support a UTF-8 codepage (65001) and font. It may be
+necessary to manually switch the console font to a font that supports UTF-8.
 
 Please note that when using ArangoDB's web interface with Internet Explorer
 (IE), you will need IE version 9 or higher to use all features. The web 
