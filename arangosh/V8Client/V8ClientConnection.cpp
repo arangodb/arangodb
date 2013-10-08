@@ -474,7 +474,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
     }
 
     result->Set(v8::String::New("errorNum"), v8::Integer::New(errorNumber));
-    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));
+    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), (int) _lastErrorMessage.length()));
 
     return result;
   }
@@ -499,7 +499,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
       }
 
       // return body as string
-      v8::Handle<v8::String> result = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
+      v8::Handle<v8::String> result = v8::String::New(_httpResult->getBody().str().c_str(), (int) _httpResult->getBody().str().length());
 
       return result;
     }
@@ -516,7 +516,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
 
         result->Set(v8::String::New("error"), v8::Boolean::New(true));
         result->Set(v8::String::New("errorNum"), v8::Integer::New(_lastHttpReturnCode));
-        result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), returnMessage.size()));
+        result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), (int) returnMessage.size()));
       }
       else {
         result->Set(v8::String::New("error"), v8::Boolean::New(false));
@@ -585,7 +585,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
     }
 
     result->Set(v8::String::New("errorNum"), v8::Integer::New(errorNumber));
-    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));
+    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), (int) _lastErrorMessage.length()));
 
     return scope.Close(result);
   }
@@ -603,7 +603,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
       result->Set(v8::String::New("error"), v8::Boolean::New(true));
       result->Set(v8::String::New("errorNum"), v8::Integer::New(_lastHttpReturnCode));
-      result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), returnMessage.size()));
+      result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), (int) returnMessage.size()));
     }
     else {
       result->Set(v8::String::New("error"), v8::Boolean::New(false));
@@ -611,7 +611,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
     // got a body, copy it into the result
     if (_httpResult->getBody().str().length() > 0) {
-      v8::Handle<v8::String> b = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
+      v8::Handle<v8::String> b = v8::String::New(_httpResult->getBody().str().c_str(), (int) _httpResult->getBody().str().length());
 
       result->Set(v8::String::New("body"), b);
     }
@@ -621,8 +621,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
     const map<string, string>& hf = _httpResult->getHeaderFields();
 
     for (map<string, string>::const_iterator i = hf.begin();  i != hf.end();  ++i) {
-      v8::Handle<v8::String> key = v8::String::New(i->first.c_str(), i->first.size());
-      v8::Handle<v8::String> val = v8::String::New(i->second.c_str(), i->second.size());
+      v8::Handle<v8::String> key = v8::String::New(i->first.c_str(), (int) i->first.size());
+      v8::Handle<v8::String> val = v8::String::New(i->second.c_str(), (int) i->second.size());
 
       headers->Set(key, val);
     }
