@@ -56,9 +56,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
+                                        bool allowMethodOverride,
                                         context_fptr setContext,
                                         void* setContextData)
   : _authenticationRealm(authenticationRealm),
+    _allowMethodOverride(allowMethodOverride),
     _setContext(setContext),
     _setContextData(setContextData),
     _notFound(0) {
@@ -70,6 +72,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
+    _allowMethodOverride(that._allowMethodOverride),
     _setContext(that._setContext),
     _setContextData(that._setContextData),
     _constructors(that._constructors),
@@ -84,9 +87,10 @@ HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
 
 HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& that) {
   if (this != &that) {
-    _authenticationRealm = that._authenticationRealm,
-    _setContext = that._setContext,
-    _setContextData = that._setContextData,
+    _authenticationRealm = that._authenticationRealm;
+    _allowMethodOverride = that._allowMethodOverride;
+    _setContext = that._setContext;
+    _setContextData = that._setContextData;
     _constructors = that._constructors;
     _datas = that._datas;
     _prefixes = that._prefixes;
@@ -180,7 +184,8 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
   }
 #endif
 
-  HttpRequest* request = new HttpRequest(info, ptr, length);
+  HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
+
   if (request != 0) {
     setRequestContext(request);
   }

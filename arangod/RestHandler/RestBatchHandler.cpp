@@ -157,7 +157,7 @@ Handler::status_e RestBatchHandler::execute() {
 
     // set up request object for the part
     LOGGER_TRACE("part header is " << string(headerStart, headerLength));
-    HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength);
+    HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength, false);
 
     if (request == 0) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY); 

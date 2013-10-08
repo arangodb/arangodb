@@ -56,7 +56,10 @@ static char const* EMPTY_STR = "";
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t length)
+HttpRequest::HttpRequest (ConnectionInfo const& info, 
+                          char const* header, 
+                          size_t length,
+                          bool allowMethodOverride)
   : _requestPath(EMPTY_STR),
     _headers(5),
     _values(10),
@@ -74,7 +77,8 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _databaseName(),
     _user(),
     _requestContext(0),
-    _isRequestContextOwner(false) {
+    _isRequestContextOwner(false),
+    _allowMethodOverride(allowMethodOverride) {
 
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
@@ -110,7 +114,8 @@ HttpRequest::HttpRequest ()
     _databaseName(),
     _user(),
     _requestContext(0),
-    _isRequestContextOwner(false) {
+    _isRequestContextOwner(false),
+    _allowMethodOverride(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,8 +508,10 @@ size_t HttpRequest::bodySize () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpRequest::setBody (char const* newBody, size_t length) {
+int HttpRequest::setBody (char const* newBody, 
+                          size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
+
   if (_body == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -531,7 +538,9 @@ TRI_json_t* HttpRequest::toJson (char** errmsg) {
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setHeader (char const* key, size_t keyLength, char const* value) {
+void HttpRequest::setHeader (char const* key, 
+                             size_t keyLength, 
+                             char const* value) {
   if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
     _contentLength = TRI_Int64String(value);
   }
@@ -539,6 +548,22 @@ void HttpRequest::setHeader (char const* key, size_t keyLength, char const* valu
     parseCookies(value);
   }
   else {
+    if (_allowMethodOverride && 
+        keyLength >= 13 && 
+        *key == 'x' && *(key + 1) == '-') {
+      // handle x-... headers
+
+      // override HTTP method?
+      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
+          (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
+          (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
+        string overridenType(value);
+        StringUtils::tolowerInPlace(&overridenType);
+
+        _type = getRequestType(overridenType.c_str(), overridenType.size());
+      }
+    }
+
     _headers.insert(key, keyLength, value);
   }
 }
@@ -623,7 +648,8 @@ void HttpRequest::setUser (string const& user) {
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr, const size_t length) {
+HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr, 
+                                                          const size_t length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
