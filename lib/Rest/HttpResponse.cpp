@@ -741,7 +741,7 @@ void HttpResponse::headResponse (size_t size) {
 /// the body must already be set. deflate is then run on the existing body
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpResponse::deflate (size_t bufferSize) {
+int HttpResponse::deflate (size_t bufferSize) {
   int res = _body.deflate(bufferSize);
 
   if (res != TRI_ERROR_NO_ERROR) {

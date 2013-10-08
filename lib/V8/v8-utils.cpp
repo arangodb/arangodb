@@ -121,7 +121,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), message.size());
+  v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
 
   v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
 
@@ -263,12 +263,12 @@ static void FillDistribution (v8::Handle<v8::Object> list,
                               char const* name,
                               StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New();
-
+ 
   result->Set(TRI_V8_SYMBOL("sum"), v8::Number::New(dist._total));
   result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
 
-  v8::Handle<v8::Array> counts = v8::Array::New(dist._counts.size());
-  size_t pos = 0;
+  v8::Handle<v8::Array> counts = v8::Array::New((int) dist._counts.size());
+  uint32_t pos = 0;
 
   for (vector<uint64_t>::const_iterator i = dist._counts.begin();  i != dist._counts.end();  ++i, ++pos) {
     counts->Set(pos, v8::Number::New(*i));
@@ -2637,7 +2637,7 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
   v8::Handle<v8::Array> result = v8::Array::New(n);
 
   for (uint32_t i = 0;  i < n;  ++i) {
-    result->Set(i, v8::String::New(paths[i].c_str(), paths[i].size()));
+    result->Set(i, v8::String::New(paths[i].c_str(), (int) paths[i].size()));
   }
 
   return scope.Close(result);

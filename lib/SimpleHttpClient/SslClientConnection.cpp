@@ -193,7 +193,8 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
     readFds = &fdset;
   }
 
-  if (select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv) > 0) {
+  int sockn = (int) (_socket.fileHandle + 1);
+  if (select(sockn, readFds, writeFds, NULL, &tv) > 0) {
     return true;
   }
 
@@ -211,7 +212,7 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
     return false;
   }
 
-  int written = SSL_write(_ssl, buffer, length);
+  int written = SSL_write(_ssl, buffer, (int) length);
   switch (SSL_get_error(_ssl, written)) {
     case SSL_ERROR_NONE:
       *bytesWritten = written;
