@@ -29,7 +29,6 @@
 
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
@@ -137,19 +136,24 @@ bool RestImportHandler::extractComplete () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log an error document
+/// @brief create a position string
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestImportHandler::logDocument (TRI_json_t const* json) const {
-  TRI_string_buffer_t buffer;
+std::string RestImportHandler::positionise (size_t i) const {
+  return string("at position " + StringUtils::itoa(i) + ": ");
+}
 
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  int res = TRI_StringifyJson(&buffer, json);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error
+////////////////////////////////////////////////////////////////////////////////
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING("offending document: " << buffer._buffer);
-  }
-  TRI_DestroyStringBuffer(&buffer);
+void RestImportHandler::registerError (RestImportResult& result,
+                                       std::string const& errorMsg) {
+  ++result._numErrors;
+
+  result._errors.push_back(errorMsg);
+  
+  LOGGER_WARNING(errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,11 +162,12 @@ void RestImportHandler::logDocument (TRI_json_t const* json) const {
 
 int RestImportHandler::handleSingleDocument (ImportTransactionType& trx, 
                                              TRI_json_t const* json,
+                                             string& errorMsg,
                                              const bool isEdgeCollection,
                                              const bool waitForSync,
                                              const size_t i) {
   if (! TRI_IsArrayJson(json)) {
-    LOGGER_WARNING("invalid JSON type (expecting array) at position " << i);
+    errorMsg = positionise(i) + "invalid JSON type (expecting array)";
 
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
@@ -176,7 +181,7 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
     const char* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
 
     if (from == 0 || to == 0) {
-      LOGGER_WARNING("missing '_from' or '_to' attribute at position " << i);
+      errorMsg = positionise(i) + "missing '_from' or '_to' attribute";
 
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
@@ -211,8 +216,15 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
-    logDocument(json);
+    string part = JsonHelper::toString(json);
+    if (part.size() > 255) {
+      // UTF-8 chars in string will be escaped so we can truncate it at any point
+      part = part.substr(0, 255) + "...";
+    }
+      
+    errorMsg = positionise(i) + 
+               "creating document failed with error '" + TRI_errno_string(res) + 
+               "', offending document: " + part;
   }
 
   return res;
@@ -259,6 +271,10 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 /// occurs. Otherwise the import will continue even if some documents cannot
 /// be imported.
 ///
+/// @RESTQUERYPARAM{details,boolean,optional}
+/// If set to `true` or `yes`, the result will include an attribute `details`
+/// with details about documents that could not be imported.
+///
 /// @RESTDESCRIPTION
 /// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
@@ -273,6 +289,10 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 ///
 /// - `empty`: number of empty lines found in the input (will only contain a 
 ///   value greater zero for types `documents` or `auto`).
+///
+/// - `details`: if URL parameter `details` is set to true, the result will
+///   contain a `details` attribute which is a list with more detailed 
+///   information about which documents could not be inserted.
 ///
 /// @RESTRETURNCODES
 ///
@@ -426,7 +446,7 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 ///
 ///     var body = [ { name: "some name" } ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", JSON.stringify(body));
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list&details=true", JSON.stringify(body));
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -447,7 +467,7 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 ///
 ///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n{ "_key": "abc", "value1": "bar", "value2": "baz" }';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -510,9 +530,7 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromJson (const string& type) {
-  size_t numCreated = 0;
-  size_t numError   = 0;
-  size_t numEmpty   = 0;
+  RestImportResult result;
 
   vector<string> const& suffix = _request->suffix();
 
@@ -621,23 +639,24 @@ bool RestImportHandler::createFromJson (const string& type) {
 
       StringUtils::trimInPlace(line, "\r\n\t ");
       if (line.length() == 0) {
-        ++numEmpty;
+        ++result._numEmpty;
         continue;
       }
 
       TRI_json_t* json = parseJsonLine(line);
 
-      res = handleSingleDocument(trx, json, isEdgeCollection, waitForSync, i);
+      string errorMsg;
+      res = handleSingleDocument(trx, json, errorMsg, isEdgeCollection, waitForSync, i);
       
       if (json != 0) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
 
       if (res == TRI_ERROR_NO_ERROR) {
-        ++numCreated;
+        ++result._numCreated;
       }
       else {
-        ++numError;
+        registerError(result, errorMsg);
 
         if (complete) {
           // only perform a full import: abort
@@ -669,13 +688,14 @@ bool RestImportHandler::createFromJson (const string& type) {
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&documents->_value._objects, i);
       
-      res = handleSingleDocument(trx, json, isEdgeCollection, waitForSync, i + 1);
+      string errorMsg;
+      res = handleSingleDocument(trx, json, errorMsg, isEdgeCollection, waitForSync, i + 1);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        ++numCreated;
+        ++result._numCreated;
       }
       else {
-        ++numError;
+        registerError(result, errorMsg);
         
         if (complete) {
           // only perform a full import: abort
@@ -703,7 +723,7 @@ bool RestImportHandler::createFromJson (const string& type) {
   }
   else {
     // generate result
-    generateDocumentsCreated(numCreated, numError, numEmpty);
+    generateDocumentsCreated(result);
   }
 
   return true;
@@ -737,6 +757,10 @@ bool RestImportHandler::createFromJson (const string& type) {
 /// occurs. Otherwise the import will continue even if some documents cannot
 /// be imported.
 ///
+/// @RESTQUERYPARAM{details,boolean,optional}
+/// If set to `true` or `yes`, the result will include an attribute `details`
+/// with details about documents that could not be imported.
+///
 /// @RESTDESCRIPTION
 /// Creates documents in the collection identified by `collection-name`.
 /// The first line of the request body must contain a JSON-encoded list of
@@ -753,6 +777,10 @@ bool RestImportHandler::createFromJson (const string& type) {
 ///
 /// - `empty`: number of empty lines found in the input (will only contain a 
 ///   value greater zero for types `documents` or `auto`).
+///
+/// - `details`: if URL parameter `details` is set to true, the result will
+///   contain a `details` attribute which is a list with more detailed 
+///   information about which documents could not be inserted.
 ///
 /// @RESTRETURNCODES
 ///
@@ -854,7 +882,7 @@ bool RestImportHandler::createFromJson (const string& type) {
 ///
 ///     var body = '[ "name" ]\n[ "some name" ]\n[ "other name" ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -875,7 +903,7 @@ bool RestImportHandler::createFromJson (const string& type) {
 ///
 ///     var body = '[ "_key", "value1", "value2" ]\n[ "abc", 25, "test" ]\n[ "abc", "bar", "baz" ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -938,9 +966,7 @@ bool RestImportHandler::createFromJson (const string& type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList () {
-  size_t numCreated = 0;
-  size_t numError   = 0;
-  size_t numEmpty   = 0;
+  RestImportResult result;
 
   vector<string> const& suffix = _request->suffix();
 
@@ -997,25 +1023,15 @@ bool RestImportHandler::createFromKeyValueList () {
     keys = parseJsonLine(line);
   }
 
-  if (keys == 0 || keys->_type != TRI_JSON_LIST) {
-    if (keys != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
-    }
-
-    LOGGER_WARNING("no JSON string list found first line");
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "no JSON string list found in first line");
-    return false;
-  }
-
   if (! checkKeys(keys)) {
     LOGGER_WARNING("no JSON string list in first line found");
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string list in first line found");
 
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
+    if (keys != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
+    }
     return false;
   }
   
@@ -1063,7 +1079,7 @@ bool RestImportHandler::createFromKeyValueList () {
 
     StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
-      ++numEmpty;
+      ++result._numEmpty;
       continue;
     }
 
@@ -1071,20 +1087,25 @@ bool RestImportHandler::createFromKeyValueList () {
      
     if (values != 0) { 
       // build the json object from the list
-      TRI_json_t* json = createJsonObject(keys, values, line);
+      string errorMsg;
+
+      TRI_json_t* json = createJsonObject(keys, values, errorMsg, line, i);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-    
-      res = handleSingleDocument(trx, json, isEdgeCollection, waitForSync, i);
-      
+   
       if (json != 0) {
+        res = handleSingleDocument(trx, json, errorMsg, isEdgeCollection, waitForSync, i);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+      else {
+        // raise any error
+        res = TRI_ERROR_INTERNAL;
       }
       
       if (res == TRI_ERROR_NO_ERROR) {
-        ++numCreated;
+        ++result._numCreated;
       }
       else {
-        ++numError;
+        registerError(result, errorMsg);
 
         if (complete) {
           // only perform a full import: abort
@@ -1096,8 +1117,8 @@ bool RestImportHandler::createFromKeyValueList () {
       }
     }
     else {
-      LOGGER_WARNING("no valid JSON data in line: " << line);
-      ++numError;
+      string errorMsg = positionise(i) + "no valid JSON data";
+      registerError(result, errorMsg);
     }
   }
 
@@ -1115,7 +1136,7 @@ bool RestImportHandler::createFromKeyValueList () {
   }
   else {
     // generate result
-    generateDocumentsCreated(numCreated, numError, numEmpty);
+    generateDocumentsCreated(result);
   }
 
   return true;
@@ -1125,18 +1146,34 @@ bool RestImportHandler::createFromKeyValueList () {
 /// @brief create response for number of documents created / failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError, size_t numEmpty) {
+void RestImportHandler::generateDocumentsCreated (RestImportResult const& result) {
   _response = createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
+  
+  TRI_json_t json;
+    
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numCreated));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numErrors));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numEmpty));
 
-  _response->body()
-    .appendText("{\"error\":false,\"created\":")
-    .appendInteger(numCreated)
-    .appendText(",\"errors\":")
-    .appendInteger(numError)
-    .appendText(",\"empty\":")
-    .appendInteger(numEmpty)
-    .appendText("}");
+  bool found;
+  char const* detailsStr = _request->value("details", found);
+
+  // include failure details?
+  if (found && StringUtils::boolean(detailsStr)) {
+    TRI_json_t* messages = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+    for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
+      const string& msg = result._errors[i];
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
+    }
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "details", messages);
+  }
+  
+  generateResult(HttpResponse::CREATED, &json);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1160,21 +1197,24 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
 
 TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
                                                  const TRI_json_t* values,
-                                                 const string& line) {
+                                                 string& errorMsg,
+                                                 const string& line,
+                                                 const size_t lineNumber) {
 
   if (values->_type != TRI_JSON_LIST) {
-    LOGGER_WARNING("no valid JSON list data in line: " << line);
-    return 0;
-  }
-
-  if (keys->_value._objects._length !=  values->_value._objects._length) {
-    LOGGER_WARNING("wrong number of JSON values in line: " << line);
+    errorMsg = positionise(lineNumber) + "no valid JSON list data";
     return 0;
   }
 
   const size_t n = keys->_value._objects._length;
 
+  if (n !=  values->_value._objects._length) {
+    errorMsg = positionise(lineNumber) + "wrong number of JSON values";
+    return 0;
+  }
+
   TRI_json_t* result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n);
+
   if (result == 0) {
     LOGGER_ERROR("out of memory");
     return 0;
@@ -1197,8 +1237,8 @@ TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
 /// @brief validate keys
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::checkKeys (TRI_json_t* keys) {
-  if (keys->_type != TRI_JSON_LIST) {
+bool RestImportHandler::checkKeys (TRI_json_t const* keys) {
+  if (! TRI_IsListJson(keys)) {
     return false;
   }
 

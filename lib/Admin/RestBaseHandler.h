@@ -112,22 +112,29 @@ namespace triagens {
 /// @brief generates a result from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateResult (TRI_json_t* json);
+        virtual void generateResult (TRI_json_t const* json);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateResult (rest::HttpResponse::HttpResponseCode,
+                                     TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void generateError (rest::HttpResponse::HttpResponseCode,
-                                    int errorCode);
+                                    int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void generateError (rest::HttpResponse::HttpResponseCode,
-                                    int errorCode,
-                                    string const& details);
+                                    int,
+                                    string const&);
 
     };
   }

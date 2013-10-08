@@ -205,34 +205,37 @@ ArangoDatabase.prototype._indexurl = function (id, expectedName) {
 /// @brief prints the help for ArangoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
-  'ArangoDatabase constructor:                                         ' + "\n" +
-  ' > db = new ArangoDatabase(connection);                             ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Administration Functions:                                           ' + "\n" +
-  '  _help();                         this help                        ' + "\n" +
-  '  _flushCache();                   flush and refill collection cache' + "\n" +
-  '                                                                    ' + "\n" +
-  'Collection Functions:                                               ' + "\n" +
-  '  _collections()                   list all collections             ' + "\n" +
-  '  _collection(<identifier>)        get collection by identifier/name' + "\n" +
-  '  _create(<name>, <props>)         creates a new collection         ' + "\n" +
-  '  _drop(<name>)                    delete a collection              ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Document Functions:                                                 ' + "\n" +
-  '  _document(<id>)                  get document by handle           ' + "\n" +
-  '  _replace(<id>, <data>,           overwrite document               ' + "\n" +
-  '           <overwrite>)                                             ' + "\n" +
-  '  _update(<id>, <data>,            update document                  ' + "\n" +
-  '          <overwrite>, <keepNull>)                                  ' + "\n" +
-  '  _remove(<id>)                    delete document                  ' + "\n" +
-  '  _exists(<id>)                    checks whether a document exists ' + "\n" +
-  '  _truncate()                      delete all documents             ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Query / Transaction Functions:                                      ' + "\n" +
-  '  _executeTransaction(<trx>);      execute transaction              ' + "\n" +
-  '  _query(<query>);                 execute AQL query                ' + "\n" +
-  '  _createStatement(<data>);        create and return AQL query      ';
+var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase (db) help") +
+  'Administration Functions:                                                 ' + "\n" +
+  '  _help()                               this help                         ' + "\n" +
+  '  _flushCache()                         flush and refill collection cache ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Collection Functions:                                                     ' + "\n" +
+  '  _collections()                        list all collections              ' + "\n" +
+  '  _collection(<name>)                   get collection by identifier/name ' + "\n" +
+  '  _create(<name>, <properties>)         creates a new collection          ' + "\n" +
+  '  _createEdgeCollection(<name>)         creates a new edge collection     ' + "\n" +
+  '  _drop(<name>)                         delete a collection               ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Document Functions:                                                       ' + "\n" +
+  '  _document(<id>)                       get document by handle (_id)      ' + "\n" +
+  '  _replace(<id>, <data>, <overwrite>)   overwrite document                ' + "\n" +
+  '  _update(<id>, <data>, <overwrite>,    partially update document         ' + "\n" +
+  '          <keepNull>)                                                     ' + "\n" +
+  '  _remove(<id>)                         delete document                   ' + "\n" +
+  '  _exists(<id>)                         checks whether a document exists  ' + "\n" +
+  '  _truncate()                           delete all documents              ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Database Management Functions:                                            ' + "\n" +
+  '  _createDatabase(<name>)               creates a new database            ' + "\n" +
+  '  _dropDatabase(<name>)                 drops an existing database        ' + "\n" +
+  '  _useDatabase(<name>)                  switches into an existing database' + "\n" +
+  '  _drop(<name>)                         delete a collection               ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Query / Transaction Functions:                                            ' + "\n" +
+  '  _executeTransaction(<transaction>)    execute transaction               ' + "\n" +
+  '  _query(<query>)                       execute AQL query                 ' + "\n" +
+  '  _createStatement(<data>)              create and return AQL query       ';
 
 ArangoDatabase.prototype._help = function () {  
   internal.print(helpArangoDatabase);

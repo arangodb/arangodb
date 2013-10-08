@@ -182,6 +182,9 @@ The web interface now provides a graph viewer on the **Graphs** tab. The graph v
 can be used to explore and navigate an existing ArangoDB graph. It supports both
 graphs in the `_graphs` system collection as well as user-defined graphs that are
 composed of an arbitrary vertex and edge collection.
+Please note that when using ArangoDB's web interface with Internet Explorer
+(IE), you will need IE version 9 or higher. The graph viewer relies on client-side 
+SVG which is not available in previous versions of IE.
 
 The **Dashboard** tab in the web interface provides an overview of server figures, which
 can be adjusted to user needs. New figures are polled by the web interface in a 
@@ -409,6 +412,13 @@ Miscellaneous Improvements {#NewFeatures14Misc}
 
 ArangoDB 1.4 now provides a REST API to execute server-side traversals with custom 
 traversal functions. The API is described @ref HttpTraversals "here".
+
+The bulk import API now provides a `complete` URL parameter that can be used to
+control the behaviour when at least one document cannot be imported. Setting
+`complete` to `true` will abort the whole import and roll back any already imported
+documents. Setting it to `false` or omitting it will make the import continue 
+importing documents even if some documents could not be imported. This is also the
+behaviour that previous ArangoDB versions exposed.
 
 Command-Line Options added {#NewFeatures14Options}
 --------------------------------------------------
