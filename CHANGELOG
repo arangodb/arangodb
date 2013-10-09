@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* ArangoDB 1.4 will refuse to start if option `--javascript.app-path` is not set.
+
 * added startup option `--server.allow-method-override`
 
   This option can be set to allow overriding the HTTP request method in a request using
@@ -58,8 +60,8 @@ v1.4
       > arangosh --prompt "my db is named \"%d\"> "
 
 
-v1.4.0-beta (2013-10-01)
-------------------------
+v1.4.0-beta1 (2013-10-01)
+-------------------------
 
 * make the Foxx manager use per-database app directories
 

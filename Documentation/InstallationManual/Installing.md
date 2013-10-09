@@ -126,28 +126,66 @@ Windows 8 by default, but there may be issues with other platforms.
 The Windows builds are available as `.msi` packages 
 @EXTREF{http://www.arangodb.org/download/,here}.
 Please note that we provide binaries for 32 and 64 bit Windows, and 
-that you need the package that matches your platform.
+that you need to choose the correct package for your platform.
 
-The msi installer will install the ArangoDB server, shell (arangosh) and 
-the ArangoDB import tool (arangoimp) in a directory of the user's choice.
+The msi installer will install the ArangoDB server (arangod.exe), the
+ArangoDB shell (arangosh.exe) and the ArangoDB import tool (arangoimp.exe) 
+in a directory of the user's choice (defaulting to `c:\triAGENS).
 
 Included in the distribution are some `.bat` files that can be used 
 to easily start the ArangoDB server and shell. The `.bat` files will be
 installed in the same directory as ArangoDB so they should be easy to find.
-The batch files contain a lot of configuration settings, and you might want 
-to eventually adjust these parameters to match your own environment.
 
-To start the ArangoDB server, use the batch file `serverExample.bat`.
-It will start the ArangoDB server and will wait until you terminate it
-by pressing CTRL-C. Starting ArangoDB for the first time will automatically
-create a database sub-directory in the directory ArangoDB was installed in.
+Along with ArangoDB some example configuration files (with `.conf` file
+ending) will be installed. These configuration files are used by the 
+batch files with the same name, and you might adjust them for your own
+needs.
+
+The following executables are provided:
+- `arangod.exe`: the ArangoDB server binary
+- `arangosh.exe`: the ArangoShell (arangosh) binary
+- `arangoimp.exe`: an import tool for ArangoDB
+
+The following batch files are provided:
+- `arangod.bat`: starts the ArangoDB server, with networking enabled
+- `console.bat`: starts the ArangoDB server in emergency console mode, 
+  with networking disabled
+- `upgrade.bat`: upgrades an existing ArangoDB server
+- `arangosh.bat`: starts the ArangoDB shell (requires an already
+  running ArangoDB server instance)
+- `arangoimp.bat`: wrapper for the ArangoDB import tool
+- `foxx-manager.bat`: installation utility for Foxx applications
+
+The following configuration files are provided:
+- `arangod.conf`: configuration for the ArangoDB server, used by 
+  `arangod.bat`, `console.bat`, and `upgrade.bat`
+- `arangosh.conf`: configuration for the ArangoDB shell, used by
+  `arangosh.bat` and `foxx-manager.bat`
+- `arangoimp.conf`: configuration for the ArangoDB import tool,
+  used by `arangoimp.conf`
+
+To start the ArangoDB server, use the file `arangod.bat`. This wil start
+the ArangoDB server with networking enabled. Once started, the server will
+run until you terminate it pressing CTRL-C. Starting ArangoDB for the first 
+time will automatically create a database sub-directory in the directory 
+ArangoDB was installed in.
+
+Once the ArangoDB server is running, you can use your browser to check 
+whether you can connect. Please navigate to confirm:
+
+http://127.0.0.1:8529/
+
+To start the ArangoDB shell (_arangosh_), use the batch file `arangosh.bat`
+while the ArangoDB server is already running.
 
 If you already have a previous version of ArangoDB installed and want to
-upgrade to a newer version, use the `upgradeExample.bat` file. This will
+upgrade to a newer version, use the batch file `upgrade.bat` This will
 start ArangoDB with the `--upgrade` option and perform a migration of an
-existing database.
-
-To start _arangosh_, use the batch file `shellExample.bat`.
+existing database. Please note that you need to stop a running ArangoDB
+server instance before you upgrade. 
+Please also check the output of the `upgrade.bat` run for any potential
+errors. If the upgrade completes successfully, you can restart the server
+regularly using the `arangod.bat` script.
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
