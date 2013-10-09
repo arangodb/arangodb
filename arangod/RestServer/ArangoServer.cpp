@@ -563,6 +563,7 @@ void ArangoServer::buildApplicationServer () {
   }
   
   // set the temp-path
+  _tempPath = StringUtils::rTrim(_tempPath, TRI_DIR_SEPARATOR_STR); 
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
