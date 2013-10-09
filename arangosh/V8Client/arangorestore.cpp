@@ -123,7 +123,7 @@ static bool ImportStructure = true;
 /// @brief progress
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Progress = false;
+static bool Progress = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief overwrite collections if they exist
@@ -170,6 +170,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangorestore.conf");
+
+  if (1 == arguments.size()) {
+    InputDirectory = arguments[0];
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +199,7 @@ static void arangorestoreExitFunction (int, void*);
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialistions for windows only
+// Call this function to do various initialisations for windows only
 // .............................................................................
 void arangorestoreEntryFunction () {
   int maxOpenFiles = 1024;
@@ -616,7 +620,7 @@ int main (int argc, char* argv[]) {
   if (ChunkSize < 1024 * 128) {
     ChunkSize = 1024 * 128;
   }
-
+  
   // .............................................................................
   // check input directory
   // .............................................................................
@@ -657,7 +661,7 @@ int main (int argc, char* argv[]) {
   Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-  const string version = GetVersion();
+  const string versionString = GetVersion();
 
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
@@ -666,6 +670,23 @@ int main (int argc, char* argv[]) {
   }
     
   // successfully connected
+  
+  // validate server version 
+  int major = 0;
+  int minor = 0;
+
+  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
+    cerr << "Invalid server version '" << versionString << "'" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
+  if (major != 1 ||
+      (major == 1 && minor < 4)) {
+    // we can connect to 1.4 and higher only
+    cerr << "Got an incompatible server version '" << versionString << "'" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
 
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
