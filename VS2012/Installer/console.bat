@@ -41,6 +41,6 @@ if EXIST ".\data\LOCK" (
 goto START_ARANGO
 
 :START_ARANGO
-arangod.exe -c arangod.conf --console %*
+arangod.exe -c arangod.conf --console data %*
 
 :END
