@@ -130,7 +130,7 @@ that you need to choose the correct package for your platform.
 
 The msi installer will install the ArangoDB server (arangod.exe), the
 ArangoDB shell (arangosh.exe) and the ArangoDB import tool (arangoimp.exe) 
-in a directory of the user's choice (defaulting to `c:\triAGENS).
+in a directory of the user's choice (defaulting to `c:\triAGENS`).
 
 Included in the distribution are some `.bat` files that can be used 
 to easily start the ArangoDB server and shell. The `.bat` files will be
