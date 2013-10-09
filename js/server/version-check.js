@@ -246,7 +246,13 @@
         return true;
       }
 
-      var files = fs.listTree(module.basePaths().appPath), i, n = files.length;
+      if (! module.basePaths().appPath) {
+        logger.error("no app-path has been specified."); 
+        return false;
+      }
+
+      var files = fs.list(module.basePaths().appPath), i, n = files.length;
+
       for (i = 0; i < n; ++i) {
         var found = files[i];
 
@@ -255,11 +261,6 @@
             found === 'databases' || 
             found === 'aardvark' ||
             found[0] === '.') {
-          continue;
-        }
-
-        if (found.match(/[\/\\\\]/g)) {
-          // ignore subdirectories too
           continue;
         }
 
@@ -313,13 +314,18 @@
           logger.error("dev apps directory '" + dir + "' does not exist.");
           return false;
         }
-
+ 
         // we only need to move apps in the _system database
         if (db._name() !== '_system') {
           return true;
         }
 
-        var files = fs.listTree(module.basePaths().devAppPath), i, n = files.length;
+        if (! module.basePaths().devAppPath) {
+          logger.error("no dev-app-path has been specified."); 
+          return false;
+        }
+
+        var files = fs.list(module.basePaths().devAppPath), i, n = files.length;
         for (i = 0; i < n; ++i) {
           var found = files[i];
 
@@ -328,11 +334,6 @@
               found === 'databases' || 
               found === 'aardvark' || 
               found[0] === '.') {
-            continue;
-          }
-
-          if (found.match(/[\/\\\\]/g)) {
-            // ignore subdirectories too
             continue;
           }
 
