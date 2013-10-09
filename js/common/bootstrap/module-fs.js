@@ -58,7 +58,7 @@
   // cannot use strict here as we are going to delete globals
 
   var exports = require("fs");
-  var isWindows = require("internal").platform === 'win32';
+  var isWindows = require("internal").platform.substr(0, 3) === 'win';
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Module "fs"

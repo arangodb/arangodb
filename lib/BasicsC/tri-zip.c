@@ -64,15 +64,31 @@ static int ExtractCurrentFile (unzFile uf,
   FILE *fout;
   unz_file_info64 fileInfo;
 
+  filenameInZip[0] = '\0';
   if (unzGetCurrentFileInfo64(uf, &fileInfo, filenameInZip, sizeof(filenameInZip), NULL, 0, NULL, 0) != UNZ_OK) {
     return TRI_ERROR_INTERNAL;
+  }
+
+  // adjust file name
+  p = filenameInZip; 
+  while (*p != '\0') {
+#ifdef WIN32
+    if (*p == '/') {
+      *p = '\\';
+    }
+#else
+    if (*p == '\\') {
+      *p = '/';
+    }
+#endif
+    ++p;
   }
 
   p = filenameWithoutPath = filenameInZip;
 
   // get the file name without any path prefix
   while (*p != '\0') {
-    if (*p == '/' || *p == '\\') {
+    if (*p == '/' || *p == '\\' || *p == ':') {
       filenameWithoutPath = p + 1;
     }
 
