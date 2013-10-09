@@ -190,7 +190,6 @@ typedef struct TRI_transaction_operation_s {
   TRI_doc_mptr_t*               _oldHeader;
   TRI_doc_mptr_t                _oldData;
   TRI_df_marker_t*              _marker;
-  size_t                        _markerSize;
   TRI_voc_document_operation_e  _type;
 }
 TRI_transaction_operation_t;
@@ -329,7 +328,6 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t*,
                                           TRI_doc_mptr_t*,
                                           TRI_doc_mptr_t*,
                                           TRI_df_marker_t*,
-                                          TRI_voc_size_t,
                                           struct TRI_df_marker_s**,
                                           bool);
 
