@@ -117,7 +117,7 @@ static bool Overwrite = false;
 /// @brief progress
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Progress = false;
+static bool Progress = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save meta data
@@ -774,6 +774,8 @@ int main (int argc, char* argv[]) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointString() 
           << "', database: '" << BaseClient.databaseName() << "', username: '" 
           << BaseClient.username() << "'" << endl;
+    
+    cout << "Writing dump to output directory '" << OutputDirectory << "'" << endl;
   }
 
   string errorMsg = "";

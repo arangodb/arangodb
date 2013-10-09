@@ -584,7 +584,7 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-	printLine("<ctrl-D>");
+    printLine("<ctrl-D>");
     printLine(TRI_BYE_MESSAGE);
   }
 }
