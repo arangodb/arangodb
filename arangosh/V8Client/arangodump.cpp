@@ -209,8 +209,9 @@ static void arangodumpExitFunction (int, void*);
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialistions for windows only
+// Call this function to do various initialisations for windows only
 // .............................................................................
+
 void arangodumpEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
@@ -238,7 +239,6 @@ void arangodumpEntryFunction () {
   }
 
   TRI_Application_Exit_SetExit(arangoimpExitFunction);
-
 }
 
 static void arangodumpExitFunction (int exitCode, void* data) {
@@ -355,7 +355,7 @@ static int DumpCollection (ofstream& outFile,
 
   const string baseUrl = "/_api/replication/dump?collection=" + cid + 
                          "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false";
+                         "&ticks=false&translateIds=true";
     
   map<string, string> headers;
 
@@ -447,10 +447,10 @@ static int DumpCollection (ofstream& outFile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the collection inventory from server
+/// @brief dump data from server
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GetInventory (string& errorMsg) {
+static int RunDump (string& errorMsg) {
   map<string, string> headers;
 
   const string url = "/_api/replication/inventory?includeSystem=" + 
@@ -486,6 +486,7 @@ static int GetInventory (string& errorMsg) {
 
     
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
+
   delete response;
 
   if (! JsonHelper::isArray(json)) {
@@ -759,7 +760,7 @@ int main (int argc, char* argv[]) {
   Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-  const string version = GetVersion();
+  const string versionString = GetVersion();
 
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
@@ -769,6 +770,23 @@ int main (int argc, char* argv[]) {
   }
     
   // successfully connected
+ 
+  // validate server version 
+  int major = 0;
+  int minor = 0;
+
+  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
+    cerr << "Invalid server version '" << versionString << "'" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
+  if (major != 1 ||
+      (major == 1 && minor < 4)) {
+    // we can connect to 1.4 and higher only
+    cerr << "Got an incompatible server version '" << versionString << "'" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
 
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointString() 
@@ -779,7 +797,7 @@ int main (int argc, char* argv[]) {
   }
 
   string errorMsg = "";
-  int res = GetInventory(errorMsg);
+  int res = RunDump(errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     cerr << errorMsg << endl;

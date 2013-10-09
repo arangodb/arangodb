@@ -1179,10 +1179,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   
   // initialise the dump container
   TRI_replication_dump_t dump; 
-  TRI_InitDumpReplication(&dump);
-  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) defaultChunkSize);
-
-  if (dump._buffer == 0) {
+  if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -1241,7 +1238,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
 
-  TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
+  TRI_DestroyDumpReplication(&dump);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2140,9 +2137,10 @@ void RestReplicationHandler::handleCommandDump () {
   }
   
   // determine start tick for dump
-  TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
-  bool withTicks           = true;
+  TRI_voc_tick_t tickStart    = 0;
+  TRI_voc_tick_t tickEnd      = (TRI_voc_tick_t) UINT64_MAX;
+  bool withTicks              = true;
+  bool translateCollectionIds = true;
 
   bool found;
   char const* value;
@@ -2168,9 +2166,13 @@ void RestReplicationHandler::handleCommandDump () {
   }
 
   value = _request->value("ticks", found);
-
   if (found) {
     withTicks = StringUtils::boolean(value);
+  }
+  
+  value = _request->value("translateIds", found);
+  if (found) {
+    translateCollectionIds = StringUtils::boolean(value);
   }
   
   const uint64_t chunkSize = determineChunkSize(); 
@@ -2197,17 +2199,13 @@ void RestReplicationHandler::handleCommandDump () {
 
   // initialise the dump container
   TRI_replication_dump_t dump; 
-  TRI_InitDumpReplication(&dump);
-  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) defaultChunkSize);
-
-  if (dump._buffer == 0) {
+  if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
     TRI_ReleaseCollectionVocBase(_vocbase, col);
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-
     return;
   }
 
-  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks);
+  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks, translateCollectionIds);
   
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
@@ -2243,7 +2241,7 @@ void RestReplicationHandler::handleCommandDump () {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
 
-  TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
+  TRI_DestroyDumpReplication(&dump);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
