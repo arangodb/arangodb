@@ -443,7 +443,7 @@ char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
 
     if (path == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
       return NULL;
     }
 
@@ -1133,7 +1133,7 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx) {
 
     if (path == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) fieldList);
       return NULL;
     }  
 
@@ -1152,7 +1152,7 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx) {
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) fieldList);
 
   return json;
 }
@@ -1486,7 +1486,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             result = -3;
             break;
           }
-          maxEntries = jsonObject->_value._objects._length;
+          maxEntries = (int) jsonObject->_value._objects._length;
         }
 
         // convert json to shaped json
@@ -1798,8 +1798,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
     path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
+
     if (path == NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
       return NULL;
     }
@@ -1818,7 +1819,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
-  TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+  TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
   return json;
 }
@@ -2729,7 +2730,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
     path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
 
     if (path == NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
       return NULL;
     }
 
@@ -2770,7 +2771,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
     if (keyValue == NULL) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
       return NULL;
     }
 
@@ -2784,7 +2785,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
       return NULL;
     }
 
@@ -2800,7 +2801,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, key);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
       return NULL;
     }
 
@@ -2825,7 +2826,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", keyValues);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, baIndex->_supportUndef));
 
-  TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+  TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
   return json;
 }
@@ -3066,7 +3067,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
     // different possible values there are
     // .........................................................................
 
-    cardinality += numValues;
+    cardinality += (int) numValues;
   }
 
   // ...........................................................................
