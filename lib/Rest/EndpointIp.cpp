@@ -151,7 +151,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     }
 
     // server needs to bind to socket
-    int result = ::bind(listenSocket.fileHandle, aip->ai_addr, aip->ai_addrlen);
+    int result = ::bind(listenSocket.fileHandle, aip->ai_addr, (int) aip->ai_addrlen);
 
     if (result != 0) {
       // error
@@ -185,7 +185,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    int result = ::connect(listenSocket.fileHandle, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen);
+    int result = ::connect(listenSocket.fileHandle, (const struct sockaddr*) aip->ai_addr, (int) aip->ai_addrlen);
 
     if (result == INVALID_SOCKET) {
       TRI_CLOSE_SOCKET(listenSocket);
