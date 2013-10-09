@@ -97,16 +97,17 @@ Handler::status_e RestUploadHandler::execute() {
   }
 
   char* relative = TRI_GetFilename(filename);
-  TRI_Free(TRI_CORE_MEM_ZONE, filename);
 
   LOGGER_TRACE("saving uploaded file of length " << _request->bodySize() << 
                " in file '" << filename << "', relative '" << relative << "'");
 
   try {
     FileUtils::spit(string(filename), _request->body(), _request->bodySize());
+    TRI_Free(TRI_CORE_MEM_ZONE, filename);
   }
   catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, relative);
+    TRI_Free(TRI_CORE_MEM_ZONE, filename);
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not save file");
     return Handler::HANDLER_FAILED;
   }

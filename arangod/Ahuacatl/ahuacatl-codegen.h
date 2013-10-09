@@ -98,9 +98,8 @@ typedef struct TRI_aql_codegen_js_s {
   TRI_string_buffer_t _functionBuffer;
   TRI_vector_pointer_t _scopes;
   TRI_aql_codegen_register_t _lastResultRegister;
-
-  size_t _registerIndex;
-  size_t _functionIndex;
+  TRI_aql_codegen_register_t _registerIndex;
+  TRI_aql_codegen_register_t _functionIndex;
   int _errorCode; // error number
   char* _errorValue; // error context string
 }
