@@ -91,13 +91,16 @@ Handler::status_e RestUploadHandler::execute() {
 
   char* filename = NULL;
   
-  if (TRI_GetTempName("uploads", &filename, true) != TRI_ERROR_NO_ERROR) {
+  if (TRI_GetTempName("uploads", &filename, false) != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not generate temp file");
     return Handler::HANDLER_FAILED;
   }
 
   char* relative = TRI_GetFilename(filename);
   TRI_Free(TRI_CORE_MEM_ZONE, filename);
+
+  LOGGER_TRACE("saving uploaded file of length " << _request->bodySize() << 
+               " in file '" << filename << "', relative '" << relative << "'");
 
   try {
     FileUtils::spit(string(filename), _request->body(), _request->bodySize());
