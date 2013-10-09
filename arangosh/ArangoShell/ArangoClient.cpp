@@ -281,22 +281,23 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! _configFile.empty()) {
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOGGER_INFO("using no init file at all");
+      LOGGER_DEBUG("using no init file at all");
     }
     else {
       configFile = _configFile;
     }
   }
 
-#ifdef _SYSCONFDIR_
 
+#ifdef _SYSCONFDIR_
   else {
+    // use packaged config file from etc/relative
     string sysDir = string(_SYSCONFDIR_);
     string systemConfigFile = initFilename;
 
     if (! sysDir.empty()) {
-      if (sysDir[sysDir.size() - 1] != '/') {
-        sysDir += "/" + systemConfigFile;
+      if (sysDir[sysDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+        sysDir += TRI_DIR_SEPARATOR_CHAR + systemConfigFile;
       }
       else {
         sysDir += systemConfigFile;
@@ -310,7 +311,6 @@ void ArangoClient::parse (ProgramOptions& options,
       }
     }
   }
-
 #endif
 
   if (! configFile.empty()) {
