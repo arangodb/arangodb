@@ -484,7 +484,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       return true;
     }
     
-    context->_keepDeletions = false;
+    context->_keepDeletions = true;
 
     // write to compactor files
     res = CopyMarker(document, context->_compactor, marker, &result);
@@ -700,7 +700,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
       return true;
     }
     
-    context->_keepDeletions = false;
+    context->_keepDeletions = true;
     context->_targetSize += marker->_size;
   }
 
