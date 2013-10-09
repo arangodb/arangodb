@@ -139,7 +139,7 @@ database. A just upgraded ArangoDB instance will have all its collections and ap
 mapped to the `_system` database too, meaning an upgraded ArangoDB instance should remain
 fully functional.
 
-ArangoDB clients and drivers are not forced to supplydatabase names as part of the ArangoDB
+ArangoDB clients and drivers are not forced to supply database names as part of the ArangoDB
 URLs they call because of this compatibility functionaltiy. However, if clients need to 
 access a specific database in a multiple database context, they will be required to supply
 the database name as part of the URLs. Most clients will use just one database most of the
@@ -151,6 +151,18 @@ Troubleshooting {#Upgrading14Troubleshooting}
 
 If you cannot find a solution here, please ask the Google-Group at 
 http://groups.google.com/group/arangodb
+
+Problem: Server does not start
+------------------------------
+
+Contrary to previous versions, ArangoDB 1.4 requires the startup option `--javascript.app-path` 
+to be set when the server is started. If the option is not set, the server will print a message 
+like this:
+
+    2013-10-09T19:11:47Z [7121] FATAL no value has been specified for --javascript.app-path.
+
+To fix this, you can either specify the value for `--javascript.app-path` on the command-line
+or in a configuration file.
 
 Problem: Server does not start
 ------------------------------
