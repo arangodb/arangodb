@@ -564,7 +564,7 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
 
 static void EndScope (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
-  TRI_aql_codegen_register_t i, n;
+  size_t i, n;
 
 #if AQL_VERBOSE
   scope = CurrentScope(generator);
