@@ -794,10 +794,8 @@ bool TRI_ReadPointer (int fd, void* buffer, size_t length) {
 
   ptr = buffer;
 
-
   while (0 < length) {
     ssize_t n = TRI_READ(fd, ptr, (unsigned int) length);
-
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
