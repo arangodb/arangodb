@@ -144,6 +144,12 @@ uint64_t TickStart = 0;
 uint64_t TickEnd = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief our batch id
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t BatchId = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -184,6 +190,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangodump.conf");
+  
+  if (1 == arguments.size()) {
+    OutputDirectory = arguments[0];
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,7 +333,7 @@ static string GetVersion () {
     // convert response body to json
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
 
-    if (json) {
+    if (json != 0) {
       // look up "server" value
       const string server = JsonHelper::getStringValue(json, "server", "");
 
@@ -340,6 +350,108 @@ static string GetVersion () {
   delete response;
 
   return version;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start a batch
+////////////////////////////////////////////////////////////////////////////////
+
+static int StartBatch (string& errorMsg) {
+  map<string, string> headers;
+
+  const string url = "/_api/replication/batch";
+  const string body = "{\"ttl\":300}";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST, 
+                                               url,
+                                               body.c_str(), 
+                                               body.size(),  
+                                               headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "got invalid response from server: " + Client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+ 
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from server: HTTP " + 
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
+    delete response;
+    
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  // convert response body to json
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+  delete response;
+
+  if (json == 0) {
+    errorMsg = "got malformed JSON";
+    
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  // look up "id" value
+  const string id = JsonHelper::getStringValue(json, "id", "");
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  BatchId = StringUtils::uint64(id);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prolongs a batch
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExtendBatch () {
+  assert(BatchId > 0);
+  
+  map<string, string> headers;
+  const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
+  const string body = "{\"ttl\":300}";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+                                               url,
+                                               body.c_str(),
+                                               body.size(), 
+                                               headers); 
+
+  // ignore any return value
+  if (response != 0) {
+    delete response;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end a batch
+////////////////////////////////////////////////////////////////////////////////
+
+static void EndBatch () {
+  assert(BatchId > 0);
+  
+  map<string, string> headers;
+  const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
+
+  BatchId = 0;
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE, 
+                                               url,
+                                               0,
+                                               0, 
+                                               headers); 
+
+  // ignore any return value
+  if (response != 0) {
+    delete response;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,6 +558,7 @@ static int DumpCollection (ofstream& outFile,
   return TRI_ERROR_INTERNAL;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from server
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,7 +585,7 @@ static int RunDump (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
  
-  if (! response->isComplete() || response->wasHttpError()) {
+  if (response->wasHttpError()) {
     errorMsg = "got invalid response from server: HTTP " + 
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
@@ -621,6 +734,7 @@ static int RunDump (string& errorMsg) {
         return TRI_ERROR_INTERNAL;
       }
 
+      ExtendBatch();
       int res = DumpCollection(outFile, cid, name, parameters, maxTick, errorMsg); 
 
       outFile.close();
@@ -797,11 +911,20 @@ int main (int argc, char* argv[]) {
   }
 
   string errorMsg = "";
-  int res = RunDump(errorMsg);
+
+  int res = StartBatch(errorMsg);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = RunDump(errorMsg);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     cerr << errorMsg << endl;
     ret = EXIT_FAILURE;
+  }
+
+  if (BatchId > 0) {
+    EndBatch();
   }
 
   TRIAGENS_REST_SHUTDOWN;
