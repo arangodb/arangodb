@@ -206,7 +206,7 @@ static int CopyMarker (TRI_document_collection_t* document,
                        TRI_df_marker_t** result) {
   int res;
 
-  res = TRI_ReserveElementDatafile(compactor, marker->_size, result, document->base.base._info._maximalSize);
+  res = TRI_ReserveElementDatafile(compactor, marker->_size, result, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
@@ -671,10 +671,13 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
   TRI_document_collection_t* document;
   TRI_primary_collection_t* primary;
   compaction_initial_context_t* context;
+  TRI_voc_size_t alignedSize;
 
   context  = data;
   document = context->_document;
   primary  = &document->base;
+    
+  alignedSize = TRI_DF_ALIGN_BLOCK(marker->_size);
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
@@ -701,18 +704,18 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     }
     
     context->_keepDeletions = true;
-    context->_targetSize += marker->_size;
+    context->_targetSize += alignedSize;
   }
 
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION && 
            context->_keepDeletions) {
-    context->_targetSize += marker->_size;
+    context->_targetSize += alignedSize;
   }
   else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    context->_targetSize += marker->_size;
+    context->_targetSize += alignedSize;
   }
 
   return true;
