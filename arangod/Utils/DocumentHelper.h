@@ -29,6 +29,7 @@
 #define TRIAGENS_UTILS_DOCUMENT_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_json_s;
@@ -99,6 +100,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static bool parseDocumentId (const char*,
+                                     TRI_voc_cid_t&,
+                                     char**);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id and document key from an id
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool parseDocumentId (triagens::arango::CollectionNameResolver const&,
+                                     const char*, 
                                      TRI_voc_cid_t&,
                                      char**);
 

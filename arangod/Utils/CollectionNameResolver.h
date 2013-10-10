@@ -30,6 +30,7 @@
 
 #include "BasicsC/common.h"
 
+#include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
 namespace triagens {
@@ -87,6 +88,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_voc_cid_t getCollectionId (const string& name) const {
+          if (name[0] >= '0' && name[0] <= '9') {
+            // name is a numeric id
+            return (TRI_voc_cid_t) triagens::basics::StringUtils::uint64(name);
+          }
+
           const TRI_vocbase_col_t* collection = getCollectionStruct(name);
 
           if (collection != 0) {
@@ -110,6 +116,7 @@ namespace triagens {
           }
 
           const TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+
           if (collection != 0) {
             _resolvedNames[name] = collection;
           }

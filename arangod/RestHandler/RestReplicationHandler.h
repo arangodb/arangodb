@@ -30,9 +30,11 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
 
+using namespace triagens::arango;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
@@ -246,7 +248,8 @@ namespace triagens {
 /// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+        int applyCollectionDumpMarker (CollectionNameResolver const&,
+                                       struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,

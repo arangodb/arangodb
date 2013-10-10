@@ -78,6 +78,7 @@ etc/arangodb/arangod.conf
 etc/arangodb/arangodump.conf
 etc/arangodb/arangoimp.conf
 etc/arangodb/arangoirb.conf
+etc/arangodb/arangorestore.conf
 etc/arangodb/arangosh.conf
 js/common/bootstrap/errors.js
 lib/BasicsC/local-configuration.h

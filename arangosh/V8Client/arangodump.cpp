@@ -712,18 +712,33 @@ static int RunDump (string& errorMsg) {
       // save meta data
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
 
-      outFile.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
+      int fd;
+      
+      // remove an existing file first
+      if (TRI_ExistsFile(fileName.c_str())) {
+        TRI_UnlinkFile(fileName.c_str());
+      }
+      
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
-      if (! outFile.is_open()) {
+      if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      outFile << JsonHelper::toString(collection);
+      const string collectionInfo = JsonHelper::toString(collection);
 
-      outFile.close();
+      if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
+        TRI_CLOSE(fd);
+        errorMsg = "cannot write to file '" + fileName + "'";
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        return TRI_ERROR_CANNOT_WRITE_FILE;
+      }
+
+      TRI_CLOSE(fd);
     }
 
 
@@ -744,7 +759,7 @@ static int RunDump (string& errorMsg) {
         errorMsg = "cannot write to file '" + fileName + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
       ExtendBatch();
@@ -753,10 +768,12 @@ static int RunDump (string& errorMsg) {
       TRI_CLOSE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "cannot write to file '" + fileName + "'";
+        if (errorMsg.empty()) {
+          errorMsg = "cannot write to file '" + fileName + "'";
+        }
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-        return TRI_ERROR_INTERNAL;
+        return res;
       }
     }
   }

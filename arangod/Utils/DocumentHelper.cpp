@@ -63,7 +63,7 @@ std::string DocumentHelper::assembleDocumentId (const std::string& collectionNam
 std::string DocumentHelper::assembleDocumentId (const std::string& collectionName,
                                                 const TRI_voc_key_t key) {
   if (key == 0) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_deleted";
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_unknown";
   }
 
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
@@ -71,12 +71,13 @@ std::string DocumentHelper::assembleDocumentId (const std::string& collectionNam
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id and document key from an id
+/// TODO: merge with RestVocBaseBaseHandler::parseDocumentId
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DocumentHelper::parseDocumentId (const std::string& input, 
                                       TRI_voc_cid_t& cid,
                                       std::string& key) {
-  size_t pos = input.find('/');
+  size_t pos = input.find(TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
 
   if (pos == string::npos) {
     return false;
@@ -105,13 +106,43 @@ bool DocumentHelper::parseDocumentId (const char* input,
     return false;
   }
 
-  const char* pos = strchr(input, '/');
+  const char* pos = strchr(input, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
 
   if (pos == 0) {
     return false;
   }
 
   cid = StringUtils::uint64(input, pos - input);
+  *key = (char*) (pos + 1);
+
+  if (**key == '\0') {
+    // empty key
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id and document key from an id
+////////////////////////////////////////////////////////////////////////////////
+
+bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
+                                      const char* input, 
+                                      TRI_voc_cid_t& cid,
+                                      char** key) {
+
+  if (input == 0) {
+    return false;
+  }
+
+  const char* pos = strchr(input, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+
+  if (pos == 0) {
+    return false;
+  }
+
+  cid = resolver.getCollectionId(string(input, pos - input));
   *key = (char*) (pos + 1);
 
   if (**key == '\0') {

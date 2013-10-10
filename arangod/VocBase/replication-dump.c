@@ -185,6 +185,8 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
                                   char** result) {
 
   resolved_name_t* found;
+
+  assert(cid > 0);
   
   found = (resolved_name_t*) TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid);
 
@@ -200,7 +202,7 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
     // name can be NULL if collection is not found. 
     // but we will still cache a NULL result!
     found->_name = TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid);
-
+    
     TRI_InsertKeyAssociativePointer(&dump->_collectionNames, &found->_cid, found, false); 
   }
 
@@ -217,18 +219,20 @@ static bool AppendCollection (TRI_replication_dump_t* dump,
                               TRI_voc_cid_t cid,
                               bool translateCollectionIds) {
   if (translateCollectionIds) {
-    char* name;
+    if (cid > 0) {
+      char* name;
 
-    if (! LookupCollectionName(dump, cid, &name)) {
-      return false;
-    }
+      if (! LookupCollectionName(dump, cid, &name)) {
+        return false;
+      }
 
-    if (name != NULL) {
-      APPEND_STRING(dump->_buffer, name);
+      if (name != NULL) {
+        APPEND_STRING(dump->_buffer, name);
+        return true;
+      }
     }
-    else {
-      APPEND_STRING(dump->_buffer, "_deleted");
-    }
+    
+    APPEND_STRING(dump->_buffer, "_unknown");
   }
   else {
     APPEND_UINT64(dump->_buffer, (uint64_t) cid);
@@ -405,11 +409,15 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      AppendCollection(dump, e->_fromCid, translateCollectionIds);
+      if (! AppendCollection(dump, e->_fromCid, translateCollectionIds)) {
+        return false;
+      }
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      AppendCollection(dump, e->_toCid, translateCollectionIds);
+      if (! AppendCollection(dump, e->_toCid, translateCollectionIds)) {
+        return false;
+      }
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, toKey);
       APPEND_CHAR(buffer, '"');

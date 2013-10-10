@@ -10,6 +10,7 @@ BUILT_SOURCES += \
 	etc/arangodb/arangodump.conf \
 	etc/arangodb/arangoimp.conf \
 	etc/arangodb/arangoirb.conf \
+	etc/arangodb/arangorestore.conf \
 	etc/arangodb/arangosh.conf
 
 ################################################################################
