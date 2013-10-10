@@ -1682,7 +1682,8 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
+int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver const& resolver,
+                                                       TRI_transaction_collection_t* trxCollection,
                                                        TRI_replication_operation_e type,
                                                        const TRI_voc_key_t key,
                                                        const TRI_voc_rid_t rid,
@@ -1720,12 +1721,12 @@ int RestReplicationHandler::applyCollectionDumpMarker (TRI_transaction_collectio
 
           // parse _from
           TRI_document_edge_t edge;
-          if (! DocumentHelper::parseDocumentId(from.c_str(), edge._fromCid, &edge._fromKey)) {
+          if (! DocumentHelper::parseDocumentId(_resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
           
           // parse _to
-          if (! DocumentHelper::parseDocumentId(to.c_str(), edge._toCid, &edge._toKey)) {
+          if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
 
@@ -1801,6 +1802,8 @@ int RestReplicationHandler::processRestoreDataBatch (TRI_transaction_collection_
                                                      std::string& errorMsg) {
   const string invalidMsg = "received invalid JSON data for collection " + 
                             StringUtils::itoa(trxCollection->_cid);
+
+  CollectionNameResolver resolver(_vocbase);
 
   char const* ptr = _request->body();
   char const* end = ptr + _request->bodySize();
@@ -1882,7 +1885,7 @@ int RestReplicationHandler::processRestoreDataBatch (TRI_transaction_collection_
         return TRI_ERROR_HTTP_BAD_PARAMETER;
       }
  
-      int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
+      int res = applyCollectionDumpMarker(resolver, trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
       
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
