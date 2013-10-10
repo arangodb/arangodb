@@ -87,7 +87,7 @@ triagens::httpclient::SimpleHttpClient* Client = 0;
 /// @brief chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t ChunkSize = 1024 * 1024 * 4;
+static uint64_t ChunkSize = 1024 * 1024 * 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collections
@@ -458,7 +458,7 @@ static void EndBatch () {
 /// @brief dump a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DumpCollection (ofstream& outFile,
+static int DumpCollection (int fd,
                            const string& cid,
                            const string& name,
                            TRI_json_t const* parameters,
@@ -539,7 +539,13 @@ static int DumpCollection (ofstream& outFile,
     }
       
     if (res == TRI_ERROR_NO_ERROR) {
-      outFile << response->getBody().str();
+      stringstream& responseBody = response->getBody();
+      const string body = responseBody.str();
+      const size_t len = body.size();
+      
+      if (! TRI_WritePointer(fd, body.c_str(), len)) {
+        res = TRI_ERROR_CANNOT_WRITE_FILE;
+      }
     }
 
     delete response;
@@ -695,7 +701,7 @@ static int RunDump (string& errorMsg) {
 
     // found a collection!
     if (Progress) {
-      cout << "Processing collection '" << name << "'..." << endl;
+      cout << "dumping collection '" << name << "'..." << endl;
     }
 
     // now save the collection meta data and/or the actual data
@@ -725,9 +731,16 @@ static int RunDump (string& errorMsg) {
       // save the actual data
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
 
-      outFile.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
+      int fd;
 
-      if (! outFile.is_open()) {
+      // remove an existing file first
+      if (TRI_ExistsFile(fileName.c_str())) {
+        TRI_UnlinkFile(fileName.c_str());
+      }
+
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+      if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -735,9 +748,9 @@ static int RunDump (string& errorMsg) {
       }
 
       ExtendBatch();
-      int res = DumpCollection(outFile, cid, name, parameters, maxTick, errorMsg); 
+      int res = DumpCollection(fd, cid, name, parameters, maxTick, errorMsg); 
 
-      outFile.close();
+      TRI_CLOSE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "cannot write to file '" + fileName + "'";
