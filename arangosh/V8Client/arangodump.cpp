@@ -346,6 +346,13 @@ static string GetVersion () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   }
+  else {
+    if (response->wasHttpError()) {
+      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+    }
+
+    Connection->disconnect();
+  }
 
   delete response;
 
@@ -864,14 +871,6 @@ int main (int argc, char* argv[]) {
     cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-  else if (! isDirectory) {
-    int res = TRI_CreateDirectory(OutputDirectory.c_str());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-    }
-  }
 
   // .............................................................................
   // set-up client connection
@@ -929,6 +928,16 @@ int main (int argc, char* argv[]) {
     // we can connect to 1.4 and higher only
     cerr << "Got an incompatible server version '" << versionString << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+  
+  
+  if (! isDirectory) {
+    int res = TRI_CreateDirectory(OutputDirectory.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    }
   }
 
 

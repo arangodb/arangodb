@@ -132,6 +132,12 @@ static bool Progress = true;
 static bool Overwrite = true;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief re-use revision ids on import
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RecycleIds = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -155,6 +161,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
     ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("import-data", &ImportData, "import data into collection")
+    ("recycle-ids", &RecycleIds, "recycle collection and revision ids from dump")
     ("create-collection", &ImportStructure, "create collection structure")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
     ("input-directory", &InputDirectory, "input directory")
@@ -326,6 +333,13 @@ static string GetVersion () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   }
+  else {
+    if (response->wasHttpError()) {
+      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+    }
+
+    Connection->disconnect();
+  }
 
   delete response;
 
@@ -333,15 +347,16 @@ static string GetVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send the request to re-create a single collection
+/// @brief send the request to re-create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static int SendRestoreCollection (TRI_json_t const* json, 
                                   string& errorMsg) {
   map<string, string> headers;
 
-  const string url = "/_api/replication/restore-collection?overwrite=" + 
-                     string(Overwrite ? "true" : "false");
+  const string url = "/_api/replication/restore-collection"
+                     "?overwrite=" + string(Overwrite ? "true" : "false") +
+                     "&recycleIds=" + string(RecycleIds ? "true" : "false");
 
   const string body = JsonHelper::toString(json);
 
@@ -374,20 +389,63 @@ static int SendRestoreCollection (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send the request to re-create data for a collection
+/// @brief send the request to re-create indexes for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreData (string const& cid,
-                            string const& buffer,
-                            string& errorMsg) {
+static int SendRestoreIndexes (TRI_json_t const* json, 
+                               string& errorMsg) {
   map<string, string> headers;
 
-  const string url = "/_api/replication/restore-data?collection=" + cid;
+  const string url = "/_api/replication/restore-indexes"; 
+  const string body = JsonHelper::toString(json);
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
                                                url,
-                                               buffer.c_str(), 
-                                               buffer.size(),  
+                                               body.c_str(), 
+                                               body.size(),  
+                                               headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "got invalid response from server: " + Client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (response->wasHttpError()) {
+    errorMsg = GetHttpErrorMessage(response);
+    delete response;
+
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  delete response;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send the request to load data into a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int SendRestoreData (string const& cid,
+                            string const& cname,
+                            char const* buffer,
+                            size_t bufferSize,
+                            string& errorMsg) {
+  map<string, string> headers;
+
+  const string url = "/_api/replication/restore-data?collection=" + 
+                     StringUtils::urlEncode(cname) +
+                     "&recycleIds=" + (RecycleIds ? "true" : "false");
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+                                               url,
+                                               buffer, 
+                                               bufferSize,  
                                                headers); 
 
 
@@ -442,6 +500,7 @@ static int SortCollections (const void* l,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ProcessInputDirectory (string& errorMsg) {
+
   // create a lookup table for collections
   map<string, bool> restrictList;
   for (size_t i = 0; i < Collections.size(); ++i) {
@@ -454,7 +513,6 @@ static int ProcessInputDirectory (string& errorMsg) {
     errorMsg = "out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
 
   // step1: determine all collections to process
   {
@@ -491,8 +549,12 @@ static int ProcessInputDirectory (string& errorMsg) {
       const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + files[i];
 
       TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, fqn.c_str(), 0);
+      TRI_json_t const* parameters = JsonHelper::getArrayElement(json, "parameters");
+      TRI_json_t const* indexes = JsonHelper::getArrayElement(json, "indexes");
 
-      if (! JsonHelper::isArray(json)) {
+      if (! JsonHelper::isArray(json) ||
+          ! JsonHelper::isArray(parameters) ||
+          ! JsonHelper::isList(indexes)) {
         errorMsg = "could not read collection structure file '" + name + "'";
 
         if (json != 0) {
@@ -504,22 +566,14 @@ static int ProcessInputDirectory (string& errorMsg) {
         return TRI_ERROR_INTERNAL;
       }
 
-      TRI_json_t const* parameters = JsonHelper::getArrayElement(json, "parameters");
-
-      if (! JsonHelper::isArray(parameters)) {
-        errorMsg = "invalid collection structure file '" + name + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-        return TRI_ERROR_INTERNAL;
-      }
-
       const string cname = JsonHelper::getStringValue(parameters, "name", "");
 
       if (cname != name) {
         errorMsg = "collection name mismatch in collection structure file '" + name + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
-       return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_INTERNAL;
       }
 
       TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
@@ -529,7 +583,8 @@ static int ProcessInputDirectory (string& errorMsg) {
 
   // sort collections according to type (documents before edges)
   qsort(collections->_value._objects._buffer, collections->_value._objects._length, sizeof(TRI_json_t), &SortCollections);
-
+  
+  StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
   // step2: run the actual import
   {
@@ -537,12 +592,12 @@ static int ProcessInputDirectory (string& errorMsg) {
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
       TRI_json_t const* parameters = JsonHelper::getArrayElement(json, "parameters");
+      TRI_json_t const* indexes = JsonHelper::getArrayElement(json, "indexes");
       const string cname = JsonHelper::getStringValue(parameters, "name", "");
       const string cid   = JsonHelper::getStringValue(parameters, "cid", "");
 
       if (ImportStructure) {
         // re-create collection
-    
         if (Progress) {
           cout << "Creating collection '" << cname << "'..." << endl;
         }
@@ -556,6 +611,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
       }
 
+
       if (ImportData) {
         // import data. check if we have a datafile
         // TODO: externalise file extension
@@ -568,54 +624,110 @@ static int ProcessInputDirectory (string& errorMsg) {
             cout << "Loading data into collection '" << cname << "'..." << endl;
           }
 
-          ifstream ifs;
-  
-          ifs.open(datafile.c_str(), ifstream::in | ifstream::binary);
-
-          if (! ifs.is_open()) {
+          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY);
+          
+          if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
             return TRI_ERROR_INTERNAL;
           }
 
-          string buffer;
-          uint64_t totalLength = 0;
-        
-          while (ifs.good()) {
-            string line;
+          buffer.clear();
 
-            std::getline(ifs, line, '\n');
-            size_t length = line.size() + 1;
-
-            if (line.size() > 2) {
-              buffer += line + '\n';
-              totalLength += (uint64_t) length;
-
-              if (totalLength > ChunkSize) {
-                int res = SendRestoreData(cid, buffer, errorMsg);
-
-                if (res != TRI_ERROR_NO_ERROR) {
-                  ifs.close();
-                  return res;
-                }
-
-                totalLength = 0;
-                buffer.clear();
-              }
+          while (true) {
+            if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
+              TRI_CLOSE(fd);
+              errorMsg = "out of memory";
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+            
+              return TRI_ERROR_OUT_OF_MEMORY;
             }
-          }
 
-          if (! buffer.empty()) {
-            int res = SendRestoreData(cid, buffer, errorMsg);
- 
-            if (res != TRI_ERROR_NO_ERROR) {
-              ifs.close();
+            ssize_t numRead = TRI_READ(fd, buffer.end(), 16384);
+
+            if (numRead < 0) {
+              // error while reading
+              int res = TRI_errno();
+              TRI_CLOSE(fd);
+              errorMsg = string(TRI_errno_string(res));
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+            
               return res;
             }
+
+            // read something
+            buffer.increaseLength(numRead);
+
+            if (buffer.length() < ChunkSize && numRead > 0) {
+              // still continue reading
+              continue;
+            }
+
+            // do we have a buffer?
+            if (buffer.length() > 0) {
+              // look for the last \n in the buffer
+              char* found = (char*) memrchr((const void*) buffer.begin(), '\n', buffer.length());
+              size_t length;
+ 
+              if (found == 0) {
+                // no \n found...
+                if (numRead == 0) {
+                  // we're at the end. send the complete buffer anyway
+                  length = buffer.length();
+                }
+                else {
+                  // read more
+                  continue;
+                }
+              }
+              else {
+                // found a \n somewhere
+                length = found - buffer.begin();
+              }
+
+              assert(length > 0);
+
+              int res = SendRestoreData(cid, cname, buffer.begin(), length, errorMsg);
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                TRI_CLOSE(fd);
+                errorMsg = string(TRI_errno_string(res));
+                TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+
+                return res;
+              }
+
+              buffer.erase_front(length);
+            }
+
+            if (numRead == 0) {
+              // EOF
+              break;
+            }
           }
 
-          ifs.close();
+          TRI_CLOSE(fd);
+        }
+      }
+
+      
+      if (ImportStructure) {
+        // re-create indexes
+        
+        if (TRI_LengthVector(&indexes->_value._objects) > 0) {
+          // we actually have indexes
+          if (Progress) {
+            cout << "Creating indexes for collection '" << cname << "'..." << endl;
+          }
+
+          int res = SendRestoreIndexes(json, errorMsg);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+
+            return TRI_ERROR_INTERNAL;
+          }
         }
       }
     }
@@ -722,7 +834,7 @@ int main (int argc, char* argv[]) {
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-    
+
   // successfully connected
   
   // validate server version 

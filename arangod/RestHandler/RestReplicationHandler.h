@@ -227,7 +227,20 @@ namespace triagens {
     
         int createCollection (struct TRI_json_s const*,
                               struct TRI_vocbase_col_s**,
+                              bool,
                               TRI_server_id_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a restore command for a specific collection
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleCommandRestoreCollection ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a restore command for a specific collection
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleCommandRestoreIndexes ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the structure of a collection TODO MOVE
@@ -235,14 +248,17 @@ namespace triagens {
 
         int processRestoreCollection (struct TRI_json_s* const,
                                       bool,
+                                      bool,
                                       TRI_server_id_t,
                                       std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle a restore command for a specific collection
+/// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommandRestoreCollection ();
+        int processRestoreIndexes (struct TRI_json_s* const,
+                                   TRI_server_id_t,
+                                   std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the collection dump
@@ -260,16 +276,20 @@ namespace triagens {
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreDataBatch (struct TRI_transaction_collection_s*,
+        int processRestoreDataBatch (CollectionNameResolver const&,
+                                     struct TRI_transaction_collection_s*,
                                      TRI_server_id_t,
+                                     bool,
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreData (TRI_voc_cid_t,
+        int processRestoreData (CollectionNameResolver const&, 
+                                TRI_voc_cid_t,
                                 TRI_server_id_t,
+                                bool,
                                 std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////

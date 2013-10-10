@@ -576,7 +576,16 @@ namespace triagens {
             // not found 
             else if (authResult == HttpResponse::NOT_FOUND) {
               HttpResponse response(HttpResponse::NOT_FOUND);
-
+              response.setContentType("application/json; charset=utf-8");
+  
+              response.body().appendText("{\"error\":true,\"errorMessage\":\"")
+                             .appendText(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
+                             .appendText("\",\"code\":")
+                             .appendInteger((int) authResult)
+                             .appendText(",\"errorNum\":")
+                             .appendInteger(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
+                             .appendText("}");
+               
               this->handleResponse(&response);
               this->resetState();
             }
