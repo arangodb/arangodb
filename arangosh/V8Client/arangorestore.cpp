@@ -234,7 +234,7 @@ void arangorestoreEntryFunction () {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangoimpExitFunction);
+  TRI_Application_Exit_SetExit(arangorestoreExitFunction);
 
 }
 
@@ -294,7 +294,7 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetVersion () {
+static string GetArangoVersion () {
   map<string, string> headers;
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
@@ -827,7 +827,7 @@ int main (int argc, char* argv[]) {
   Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-  const string versionString = GetVersion();
+  const string versionString = GetArangoVersion();
 
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
