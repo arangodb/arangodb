@@ -24,7 +24,7 @@
 }
 
 .api-actions .resource .heading h2 a {
-  color: #686766 !important;
+  color: #000000 !important;
   font-weight: 300 !important;
 }
 
@@ -73,6 +73,8 @@
   font-size: 14px !important;
   font-weight: 300 !important;
   padding: 8px 16px !important;
+  float: right !important;
+  margin-top: 10px !important;
 }
 
 .api-actions .resource > .heading > .options {
