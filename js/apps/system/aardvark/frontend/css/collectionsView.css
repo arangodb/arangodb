@@ -24,7 +24,7 @@
 
 .thumbnails2 {
   padding-top: 1px !important;
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0.15);
   margin-left:0;
   margin-bottom:0;
 }
@@ -35,7 +35,7 @@
   padding-right: 0px;
   padding-bottom: 5px;
   padding-top: 40px;
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0.15);
 }
 
 .thumbnails li {
@@ -217,7 +217,7 @@ border-top: 0;
 }
 
 #collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0.15);
   position:relative;
   display:none;
   margin-left: 5px;
