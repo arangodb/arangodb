@@ -387,7 +387,7 @@ li:hover h6, li.hover h6 {
 }
 
 #leftReplicationDiv, #rightReplicationDiv {
-  padding: 20px !important;
+  padding: 10px !important;
 }
 
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
@@ -528,9 +528,17 @@ li:hover h6, li.hover h6 {
   margin-right: -3px;
 }
 
+.arangoHeaderBar {
+  width: 100%;
+  background-color: #686766;
+  height: 25px;
+  border-radius: 2px;
+}
+
 .arangoSubHeader {
   font-weight: 400;
-  color: black;
+  padding-left: 5px;
+  color: white;
   margin-top: 5px;
   font-size: 15px;
 }
