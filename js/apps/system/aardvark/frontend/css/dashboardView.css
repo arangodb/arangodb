@@ -290,6 +290,10 @@ li:hover h6, li.hover h6 {
   background-image:url(../img/dark-check-green.png);
 }
 
+.css-label-round {
+  background-image:url(../img/dark-check-green-round.png);
+}
+
 /*Dashboard Radio */
 
 .dropdown-menu .radio {
