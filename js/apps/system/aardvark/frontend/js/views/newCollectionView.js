@@ -41,7 +41,7 @@ var newCollectionView = Backbone.View.extend({
   },
 
   hidden: function () {
-    window.App.navigate("#", {trigger: true});
+    window.App.navigate("#collections", {trigger: true});
   },
 
   saveNewCollection: function(a) {
