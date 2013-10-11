@@ -132,6 +132,9 @@ The msi installer will install the ArangoDB server (arangod.exe), the
 ArangoDB shell (arangosh.exe) and the ArangoDB import tool (arangoimp.exe) 
 in a directory of the user's choice (defaulting to `c:\triAGENS`).
 
+Included Files {#InstallingWindowsFiles}
+----------------------------------------
+
 Included in the distribution are some `.bat` files that can be used 
 to easily start the ArangoDB server and shell. The `.bat` files will be
 installed in the same directory as ArangoDB so they should be easy to find.
@@ -145,6 +148,26 @@ The following executables are provided:
 - `arangod.exe`: the ArangoDB server binary
 - `arangosh.exe`: the ArangoShell (arangosh) binary
 - `arangoimp.exe`: an import tool for ArangoDB
+- `arangodump.exe`: a dump tool for ArangoDB
+- `arangorestore.exe`: a restore tool for ArangoDB
+
+You can invoke any of the above executables on the command-line directly,
+however, to properly run each executable needs some configuration. The
+configuration can be provided as command-line arguments when invoking the
+executable, or be specified in configuration files.
+
+ArangoDB is shipped with a few example configuration files and example 
+batch files that can be used to easily invoke some of the executables with
+the default configuration.
+
+The following configuration files are provided:
+- `arangod.conf`: configuration for the ArangoDB server, used by 
+  `arangod.bat`, `console.bat`, and `upgrade.bat`
+- `arangosh.conf`: configuration for the ArangoDB shell, used by
+  `arangosh.bat` and `foxx-manager.bat`
+- `arangoimp.conf`: configuration for the ArangoDB import tool
+- `arangodump.conf`: configuration for the ArangoDB dump tool
+- `arangorestore.conf`: configuration for the ArangoDB restore tool
 
 The following batch files are provided:
 - `arangod.bat`: starts the ArangoDB server, with networking enabled
@@ -153,19 +176,14 @@ The following batch files are provided:
 - `upgrade.bat`: upgrades an existing ArangoDB server
 - `arangosh.bat`: starts the ArangoDB shell (requires an already
   running ArangoDB server instance)
-- `arangoimp.bat`: wrapper for the ArangoDB import tool
 - `foxx-manager.bat`: installation utility for Foxx applications
 
-The following configuration files are provided:
-- `arangod.conf`: configuration for the ArangoDB server, used by 
-  `arangod.bat`, `console.bat`, and `upgrade.bat`
-- `arangosh.conf`: configuration for the ArangoDB shell, used by
-  `arangosh.bat` and `foxx-manager.bat`
-- `arangoimp.conf`: configuration for the ArangoDB import tool,
-  used by `arangoimp.conf`
+Starting ArangoDB {#InstallingWindowsStarting}
+----------------------------------------------
 
 To start the ArangoDB server, use the file `arangod.bat`. This wil start
-the ArangoDB server with networking enabled. Once started, the server will
+the ArangoDB server with networking enabled. It will use the configuration
+specified in file `arangod.conf`. Once started, the ArangoDB server will
 run until you terminate it pressing CTRL-C. Starting ArangoDB for the first 
 time will automatically create a database sub-directory in the directory 
 ArangoDB was installed in.
@@ -174,6 +192,11 @@ Once the ArangoDB server is running, you can use your browser to check
 whether you can connect. Please navigate to confirm:
 
 http://127.0.0.1:8529/
+
+Please note that when using ArangoDB's web interface with Internet Explorer
+(IE), you will need IE version 9 or higher to use all features. The web 
+interface partly relies on SVG, which is not available in previous versions 
+of IE.
 
 To start the ArangoDB shell (_arangosh_), use the batch file `arangosh.bat`
 while the ArangoDB server is already running.
@@ -186,6 +209,16 @@ server instance before you upgrade.
 Please also check the output of the `upgrade.bat` run for any potential
 errors. If the upgrade completes successfully, you can restart the server
 regularly using the `arangod.bat` script.
+
+To run any of the ArangoDB executables in your own environment, you will
+probably need to adjust the configuration. It is advised that you use a
+separate configuration file, and specify the configuration filename on the
+command-line when invoking the executable as follows (example for _arangod_):
+
+    > arangod.exe -c path\to\arangod.conf
+
+Limitations for Cygwin {#InstallingWindowsCygwin}
+-------------------------------------------------
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
@@ -204,8 +237,3 @@ limitations and is thus the preferred method.
 Please note that ArangoDB uses UTF-8 as its internal encoding and that the
 system console must support a UTF-8 codepage (65001) and font. It may be
 necessary to manually switch the console font to a font that supports UTF-8.
-
-Please note that when using ArangoDB's web interface with Internet Explorer
-(IE), you will need IE version 9 or higher to use all features. The web 
-interface partly relies on SVG, which is not available in previous versions 
-of IE.

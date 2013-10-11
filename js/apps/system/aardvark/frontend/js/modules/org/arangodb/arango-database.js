@@ -231,6 +231,7 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase (db) help")
   '  _dropDatabase(<name>)                 drops an existing database        ' + "\n" +
   '  _useDatabase(<name>)                  switches into an existing database' + "\n" +
   '  _drop(<name>)                         delete a collection               ' + "\n" +
+  '  _name()                               name of the current database      ' + "\n" +
   '                                                                          ' + "\n" +
   'Query / Transaction Functions:                                            ' + "\n" +
   '  _executeTransaction(<transaction>)    execute transaction               ' + "\n" +
