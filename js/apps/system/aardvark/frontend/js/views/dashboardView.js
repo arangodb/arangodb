@@ -100,7 +100,8 @@ var dashboardView = Backbone.View.extend({
     var time = this.replLogState.state.time;
 
     var cls = loggerRunning ? 'true' : 'false';
-    var runningLog = '<div class="' + cls + 'Class">' + cls + '</div>';
+    //var runningLog = '<div class="' + cls + 'Class">' + cls + '</div>';
+    var runningLog = '-';
 
     var clientString = '-';
     if (this.replLogState.state.clients) {
@@ -120,6 +121,13 @@ var dashboardView = Backbone.View.extend({
     var numEvents = this.replLogState.state.totalEvents || 0;
 
     //log table
+    if (cls === true) {
+      runningLog = '<div class="greenLight"/>';
+    }
+    else {
+      runningLog = '<div class="redLight"/>';
+    }
+
     $('#logRunningVal').html(runningLog);
     $('#logTotalEventsVal').text(numEvents);
     $('#logTimeVal').text(time);
@@ -159,11 +167,19 @@ var dashboardView = Backbone.View.extend({
     }
 
     cls = applierRunning ? 'true' : 'false';
-    var runningApply = '<div class="' + cls + 'Class">' + cls + '</div>';
+    //var runningApply = '<div class="' + cls + 'Class">' + cls + '</div>';
+    var runningApply = '-';
 
     numEvents = this.replApplyState.state.totalEvents || 0;
     numRequests = this.replApplyState.state.totalRequests || 0;
     numFailed = this.replApplyState.state.totalFailedConnects || 0;
+
+    if (cls === true) {
+      runningApply = '<div class="greenLight"/>';
+    }
+    else {
+      runningApply = '<div class="redLight"/>';
+    }
 
     $('#applyRunningVal').html(runningApply);
     $('#applyEndpointVal').text(endpoint);
