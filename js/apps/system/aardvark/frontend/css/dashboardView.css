@@ -531,7 +531,8 @@ li:hover h6, li.hover h6 {
 .arangoHeaderBar {
   width: 100%;
   background-color: #686766;
-  height: 25px;
+  height: 27px;
+  padding-top: 3px;
   border-radius: 2px;
 }
 
@@ -570,4 +571,32 @@ li:hover h6, li.hover h6 {
 
 .nvd3 .nv-wrap .nv-axis:last-child {
   visibility: hidden !important;
+}
+
+.greenLight {
+  background: green;
+  background-image: radial-gradient(lime, transparent);
+  background-size: 3px 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow:
+  margin-top: 1px;
+  0 0 20px #111 inset,
+  0 0 10px lime;
+  animation: 13s green infinite;
+}
+
+.redLight {
+  background: red;
+  background-image: radial-gradient(brown, transparent);
+  background-size: 3px 3px; 
+  margin-top: 1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  animation: 13s red infinite;
+  box-shadow:
+    0 0 20px #111 inset,
+    0 0 10px red;
 }
