@@ -5,8 +5,9 @@ $(document).ready(function() {
 
   window.Router = Backbone.Router.extend({
     routes: {
-      ""                                    : "collections",
+      ""                                    : "dashboard",
       "collection/:colid"                   : "collection",
+      "collections"                         : "collections",
       "collectionInfo/:colid"               : "collectionInfo",
       "new"                                 : "newCollection",
       "login"                               : "login",
@@ -14,7 +15,6 @@ $(document).ready(function() {
       "collection/:colid/:docid"            : "document",
       "collection/:colid/:docid/source"     : "source",
       "shell"                               : "shell",
-      "dashboard"                           : "dashboard",
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
