@@ -34,7 +34,7 @@
 #queryDiv {
   background-color: rgba(0,0,0,0.15);
   margin-top: 0px !important;
-  padding-top: 33px !important;
+  padding-top: 6px !important;
   padding-left: 5px;
   padding-right: 5px;
   padding-bottom: 5px !important;
@@ -209,4 +209,9 @@
 
 #queryOutput .ace_replace_form {
   display:none;
+}
+
+#editorToolbar .arango-icon-disk,
+#commentText, #redoText, #undoText, #clearInput, #clearOutput {
+  margin-top: 1px;
 }
