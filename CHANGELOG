@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* provide foxx-manager, arangodump, and arangorestore in Windows build
+
 * ArangoDB 1.4 will refuse to start if option `--javascript.app-path` is not set.
 
 * added startup option `--server.allow-method-override`
@@ -33,6 +35,8 @@ v1.4
   It defaults to `false`, which will make ArangoDB continue importing the other documents
   from the import even if some documents cannot be imported. This is the same behaviour that
   previous ArangoDB versions exposed.
+
+* added missing swagger documentation for `/_api/log`
 
 * calling `/_api/logs` (or `/_admin/logs`) is only permitted from the `_system` database now.
   
