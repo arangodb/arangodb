@@ -139,17 +139,20 @@ exports.HELP = exports.createHelpHeadline("Help") +
   '  arango:                               ArangoConnection           ' + "\n" +
   '  db:                                   ArangoDatabase             ' + "\n" +
   '  fm:                                   FoxxManager                ' + "\n" +
-  'Example:                                                           ' + "\n" +
-  ' > db._collections();                   list all collections       ' + "\n" +
-  ' > db._create(<coll_name>);             create a new collection    ' + "\n" +
-  ' > db._drop(<coll_name>);               drop a collection          ' + "\n" +
-  ' > db.<coll_name>.all().toArray();      list all documents         ' + "\n" +
-  ' > id = db.<coll_name>.save({ ... });   save a document            ' + "\n" +
-  ' > db.<coll_name>.remove(<_id>);        delete a document          ' + "\n" +
-  ' > db.<coll_name>.document(<_id>);      get a document             ' + "\n" +
-  ' > db.<coll_name>.replace(<_id>, {...});overwrite a document       ' + "\n" +
-  ' > db.<coll_name>.update(<_id>, {...}); partially update a document' + "\n" +
-  ' > db._query(<query>).toArray();        execute an AQL query       ' + "\n" +
+  'Examples:                                                          ' + "\n" +
+  ' > db._collections()                    list all collections       ' + "\n" +
+  ' > db._create(<name>)                   create a new collection    ' + "\n" +
+  ' > db._drop(<name>)                     drop a collection          ' + "\n" +
+  ' > db.<name>.toArray()                  list all documents         ' + "\n" +
+  ' > id = db.<name>.save({ ... })         save a document            ' + "\n" +
+  ' > db.<name>.remove(<_id>)              delete a document          ' + "\n" +
+  ' > db.<name>.document(<_id>)            retrieve a document        ' + "\n" +
+  ' > db.<name>.replace(<_id>, {...})      overwrite a document       ' + "\n" +
+  ' > db.<name>.update(<_id>, {...})       partially update a document' + "\n" +
+  ' > db.<name>.exists(<_id>)              check if document exists   ' + "\n" +
+  ' > db._query(<query>).toArray()         execute an AQL query       ' + "\n" +
+  ' > db._useDatabase(<name>)              switch database            ' + "\n" +
+  ' > db._listDatabases()                  list existing databases    ' + "\n" +
   ' > help                                 show help pages            ' + "\n" +
   ' > exit                                                            ' + "\n" +
   'Note: collection names may be cached in arangosh. To refresh, use: ' + "\n" +
