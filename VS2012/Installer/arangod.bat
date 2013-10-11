@@ -27,7 +27,7 @@ if EXIST ".\data\LOCK" goto DEL_LOCK
 
 :DEL_LOCK
 echo removing lock file
-del /F .\data\LOCK > NUL
+del /F .\data\LOCK > NUL 2>&1
 if EXIST ".\data\LOCK" (
   echo =======================================================================================
   echo ERROR: There appears to be a lock file which is in use. This is generally caused
@@ -44,3 +44,4 @@ goto START_ARANGO
 arangod.exe -c arangod.conf data %*
 
 :END
+pause
