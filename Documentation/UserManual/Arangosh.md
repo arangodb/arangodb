@@ -20,10 +20,11 @@ empty password by default. Additionally, it will connect to the default database
 (`_system`). All these defaults can be changed using the following 
 command-line options:
 
-    --server.endpoint
-    --server.username
-    --server.password
-    --server.database
+- `--server.database <string>`: name of the database to connect to
+- `--server.endpoint <string>`: endpoint to connect to
+- `--server.username <string>`: username
+- `--server.password <string>`: password to use (omit this and you'll be prompted for the
+  password)
 
 For example, to connect to an ArangoDB server on IP `192.168.173.13` on port
 8530 with the user `foo` and using the database `test`, use
@@ -41,7 +42,6 @@ The change the current database after the connection has been made, you
 can use the `db._useDatabase()` command in arangosh:
 
     arangosh> db._useDatabase("myapp");
-
 
 To get a list of available commands, arangosh provides a `help()` function.
 Calling it will display helpful information.
