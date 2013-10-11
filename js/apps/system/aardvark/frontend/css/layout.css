@@ -150,7 +150,7 @@ textarea, .alert {
 
 body {
   background-color: white !important;
-  background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;
+  /*background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;*/
 }
 
 #footer {
@@ -218,7 +218,7 @@ table .sorting {
 
 /* ABOUT VIEW */
 #aboutDiv {
-  background-color: rgba(0,0,0,0.03);
+  background-color: rgba(0,0,0,0.15);
   padding-bottom: 5px;
 }
 
