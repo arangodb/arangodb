@@ -604,7 +604,8 @@ var dashboardView = Backbone.View.extend({
       figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
-      placement: "top"
+      placement: "top",
+      delay: {show: 3000, hide: 100}
     });
   }
 
