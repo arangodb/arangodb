@@ -6,6 +6,7 @@ TOC {#NewFeatures14TOC}
   - @ref NewFeatures14MultipleDatabases
   - @ref NewFeatures14Endpoints
   - @ref NewFeatures14Async
+  - @ref NewFeatures14DumpReload
   - @ref NewFeatures14Replication
   - @ref NewFeatures14WebInterface
   - @ref NewFeatures14Journals
