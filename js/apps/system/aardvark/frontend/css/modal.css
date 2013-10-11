@@ -102,7 +102,7 @@
 
 .figuresHeader th {
   font-weight: 400 !important;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 #collectionIndexTable {
@@ -207,12 +207,12 @@
 
 .modal-body {
   font-weight: 300;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 .collectionTh, .collectionInfoTh2 {
   font-weight: 400 !important;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 #confirmCreateEdge {
