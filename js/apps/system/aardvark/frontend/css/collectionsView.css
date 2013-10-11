@@ -73,8 +73,14 @@
   margin-top: 3px;
   padding: 2px;
   vertical-align: middle;
-  width:207px !important;
+  width:212px !important;
   border-radius: 0px 0px 0px 0px !important;
+}
+
+#searchInput:focus {
+  outline: none;
+  border-color: #8AA051;
+  box-shadow: 0 0 10px #8AA051;
 }
 
 #searchSubmit {
