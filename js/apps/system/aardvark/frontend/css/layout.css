@@ -10,7 +10,7 @@
   background: none repeat scroll 0 0 #FFFFFF;
   color: #333232;
   float: left;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 16px;
   padding: 4px 10px;
   text-decoration: none;
@@ -20,7 +20,7 @@
   background: none repeat scroll 0 0 #5E7B36;
   color: #FFFFFF;
   float: left;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 16px;
   padding: 4px 10px;
   text-decoration: none;
@@ -275,7 +275,7 @@ input,select,option {
 }
 
 button {
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 .glyphicon:hover {

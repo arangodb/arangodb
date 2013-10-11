@@ -193,7 +193,7 @@ li:hover h6, li.hover h6 {
 .statsHeaderDiv h4 {
   font-size: 16px;
   font-weight: 400;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 .statsHeader {
@@ -201,7 +201,7 @@ li:hover h6, li.hover h6 {
   background-color: #686766 !important;
   font-size: 16px;
   font-weight: 400;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 #dashboardHeader {
@@ -544,7 +544,7 @@ li:hover h6, li.hover h6 {
 }
 
 .dashboardH6 {
-  font-family: 'Lato', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 14px;
   font-weight: 400;
 }
