@@ -8,3 +8,4 @@ TOC {#CommunicationTOC}
   - @ref CommunicationAuthentication
   - @ref CommunicationErrors
   - @ref CommunicationCors
+  - @ref CommunicationMethodOverride
