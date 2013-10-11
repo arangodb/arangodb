@@ -58,47 +58,47 @@ ArangoDB Shell Output {#UserManualArangoshOutput}
 In general the ArangoDB shell prints its as output to standard output channel
 using the JSON stringifier.
 
-    arangosh> db.five.all().toArray();
-    [{ _id : "five/3665447", _rev : "3665447", name : "one" }, 
-    { _id : "five/3730983", _rev : "3730983", name : "two" }, 
-    { _id : "five/3862055", _rev : "3862055", name : "four" }, 
-    { _id : "five/3993127", _rev : "3993127", name : "three" }]
+    arangosh> db.five.toArray();
+    [{ "_id" : "five/3665447", "_rev" : "3665447", "name" : "one" }, 
+    { "_id" : "five/3730983", "_rev" : "3730983", "name" : "two" }, 
+    { "_id" : "five/3862055", "_rev" : "3862055", "name" : "four" }, 
+    { "_id" : "five/3993127", "_rev" : "3993127", "name" : "three" }]
 
 @CLEARPAGE
 @FUN{start_pretty_print()}
 
 While the standard JSON stringifier is very concise it is hard to read.  Calling
 the function @FN{start_pretty_print} will enable the pretty printer which
-formats the output in a human readable way.
+formats the output in a human-readable way.
 
     arangosh> start_pretty_print();
     using pretty printing
-    arangosh> db.five.all().toArray();
+    arangosh> db.five.toArray();
     [
       { 
-	_id : "five/3665447", 
-	_rev : "3665447", 
-	name : "one"
-       }, 
+        "_id" : "five/3665447", 
+        "_rev" : "3665447", 
+        "name" : "one"
+      }, 
       { 
-	_id : "five/3730983", 
-	_rev : "3730983", 
-	name : "two"
-       }, 
+        "_id" : "five/3730983", 
+        "_rev" : "3730983", 
+        "name" : "two"
+      }, 
       { 
-	_id : "five/3862055", 
-	_rev : "3862055", 
-	name : "four"
-       }, 
+        "_id" : "five/3862055", 
+        "_rev" : "3862055", 
+        "name" : "four"
+      }, 
       { 
-	_id : "five/3993127", 
-	_rev : "3993127", 
-	name : "three"
-       }
+        "_id" : "five/3993127", 
+        "_rev" : "3993127", 
+        "name" : "three"
+      }
     ]
 
 @CLEARPAGE
 @FUN{stop_pretty_print()}
 
-The functions disable the pretty printer, switching back to the standard JSON
-output format.
+The function disables the pretty printer, switching back to the standard dense
+JSON output format.
