@@ -150,7 +150,6 @@ This may be useful in multi-tenant setups.
 A multi-endpoint setup may also be useful to turn on encrypted communication for
 just specific databases.
 
-
 Asynchronous Execution {#NewFeatures14Async}
 --------------------------------------------
 
@@ -169,6 +168,22 @@ client. ArangoDB provides an API for clients to retrieve the status of async job
 to retrieve their responses.
 
 Please refer to @ref HttpJob for more details. 
+
+Dump and Reload Tools{#NewFeatures14DumpReload}
+-----------------------------------------------
+
+ArangoDB 1.4 comes with two tools for dumping collection data from an ArangoDB database
+and reloading them later. These tools, _arangodump_ and _arangoreload_ can be used to
+create and restore logical backups of an ArangoDB database.
+
+_arangodump_ and _arangoreload_ are client tools that connect to a running ArangoDB
+server. The dump tool will write the collection data into the file system in JSON format.
+The restore tool can later be used to load the data created with the dump tool, either
+into the same ArangoDB server instance, or into a different one.
+
+The documentation for the tools can be found here: 
+- @ref DumpManual
+- @ref RestoreManual
 
 Replication{#NewFeatures14Replication}
 --------------------------------------
