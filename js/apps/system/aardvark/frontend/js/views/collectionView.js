@@ -55,7 +55,7 @@ var collectionView = Backbone.View.extend({
     }
   },
   hidden: function () {
-    window.App.navigate("#", {trigger: true});
+    window.App.navigate("#collections", {trigger: true});
   },
   toggleNewIndexView: function () {
     $('#indexEditView').toggle("fast");

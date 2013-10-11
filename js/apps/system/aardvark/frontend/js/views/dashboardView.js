@@ -425,6 +425,8 @@ var dashboardView = Backbone.View.extend({
           return pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
         });
 
+	chart.tooltips(false);
+
         var label = figure.units;
 
         if (figure.units === 'bytes') {
@@ -471,7 +473,7 @@ var dashboardView = Backbone.View.extend({
 
     this.loadGraphState();
 
-    //fix position for last value label in detailgraph
+    //fix position for last x-value label in detailgraph
     $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
   },
 
@@ -602,7 +604,8 @@ var dashboardView = Backbone.View.extend({
       figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
-      placement: "top"
+      placement: "top",
+      delay: {show: 3000, hide: 100}
     });
   }
 
