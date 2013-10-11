@@ -1,9 +1,8 @@
-ArangoDB Importer {#ImpManualBasics}
-====================================
+Importing Data into an ArangoDB Database {#ImpManual}
+=====================================================
 
 @NAVIGATE_ImpManual
-
-@EMBEDTOC{ImpManualBasicsTOC}
+@EMBEDTOC{ImpManualTOC}
 
 This manual describes the ArangoDB importer _arangoimp_, which can be used for
 bulk imports.
@@ -21,8 +20,8 @@ valid references.
 Let's assume for the following examples you want to import user records into an 
 existing collection named "users" on the server.
 
-Importing JSON-encoded Data {#ImpManualBasicsJson}
-==================================================
+Importing JSON-encoded Data {#ImpManualJson}
+============================================
 
 Let's further assume the import at hand is encoded in JSON. We'll be using these
 example user records to import:
@@ -66,8 +65,8 @@ Please note that by default, _arangoimp_ will import data into the specified
 collection in the default database (`_system`). To specify a different database, 
 use the `--server.database` option when invoking _arangoimp_. 
 
-Importing CSV Data {#ImpManualBasicsCsv}
-========================================
+Importing CSV Data {#ImpManualCsv}
+==================================
 
 _arangoimp_ also offers the possibility to import data from CSV files. This
 comes handy when the data at hand is in CSV format already and you don't want to
@@ -98,8 +97,8 @@ Note that the quote and separator characters can be adjusted via the
 `--quote` and `--separator` arguments when invoking _arangoimp_.  The importer
 supports Windows (CRLF) and Unix (LF) line breaks.
 
-Importing TSV Data {#ImpManualBasicsTsv}
-========================================
+Importing TSV Data {#ImpManualTsv}
+==================================
 
 You may also import tab-separated values (TSV) from a file. This format is very
 simple: every line in the file represents a data record. There is no quoting or

@@ -138,6 +138,17 @@ static bool Overwrite = true;
 static bool RecycleIds = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief statistics
+////////////////////////////////////////////////////////////////////////////////
+
+static struct {
+  uint64_t _totalBatches;
+  uint64_t _totalCollections;
+  uint64_t _totalRead;
+} 
+Stats;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -569,17 +580,37 @@ static int ProcessInputDirectory (string& errorMsg) {
       const string cname = JsonHelper::getStringValue(parameters, "name", "");
 
       if (cname != name) {
-        errorMsg = "collection name mismatch in collection structure file '" + name + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+        // file has a different name than found in structure file
 
-        return TRI_ERROR_INTERNAL;
+        if (ImportStructure) {
+          // we cannot go on if there is a mismatch
+          errorMsg = "collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')";
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+
+          return TRI_ERROR_INTERNAL;
+        }
+        else {
+          // we can patch the name in our array and go on
+          cout << "ignoring collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')" << endl;
+
+          TRI_json_t* nameAttribute = TRI_LookupArrayJson(parameters, "name");
+
+          if (TRI_IsStringJson(nameAttribute)) {
+            char* old = nameAttribute->_value._string.data;
+
+            // file name wins over "name" attribute value
+            nameAttribute->_value._string.data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name.c_str());
+            nameAttribute->_value._string.length = name.size() + 1; // + NUL byte
+
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+          }
+        }
       }
 
       TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
     }
   }
-
 
   // sort collections according to type (documents before edges)
   qsort(collections->_value._objects._buffer, collections->_value._objects._length, sizeof(TRI_json_t), &SortCollections);
@@ -611,6 +642,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
       }
 
+      Stats._totalCollections++;
 
       if (ImportData) {
         // import data. check if we have a datafile
@@ -659,6 +691,8 @@ static int ProcessInputDirectory (string& errorMsg) {
             // read something
             buffer.increaseLength(numRead);
 
+            Stats._totalRead += (uint64_t) numRead;
+
             if (buffer.length() < ChunkSize && numRead > 0) {
               // still continue reading
               continue;
@@ -687,6 +721,8 @@ static int ProcessInputDirectory (string& errorMsg) {
               }
 
               assert(length > 0);
+
+              Stats._totalBatches++;
 
               int res = SendRestoreData(cid, cname, buffer.begin(), length, errorMsg);
 
@@ -796,6 +832,11 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
+  if (! ImportStructure && ! ImportData) {
+    cerr << "must specify either --create-collection or --import-data" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -836,7 +877,7 @@ int main (int argc, char* argv[]) {
   }
 
   // successfully connected
-  
+
   // validate server version 
   int major = 0;
   int minor = 0;
@@ -857,9 +898,23 @@ int main (int argc, char* argv[]) {
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
   }
+  
+  memset(&Stats, 0, sizeof(Stats));
 
   string errorMsg = "";
   int res = ProcessInputDirectory(errorMsg);
+  
+  if (Progress) {
+    if (ImportData) {
+      cout << "Processed " << Stats._totalCollections << " collection(s), " << 
+              "read " << Stats._totalRead << " byte(s) from datafiles, " << 
+              "sent " << Stats._totalBatches << " batch(es)" << endl;
+    }
+    else if (ImportStructure) {
+      cout << "Processed " << Stats._totalCollections << " collection(s)" << endl;
+    }
+  }
+
 
   if (res != TRI_ERROR_NO_ERROR) {
     cerr << errorMsg << endl;

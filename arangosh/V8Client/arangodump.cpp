@@ -120,12 +120,6 @@ static bool Overwrite = false;
 static bool Progress = true;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save meta data
-////////////////////////////////////////////////////////////////////////////////
-
-static bool DumpStructure = true;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief save data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -135,19 +129,30 @@ static bool DumpData = true;
 /// @brief first tick to be included in data dump
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TickStart = 0;
+static uint64_t TickStart = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief last tick to be included in data dump
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TickEnd = 0;
+static uint64_t TickEnd = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our batch id
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t BatchId = 0;
+static uint64_t BatchId = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief statistics
+////////////////////////////////////////////////////////////////////////////////
+
+static struct {
+  uint64_t _totalBatches;
+  uint64_t _totalCollections;
+  uint64_t _totalWritten;
+} 
+Stats;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -172,7 +177,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
     ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
-    ("dump-structure", &DumpStructure, "dump collection structure")
     ("dump-data", &DumpData, "dump collection data")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
     ("output-directory", &OutputDirectory, "output directory")
@@ -487,6 +491,8 @@ static int DumpCollection (int fd,
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
+    Stats._totalBatches++;
+
     SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                  url,
                                                  0, 
@@ -549,9 +555,12 @@ static int DumpCollection (int fd,
       stringstream& responseBody = response->getBody();
       const string body = responseBody.str();
       const size_t len = body.size();
-      
+     
       if (! TRI_WritePointer(fd, body.c_str(), len)) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
+      }
+      else {
+        Stats._totalWritten += (uint64_t) len;
       }
     }
 
@@ -712,11 +721,11 @@ static int RunDump (string& errorMsg) {
     }
 
     // now save the collection meta data and/or the actual data
-    string fileName;
-    ofstream outFile;
+    Stats._totalCollections++;
 
-    if (DumpStructure) {
+    {
       // save meta data
+      string fileName;
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
 
       int fd;
@@ -751,6 +760,7 @@ static int RunDump (string& errorMsg) {
 
     if (DumpData) {
       // save the actual data
+      string fileName;
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
 
       int fd;
@@ -842,11 +852,6 @@ int main (int argc, char* argv[]) {
     ChunkSize = 1024 * 128;
   }
 
-  if (! DumpStructure && ! DumpData) {
-    cerr << "must specify either --dump-structure or --dump-data" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-
   if (TickStart < TickEnd) {
     cerr << "invalid values for --tick-start or --tick-end" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
@@ -913,7 +918,7 @@ int main (int argc, char* argv[]) {
   }
     
   // successfully connected
- 
+
   // validate server version 
   int major = 0;
   int minor = 0;
@@ -948,6 +953,8 @@ int main (int argc, char* argv[]) {
     
     cout << "Writing dump to output directory '" << OutputDirectory << "'" << endl;
   }
+  
+  memset(&Stats, 0, sizeof(Stats));
 
   string errorMsg = "";
 
@@ -956,14 +963,25 @@ int main (int argc, char* argv[]) {
   if (res == TRI_ERROR_NO_ERROR) {
     res = RunDump(errorMsg);
   }
+  
+  if (BatchId > 0) {
+    EndBatch();
+  }
+  
+  if (Progress) {
+    if (DumpData) {
+      cout << "Processed " << Stats._totalCollections << " collection(s), " << 
+              "wrote " << Stats._totalWritten << " byte(s) into datafiles, " << 
+              "sent " << Stats._totalBatches << " batch(es)" << endl;
+    }
+    else {
+      cout << "Processed " << Stats._totalCollections << " collection(s)" << endl;
+    }
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     cerr << errorMsg << endl;
     ret = EXIT_FAILURE;
-  }
-
-  if (BatchId > 0) {
-    EndBatch();
   }
 
   TRIAGENS_REST_SHUTDOWN;
