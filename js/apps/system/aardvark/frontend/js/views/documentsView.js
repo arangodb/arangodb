@@ -311,7 +311,8 @@ var documentsView = Backbone.View.extend({
     if (doctype === 'edge') {
       $('#edgeCreateModal').modal('show');
       $('.modalTooltips').tooltip({
-        placement: "left"
+        placement: "left",
+        delay: {show: 3000, hide: 100}
       });
     }
     else {
@@ -557,7 +558,8 @@ var documentsView = Backbone.View.extend({
     });
 
     $('.glyphicon, .arangoicon').tooltip({
-      placement: "top"
+      placement: "top",
+      delay: {show: 3000, hide: 100}
     });
 
     return this;
