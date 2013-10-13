@@ -13,11 +13,12 @@ AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
 dnl ----------------------------------------------------------------------------
-dnl check for MacOS X or FreeBSD
+dnl check for special OS like MacOS X or FreeBSD
 dnl ----------------------------------------------------------------------------
 
 tr_DARWIN="no"
 tr_FREEBSD="no"
+tr_ARM="no"
 
 case $target in
   *-apple-darwin*)
@@ -27,10 +28,15 @@ case $target in
   *-*-freebsd*)
     tr_FREEBSD="yes"
     ;;
+
+  armv6l-*-linux-gnueabihf)
+    tr_ARM="yes"
+    ;;
 esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
 AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
+AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl bits
@@ -52,6 +58,14 @@ TRI_BITS="$tr_BITS"
 AC_SUBST(TRI_BITS)
 
 CPPFLAGS="${CPPFLAGS} -DTRI_BITS=${TRI_BITS}"
+
+dnl ----------------------------------------------------------------------------
+dnl special flags
+dnl ----------------------------------------------------------------------------
+
+if test x$tr_ARM == xyes;  then
+  CPPFLAGS="${CPPFLAGS} -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
+fi
 
 dnl ----------------------------------------------------------------------------
 dnl use automake to generate Makfile.in
