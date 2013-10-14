@@ -390,7 +390,7 @@ describe ArangoDB do
 ################################################################################
 
       it "checks the initial inventory" do
-        cmd = api + "/inventory"
+        cmd = api + "/inventory?includeSystem=false"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
 
         doc.code.should eq(200)
@@ -409,7 +409,7 @@ describe ArangoDB do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
         
-        cmd = api + "/inventory"
+        cmd = api + "/inventory?includeSystem=false"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
         doc.code.should eq(200)
         
@@ -808,14 +808,6 @@ describe ArangoDB do
 
         i.should be < 100
       end
-
-
-
-
-
-
-
-
       
       it "checks the dump for a collection with deleted documents" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)

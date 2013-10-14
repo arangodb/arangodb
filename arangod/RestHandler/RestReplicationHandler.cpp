@@ -298,6 +298,12 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
     return false;
   }
 
+  bool includeSystem = *((bool*) data);
+  if (! includeSystem && collection->_name[0] == '_') {
+    // exclude all system collections
+    return false;
+  }
+
   // all other cases should be included
   return true;
 }
@@ -1381,11 +1387,8 @@ void RestReplicationHandler::handleCommandInventory () {
     includeSystem = StringUtils::boolean(value);
   }
 
-  // register filter function
-  bool (*filter)(TRI_vocbase_col_t*, void*) = includeSystem ? 0 : &filterCollection;
-
   // collections and indexes
-  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, filter, NULL);
+  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, (void*) &includeSystem);
 
   if (collections == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -1518,6 +1521,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
   params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  params._isSystem =    (name[0] == '_'); 
   
   if (cid > 0) {
     // wait for "old" collection to be dropped
