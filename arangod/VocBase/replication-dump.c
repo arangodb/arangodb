@@ -109,7 +109,7 @@
 /// @brief a datafile descriptor
 ////////////////////////////////////////////////////////////////////////////////
   
-typedef struct {
+typedef struct df_entry_s {
   TRI_datafile_t* _data;
   TRI_voc_tick_t  _dataMin;
   TRI_voc_tick_t  _dataMax;
@@ -119,17 +119,127 @@ typedef struct {
 df_entry_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief container for a resolved collection name (cid => name)
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct resolved_name_s {
+  TRI_voc_cid_t   _cid;
+  char*           _name;
+}
+resolved_name_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a collection id
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyCid (TRI_associative_pointer_t* array, 
+                            void const* key) {
+  TRI_voc_cid_t const* k = key;
+
+  return *k;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementCid (TRI_associative_pointer_t* array, 
+                                void const* element) {
+  resolved_name_t const* e = element;
+
+  return e->_cid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyElementCid (TRI_associative_pointer_t* array, 
+                                  void const* key, 
+                                  void const* element) {
+  TRI_voc_cid_t const* k = key;
+  resolved_name_t const* e = element;
+
+  return *k == e->_cid;
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+static bool LookupCollectionName (TRI_replication_dump_t* dump,
+                                  TRI_voc_cid_t cid,
+                                  char** result) {
+
+  resolved_name_t* found;
+
+  assert(cid > 0);
+  
+  found = (resolved_name_t*) TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid);
+
+  if (found == NULL) {
+    found = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(resolved_name_t), false);
+
+    if (found == NULL) {
+      // out of memory;
+      return false;
+    }
+
+    found->_cid = cid;
+    // name can be NULL if collection is not found. 
+    // but we will still cache a NULL result!
+    found->_name = TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid);
+    
+    TRI_InsertKeyAssociativePointer(&dump->_collectionNames, &found->_cid, found, false); 
+  }
+
+  *result = found->_name;
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append a collection name or id to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendCollection (TRI_replication_dump_t* dump,
+                              TRI_voc_cid_t cid,
+                              bool translateCollectionIds) {
+  if (translateCollectionIds) {
+    if (cid > 0) {
+      char* name;
+
+      if (! LookupCollectionName(dump, cid, &name)) {
+        return false;
+      }
+
+      if (name != NULL) {
+        APPEND_STRING(dump->_buffer, name);
+        return true;
+      }
+    }
+    
+    APPEND_STRING(dump->_buffer, "_unknown");
+  }
+  else {
+    APPEND_UINT64(dump->_buffer, (uint64_t) cid);
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over a vector of datafiles and pick those with a specific
@@ -224,13 +334,17 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
 /// @brief stringify a raw marker from a datafile for a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
+static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
                                  TRI_document_collection_t* document,
                                  TRI_df_marker_t const* marker,
-                                 bool withTick) {
+                                 bool withTicks,
+                                 bool translateCollectionIds) {
+  TRI_string_buffer_t* buffer;
   TRI_replication_operation_e type;
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
+
+  buffer = dump->_buffer; 
 
   if (buffer == NULL) {
     return false;
@@ -258,7 +372,7 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
     return false;
   }
   
-  if (withTick) {
+  if (withTicks) {
     APPEND_STRING(buffer, "{\"tick\":\"");
     APPEND_UINT64(buffer, (uint64_t) marker->_tick);
     APPEND_STRING(buffer, "\",\"type\":"); 
@@ -295,12 +409,16 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
-      APPEND_CHAR(buffer, '/');
+      if (! AppendCollection(dump, e->_fromCid, translateCollectionIds)) {
+        return false;
+      }
+      APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      APPEND_UINT64(buffer, (uint64_t) e->_toCid);
-      APPEND_CHAR(buffer, '/');
+      if (! AppendCollection(dump, e->_toCid, translateCollectionIds)) {
+        return false;
+      }
+      APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, toKey);
       APPEND_CHAR(buffer, '"');
     }
@@ -554,7 +672,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_voc_tick_t dataMin,
                            TRI_voc_tick_t dataMax,
                            uint64_t chunkSize,
-                           bool withTicks) {
+                           bool withTicks,
+                           bool translateCollectionIds) {
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
@@ -710,7 +829,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
 
-      if (! StringifyMarkerDump(buffer, document, marker, withTicks)) {
+      if (! StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds)) {
         res = TRI_ERROR_INTERNAL;
 
         goto NEXT_DF;
@@ -941,7 +1060,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
                                    TRI_voc_tick_t dataMin,
                                    TRI_voc_tick_t dataMax,
                                    uint64_t chunkSize,
-                                   bool withTicks) {
+                                   bool withTicks,
+                                   bool translateCollectionIds) {
   TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
   int res;
@@ -961,7 +1081,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&primary->_compactionLock);
 
-  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks);
+  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
   
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 
@@ -1019,14 +1139,62 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
 /// @brief initialise a replication dump container
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitDumpReplication (TRI_replication_dump_t* dump) {
-  dump->_buffer        = NULL;
+int TRI_InitDumpReplication (TRI_replication_dump_t* dump,
+                             TRI_vocbase_t* vocbase,
+                             size_t bufferSize) {
+  int res;
+
+  assert(vocbase != NULL);
+
+  dump->_vocbase       = vocbase;
   dump->_lastFoundTick = 0;
   dump->_lastSid       = 0;
   dump->_lastShape     = NULL;
   dump->_failed        = false;
   dump->_bufferFull    = false;
   dump->_hasMore       = false;
+
+  dump->_buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, bufferSize);
+
+  if (dump->_buffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = TRI_InitAssociativePointer(&dump->_collectionNames,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyCid,
+                                   HashElementCid,
+                                   IsEqualKeyElementCid,
+                                   NULL);
+ 
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump->_buffer);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a replication dump container
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyDumpReplication (TRI_replication_dump_t* dump) {
+  size_t i;
+
+  for (i = 0; i < dump->_collectionNames._nrAlloc; ++i) {
+    resolved_name_t* found = dump->_collectionNames._table[i];
+
+    if (found != NULL) {
+      if (found->_name != NULL) {
+        // name can be NULL
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, found->_name);
+      }
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, found);
+    }
+  }
+
+  TRI_DestroyAssociativePointer(&dump->_collectionNames);
+  TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -249,39 +249,39 @@ ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, lim
 ////////////////////////////////////////////////////////////////////////////////
 
 var helpArangoCollection = arangosh.createHelpHeadline("ArangoCollection help") +
-  'ArangoCollection constructor:                                       ' + "\n" +
-  ' > col = db.mycoll;                                                 ' + "\n" +
-  ' > col = db._create("mycoll");                                      ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Administration Functions:                                           ' + "\n" +
-  '  name()                          collection name                   ' + "\n" +
-  '  status()                        status of the collection          ' + "\n" +
-  '  type()                          type of the collection            ' + "\n" +
-  '  truncate()                      delete all documents              ' + "\n" +
-  '  properties()                    show collection properties        ' + "\n" +
-  '  drop()                          delete a collection               ' + "\n" +
-  '  load()                          load a collection into memeory    ' + "\n" +
-  '  unload()                        unload a collection from memory   ' + "\n" +
-  '  rename(new-name)                renames a collection              ' + "\n" +
-  '  refresh()                       refreshes the status and name     ' + "\n" +
-  '  _help();                        this help                         ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Document Functions:                                                 ' + "\n" +
-  '  count()                         number of documents               ' + "\n" +
-  '  save(<data>)                    create document and return handle ' + "\n" +
-  '  document(<id>)                  get document by handle            ' + "\n" +
-  '  replace(<id>, <data>,           overwrite document                ' + "\n" +
-  '          <overwrite>)                                              ' + "\n" +
-  '  update(<id>, <data>,            partially update document         ' + "\n" +
-  '         <overwrite>, <keepNull>)                                   ' + "\n" +
-  '  remove(<id>)                    delete document                   ' + "\n" +
-  '  exists(<id>)                    checks whether a document exists  ' + "\n" +
-  '  first()                         get first inserted/update document' + "\n" +
-  '  last()                          get last inserted/update document ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  _database                       database object                   ' + "\n" +
-  '  _id                             collection identifier             ';
+  'ArangoCollection constructor:                                             ' + "\n" +
+  ' > col = db.mycoll;                                                       ' + "\n" +
+  ' > col = db._create("mycoll");                                            ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Administration Functions:                                                 ' + "\n" +
+  '  name()                                collection name                   ' + "\n" +
+  '  status()                              status of the collection          ' + "\n" +
+  '  type()                                type of the collection            ' + "\n" +
+  '  truncate()                            delete all documents              ' + "\n" +
+  '  properties()                          show collection properties        ' + "\n" +
+  '  drop()                                delete a collection               ' + "\n" +
+  '  load()                                load a collection into memeory    ' + "\n" +
+  '  unload()                              unload a collection from memory   ' + "\n" +
+  '  rename(<new-name>)                    renames a collection              ' + "\n" +
+  '  getIndexes()                          return defined indexes            ' + "\n" +
+  '  refresh()                             refreshes the status and name     ' + "\n" +
+  '  _help()                               this help                         ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Document Functions:                                                       ' + "\n" +
+  '  count()                               return number of documents        ' + "\n" +
+  '  save(<data>)                          create document and return handle ' + "\n" +
+  '  document(<id>)                        get document by handle (_id or _key)' + "\n" +
+  '  replace(<id>, <data>, <overwrite>)    overwrite document                ' + "\n" +
+  '  update(<id>, <data>, <overwrite>,     partially update document         ' + "\n" +
+  '         <keepNull>)                                                      ' + "\n" +
+  '  remove(<id>)                          delete document                   ' + "\n" +
+  '  exists(<id>)                          checks whether a document exists  ' + "\n" +
+  '  first()                               first inserted/updated document   ' + "\n" +
+  '  last()                                last inserted/updated document    ' + "\n" +
+  '                                                                          ' + "\n" +
+  'Attributes:                                                               ' + "\n" +
+  '  _database                             database object                   ' + "\n" +
+  '  _id                                   collection identifier             ';
 
 ArangoCollection.prototype._help = function () {  
   internal.print(helpArangoCollection);
@@ -422,8 +422,14 @@ ArangoCollection.prototype.figures = function () {
 /// @brief gets the checksum of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.checksum = function (withData) {
-  var append = withData ? "?withData=true" : "";
+ArangoCollection.prototype.checksum = function (withRevisions, withData) {
+  var append = '';
+  if (withRevisions) {
+    append += '?withRevisions=true';
+  }
+  if (withData) {
+    append += (append === '' ? '?' : '&') + 'withData=true';
+  }
   var requestResult = this._database._connection.GET(this._baseurl("checksum") + append);
 
   arangosh.checkRequestResult(requestResult);

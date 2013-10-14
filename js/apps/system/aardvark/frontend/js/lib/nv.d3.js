@@ -5085,6 +5085,10 @@ nv.models.lineWithFocusChart = function() {
         brushExtent = brush.empty() ? null : brush.extent();
         extent = brush.empty() ? x2.domain() : brush.extent();
 
+        //The brush extent cannot be less than one.  If it is, don't update the line chart.
+        if (Math.abs(extent[0] - extent[1]) <= 1) {
+          return;
+        } 
 
         dispatch.brush({extent: extent, brush: brush});
 
@@ -8428,6 +8432,13 @@ nv.models.scatter = function() {
             y.domain([y.domain()[0] + y.domain()[0] * 0.01, y.domain()[1] - y.domain()[1] * 0.01])
           : y.domain([-1,1]);
 
+      if (isNaN(x.domain()[0])) {
+        x.domain([-1,1]);
+      }
+    
+      if ( isNaN(y.domain()[0])) {
+        y.domain([-1,1]);
+      } 
 
       x0 = x0 || x;
       y0 = y0 || y;
@@ -8542,7 +8553,12 @@ nv.models.scatter = function() {
               .attr('class', function(d,i) { return 'nv-path-'+i; });
           pointPaths.exit().remove();
           pointPaths
-              .attr('d', function(d) { return 'M' + d.data.join('L') + 'Z'; });
+              .attr('d', function(d) {
+                 if (d.data.length === 0) 
+                   return 'M 0 0'
+                 else 
+                   return 'M' + d.data.join('L') + 'Z'; 
+                 }); 
 
           pointPaths
               .on('click', function(d) {

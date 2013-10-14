@@ -751,6 +751,8 @@ INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
 TRI_BITS
+ENABLE_ARM_FALSE
+ENABLE_ARM_TRUE
 ENABLE_FREEBSD_FALSE
 ENABLE_FREEBSD_TRUE
 ENABLE_DARWIN_FALSE
@@ -2723,6 +2725,7 @@ test -n "$target_alias" &&
 
 tr_DARWIN="no"
 tr_FREEBSD="no"
+tr_ARM="no"
 
 case $target in
   *-apple-darwin*)
@@ -2731,6 +2734,10 @@ case $target in
 
   *-*-freebsd*)
     tr_FREEBSD="yes"
+    ;;
+
+  armv6l-*-linux-gnueabihf)
+    tr_ARM="yes"
     ;;
 esac
 
@@ -2748,6 +2755,14 @@ fi
 else
   ENABLE_FREEBSD_TRUE='#'
   ENABLE_FREEBSD_FALSE=
+fi
+
+ if test "x$tr_ARM" = xyes; then
+  ENABLE_ARM_TRUE=
+  ENABLE_ARM_FALSE='#'
+else
+  ENABLE_ARM_TRUE='#'
+  ENABLE_ARM_FALSE=
 fi
 
 
@@ -2768,6 +2783,11 @@ TRI_BITS="$tr_BITS"
 
 
 CPPFLAGS="${CPPFLAGS} -DTRI_BITS=${TRI_BITS}"
+
+
+if test x$tr_ARM == xyes;  then
+  CPPFLAGS="${CPPFLAGS} -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
+fi
 
 
 am__api_version='1.13'
@@ -8130,7 +8150,11 @@ V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
 V8_TARGET="native"
 
-if test x$tr_DARWIN == xyes;  then
+if test x$tr_ARM == xyes;  then
+  V8_TARGET="arm.release"
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
+elif test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
     V8_TARGET="x64.release"
   else
@@ -8634,6 +8658,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FREEBSD_TRUE}" && test -z "${ENABLE_FREEBSD_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FREEBSD\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_ARM_TRUE}" && test -z "${ENABLE_ARM_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ARM\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking that generated files are newer than configure" >&5

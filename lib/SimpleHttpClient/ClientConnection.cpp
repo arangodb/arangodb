@@ -188,7 +188,8 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
     readFds = &fdset;
   }
 
-  int res = select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv);
+  int sockn = (int) (_socket.fileHandle + 1);
+  int res = select(sockn, readFds, writeFds, NULL, &tv);
 
   if (res > 0) {
     return true;

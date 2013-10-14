@@ -193,7 +193,7 @@ li:hover h6, li.hover h6 {
 .statsHeaderDiv h4 {
   font-size: 16px;
   font-weight: 400;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 .statsHeader {
@@ -201,7 +201,7 @@ li:hover h6, li.hover h6 {
   background-color: #686766 !important;
   font-size: 16px;
   font-weight: 400;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 #dashboardHeader {
@@ -288,6 +288,10 @@ li:hover h6, li.hover h6 {
 
 .css-label {
   background-image:url(../img/dark-check-green.png);
+}
+
+.css-label-round {
+  background-image:url(../img/dark-check-green-round.png);
 }
 
 /*Dashboard Radio */
@@ -387,7 +391,7 @@ li:hover h6, li.hover h6 {
 }
 
 #leftReplicationDiv, #rightReplicationDiv {
-  padding: 20px !important;
+  padding: 10px !important;
 }
 
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
@@ -528,9 +532,18 @@ li:hover h6, li.hover h6 {
   margin-right: -3px;
 }
 
+.arangoHeaderBar {
+  width: 100%;
+  background-color: #686766;
+  height: 27px;
+  padding-top: 3px;
+  border-radius: 2px;
+}
+
 .arangoSubHeader {
   font-weight: 400;
-  color: black;
+  padding-left: 5px;
+  color: white;
   margin-top: 5px;
   font-size: 15px;
 }
@@ -544,7 +557,7 @@ li:hover h6, li.hover h6 {
 }
 
 .dashboardH6 {
-  font-family: 'Lato', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 14px;
   font-weight: 400;
 }
@@ -562,4 +575,32 @@ li:hover h6, li.hover h6 {
 
 .nvd3 .nv-wrap .nv-axis:last-child {
   visibility: hidden !important;
+}
+
+.greenLight {
+  background: green;
+  background-image: radial-gradient(lime, transparent);
+  background-size: 3px 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow:
+  margin-top: 1px;
+  0 0 20px #111 inset,
+  0 0 10px lime;
+  animation: 13s green infinite;
+}
+
+.redLight {
+  background: red;
+  background-image: radial-gradient(brown, transparent);
+  background-size: 3px 3px; 
+  margin-top: 1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  animation: 13s red infinite;
+  box-shadow:
+    0 0 20px #111 inset,
+    0 0 10px red;
 }

@@ -270,7 +270,7 @@ namespace triagens {
         result.data = new char[len];
 
         memcpy(const_cast<char*>(result.data), source, len);
-        result.length = len;
+        result.length = (uint32_t) len;
 
         return result;
       }
@@ -287,7 +287,7 @@ namespace triagens {
         result.data = new char[source.size()];
 
         memcpy(const_cast<char*>(result.data), source.c_str(), source.size());
-        result.length = source.size();
+        result.length = (uint32_t) source.size();
 
         return result;
       }
@@ -1565,7 +1565,7 @@ namespace triagens {
 
 
       string urlEncode (string const& str) {
-        return urlEncode(str.c_str(),str.size());
+        return urlEncode(str.c_str(), str.size());
       }
 
 
@@ -1573,7 +1573,7 @@ namespace triagens {
       string urlEncode (const char* src) {
         if (src != 0) {
           size_t len = strlen(src);
-          return urlEncode(src,len);
+          return urlEncode(src, len);
         }
         return "";
       }
@@ -3040,7 +3040,7 @@ namespace triagens {
         int j = 0;
         int inp = 0;
 
-        int in_len = source.size();
+        int in_len = (int) source.size();
 
         while (in_len-- && (source[inp] != '=') && isBase64(source[inp])) {
           charArray4[i++] = source[inp];
@@ -3150,7 +3150,7 @@ namespace triagens {
         int j = 0;
         int inp = 0;
 
-        int in_len = source.size();
+        int in_len = (int) source.size();
 
         while (in_len-- && (source[inp] != '=') && isBase64U(source[inp])) {
           charArray4[i++] = source[inp];

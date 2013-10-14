@@ -69,7 +69,7 @@ static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
 static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set(column, v8::String::New(field));
+  (*array)->Set((uint32_t) column, v8::String::New(field));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,10 +79,10 @@ static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t r
 static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set(column, v8::String::New(field));
+  (*array)->Set((uint32_t) column, v8::String::New(field));
 
   v8::Handle<v8::Function>* cb = reinterpret_cast<v8::Handle<v8::Function>*>(parser->_dataEnd);
-  v8::Handle<v8::Number> r = v8::Number::New(row);
+  v8::Handle<v8::Number> r = v8::Integer::New((int) row);
 
   v8::Handle<v8::Value> args[] = { *array, r };
   (*cb)->Call(*cb, 2, args);
@@ -291,7 +291,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, error);
       }
 
-      v8::Handle<v8::Number> r = v8::Number::New(row);
+      v8::Handle<v8::Number> r = v8::Integer::New((int) row);
       v8::Handle<v8::Value> args[] = { object, r };
       cb->Call(cb, 2, args);
 

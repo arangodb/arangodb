@@ -69,7 +69,7 @@ var Repository,
 
 Repository = function (collection, opts) {
   'use strict';
-  var options = opts || {};
+  this.options = opts || {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_collection
@@ -87,7 +87,7 @@ Repository = function (collection, opts) {
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.modelPrototype = options.model || require("org/arangodb/foxx/model").Model;
+  this.modelPrototype = this.options.model || require("org/arangodb/foxx/model").Model;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_prefix
@@ -96,7 +96,7 @@ Repository = function (collection, opts) {
 /// See the documentation of collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.prefix = options.prefix;
+  this.prefix = this.options.prefix;
 };
 
 _.extend(Repository.prototype, {

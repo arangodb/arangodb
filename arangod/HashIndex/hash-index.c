@@ -116,7 +116,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
   TRI_shaper_t* shaper;                 // underlying shaper
   TRI_shape_access_t const* acc;        // shape accessor
-  TRI_shaped_json_t shapedObject;	// the sub-object
+  TRI_shaped_json_t shapedObject;       // the sub-object
   TRI_shaped_json_t shapedJson;         // the object behind document
   TRI_shaped_sub_t shapedSub;           // the relative sub-object
 

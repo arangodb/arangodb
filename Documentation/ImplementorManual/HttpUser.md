@@ -17,8 +17,10 @@ This specialised interface intentionally does not provide all functionality
 that is available in the regular document REST API.
 
 Operations on users may become more restricted than regular document operations, 
-and extra privilege and security security checks may be introduced in the 
+and extra privileges and security security checks may be introduced in the 
 future for this interface.
+
+Please note that user operations are not included in ArangoDB's replication.
 
 @anchor HttpUserSave
 @copydetails JSF_post_api_user

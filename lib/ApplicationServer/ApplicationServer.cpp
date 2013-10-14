@@ -928,7 +928,7 @@ bool ApplicationServer::readConfigurationFile () {
 
     // do not use init files
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOGGER_INFO("using no init file at all");
+      LOGGER_DEBUG("using no init file at all");
       return true;
     }
 
@@ -965,12 +965,6 @@ bool ApplicationServer::readConfigurationFile () {
 
     string homeDir = FileUtils::homeDirectory();
 
-#ifdef _WIN32
-    string homeEnv = string("%HOMEDRIVE% and/or %HOMEPATH%");
-#else
-    string homeEnv = string("$HOME");
-#endif
-
     if (! homeDir.empty()) {
       if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
         homeDir += TRI_DIR_SEPARATOR_CHAR + _userConfigFile;
@@ -1001,7 +995,7 @@ bool ApplicationServer::readConfigurationFile () {
       }
     }
     else {
-      LOGGER_DEBUG("no user init file, " << homeEnv << " is empty");
+      LOGGER_DEBUG("no home directory found");
     }
   }
 
@@ -1019,8 +1013,8 @@ bool ApplicationServer::readConfigurationFile () {
       string sysDir = string(_SYSCONFDIR_);
 
       if (! sysDir.empty()) {
-        if (sysDir[sysDir.size() - 1] != '/') {
-          sysDir += "/" + _systemConfigFile;
+        if (sysDir[sysDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+          sysDir += TRI_DIR_SEPARATOR_CHAR + _systemConfigFile;
         }
         else {
           sysDir += _systemConfigFile;
@@ -1055,7 +1049,7 @@ bool ApplicationServer::readConfigurationFile () {
   }
   else {
     if (! _systemConfigFile.empty()) {
-      string sysDir = _systemConfigPath + "/" + _systemConfigFile;
+      string sysDir = _systemConfigPath + TRI_DIR_SEPARATOR_CHAR + _systemConfigFile;
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {

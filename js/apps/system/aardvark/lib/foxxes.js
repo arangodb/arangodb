@@ -62,11 +62,13 @@ exports.Foxxes = function () {
   };
   
   this.install = function (name, mount, version) {      
-    return foxxmanager.mount(name, mount, version);
+    return foxxmanager.mount(name, mount, { setup: true }); 
   };
   
   // Define the functionality to uninstall an installed foxx
   this.uninstall = function (key) {
+    // key is mountpoint
+    foxxmanager.teardown(key);
     return foxxmanager.unmount(key);
   };
   

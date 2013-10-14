@@ -35,8 +35,6 @@ used to restrict the dump to certain collections only. If not specified,
 all collections will be dumped ENDOPTION
 OPTION "--dump-data <bool>"
 when set to "true" will dump the data (documents) of the collection ENDOPTION
-OPTION "--dump-structure <bool>"
-when set to "true" will dump structural information about the collection ENDOPTION
 OPTION "--include-system-collections <bool>"
 when set to "true" will also dump system collections, otherwise they will be excluded ENDOPTION
 OPTION "--output-directory <string>"

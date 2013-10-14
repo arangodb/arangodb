@@ -61,6 +61,29 @@
 namespace triagens {
   namespace arango {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  RestImportResult
+// -----------------------------------------------------------------------------
+
+    struct RestImportResult {
+
+      public:
+        RestImportResult () :
+          _numErrors(0),
+          _numEmpty(0),
+          _numCreated(0),
+          _errors() {
+        }
+
+        ~RestImportResult () { }
+
+        size_t _numErrors;
+        size_t _numEmpty;
+        size_t _numCreated;
+
+        std::vector<std::string> _errors;
+    };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +137,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,23 +145,37 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-    protected:
+    private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log an error document
+/// @brief extracts the "complete" value
 ////////////////////////////////////////////////////////////////////////////////
 
-      void logDocument (TRI_json_t const*) const;
+      bool extractComplete () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a position string
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string positionise (size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error
+////////////////////////////////////////////////////////////////////////////////
+
+      void registerError (RestImportResult&,
+                          std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool handleSingleDocument (ImportTransactionType&,
-                                 TRI_json_t const*,
-                                 const bool,
-                                 const bool,
-                                 const size_t);
+      int handleSingleDocument (ImportTransactionType&,
+                                TRI_json_t const*,
+                                std::string&,
+                                const bool,
+                                const bool,
+                                const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents by JSON objects
@@ -164,13 +201,13 @@ namespace triagens {
 /// @brief creates the result
 ////////////////////////////////////////////////////////////////////////////////
 
-      void generateDocumentsCreated (size_t, size_t, size_t);
+      void generateDocumentsCreated (RestImportResult const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_json_t* parseJsonLine (const string&);
+      TRI_json_t* parseJsonLine (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a TRI_json_t object from a key and value list
@@ -178,13 +215,15 @@ namespace triagens {
 
       TRI_json_t* createJsonObject (const TRI_json_t*,
                                     const TRI_json_t*,
-                                    const string&);
+                                    std::string&,
+                                    const std::string&,
+                                    const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool checkKeys (TRI_json_t*);
+      bool checkKeys (TRI_json_t const*);
 
     };
   }

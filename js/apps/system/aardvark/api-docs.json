@@ -43,12 +43,20 @@
             "description": "graph API"
         }, 
         {
+            "path": "api-docs/import.{format}", 
+            "description": "import API"
+        }, 
+        {
             "path": "api-docs/index.{format}", 
             "description": "index API"
         }, 
         {
             "path": "api-docs/job.{format}", 
             "description": "job API"
+        }, 
+        {
+            "path": "api-docs/log.{format}", 
+            "description": "log API"
         }, 
         {
             "path": "api-docs/query.{format}", 

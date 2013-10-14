@@ -101,6 +101,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _httpPort(),
     _endpoints(),
     _keepAliveTimeout(300.0),
+    _allowMethodOverride(false),
     _backlogSize(10),
     _httpsKeyfile(),
     _cafile(),
@@ -216,6 +217,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+    ("server.allow-method-override", &_allowMethodOverride, "allow HTTP method override using special headers")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
     ("server.backlog-size", &_backlogSize, "listen backlog size")
   ;
@@ -543,6 +545,7 @@ bool ApplicationEndpointServer::prepare () {
   _endpointList.dump();
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
+                                           _allowMethodOverride,
                                            _setContext,
                                            _contextData);
 
@@ -674,7 +677,7 @@ bool ApplicationEndpointServer::createSslContext () {
   Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
 
-  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), _rctx.size());
+  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), (int) _rctx.size());
 
   if (res != 1) {
     LOGGER_ERROR("ssl error: " << lastSSLError());

@@ -35,7 +35,7 @@ var collectionInfoView = Backbone.View.extend({
     }
   },
   hidden: function () {
-    window.App.navigate("#", {trigger: true});
+    window.App.navigate("#collections", {trigger: true});
   },
   fillModal: function() {
     try {

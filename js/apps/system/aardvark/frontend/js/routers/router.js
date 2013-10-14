@@ -4,10 +4,10 @@
 $(document).ready(function() {
 
   window.Router = Backbone.Router.extend({
-
     routes: {
-      ""                                    : "collections",
+      ""                                    : "dashboard",
       "collection/:colid"                   : "collection",
+      "collections"                         : "collections",
       "collectionInfo/:colid"               : "collectionInfo",
       "new"                                 : "newCollection",
       "login"                               : "login",
@@ -15,7 +15,6 @@ $(document).ready(function() {
       "collection/:colid/:docid"            : "document",
       "collection/:colid/:docid/source"     : "source",
       "shell"                               : "shell",
-      "dashboard"                           : "dashboard",
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
@@ -27,11 +26,9 @@ $(document).ready(function() {
       "applications"                        : "applications",
       "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph"
-
     },
 
     initialize: function () {
-
       window.activeSession = new window.ArangoSession();
 
       window.arangoCollectionsStore = new window.arangoCollections();
@@ -69,6 +66,7 @@ $(document).ready(function() {
           });
         }
       });
+
       this.footerView = new window.footerView();
       this.naviView = new window.navigationView();
       this.footerView.render();
@@ -77,6 +75,14 @@ $(document).ready(function() {
         collection: window.arangoCollectionsStore
       });
     },
+
+    logsAllowed: function () {
+      if ($('#databaseName').html() !== '_system') {
+        return false;
+      }
+      return true;
+    },
+
     checkSession: function () {
       if (window.activeSession.models.length === 0) {
         window.App.navigate("login", {trigger: true});
@@ -192,6 +198,10 @@ $(document).ready(function() {
     },
 
     logs: function() {
+      if (! this.logsAllowed()) {
+        return;
+      }
+          
       var self = this;
       window.arangoLogsStore.fetch({
         success: function () {
@@ -207,15 +217,6 @@ $(document).ready(function() {
 
     dashboard: function() {
       this.naviView.selectMenuItem('dashboard-menu');
-      /*
-         var self = this;
-         window.arangoCollectionsStore.fetch({
-success: function () {
-window.dashboardView.render();
-self.naviView.selectMenuItem('dashboard-menu');
-}
-});
-*/
       if (this.statisticsDescription === undefined) {
         this.statisticsDescription = new window.StatisticsDescription();
         this.statisticsDescription.fetch({
@@ -328,6 +329,7 @@ self.naviView.selectMenuItem('dashboard-menu');
       docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
+
   });
 
   window.App = new window.Router();

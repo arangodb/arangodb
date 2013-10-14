@@ -93,7 +93,14 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _connection(0),
   _client(0) {
 
-  _databaseName = string(vocbase->_name);
+  if (configuration->_database != 0) {
+    // use name from configuration
+    _databaseName = string(configuration->_database); 
+  }
+  else {
+    // use name of current database
+    _databaseName = string(vocbase->_name);
+  }
     
   // get our own server-id 
   _localServerId       = TRI_GetIdServer();
@@ -219,9 +226,11 @@ TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
   TRI_json_t const* id = JsonHelper::getArrayElement(json, "cid");
 
   if (JsonHelper::isString(id)) {
+    // string cid, e.g. "9988488"
     return StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
   }
   else if (JsonHelper::isNumber(id)) {
+    // numeric cid, e.g. 9988488
     return (TRI_voc_cid_t) id->_value._number;
   }
 
@@ -279,15 +288,16 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           const string from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
           const string to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
           
+          CollectionNameResolver resolver(_vocbase);
 
           // parse _from
           TRI_document_edge_t edge;
-          if (! DocumentHelper::parseDocumentId(from.c_str(), edge._fromCid, &edge._fromKey)) {
+          if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
           
           // parse _to
-          if (! DocumentHelper::parseDocumentId(to.c_str(), edge._toCid, &edge._toKey)) {
+          if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
 
@@ -377,12 +387,16 @@ int Syncer::createCollection (TRI_json_t const* json,
 
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
+  if (col == 0) {
+    // try looking up the collection by name then
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+  }
+
   if (col != 0 && 
       (TRI_col_type_t) col->_type == (TRI_col_type_t) type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
-
 
   TRI_json_t* keyOptions = 0;
 
@@ -448,13 +462,17 @@ int Syncer::createCollection (TRI_json_t const* json,
     
 int Syncer::dropCollection (TRI_json_t const* json,
                             bool reportError) {
-  const TRI_voc_cid_t cid = getCid(json);
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+  TRI_vocbase_col_t* col = 0;
 
-  if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  if (! cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
   }
 
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  if (col == 0) {
+    TRI_voc_cid_t cid = getCid(json);
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == 0) {
     if (reportError) {
@@ -472,19 +490,23 @@ int Syncer::dropCollection (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
     
 int Syncer::createIndex (TRI_json_t const* json) {
-  const TRI_voc_cid_t cid = getCid(json);
-
-  if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-
   TRI_json_t const* indexJson = JsonHelper::getArrayElement(json, "index");
 
   if (! JsonHelper::isArray(indexJson)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+  TRI_vocbase_col_t* col = 0;
+
+  if (! cname.empty()) {
+    col = TRI_UseCollectionByNameVocBase(_vocbase, cname.c_str());
+  }
+
+  if (col == 0) {
+    TRI_voc_cid_t cid = getCid(json);
+    col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == 0 || col->_collection == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -513,12 +535,6 @@ int Syncer::createIndex (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
     
 int Syncer::dropIndex (TRI_json_t const* json) {
-  const TRI_voc_cid_t cid = getCid(json);
-
-  if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-
   const string id = JsonHelper::getStringValue(json, "id", "");
 
   if (id.empty()) {
@@ -526,8 +542,18 @@ int Syncer::dropIndex (TRI_json_t const* json) {
   }
   
   const TRI_idx_iid_t iid = StringUtils::uint64(id);
+  
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+  TRI_vocbase_col_t* col = 0;
 
-  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+  if (! cname.empty()) {
+    col = TRI_UseCollectionByNameVocBase(_vocbase, cname.c_str());
+  }
+
+  if (col == 0) {
+    TRI_voc_cid_t cid = getCid(json);
+    col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == 0 || col->_collection == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

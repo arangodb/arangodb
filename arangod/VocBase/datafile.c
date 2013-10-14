@@ -796,6 +796,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   TRI_df_header_marker_t header;
   int result;
 
+  assert(PageSize >= 256);
+
   // use multiples of page-size
   maximalSize = ((maximalSize + PageSize - 1) / PageSize) * PageSize;
 
@@ -1266,6 +1268,14 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       return TRI_set_errno(TRI_ERROR_ARANGO_READ_ONLY);
     }
 
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
+  }
+
+  // out of bounds check for writing into a datafile
+  if (position < (void*) datafile->_data ||
+      position >= (void*) (datafile->_data + datafile->_maximalSize)) {
+    
+    LOG_ERROR("logic error. writing out of bounds of datafile '%s'", datafile->getName(datafile));
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
   }
 

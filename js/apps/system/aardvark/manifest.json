@@ -119,7 +119,8 @@
         "frontend/css/jquery.gritter.css",
         "frontend/css/modal.css",
         "frontend/css/ansi.css",
-        "frontend/css/graphlayout.css"
+        "frontend/css/graphlayout.css",
+        "frontend/css/api.css"
       ]
     }
   },

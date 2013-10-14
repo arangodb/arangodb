@@ -185,7 +185,7 @@ namespace triagens {
             }
 
             do {
-              strm.avail_out = bufferSize;
+              strm.avail_out = (uInt) bufferSize;
               strm.next_out  = (unsigned char*) buffer;
 
               res = ::inflate(&strm, Z_NO_FLUSH);

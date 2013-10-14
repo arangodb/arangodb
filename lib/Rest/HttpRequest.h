@@ -119,7 +119,8 @@ namespace triagens {
 
         HttpRequest (ConnectionInfo const&, 
                      char const*, 
-                     size_t);
+                     size_t,
+                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -687,6 +688,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         bool _isRequestContextOwner;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not overriding the HTTP method via custom headers
+/// (x-http-method, x-method-override or x-http-method-override) is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _allowMethodOverride;
     };
   }
 }
