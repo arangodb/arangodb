@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* added database selection to arango-dfdb
+
 * provide foxx-manager, arangodump, and arangorestore in Windows build
 
 * ArangoDB 1.4 will refuse to start if option `--javascript.app-path` is not set.
