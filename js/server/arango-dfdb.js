@@ -450,7 +450,7 @@ function main (argv) {
 
     if (line == "") {
       printf("Exiting. Please wait.\n");
-      break;
+      return;
     }
 
     if (line === "*") {
@@ -518,6 +518,9 @@ function main (argv) {
       printf("%s", internal.COLORS.COLOR_RESET);
       printf("\n\n");
     }
+  }
+  else {
+    printf("\nNo issues found.\n");
   }
 }
 
