@@ -1,4 +1,97 @@
-v1.4.0-beta1 (2013-09-30)
+v1.4.0-beta2 (2013-10-14)
+-------------------------
+
+* only the following system collections will be excluded from replication from now on:
+  - `_replication`
+  - `_trx`
+  - `_users`
+  - `_aal`
+  - `_fishbowl`
+  - `_modules`
+  - `_routing`
+
+  Especially the following system collections will now be included in replication:
+  - `_aqlfunctions`
+  - `_graphs`
+  
+  In previous versions of ArangoDB, all system collections were excluded from the 
+  replication.
+
+  The change also caused a change in the replication logger and applier:
+  in previous versions of ArangoDB, only a collection's id was logged for an operation.
+  This has not caused problems for non-system collections but for system collections 
+  there ids might differ. In addition to a collection id ArangoDB will now also log the
+  name of a collection for each replication event.
+
+  The replication applier will now look for the collection name attribute in logged
+  events preferrably.
+
+* added database selection to arango-dfdb
+
+* provide foxx-manager, arangodump, and arangorestore in Windows build
+
+* ArangoDB 1.4 will refuse to start if option `--javascript.app-path` is not set.
+
+* added startup option `--server.allow-method-override`
+
+  This option can be set to allow overriding the HTTP request method in a request using
+  one of the following custom headers:
+
+  - x-http-method-override
+  - x-http-method
+  - x-method-override
+
+  This allows bypassing proxies and tools that would otherwise just let certain types of
+  requests pass. Enabling this option may impose a security risk, so it should only be
+  used in very controlled environments.
+
+  The default value for this option is `false` (no method overriding allowed).
+
+* added "details" URL parameter for bulk import API
+  
+  Setting the `details` URL parameter to `true` in a call to POST `/_api/import` will make
+  the import return details about non-imported documents in the `details` attribute. If
+  `details` is `false` or omitted, no `details` attribute will be present in the response.
+  This is the same behavior that previous ArangoDB versions exposed.
+
+* added "complete" option for bulk import API
+ 
+  Setting the `complete` URL parameter to `true` in a call to POST `/_api/import` will make
+  the import completely fail if at least one of documents cannot be imported successfully.
+
+  It defaults to `false`, which will make ArangoDB continue importing the other documents
+  from the import even if some documents cannot be imported. This is the same behaviour that
+  previous ArangoDB versions exposed.
+
+* added missing swagger documentation for `/_api/log`
+
+* calling `/_api/logs` (or `/_admin/logs`) is only permitted from the `_system` database now.
+  
+  Calling this API method for/from other database will result in an HTTP 400.
+
+' ported fix from https://github.com/novus/nvd3/commit/0894152def263b8dee60192f75f66700cea532cc
+  
+  This prevents JavaScript errors from occurring in Chrome when in the admin interface, 
+  section "Dashboard".
+
+* show current database name in web interface (bottom right corner)
+
+* added missing documentation for /_api/import in swagger API docs 
+
+* allow specification of database name for replication sync command replication applier
+
+  This allows syncing from a master database with a different name than the slave database.
+
+* issue #601: Show DB in prompt
+
+  arangosh now displays the database name as part of the prompt by default.
+  
+  Can change the prompt by using the `--prompt` option, e.g.
+
+      > arangosh --prompt "my db is named \"%d\"> "
+
+
+v1.4.0-beta1 (2013-10-01)
 -------------------------
 
 * make the Foxx manager use per-database app directories
@@ -60,10 +153,6 @@ v1.4.0-beta1 (2013-09-30)
 
 * issue #590: Manifest Lint
 
-
-v1.4.0-alpha2 (2013-09-05)
---------------------------
-
 * added data dump and restore tools, arangodump and arangorestore.
 
   arangodump can be used to create a logical dump of an ArangoDB database, or
@@ -74,7 +163,7 @@ v1.4.0-alpha2 (2013-09-05)
   arangorestore currently does not re-create any indexes, and doesn't yet handle
   referenced documents in edges propertly when doing just partial restores.
   This will be fixed until 1.4 stable.
-
+  
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
 
   The option allows these client tools to use a certain database for their actions.
@@ -115,7 +204,6 @@ v1.4.0-alpha2 (2013-09-05)
   To access a different database (e.g. `test`), the URL pathname would look like this:
 
       /_db/test/document/mycollection/1234
-
 
   New databases can also be created and existing databases can only be dropped from
   within the default database (`_system`). It is not possible to drop the `_system`
@@ -222,7 +310,7 @@ v1.4.0-alpha2 (2013-09-05)
   making the journal a datafile. Thus `rotate()` may cause disk space savings, even if
   the datafiles does not qualify for compaction after rotation.
 
-  Note: the journal is asynchronously, so that the actual rotation may be executed
+  Note: rotating the journal is asynchronous, so that the actual rotation may be executed
   after `rotate()` returns to the caller.
 
 * changed compaction to merge small datafiles together (up to 3 datafiles are merged in 

@@ -273,6 +273,7 @@ int TRI_LogDropCollectionReplication (struct TRI_vocbase_s*,
 int TRI_LogRenameCollectionReplication (struct TRI_vocbase_s*,
                                         TRI_voc_cid_t,
                                         char const*,
+                                        char const*,
                                         TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////

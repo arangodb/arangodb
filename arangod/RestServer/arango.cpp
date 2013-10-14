@@ -104,10 +104,10 @@ static void arangodExitFunction (int exitCode, void* data) {
 
 
   if (res != 0) {
-    _exit(1);
+    exit(1);
   }
 
-  _exit(exitCode);
+  exit(exitCode);
 }
 
 #else

@@ -154,9 +154,9 @@ static char* CompletionGenerator (char const* text, int state) {
 
     // locate
     if (! properties.IsEmpty()) {
-      size_t n = properties->Length();
+      const uint32_t n = properties->Length();
 
-      for (size_t i = 0;  i < n;  ++i) {
+      for (uint32_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
 
         TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);

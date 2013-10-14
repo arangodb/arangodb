@@ -64,6 +64,18 @@ window.ApplicationsView = Backbone.View.extend({
   
   reload: function() {
     var self = this;
+
+    // unbind and remove any unused views
+    _.each(this._installedSubViews, function (v) {
+      v.undelegateEvents();
+    });
+    _.each(this._availableSubViews, function (v) {
+      v.undelegateEvents();
+    });
+
+    this._installedSubViews = { };
+    this._availableSubViews = { };
+
     this.collection.fetch({
       success: function() {
         self.collection.each(function (foxx) {

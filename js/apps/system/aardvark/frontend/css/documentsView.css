@@ -42,7 +42,7 @@ table.dataTable thead th {
 }
 
 #documentsFooterBox {
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0,0,0,0.15);
   height: 56px;
 }
 
@@ -78,12 +78,12 @@ table.dataTable thead th {
 }
 
 .arangoDropdown {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.15);
   margin-bottom: -10px;
 }
 
 #filterHeader, #importHeader, .arangoDropdownIn {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.15);
   padding-top: 10px;
   padding-left: 10px;
   padding-right: 10px;
@@ -142,8 +142,8 @@ table.dataTable thead th {
   margin-top: 10px !important;
   padding-left: 5px;
   padding-right: 5px;
-  padding-top: 40px;
-  background-color: rgba(0, 0, 0, 0.1);
+  padding-top: 13px;
+  background-color: rgba(0, 0, 0, 0.15);
 }
 
 #documentsTableID thead {
@@ -242,7 +242,7 @@ table.dataTable thead th {
 .snippet-no-num {
   font-size: 1em;
   font-weight: 300;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   margin-bottom:0px;
 }
 

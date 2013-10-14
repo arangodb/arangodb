@@ -87,8 +87,8 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Handle<v8::Context> con
   }
 
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context,
-                                                             v8::String::New(i->second.c_str(), i->second.size()),
-                                                             v8::String::New(name.c_str(), name.size()),
+                                                             v8::String::New(i->second.c_str(), (int) i->second.size()),
+                                                             v8::String::New(name.c_str(), (int) name.size()),
                                                              false);
 
   if (tryCatch.HasCaught()) {
@@ -118,8 +118,8 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
   }
 
   TRI_ExecuteJavaScriptString(context,
-                              v8::String::New(i->second.c_str(), i->second.size()),
-                              v8::String::New(name.c_str(), name.size()),
+                              v8::String::New(i->second.c_str(), (int) i->second.size()),
+                              v8::String::New(name.c_str(), (int) name.size()),
                               false);
 
   if (tryCatch.HasCaught()) {
@@ -171,8 +171,8 @@ bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const&
   string content = "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
 
   TRI_ExecuteJavaScriptString(context,
-                              v8::String::New(content.c_str(), content.size()),
-                              v8::String::New(name.c_str(), name.size()),
+                              v8::String::New(content.c_str(), (int) content.size()),
+                              v8::String::New(name.c_str(), (int) name.size()),
                               false);
 
   if (! tryCatch.HasCaught()) {

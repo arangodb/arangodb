@@ -1,0 +1,82 @@
+.swagger-ui-wrap ul#resources li.resource {
+  background-color: #F4F3F3;
+}
+
+.api-actions {
+  margin: 0 !important;
+  padding: 0;
+  background-color: rgba(0,0,0,0.15) !important;
+}
+
+.api-actions .container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  margin-left: 5px !important;
+  margin-right: 5px !important;
+  padding-top: 13px !important;
+  padding-bottom: 10px !important;
+}
+
+.api-actions .resource {
+  margin-bottom: 5px !important;
+  padding-left: 5px !important;
+  border-bottom: 0 !important;
+}
+
+.api-actions .resource .heading h2 a {
+  color: #000000 !important;
+  font-weight: 300 !important;
+}
+
+.api-actions .active .heading h2 a {
+  color: #000000 !important;
+}
+
+.api-actions .endpoints {
+  margin-right: 5px !important;  
+}
+
+.api-actions .endpoints .endpoint:last-child {
+  padding-bottom: 5px !important;
+}
+
+.api-actions .endpoint .operations .heading,
+.api-actions .endpoint .operations .content {
+  border-radius: 0 !important;
+  font-weight: 300 !important;
+}
+
+.api-actions .endpoint .operations .content {
+  margin: 0 !important;
+}
+
+.api-actions .endpoint .operations .content h4 {
+  font-weight: 700 !important;
+}
+
+.api-actions .toggleOperation,
+.api-actions .http_method {
+  border-radius: 0 !important;
+}
+
+.api-actions .required, 
+.api-actions em,
+.api-actions strong {
+  font-weight: 400 !important;
+}
+
+.api-actions input[type="button"] {
+  background: none repeat scroll 0 0 #8F8D8C !important;
+  border: medium none !important;
+  box-shadow: none !important;
+  color: #FFFFFF !important;
+  font-size: 14px !important;
+  font-weight: 300 !important;
+  padding: 8px 16px !important;
+  float: right !important;
+  margin-top: 10px !important;
+}
+
+.api-actions .resource > .heading > .options {
+  margin: 11px 10px 0 0 !important;
+}

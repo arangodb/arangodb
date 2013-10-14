@@ -25,6 +25,7 @@ WIKI = \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
+	DumpManual \
 	ExtendingAql \
 	FirstStepsArangoDB \
 	Glossary \
@@ -55,7 +56,6 @@ WIKI = \
 	HttpTraversals \
 	HttpUser \
 	ImpManual \
-	ImpManualBasics \
 	ImplementorManual \
 	ImplementorManualArangoErrors \
 	IndexBitArray \
@@ -81,7 +81,9 @@ WIKI = \
 	RefManualReplication \
 	RestDocument \
 	RestEdge \
+	RestoreManual \
 	SimpleQueries \
+	ToolsManual \
 	Transactions \
 	Upgrading \
 	UpgradingGeneral \
@@ -108,6 +110,7 @@ DOXYGEN_TOC = \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/RefManual/RefManual.md \
+	Documentation/ToolsManual/ToolsManual.md \
 	Documentation/UserManual/UserManual.md \
 	Documentation/Manual/Upgrading.md
 
@@ -289,8 +292,8 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ToolsManual.tex > Doxygen/latex/ToolsManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode tools-manual.tex || true
 
 ################################################################################
 ### @brief man pages
@@ -391,7 +394,7 @@ publish-pdf: $(OUTPUT_FOLDER)
 	cp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
 	cp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
 	cp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/tools-manual.pdf $(OUTPUT_FOLDER)
 	cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 ## -----------------------------------------------------------------------------

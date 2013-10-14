@@ -402,7 +402,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       return;
 
     case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-      generateError(HttpResponse::BAD, res, "geo constraint violated");
+      generateError(HttpResponse::CONFLICT, res, "geo constraint violated");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
@@ -598,6 +598,7 @@ char const* RestVocbaseBaseHandler::extractJsonStringValue (const TRI_json_t* co
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle
+/// TODO: merge with DocumentHelper::parseDocumentId
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
@@ -605,13 +606,21 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
                                              TRI_voc_key_t& key) {
   vector<string> split;
 
-  split = StringUtils::split(handle, '/');
+  split = StringUtils::split(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
 
   if (split.size() != 2) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  cid = _resolver.getCollectionId(split[0]);
+  const char first = split[0][0];
+
+  if (first >= '0' && first <= '9') {
+    cid = StringUtils::uint64(split[0].c_str(), split[0].size());
+  }
+  else {
+    cid = _resolver.getCollectionId(split[0]);
+  }
+
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }

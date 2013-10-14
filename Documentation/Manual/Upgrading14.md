@@ -125,16 +125,21 @@ which database the request should be executed in.
 A specific ArangoDB database can be explicitly addressed by putting the database name
 into the URL. If the first part of the URL path is `/_db/...`, ArangoDB will interpret
 the `...` as the database name, and strip off the database name from the URL path for
-further processing. This allows any actions that use URL paths to remain fully functional.
+further processing. This allows any existing actions that use URL paths without database
+names to remain fully functional.
 
-If no database name is specified in the URL path, ArangoDB will use the algorithm 
-described in @ref HttpDatabaseMapping to determine the database context for the request.
-If no extra endpoints are used, the algorithm will default to the `_system` database.
-A just upgraded ArangoDB instance will have all its collections and applications be 
+For example, if the request URL is `http://127.0.0.1:8529/_db/mydb/some-method`, then
+ArangoDB will extract the database name `mydb` from the URL, and pass `/some-method` as 
+the URL path to any internal or user-defined functions.
+
+If no database name is specified in the URL path via the `_db` prefix, ArangoDB will use 
+the algorithm described in @ref HttpDatabaseMapping to determine the database context for 
+the request. If no extra endpoints are used, the algorithm will default to the `_system` 
+database. A just upgraded ArangoDB instance will have all its collections and applications be 
 mapped to the `_system` database too, meaning an upgraded ArangoDB instance should remain
 fully functional.
 
-ArangoDB clients and drivers are not forced to supplydatabase names as part of the ArangoDB
+ArangoDB clients and drivers are not forced to supply database names as part of the ArangoDB
 URLs they call because of this compatibility functionaltiy. However, if clients need to 
 access a specific database in a multiple database context, they will be required to supply
 the database name as part of the URLs. Most clients will use just one database most of the
@@ -146,6 +151,18 @@ Troubleshooting {#Upgrading14Troubleshooting}
 
 If you cannot find a solution here, please ask the Google-Group at 
 http://groups.google.com/group/arangodb
+
+Problem: Server does not start
+------------------------------
+
+Contrary to previous versions, ArangoDB 1.4 requires the startup option `--javascript.app-path` 
+to be set when the server is started. If the option is not set, the server will print a message 
+like this:
+
+    2013-10-09T19:11:47Z [7121] FATAL no value has been specified for --javascript.app-path.
+
+To fix this, you can either specify the value for `--javascript.app-path` on the command-line
+or in a configuration file.
 
 Problem: Server does not start
 ------------------------------
@@ -195,6 +212,53 @@ can use a Bash script like this:
 The above script should print out the names of all databases and collections 
 with their corresponding directory names.
 
+Problem: AQL user-function does not work anymore
+------------------------------------------------
+
+The namespace resolution operator for AQL user-defined functions has changed from `:` 
+to `::`. Names of user-defined function names need to be adjusted in AQL queries.
+Please refer to @ref Upgrading14ChangedBehavior for details.
+
+Changed Behavior {#Upgrading14ChangedBehavior}
+==============================================
+
+The namespace resolution operator for AQL user-defined functions has been changed from 
+`:` to `::`.
+
+AQL user-defined functions were introduced in ArangoDB 1.3, and the namespace resolution
+perator for them has been the single colon (`:`) in 1.3. A call to a user-defined function
+in an AQL query looked like this:
+
+    RETURN mygroup:myfunc()
+
+The single colon caused an ambiguity in the AQL grammar, making it indistinguishable from
+named attributes or the ternary operator in some cases, e.g.
+
+    { mygroup:myfunc ? mygroup:myfunc }
+
+To fix this ambiguity, the namespace resolution operator in 1.4 is changed from `:` to `::`, 
+so the above call will in 1.4 look like this:
+
+    RETURN mygroup::myfunc()
+
+Names of existing user-defined AQL functions in the database will automatically be fixed 
+when starting ArangoDB 1.4 with the `--upgrade` option. 
+
+Still any AQL query strings assembled on the client side must be adjusted for use with 1.4 
+if they refer to AQL user-defined functions. If AQL queries stored in Foxx applications or
+other server-side actions use the "old" function name sytanx, they must be adjusted manually,
+too. These change should be simple to carry out (replacing the `:` in names of user-defined 
+functions with `::`) but cannot be done automatically by ArangoDB.
+
+If function names are not changed in AQL queries, referring to a function using the old (`:`)
+namespace operator is likely to cause a query parse error in 1.4.
+
+The return value of the AQL `DOCUMENT` function is also changed in 1.4 when called with a
+single argument (a document id or key) in case the sought document cannot be found. 
+In pre-1.4, the function returned `undefined` in this case. As `undefined` is not part of 
+the JSON type system, 1.4 now returns `null` for the same case. The return value for other
+cases has not changed.
+
 Removed Features {#Upgrading14RemovedFeatures}
 ==============================================
 
@@ -216,3 +280,11 @@ configuration / command-line options:
 - The option `--log.filter` was renamed to `--log.source-filter`.
 
   This is a debugging option that should rarely be used by non-developers.
+
+Other removed Features {#Upgrading14RemovedMisc}
+------------------------------------------------
+
+The action deployment tool available in ArangoDB 1.3 has been removed in 
+version 1.4. Installing actions can now be achieved easier by packaging them
+in a Foxx application and deploying them with the `foxx-manager` binary.
+

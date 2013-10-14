@@ -60,9 +60,9 @@ function help () {
   var client = require("org/arangodb/arangosh");
 
   internal.print(client.HELP);
-  arangodb.ArangoStatement.prototype._help();
   arangodb.ArangoDatabase.prototype._help();
   arangodb.ArangoCollection.prototype._help();
+  arangodb.ArangoStatement.prototype._help();
   arangodb.ArangoQueryCursor.prototype._help();
   internal.print(client.helpExtended);
 }
@@ -81,6 +81,12 @@ function clear () {
   }
   internal.print(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global 'console'
+////////////////////////////////////////////////////////////////////////////////
+
+var console = require("console");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'db'

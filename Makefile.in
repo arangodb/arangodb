@@ -1125,12 +1125,13 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ################################################################################
 BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
 	etc/arangodb/arangob.conf etc/arangodb/arangod.conf \
-	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
-	$(am__append_12) Doxygen/.setup-directories \
-	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
-	$(am__append_13) $(am__append_15) $(am__append_16) @ZLIB_LIBS@ \
-	$(am__append_17) $(am__append_19) $(am__append_21) \
-	$(am__append_23)
+	etc/arangodb/arangodump.conf etc/arangodb/arangoimp.conf \
+	etc/arangodb/arangoirb.conf etc/arangodb/arangorestore.conf \
+	etc/arangodb/arangosh.conf $(am__append_12) \
+	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
+	@builddir@/.setup-js-directories $(am__append_13) \
+	$(am__append_15) $(am__append_16) @ZLIB_LIBS@ $(am__append_17) \
+	$(am__append_19) $(am__append_21) $(am__append_23)
 
 ################################################################################
 ### @brief man pages to install
@@ -1273,7 +1274,8 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	$(shell find @srcdir@/js/server -name "*.js" -print) $(shell \
 	find @srcdir@/js/client -name "*.js" -print) $(shell find \
 	@srcdir@/js/node -type f -print) $(shell find @srcdir@/js/npm \
-	-type f -print) $(shell find @srcdir@/js/apps -type f -print) \
+	-type f "(" -name .travis.yml -o -name .npmignore -o -print \
+	")") $(shell find @srcdir@/js/apps -type f -print) \
 	$(am__append_7)
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
@@ -1887,6 +1889,7 @@ WIKI = \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
+	DumpManual \
 	ExtendingAql \
 	FirstStepsArangoDB \
 	Glossary \
@@ -1917,7 +1920,6 @@ WIKI = \
 	HttpTraversals \
 	HttpUser \
 	ImpManual \
-	ImpManualBasics \
 	ImplementorManual \
 	ImplementorManualArangoErrors \
 	IndexBitArray \
@@ -1943,7 +1945,9 @@ WIKI = \
 	RefManualReplication \
 	RestDocument \
 	RestEdge \
+	RestoreManual \
 	SimpleQueries \
+	ToolsManual \
 	Transactions \
 	Upgrading \
 	UpgradingGeneral \
@@ -1970,6 +1974,7 @@ DOXYGEN_TOC = \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/RefManual/RefManual.md \
+	Documentation/ToolsManual/ToolsManual.md \
 	Documentation/UserManual/UserManual.md \
 	Documentation/Manual/Upgrading.md
 
@@ -8264,8 +8269,8 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ToolsManual.tex > Doxygen/latex/ToolsManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode tools-manual.tex || true
 
 ################################################################################
 ### @brief man pages
@@ -8347,7 +8352,7 @@ publish-pdf: $(OUTPUT_FOLDER)
 	cp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
 	cp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
 	cp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/tools-manual.pdf $(OUTPUT_FOLDER)
 	cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 ################################################################################
@@ -8506,7 +8511,8 @@ clean-zlib:
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" GYP_DEFINES="armv7=0" $(MAKE) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
 

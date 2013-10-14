@@ -800,7 +800,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // stay inside the outer lock to protect against unloading
-  TRI_LogRenameCollectionReplication(vocbase, collection->_cid, newName, generatingServer);
+  TRI_LogRenameCollectionReplication(vocbase, collection->_cid, oldName, newName, generatingServer);
   
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 

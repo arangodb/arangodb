@@ -1,6 +1,6 @@
 [server]
 endpoint = tcp://localhost:8529
-password =
+disable-authentication = true
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

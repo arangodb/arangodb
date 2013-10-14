@@ -32,16 +32,17 @@ window.foxxMountView = Backbone.View.extend({
     var mountPoint = $("#mount-point").val(),
       regex = /^(\/[^\/\s]+)+$/;
     if (!regex.test(mountPoint)){
-      alert("Sorry you have to give a valid path f.e.: /myPath");
-    } else {
-      var self = this;
-      (new window.FoxxCollection()).create({
-        mount: mountPoint,
-        name: self.m.name,
-        version: self.m.version
-      });
-      this.hideModal();
-    }
+      alert("Sorry, you have to give a valid mount point, e.g.: /myPath");
+      return false;
+    } 
+
+    var self = this;
+    (new window.FoxxCollection()).create({
+      mount: mountPoint,
+      name: self.m.name,
+      version: self.m.version
+    });
+    this.hideModal();
   },
   
   hideModal: function () {

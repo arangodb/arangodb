@@ -40,7 +40,8 @@ var navigationView = Backbone.View.extend({
       .css('margin-left', marginWidth)
       .css('margin-right', marginWidth);
     $('.arango-logo').css('margin-left', marginWidth - 17);
-    $('.footer-right p').css('margin-right', marginWidth + 25);
+    $('.footer-right p').css('margin-right', marginWidth + 20);
+    $('.footer-left p').css('margin-left', marginWidth + 20);
     $('.nav-collapse').css('margin-right', marginWidth - 10);
     if (newWidth !== oldWidth && window.App) {
       window.App.graphView.handleResize(newWidth);

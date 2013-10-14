@@ -37,7 +37,7 @@ ArangoDB's User Manuals {#ArangoDBUserManual}
 
 - @BOOK_REF{DbaManual} @S_EXTREF{dba-manual.pdf,pdf}
 
-- @BOOK_REF{ImpManual} @S_EXTREF{imp-manual.pdf,pdf}
+- @BOOK_REF{ToolsManual} @S_EXTREF{tools-manual.pdf,pdf}
 
 - also see the @ref Glossary
 

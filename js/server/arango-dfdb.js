@@ -330,6 +330,7 @@ function CheckDatafile (collection, type, datafile, issues) {
 
 function CheckCollection (collection, issues) {
   printf("Database\n");
+  printf("  name: %s\n", internal.db._name());
   printf("  path: %s\n", internal.db._path());
   printf("\n");
 
@@ -365,23 +366,10 @@ function CheckCollection (collection, issues) {
 
 function main (argv) {
   var argc = argv.length;
-  var collections = internal.db._collections();
+  var databases = internal.db._listDatabases();
   var i;
-
-  printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
-  printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
-  printf("%s\n", "  / /\\ / _` | __/ _` | |_| | |/ _ \\   / /\\ /__\\// / /_\\/");
-  printf("%s\n", " / /_// (_| | || (_| |  _| | |  __/  / /_// \\/  \\/ /_\\\\ ");
-  printf("%s\n", "/___,' \\__,_|\\__\\__,_|_| |_|_|\\___| /___,'\\_____/\\____/ ");
-  printf("\n");
-
-  if (collections.length == 0) {
-    printf("No collections available. Exiting\n");
-    return;
-  }
-
-  // sort the collections
-  collections.sort(function (l, r) {
+  
+  var collectionSorter = function (l, r) {
     var lName = l.name().toLowerCase();
     var rName = r.name().toLowerCase();
 
@@ -390,7 +378,59 @@ function main (argv) {
     }
 
     return 0;
-  });
+  };
+
+  printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
+  printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
+  printf("%s\n", "  / /\\ / _` | __/ _` | |_| | |/ _ \\   / /\\ /__\\// / /_\\/");
+  printf("%s\n", " / /_// (_| | || (_| |  _| | |  __/  / /_// \\/  \\/ /_\\\\ ");
+  printf("%s\n", "/___,' \\__,_|\\__\\__,_|_| |_|_|\\___| /___,'\\_____/\\____/ ");
+  printf("\n");
+
+  if (databases.length == 0) {
+    printf("No databases available. Exiting\n");
+    return;
+  }
+  
+  databases.sort();
+  printf("Available databases:\n");
+
+  for (i = 0;  i < databases.length;  ++i) {
+    printf("  %d: %s\n", i, databases[i]);
+  }
+  
+  printf("Database to check: ");
+  while (true) {
+    var line = console.getline();
+   
+    if (line == "") {
+      printf("Exiting. Please wait.\n");
+      return;
+    }
+    else {
+      var l = parseInt(line);
+
+      if (l < 0 || l >= databases.length || l === null || l === undefined || isNaN(l)) {
+        printf("Please select a number between 0 and %d: ", databases.length - 1);
+      }
+      else {
+        internal.db._useDatabase(databases[l]);
+        break;
+      }
+    }
+  }
+
+  printf("\n");
+
+
+  var collections = internal.db._collections();
+  if (collections.length == 0) {
+    printf("No collections available. Exiting\n");
+    return;
+  }
+
+  // sort the collections
+  collections.sort(collectionSorter);
 
   printf("Available collections:\n");
 
@@ -409,7 +449,8 @@ function main (argv) {
     var line = console.getline();
 
     if (line == "") {
-      break;
+      printf("Exiting. Please wait.\n");
+      return;
     }
 
     if (line === "*") {
@@ -438,6 +479,7 @@ function main (argv) {
     var collection = collections[a[i]];
 
     printf("Checking collection #%d: %s\n", a[i], collection.name());
+    printf("-------------------------------------------------------------------\n");
 
     var last = Math.round(internal.time());
 
@@ -476,6 +518,9 @@ function main (argv) {
       printf("%s", internal.COLORS.COLOR_RESET);
       printf("\n\n");
     }
+  }
+  else {
+    printf("\nNo issues found.\n");
   }
 }
 

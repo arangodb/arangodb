@@ -9,9 +9,10 @@ collection. This is known as a bulk import.
 
 The data uploaded must be provided in JSON format. There are two mechanisms to
 import the data:
-- self-contained documents: in this case, each document contains all 
+- self-contained JSON documents: in this case, each document contains all 
   attribute names and values. Attribute names may be completely different
   among the documents uploaded
+
 - attribute names plus document data: in this case, the first document must 
   be a JSON list containing the attribute names of the documents that follow.
   The following documents must be lists containing only the document data.
@@ -27,8 +28,26 @@ a non-existing collection during the import. If not used, importing data into a
 non-existing collection will produce an error. Please note that the `createCollection`
 flag can only be used to create document collections, not edge collections.
 
-Importing self-contained documents {#HttpImportSelfContained}
-=============================================================
+The `waitForSync` URL parameter can be set to `true` to make the import only 
+return if all documents have been synced to disk.
+
+The `complete` URL parameter can be set to `true` to make the entire import fail if
+any of the uploaded documents is invalid and cannot be imported. In this case,
+no documents will be imported by the import run, even if a failure happens at the
+end of the import. 
+
+If `complete` has a value other than `true`, valid documents will be imported while 
+invalid documents will be rejected, meaning only some of the uploaded documents 
+might have been imported.
+
+The `details` URL parameter can be set to `true` to make the import API return
+details about documents that could not be imported. If `details` is `true`, then
+the result will also contain a `details` attribute which is a list of detailed
+error messages. If the `details` is set to `false` or omitted, no details will be
+returned.
+
+Importing Self-Contained JSON Documents {#HttpImportSelfContained}
+==================================================================
 
 This import method allows uploading self-contained JSON documents. The documents
 must be uploaded in the body of the HTTP POST request. Each line of the body
@@ -76,7 +95,7 @@ documents imported will be returned in the `created` attribute of the
 response. If any documents were skipped or incorrectly formatted, this will be
 returned in the `errors` attribute.
 
-Importing headers and values {#HttpImportHeaderData}
+Importing Headers and Values {#HttpImportHeaderData}
 ====================================================
 
 When using this type of import, the attribute names of the documents to be
@@ -95,12 +114,12 @@ number of documents imported will be returned in the `created` attribute of the
 response. If any documents were skipped or incorrectly formatted, this will be
 returned in the `errors` attribute.
 
-Importing in edge collections {#HttpImportEdges}
-================================================
+Importing into Edge Collections {#HttpImportEdges}
+==================================================
 
 Please note that when importing documents into an edge collection, it is 
 mandatory that all imported documents contain the `_from` and `_to` attributes,
-and that these contain valid references.
+and that these contain references to existing collections.
 
 Please also note that it is not possible to create a new edge collection on the
 fly using the `createCollection` parameter.

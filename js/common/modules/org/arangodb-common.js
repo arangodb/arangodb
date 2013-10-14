@@ -474,7 +474,7 @@ exports.throwDownloadError = function (msg) {
 /// @brief throws an error in case of missing file
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.throwFileNoteFound = function (msg) {
+exports.throwFileNotFound = function (msg) {
   'use strict';
 
   throw new exports.ArangoError({
