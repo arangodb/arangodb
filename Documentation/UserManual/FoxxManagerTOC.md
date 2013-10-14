@@ -6,5 +6,6 @@ TOC {#UserManualFoxxManagerTOC}
   - @ref UserManualFoxxManagerFirstSteps
   - @ref UserManualFoxxManagerBehindScences
   - @ref UserManualFoxxManagerDatabases
+  - @ref UserManualFoxxManagerReplication
   - @ref UserManualFoxxManagerCommands
   - @ref UserManualFoxxManagerOptions

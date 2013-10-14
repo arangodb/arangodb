@@ -65,8 +65,24 @@ void TRI_GetTimeStampReplication (char* dst,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExcludeCollectionReplication (const char* name) {
-  // exclude all invalid & system collections
-  if (name == NULL || *name == '_') {
+  if (name == NULL) {
+    // name invalid
+    return true;
+  }
+
+  if (*name != '_') {
+    // all regular collections are included
+    return false;
+  }
+
+  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+      TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
+      TRI_EqualString(name, TRI_COL_NAME_USERS) ||
+      TRI_EqualString(name, "_aal") ||
+      TRI_EqualString(name, "_fishbowl") ||
+      TRI_EqualString(name, "_modules") ||
+      TRI_EqualString(name, "_routing")) {
+    // these system collections will be excluded
     return true;
   }
 

@@ -257,6 +257,13 @@ If you want the `foxx-manager` to work in the context of a different database,
 use the command-line argument `--server.database <database-name>` when invoking
 the `foxx-manager` binary.
 
+Foxx Applications and Replication {#UserManualFoxxManagerReplication}
+=====================================================================
+
+Foxx applications consist of a file system part (scripts in the application directory)
+and a database part. The current version of ArangoDB cannot replicate changes in the
+file system so installing, updating or removing a Foxx application using `foxx-manager`
+will not be included in the replication.
 
 Foxx Manager Commands {#UserManualFoxxManagerCommands}
 ======================================================
