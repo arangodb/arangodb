@@ -64,7 +64,7 @@
 /// @brief interval for database manager activity
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DATABASE_MANAGER_INTERVAL (1000 * 1000)
+#define DATABASE_MANAGER_INTERVAL (500 * 1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1299,6 +1299,8 @@ static int InitDatabases (TRI_server_t* server,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database manager thread main loop
+/// the purpose of this thread is to physically remove directories of databases
+/// that have been dropped
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DatabaseManager (void* data) {
@@ -1344,14 +1346,50 @@ static void DatabaseManager (void* data) {
                 database->_path,
                 database->_name);
 
+      // remove apps directory for database
+      if (strlen(server->_appPath) > 0) {
+        path = TRI_Concatenate3File(server->_appPath, "databases", database->_name);
+
+        if (path != NULL) {
+          if (TRI_IsDirectory(path)) {
+            LOG_TRACE("removing app directory '%s' of database '%s'",
+                      path,
+                      database->_name);
+
+            TRI_RemoveDirectory(path);
+          }
+
+          TRI_Free(TRI_CORE_MEM_ZONE, path);
+        }
+      }
+      
+      // remove dev-apps directory for database
+      if (strlen(server->_devAppPath) > 0) {
+        path = TRI_Concatenate3File(server->_devAppPath, "databases", database->_name);
+
+        if (path != NULL) {
+          if (TRI_IsDirectory(path)) {
+            LOG_TRACE("removing dev-app directory '%s' of database '%s'",
+                      path,
+                      database->_name);
+
+            TRI_RemoveDirectory(path);
+          }
+
+          TRI_Free(TRI_CORE_MEM_ZONE, path);
+        }
+      }
+
       path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
 
       TRI_DestroyVocBase(database);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, database);
 
       // remove directory
-      TRI_RemoveDirectory(path);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+      if (path != NULL) {
+        TRI_RemoveDirectory(path);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+      }
 
       // directly start next iteration
     }
@@ -1400,6 +1438,8 @@ TRI_server_t* TRI_CreateServer () {
 int TRI_InitServer (TRI_server_t* server,
                     void* applicationEndpointServer,
                     char const* basePath,
+                    char const* appPath,
+                    char const* devAppPath,
                     TRI_vocbase_defaults_t const* defaults,
                     bool disableLoggers,
                     bool disableAppliers) {
@@ -1457,6 +1497,31 @@ int TRI_InitServer (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  server->_appPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, appPath);
+  
+  if (server->_appPath == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  server->_devAppPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, appPath);
+  
+  if (server->_devAppPath == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
+    TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
   
   
   // .............................................................................
@@ -1504,6 +1569,8 @@ void TRI_DestroyServer (TRI_server_t* server) {
   TRI_DestroyReadWriteLock(&server->_databasesLock);
   TRI_DestroyAssociativePointer(&server->_databases);
 
+  TRI_Free(TRI_CORE_MEM_ZONE, server->_devAppPath);
+  TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
   TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
   TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
   TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
