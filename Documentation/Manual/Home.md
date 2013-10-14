@@ -16,7 +16,7 @@ networks, ease of use for the developer and minimal effort to operate for the
 administrator. The design goals are described @S_EXTREF{http://www.arangodb.org/,here}.
 
 The ArangoDB package consists of a server, a separate shell, which allows you to
-administrate the server, and a set of client API (or sometimes called drivers)
+administrate the server, and a set of client APIs (or sometimes called drivers)
 for various languages including the Big-P (PHP, Python, Perl) and Ruby.
 
 Please contact @S_EXTREF_S{http://www.arangodb.org/connect,us} if you have any
