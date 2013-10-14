@@ -110,11 +110,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the document was deleted sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the document was deleted successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the document was deleted sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the document was deleted successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -173,11 +173,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the document was created successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the document was created successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -258,11 +258,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the document was created successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the document was created successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
@@ -337,11 +337,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the document was created successfully and <em>waitForSync</em> was <em>true</em>. ",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the document was created successfully and <em>waitForSync</em> was <em>false</em>. ",
                             "code": "202"
                         },
                         {
