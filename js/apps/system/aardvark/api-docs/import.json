@@ -1,0 +1,162 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if all documents could be imported successfully. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if <em>type</em> contains an invalid value, no <em>collection</em> is  specified, the documents are incorrectly encoded, or the request  is malformed. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if <em>collection</em> or the <em>_from</em> or <em>_to</em> attributes of an imported edge refer to an unknown collection. ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if the import would trigger a unique key violation and  <em>complete</em> is set to <em>true</em>. ",
+                            "code": "409"
+                        },
+                        {
+                            "reason": "is returned if the server cannot auto-generate a document key (out of keys error) for a document with no user-defined key. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "documents",
+                            "description": "The body must either be a JSON-encoded list of documents or a string with multiple JSON documents separated by newlines. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "type",
+                            "description": "Determines how the body of the request will be interpreted. <em>type</em> can have the following values: "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "createCollection",
+                            "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until documents have been synced to disk before returning. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "complete",
+                            "description": "If set to <em>true</em> or <em>yes</em>, it will make the whole import fail if any error occurs. Otherwise the import will continue even if some documents cannot be imported. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "details",
+                            "description": "If set to <em>true</em> or <em>yes</em>, the result will include an attribute <em>details</em> with details about documents that could not be imported. "
+                        }
+                    ],
+                    "notes": "Creates documents in the collection identified by <em>collection-name</em>. The JSON representations of the documents must be passed as the body of the POST request. The request body can either consist of multiple lines, with each line being a single stand-alone JSON document, or a JSON list. <br><br>The response is a JSON object with the following attributes: <br><br>- <em>created</em>: number of documents imported.<br><br>- <em>errors</em>: number of documents that were not imported due to an error.<br><br>- <em>empty</em>: number of empty lines found in the input (will only contain a   value greater zero for types <em>documents</em> or <em>auto</em>). <br><br>- <em>details</em>: if URL parameter <em>details</em> is set to true, the result will  contain a <em>details</em> attribute which is a list with more detailed    information about which documents could not be inserted. <br><br>",
+                    "summary": "imports documents from JSON",
+                    "httpMethod": "POST",
+                    "examples": "Importing documents with heterogenous attributes from a JSON list: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=list\n[{\"_key\":\"abc\",\"value1\":25,\"value2\":\"test\",\"allowed\":true},{\"_key\":\"foo\",\"name\":\"baz\"},{\"name\":{\"detailed\":\"detailed name\",\"short\":\"short name\"}}]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 3, \n  \"errors\" : 0, \n  \"empty\" : 0 \n}\n\n</code></pre><br>Importing documents from individual JSON lines: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=documents\n{ \"_key\": \"abc\", \"value1\": 25, \"value2\": \"test\", \"allowed\": true }\n{ \"_key\": \"foo\", \"name\": \"baz\" }\n\n{ \"name\": { \"detailed\": \"detailed name\", \"short\": \"short name\" } }\n\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 3, \n  \"errors\" : 0, \n  \"empty\" : 1 \n}\n\n</code></pre><br>Using the auto type detection: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=auto\n[{\"_key\":\"abc\",\"value1\":25,\"value2\":\"test\",\"allowed\":true},{\"_key\":\"foo\",\"name\":\"baz\"},{\"name\":{\"detailed\":\"detailed name\",\"short\":\"short name\"}}]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 3, \n  \"errors\" : 0, \n  \"empty\" : 0 \n}\n\n</code></pre><br>Importing documents into a new collection from a JSON list: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&createCollection=true&type=list\n[{\"id\":\"12553\",\"active\":true},{\"id\":\"4433\",\"active\":false},{\"id\":\"55932\",\"count\":4334}]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 3, \n  \"errors\" : 0, \n  \"empty\" : 0 \n}\n\n</code></pre><br>Importing into an edge collection, with attributes <em>_from</em>, <em>_to</em> and <em>name</em>: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=links&type=documents\n{ \"_from\": \"products/123\", \"_to\": \"products/234\" }\n{ \"_from\": \"products/332\", \"_to\": \"products/abc\", \"name\": \"other name\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 2, \n  \"errors\" : 0, \n  \"empty\" : 0 \n}\n\n</code></pre><br>Importing into an edge collection, omitting <em>_from</em> or <em>_to</em>: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=links&type=list&details=true\n[{\"name\":\"some name\"}]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 0, \n  \"errors\" : 1, \n  \"empty\" : 0, \n  \"details\" : [ \n    \"at position 1: missing '_from' or '_to' attribute\" \n  ] \n}\n\n</code></pre><br>Violating a unique constraint, but allow partial imports: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&details=true\n{ \"_key\": \"abc\", \"value1\": 25, \"value2\": \"test\" }\n{ \"_key\": \"abc\", \"value1\": \"bar\", \"value2\": \"baz\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 1, \n  \"errors\" : 1, \n  \"empty\" : 0, \n  \"details\" : [ \n    \"at position 2: creating document failed with error 'unique constraint violated',...\" \n  ] \n}\n\n</code></pre><br>Violating a unique constraint, not allowing partial imports: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&complete=true\n{ \"_key\": \"abc\", \"value1\": 25, \"value2\": \"test\" }\n{ \"_key\": \"abc\", \"value1\": \"bar\", \"value2\": \"baz\" }\n\nHTTP/1.1 409 Conflict\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"cannot create document, unique constraint violated\", \n  \"code\" : 409, \n  \"errorNum\" : 1210 \n}\n\n</code></pre><br>Using a non-existing collection: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=documents\n{ \"name\": \"test\" }\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"collection 'products' not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1203 \n}\n\n</code></pre><br>Using a malformed body: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&type=list\n{ }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"expecting a JSON list in the request\", \n  \"code\" : 400, \n  \"errorNum\" : 400 \n}\n\n</code></pre><br>",
+                    "nickname": "importsDocumentsFromJson"
+                }
+            ],
+            "path": "/_api/import"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if all documents could be imported successfully. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if <em>type</em> contains an invalid value, no <em>collection</em> is  specified, the documents are incorrectly encoded, or the request  is malformed. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if <em>collection</em> or the <em>_from</em> or <em>_to</em> attributes of an imported edge refer to an unknown collection. ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if the import would trigger a unique key violation and  <em>complete</em> is set to <em>true</em>. ",
+                            "code": "409"
+                        },
+                        {
+                            "reason": "is returned if the server cannot auto-generate a document key (out of keys error) for a document with no user-defined key. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "documents",
+                            "description": "The body must consist of JSON-encoded lists of attribute values, with one  line per per document. The first line of the request must be a JSON-encoded  list of attribute names. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "createCollection",
+                            "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until documents have been synced to disk before returning. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "complete",
+                            "description": "If set to <em>true</em> or <em>yes</em>, it will make the whole import fail if any error occurs. Otherwise the import will continue even if some documents cannot be imported. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "details",
+                            "description": "If set to <em>true</em> or <em>yes</em>, the result will include an attribute <em>details</em> with details about documents that could not be imported. "
+                        }
+                    ],
+                    "notes": "Creates documents in the collection identified by <em>collection-name</em>. The first line of the request body must contain a JSON-encoded list of attribute names. All following lines in the request body must contain  JSON-encoded lists of attribute values. Each line is interpreted as a  separate document, and the values specified will be mapped to the list of attribute names specified in the first header line. <br><br>The response is a JSON object with the following attributes: <br><br>- <em>created</em>: number of documents imported.<br><br>- <em>errors</em>: number of documents that were not imported due to an error.<br><br>- <em>empty</em>: number of empty lines found in the input (will only contain a   value greater zero for types <em>documents</em> or <em>auto</em>). <br><br>- <em>details</em>: if URL parameter <em>details</em> is set to true, the result will  contain a <em>details</em> attribute which is a list with more detailed    information about which documents could not be inserted. <br><br>",
+                    "summary": "imports document values",
+                    "httpMethod": "POST",
+                    "examples": "Importing two documents, with attributes <em>_key</em>, <em>value1</em> and <em>value2</em> each. One line in the import data is empty: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products\n[ \"_key\", \"value1\", \"value2\" ]\n[ \"abc\", 25, \"test\" ]\n\n[ \"foo\", \"bar\", \"baz\" ]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 2, \n  \"errors\" : 0, \n  \"empty\" : 1 \n}\n\n</code></pre><br>Importing two documents into a new collection: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&createCollection=true\n[ \"value1\", \"value2\" ]\n[ 1234, null ]\n[ \"foo\", \"bar\" ]\n[ 534.55, true ]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 3, \n  \"errors\" : 0, \n  \"empty\" : 0 \n}\n\n</code></pre><br>Importing into an edge collection, with attributes <em>_from</em>, <em>_to</em> and <em>name</em>: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=links\n[ \"_from\", \"_to\", \"name\" ]\n[ \"products/123\", \"products/234\", \"some name\" ]\n[ \"products/332\", \"products/abc\", \"other name\" ]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 2, \n  \"errors\" : 0, \n  \"empty\" : 0 \n}\n\n</code></pre><br>Importing into an edge collection, omitting <em>_from</em> or <em>_to</em>: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=links&details=true\n[ \"name\" ]\n[ \"some name\" ]\n[ \"other name\" ]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 0, \n  \"errors\" : 2, \n  \"empty\" : 0, \n  \"details\" : [ \n    \"at position 1: missing '_from' or '_to' attribute\", \n    \"at position 2: missing '_from' or '_to' attribute\" \n  ] \n}\n\n</code></pre><br>Violating a unique constraint, but allow partial imports: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&details=true\n[ \"_key\", \"value1\", \"value2\" ]\n[ \"abc\", 25, \"test\" ]\n[ \"abc\", \"bar\", \"baz\" ]\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"created\" : 1, \n  \"errors\" : 1, \n  \"empty\" : 0, \n  \"details\" : [ \n    \"at position 2: creating document failed with error 'unique constraint violated',...\" \n  ] \n}\n\n</code></pre><br>Violating a unique constraint, not allowing partial imports: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products&complete=true\n[ \"_key\", \"value1\", \"value2\" ]\n[ \"abc\", 25, \"test\" ]\n[ \"abc\", \"bar\", \"baz\" ]\n\nHTTP/1.1 409 Conflict\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"cannot create document, unique constraint violated\", \n  \"code\" : 409, \n  \"errorNum\" : 1210 \n}\n\n</code></pre><br>Using a non-existing collection: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products\n[ \"_key\", \"value1\", \"value2\" ]\n[ \"abc\", 25, \"test\" ]\n[ \"foo\", \"bar\", \"baz\" ]\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"collection 'products' not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1203 \n}\n\n</code></pre><br>Using a malformed body: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/import?collection=products\n{ \"_key\": \"foo\", \"value1\": \"bar\" }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"no JSON list found in second line\", \n  \"code\" : 400, \n  \"errorNum\" : 400 \n}\n\n</code></pre><br>",
+                    "nickname": "importsDocumentValues"
+                }
+            ],
+            "path": "/_api/import"
+        }
+    ]
+}
