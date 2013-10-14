@@ -1270,7 +1270,9 @@ void ArangoServer::openDatabases () {
   
   int res = TRI_InitServer(_server, 
                            _applicationEndpointServer,
-                           _databasePath.c_str(), 
+                           _databasePath.c_str(),
+                           _applicationV8->appPath().c_str(),
+                           _applicationV8->devAppPath().c_str(), 
                            &defaults, 
                            _disableReplicationLogger, 
                            _disableReplicationApplier);
