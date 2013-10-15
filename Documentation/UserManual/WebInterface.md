@@ -1,10 +1,10 @@
-The ArangoDB Web-Interface {#UserManualWebInterface}
+The ArangoDB Web Interface {#UserManualWebInterface}
 ====================================================
 
 @NAVIGATE_UserManualWebInterface
 @EMBEDTOC{UserManualWebInterfaceTOC}
 
-Accessing the Web-Interface {#UserManualWebInterfaceAccess}
+Accessing the Web Interface {#UserManualWebInterfaceAccess}
 ===========================================================
 
 ArangoDB comes with a built-in web interface for administration. The web 
@@ -32,8 +32,8 @@ The above will load the web interface for the database `mydb`.
 To restrict access to the web interface, use @ref CommunicationAuthentication
 "ArangoDB's authentication feature".
 
-Accessing the Web-Interface {#UserManualWebInterfaceSections}
-=============================================================
+Select Functionality provided by the Web Interface {#UserManualWebInterfaceSections}
+====================================================================================
 
 The following sections provide a very brief overview of some features offered
 in the web interface. Please note that this is not a complete list of features.
