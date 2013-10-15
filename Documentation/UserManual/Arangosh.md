@@ -35,7 +35,7 @@ For example, to connect to an ArangoDB server on IP `192.168.173.13` on port
       --server.database test  \
       --server.disable-authentication false
 
-arangosh will then display a password prompt and try to connect to the 
+_arangosh_ will then display a password prompt and try to connect to the 
 server after the password was entered.
 
 The change the current database after the connection has been made, you
@@ -51,6 +51,13 @@ commands and methods is thus provided by typing the first few letters of a
 variable and then pressing the tab key. It is recommend to try this with entering
 `db.` (without pressing return) and then pressing tab.
 
+By the way, _arangosh_ provides the `db` object by default, and this object can
+be used for switching to a different database and managing collections inside the
+current database.
+
+For a list of available methods for the `db` object, type 
+    
+    arangosh> db._help(); 
 
 ArangoDB Shell Output {#UserManualArangoshOutput}
 =================================================
@@ -102,3 +109,41 @@ formats the output in a human-readable way.
 
 The function disables the pretty printer, switching back to the standard dense
 JSON output format.
+
+ArangoDB Shell Configuration {#UserManualArangoshConfiguration}
+===============================================================
+
+_arangosh_ will look for a user-defined startup script named `.arangosh.rc` in the
+user's home directory on startup. If the file is present, _arangosh_ will execute
+the contents of this file inside the global scope.
+
+You can use this to define your own extra variables and functions that you need often.
+For example, you could put the following into the `.arangosh.rc` file in your home
+directory:
+
+    /* var keyword omitted intentionally,
+       otherwise "timed" would not survive the scope of this script */
+    timed = function (cb) {
+      var internal = require("internal");
+      var start = internal.time();
+
+      cb();
+
+      internal.print("execution took: ", internal.time() - start);
+    }
+
+This will make a function named `timed` available in _arangosh_ in the global scope.
+
+You can now start _arangosh_ and invoke the function like this:
+
+    timed(function () { 
+      for (var i = 0; i < 1000; ++i) {
+        db.test.save({ value: i }); 
+      }
+    });
+
+Please keep in mind that, if present, the `.arangosh.rc` file needs to contain valid
+JavaScript code. If you want any variables in the global scope to survive, you need to
+omit the `var` keyword for them. Otherwise the variables will only be visible inside
+the script itself, but not outside.
+
