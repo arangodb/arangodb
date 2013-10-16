@@ -557,7 +557,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
     ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
-    ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
+    ("javascript.startup-directory", &_startupPath, "path to the directory containing JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 }
@@ -618,12 +618,12 @@ bool ApplicationV8::prepare () {
       const string databasesPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "databases";
 
       if (! FileUtils::isDirectory(databasesPath.c_str())) {
-        LOGGER_ERROR("required app-path sub-directory '" << _appPath << "/databases' does not exist.");
+        LOGGER_ERROR("required app-path sub-directory '" << databasesPath << "' does not exist.");
       }
       
       const string systemPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "system";
       if (! FileUtils::isDirectory(systemPath.c_str())) {
-        LOGGER_ERROR("required app-path sub-directory '" << _appPath << "/system' does not exist.");
+        LOGGER_ERROR("required app-path sub-directory '" << systemPath << "' does not exist.");
       }
     }
   }
@@ -640,7 +640,7 @@ bool ApplicationV8::prepare () {
       const string databasesPath = _devAppPath + TRI_DIR_SEPARATOR_CHAR + "databases";
 
       if (! _performUpgrade && ! FileUtils::isDirectory(databasesPath.c_str())) {
-        LOGGER_ERROR("required dev-app-path sub-directory '" << _devAppPath << "/databases' does not exist.");
+        LOGGER_ERROR("required dev-app-path sub-directory '" << databasesPath << "' does not exist.");
       }
     }
   }
@@ -791,7 +791,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath);
+  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _startupPath);
   TRI_InitV8Shell(context->_context);
 
   {
