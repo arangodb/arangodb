@@ -101,7 +101,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       a.onclick = function () {
         $(list).slideToggle(200);
-      }
+      };
 
       return list;
     },
@@ -440,5 +440,5 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     var reducedW = w - 60;
     svg.attr("width", reducedW)
       .style("width", reducedW + "px");
-  }
+  };
 }

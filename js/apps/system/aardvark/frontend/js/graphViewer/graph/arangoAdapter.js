@@ -57,7 +57,6 @@ function ArangoAdapter(nodes, edges, config) {
     queries = {},
     nodeCollection,
     edgeCollection,
-    arangodb,
     direction,
 
     setNodeCollection = function(name) {
@@ -85,7 +84,7 @@ function ArangoAdapter(nodes, edges, config) {
     },
 
     parseConfig = function(config) {
-      arangodb = config.baseUrl;
+      var arangodb = config.baseUrl || "";
       if (config.width !== undefined) {
         absAdapter.setWidth(config.width);
       }
