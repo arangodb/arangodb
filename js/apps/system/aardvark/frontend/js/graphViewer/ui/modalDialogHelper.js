@@ -161,21 +161,23 @@ var modalDialogHelper = modalDialogHelper || {};
       $("#" + idprefix + "modal").modal('show');
     },
     
-    createTextInput = function(id) {
+    createTextInput = function(id, value) {
       var input = document.createElement("input");
         input.type = "text";
         input.id = id;
+        input.value = value;
         return input;
     },
     
-    createCheckboxInput = function(id) {
+    createCheckboxInput = function(id, selected) {
       var input = document.createElement("input");
       input.type = "checkbox";
       input.id = id;
+      input.checked = selected;
       return input;
     },
     
-    createListInput = function(id, list) {
+    createListInput = function(id, list, selected) {
       var input = document.createElement("select");
       input.id = id;
       _.each(
@@ -184,6 +186,7 @@ var modalDialogHelper = modalDialogHelper || {};
         }), function(entry) {
         var option = document.createElement("option");
         option.value = entry;
+        option.selected = (entry === selected);
         option.appendChild(
           document.createTextNode(entry)
         );
@@ -314,13 +317,13 @@ var modalDialogHelper = modalDialogHelper || {};
     contentTh.className = "collectionTh";
     switch(o.type) {
       case "text":
-        contentTh.appendChild(createTextInput(idprefix + o.id));
+        contentTh.appendChild(createTextInput(idprefix + o.id, o.value || ""));
         break;
       case "checkbox":
-        contentTh.appendChild(createCheckboxInput(idprefix + o.id));
+        contentTh.appendChild(createCheckboxInput(idprefix + o.id, o.selected || false));
         break;
       case "list":
-        contentTh.appendChild(createListInput(idprefix + o.id, o.objects));
+        contentTh.appendChild(createListInput(idprefix + o.id, o.objects, o.selected || undefined));
         break;
       case "extendable":
         insertExtendableInput(idprefix, o.id, o.objects, contentTh, table, tr);

@@ -43,6 +43,7 @@ function ArangoAdapterControls(list, adapter) {
   this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",
       idprefix = prefix + "_";
+      
     adapter.getCollections(function(nodeCols, edgeCols) {
       adapter.getGraphs(function(graphs) {
         uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
@@ -58,12 +59,14 @@ function ArangoAdapterControls(list, adapter) {
                   type: "list",
                   id: "node_collection",
                   text: "Vertex collection",
-                  objects: nodeCols
+                  objects: nodeCols,
+                  selected: adapter.getNodeCollection()
                 },{
                   type: "list",
                   id: "edge_collection",
                   text: "Edge collection",
-                  objects: edgeCols
+                  objects: edgeCols,
+                  selected: adapter.getEdgeCollection()
                 }
               ]
             },{
@@ -81,7 +84,8 @@ function ArangoAdapterControls(list, adapter) {
               ]
             },{
               type: "checkbox",
-              id: "undirected"
+              id: "undirected",
+              selected: (adapter.getDirection() === "any"),
             }], function () {
               var nodes = $("#" + idprefix + "node_collection")
                 .children("option")
@@ -116,6 +120,7 @@ function ArangoAdapterControls(list, adapter) {
     var prefix = "control_adapter_priority",
       idprefix = prefix + "_",
       prioList = adapter.getPrioList();
+
       uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
         modalDialogHelper.createModalChangeDialog("Group By",
           idprefix, [{
