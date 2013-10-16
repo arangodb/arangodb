@@ -41,6 +41,7 @@ var throwDownloadError = arangodb.throwDownloadError;
 var throwFileNotFound = arangodb.throwFileNotFound;
 var throwBadParameter = arangodb.throwBadParameter;
 var checkParameter = arangodb.checkParameter;
+var checkedFishBowl = false;
 
 var arango = require("internal").arango;
 var download = require("internal").download;
@@ -61,12 +62,27 @@ function getStorage () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the fishbowl collection
+/// this will create the collection if it does not exist. this is better than
+/// needlessly creating the collection for each database in case it is not
+/// used in context of the database.
 ////////////////////////////////////////////////////////////////////////////////
 
 function getFishbowlStorage () {
   'use strict';
 
-  return db._collection('_fishbowl');
+  var c = db._collection('_fishbowl');
+  if (c ===  null) {
+    c = db._create('_fishbowl', { isSystem : true });
+  }
+
+  if (c !== null && ! checkedFishBowl) {
+    // ensure indexes
+    c.ensureFulltextIndex("description");
+    c.ensureFulltextIndex("name");
+    checkedFishBowl = true;
+  }
+  
+  return c;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

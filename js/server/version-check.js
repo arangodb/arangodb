@@ -150,14 +150,14 @@
       // we assume that we are initialising a new, empty database
       isInitialisation = true;
     }
+    
+    var procedure = isInitialisation ? "initialisation" : "upgrade";
    
-    if (isInitialisation) { 
-      logger.log("preparing database directory for version " + internal.db._version());
-    }
-    else {
+    if (! isInitialisation) { 
       logger.log("starting upgrade from version " + (lastVersion || "unknown") 
                   + " to " + internal.db._version());
     }
+
 
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
@@ -457,26 +457,6 @@
       return true;
     });
   
-    // set up the collection _structures
-    addTask("setupStructures", "setup _structures collection", function () {
-      return createSystemCollection("_structures", { waitForSync : true });
-    });
-  
-    // create a unique index on collection attribute in _structures
-    addTask("createStructuresIndex",
-            "create index on collection attribute in _structures collection",
-      function () {
-        var structures = getCollection("_structures");
-
-        if (! structures) {
-          return false;
-        }
-
-        structures.ensureUniqueConstraint("collection");
-
-        return true;
-    });
-
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
       return createSystemCollection("_aal", { waitForSync : true });
@@ -499,28 +479,7 @@
     
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-      return createSystemCollection("_aqlfunctions", { waitForSync : false });
-    });
-
-    // set up the collection _fishbowl
-    addTask("setupFishbowl", "setup _fishbowl collection", function () {
-      return createSystemCollection("_fishbowl", { waitForSync : true });
-    });
-    
-    // create a unique index on collection attribute in _aal
-    addTask("createFishbowlIndex",
-            "create indexes on collection attribute in _fishbowl collection",
-      function () {
-        var fishbowl = getCollection("_fishbowl");
-
-        if (! fishbowl) {
-          return false;
-        }
-
-        fishbowl.ensureFulltextIndex("description");
-        fishbowl.ensureFulltextIndex("name");
-
-        return true;
+      return createSystemCollection("_aqlfunctions");
     });
 
     // set up the collection _trx
@@ -619,7 +578,7 @@
           logger.log("Task successful");
         }
         else {
-          logger.error("Task failed. Aborting upgrade procedure.");
+          logger.error("Task failed. Aborting " + procedure + " procedure.");
           logger.error("Please fix the problem and try starting the server again.");
           return false;
         }
@@ -631,7 +590,7 @@
       versionFile,
       JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
-    logger.log("Upgrade successfully finished");
+    logger.log(procedure + " successfully finished");
 
     // successfully finished
     return true;
