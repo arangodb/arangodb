@@ -44,6 +44,7 @@ var ERRORS = arangodb.errors;
 
 var DEFAULT_KEY = "default";
 var API = "_api/structures";
+var checkedIndex = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -244,15 +245,32 @@ Configuration example document:
 }
 
 */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief get structures collection
 ////////////////////////////////////////////////////////////////////////////////
+
+function getCollection () {
+  var c;
+
+  c = db._collection('_structures');
+  if (c === null) {
+    c = db._create('_structures', { isSystem : true });
+  }
+
+  if (c !== null && ! checkedIndex) {
+    c.ensureUniqueConstraint('collection');
+    checkedIndex = true;
+  }
+
+  return c;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-function stringToBoolean(string){
+function stringToBoolean (string){
   if (undefined === string || null === string) {
     return false;
   }
@@ -1178,6 +1196,10 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1265,7 +1287,7 @@ function get_api_structure(req, res)  {
   };
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
   }
   catch (err) {
     // return the doc
@@ -1564,7 +1586,7 @@ function patch_api_structure (req, res) {
   }
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
     patchDocumentByStructure(req, res, collection, structure, doc, body);
   }
   catch (err) {
@@ -1725,7 +1747,7 @@ function put_api_structure (req, res) {
   }
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
     replaceDocumentByStructure(req, res, collection, structure, doc, body);
   }
   catch (err) {
@@ -1858,7 +1880,7 @@ function post_api_structure (req, res) {
   }
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
     saveDocumentByStructure(req, res, collection, structure, body);
   }
   catch (err3) {
