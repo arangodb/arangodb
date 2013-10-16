@@ -608,43 +608,11 @@ bool ApplicationV8::prepare () {
     LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
   }
   
-  // check whether app-paths exist
-  if (! _appPath.empty()) {
-    if (! FileUtils::isDirectory(_appPath.c_str())) {
-      LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
-      // TODO: decide if we want to abort server start here
-    }
-    else {
-      const string databasesPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "databases";
-
-      if (! FileUtils::isDirectory(databasesPath.c_str())) {
-        LOGGER_ERROR("required app-path sub-directory '" << databasesPath << "' does not exist.");
-      }
-      
-      const string systemPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "system";
-      if (! FileUtils::isDirectory(systemPath.c_str())) {
-        LOGGER_ERROR("required app-path sub-directory '" << systemPath << "' does not exist.");
-      }
-    }
-  }
-  else {
+  // check whether app-path was specified
+  if (_appPath.empty()) {
     LOGGER_FATAL_AND_EXIT("no value has been specified for --javascript.app-path.");
   }
 
-  if (! _devAppPath.empty()) {
-    if (! _performUpgrade && ! FileUtils::isDirectory(_devAppPath.c_str())) {
-      LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
-      // TODO: decide if we want to abort server start here
-    }
-    else {
-      const string databasesPath = _devAppPath + TRI_DIR_SEPARATOR_CHAR + "databases";
-
-      if (! _performUpgrade && ! FileUtils::isDirectory(databasesPath.c_str())) {
-        LOGGER_ERROR("required dev-app-path sub-directory '" << databasesPath << "' does not exist.");
-      }
-    }
-  }
- 
   if (_packagePath.empty()) {
     LOGGER_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
     // TODO: decide if we want to abort server start here
