@@ -157,9 +157,13 @@ The database will be installed in
 
     /var/lib/arangodb
 
-The arango shell will be installed in
+The ArangoShell will be installed in
 
     /usr/local/bin/arangosh
+
+When upgrading from a previous version of ArangoDB, please make sure you inspect ArangoDB's
+log file after an upgrade. It may also be necessary to start ArangoDB with the `--upgrade`
+parameter once to perform required upgrade or initialisation tasks.
 
 Devel Version{#CompilingDevel}
 ==============================
@@ -227,7 +231,7 @@ Configure{#CompilingDevelConfigure}
 
 In order to configure the build environment please execute
 
-    unix> ./configure --disable-all-in-one-v8 --disable-all-in-one-libev --disable-all-in-one-icu 
+    unix> ./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu 
 
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
@@ -250,6 +254,15 @@ BISON, FLEX, and PYTHON. These external tools then need to be available in the
 correct versions on your system.
 
 The following configuration options exist:
+
+`--enable-relative` will make relative paths be used in the compiled binaries and
+scripts. It allows to run ArangoDB from the compile directory directly, without the
+need for a `make install` command and specifying much configuration parameters. 
+When used, you can start ArangoDB using this command:
+
+    bin/arangod /tmp/database-dir
+
+ArangoDB will then automatically use the configuration from file `etc/relative/arangod.conf`.
 
 `--enable-all-in-one-libev` tells the build system to use the bundled version
 of LIBEV instead of using the system version.
