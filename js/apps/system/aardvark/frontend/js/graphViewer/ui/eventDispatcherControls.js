@@ -186,7 +186,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
           function(data) {
             dispatcher.events.CREATENODE(data, function(node) {
               $("#" + idprefix + "modal").modal('hide');
-              console.log(node);
               nodeShaper.reshapeNodes();
             })();
           }
