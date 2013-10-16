@@ -2649,7 +2649,8 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& modules,
-                      string const& packages) {
+                      string const& packages,
+                      string const& startupPath) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -2739,6 +2740,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
   TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(packages));
+  TRI_AddGlobalVariableVocbase(context, "STARTUP_PATH", v8::String::New(startupPath.c_str()));
   TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
   TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRI_VERSION));
