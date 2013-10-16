@@ -156,7 +156,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
           }
         }
 
-        res = StringifyJson(zone, buffer, TRI_AtVector(&object->_value._objects, i), true);
+        res = StringifyJson(zone, buffer, (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i), true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -168,7 +168,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
           return res;
         }
 
-        res = StringifyJson(zone, buffer, TRI_AtVector(&object->_value._objects, i + 1), true);
+        res = StringifyJson(zone, buffer, (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i + 1), true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -206,7 +206,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
           }
         }
 
-        res = StringifyJson(zone, buffer, TRI_AtVector(&object->_value._objects, i), true);
+        res = StringifyJson(zone, buffer, (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i), true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -265,7 +265,7 @@ static inline void InitString (TRI_json_t* result,
                                size_t length) { 
   result->_type = TRI_JSON_STRING;
   result->_value._string.data = value;
-  result->_value._string.length = length + 1;
+  result->_value._string.length = (uint32_t) length + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,7 +277,7 @@ static inline void InitStringReference (TRI_json_t* result,
                                         size_t length) {
   result->_type = TRI_JSON_STRING_REFERENCE;
   result->_value._string.data = (char*) value;
-  result->_value._string.length = length + 1;
+  result->_value._string.length = (uint32_t) length + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -645,7 +645,7 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
       n = object->_value._objects._length;
 
       for (i = 0;  i < n;  ++i) {
-        TRI_json_t* v = TRI_AtVector(&object->_value._objects, i);
+        TRI_json_t* v = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
         TRI_DestroyJson(zone, v);
       }
 
@@ -775,7 +775,7 @@ TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos
     return NULL;
   }
 
-  return TRI_AtVector(&object->_value._objects, pos);
+  return (TRI_json_t*) TRI_AtVector(&object->_value._objects, pos);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -912,14 +912,14 @@ TRI_json_t* TRI_LookupArrayJson (const TRI_json_t* const object, char const* nam
   for (i = 0;  i < n;  i += 2) {
     TRI_json_t* key;
 
-    key = TRI_AtVector(&object->_value._objects, i);
+    key = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
 
     if (! IsString(key)) {
       continue;
     }
 
     if (TRI_EqualString(key->_value._string.data, name)) {
-      return TRI_AtVector(&object->_value._objects, i + 1);
+      return (TRI_json_t*) TRI_AtVector(&object->_value._objects, i + 1);
     }
   }
 
@@ -942,7 +942,7 @@ bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char cons
   for (i = 0;  i < n;  i += 2) {
     TRI_json_t* key;
 
-    key = TRI_AtVector(&object->_value._objects, i);
+    key = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
 
     if (! IsString(key)) {
       continue;
@@ -952,14 +952,14 @@ bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char cons
       TRI_json_t* old;
 
       // remove key
-      old = TRI_AtVector(&object->_value._objects, i);
+      old = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
       if (old != NULL) {
         TRI_DestroyJson(zone, old);
       }
       TRI_RemoveVector(&object->_value._objects, i);
 
       // remove value
-      old = TRI_AtVector(&object->_value._objects, i);
+      old = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
       if (old != NULL) {
         TRI_DestroyJson(zone, old);
       }
@@ -988,7 +988,7 @@ bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
   for (i = 0;  i < n;  i += 2) {
     TRI_json_t* key;
 
-    key = TRI_AtVector(&object->_value._objects, i);
+    key = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
 
     if (! IsString(key)) {
       continue;
@@ -998,7 +998,7 @@ bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
       TRI_json_t copy;
 
       // retrieve the old element
-      TRI_json_t* old = TRI_AtVector(&object->_value._objects, i + 1);
+      TRI_json_t* old = (TRI_json_t*) TRI_AtVector(&object->_value._objects, i + 1);
       if (old != NULL) {
         TRI_DestroyJson(zone, old);
       }
@@ -1193,8 +1193,8 @@ int TRI_CopyToJson (TRI_memory_zone_t* zone,
       }
 
       for (i = 0;  i < n;  ++i) {
-        TRI_json_t* v = TRI_AtVector(&src->_value._objects, i);
-        TRI_json_t* w = TRI_AtVector(&dst->_value._objects, i);
+        TRI_json_t* v = (TRI_json_t*) TRI_AtVector(&src->_value._objects, i);
+        TRI_json_t* w = (TRI_json_t*) TRI_AtVector(&dst->_value._objects, i);
 
         res = TRI_CopyToJson(zone, w, v);
 
