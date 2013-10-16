@@ -84,7 +84,10 @@
             } else if (req.url.match(/_api\/edge/)) {
               req.success({_id: "1-2"});
             } else {
-              req.success({_id: 1});
+              req.success({
+                _id: 1,
+                error: false
+              });
             }
             break;
           default:
@@ -307,8 +310,7 @@
         spyOn($, "ajax");
         adapter.createNode({}, function() {});
         args = $.ajax.mostRecentCall.args[0];
-        host = window.location.protocol + "//" + window.location.host;
-        expect(args.url).toContain(host);
+        expect(args.url).not.toContain("http");
       });
       
       it('should create a nodeReducer instance', function() {
@@ -356,8 +358,7 @@
         
         beforeEach(function() {  
           var self = this,
-           host = window.location.protocol + "//" + window.location.host,
-           apibase = host + "/_api/",
+           apibase = "_api/",
            apiCursor = apibase + 'cursor';
           self.fakeReducerBucketRequest = function() {};
           mockWrapper = {};
@@ -770,7 +771,7 @@
             adapter.changeToCollections(altNodesCollection, altEdgesCollection);
       
             callbackCheck = false;
-            adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+            adapter.loadNode(c0, checkCallbackFunction);
           });
     
           waitsFor(function() {
