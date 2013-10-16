@@ -53,7 +53,7 @@ function ArangoAdapterControls(list, adapter) {
               id: "collections",
               group: "loadtype",
               text: "Select existing collections",
-              isDefault: true,
+              isDefault: (adapter.getGraphName() === undefined),
               interior: [
                 {
                   type: "list",
@@ -74,12 +74,13 @@ function ArangoAdapterControls(list, adapter) {
               id: "graphs",
               group: "loadtype",
               text: "Select existing graph",
-              isDefault: false,
+              isDefault: (adapter.getGraphName() !== undefined),
               interior: [
                 {
                   type: "list",
                   id: "graph",
-                  objects: graphs
+                  objects: graphs,
+                  selected: adapter.getGraphName()
                 }
               ]
             },{

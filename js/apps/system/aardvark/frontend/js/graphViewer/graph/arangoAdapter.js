@@ -56,8 +56,13 @@ function ArangoAdapter(nodes, edges, config) {
     queries = {},
     nodeCollection,
     edgeCollection,
+    graphName,
     arangodb,
     direction,
+
+    setGraphName = function(name) {
+      graphName = name;
+    },
 
     setNodeCollection = function(name) {
       nodeCollection = name;
@@ -105,12 +110,14 @@ function ArangoAdapter(nodes, edges, config) {
       api.graph = api.base + "graph";
       api.collection = api.base + "collection/";
       api.document = api.base + "document/";
-      api.any = api.base + "simple/any";      
+      api.any = api.base + "simple/any";     
       if (config.graph) {
         getCollectionsFromGraph(config.graph);
+        setGraphName(config.graph);
       } else {
         setNodeCollection(config.nodeCollection);
         setEdgeCollection(config.edgeCollection);
+        setGraphName(undefined);
       }
     },
   
@@ -510,6 +517,8 @@ function ArangoAdapter(nodes, edges, config) {
         direction = "outbound";
       }
     }
+
+    setGraphName(undefined);
   };
   
   self.changeToGraph = function (name, dir) {
@@ -522,6 +531,7 @@ function ArangoAdapter(nodes, edges, config) {
         direction = "outbound";
       }
     }
+    setGraphName(name);
   };
   
   self.setNodeLimit = function (pLimit, callback) {
@@ -609,7 +619,11 @@ function ArangoAdapter(nodes, edges, config) {
 
   self.getDirection = function () {
     return direction;
-  }
+  };
+
+  self.getGraphName = function () {
+    return graphName;
+  };
   
   self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
