@@ -49,7 +49,6 @@ function ArangoAdapter(nodes, edges, config) {
     }
   }
 
-  
   var self = this,
     absAdapter,
     absConfig = {},
@@ -599,6 +598,18 @@ function ArangoAdapter(nodes, edges, config) {
       });
     }
   };
+
+  self.getNodeCollection = function () {
+    return nodeCollection;
+  };
+
+  self.getEdgeCollection = function () {
+    return edgeCollection;
+  };
+
+  self.getDirection = function () {
+    return direction;
+  }
   
   self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
