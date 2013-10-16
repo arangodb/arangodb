@@ -280,7 +280,7 @@
     var err = new Error();
     err.name = 'trace';
     err.message = sprintf.apply(sprintf, arguments);
-    Error.captureStackTrace(err, arguments.callee);
+    Error.captureStackTrace(err, exports.trace);
     exports.log(err.stack);
   };
 

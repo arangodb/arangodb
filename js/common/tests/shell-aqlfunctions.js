@@ -395,6 +395,61 @@ function AqlFunctionsSuite () {
 
       var actual = db._createStatement({ query: "RETURN UnitTests::tryme()" }).execute().toArray();
       assertEqual([ [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test for specific problem with docs returned by user functions
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryReturnShapedJson : function () {
+      db._drop("UnitTestsFunc");
+      db._create("UnitTestsFunc");
+
+      for (var i = 0; i < 5 ; ++i) {
+        db.UnitTestsFunc.save({ value: i });
+      }
+
+      unregister("UnitTests::testFunc");
+      var testFunc = function() {
+        var db = require("internal").db; 
+        var query = "FOR path IN UnitTestsFunc SORT path.value RETURN path.value";
+        var bind = {};
+        return db._query(query, bind).toArray()[0];
+      };
+      aqlfunctions.register("UnitTests::testFunc", testFunc);
+
+      var actual = db._createStatement({ query: "RETURN UnitTests::testFunc()" }).execute().toArray();
+      assertEqual([ 0 ], actual);
+      
+      db._drop("UnitTestsFunc");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test for specific problem with docs returned by user functions
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryReturnShapedJsonFull : function () {
+      db._drop("UnitTestsFunc");
+      db._create("UnitTestsFunc");
+
+      db.UnitTestsFunc.save({ value1: "abc", value2: 123, value3: null, value4: false });
+
+      unregister("UnitTests::testFunc");
+      var testFunc = function() {
+        var db = require("internal").db; 
+        var query = "FOR path IN UnitTestsFunc RETURN path";
+        var bind = {};
+        return db._query(query, bind).toArray()[0];
+      };
+      aqlfunctions.register("UnitTests::testFunc", testFunc);
+
+      var actual = db._createStatement({ query: "RETURN UnitTests::testFunc()" }).execute().toArray();
+      assertEqual("abc", actual[0].value1);
+      assertEqual(123, actual[0].value2);
+      assertEqual(null, actual[0].value3);
+      assertEqual(false, actual[0].value4);
+      
+      db._drop("UnitTestsFunc");
     }
 
   };

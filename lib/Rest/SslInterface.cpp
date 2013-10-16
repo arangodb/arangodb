@@ -187,7 +187,7 @@ namespace triagens {
         unsigned char* md = (unsigned char*) TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
         unsigned int md_len;
 
-        HMAC(evp_md, key, strlen(key), (const unsigned char*) message, messageLen, md, &md_len);
+        HMAC(evp_md, key, (int) strlen(key), (const unsigned char*) message, messageLen, md, &md_len);
 
         string result = StringUtils::encodeBase64(string((char*)md, md_len));
         TRI_SystemFree(md);

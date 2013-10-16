@@ -569,6 +569,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2, entry.collection.type);
       assertEqual(c._id, entry.cid);
       assertEqual(c._id, entry.collection.cid);
+      assertEqual(cn, entry.cname);
       assertFalse(entry.collection.deleted);
       assertEqual(cn, entry.collection.name);
     },
@@ -599,6 +600,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2001, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,6 +629,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2002, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(cn2, entry.collection.name);
     },
 
@@ -680,11 +683,46 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
       assertEqual(c._id, entry.collection.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(cn, entry.collection.name);
       assertEqual(2, entry.collection.type);
       assertEqual(false, entry.collection.deleted);
       assertEqual(2097152, entry.collection.maximalSize);
       assertEqual(true, entry.collection.waitForSync);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerIncludedSystemCollection : function () {
+      var state, tick, i;
+      
+      replication.logger.start();
+      
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      var count = getLogEntries();
+
+      c = db._collection("_graphs");
+      var doc = c.save({ "test": 1 });
+      
+      state = replication.logger.state().state;
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 1, getLogEntries());
+      
+      var entry = getLastLogEntry();
+      assertEqual(2300, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual(c.name(), entry.cname);
+
+      c.remove(doc._key);
+      entry = getLastLogEntry();
+      assertEqual(2302, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual(c.name(), entry.cname);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -705,55 +743,95 @@ function ReplicationLoggerSuite () {
       var c = db._create("_unittests", { isSystem : true });
 
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 1, getLogEntries());
+      var entry = getLastLogEntry();
+      assertEqual(2000, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual(c.name(), entry.cname);
       
       c.properties({ waitForSync : true });
 
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 2, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2003, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual(c.name(), entry.cname);
 
       c.rename("_unitfoxx");
       
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 3, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2002, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("_unittests", entry.cname);
       
       c.rename("_unittests");
       
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 4, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2002, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("_unitfoxx", entry.cname);
 
       for (i = 0; i < 100; ++i) {
         c.save({ "_key" : "test" + i });
       }
       
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 104, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2300, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("_unittests", entry.cname);
       
       for (i = 0; i < 50; ++i) {
         c.remove("test" + i);
       }
       
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 154, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2302, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("_unittests", entry.cname);
 
       c.truncate();
       
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 206, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2201, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.collections[0].cid);
+      assertEqual("_unittests", entry.collections[0].name);
       
       db._drop("_unittests");
       db._drop("_unitfoxx");
       
       state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 207, getLogEntries());
+      entry = getLastLogEntry();
+      assertEqual(2001, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("_unittests", entry.cname);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -808,6 +886,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
       assertTrue(entry.tid != "");
       var tid = entry.tid;
@@ -819,6 +898,8 @@ function ReplicationLoggerSuite () {
       assertEqual("abc", entry.key);
       assertEqual(rev, entry.oldRev);
       assertEqual(tid, entry.tid);
+      assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
      
       // commit 
       entry = entries.pop();
@@ -826,6 +907,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
       assertEqual(tid, entry.tid);
     },
@@ -883,6 +965,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("hash", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -916,6 +999,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("hash", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -949,6 +1033,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("skiplist", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -982,6 +1067,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("skiplist", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1015,6 +1101,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("fulltext", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1049,6 +1136,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1083,6 +1171,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo1", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1117,6 +1206,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1152,6 +1242,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1187,6 +1278,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo1", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1221,6 +1313,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("cap", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1255,6 +1348,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("cap", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1289,6 +1383,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2101, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.id);
     },
 
@@ -1319,6 +1414,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -1339,6 +1435,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -1413,6 +1510,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2302, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual(rev, entry.oldRev);
 
@@ -1431,6 +1529,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2302, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual(rev, entry.oldRev);
       
@@ -1479,6 +1578,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual(oldRev, entry.oldRev);
       assertEqual("abc", entry.data._key);
@@ -1501,6 +1601,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual(oldRev, entry.oldRev);
       assertEqual("abc", entry.data._key);
@@ -1570,6 +1671,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual(oldRev, entry.oldRev);
       assertEqual("abc", entry.data._key);
@@ -1646,8 +1748,11 @@ function ReplicationLoggerSuite () {
       assertEqual(2301, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
+      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
+      assertEqual(cn + "/test1", entry.data._from);
+      assertEqual(cn + "/test2", entry.data._to);
       assertEqual(rev, entry.data._rev);
       assertEqual(1, entry.data.test);
 
@@ -1666,8 +1771,11 @@ function ReplicationLoggerSuite () {
       assertEqual(2301, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
+      assertEqual(cn2, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
+      assertEqual(cn + "/test3", entry.data._from);
+      assertEqual(cn + "/test4", entry.data._to);
       assertEqual(rev, entry.data._rev);
       assertEqual([ 99, false ], entry.data.test);
       
@@ -1716,6 +1824,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2302, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
+      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual(rev, entry.oldRev);
       
@@ -1772,6 +1881,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2301, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
+      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -1849,6 +1959,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2301, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
+      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2110,6 +2221,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
 
       entry = entries.pop();
@@ -2117,6 +2229,7 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry.tid);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2128,6 +2241,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
     },
 
@@ -2253,6 +2367,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c1._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(2, entry.collections[0].operations);
 
       var rev = c1.document("12345")._rev;
@@ -2261,6 +2376,7 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry.tid);
       entry = JSON.parse(entry.data);
       assertEqual(c1._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2272,6 +2388,7 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry.tid);
       entry = JSON.parse(entry.data);
       assertEqual(c1._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2283,6 +2400,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c1._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(2, entry.collections[0].operations);
     },
 
@@ -2332,8 +2450,10 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(2, entry.collections.length);
       assertEqual(c1._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
       assertEqual(c2._id, entry.collections[1].cid);
+      assertEqual(cn2, entry.collections[1].name);
       assertEqual(1, entry.collections[1].operations);
 
       var rev = c1.document("12345")._rev;
@@ -2342,6 +2462,7 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry.tid);
       entry = JSON.parse(entry.data);
       assertEqual(c1._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2353,6 +2474,7 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry.tid);
       entry = JSON.parse(entry.data);
       assertEqual(c2._id, entry.cid);
+      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2364,8 +2486,10 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(2, entry.collections.length);
       assertEqual(c1._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
       assertEqual(c2._id, entry.collections[1].cid);
+      assertEqual(cn2, entry.collections[1].name);
       assertEqual(1, entry.collections[1].operations);
     },
 
@@ -2376,8 +2500,6 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionExcluded1 : function () {
       var state, tick;
       var c = db._create(cn);
-      db._drop("_unitfoxx");
-      db._create("_unitfoxx", { isSystem: true });
 
       replication.logger.start();
        
@@ -2387,15 +2509,15 @@ function ReplicationLoggerSuite () {
 
       db._executeTransaction({
         collections: {
-          write: [ cn, "_unitfoxx" ]
+          write: [ cn, "_users" ]
         },
         action: function (params) {
           var c = require("internal").db._collection(params.cn);
-          var foxx = require("internal").db._collection("_unitfoxx");
+          var users = require("internal").db._collection("_users");
 
           c.save({ "test" : 2, "_key": "12345" });
-          foxx.save({ "_key": "unittests1", "foo": false });
-          foxx.remove("unittests1");
+          users.save({ "_key": "unittests1", "foo": false });
+          users.remove("unittests1");
         },
         params: {
           cn: cn
@@ -2415,6 +2537,7 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
 
       var rev = c.document("12345")._rev;
@@ -2423,6 +2546,7 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry.tid);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2434,9 +2558,8 @@ function ReplicationLoggerSuite () {
       entry = JSON.parse(entry.data);
       assertEqual(1, entry.collections.length);
       assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(cn, entry.collections[0].name);
       assertEqual(1, entry.collections[0].operations);
-      
-      db._drop("_unitfoxx");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2479,6 +2602,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
@@ -2531,6 +2655,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2300, entry.type);
       entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
+      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);

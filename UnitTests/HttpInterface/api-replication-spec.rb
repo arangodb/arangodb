@@ -390,7 +390,7 @@ describe ArangoDB do
 ################################################################################
 
       it "checks the initial inventory" do
-        cmd = api + "/inventory"
+        cmd = api + "/inventory?includeSystem=false"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
 
         doc.code.should eq(200)
@@ -409,7 +409,7 @@ describe ArangoDB do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
         
-        cmd = api + "/inventory"
+        cmd = api + "/inventory?includeSystem=false"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
         doc.code.should eq(200)
         
@@ -746,8 +746,8 @@ describe ArangoDB do
           document['rev'].should match(/^\d+$/)
           document['data']['_key'].should eq("test" + i.to_s)
           document['data']['_rev'].should match(/^\d+$/)
-          document['data']['_from'].should eq(cid + "/foo")
-          document['data']['_to'].should eq(cid + "/bar")
+          document['data']['_from'].should eq("UnitTestsReplication/foo")
+          document['data']['_to'].should eq("UnitTestsReplication/bar")
           document['data']['test1'].should eq(i)
           document['data']['test2'].should eq(false)
           document['data']['test3'].should eq([ ])
@@ -795,8 +795,8 @@ describe ArangoDB do
           document['rev'].should match(/^\d+$/)
           document['data']['_key'].should eq("test" + i.to_s)
           document['data']['_rev'].should match(/^\d+$/)
-          document['data']['_from'].should eq(cid + "/foo")
-          document['data']['_to'].should eq(cid + "/bar")
+          document['data']['_from'].should eq("UnitTestsReplication/foo")
+          document['data']['_to'].should eq("UnitTestsReplication/bar")
           document['data']['test1'].should eq(i)
           document['data']['test2'].should eq(false)
           document['data']['test3'].should eq([ ])
@@ -808,14 +808,6 @@ describe ArangoDB do
 
         i.should be < 100
       end
-
-
-
-
-
-
-
-
       
       it "checks the dump for a collection with deleted documents" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)

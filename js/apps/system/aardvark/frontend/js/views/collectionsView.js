@@ -14,8 +14,17 @@ var collectionsView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/collectionsView.ejs'}),
 
   render: function () {
+    var dropdownVisible = false; 
+    if ($('#collectionsDropdown').is(':visible')) {
+      dropdownVisible = true;
+    }
+
     $(this.el).html(this.template.text);
     this.setFilterValues();
+
+    if (dropdownVisible === true) {
+      $('#collectionsDropdown2').show();
+    }
 
     var searchOptions = this.collection.searchOptions;
 

@@ -165,8 +165,7 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
                                    TRI_doc_mptr_t* newHeader,
                                    TRI_doc_mptr_t* oldHeader,
                                    TRI_doc_mptr_t* oldData,
-                                   TRI_df_marker_t* marker,
-                                   size_t totalSize) {
+                                   TRI_df_marker_t* marker) {
   TRI_transaction_operation_t trxOperation;
   TRI_document_collection_t* document;
   TRI_voc_rid_t rid;
@@ -188,7 +187,6 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
   trxOperation._newHeader  = newHeader;
   trxOperation._oldHeader  = oldHeader;
   trxOperation._marker     = marker;
-  trxOperation._markerSize = totalSize;
   
   if (oldData != NULL) {
     trxOperation._oldData  = *oldData;
@@ -386,7 +384,6 @@ static int WriteCollectionOperations (TRI_transaction_collection_t* trxCollectio
                                                trxOperation->_oldHeader, 
                                                &trxOperation->_oldData, 
                                                trxOperation->_marker, 
-                                               trxOperation->_markerSize, 
                                                &result,
                                                false);
 
@@ -1497,7 +1494,6 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                            TRI_doc_mptr_t* oldHeader,
                                            TRI_doc_mptr_t* oldData,
                                            TRI_df_marker_t* marker,
-                                           TRI_voc_size_t totalSize,
                                            TRI_voc_rid_t rid,
                                            bool syncRequested,
                                            bool* directOperation) {
@@ -1505,8 +1501,6 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
   TRI_primary_collection_t* primary;
   int res;
 
-  assert(totalSize == marker->_size);
-  
   trx = trxCollection->_transaction;
   primary = trxCollection->_collection->_collection;
 
@@ -1525,7 +1519,6 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                                oldHeader,
                                                oldData,
                                                marker, 
-                                               totalSize,
                                                &result,
                                                doSync);
     *directOperation = true;
@@ -1540,7 +1533,7 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
     }
   }
   else {
-    res = AddCollectionOperation(trxCollection, type, newHeader, oldHeader, oldData, marker, totalSize);
+    res = AddCollectionOperation(trxCollection, type, newHeader, oldHeader, oldData, marker);
 
     if (res == TRI_ERROR_NO_ERROR) {
       // if everything went well, this will ensure we don't double free etc. headers

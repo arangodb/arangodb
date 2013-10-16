@@ -166,7 +166,8 @@ var queryView = Backbone.View.extend({
         });
 
         $('.queryTooltips').tooltip({
-            placement: "top"
+            placement: "top",
+            delay: {show: 3000, hide: 100}
         });
 
         $('#aqlEditor .ace_text-input').focus();

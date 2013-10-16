@@ -796,6 +796,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   TRI_df_header_marker_t header;
   int result;
 
+  assert(PageSize >= 256);
+
   // use multiples of page-size
   maximalSize = ((maximalSize + PageSize - 1) / PageSize) * PageSize;
 

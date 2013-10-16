@@ -87,7 +87,7 @@ triagens::httpclient::SimpleHttpClient* Client = 0;
 /// @brief chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t ChunkSize = 1024 * 1024 * 4;
+static uint64_t ChunkSize = 1024 * 1024 * 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collections
@@ -117,13 +117,7 @@ static bool Overwrite = false;
 /// @brief progress
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Progress = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save meta data
-////////////////////////////////////////////////////////////////////////////////
-
-static bool DumpStructure = true;
+static bool Progress = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save data
@@ -135,13 +129,30 @@ static bool DumpData = true;
 /// @brief first tick to be included in data dump
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TickStart = 0;
+static uint64_t TickStart = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief last tick to be included in data dump
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TickEnd = 0;
+static uint64_t TickEnd = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our batch id
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t BatchId = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief statistics
+////////////////////////////////////////////////////////////////////////////////
+
+static struct {
+  uint64_t _totalBatches;
+  uint64_t _totalCollections;
+  uint64_t _totalWritten;
+} 
+Stats;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -166,7 +177,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
     ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
-    ("dump-structure", &DumpStructure, "dump collection structure")
     ("dump-data", &DumpData, "dump collection data")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
     ("output-directory", &OutputDirectory, "output directory")
@@ -184,6 +194,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangodump.conf");
+  
+  if (1 == arguments.size()) {
+    OutputDirectory = arguments[0];
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,8 +223,9 @@ static void arangodumpExitFunction (int, void*);
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialistions for windows only
+// Call this function to do various initialisations for windows only
 // .............................................................................
+
 void arangodumpEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
@@ -237,8 +252,7 @@ void arangodumpEntryFunction () {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangoimpExitFunction);
-
+  TRI_Application_Exit_SetExit(arangodumpExitFunction);
 }
 
 static void arangodumpExitFunction (int exitCode, void* data) {
@@ -251,10 +265,10 @@ static void arangodumpExitFunction (int exitCode, void* data) {
   res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
-    _exit(1);
+    exit(1);
   }
 
-  _exit(exitCode);
+  exit(exitCode);
 }
 #else
 
@@ -297,7 +311,7 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetVersion () {
+static string GetArangoVersion () {
   map<string, string> headers;
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
@@ -323,7 +337,7 @@ static string GetVersion () {
     // convert response body to json
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
 
-    if (json) {
+    if (json != 0) {
       // look up "server" value
       const string server = JsonHelper::getStringValue(json, "server", "");
 
@@ -336,6 +350,13 @@ static string GetVersion () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   }
+  else {
+    if (response->wasHttpError()) {
+      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+    }
+
+    Connection->disconnect();
+  }
 
   delete response;
 
@@ -343,10 +364,112 @@ static string GetVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief start a batch
+////////////////////////////////////////////////////////////////////////////////
+
+static int StartBatch (string& errorMsg) {
+  map<string, string> headers;
+
+  const string url = "/_api/replication/batch";
+  const string body = "{\"ttl\":300}";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST, 
+                                               url,
+                                               body.c_str(), 
+                                               body.size(),  
+                                               headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "got invalid response from server: " + Client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+ 
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from server: HTTP " + 
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
+    delete response;
+    
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  // convert response body to json
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+  delete response;
+
+  if (json == 0) {
+    errorMsg = "got malformed JSON";
+    
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  // look up "id" value
+  const string id = JsonHelper::getStringValue(json, "id", "");
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  BatchId = StringUtils::uint64(id);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prolongs a batch
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExtendBatch () {
+  assert(BatchId > 0);
+  
+  map<string, string> headers;
+  const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
+  const string body = "{\"ttl\":300}";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+                                               url,
+                                               body.c_str(),
+                                               body.size(), 
+                                               headers); 
+
+  // ignore any return value
+  if (response != 0) {
+    delete response;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end a batch
+////////////////////////////////////////////////////////////////////////////////
+
+static void EndBatch () {
+  assert(BatchId > 0);
+  
+  map<string, string> headers;
+  const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
+
+  BatchId = 0;
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE, 
+                                               url,
+                                               0,
+                                               0, 
+                                               headers); 
+
+  // ignore any return value
+  if (response != 0) {
+    delete response;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DumpCollection (ofstream& outFile,
+static int DumpCollection (int fd,
                            const string& cid,
                            const string& name,
                            TRI_json_t const* parameters,
@@ -355,7 +478,7 @@ static int DumpCollection (ofstream& outFile,
 
   const string baseUrl = "/_api/replication/dump?collection=" + cid + 
                          "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false";
+                         "&ticks=false&translateIds=true";
     
   map<string, string> headers;
 
@@ -367,6 +490,8 @@ static int DumpCollection (ofstream& outFile,
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
     }
+
+    Stats._totalBatches++;
 
     SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                  url,
@@ -427,7 +552,16 @@ static int DumpCollection (ofstream& outFile,
     }
       
     if (res == TRI_ERROR_NO_ERROR) {
-      outFile << response->getBody().str();
+      stringstream& responseBody = response->getBody();
+      const string body = responseBody.str();
+      const size_t len = body.size();
+     
+      if (! TRI_WritePointer(fd, body.c_str(), len)) {
+        res = TRI_ERROR_CANNOT_WRITE_FILE;
+      }
+      else {
+        Stats._totalWritten += (uint64_t) len;
+      }
     }
 
     delete response;
@@ -446,11 +580,12 @@ static int DumpCollection (ofstream& outFile,
   return TRI_ERROR_INTERNAL;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the collection inventory from server
+/// @brief dump data from server
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GetInventory (string& errorMsg) {
+static int RunDump (string& errorMsg) {
   map<string, string> headers;
 
   const string url = "/_api/replication/inventory?includeSystem=" + 
@@ -472,7 +607,7 @@ static int GetInventory (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
  
-  if (! response->isComplete() || response->wasHttpError()) {
+  if (response->wasHttpError()) {
     errorMsg = "got invalid response from server: HTTP " + 
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
@@ -486,6 +621,7 @@ static int GetInventory (string& errorMsg) {
 
     
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
+
   delete response;
 
   if (! JsonHelper::isArray(json)) {
@@ -581,54 +717,80 @@ static int GetInventory (string& errorMsg) {
 
     // found a collection!
     if (Progress) {
-      cout << "Processing collection '" << name << "'..." << endl;
+      cout << "dumping collection '" << name << "'..." << endl;
     }
 
     // now save the collection meta data and/or the actual data
-    string fileName;
-    ofstream outFile;
+    Stats._totalCollections++;
 
-    if (DumpStructure) {
+    {
       // save meta data
+      string fileName;
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
 
-      outFile.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
+      int fd;
+      
+      // remove an existing file first
+      if (TRI_ExistsFile(fileName.c_str())) {
+        TRI_UnlinkFile(fileName.c_str());
+      }
+      
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
-      if (! outFile.is_open()) {
+      if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      outFile << JsonHelper::toString(collection);
+      const string collectionInfo = JsonHelper::toString(collection);
 
-      outFile.close();
+      if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
+        TRI_CLOSE(fd);
+        errorMsg = "cannot write to file '" + fileName + "'";
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        return TRI_ERROR_CANNOT_WRITE_FILE;
+      }
+
+      TRI_CLOSE(fd);
     }
 
 
     if (DumpData) {
       // save the actual data
+      string fileName;
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
 
-      outFile.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
+      int fd;
 
-      if (! outFile.is_open()) {
-        errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-        return TRI_ERROR_INTERNAL;
+      // remove an existing file first
+      if (TRI_ExistsFile(fileName.c_str())) {
+        TRI_UnlinkFile(fileName.c_str());
       }
 
-      int res = DumpCollection(outFile, cid, name, parameters, maxTick, errorMsg); 
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
-      outFile.close();
-
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_CANNOT_WRITE_FILE;
+      }
+
+      ExtendBatch();
+      int res = DumpCollection(fd, cid, name, parameters, maxTick, errorMsg); 
+
+      TRI_CLOSE(fd);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        if (errorMsg.empty()) {
+          errorMsg = "cannot write to file '" + fileName + "'";
+        }
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        return res;
       }
     }
   }
@@ -690,11 +852,6 @@ int main (int argc, char* argv[]) {
     ChunkSize = 1024 * 128;
   }
 
-  if (! DumpStructure && ! DumpData) {
-    cerr << "must specify either --dump-structure or --dump-data" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-
   if (TickStart < TickEnd) {
     cerr << "invalid values for --tick-start or --tick-end" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
@@ -718,14 +875,6 @@ int main (int argc, char* argv[]) {
   if (isDirectory && ! Overwrite) {
     cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-  else if (! isDirectory) {
-    int res = TRI_CreateDirectory(OutputDirectory.c_str());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-    }
   }
 
   // .............................................................................
@@ -759,7 +908,7 @@ int main (int argc, char* argv[]) {
   Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-  const string version = GetVersion();
+  const string versionString = GetArangoVersion();
 
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
@@ -770,14 +919,65 @@ int main (int argc, char* argv[]) {
     
   // successfully connected
 
+  // validate server version 
+  int major = 0;
+  int minor = 0;
+
+  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
+    cerr << "Invalid server version '" << versionString << "'" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
+  if (major != 1 ||
+      (major == 1 && minor < 4)) {
+    // we can connect to 1.4 and higher only
+    cerr << "Got an incompatible server version '" << versionString << "'" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+  
+  
+  if (! isDirectory) {
+    int res = TRI_CreateDirectory(OutputDirectory.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    }
+  }
+
+
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointString() 
           << "', database: '" << BaseClient.databaseName() << "', username: '" 
           << BaseClient.username() << "'" << endl;
+    
+    cout << "Writing dump to output directory '" << OutputDirectory << "'" << endl;
   }
+  
+  memset(&Stats, 0, sizeof(Stats));
 
   string errorMsg = "";
-  int res = GetInventory(errorMsg);
+
+  int res = StartBatch(errorMsg);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = RunDump(errorMsg);
+  }
+  
+  if (BatchId > 0) {
+    EndBatch();
+  }
+  
+  if (Progress) {
+    if (DumpData) {
+      cout << "Processed " << Stats._totalCollections << " collection(s), " << 
+              "wrote " << Stats._totalWritten << " byte(s) into datafiles, " << 
+              "sent " << Stats._totalBatches << " batch(es)" << endl;
+    }
+    else {
+      cout << "Processed " << Stats._totalCollections << " collection(s)" << endl;
+    }
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     cerr << errorMsg << endl;

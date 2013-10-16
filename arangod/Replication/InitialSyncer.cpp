@@ -593,10 +593,10 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
-                                            TRI_json_t const* indexes,
-                                            string& errorMsg,
-                                            sync_phase_e phase) {
+int InitialSyncer::handleCollection (TRI_json_t const* parameters,
+                                     TRI_json_t const* indexes,
+                                     string& errorMsg,
+                                     sync_phase_e phase) {
 
   sendExtendBatch();
 
@@ -751,6 +751,13 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
+      TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
+    }
+      
+    TRI_FreeTransaction(trx);
+   
+    
+    if (res == TRI_ERROR_NO_ERROR) {
       // now create indexes
       const size_t n = indexes->_value._objects._length;
 
@@ -758,39 +765,51 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
         const string progress = "creating indexes for " + collectionMsg;
         setProgress(progress.c_str());
 
-        for (size_t i = 0; i < n; ++i) {
-          TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-          TRI_index_t* idx = 0;
- 
-          // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-  
-          res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) trxCollection->_collection->_collection, idxDef, &idx);
+        TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            errorMsg = "could not create index: " + string(TRI_errno_string(res));
-            break;
-          }
-          else {
-            assert(idx != 0);
+        TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
 
-            res = TRI_SaveIndex((TRI_primary_collection_t*) trxCollection->_collection->_collection, 
-                                idx,
-                                _masterInfo._serverId);
+        if (col == 0) {
+          res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        }
+        else {
+          TRI_primary_collection_t* primary = col->_collection;
+          assert(primary != 0);
+
+          TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+          for (size_t i = 0; i < n; ++i) {
+            TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+            TRI_index_t* idx = 0;
+
+            // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+
+            res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              errorMsg = "could not save index: " + string(TRI_errno_string(res));
+              errorMsg = "could not create index: " + string(TRI_errno_string(res));
               break;
             }
+            else {
+              assert(idx != 0);
+
+              res = TRI_SaveIndex(primary, idx, _masterInfo._serverId);
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                errorMsg = "could not save index: " + string(TRI_errno_string(res));
+                break;
+              }
+            }
           }
+
+          TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+          TRI_ReleaseCollectionVocBase(_vocbase, col);
         }
+
+        TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
       }
     }
-    
-    if (res == TRI_ERROR_NO_ERROR) {
-      TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
-    }
-      
-    TRI_FreeTransaction(trx);
 
     return res;
   }
@@ -890,7 +909,7 @@ int InitialSyncer::iterateCollections (TRI_json_t const* collections,
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    int res = handleCollectionInitial(parameters, indexes, errorMsg, phase);
+    int res = handleCollection(parameters, indexes, errorMsg, phase);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

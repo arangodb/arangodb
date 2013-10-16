@@ -971,7 +971,6 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                                               NULL, 
                                               NULL, 
                                               &marker->base, 
-                                              totalSize, 
                                               marker->_rid,
                                               forceSync, 
                                               &directOperation);
@@ -1139,7 +1138,6 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
                                               header, 
                                               header, 
                                               &marker->base, 
-                                              totalSize, 
                                               marker->_rid,
                                               forceSync, 
                                               &directOperation);
@@ -1316,7 +1314,6 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
                                               oldHeader, 
                                               &oldData, 
                                               &marker->base, 
-                                              totalSize, 
                                               marker->_rid,
                                               forceSync, 
                                               &directOperation);
@@ -3294,7 +3291,6 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
                                           TRI_doc_mptr_t* oldHeader,
                                           TRI_doc_mptr_t* oldData,
                                           TRI_df_marker_t* marker,
-                                          TRI_voc_size_t totalSize,
                                           TRI_df_marker_t** result,
                                           bool waitForSync) {
   int res;
@@ -3306,17 +3302,17 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     assert(oldHeader == NULL);
     assert(newHeader != NULL);
-    res = WriteInsertMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, totalSize, result, waitForSync);
+    res = WriteInsertMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, marker->_size, result, waitForSync);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     assert(oldHeader != NULL);
     assert(newHeader != NULL);
-    res = WriteUpdateMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, oldHeader, totalSize, result, waitForSync);
+    res = WriteUpdateMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, oldHeader, marker->_size, result, waitForSync);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     assert(oldHeader != NULL);
     assert(newHeader == NULL);
-    res = WriteRemoveMarker(document, (TRI_doc_deletion_key_marker_t*) marker, oldHeader, totalSize, result, waitForSync);
+    res = WriteRemoveMarker(document, (TRI_doc_deletion_key_marker_t*) marker, oldHeader, marker->_size, result, waitForSync);
   }
   else {
     res = TRI_ERROR_INTERNAL;

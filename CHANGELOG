@@ -1,6 +1,37 @@
 v1.4
 ----
 
+* only the following system collections will be excluded from replication from now on:
+  - `_replication`
+  - `_trx`
+  - `_users`
+  - `_aal`
+  - `_fishbowl`
+  - `_modules`
+  - `_routing`
+
+  Especially the following system collections will now be included in replication:
+  - `_aqlfunctions`
+  - `_graphs`
+  
+  In previous versions of ArangoDB, all system collections were excluded from the 
+  replication.
+
+  The change also caused a change in the replication logger and applier:
+  in previous versions of ArangoDB, only a collection's id was logged for an operation.
+  This has not caused problems for non-system collections but for system collections 
+  there ids might differ. In addition to a collection id ArangoDB will now also log the
+  name of a collection for each replication event.
+
+  The replication applier will now look for the collection name attribute in logged
+  events preferrably.
+
+* added database selection to arango-dfdb
+
+* provide foxx-manager, arangodump, and arangorestore in Windows build
+
+* ArangoDB 1.4 will refuse to start if option `--javascript.app-path` is not set.
+
 * added startup option `--server.allow-method-override`
 
   This option can be set to allow overriding the HTTP request method in a request using
@@ -32,6 +63,8 @@ v1.4
   from the import even if some documents cannot be imported. This is the same behaviour that
   previous ArangoDB versions exposed.
 
+* added missing swagger documentation for `/_api/log`
+
 * calling `/_api/logs` (or `/_admin/logs`) is only permitted from the `_system` database now.
   
   Calling this API method for/from other database will result in an HTTP 400.
@@ -58,8 +91,8 @@ v1.4
       > arangosh --prompt "my db is named \"%d\"> "
 
 
-v1.4.0-beta (2013-10-01)
-------------------------
+v1.4.0-beta1 (2013-10-01)
+-------------------------
 
 * make the Foxx manager use per-database app directories
 

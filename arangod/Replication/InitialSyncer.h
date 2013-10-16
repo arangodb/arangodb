@@ -224,10 +224,10 @@ namespace triagens {
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollectionInitial (struct TRI_json_s const*,
-                                     struct TRI_json_s const*, 
-                                     std::string&, 
-                                     sync_phase_e);
+        int handleCollection (struct TRI_json_s const*,
+                              struct TRI_json_s const*, 
+                              std::string&, 
+                              sync_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the inventory response of the master

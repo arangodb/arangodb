@@ -2225,8 +2225,9 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
 }
 
 typedef struct collection_checksum_s {
-  TRI_string_buffer_t _buffer;
-  uint32_t            _checksum;
+  TRI_string_buffer_t      _buffer;
+  CollectionNameResolver*  _resolver;
+  uint32_t                 _checksum;
 }
 collection_checksum_t;
 
@@ -2255,9 +2256,9 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
-    const string extra = StringUtils::itoa(e->_toCid) + string(((char*) marker) + e->_offsetToKey) +
-                         StringUtils::itoa(e->_fromCid) + string(((char*) marker) + e->_offsetFromKey); 
-    
+    const string extra = helper->_resolver->getCollectionName(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                         helper->_resolver->getCollectionName(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+  
     localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
   }
   else {
@@ -2332,6 +2333,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   
   collection_checksum_t helper;
   helper._checksum = 0;
+  helper._resolver = &resolver;
     
   // .............................................................................
   // inside a read transaction

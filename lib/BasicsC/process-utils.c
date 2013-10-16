@@ -290,7 +290,7 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
           if (vm_info.reserved
            && size == SHARED_TEXT_REGION_SIZE
            && t_info.virtual_size > (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE)) {
-		t_info.virtual_size -= (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE);
+           t_info.virtual_size -= (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE);
           }
 
           result._virtualSize = t_info.virtual_size;
