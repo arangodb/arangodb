@@ -635,7 +635,7 @@ bool ApplicationV8::prepare () {
   // add v8 options
   if (_v8Options.size() > 0) {
     LOGGER_INFO("using V8 options '" << _v8Options << "'");
-    v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
+    v8::V8::SetFlagsFromString(_v8Options.c_str(), (int) _v8Options.size());
   }
 
   // use a minimum of 1 second for GC

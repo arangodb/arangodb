@@ -927,7 +927,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_isSystem      = false;
   parameter->_maximalSize   = (maximalSize / PageSize) * PageSize;
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
-    parameter->_maximalSize = PageSize;
+    parameter->_maximalSize = (TRI_voc_size_t) PageSize;
   }
   parameter->_waitForSync   = vocbase->_settings.defaultWaitForSync;
 

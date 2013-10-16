@@ -293,7 +293,7 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
     tick = TRI_NewTickServer();
   }
 
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
   if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -366,7 +366,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
   *totalSize = baseLength + shaped->_data.length;
  
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
   if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -495,7 +495,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
   *totalSize = markerSize + keyBodySize + shaped->_data.length;
  
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
   if (mem == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1791,7 +1791,7 @@ static int RemoveShapedJson (TRI_transaction_collection_t* trxCollection,
                              &marker, 
                              &totalSize, 
                              key, 
-                             strlen(key));
+                             (TRI_voc_size_t) strlen(key));
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

@@ -371,7 +371,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   n = strlen(name) + 1;
   
   totalSize = sizeof(TRI_df_attribute_marker_t) + n;
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
   if (mem == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -639,7 +639,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // initialise a new shape marker
   totalSize = sizeof(TRI_df_shape_marker_t) + shape->_size;
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
   if (mem == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);

@@ -483,7 +483,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx) {
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
-  TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
+  TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
   return json;
 }
