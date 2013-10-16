@@ -1844,7 +1844,48 @@ int TRI_StartServer (TRI_server_t* server,
   // .............................................................................
   // create shared application directories
   // .............................................................................
-    
+
+  if (server->_appPath != NULL && 
+      strlen(server->_appPath) > 0 &&
+      ! TRI_IsDirectory(server->_appPath)) {
+    if (! isUpgrade) {
+      LOG_ERROR("specified --javascript.app-path directory '%s' does not exist. "
+                "Please start again with --upgrade option to create it.", 
+                server->_appPath);
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+
+    res = TRI_CreateDirectory(server->_appPath);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to create --javascript.app-path directory '%s': %s", 
+                server->_appPath, 
+                TRI_errno_string(res));
+      return res;
+    }
+  }
+  
+  if (server->_devAppPath != NULL && 
+      strlen(server->_devAppPath) > 0 &&
+      ! TRI_IsDirectory(server->_devAppPath)) {
+    if (! isUpgrade) {
+      LOG_ERROR("specified --javascript.dev-app-path directory '%s' does not exist. "
+                "Please start again with --upgrade option to create it.", 
+                server->_devAppPath);
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+
+    res = TRI_CreateDirectory(server->_devAppPath);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to create --javascript.dev-app-path directory '%s': %s", 
+                server->_devAppPath, 
+                TRI_errno_string(res));
+      return res;
+    }
+  }
+   
+  // create subdirectories if not yet present 
   res = CreateBaseApplicationDirectory(server->_appPath, "databases");
 
   if (res == TRI_ERROR_NO_ERROR) {
