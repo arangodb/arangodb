@@ -67,6 +67,8 @@ typedef struct TRI_server_s {
 
   char*                       _basePath;
   char*                       _databasePath;
+  char*                       _appPath;
+  char*                       _devAppPath;
   char*                       _lockFilename;
   char*                       _shutdownFilename;
   char*                       _serverIdFilename;
@@ -109,6 +111,8 @@ TRI_server_t* TRI_CreateServer (void);
 
 int TRI_InitServer (TRI_server_t* server,
                     void*,
+                    char const*, 
+                    char const*, 
                     char const*, 
                     TRI_vocbase_defaults_t const*,
                     bool,

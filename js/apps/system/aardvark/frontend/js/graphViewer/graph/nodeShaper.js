@@ -431,17 +431,18 @@ function NodeShaper(parent, flags, idfunc) {
       }
       if (config.label !== undefined) {
         parseLabelFlag(config.label);
+        self.label = config.label;
       }
       if (config.actions !== undefined) {
         parseActionFlag(config.actions);
       }
       if (config.color !== undefined) {
         parseColorFlag(config.color);
+        self.color = config.color;
       }
       if (config.distortion !== undefined) {
         parseDistortionFlag(config.distortion);
       }
-      
     };
     
   self.parent = parent;
@@ -518,7 +519,14 @@ function NodeShaper(parent, flags, idfunc) {
   self.setGVStartFunction = function(func) {
     start = func;
   };
+
+  self.getLabel = function() {
+    return self.label || "";
+  };
   
+  self.getColor = function() {
+    return self.color.key || "";
+  };
 }
 
 NodeShaper.shapes = Object.freeze({

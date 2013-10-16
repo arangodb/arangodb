@@ -1565,7 +1565,7 @@ namespace triagens {
 
 
       string urlEncode (string const& str) {
-        return urlEncode(str.c_str(),str.size());
+        return urlEncode(str.c_str(), str.size());
       }
 
 
@@ -1573,7 +1573,7 @@ namespace triagens {
       string urlEncode (const char* src) {
         if (src != 0) {
           size_t len = strlen(src);
-          return urlEncode(src,len);
+          return urlEncode(src, len);
         }
         return "";
       }

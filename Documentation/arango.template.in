@@ -737,10 +737,10 @@ WARN_LOGFILE           =
 
 INPUT                  = @srcdir@/Documentation/DbaManual \
                          @srcdir@/Documentation/ImplementorManual \
-                         @srcdir@/Documentation/ImporterManual \
                          @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/Manual \
                          @srcdir@/Documentation/RefManual \
+                         @srcdir@/Documentation/ToolsManual \
                          @srcdir@/Documentation/UserManual \
                          @srcdir@/Doxygen/js \
                          @srcdir@/arangod \

@@ -91,31 +91,42 @@ Handler::status_e RestUploadHandler::execute() {
 
   char* filename = NULL;
   
-  if (TRI_GetTempName("uploads", &filename, true) != TRI_ERROR_NO_ERROR) {
+  if (TRI_GetTempName("uploads", &filename, false) != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not generate temp file");
     return Handler::HANDLER_FAILED;
   }
 
   char* relative = TRI_GetFilename(filename);
 
+  LOGGER_TRACE("saving uploaded file of length " << _request->bodySize() << 
+               " in file '" << filename << "', relative '" << relative << "'");
+
   try {
     FileUtils::spit(string(filename), _request->body(), _request->bodySize());
+    TRI_Free(TRI_CORE_MEM_ZONE, filename);
   }
   catch (...) {
-    TRI_Free(TRI_CORE_MEM_ZONE, filename);
     TRI_Free(TRI_CORE_MEM_ZONE, relative);
+    TRI_Free(TRI_CORE_MEM_ZONE, filename);
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not save file");
     return Handler::HANDLER_FAILED;
   }
+  
+  char* fullName = TRI_Concatenate2File("uploads", relative);
+  TRI_Free(TRI_CORE_MEM_ZONE, relative);
  
   // create the response
   _response = createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"filename\":\"uploads/").appendText(relative).appendText("\"}");
+  
+  TRI_json_t json;
     
-  TRI_Free(TRI_CORE_MEM_ZONE, filename);
-  TRI_Free(TRI_CORE_MEM_ZONE, relative);
-
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "filename", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, fullName));
+  
+  generateResult(HttpResponse::CREATED, &json);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+    
   // success
   return Handler::HANDLER_DONE;
 }

@@ -388,7 +388,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       
       adapterUI.addControlChangeCollections(updateAttributeExamples);
       adapterUI.addControlChangePriority();
-      nodeShaperUI.addControlOpticLabelAndColour();
+      nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
       
       /*
       buttons.appendChild(nodeShaperDropDown);

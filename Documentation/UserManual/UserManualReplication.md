@@ -570,9 +570,16 @@ limitations may be removed in later versions of ArangoDB:
   operations on a slave. ArangoDB currently does not prevent users from carrying out
   their own write operations on slaves, though this might lead to undefined behavior
   and the replication applier stopping.
-- the replication logger will only log write operations for non-system collections. 
-  Write operations for system collections are currently not logged, and thus will not
-  be shipped to slaves.
+- the replication logger will log write operations for all user-defined collections and
+  only some system collections. Write operations for the following system collections 
+  are excluded intentionally: `_trx`, `_replication`, `_users`, `_aal`, `_fishbowl`, 
+  `_modules` and `_routing`. Write operations for the following system collections
+  will be logged: `_aqlfunctions`, `_graphs`.
+- Foxx applications consist of database entries and application scripts in the file system.
+  The file system parts of Foxx applications are not tracked anywhere and thus not 
+  replicated in current versions of ArangoDB. To replicate a Foxx application, it is
+  required to copy the application to the remote server and install it there using the
+  `foxx-manager` utility. 
 - master servers do not know which slaves are or will be connected to them. All servers
   in a replication setup are currently only loosely coupled. There currently is no way 
   for a client to query which servers are present in a replication.

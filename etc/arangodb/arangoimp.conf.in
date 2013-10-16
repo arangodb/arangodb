@@ -1,0 +1,3 @@
+[server]
+endpoint = tcp://localhost:8529
+disable-authentication = true

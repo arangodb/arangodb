@@ -256,6 +256,30 @@ static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append a collection name or id to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendCollection (TRI_replication_logger_t* logger,
+                              TRI_string_buffer_t* buffer,
+                              TRI_voc_cid_t cid) {
+  if (cid > 0) {
+    char* name;
+
+    name = TRI_GetCollectionNameByIdVocBase(logger->_vocbase, cid);
+
+    if (name != NULL) {
+      APPEND_STRING(buffer, name);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
+
+      return true;
+    }
+  }
+    
+  APPEND_STRING(buffer, "_unknown");
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free the logger's cap constraint
 /// the function must called under the statusLock
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,13 +550,16 @@ static int LogEvent (TRI_replication_logger_t* logger,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool StringifyCollection (TRI_string_buffer_t* buffer,
-                                 const TRI_voc_cid_t cid) {
+                                 const TRI_voc_cid_t cid,
+                                 char const* name) {
   if (buffer == NULL) {
     return false;
   }
 
   APPEND_STRING(buffer, "\"cid\":\"");
   APPEND_UINT64(buffer, (uint64_t) cid);
+  APPEND_STRING(buffer, "\",\"cname\":\"");
+  APPEND_STRING(buffer, name);
   APPEND_CHAR(buffer, '"');
 
   return true;
@@ -561,6 +588,7 @@ static bool StringifyTickReplication (TRI_string_buffer_t* buffer,
 
 static bool StringifyCreateCollection (TRI_string_buffer_t* buffer,
                                        TRI_voc_cid_t cid,
+                                       char const* name,
                                        TRI_json_t const* json) {
   if (buffer == NULL) {
     return false;
@@ -568,6 +596,8 @@ static bool StringifyCreateCollection (TRI_string_buffer_t* buffer,
 
   APPEND_STRING(buffer, "{\"cid\":\"");
   APPEND_UINT64(buffer, (uint64_t) cid);
+  APPEND_STRING(buffer, "\",\"cname\":\"");
+  APPEND_STRING(buffer, name);
   APPEND_STRING(buffer, "\",\"collection\":");
   APPEND_JSON(buffer, json);
   APPEND_CHAR(buffer, '}');
@@ -580,14 +610,15 @@ static bool StringifyCreateCollection (TRI_string_buffer_t* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool StringifyDropCollection (TRI_string_buffer_t* buffer,
-                                     TRI_voc_cid_t cid) {
+                                     TRI_voc_cid_t cid,
+                                     char const* name) {
   if (buffer == NULL) {
     return false;
   }
 
   APPEND_CHAR(buffer, '{');
 
-  if (! StringifyCollection(buffer, cid)) {
+  if (! StringifyCollection(buffer, cid, name)) {
     return false;
   }
   
@@ -602,7 +633,8 @@ static bool StringifyDropCollection (TRI_string_buffer_t* buffer,
 
 static bool StringifyRenameCollection (TRI_string_buffer_t* buffer,
                                        TRI_voc_cid_t cid,
-                                       char const* name) {
+                                       char const* name,
+                                       char const* newName) {
   
   if (buffer == NULL) {
     return false;
@@ -610,13 +642,13 @@ static bool StringifyRenameCollection (TRI_string_buffer_t* buffer,
 
   APPEND_CHAR(buffer, '{');
 
-  if (! StringifyCollection(buffer, cid)) {
+  if (! StringifyCollection(buffer, cid, name)) {
     return false;
   }
 
   APPEND_STRING(buffer, ",\"collection\":{\"name\":\"");
   // name is user-defined, but does not need escaping as collection names are "safe"
-  APPEND_STRING(buffer, name);
+  APPEND_STRING(buffer, newName);
   APPEND_STRING(buffer, "\"}}");
 
   return true;
@@ -628,6 +660,7 @@ static bool StringifyRenameCollection (TRI_string_buffer_t* buffer,
 
 static bool StringifyCreateIndex (TRI_string_buffer_t* buffer,
                                   TRI_voc_cid_t cid,
+                                  char const* name,
                                   TRI_json_t const* json) {
   if (buffer == NULL) {
     return false;
@@ -635,7 +668,7 @@ static bool StringifyCreateIndex (TRI_string_buffer_t* buffer,
 
   APPEND_CHAR(buffer, '{');
   
-  if (! StringifyCollection(buffer, cid)) {
+  if (! StringifyCollection(buffer, cid, name)) {
     return false;
   }
 
@@ -652,6 +685,7 @@ static bool StringifyCreateIndex (TRI_string_buffer_t* buffer,
 
 static bool StringifyDropIndex (TRI_string_buffer_t* buffer,
                                 TRI_voc_cid_t cid,
+                                char const* name,
                                 TRI_idx_iid_t iid) {
   if (buffer == NULL) {
     return false;
@@ -659,7 +693,7 @@ static bool StringifyDropIndex (TRI_string_buffer_t* buffer,
 
   APPEND_CHAR(buffer, '{');
   
-  if (! StringifyCollection(buffer, cid)) {
+  if (! StringifyCollection(buffer, cid, name)) {
     return false;
   }
   
@@ -674,7 +708,8 @@ static bool StringifyDropIndex (TRI_string_buffer_t* buffer,
 /// @brief stringify a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
+static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
+                                        TRI_string_buffer_t* buffer,
                                         TRI_document_collection_t* document,
                                         TRI_voc_document_operation_e type,
                                         TRI_df_marker_t const* marker,
@@ -714,7 +749,7 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   APPEND_CHAR(buffer, '{');
   
   if (withCid) {
-    if (! StringifyCollection(buffer, document->base.base._info._cid)) {
+    if (! StringifyCollection(buffer, document->base.base._info._cid, document->base.base._info._name)) {
       return false;
     }
     APPEND_CHAR(buffer, ',');
@@ -771,12 +806,16 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
-      APPEND_CHAR(buffer, '/');
+      if (! AppendCollection(logger, buffer, e->_fromCid)) {
+        return false;
+      }
+      APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      APPEND_UINT64(buffer, (uint64_t) e->_toCid);
-      APPEND_CHAR(buffer, '/');
+      if (! AppendCollection(logger, buffer, e->_toCid)) {
+        return false;
+      }
+      APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, toKey);
       APPEND_CHAR(buffer, '"');
     }
@@ -1219,7 +1258,8 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
   
       buffer = GetBuffer(logger);
 
-      if (! StringifyDocumentOperation(buffer, 
+      if (! StringifyDocumentOperation(logger, 
+                                       buffer, 
                                        document, 
                                        trxOperation->_type, 
                                        trxOperation->_marker, 
@@ -1891,7 +1931,7 @@ int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyCreateCollection(buffer, cid, json)) {
+  if (! StringifyCreateCollection(buffer, cid, name, json)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -1928,7 +1968,7 @@ int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyDropCollection(buffer, cid)) {
+  if (! StringifyDropCollection(buffer, cid, name)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -1947,13 +1987,14 @@ int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
 
 int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
                                         TRI_voc_cid_t cid,
-                                        char const* name,
+                                        char const* oldName,
+                                        char const* newName,
                                         TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
   
-  if (TRI_ExcludeCollectionReplication(name)) {
+  if (TRI_ExcludeCollectionReplication(oldName)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1965,7 +2006,7 @@ int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyRenameCollection(buffer, cid, name)) {
+  if (! StringifyRenameCollection(buffer, cid, oldName, newName)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -2003,7 +2044,7 @@ int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyCreateCollection(buffer, cid, json)) {
+  if (! StringifyCreateCollection(buffer, cid, name, json)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -2042,7 +2083,7 @@ int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyCreateIndex(buffer, cid, json)) {
+  if (! StringifyCreateIndex(buffer, cid, name, json)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -2080,7 +2121,7 @@ int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyDropIndex(buffer, cid, iid)) {
+  if (! StringifyDropIndex(buffer, cid, name, iid)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -2106,9 +2147,12 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   TRI_replication_operation_e type;
+  char* name;
   int res;
+
+  name = document->base.base._info._name;
   
-  if (TRI_ExcludeCollectionReplication(document->base.base._info._name)) {
+  if (TRI_ExcludeCollectionReplication(name)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -2127,7 +2171,8 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
 
   buffer = GetBuffer(logger);
 
-  if (! StringifyDocumentOperation(buffer, 
+  if (! StringifyDocumentOperation(logger,
+                                   buffer, 
                                    document, 
                                    docType, 
                                    marker, 

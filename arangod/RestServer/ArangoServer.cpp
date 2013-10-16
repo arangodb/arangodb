@@ -563,6 +563,7 @@ void ArangoServer::buildApplicationServer () {
   }
   
   // set the temp-path
+  _tempPath = StringUtils::rTrim(_tempPath, TRI_DIR_SEPARATOR_STR); 
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
@@ -1269,7 +1270,9 @@ void ArangoServer::openDatabases () {
   
   int res = TRI_InitServer(_server, 
                            _applicationEndpointServer,
-                           _databasePath.c_str(), 
+                           _databasePath.c_str(),
+                           _applicationV8->appPath().c_str(),
+                           _applicationV8->devAppPath().c_str(), 
                            &defaults, 
                            _disableReplicationLogger, 
                            _disableReplicationApplier);

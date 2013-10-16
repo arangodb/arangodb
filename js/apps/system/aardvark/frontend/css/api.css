@@ -5,7 +5,7 @@
 .api-actions {
   margin: 0 !important;
   padding: 0;
-  background-color: rgba(0,0,0,0.03) !important;
+  background-color: rgba(0,0,0,0.15) !important;
 }
 
 .api-actions .container {
@@ -13,7 +13,7 @@
   margin-bottom: 0 !important;
   margin-left: 5px !important;
   margin-right: 5px !important;
-  padding-top: 40px !important;
+  padding-top: 13px !important;
   padding-bottom: 10px !important;
 }
 
@@ -24,7 +24,7 @@
 }
 
 .api-actions .resource .heading h2 a {
-  color: #686766 !important;
+  color: #000000 !important;
   font-weight: 300 !important;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .api-actions .endpoint .operations .content h4 {
-  font-weight: 400 !important;
+  font-weight: 700 !important;
 }
 
 .api-actions .toggleOperation,
@@ -73,6 +73,8 @@
   font-size: 14px !important;
   font-weight: 300 !important;
   padding: 8px 16px !important;
+  float: right !important;
+  margin-top: 10px !important;
 }
 
 .api-actions .resource > .heading > .options {

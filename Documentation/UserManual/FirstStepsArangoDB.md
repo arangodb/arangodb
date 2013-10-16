@@ -69,6 +69,10 @@ The ArangoDB database package comes with the following programs:
   administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
 - _arangoimp_: A bulk importer for the ArangoDB server.
   See @ref ImpManual
+- _arangodump_: A tool to create backups of an ArangoDB database. See
+  @ref DumpManual
+- _arangorestore_: A tool to reload data from a backup into an ArangoDB database.
+  See @ref RestoreManual
 - _foxx-manager_: a shell script to administer Foxx applications.
   See @ref UserManualFoxxManager
 - _arango-dfdb_: a datafile debugger for ArangoDB. It is intended to be

@@ -627,16 +627,19 @@ bool ApplicationV8::prepare () {
       }
     }
   }
+  else {
+    LOGGER_FATAL_AND_EXIT("no value has been specified for --javascript.app-path.");
+  }
 
   if (! _devAppPath.empty()) {
-    if (! FileUtils::isDirectory(_devAppPath.c_str())) {
+    if (! _performUpgrade && ! FileUtils::isDirectory(_devAppPath.c_str())) {
       LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
       // TODO: decide if we want to abort server start here
     }
     else {
       const string databasesPath = _devAppPath + TRI_DIR_SEPARATOR_CHAR + "databases";
 
-      if (! FileUtils::isDirectory(databasesPath.c_str())) {
+      if (! _performUpgrade && ! FileUtils::isDirectory(databasesPath.c_str())) {
         LOGGER_ERROR("required dev-app-path sub-directory '" << _devAppPath << "/databases' does not exist.");
       }
     }

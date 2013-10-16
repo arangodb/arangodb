@@ -279,19 +279,20 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   int    fileDescriptor;
 
   fileHandle = CreateFileA(filename,
-                          GENERIC_READ | GENERIC_WRITE,
-                          FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                          NULL,
-                          CREATE_NEW,
-                          0,
-                          NULL);
+                           GENERIC_READ | GENERIC_WRITE,
+                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL,
+                           CREATE_NEW,
+                           0,
+                           NULL);
 
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle( (intptr_t)(fileHandle), O_RDWR| _O_BINARY);
+  fileDescriptor = _open_osfhandle((intptr_t) fileHandle, O_RDWR | _O_BINARY);
+
   return fileDescriptor;
 
 /*

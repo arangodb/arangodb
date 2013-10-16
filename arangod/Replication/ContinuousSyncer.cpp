@@ -331,13 +331,27 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
                                        string& errorMsg) {
   updateTick = false;
 
-  // extract "cid"
-  TRI_voc_cid_t cid = getCid(json);
+  // extract "cname"
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+  TRI_voc_cid_t cid = 0;
+
+  if (! cname.empty()) {
+    TRI_vocbase_col_t const* col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
+ 
+    if (col != 0) {
+      cid = col->_cid;
+    }
+  }
 
   if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    cid = getCid(json);
   }
-  
+
+  if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+
   // extract "key"
   TRI_json_t const* keyJson = JsonHelper::getArrayElement(json, "key");
 
@@ -496,17 +510,31 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    TRI_voc_cid_t cid = getCid(collection);
-
-    if (cid == 0) {
-      TRI_FreeTransaction(trx);
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-
     uint64_t numOperations = JsonHelper::getNumericValue<uint64_t>(collection, "operations", 0);
 
     if (numOperations > 0) {
+      // extract collection name
+      const string cname = JsonHelper::getStringValue(collection, "name", "");
+      TRI_voc_cid_t cid = 0;
+
+      if (! cname.empty()) {
+        TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
+
+        if (col != 0) {
+          cid = col->_cid;
+        }
+      }
+
+      if (cid == 0) {
+        cid = getCid(collection);
+      }
+
+      if (cid == 0) {
+        TRI_FreeTransaction(trx);
+
+        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      }
+
       res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -576,12 +604,6 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
     
 int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
-  const TRI_voc_cid_t cid = getCid(json);
-
-  if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-
   TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
   const string name = JsonHelper::getStringValue(collectionJson, "name", "");
 
@@ -589,7 +611,17 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+  TRI_vocbase_col_t* col = 0;
+
+  if (! cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
+  }
+
+  if (col == 0) {
+    TRI_voc_cid_t cid = getCid(json);
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

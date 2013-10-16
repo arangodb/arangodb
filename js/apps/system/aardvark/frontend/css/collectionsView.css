@@ -24,7 +24,7 @@
 
 .thumbnails2 {
   padding-top: 1px !important;
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0.15);
   margin-left:0;
   margin-bottom:0;
 }
@@ -34,8 +34,8 @@
   padding-left: 0px;
   padding-right: 0px;
   padding-bottom: 5px;
-  padding-top: 40px;
-  background-color: rgba(0, 0, 0, 0.03);
+  padding-top: 13px;
+  background-color: rgba(0, 0, 0, 0.15);
 }
 
 .thumbnails li {
@@ -73,8 +73,14 @@
   margin-top: 3px;
   padding: 2px;
   vertical-align: middle;
-  width:207px !important;
+  width:212px !important;
   border-radius: 0px 0px 0px 0px !important;
+}
+
+#searchInput:focus {
+  outline: none;
+  border-color: #8AA051;
+  box-shadow: 0 0 10px #8AA051;
 }
 
 #searchSubmit {
@@ -211,7 +217,7 @@ border-top: 0;
 }
 
 #collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0.15);
   position:relative;
   display:none;
   margin-left: 5px;

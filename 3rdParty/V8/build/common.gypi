@@ -146,6 +146,14 @@
               'CAN_USE_ARMV7_INSTRUCTIONS=1',
             ],
           }],
+          ['armv7==0', {
+            'target_conditions': [
+              ['_toolset=="target"', {
+                'cflags': ['-march=armv6',],
+                'ldflags': ['-march=armv6',],
+              }],
+            ],
+          }],
           [ 'v8_can_use_unaligned_accesses=="true"', {
             'defines': [
               'CAN_USE_UNALIGNED_ACCESSES=1',
@@ -167,7 +175,7 @@
           [ 'v8_can_use_vfp3_instructions=="true" or arm_neon==1 or \
              arm_fpu=="vfpv3" or arm_fpu=="vfpv3-d16"', {
             'defines': [
-              'CAN_USE_VFP3_INSTRUCTIONS',
+              # 'CAN_USE_VFP3_INSTRUCTIONS',
             ],
           }],
           [ 'v8_use_arm_eabi_hardfloat=="true"', {
@@ -414,13 +422,13 @@
           ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="netbsd" \
             or OS=="android"', {
             'cflags!': [
-              '-O2',
+              '-O3',
               '-Os',
             ],
             'cflags': [
               '-fdata-sections',
               '-ffunction-sections',
-              '-O3',
+              '-O2',
             ],
             'conditions': [
               [ 'gcc_version==44 and clang==0', {

@@ -30,9 +30,11 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
 
+using namespace triagens::arango;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
@@ -225,16 +227,8 @@ namespace triagens {
     
         int createCollection (struct TRI_json_s const*,
                               struct TRI_vocbase_col_s**,
+                              bool,
                               TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the structure of a collection TODO MOVE
-////////////////////////////////////////////////////////////////////////////////
-
-        int processRestoreCollection (struct TRI_json_s* const,
-                                      bool,
-                                      TRI_server_id_t,
-                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a restore command for a specific collection
@@ -243,10 +237,35 @@ namespace triagens {
         void handleCommandRestoreCollection ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a restore command for a specific collection
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleCommandRestoreIndexes ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+        int processRestoreCollection (struct TRI_json_s* const,
+                                      bool,
+                                      bool,
+                                      TRI_server_id_t,
+                                      std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the indexes of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+        int processRestoreIndexes (struct TRI_json_s* const,
+                                   TRI_server_id_t,
+                                   std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+        int applyCollectionDumpMarker (CollectionNameResolver const&,
+                                       struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,
@@ -257,16 +276,20 @@ namespace triagens {
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreDataBatch (struct TRI_transaction_collection_s*,
+        int processRestoreDataBatch (CollectionNameResolver const&,
+                                     struct TRI_transaction_collection_s*,
                                      TRI_server_id_t,
+                                     bool,
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreData (TRI_voc_cid_t,
+        int processRestoreData (CollectionNameResolver const&, 
+                                TRI_voc_cid_t,
                                 TRI_server_id_t,
+                                bool,
                                 std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////

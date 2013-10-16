@@ -322,7 +322,6 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t*,
                                            struct TRI_doc_mptr_s*,
                                            struct TRI_doc_mptr_s*,
                                            TRI_df_marker_t*,
-                                           TRI_voc_size_t,
                                            TRI_voc_rid_t,
                                            bool,
                                            bool*);

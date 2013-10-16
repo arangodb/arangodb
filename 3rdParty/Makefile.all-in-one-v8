@@ -19,7 +19,11 @@ BUILT_SOURCES += @V8_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
+if ENABLE_ARM
+	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" GYP_DEFINES="armv7=0" $(MAKE) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+else
 	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+endif
 
 	touch @srcdir@/.v8-build-@TRI_BITS@
 

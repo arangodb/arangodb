@@ -105,14 +105,14 @@ string const& RestVersionHandler::queue () const {
 
 HttpHandler::status_e RestVersionHandler::execute () {
   TRI_json_t result;
-  TRI_json_t server;
-  TRI_json_t version;
 
   TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
 
+  TRI_json_t server;
   TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
 
+  TRI_json_t version;
   TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
