@@ -386,7 +386,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       
       buttons.appendChild(configureDropDown);
       
-      adapterUI.addControlChangeCollections(updateAttributeExamples);
+      adapterUI.addControlChangeCollections(function() {
+        updateAttributeExamples();
+        graphViewer.start();
+      });
       adapterUI.addControlChangePriority();
       nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
       
