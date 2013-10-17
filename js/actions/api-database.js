@@ -81,7 +81,7 @@ var API = "_api/database";
 /// @fn JSF_get_api_database_current
 /// @brief retrieves information about the current database
 ///
-/// @RESTHEADER{GET /_api/database/current`,retrieves information about the current database}
+/// @RESTHEADER{GET /_api/database/current,retrieves information about the current database}
 ///
 /// @RESTDESCRIPTION
 /// Retrieves information about the current database
