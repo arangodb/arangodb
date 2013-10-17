@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* fixed issue #614: API : Typo in : Request URL /_api/database/current
+
 * fixed issue #609: Graph viz tool - different background color 
 
 * fixed issue #608: arangosh config files - eventually missing in the manual
