@@ -553,7 +553,7 @@ TRI_shape_collection_t* TRI_OpenShapeCollection (TRI_vocbase_t* vocbase,
 /// @brief closes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection) {
+int TRI_CloseShapeCollection (TRI_shape_collection_t* collection) {
   return TRI_CloseCollection(&collection->base);
 }
 
