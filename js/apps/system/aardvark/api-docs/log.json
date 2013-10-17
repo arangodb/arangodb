@@ -8,57 +8,54 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if invalid values are specified for <em>upto</em> or <em>level</em>, or if  the method is called in a database other than <em>_system</em>. ",
+                            "reason": "is returned if invalid values are specified for <em>upto</em> or <em>level</em>. ",
                             "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the log is requested for any database other than <em>_system</em>. ",
+                            "code": "403"
                         }
                     ],
                     "parameters": [
                         {
                             "dataType": "String",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "upto",
                             "description": "Returns all log entries up to log level <em>upto</em>. Note that <em>upto</em> must be: - <em>fatal</em> or <em>0</em> - <em>error</em> or <em>1</em> - <em>warning</em> or <em>2</em> - <em>info</em> or <em>3</em> - <em>debug</em>  or <em>4</em> The default value is <em>info</em>. "
                         },
                         {
                             "dataType": "String",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "level",
                             "description": "Returns all log entries of log level <em>level</em>. Note that the URL parameters <em>upto</em> and <em>level</em> are mutually exclusive. "
                         },
                         {
                             "dataType": "Number",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "start",
                             "description": "Returns all log entries such that their log entry identifier (<em>lid</em> value)  is greater or equal to <em>start</em>. "
                         },
                         {
                             "dataType": "Number",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "size",
                             "description": "Restricts the result to at most <em>size</em> log entries. "
                         },
                         {
                             "dataType": "Number",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "offset",
                             "description": "Starts to return log entries skipping the first <em>offset</em> log entries. <em>offset</em> and <em>size</em> can be used for pagination. "
                         },
                         {
                             "dataType": "String",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "search",
                             "description": "Only return the log entries containing the text specified in <em>search</em>. "
                         },
                         {
                             "dataType": "String",
-                            "paramType": "path",
-                            "required": "false",
+                            "paramType": "query",
                             "name": "sort",
                             "description": "Sort the log entries either ascending (if <em>sort</em> is <em>asc</em>) or descending  (if <em>sort</em> is <em>desc</em>) according to their <em>lid</em> values. Note that the <em>lid</em> imposes a chronological order. The default value is <em>asc</em>. "
                         }

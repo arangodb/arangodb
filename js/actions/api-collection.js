@@ -300,9 +300,9 @@ function post_api_collection (req, res) {
 ///
 /// @RESTHEADER{GET /_api/collection,reads all collections}
 ///
-/// @RESTURLPARAMETERS
+/// @RESTQUERYPARAMETERS
 ///
-/// @RESTURLPARAM{excludeSystem,boolean,optional}
+/// @RESTQUERYPARAM{excludeSystem,boolean,optional}
 /// Whether or not system collections should be excluded from the result.
 ///
 /// @RESTDESCRIPTION
@@ -668,10 +668,12 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAM{collection-name,string,required}
 /// The name of the collection.
 ///
-/// @RESTURLPARAM{withRevisions,boolean,optional}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{withRevisions,boolean,optional}
 /// Whether or not to include document revision ids in the checksum calculation.
 ///
-/// @RESTURLPARAM{withData,boolean,optional}
+/// @RESTQUERYPARAM{withData,boolean,optional}
 /// Whether or not to include document body data in the checksum calculation.
 ///
 /// @RESTDESCRIPTION

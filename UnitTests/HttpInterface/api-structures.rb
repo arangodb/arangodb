@@ -4,7 +4,7 @@ require 'rspec'
 require './arangodb.rb'
 
 describe ArangoDB do
-  api = "/_api/structures"
+  api = "/_api/structure"
   prefix = "structures"
 
   context "dealing with structured documents" do
