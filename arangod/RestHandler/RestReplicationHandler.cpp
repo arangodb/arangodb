@@ -1919,7 +1919,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
       
-      TRI_FreeShapedJson(primary->_shaper, shaped);
+      TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);
 
       return res;
     }
