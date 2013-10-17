@@ -1,6 +1,10 @@
 v1.4.0-XXXXX (2013-XX-XX)
 -------------------------
 
+* added foxx-manager `replace` command
+
+* added foxx-manager `installed` command (a more intuitive alias for `list`) 
+
 * fixed issue #617: Swagger API is missing '/_api/version'
 
 * fixed issue #615: Swagger API: Some commands have no parameter entry forms
