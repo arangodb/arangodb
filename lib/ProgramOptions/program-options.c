@@ -1396,7 +1396,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   }
 
   optind = 1;
-  maxIdx = options->_items._length;
+  maxIdx = (int) options->_items._length;
 
   while (true) {
     c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);

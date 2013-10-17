@@ -446,8 +446,8 @@ bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
   }
 
   result->_sid = accessor->_shape->_sid;
-  result->_data.data = begin;
-  result->_data.length = ((char const*) end) - ((char const*) begin);
+  result->_data.data = (char*) begin;
+  result->_data.length = (uint32_t) (((char const*) end) - ((char const*) begin));
 
   return true;
 }

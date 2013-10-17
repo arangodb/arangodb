@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, nonpropdel: true, white: true, plusplus: true, evil: true */
-/*global require, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
+/*global require, console, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -86,7 +86,9 @@ function clear () {
 /// @brief global 'console'
 ////////////////////////////////////////////////////////////////////////////////
 
-var console = require("console");
+if (console === undefined) {
+  var console = require("console");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'db'

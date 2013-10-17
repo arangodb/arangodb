@@ -7,9 +7,11 @@ window.Foxx = Backbone.Model.extend({
     "version": "",
     "mount": "",
     "description": "",
-    "git": ""
+    "git": "",
+    "isSystem": false,
+    "development": false
   },
-  
+
   url: function() {
     'use strict';
 

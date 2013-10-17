@@ -51,7 +51,7 @@ var ArangoError = arangodb.ArangoError;
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{username,string,required}
-/// The username of the user.
+/// The name of the user.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -103,7 +103,7 @@ function get_api_user (req, res) {
 ///
 /// @RESTHEADER{POST /_api/user,creates user}
 ///
-/// @RESTBODYPARAM{user,json,required}
+/// @RESTBODYPARAM{body,json,required}
 ///
 /// @RESTDESCRIPTION
 ///
@@ -174,7 +174,12 @@ function post_api_user (req, res) {
 ///
 /// @RESTHEADER{PUT /_api/user/{username},replaces user}
 ///
-/// @RESTBODYPARAM{user,json,required}
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{username,string,required}
+/// The name of the user.
+///
+/// @RESTBODYPARAM{body,json,required}
 ///
 /// @RESTDESCRIPTION
 ///
@@ -266,7 +271,12 @@ function put_api_user (req, res) {
 ///
 /// @RESTHEADER{PATCH /_api/user/{username},updates user}
 ///
-/// @RESTBODYPARAM{userdata,json,required}
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{username,string,required}
+/// The name of the user.
+///
+/// @RESTBODYPARAM{body,json,required}
 ///
 /// @RESTDESCRIPTION
 ///
@@ -359,12 +369,16 @@ function patch_api_user (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/user/{username},removes a user}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{username,string,required}
+/// The name of the user.
+///
 /// @RESTDESCRIPTION
 ///
 /// Removes an existing user, identified by `username`.
 ///
-/// If the user can be removed by the server, the server will respond with 
-/// `HTTP 202`. 
+/// If the user can be removed, the server will respond with `HTTP 202`. 
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///

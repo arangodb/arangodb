@@ -7,3 +7,4 @@ TOC {#UserManualFoxxTOC}
   - @ref UserManualFoxxDetailsController
   - @ref UserManualFoxxDetailsModel
   - @ref UserManualFoxxDetailsRepository
+  - @ref UserManualFoxxDevelopment

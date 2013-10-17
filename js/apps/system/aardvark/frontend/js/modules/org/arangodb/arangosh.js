@@ -155,7 +155,8 @@ exports.HELP = exports.createHelpHeadline("Help") +
   ' > db._listDatabases()                  list existing databases    ' + "\n" +
   ' > help                                 show help pages            ' + "\n" +
   ' > exit                                                            ' + "\n" +
-  'Note: collection names may be cached in arangosh. To refresh, use: ' + "\n" +
+  'Note: collection names and statuses may be cached in arangosh.     ' + "\n" +
+  'To refresh the list of collections and their statuses, issue:      ' + "\n" +
   ' > db._collections();                                              ' + "\n" +
   '                                                                   ' + "\n" +
   (internal.printBrowser ?

@@ -99,10 +99,10 @@
     }
   
     // helper function to define a task
-    function addTask (name, description, code) {
+    function addTask (name, description, fn) {
       // "description" is a textual description of the task that will be printed out on screen
       // "maxVersion" is the maximum version number the task will be applied for
-      var task = { name: name, description: description, code: code };
+      var task = { name: name, description: description, func: fn };
 
       allTasks.push(task);
 
@@ -114,7 +114,7 @@
 
     // helper function to define a task that is run on upgrades only, but not on initialisation
     // of a new empty database
-    function addUpgradeTask (name, description, code) {
+    function addUpgradeTask (name, description, fn) {
       if (isInitialisation) {
         // if we are initialising a new database, set the task to completed
         // without executing it. this saves unnecessary migrations for empty
@@ -123,7 +123,7 @@
       }
       else {
         // if we are upgrading, execute the task
-        addTask(name, description, code);
+        addTask(name, description, fn);
       }
     }
 
@@ -150,90 +150,20 @@
       // we assume that we are initialising a new, empty database
       isInitialisation = true;
     }
+    
+    var procedure = isInitialisation ? "initialisation" : "upgrade";
    
-    if (isInitialisation) { 
-      logger.log("preparing database directory for version " + internal.db._version());
-    }
-    else {
+    if (! isInitialisation) { 
       logger.log("starting upgrade from version " + (lastVersion || "unknown") 
                   + " to " + internal.db._version());
     }
 
+
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
-
-    addTask("checkSystemApps", "check Foxx system apps directory", function () {
-      var dir = module.systemAppPath();
-      if (! fs.exists(dir)) {
-        logger.log("creating system apps directory '" + dir + "'");
-        fs.makeDirectory(dir);
-      }
-      else if (! fs.isDirectory(dir)) {
-        logger.error("expected a directory at '" + dir + "', found something else");
-        return false;
-      }
-
-      return true;
-    });
     
-    addTask("moveSystemApp", "move Foxx system app into system directory", function () {
-      var dir = module.systemAppPath();
-
-      if (! fs.exists(dir)) {
-        logger.error("apps directory '" + dir + "' does not exist.");
-        return false;
-      }
-
-      // we only need to move apps in the _system database
-      if (db._name() !== '_system') {
-        return true;
-      }
-
-      var src = fs.join(module.basePaths().appPath, 'aardvark');
-      if (! fs.isDirectory(src)) {
-        // aardvark app not found, ignore this error
-        return true;
-      }
-
-      var dst = fs.join(dir, 'aardvark');
-
-      if (fs.isDirectory(dst)) {
-        // destination directory already exists
-        return true;
-      }
-
-      logger.log("renaming directory '" + src + "' to '" + dst + "'");
-      // fs.move() will throw if moving doesn't work
-      fs.move(src, dst);
-
-      return true;
-    });
-    
-    addTask("checkProductionApps", "check Foxx apps directory", function () {
-      var dir = module.appPath();
-      if (! fs.exists(dir)) {
-        logger.log("creating apps directory '" + dir + "'");
-        // create base directory first
-        try {
-          fs.makeDirectory(fs.join(module.basePaths().appPath, 'databases'));
-        }
-        catch (err) {
-          // ignore this error intentionally
-        }
-
-        // create per-database apps directory
-        fs.makeDirectory(dir);
-      }
-      else if (! fs.isDirectory(dir)) {
-        logger.error("expected a directory at '" + dir + "', found something else");
-        return false;
-      }
-
-      return true;
-    });
-    
-    addTask("moveProductionApps", "move Foxx apps into per-database directory", function () {
+    addUpgradeTask("moveProductionApps", "move Foxx apps into per-database directory", function () {
       var dir = module.appPath();
 
       if (! fs.exists(dir)) {
@@ -279,35 +209,10 @@
 
       return true;
     });
-   
-    if (internal.developmentMode) { 
-      // this task only needs to be run in development mode
-      addTask("checkDevelopmentApps", "check Foxx development apps directory", function () {
-        var dir = module.devAppPath();
-        if (! fs.exists(dir)) {
-          logger.log("creating dev apps directory '" + dir + "'");
-          // create base directory first
-          try {
-            fs.makeDirectory(fs.join(module.basePaths().devAppPath, 'databases'));
-          }
-          catch (err) {
-            // ignore this error intentionally
-          }
-
-          // create per-database apps directory
-          fs.makeDirectory(dir);
-        }
-        else if (! fs.isDirectory(dir)) {
-          logger.error("expected a directory at '" + dir + "', found something else");
-          return false;
-        }
-
-        return true;
-      });
-    }
     
     if (internal.developmentMode) {
-      addTask("moveDevApps", "move Foxx production apps into per-database directory", function () {
+      addUpgradeTask("moveDevApps", 
+                     "move Foxx development apps into per-database directory", function () {
         var dir = module.devAppPath();
 
         if (! fs.exists(dir)) {
@@ -552,26 +457,6 @@
       return true;
     });
   
-    // set up the collection _structures
-    addTask("setupStructures", "setup _structures collection", function () {
-      return createSystemCollection("_structures", { waitForSync : true });
-    });
-  
-    // create a unique index on collection attribute in _structures
-    addTask("createStructuresIndex",
-            "create index on collection attribute in _structures collection",
-      function () {
-        var structures = getCollection("_structures");
-
-        if (! structures) {
-          return false;
-        }
-
-        structures.ensureUniqueConstraint("collection");
-
-        return true;
-    });
-
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
       return createSystemCollection("_aal", { waitForSync : true });
@@ -594,28 +479,7 @@
     
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-      return createSystemCollection("_aqlfunctions", { waitForSync : false });
-    });
-
-    // set up the collection _fishbowl
-    addTask("setupFishbowl", "setup _fishbowl collection", function () {
-      return createSystemCollection("_fishbowl", { waitForSync : true });
-    });
-    
-    // create a unique index on collection attribute in _aal
-    addTask("createFishbowlIndex",
-            "create indexes on collection attribute in _fishbowl collection",
-      function () {
-        var fishbowl = getCollection("_fishbowl");
-
-        if (! fishbowl) {
-          return false;
-        }
-
-        fishbowl.ensureFulltextIndex("description");
-        fishbowl.ensureFulltextIndex("name");
-
-        return true;
+      return createSystemCollection("_aqlfunctions");
     });
 
     // set up the collection _trx
@@ -674,15 +538,9 @@
 
       return true;
     });
+
+
     
-    /* not yet 
-    addTask("renameGraphs", "Rename _graphs to arangodb_graphs", function () {
-      db._collection('_graphs').rename('arangodb_graphs', true);
-
-      return true;
-    });
-    */
-
     // loop through all tasks and execute them
     logger.log("Found " + allTasks.length + " defined task(s), "
                 + activeTasks.length + " task(s) to run");
@@ -702,7 +560,7 @@
 
         try {
           // execute task
-          result = task.code();
+          result = task.func();
         }
         catch (e) {
           logger.error("caught exception: " + (e.stack || ""));
@@ -720,7 +578,7 @@
           logger.log("Task successful");
         }
         else {
-          logger.error("Task failed. Aborting upgrade procedure.");
+          logger.error("Task failed. Aborting " + procedure + " procedure.");
           logger.error("Please fix the problem and try starting the server again.");
           return false;
         }
@@ -732,7 +590,7 @@
       versionFile,
       JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
-    logger.log("Upgrade successfully finished");
+    logger.log(procedure + " successfully finished");
 
     // successfully finished
     return true;

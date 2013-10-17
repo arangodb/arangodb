@@ -557,7 +557,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
     ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
-    ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
+    ("javascript.startup-directory", &_startupPath, "path to the directory containing JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 }
@@ -608,43 +608,11 @@ bool ApplicationV8::prepare () {
     LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
   }
   
-  // check whether app-paths exist
-  if (! _appPath.empty()) {
-    if (! FileUtils::isDirectory(_appPath.c_str())) {
-      LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
-      // TODO: decide if we want to abort server start here
-    }
-    else {
-      const string databasesPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "databases";
-
-      if (! FileUtils::isDirectory(databasesPath.c_str())) {
-        LOGGER_ERROR("required app-path sub-directory '" << _appPath << "/databases' does not exist.");
-      }
-      
-      const string systemPath = _appPath + TRI_DIR_SEPARATOR_CHAR + "system";
-      if (! FileUtils::isDirectory(systemPath.c_str())) {
-        LOGGER_ERROR("required app-path sub-directory '" << _appPath << "/system' does not exist.");
-      }
-    }
-  }
-  else {
+  // check whether app-path was specified
+  if (_appPath.empty()) {
     LOGGER_FATAL_AND_EXIT("no value has been specified for --javascript.app-path.");
   }
 
-  if (! _devAppPath.empty()) {
-    if (! _performUpgrade && ! FileUtils::isDirectory(_devAppPath.c_str())) {
-      LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
-      // TODO: decide if we want to abort server start here
-    }
-    else {
-      const string databasesPath = _devAppPath + TRI_DIR_SEPARATOR_CHAR + "databases";
-
-      if (! _performUpgrade && ! FileUtils::isDirectory(databasesPath.c_str())) {
-        LOGGER_ERROR("required dev-app-path sub-directory '" << _devAppPath << "/databases' does not exist.");
-      }
-    }
-  }
- 
   if (_packagePath.empty()) {
     LOGGER_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
     // TODO: decide if we want to abort server start here
@@ -667,7 +635,7 @@ bool ApplicationV8::prepare () {
   // add v8 options
   if (_v8Options.size() > 0) {
     LOGGER_INFO("using V8 options '" << _v8Options << "'");
-    v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
+    v8::V8::SetFlagsFromString(_v8Options.c_str(), (int) _v8Options.size());
   }
 
   // use a minimum of 1 second for GC
@@ -791,7 +759,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath);
+  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _startupPath);
   TRI_InitV8Shell(context->_context);
 
   {

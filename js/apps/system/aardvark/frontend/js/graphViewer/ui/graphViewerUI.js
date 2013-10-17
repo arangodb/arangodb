@@ -101,7 +101,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       a.onclick = function () {
         $(list).slideToggle(200);
-      }
+      };
 
       return list;
     },
@@ -386,9 +386,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       
       buttons.appendChild(configureDropDown);
       
-      adapterUI.addControlChangeCollections(updateAttributeExamples);
+      adapterUI.addControlChangeCollections(function() {
+        updateAttributeExamples();
+        graphViewer.start();
+      });
       adapterUI.addControlChangePriority();
-      nodeShaperUI.addControlOpticLabelAndColour();
+      nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
       
       /*
       buttons.appendChild(nodeShaperDropDown);
@@ -440,5 +443,5 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     var reducedW = w - 60;
     svg.attr("width", reducedW)
       .style("width", reducedW + "px");
-  }
+  };
 }

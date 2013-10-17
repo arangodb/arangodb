@@ -67,11 +67,12 @@ typedef struct TRI_server_s {
 
   char*                       _basePath;
   char*                       _databasePath;
-  char*                       _appPath;
-  char*                       _devAppPath;
   char*                       _lockFilename;
   char*                       _shutdownFilename;
   char*                       _serverIdFilename;
+  
+  char*                       _appPath;
+  char*                       _devAppPath;
 
   bool                        _disableReplicationLoggers;
   bool                        _disableReplicationAppliers;

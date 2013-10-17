@@ -284,7 +284,7 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
       flush = Z_NO_FLUSH;
     }
     else {
-      strm.avail_in = (end - ptr);
+      strm.avail_in = (uInt) (end - ptr);
       flush = Z_FINISH;
     }
     ptr += strm.avail_in;

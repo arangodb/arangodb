@@ -490,7 +490,7 @@ namespace triagens {
       UniformCharacter::UniformCharacter (size_t length)
         : length(length),
           characters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"),
-          generator(0, characters.size() - 1) {
+          generator(0, (int32_t) characters.size() - 1) {
       }
 
 
@@ -498,7 +498,7 @@ namespace triagens {
       UniformCharacter::UniformCharacter (string const& characters)
         : length(1),
           characters(characters),
-          generator(0, characters.size() - 1) {
+          generator(0, (int32_t) characters.size() - 1) {
       }
 
 
@@ -506,7 +506,7 @@ namespace triagens {
       UniformCharacter::UniformCharacter (size_t length, string const& characters)
         : length(length),
           characters(characters),
-          generator(0, characters.size() - 1) {
+          generator(0, (int32_t) characters.size() - 1) {
       }
 
 

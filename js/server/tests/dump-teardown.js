@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief teardown for import tests
+/// @brief teardown for dump/reload tests
 ///
 /// @file
 ///
@@ -28,16 +28,8 @@
 (function () {
   var db = require("org/arangodb").db;
 
-  db._drop("UnitTestsImportJson1");
-  db._drop("UnitTestsImportJson2");
-  db._drop("UnitTestsImportJson3");
-  db._drop("UnitTestsImportJson4");
-  db._drop("UnitTestsImportCsv1");
-  db._drop("UnitTestsImportCsv2");
-  db._drop("UnitTestsImportTsv1");
-  db._drop("UnitTestsImportTsv2");
-  db._drop("UnitTestsImportVertex");
-  db._drop("UnitTestsImportEdge");
+  db._dropDatabase("UnitTestsDumpSrc");
+  db._dropDatabase("UnitTestsDumpDst");
 })();
 
 return true;

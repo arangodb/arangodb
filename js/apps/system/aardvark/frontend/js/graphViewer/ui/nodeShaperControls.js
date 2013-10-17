@@ -218,7 +218,7 @@ function NodeShaperControls(list, shaper) {
   //  Mixed Buttons
   //////////////////////////////////////////////////////////////////  
   
-  this.addControlOpticLabelAndColour = function() {
+  this.addControlOpticLabelAndColour = function(adapter) {
     var prefix = "control_node_labelandcolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
@@ -226,24 +226,26 @@ function NodeShaperControls(list, shaper) {
         idprefix, [{
           type: "text",
           id: "label-attribute",
-          text: "Vertex label attribute"
+          text: "Vertex label attribute",
+          value: shaper.getLabel() || ""
         },{
           type: "decission",
           id: "samecolour",
           group: "colour",
           text: "Use this attribute for coloring, too",
-          isDefault: true
+          isDefault: (shaper.getLabel() === shaper.getColor())
         },{
           type: "decission",
           id: "othercolour",
           group: "colour",
           text: "Use different attribute for coloring",
-          isDefault: false,
+          isDefault: (shaper.getLabel() !== shaper.getColor()),
           interior: [
             {
               type: "text",
               id: "colour-attribute",
-              text: "Color attribute"
+              text: "Color attribute",
+              value: shaper.getColor() || ""
             }
           ]
         }], function () {

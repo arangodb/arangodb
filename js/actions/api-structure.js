@@ -43,7 +43,8 @@ var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
 var DEFAULT_KEY = "default";
-var API = "_api/structures";
+var API = "_api/structure";
+var checkedIndex = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -244,15 +245,32 @@ Configuration example document:
 }
 
 */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief get structures collection
 ////////////////////////////////////////////////////////////////////////////////
+
+function getCollection () {
+  var c;
+
+  c = db._collection('_structures');
+  if (c === null) {
+    c = db._create('_structures', { isSystem : true });
+  }
+
+  if (c !== null && ! checkedIndex) {
+    c.ensureUniqueConstraint('collection');
+    checkedIndex = true;
+  }
+
+  return c;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-function stringToBoolean(string){
+function stringToBoolean (string){
   if (undefined === string || null === string) {
     return false;
   }
@@ -443,7 +461,7 @@ function saveDocument(req, res, collection, document)  {
 
   var headers = {
     "Etag" :  doc._rev,
-    "location" : "/_api/structures/" + doc._id
+    "location" : "/_api/structure/" + doc._id
   };
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
@@ -1178,6 +1196,10 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1190,7 +1212,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/structures/`document-handle`,reads a document}
+/// @RESTHEADER{GET /_api/structure/`document-handle`,reads a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1265,7 +1287,7 @@ function get_api_structure(req, res)  {
   };
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
   }
   catch (err) {
     // return the doc
@@ -1279,7 +1301,7 @@ function get_api_structure(req, res)  {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/structures/`document-handle`,reads a document header}
+/// @RESTHEADER{HEAD /_api/structure/`document-handle`,reads a document header}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1346,7 +1368,7 @@ function head_api_structure(req, res)  {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/structures/`document-handle`,deletes a document}
+/// @RESTHEADER{DELETE /_api/structure/`document-handle`,deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1440,7 +1462,7 @@ function delete_api_structure (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/structures/`document-handle`,patches a document}
+/// @RESTHEADER{PATCH /_api/structure/`document-handle`,patches a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1564,7 +1586,7 @@ function patch_api_structure (req, res) {
   }
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
     patchDocumentByStructure(req, res, collection, structure, doc, body);
   }
   catch (err) {
@@ -1575,7 +1597,7 @@ function patch_api_structure (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/structures/`document-handle`,replaces a document}
+/// @RESTHEADER{PUT /_api/structure/`document-handle`,replaces a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1725,7 +1747,7 @@ function put_api_structure (req, res) {
   }
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
     replaceDocumentByStructure(req, res, collection, structure, doc, body);
   }
   catch (err) {
@@ -1858,7 +1880,7 @@ function post_api_structure (req, res) {
   }
 
   try {
-    structure = db._collection("_structures").document(collection.name());
+    structure = getCollection().document(collection.name());
     saveDocumentByStructure(req, res, collection, structure, body);
   }
   catch (err3) {

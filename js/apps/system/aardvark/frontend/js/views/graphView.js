@@ -66,6 +66,7 @@ window.graphView = Backbone.View.extend({
     color = $("#nodeColor").val();
     randomStart = !!$("#randomStart").attr("checked");
     
+    var graphName;
     var selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
     if (selected === "collections") {
       // selected two individual collections
@@ -74,8 +75,8 @@ window.graphView = Backbone.View.extend({
     }
     else {
       // selected a "graph"
-      var graphName = $("#graph").val(),
-          graph = _.find(this.graphs, function(g) { return g._key === graphName; });
+      graphName = $("#graph").val();
+      var graph = _.find(this.graphs, function(g) { return g._key === graphName; });
 
       if (graph) {
         ecol = graph.edges;
@@ -97,6 +98,7 @@ window.graphView = Backbone.View.extend({
       nodeCollection: ncol,
       edgeCollection: ecol,
       undirected: undirected,
+      graph: graphName,
       baseUrl: require("internal").arango.databasePrefix("/")
     };
     
