@@ -282,7 +282,7 @@ function post_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph properties
 ///
-/// @RESTHEADER{GET /_api/graph/{graph-name},get the properties of a specific or all graphs}
+/// @RESTHEADER{GET /_api/graph/`graph-name`,get the properties of a specific or all graphs}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -399,7 +399,7 @@ function get_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a graph
 ///
-/// @RESTHEADER{DELETE /_api/graph/{graph-name},delete graph}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`,delete graph}
 ///
 /// @RESTURLPARAMETERS
 ///

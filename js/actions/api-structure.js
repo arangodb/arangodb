@@ -43,7 +43,7 @@ var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
 var DEFAULT_KEY = "default";
-var API = "_api/structures";
+var API = "_api/structure";
 var checkedIndex = false;
 
 // -----------------------------------------------------------------------------
@@ -461,7 +461,7 @@ function saveDocument(req, res, collection, document)  {
 
   var headers = {
     "Etag" :  doc._rev,
-    "location" : "/_api/structures/" + doc._id
+    "location" : "/_api/structure/" + doc._id
   };
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
@@ -1212,7 +1212,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/structures/`document-handle`,reads a document}
+/// @RESTHEADER{GET /_api/structure/`document-handle`,reads a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1301,7 +1301,7 @@ function get_api_structure(req, res)  {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/structures/`document-handle`,reads a document header}
+/// @RESTHEADER{HEAD /_api/structure/`document-handle`,reads a document header}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1368,7 +1368,7 @@ function head_api_structure(req, res)  {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/structures/`document-handle`,deletes a document}
+/// @RESTHEADER{DELETE /_api/structure/`document-handle`,deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1462,7 +1462,7 @@ function delete_api_structure (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/structures/`document-handle`,patches a document}
+/// @RESTHEADER{PATCH /_api/structure/`document-handle`,patches a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1597,7 +1597,7 @@ function patch_api_structure (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/structures/`document-handle`,replaces a document}
+/// @RESTHEADER{PUT /_api/structure/`document-handle`,replaces a document}
 ///
 /// @RESTURLPARAMETERS
 ///
