@@ -60,7 +60,6 @@
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransaction.h"
 #include "Utils/V8TransactionContext.h"
-#include "Utilities/ResourceHolder.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
@@ -87,7 +86,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -117,6 +115,16 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 #define PREVENT_EMBEDDED_TRANSACTION(scope)                               \
   if (V8TransactionContext::isEmbedded()) {                               \
     TRI_V8_EXCEPTION(scope, TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);  \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a string if defined, nop otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+#define FREE_STRING(zone, what)                                           \
+  if (what != 0) {                                                        \
+    TRI_Free(zone, what);                                                 \
+    what = 0;                                                             \
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,6 +501,8 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
   // dispose and clear the persistent handle
   persistent.Dispose(isolate);
   persistent.Clear();
+  
+  v8g->_containsGarbage = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1174,6 +1184,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
     
   TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
 
   if (shaped == 0) {
@@ -1184,8 +1195,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_doc_mptr_t document;
   res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
 
-  TRI_FreeShapedJson(primary->_shaper, shaped);
   res = trx.finish(res);
+  
+  TRI_FreeShapedJson(zone, shaped);
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1224,6 +1236,8 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
       TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
     }
   }
+  
+  const bool forceSync = ExtractForceSync(argv, 2);
 
   // set document key
   TRI_voc_key_t key = 0;
@@ -1242,6 +1256,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   }
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
+  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
 
   if (shaped == 0) {
@@ -1251,14 +1266,12 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  const bool forceSync = ExtractForceSync(argv, 2);
-
   TRI_doc_mptr_t document;
   res = trx->createDocument(key, &document, shaped, forceSync);
 
-  TRI_FreeShapedJson(primary->_shaper, shaped); 
-  
   res = trx->finish(res);
+  
+  TRI_FreeShapedJson(zone, shaped); 
     
   if (key != 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -1323,7 +1336,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  ResourceHolder holder;
 
   // set document key
   TRI_voc_key_t key = 0;
@@ -1335,9 +1347,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
       TRI_V8_EXCEPTION(scope, res);
     }
-    else if (key != 0) {
-      holder.registerString(TRI_CORE_MEM_ZONE, key);
-    }
   }
   else {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1348,9 +1357,9 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_document_edge_t edge;
   // the following values are defaults that will be overridden below
   edge._fromCid = trx->cid();
-  edge._toCid = trx->cid();
+  edge._toCid   = trx->cid();
   edge._fromKey = 0;
-  edge._toKey = 0;
+  edge._toKey   = 0;
 
   v8::Handle<v8::Value> err;
 
@@ -1359,9 +1368,12 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_voc_rid_t fromRid;
 
   err = TRI_ParseDocumentOrDocumentHandle(resolver, fromCollection, edge._fromKey, fromRid, argv[0]);
-  holder.registerString(TRI_CORE_MEM_ZONE, edge._fromKey);
 
   if (! err.IsEmpty()) {
+    if (edge._fromKey != 0) {
+      TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1372,20 +1384,26 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_voc_rid_t toRid;
 
   err = TRI_ParseDocumentOrDocumentHandle(resolver, toCollection, edge._toKey, toRid, argv[1]);
-  holder.registerString(TRI_CORE_MEM_ZONE, edge._toKey);
 
   if (! err.IsEmpty()) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
+    FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
   edge._toCid = toCollection->_cid;
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
+  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
 
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
 
-  if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+  if (shaped == 0) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
+    FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
@@ -1393,9 +1411,14 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_doc_mptr_t document;
   res = trx->createEdge(key, &document, shaped, forceSync, &edge);
   res = trx->finish(res);
+   
+  TRI_FreeShapedJson(zone, shaped);
+  FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
+  FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save edge");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   assert(document._key != 0);
@@ -1428,7 +1451,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   const bool forceSync = ExtractForceSync(argv, 5);
 
 
-  ResourceHolder holder;
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
@@ -1457,16 +1479,16 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
 
-  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
   if (! err.IsEmpty()) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  if (key == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
 
-  assert(col);
-  assert(key);
+  assert(col != 0);
+  assert(key != 0);
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
@@ -1475,7 +1497,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+  if (json == 0) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> is no valid JSON");
   }
 
@@ -1484,7 +1507,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   // we must use a write-lock that spans both the initial read and the update.
@@ -1495,30 +1520,41 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   res = trx.read(&document, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
   TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
 
-  if (! holder.registerJson(primary->_shaper->_memoryZone, old)) {
+  if (old == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+  TRI_FreeJson(zone, old);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
+  if (patchedJson == 0) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
 
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+  FREE_STRING(TRI_CORE_MEM_ZONE, key);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   assert(document._key != 0);
@@ -2101,6 +2137,8 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
                                        v8::Persistent<v8::Value> object,
                                        void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) parameter;
   
@@ -2112,6 +2150,8 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
   // dispose and clear the persistent handle
   object.Dispose(isolate);
   object.Clear();
+  
+  v8g->_containsGarbage = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6642,16 +6682,11 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
-  ResourceHolder holder;
-
   TRI_voc_key_t key;
   int res = ExtractDocumentKey(argv[pos], key);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
     TRI_V8_EXCEPTION(scope, res);
-  }
-  else if (key != 0) {
-    holder.registerString(TRI_CORE_MEM_ZONE, key);
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -6660,13 +6695,15 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.begin failed");
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   res = trx.lockWrite();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.lockWrite failed");
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   if (key != 0) {
@@ -6681,12 +6718,14 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_primary_collection_t* primary = trx.primaryCollection();
+    TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
     TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[pos], primary->_shaper);
 
-    if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+    if (shaped == 0) {
+      FREE_STRING(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
     }
-
+    
     const bool forceSync = ExtractForceSync(argv, pos + 1);
 
     TRI_doc_mptr_t document;
@@ -6695,9 +6734,13 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision);
 
     res = trx.finish(res);
+    
+    TRI_FreeShapedJson(zone, shaped);
+    
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
+      TRI_V8_EXCEPTION(scope, res);
     }
 
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -6711,6 +6754,8 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     result = r;
   }
   else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+
     if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
       result = SaveVocbaseCol(&trx, col, argv, true);
     }
@@ -6719,7 +6764,8 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     }
   }
   else {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.read failed");
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(result);
@@ -8229,6 +8275,8 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
     // decrease the reference-counter for the database
     TRI_ReleaseVocBase(vocbase);
   }
+  
+  v8g->_containsGarbage = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
