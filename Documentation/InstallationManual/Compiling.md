@@ -69,8 +69,14 @@ Download the Source{#DownloadSourceAIO}
 ---------------------------------------
 
 Download the latest source using GIT:
-
+    
     git clone git://github.com/triAGENS/ArangoDB.git
+
+Note: if you only plan to compile ArangoDB locally and do not want to modify or push
+any changes, you can speed up cloning substantially by using the `--single-branch` and 
+`--depth` parameters for the clone command as follws:
+    
+    git clone --single-branch --depth 1 git://github.com/triAGENS/ArangoDB.git
 
 Configure{#CompilingAIOConfigure}
 ---------------------------------
@@ -109,11 +115,12 @@ Check the binary by starting it using the command line.
     unix> ./bin/arangod -c etc/relative/arangod.conf --server.endpoint tcp://127.0.0.1:12345 --server.disable-authentication true /tmp/database-dir
 
 This will start up the ArangoDB and listen for HTTP requests on port 12345 bound
-to IP address 127.0.0.1. You should see the startup messages
+to IP address 127.0.0.1. You should see the startup messages similar to the following:
 
-    2012-02-05T13:23:52Z  [455] INFO ArangoDB (version 1.x.y) is ready for business
-    2012-02-05T13:23:52Z  [455] INFO HTTP client port: 12345
-    2012-02-05T13:23:52Z  [455] INFO Have Fun!
+2013-10-14T12:47:29Z [29266] INFO ArangoDB xxx ...
+2013-10-14T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.12345' for non-encrypted requests
+2013-10-14T12:47:30Z [29266] INFO Authentication is turned off
+2013-10-14T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun!
 
 If it fails with a message about the database directory, please make sure the
 database directory you specified exists and can be written into.
@@ -150,9 +157,13 @@ The database will be installed in
 
     /var/lib/arangodb
 
-The arango shell will be installed in
+The ArangoShell will be installed in
 
     /usr/local/bin/arangosh
+
+When upgrading from a previous version of ArangoDB, please make sure you inspect ArangoDB's
+log file after an upgrade. It may also be necessary to start ArangoDB with the `--upgrade`
+parameter once to perform required upgrade or initialisation tasks.
 
 Devel Version{#CompilingDevel}
 ==============================
@@ -191,7 +202,7 @@ Install or download the prerequisites
 - libev (see http://software.schmorp.de/pkg/libev.html) 
 - OpenSSL (http://openssl.org/)
 
-if neccessary.  Most linux systems already supply RPM or DEP for these
+if necessary.  Most linux systems already supply RPM or DEP for these
 packages. Please note that you have to install the development packages.
 
 Download the Source{#DownloadSourceDevel}
@@ -220,7 +231,7 @@ Configure{#CompilingDevelConfigure}
 
 In order to configure the build environment please execute
 
-    unix> ./configure --disable-all-in-one-v8 --disable-all-in-one-libev --disable-all-in-one-icu 
+    unix> ./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu 
 
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
@@ -243,6 +254,15 @@ BISON, FLEX, and PYTHON. These external tools then need to be available in the
 correct versions on your system.
 
 The following configuration options exist:
+
+`--enable-relative` will make relative paths be used in the compiled binaries and
+scripts. It allows to run ArangoDB from the compile directory directly, without the
+need for a `make install` command and specifying much configuration parameters. 
+When used, you can start ArangoDB using this command:
+
+    bin/arangod /tmp/database-dir
+
+ArangoDB will then automatically use the configuration from file `etc/relative/arangod.conf`.
 
 `--enable-all-in-one-libev` tells the build system to use the bundled version
 of LIBEV instead of using the system version.

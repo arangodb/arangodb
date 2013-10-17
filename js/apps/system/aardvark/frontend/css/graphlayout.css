@@ -49,6 +49,7 @@ svg.graphViewer text {
 
 svg.graphViewer {
   border-style: groove;
+  background-color: #FFFFEE
 }
 
 div.mousepointer {

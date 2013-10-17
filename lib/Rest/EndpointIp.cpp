@@ -119,7 +119,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
   char host[NI_MAXHOST];
   char serv[NI_MAXSERV];
 
-  if (::getnameinfo(aip->ai_addr, aip->ai_addrlen,
+  if (::getnameinfo(aip->ai_addr, (socklen_t) aip->ai_addrlen,
                   host, sizeof(host),
                   serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 

@@ -290,7 +290,7 @@ actions.defineHttp({
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the `geo` field to select a particular index.
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to query.
 ///
@@ -470,7 +470,7 @@ actions.defineHttp({
 /// coordinates for the document.  If you have more then one geo-spatial index,
 /// you can use the `geo` field to select a particular index.
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to query.
 ///
@@ -644,7 +644,7 @@ actions.defineHttp({
 /// In order to use the `fulltext` operator, a fulltext index must be defined 
 /// for the collection and the specified attribute.
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to query.
 ///
@@ -763,7 +763,7 @@ actions.defineHttp({
 ///
 /// This will find all documents matching a given example.
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to query.
 ///
@@ -910,14 +910,14 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/first-example,executes simple query first-example}
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will return the first document matching a given example.
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to query.
 ///
@@ -1034,13 +1034,16 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/first,executes simple query first}
 ///
-/// @RESTBODYPARAM{collection,string,required}
-/// The name of the collection to query.
+/// @RESTBODYPARAM{query,json,required}
+/// Contains the query.
 ///
-/// @RESTBODYPARAM{count,number,optional}
-/// Number of documents to fetch at most.
-//
 /// @RESTDESCRIPTION
+///
+/// The request body must be a JSON object with the following attributes:
+/// - `collection`: the name of the collection
+/// 
+/// - `count`: the number of documents to return at most. Specifiying count is 
+///   optional. If it is not specified, it defaults to 1.
 ///
 /// This will return the first documents from the collection, in the order of
 /// insertion/update time. When the `count` argument is supplied, the result
@@ -1146,18 +1149,22 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/last,executes simple query last}
 ///
-/// @RESTBODYPARAM{collection,string,required}
-/// The name of the collection to query.
+/// @RESTBODYPARAM{query,json,required}
+/// Contains the query.
 ///
-/// @RESTBODYPARAM{count,number,optional}
-/// Number of documents to fetch at most.
-//
 /// @RESTDESCRIPTION
+///
+/// The request body must be a JSON object with the following attributes:
+/// - `collection`: the name of the collection
+/// 
+/// - `count`: the number of documents to return at most. Specifiying count is 
+///   optional. If it is not specified, it defaults to 1.
 ///
 /// This will return the last documents from the collection, in the order of
 /// insertion/update time. When the `count` argument is supplied, the result
 /// will be a list of documents, with the "latest" document being first in the
 /// result list.
+///
 /// If the `count` argument is not supplied, the result is the "latest" document
 /// of the collection, or `null` if the collection is empty.
 ///
@@ -1304,15 +1311,15 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents within a given range. You must declare a
 /// skip-list index on the attribute in order to be able to use a range query.
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to query.
 ///
@@ -1430,15 +1437,15 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object. 
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to remove from.
 ///
@@ -1538,9 +1545,9 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/replace-by-example,replaces documents by example}
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified 
@@ -1548,7 +1555,7 @@ actions.defineHttp({
 /// specified. Note that document meta-attributes such as `_id`, `_key`,
 /// `_from`, `_to` etc. cannot be replaced. 
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to replace within.
 ///
@@ -1660,9 +1667,9 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/update-by-example,updates documents by example}
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified 
@@ -1670,7 +1677,7 @@ actions.defineHttp({
 /// specified. Note that document meta-attributes such as `_id`, `_key`,
 /// `_from`, `_to` etc. cannot be replaced. 
 ///
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 ///
 /// - `collection`: The name of the collection to update within.
 ///

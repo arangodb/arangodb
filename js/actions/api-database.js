@@ -61,9 +61,11 @@ var API = "_api/database";
 /// @RESTRETURNCODE{400}
 /// is returned if the request is invalid.
 ///
+/// @RESTRETURNCODE{403}
+/// is returned if the request was not executed in the `_system` database.
+///
 /// @RESTRETURNCODE{404}
-/// is returned if the database could not be found or if the request was not
-/// executed in the `_system` database.
+/// is returned if the database could not be found.
 ///
 /// @EXAMPLES
 ///
@@ -81,7 +83,7 @@ var API = "_api/database";
 /// @fn JSF_get_api_database_current
 /// @brief retrieves information about the current database
 ///
-/// @RESTHEADER{GET /_api/database/current`,retrieves information about the current database}
+/// @RESTHEADER{GET /_api/database/current,retrieves information about the current database}
 ///
 /// @RESTDESCRIPTION
 /// Retrieves information about the current database
@@ -153,6 +155,9 @@ function get_api_database (req, res) {
 ///
 /// @RESTHEADER{POST /_api/database,creates a new database}
 ///
+/// @RESTBODYPARAM{body,json,required}
+/// the body with the name of the database.
+///
 /// @RESTDESCRIPTION
 /// Creates a new database
 ///
@@ -170,8 +175,10 @@ function get_api_database (req, res) {
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the request parameters are invalid or if a database with the 
-/// specified name already exists. If the request is carried out from any other
-/// database than the `_system` database, this error will be returned, too.
+/// specified name already exists.
+///
+/// @RESTRETURNCODE{403}
+/// is returned if the request was not executed in the `_system` database.
 ///
 /// @EXAMPLES
 ///
@@ -247,8 +254,10 @@ function post_api_database (req, res) {
 /// is returned if the database was dropped successfully.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the request is carried out from any other database than the 
-/// `_system` database.
+/// is returned if the request is malformed.
+///
+/// @RESTRETURNCODE{403}
+/// is returned if the request was not executed in the `_system` database.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the database could not be found.

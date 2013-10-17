@@ -1696,7 +1696,7 @@ int main (int argc, char* argv[]) {
 
   TRI_InitV8Buffer(context);
 
-  TRI_InitV8Utils(context, StartupModules, StartupPackages);
+  TRI_InitV8Utils(context, StartupModules, StartupPackages, StartupPath);
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)

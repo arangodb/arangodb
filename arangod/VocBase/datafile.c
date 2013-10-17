@@ -873,7 +873,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
 TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
-                                             const TRI_voc_size_t maximalSize) {
+                                             TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   ssize_t res;
   void* data;
@@ -945,7 +945,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
 
 TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename, 
                                             TRI_voc_fid_t fid,
-                                            const TRI_voc_size_t maximalSize) {
+                                            TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   int fd;
   ssize_t res;

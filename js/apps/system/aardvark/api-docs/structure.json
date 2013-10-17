@@ -52,7 +52,7 @@
                     "nickname": "readsADocument"
                 }
             ],
-            "path": "/_api/structures/{document-handle}"
+            "path": "/_api/structure/{document-handle}"
         },
         {
             "operations": [
@@ -103,7 +103,7 @@
                     "nickname": "readsADocumentHeader"
                 }
             ],
-            "path": "/_api/structures/{document-handle}"
+            "path": "/_api/structure/{document-handle}"
         },
         {
             "operations": [
@@ -166,7 +166,7 @@
                     "nickname": "deletesADocument"
                 }
             ],
-            "path": "/_api/structures/{document-handle}"
+            "path": "/_api/structure/{document-handle}"
         },
         {
             "operations": [
@@ -251,7 +251,7 @@
                     "nickname": "patchesADocument"
                 }
             ],
-            "path": "/_api/structures/{document-handle}"
+            "path": "/_api/structure/{document-handle}"
         },
         {
             "operations": [
@@ -330,7 +330,7 @@
                     "nickname": "replacesADocument"
                 }
             ],
-            "path": "/_api/structures/{document-handle}"
+            "path": "/_api/structure/{document-handle}"
         },
         {
             "operations": [

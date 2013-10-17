@@ -15,9 +15,9 @@
         <th class="collectionTh">&nbsp;</th>
       </tr>
       <tr>
-        <th class="collectionTh">Mount-Point:</th>
+        <th class="collectionTh">Mount:</th>
         <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>" disabled/></th>
-        <th><a class="modalTooltips" title="The path where the App can be reached."><i class="icon-info-sign"></i></a></th>
+        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="icon-info-sign"></i></a></th>
       </tr>
       <tr>
         <th class="collectionTh">Version:</th>
@@ -25,6 +25,12 @@
           <select>
             <option selected><%=appInfos[2] %></option>
           </select>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">System:</th>
+        <th class="collectionTh">
+          <%=attributes.isSystem ? "Yes" : "No" %>
         <th>
       </tr>
       <tr>
@@ -44,11 +50,11 @@
     </table>
   </div>
   <div id="colFooter" class="modal-footer">
-    <button id="uninstall" class="btn btn-danger">Uninstall</button>
+    <button id="uninstall" class="btn btn-danger"<%=(attributes.isSystem || attributes.development) ? " disabled" : ""%>>Uninstall</button>
     <button id="change" class="btn btn-success pull-right" disabled>Save</button>
-    <%if (attributes.active) {%>
+    <%if (false && attributes.active) {%>
       <button id="deactivate" class="btn btn-warning pull-right" style="margin-right:8px" disabled>Deactivate</button>
-    <%} else {%>
+    <%} else if (false) {%>
       <button id="activate" class="btn btn-success pull-right" style="margin-right:8px" disabled>Activate</button>
     <%}%>
     

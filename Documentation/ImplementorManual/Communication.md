@@ -75,7 +75,6 @@ case of a crash. Clients should therefore not use the asynchronous feature
 when they have strict durability requirements or if they rely on the immediate 
 result of the request they send.
 
-
 HTTP Keep-Alive {#CommunicationKeepAlive}
 =========================================
 

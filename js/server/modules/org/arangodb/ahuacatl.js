@@ -31,6 +31,7 @@
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb").ArangoError;
+var ShapedJson = INTERNAL.ShapedJson;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -234,6 +235,10 @@ function CLONE (obj) {
 
 function FIX_VALUE (value) {
   "use strict";
+  
+  if (value instanceof ShapedJson) {
+    return value;
+  }
 
   var type = typeof(value), i;
 
