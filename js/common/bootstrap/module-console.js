@@ -59,7 +59,7 @@
 /// @brief timers
 ////////////////////////////////////////////////////////////////////////////////
 
-  var timers = "";
+  var timers = { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -125,7 +125,7 @@
       msg = err + ": " + args;
     }
 
-    log("error", msg);
+    logGroup("error", msg);
 
     require('assert').ok(condition, msg);
   };
@@ -146,7 +146,7 @@
       msg = err + ": " + arguments;
     }
 
-    log("debug", msg);
+    logGroup("debug", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@
   exports.dir = function (object) {
     'use strict';
 
-    log("info", inspect(object));
+    logGroup("info", inspect(object));
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +175,7 @@
       msg = err + ": " + arguments;
     }
 
-    log("error", msg);
+    logGroup("error", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,8 +203,27 @@
       msg = err + ": " + arguments;
     }
 
+    groupLevel = groupLevel + "  ";
     logGroup("info", msg);
+  };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief groupCollapsed
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.groupCollapsed = function () {
+    'use strict';
+
+    var msg;
+
+    try {
+      msg = sprintf.apply(sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
+
+    logGroup("info", msg);
     groupLevel = groupLevel + "  ";
   };
 
@@ -234,7 +253,7 @@
       msg = err + ": " + arguments;
     }
 
-    log("info", msg);
+    logGroup("info", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,6 +268,10 @@
 
   exports.time = function (label) {
     'use strict';
+
+    if (typeof label !== 'string') {
+      throw new Error('label must be a string');
+    }
 
     timers[label] = Date.now();
   };
@@ -265,11 +288,12 @@
     if (! time) {
       throw new Error('No such label: ' + label);
     }
+    
+    var duration = Date.now() - time;
 
     delete timers[label];
 
-    var duration = Date.now() - time;
-    exports.log('%s: %dms', label, duration);
+    logGroup('%s: %dms', label, duration);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +305,7 @@
     err.name = 'trace';
     err.message = sprintf.apply(sprintf, arguments);
     Error.captureStackTrace(err, exports.trace);
-    exports.log(err.stack);
+    logGroup("info", err.stack);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +324,7 @@
       msg = err + ": " + arguments;
     }
 
-    log("warning", msg);
+    logGroup("warning", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -9,6 +9,7 @@ TOC {#JSModuleConsoleTOC}
      - @ref JSModuleConsoleError
      - @ref JSModuleConsoleGetline
      - @ref JSModuleConsoleGroup
+     - @ref JSModuleConsoleGroupCollapsed
      - @ref JSModuleConsoleGroupEnd
      - @ref JSModuleConsoleInfo
      - @ref JSModuleConsoleLog
