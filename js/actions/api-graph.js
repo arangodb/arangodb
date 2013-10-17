@@ -949,7 +949,7 @@ function put_graph_vertex (req, res, g) {
 /// This will modify the behavior of the patch command to remove any attributes 
 /// from the existing document that are contained in the patch document 
 /// with an attribute value of `null`.
-//
+///
 /// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///

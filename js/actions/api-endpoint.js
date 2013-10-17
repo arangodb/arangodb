@@ -218,6 +218,11 @@ var internal = require("internal");
 ///
 /// @RESTHEADER{DELETE /_api/endpoint/{endpoint},deletes and disconnects an existing endpoint}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{endpoint,string,required}
+/// The endpoint to delete, e.g. `tcp://127.0.0.1:8529`.
+///
 /// @RESTDESCRIPTION
 /// This operation deletes an existing endpoint from the list of all endpoints,
 /// and makes the server stop listening on the endpoint.
