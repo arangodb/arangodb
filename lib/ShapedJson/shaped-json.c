@@ -2218,17 +2218,19 @@ TRI_shaped_json_t* TRI_CopyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* 
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* shaped) {
-  TRI_DestroyBlob(shaper->_memoryZone, &shaped->_data);
+void TRI_DestroyShapedJson (TRI_memory_zone_t* zone, 
+                            TRI_shaped_json_t* shaped) {
+  TRI_DestroyBlob(zone, &shaped->_data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* shaped) {
-  TRI_DestroyShapedJson(shaper, shaped);
-  TRI_Free(shaper->_memoryZone, shaped);
+void TRI_FreeShapedJson (TRI_memory_zone_t* zone, 
+                        TRI_shaped_json_t* shaped) {
+  TRI_DestroyShapedJson(zone, shaped);
+  TRI_Free(zone, shaped);
 }
 
 // -----------------------------------------------------------------------------
