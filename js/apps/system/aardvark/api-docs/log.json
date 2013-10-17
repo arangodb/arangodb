@@ -18,7 +18,7 @@
                             "paramType": "path",
                             "required": "false",
                             "name": "upto",
-                            "description": "Returns all log entries up to log level <em>upto</em>. Note that <em>upto</em> must be: - <em>fatal</em> or <em>0</em> "
+                            "description": "Returns all log entries up to log level <em>upto</em>. Note that <em>upto</em> must be: - <em>fatal</em> or <em>0</em> - <em>error</em> or <em>1</em> - <em>warning</em> or <em>2</em> - <em>info</em> or <em>3</em> - <em>debug</em>  or <em>4</em> The default value is <em>info</em>. "
                         },
                         {
                             "dataType": "String",

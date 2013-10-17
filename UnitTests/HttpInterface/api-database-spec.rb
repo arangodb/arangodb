@@ -195,7 +195,7 @@ describe ArangoDB do
 
       # listing databases is disallowed in non-system
       doc = ArangoDB.log_get("#{prefix}-check-system", "/_db/#{name}" + api)
-      doc.code.should eq(400)
+      doc.code.should eq(403)
       response = doc.parsed_response
       response["error"].should eq(true)
       response["errorNum"].should eq(1230)
@@ -207,10 +207,20 @@ describe ArangoDB do
       result["name"].should eq(name)
       result["path"].should be_kind_of(String)
       result["isSystem"].should eq(false)
+      
+      # creating a new database is disallowed in non-system
+      body = "{\"name\" : \"UnitTestsWontWork\" }"
+      doc = ArangoDB.log_post("#{prefix}-check-system", "/_db/#{name}" + api, :body => body)
+     
+      doc.code.should eq(403)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["error"].should eq(true)
+      response["errorNum"].should eq(1230)
 
       # dropping the database is disallowed in non-system
       doc = ArangoDB.log_delete("#{prefix}-check-system", "/_db/#{name}" + api + "/#{name}")
-      doc.code.should eq(400)
+      doc.code.should eq(403)
       response = doc.parsed_response
       response["error"].should eq(true)
       response["errorNum"].should eq(1230)

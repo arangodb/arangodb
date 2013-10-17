@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* fixed issue #615: Swagger API: Some commands have no parameter entry forms
+
 * fixed issue #614: API : Typo in : Request URL /_api/database/current
 
 * fixed issue #609: Graph viz tool - different background color 
