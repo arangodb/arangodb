@@ -382,7 +382,7 @@ int main (int argc, char* argv[]) {
 
     cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
-#ifdef TRI_V8_VERSION
+#ifdef TRI_MRUBY_VERSION
     cout << "Using MRUBY " << TRI_MRUBY_VERSION << " engine. Copyright (c) 2012 mruby developers." << endl;
 #endif
 
