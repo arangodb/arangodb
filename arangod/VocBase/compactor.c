@@ -1476,9 +1476,11 @@ void TRI_CompactorVocBase (void* data) {
     }
 
 
-    if (vocbase->_state == 1) {
+    if (state != 2 && vocbase->_state == 1) {
       // only sleep while server is still running
-      usleep(COMPACTOR_INTERVAL);
+      TRI_LockCondition(&vocbase->_compactorCondition);
+      TRI_TimedWaitCondition(&vocbase->_compactorCondition, (uint64_t) COMPACTOR_INTERVAL);
+      TRI_UnlockCondition(&vocbase->_compactorCondition);
     }
 
     if (state == 2) {

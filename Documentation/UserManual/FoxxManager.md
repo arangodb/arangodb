@@ -42,14 +42,14 @@ The most important commands are
 * `install`: Fetches a Foxx application from the central `foxx-apps` repository, 
   mounts it to a local URL and sets it up
 * `uninstall`: Unmounts a mounted Foxx application and calls its teardown method 
-* `list`: Lists all installed Foxx applications
+* `list`: Lists all installed Foxx applications (alias: `installed`)
 * `config`: Get information about the configuration including the path to the
   app directory.
 
 When dealing with a fresh install of ArangoDB, there should be no installed 
 applications besides the system applications that are shipped with ArangoDB.
 
-    unix> foxx-manager list
+    unix> foxx-manager installed
     Name        Author               Description                                                AppID               Version    Mount               Active    System 
     ---------   ------------------   --------------------------------------------------------   -----------------   --------   -----------------   -------   -------
     aardvark    Michael Hackstein    Foxx application manager for the ArangoDB web interface    app:aardvark:1.0    1.0        /_admin/aardvark    yes       yes    
@@ -70,9 +70,9 @@ should now be able to access the example application under
 
     http://localhost:8529/example
 
-using your favorite browser. It will now also be visible when using the `list` command.
+using your favorite browser. It will now also be visible when using the `installed` command.
 
-    unix> foxx-manager list
+    unix> foxx-manager installed
     Name          Author               Description                                                AppID                   Version    Mount               Active    System 
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     hello-foxx    Frank Celler         A simple example application.                              app:hello-foxx:1.2.2    1.2.2      /example            yes       no     
@@ -88,7 +88,7 @@ You can install the application again under different mount path.
 You now have two separate instances of the same application. They are 
 completely independent of each other.
 
-    unix> foxx-manager list
+    unix> foxx-manager installed
     Name          Author               Description                                                AppID                   Version    Mount               Active    System 
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     hello-foxx    Frank Celler         A simple example application.                              app:hello-foxx:1.2.2    1.2.2      /example            yes       no     
@@ -97,7 +97,7 @@ completely independent of each other.
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     3 application(s) found
 
-The current version of the application is `1.2.2` (check the output of `list` 
+The current version of the application is `1.2.2` (check the output of `installed` 
 for the current version). It is even possible to mount a different version 
 of an application.
 
@@ -178,7 +178,7 @@ We have now two versions of the hello world application. The current version fet
 Let's now mount the application in version 1.2.1 under `/hello`.
 
     unix> foxx-manager mount app:hello-foxx:1.2.1 /hello
-    unix> foxx-manager list
+    unix> foxx-manager installed
     Name          Author               Description                                                AppID                   Version    Mount               Active    System 
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     hello-foxx    Frank Celler         A simple example application.                              app:hello-foxx:1.2.1    1.2.1      /hello              yes       no     
@@ -216,7 +216,7 @@ Now check the list of collections again.
 
 You can now use the mounted and initialized application.
 
-    unix> foxx-manager list
+    unix> foxx-manager installed
     Name          Author               Description                                                AppID                   Version    Mount               Active    System 
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     hello-foxx    Frank Celler         A simple example application.                              app:hello-foxx:1.2.2    1.2.2      /example            yes       no     
@@ -241,6 +241,28 @@ This will drop the collection `hello_exists`. The application is,
 however, still reachable. We still need to unmount it.
 
     unix> foxx-manager unmount /hello
+
+Making changes to an existing application
+-----------------------------------------
+
+There are two options for deploying local changes to an existing application:
+
+- the easiest way is to start the server in development mode. This will make 
+  all available foxx applications be available in under the `/dev/` URL prefix.
+  All changes to the application code will become live instantly because all
+  applications are reloaded on each request to a URL starting with `/dev/`.
+  NOte that the constant reloading in the development mode has a performance 
+  impact so it shouldn't be used in product.
+
+- if the development mode is not an option, you can use the `replace` command
+  from foxx-manager. It provides an easy mechanism to re-deploy the code for
+  an already installed application. It can be used as follows:
+
+      unix> foxx-manager replace hello-foxx /hello
+
+  The above will re-deploy the code for the application `hello-foxx` which has
+  to be already installed under the `/hello` mount point. The application's
+  setup function will be called when invoking `replace` but not `teardown`.
 
 Using Multiple Databases {#UserManualFoxxManagerDatabases}
 ==========================================================
@@ -277,11 +299,13 @@ Use `help` to see all commands
      mount                mounts a fetched foxx application to a local URL
      setup                setup executes the setup script (app must already be mounted)
      install              fetches a foxx application from the central foxx-apps repository, mounts it to a local URL and sets it up
+     replace              replaces an aleady existing foxx application with the current local version
      teardown             teardown execute the teardown script (app must be still be mounted)
      unmount              unmounts a mounted foxx application
      uninstall            unmounts a mounted foxx application and calls its teardown method
      purge                physically removes a foxx application and all mounts
      list                 lists all installed foxx applications
+     installed            lists all installed foxx applications (alias for list)
      fetched              lists all fetched foxx applications that were fetched into the local repository
      available            lists all foxx applications available in the local repository
      info                 displays information about a foxx application

@@ -1,5 +1,4 @@
 /* REPL SHELL */
-/* REPL SHELL */
 
 .shellul {
   border-bottom: 20px solid rgba(0, 0, 0, 0.00);
@@ -13,18 +12,8 @@
   margin-left: 5px;
   margin-right: 5px !important;
   margin-bottom: -25px;
-  padding-bottom: 20px;
   height: 400px;
   background-color: black;
-}
-
-#editor {
-  float:left;
-  width: 150px;
-  height: 400px;
-  background-color:white;
-  overflow: hidden;
-  border: 1px solid #A0A0A0;
 }
 
 .vsplitbar {
@@ -44,15 +33,13 @@
   cursor: col-resize !important;
 }
 
-/* REPL SHELL */
 #replShell {
   float:left;
   min-width: 100px;
-  width: 600px;
+  width: 100%;
   background-color: white;
   position: relative;
-  height: 400px;
-  border-bottom: 2px solid black !important;
+  height: 100%;
 }
 
 #replShell pre {
@@ -126,11 +113,6 @@
   opacity: 0.6;
   content: "Submit";
   height: 20px !important;
-}
-
-.jqconsole-blurred .jqconsole-header, .jqconsole-blurred .jssuccess, .jqconsole-blurred .jserror,
-.jqconsole-blurred .jqconsole-prompt, .jqconsole-blurred .jqconsole-old-prompt{
-  opacity: 0.7;
 }
 
 #queryOutput .ace_gutter-cell {
