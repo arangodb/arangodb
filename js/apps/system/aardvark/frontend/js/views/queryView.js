@@ -385,7 +385,7 @@ var queryView = Backbone.View.extend({
         else {
             selector = '#querySelect';
             $(selector).empty();
-            $(selector).append('<option id="emptyquery">(please select)</option>');
+            $(selector).append('<option id="emptyquery">Insert Query</option>');
 
             $(selector).append('<optgroup label="Example queries">');
             $.each(this.queries, function (k, v) {

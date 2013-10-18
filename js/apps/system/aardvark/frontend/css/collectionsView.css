@@ -216,7 +216,7 @@ border-top: 0;
   border-radius: 0 !important;
 }
 
-#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
+#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut, .dropdownOut {
   background-color: white;
   position:relative;
   display:none;
@@ -225,44 +225,48 @@ border-top: 0;
   width: auto;
 }
 
-#collectionsDropdown, #dashboardDropdown, #foxxDropdown {
+#collectionsDropdown, #dashboardDropdown, #foxxDropdown, .dropdownIn{
   position: relative;
   min-height: 125px;
   width: auto;
   box-shadow: 0 !important;
 }
 
-#collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header {
+#collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header, .dropdownOut .nav-header{
   font-size: 13px;
   font-weight: 400;
   color: black;
 }
 
-#collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label{
+#collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label, .dropdownIn label{
   color: black;
   font-weight: 300;
 }
 
-#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
+#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul, .dropdownIn ul{
   border-left: 1px solid black;
 }
 
+.dropdownOut ul:last-of-type,
 #collectionsDropdown ul:last-of-type,
 #dashboardDropdown ul:last-of-type,
 #foxxDropdown ul:last-of-type {
   border-left: 1px solid black;
 }
 
+.dropdownOut ul:first-of-type,
 #collectionsDropdown ul:first-of-type, 
 #dashboardDropdown ul:first-of-type,
 #foxxDropdown ul:first-of-type {
   border: 0 !important;
 }
 
+.dropdownIn ul,
 #collectionsDropdown ul, #foxxDropdown ul {
   min-height: 105px;
 }
 
+.dropdownIn ul,
 #collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
   float: left;
   margin-top: 10px;
@@ -270,6 +274,7 @@ border-top: 0;
   display: inline;
 }
 
+.dropdownIn ul li label,
 #collectionsDropdown ul li label,
 #dashboardDropdown ul li label,
 #foxxDropdown ul li label {

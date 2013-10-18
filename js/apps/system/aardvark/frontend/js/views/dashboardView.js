@@ -76,7 +76,12 @@ var dashboardView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   toggleEvent: function () {
-    $('#dashboardDropdownOut').slideToggle(220);
+    if ($('#detailReplication').is(':visible')) {
+      $('#replicationDropdownOut').slideToggle(220);
+    }
+    else {
+      $('#dashboardDropdownOut').slideToggle(220);
+    }
   },
 
   getReplicationStatus: function () {
@@ -281,7 +286,7 @@ var dashboardView = Backbone.View.extend({
       });
     }
 
-    this.options.description.models[0].attributes.figures.push(figure);
+    this.options.description.models[0].attributes.figures.unshift(figure);
   },
 
   checkInterval: function (a) {
@@ -381,6 +386,12 @@ var dashboardView = Backbone.View.extend({
       $('#detailReplication').hide();
       $('#detailGraph').show();
       $('.statGroups').show();
+    }
+
+    if ($('#dashboardDropdownOut').is(':visible') || $('#replicationDropdownOut').is(':visible')) {
+      console.log("togled");
+      $('#replicationDropdownOut').toggle();
+      $('#dashboardDropdownOut').toggle();
     }
   },
 
