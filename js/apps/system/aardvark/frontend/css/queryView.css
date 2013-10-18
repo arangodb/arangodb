@@ -1,3 +1,7 @@
+.toolbarUL ul {
+  margin-top: 2px;
+}
+
 .ui-resizable-s {
   bottom: 0;
   height: 10px;
@@ -17,10 +21,10 @@
 #queryOutput .ui-resizable-handle {
   border-left: 0;
   border-bottom: 0;
+  border-top: 0;
 }
 
 #editorToolbar {
-  width: auto;
   margin-top: 5px;
   margin-left: 0px;
   margin-right: 0px;
@@ -42,17 +46,15 @@
 
 #outputToolbar span, #editorToolbar span {
   position: relative;
-  float:right;
-  height: 10px !important;
   margin-right: 5px;
   margin-left: 5px;
   top: 2px;
+  float:right;
 }
 
 
 #outputToolbar {
   position: relative;
-  margin-top: 30px !important;
   margin-left: 0;
   margin-right: 0;
   width: auto;
@@ -68,19 +70,8 @@
 }
 
 #editorToolbar i , #outputToolbar i {
-  float: right;
   margin-right: 5px;
   margin-top: 3px;
-}
-
-#editorToolbar select {
-  float: left !important;
-}
-
-#addAQL, #editAQL {
-  float: left !important;
-  margin-left: 5px;
-  margin-right: 0 !important;
 }
 
 #editor {
@@ -88,11 +79,14 @@
 }
 
 #editorLabel, #outputLabel {
-  float: left;
-  background-color: #F0F0F0;
-  width: 150px;
-  text-align: center;
-  border-right: 1px solid #C0C0C0;
+  width: 100%;
+}
+
+#editorLabel h6, #outputLabel h6 {
+  font-family: 'Open Sans', sans-serif;
+  margin-bottom: 5px;
+  font-weight: 400;
+  font-size: 16px;
 }
 
 #aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
@@ -102,6 +96,7 @@
 #aqlEditor .ui-resizable-handle {
   border-left: 0 !important;
   border-bottom: 0 !important;
+  border-top: 0 !important;
 }
 
 #aqlEditor {
@@ -121,7 +116,7 @@
   margin-bottom: 15px;
 }
 
-#submitQueryButton {
+#submitQueryButton, #clearQueryButton {
   float: right;
 }
 
@@ -156,11 +151,9 @@
 }
 
 #querySelect {
-  height: 20px !important;
   line-height: 20px !important;
   z-index: 9999 !important;
   border-radius: 0 !important;
-  padding: 0 !important;
   margin-bottom: 0;
   border: 0 !important;
 }
@@ -169,18 +162,6 @@
   z-index: 9999 !important;
 }
 
-#querySize {
-  height: 20px !important;
-  line-height: 20px !important;
-  z-index: 9999 !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  margin-bottom: 0;
-  border: 0 !important;
-  float: left !important;
-  margin-left: 50px;
-  margin-right: 0 !important;
-}
 
 .queryTH {
   width: 20% !important;
@@ -230,4 +211,43 @@
 
 #queryDiv > * {
   border: 0 !important;
+}
+
+.styled-select select {
+  background: white;
+  width: 268px;
+  padding: 5px;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1;
+  border: 0;
+  border-radius: 0;
+  height: 30px;
+  -webkit-appearance: none;
+  padding-left: 5px !important;
+  padding-top: 3px !important;
+}
+
+.styled-select {
+  float: right;
+  width: 240px;
+  height: 30px;
+  overflow: hidden;
+}
+
+.querySizeDiv {
+  margin-right: 10px;
+  height: 30px !important;
+  width: 95px !important;
+}
+
+.querySizeDiv select {
+  height: 30px !important;
+}
+
+#querySize {
+  width: 115px !important;
+  line-height: 20px !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
 }

@@ -255,6 +255,7 @@ li:hover h6, li.hover h6 {
 }
 
 /*Dashboard Checkbox*/
+.dropdownOut input[type=checkbox].css-checkbox,
 #dashboardDropdownOut input[type=checkbox].css-checkbox,
 #transparentHeader input[type=checkbox].css-checkbox,
 #collectionsDropdown input[type=checkbox].css-checkbox,
@@ -262,6 +263,7 @@ li:hover h6, li.hover h6 {
   display:none;
 }
 
+.dropdownOut input[type=checkbox].css-checkbox + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox + label.css-label, 
 #foxxDropdownOut input[type=checkbox].css-checkbox + label.css-label, 
@@ -277,6 +279,7 @@ li:hover h6, li.hover h6 {
   cursor:pointer;
 }
 
+.dropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label,
 #foxxDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
@@ -298,17 +301,15 @@ li:hover h6, li.hover h6 {
   margin-left: -21px;
 }
 
-#dashboardDropdownOut input[type="radio"], #transparentHeader input[type="radio"] {
+#dashboardDropdownOut input[type="radio"],
+#transparentHeader input[type="radio"],
+.dropdownOut input[type="radio"] {
   display:none;
 }
 
-#dashboardDropdownOut input[type="radio"] + label, #transparentHeader input[type="radio"] + label {
-  /*color:#f2f2f2;*/
-  /*font-family:Arial, sans-serif;
-  font-size:14px;*/
-}
-
-#dashboardDropdownOut input[type="radio"] + label span, #transparentHeader input[type="radio"] + label span {
+#dashboardDropdownOut input[type="radio"] + label span,
+#transparentHeader input[type="radio"] + label span,
+.dropdownOut input[type="radio"] + label span {
   display:inline-block;
   width:19px;
   height:19px;
@@ -318,7 +319,9 @@ li:hover h6, li.hover h6 {
   cursor:pointer;
 }
 
-#dashboardDropdownOut input[type="radio"]:checked + label span, #transparentHeader input[type="radio"]:checked + label span {
+#dashboardDropdownOut input[type="radio"]:checked + label span,
+.dropdownOut input[type="radio"]:checked + label span,
+#transparentHeader input[type="radio"]:checked + label span {
   background:url(../img/check_radio_sheet.png) -57px top no-repeat;
 }
 
@@ -503,10 +506,6 @@ li:hover h6, li.hover h6 {
   border-bottom: 0 !important;
 }
 
-#dashboardDropdownOut {
-  background-color: transparent !important;
-}
-
 #dashboardDropdown {
   min-height: 260px !important;
   background-color: white;
@@ -602,5 +601,13 @@ li:hover h6, li.hover h6 {
 }
 
 #dashboardDropdown > ul > li > a > .radio {
+  padding-left: 0 !important;
+}
+
+#replicationDropdown {
+  min-height: 260px !important;
+}
+
+#replicationDropdown > ul > li > a > .radio {
   padding-left: 0 !important;
 }
