@@ -184,7 +184,6 @@ var queryView = Backbone.View.extend({
         $('#queryOutput').height(windowHeight / 3);
         $('#aqlEditor').height(windowHeight / 2);
 
-        outputEditor.setTheme("ace/theme/merbivore_soft");
         inputEditor.resize();
         outputEditor.resize();
 
@@ -193,7 +192,7 @@ var queryView = Backbone.View.extend({
         this.deselect(inputEditor);
 
         $('#queryDiv').show();
-        outputEditor.setTheme("ace/theme/merbivore_soft");
+        //outputEditor.setTheme("ace/theme/merbivore_soft");
 
         return this;
     },

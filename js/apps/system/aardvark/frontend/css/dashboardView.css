@@ -109,10 +109,11 @@
 }
 
 .statGroups .statChart {
-  margin-left: -55px !important;
-  margin-top: -50px !important;
   float:left;
-  (;margin-top: -37px !important;)
+}
+
+.svgClass .nv-linesWrap {
+  margin-left: -20px !important;
 }
 
 .nv-axislabel {
@@ -129,9 +130,6 @@
 }
 
 .svgClass {
-  margin-top: 23px !important;
-  padding-top: 0 !important;
-  /*height: 140px;*/
   height: 155px;
   width: 300px;
 }
@@ -146,7 +144,7 @@
 
 li:hover  i, li.hover i,
 li:hover h6, li.hover h6 {
-  opacity: 0.7 !important;
+  opacity: 0.8 !important;
   -webkit-transition-property: background color;
   -webkit-transition-duration: 1s;
   -webkit-transition-timing-function: linear;
@@ -170,7 +168,7 @@ li:hover h6, li.hover h6 {
 }
 
 .boxHeader h6 {
-  opacity: 0.25;
+  opacity: 0.8;
   padding-top: 0 !important;
   color: black;
   margin-left: 5px;
@@ -431,7 +429,6 @@ li:hover h6, li.hover h6 {
   padding-top: 5px;
   width: auto;
   min-height: 150px;
-  margin-bottom: 8px;
   margin-right: 10px;
   margin-top: -1px;
   border-top: 1px solid #888;
@@ -473,7 +470,6 @@ li:hover h6, li.hover h6 {
 }
 
 #shortcutDiv {
-  padding-top: 10px;
   font-size: 12px;
   font-weight: 200;
 }
@@ -512,8 +508,8 @@ li:hover h6, li.hover h6 {
 }
 
 #dashboardDropdown {
-  background-color: rgba(0,0,0,0.1) !important;
   min-height: 260px !important;
+  background-color: white;
 }
 
 #dashboardDropdown ul {
@@ -563,7 +559,7 @@ li:hover h6, li.hover h6 {
 }
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
-   .svgClass{margin-top: 35px !important;}
+   .svgClass{margin-top: 10px !important;}
    .statSingleClient{margin-top: 10.5px !important;}
    #detailReplication{margin-top: 1.5px !important;}
 }
@@ -586,8 +582,8 @@ li:hover h6, li.hover h6 {
   border-radius: 50%;
   box-shadow:
   margin-top: 1px;
-  0 0 20px #111 inset,
-  0 0 10px lime;
+  0 0 10px #111 inset,
+  0 0 5px lime;
   animation: 13s green infinite;
 }
 
@@ -601,6 +597,10 @@ li:hover h6, li.hover h6 {
   border-radius: 50%;
   animation: 13s red infinite;
   box-shadow:
-    0 0 20px #111 inset,
-    0 0 10px red;
+    0 0 10px #111 inset,
+    0 0 5px red;
+}
+
+#dashboardDropdown > ul > li > a > .radio {
+  padding-left: 0 !important;
 }
