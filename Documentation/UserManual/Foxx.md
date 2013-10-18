@@ -19,7 +19,7 @@ please continue.
 So let's get started, shall we?
 
 Overview
---------
+========
 
 The typical request to a Foxx application will work as follows (only conceptually,
 a lot of the steps are cached in reality):
@@ -44,8 +44,8 @@ methods.
 
 Now let's get into the details.
 
-Creating the application files
-------------------------------
+Your first Foxx app in 5 minutes - a step-by-step tutorial 
+==========================================================
 
 An application built with Foxx is written in JavaScript and deployed to 
 ArangoDB directly. ArangoDB serves this application, you do not need a 
