@@ -1,6 +1,9 @@
 v1.4.0-XXXXX (2013-XX-XX)
 -------------------------
 
+* improved server shutdown time by signalling shutdown to applicationserver,
+  logging, cleanup and compactor threads
+
 * added foxx-manager `replace` command
 
 * added foxx-manager `installed` command (a more intuitive alias for `list`) 
