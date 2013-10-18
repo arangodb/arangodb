@@ -592,6 +592,11 @@ static int OpenDatabases (TRI_server_t* server) {
   res = TRI_ERROR_NO_ERROR;
   files = TRI_FilesDirectory(server->_databasePath);
   n = files._length;
+ 
+  // open databases in defined order
+  if (n > 1) {
+    qsort(files._buffer, n, sizeof(char**), &NameComparator);
+  }
 
   for (i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
@@ -825,7 +830,7 @@ static int OpenDatabases (TRI_server_t* server) {
 
 static int CloseDatabases (TRI_server_t* server) {
   size_t i, n;
- 
+
   TRI_WriteLockReadWriteLock(&server->_databasesLock);
   n = server->_databases._nrAlloc;
 
