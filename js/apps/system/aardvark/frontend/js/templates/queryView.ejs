@@ -3,18 +3,9 @@
     <a class="arangoHeader">AQL Editor</a>
   </div>
 </ul>
-
+  
 <div id="queryDiv" class="form-actions" style="display:none">
-  <div id="outputToolbar">
-    <div id="outputLabel">Result</div>
-      <span class="arangoicon arango-icon-remove queryTooltips" title="Clear" id="clearOutput"></span>
-      <span class="glyphicon glyphicon-resize-full queryTooltips" title="Unfold" id="bigOutput"></span>
-      <span class="glyphicon glyphicon-resize-small queryTooltips" title="Fold" id="smallOutput"></span>
-  </div>
-  <div id="queryOutput" class="thumbnail">
-  </div>
-
-  <div id="editorToolbar">
+  <div id="editorToolbar" >
     <div id="editorLabel">Query</div>
     <select id="querySelect"/>
     <span class="glyphicon glyphicon-cog queryTooltips" title="Edit custom queries" id="editAQL"/>
@@ -26,9 +17,21 @@
     <span class="arangoicon arango-icon-undo queryTooltips" title="Undo" id="undoText"/>
   </div>
   <div id="aqlEditor"></div>
-  <button id="submitQueryButton" class="btn btn-success">Submit</button>
-  <div id="shortcutDiv"><b>Submit:</b> CTRL/CMD + Return ; <b>Undo:</b> CTRL/CMD + Z ; <b>Redo:</b> CTRL/CMD + SHIFT + Z ;
-   <b>Toggle Comments:</b> CTRL/CMD + SHIFT + C </div>
+  <div id="wideButtonDiv">
+    <div id="shortcutDiv">
+      <b>Submit:</b> CTRL/CMD + Return ; <b>Undo:</b> CTRL/CMD + Z ; <b>Redo:</b> CTRL/CMD + SHIFT + Z ;
+      <b>Toggle Comments:</b> CTRL/CMD + SHIFT + C
+    </div>
+    <button id="submitQueryButton" class="btn btn-success">Submit</button>
+  </div>
+  <div id="outputToolbar">
+    <div id="outputLabel">Result</div>
+      <span class="arangoicon arango-icon-remove queryTooltips" title="Clear" id="clearOutput"></span>
+      <span class="glyphicon glyphicon-resize-full queryTooltips" title="Unfold" id="bigOutput"></span>
+  </div>
+  <div id="queryOutput" class="thumbnail">
+  </div>
+
 </div>
 
 <div id="new-aql-query" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">

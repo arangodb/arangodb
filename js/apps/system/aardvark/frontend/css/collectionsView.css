@@ -63,17 +63,17 @@
 
 .searchInput {
   background-color: #FFFFFF;
-  border: 1px solid #c0c0c0;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset;
+  border: 0 !important;
+  box-shadow: 0 !important;
   color: #555555;
   display: inline-block;
   font-size: 12px;
-  height: 18px;
+  height: 18px !important;
   line-height: 18px;
-  margin-top: 3px;
+  margin-top: 5px;
   padding: 2px;
   vertical-align: middle;
-  width:212px !important;
+  width:214px !important;
   border-radius: 0px 0px 0px 0px !important;
 }
 
@@ -217,7 +217,7 @@ border-top: 0;
 }
 
 #collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: white;
   position:relative;
   display:none;
   margin-left: 5px;
@@ -229,10 +229,6 @@ border-top: 0;
   position: relative;
   min-height: 125px;
   width: auto;
-  border-left: 1px solid #686766;
-  border-bottom: 1px solid #686766;
-  border-right: 1px solid #686766;
-  border-top: none;
   box-shadow: 0 !important;
 }
 
@@ -248,13 +244,13 @@ border-top: 0;
 }
 
 #collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
-  border-left: 1px solid white;
+  border-left: 1px solid black;
 }
 
 #collectionsDropdown ul:last-of-type,
 #dashboardDropdown ul:last-of-type,
 #foxxDropdown ul:last-of-type {
-  border-left: 1px solid white;
+  border-left: 1px solid black;
 }
 
 #collectionsDropdown ul:first-of-type, 

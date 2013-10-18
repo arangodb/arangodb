@@ -38,6 +38,10 @@
 .arangoTab a {
   color: black !important;
   cursor: pointer;
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
 }
 
 .arangoTab > li {

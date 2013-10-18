@@ -480,7 +480,6 @@ var dashboardView = Backbone.View.extend({
       }
 
       //disable ticks/label for small charts
-
       d3.select("#" + identifier + "Chart svg")
       .call(chart)
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
@@ -491,6 +490,8 @@ var dashboardView = Backbone.View.extend({
 
     //fix position for last x-value label in detailgraph
     $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
+    //fix position of small graphs
+    $('.svgClass .nv-lineChart').attr('transform','translate(5,5)');
   },
 
   calculateSeries: function (flush) {
@@ -619,9 +620,10 @@ var dashboardView = Backbone.View.extend({
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
+    //tooltips small charts
     $('.db-info').tooltip({
       placement: "top",
-      delay: {show: 3000, hide: 100}
+      delay: {show: 100, hide: 100}
     });
   }
 
