@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/ProgramOptions.h"
+#include "Basics/ConditionVariable.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -840,6 +841,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _randomGenerator;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief condition variable for done
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::ConditionVariable _finishedCondition;
     };
   }
 }
