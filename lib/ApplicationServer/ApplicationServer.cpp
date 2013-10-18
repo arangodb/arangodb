@@ -39,6 +39,7 @@
 #endif
 
 #include "ApplicationServer/ApplicationFeature.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
@@ -144,7 +145,8 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logLineNumber(false),
     _logSourceFilter(),
     _logContentFilter(),
-    _randomGenerator(5) {
+    _randomGenerator(5),
+    _finishedCondition() {
 }
 
 #else
@@ -185,7 +187,8 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logLineNumber(false),
     _logSourceFilter(),
     _logContentFilter(),
-    _randomGenerator(3) {
+    _randomGenerator(3),
+    _finishedCondition() {
   storeRealPrivileges();
 }
 
@@ -623,7 +626,9 @@ void ApplicationServer::wait () {
       running = false;
       break;
     }
-    sleep(1);
+  
+    CONDITION_LOCKER(locker, _finishedCondition);
+    locker.wait((uint64_t) (1000 * 1000));
   }
 }
 
@@ -645,6 +650,8 @@ void ApplicationServer::beginShutdown () {
 void ApplicationServer::stop () {
   beginShutdown();
 
+  CONDITION_LOCKER(locker, _finishedCondition);
+  locker.signal();
 
   // close all features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
@@ -664,8 +671,6 @@ void ApplicationServer::stop () {
     feature->stop();
     LOGGER_TRACE("shut down server feature '" << feature->getName() << "'");
   }
-
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
