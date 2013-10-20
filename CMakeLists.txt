@@ -12,8 +12,6 @@ endif ()
 
 project(arangodb)
 
-SET(EXECUTABLE_OUTPUT_PATH bin)
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98 -g")
 
@@ -26,7 +24,6 @@ set(BIN_ARANGOSH  arangosh)
 
 add_definitions("-DTRI_BITS=64")
 
-
 add_definitions("-D_REENTRANT") 
 add_definitions("-D_THREAD_SAFE") 
 add_definitions("-DHAVE_CONFIG_H") 
@@ -36,7 +33,21 @@ add_definitions("-D_SYSCONFDIR_=\"/usr/local/etc/arangodb\"")
 ## --SECTION--                                                           OPTIONS
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief MRUBY
+################################################################################
+
 option(USE_MRUBY "Do you want to use MRUBY")
+
+################################################################################
+### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
+################################################################################
+
+set(SYSCONFDIR "${CMAKE_INSTALL_PREFIX}/etc" CACHE path "System configuration directory")
+set(ARANGODB_CONF_DIR ${SYSCONFDIR}/arangodb)
+
+file(TO_NATIVE_PATH "${SYSCONFDIR}" SYSCONFDIR)
+file(TO_NATIVE_PATH "${ARANGODB_CONF_DIR}" ARANGODB_CONF_DIR)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   COMMON INCLUDES
@@ -168,6 +179,14 @@ add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 add_subdirectory(lib)
 add_subdirectory(arangosh)
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                          PACKAGES
+## -----------------------------------------------------------------------------
+
+set(CPACK_SET_DESTDIR ON)
+
+include(CPack)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
