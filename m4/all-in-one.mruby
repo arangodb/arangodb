@@ -15,7 +15,7 @@ AC_ARG_ENABLE(mruby,
 )
 
 if test "x$tr_MRUBY" = "xyes";  then
-  MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
+  MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include -DTRI_ENABLE_MRUBY=1"
   MRUBY_LDFLAGS=""
   MRUBY_LIBS="${srcdir}/3rdParty/mruby/build/host/lib/libmruby.a"
 
