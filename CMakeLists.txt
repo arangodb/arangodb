@@ -10,22 +10,17 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif ()
 
+################################################################################
+### @brief arangodb project
+################################################################################
+
 project(arangodb)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98 -g")
-
-add_definitions("-DTRI_BITS=64")
-
-add_definitions("-D_REENTRANT") 
-add_definitions("-D_THREAD_SAFE") 
-add_definitions("-DHAVE_CONFIG_H") 
-
-set(LIB_ARANGO         arango)
-set(LIB_ARANGO_CLIENT  arango_client)
-set(LIB_ARANGO_FE      arango_fe)
-set(LIB_ARANGO_MRUBY   arango_mruby)
-set(LIB_ARANGO_V8      arango_v8)
+set(LIB_ARANGO        arango)
+set(LIB_ARANGO_CLIENT arango_client)
+set(LIB_ARANGO_FE     arango_fe)
+set(LIB_ARANGO_MRUBY  arango_mruby)
+set(LIB_ARANGO_V8     arango_v8)
 
 set(BIN_ARANGOB       arangob)
 set(BIN_ARANGOD       arangod)
@@ -34,6 +29,37 @@ set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+
+################################################################################
+### @brief threads
+################################################################################
+
+find_package(Threads)
+
+################################################################################
+### @brief GNU C/C++ compiler
+################################################################################
+
+if (CMAKE_COMPILER_IS_GNUCC)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89")
+endif ()
+
+if (CMAKE_COMPILER_IS_GNUCXX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98")
+endif ()
+
+if (APPLE)
+  add_definitions("-Wno-deprecated-declarations")
+endif ()
+
+################################################################################
+### @brief TRI_BITS
+################################################################################
+
+math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
+add_definitions("-DTRI_BITS=${BITS}")
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           OPTIONS

@@ -192,13 +192,15 @@ add_library(
 ### @brief LIB_ARANGO_MRUBY
 ################################################################################
 
-add_library(
-    ${LIB_ARANGO_MRUBY}
-    STATIC
-    MRuby/MRLoader.cpp
-    MRuby/MRLineEditor.cpp
-    MRuby/mr-utils.c
-)
+if (USE_MRUBY)
+  add_library(
+      ${LIB_ARANGO_MRUBY}
+      STATIC
+      MRuby/MRLoader.cpp
+      MRuby/MRLineEditor.cpp
+      MRuby/mr-utils.c
+  )
+endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
