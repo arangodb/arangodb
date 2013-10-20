@@ -604,9 +604,11 @@ var dashboardView = Backbone.View.extend({
     $.each(this.graphState, function(k,v) {
       if (v === true) {
         $("#"+k).show();
+        $('#'+k+'Checkbox').prop('checked', true);
       }
       else {
         $("#"+k).hide();
+        $('#'+k+'Checkbox').prop('checked', false);
       }
     });
   },
