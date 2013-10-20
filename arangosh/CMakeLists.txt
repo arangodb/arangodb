@@ -11,6 +11,10 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 ## --SECTION--                                                       EXECUTABLES
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief arangosh
+################################################################################
+
 add_executable(
     ${BIN_ARANGOSH}
     ArangoShell/ArangoClient.cpp
@@ -30,6 +34,22 @@ target_link_libraries(
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
 )
+
+install(
+  TARGETS ${BIN_ARANGOSH}
+  RUNTIME DESTINATION bin)
+
+install(
+  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf
+  DESTINATION ${ARANGODB_CONF_DIR})
+
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
+  DESTINATION share/arangodb
+  FILES_MATCHING PATTERN "*.js"
+  REGEX "^.*/common/test-data$" EXCLUDE
+  REGEX "^.*/common/tests$" EXCLUDE
+  REGEX "^.*/client/tests$" EXCLUDE)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
