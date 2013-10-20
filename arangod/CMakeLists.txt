@@ -21,7 +21,7 @@ if (USE_MRUBY)
       MRServer/mr-actions.cpp
   )
 
-  set(ARANGOD_MRUBY_LIB
+  set(ARANGOD_MRUBY_LIBS
       ${LIB_ARANGO_MRUBY}
       ${MRUBY_LIBS}
   )
@@ -130,25 +130,33 @@ target_link_libraries(
     ${LIB_ARANGO_FE}
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO}
-    ${ARANGOD_MRUBY_LIB}
+    ${ARANGOD_MRUBY_LIBS}
     ${LIBEV_LIBS}
     ${V8_LIBS} # need this for rest::Version
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
-)
+    ${CMAKE_THREAD_LIBS_INIT})
 
 install(
   TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION sbin)
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
   DESTINATION ${ARANGODB_CONF_DIR})
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/client
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
+  DESTINATION share/arangodb
+  FILES_MATCHING PATTERN "*.js"
+  REGEX "^.*/common/test-data$" EXCLUDE
+  REGEX "^.*/common/tests$" EXCLUDE
+  REGEX "^.*/server/tests$" EXCLUDE)
+
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
   DESTINATION share/arangodb
   FILES_MATCHING PATTERN "*.rb")
 
