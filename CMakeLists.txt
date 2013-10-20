@@ -30,7 +30,8 @@ set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+set(TEST_BASICS_SUITE basics_suite)
+set(TEST_GEO_SUITE    geo_suite)
 
 ################################################################################
 ### @brief threads
@@ -43,11 +44,12 @@ find_package(Threads)
 ################################################################################
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89 -g")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98 -g")
 endif ()
 
 if (APPLE)
@@ -70,6 +72,10 @@ add_definitions("-DTRI_BITS=${BITS}")
 ################################################################################
 
 option(USE_MRUBY "Do you want to use MRUBY" OFF)
+
+if (USE_MRUBY)
+  add_definitions("-DTRI_ENABLE_MRUBY=1")
+endif ()
 
 ################################################################################
 ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
@@ -237,6 +243,14 @@ add_subdirectory(arangod)
 if (USE_MRUBY)
   add_subdirectory(arangoirb)
 endif ()
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             TESTS
+## -----------------------------------------------------------------------------
+
+enable_testing()
+
+add_subdirectory(UnitTests)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                          PACKAGES
