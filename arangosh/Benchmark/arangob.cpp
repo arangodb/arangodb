@@ -205,7 +205,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("async", &Async, "send asychronous requests")
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
-    ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
+    ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching)")
     ("keep-alive", &KeepAlive, "use HTTP keep-alive")
     ("collection", &Collection, "collection name to use in tests")
     ("test-case", &TestCase, "test case to use")
