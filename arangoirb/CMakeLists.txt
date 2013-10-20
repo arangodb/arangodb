@@ -6,6 +6,7 @@
 
 include_directories(.)
 include_directories(${PROJECT_SOURCE_DIR}/lib)
+include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       EXECUTABLES
@@ -24,9 +25,11 @@ add_executable(
 
 target_link_libraries(
     ${BIN_ARANGOIRB}
-    ${LIB_ARANGO_V8}
+    ${LIB_ARANGO_MRUBY}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
+    ${V8_LIBS} # need this for rest::Version
+    ${MRUBY_LIBS}
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
