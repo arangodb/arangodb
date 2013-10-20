@@ -76,7 +76,12 @@ var dashboardView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   toggleEvent: function () {
-    $('#dashboardDropdownOut').slideToggle(220);
+    if ($('#detailReplication').is(':visible')) {
+      $('#replicationDropdownOut').slideToggle(220);
+    }
+    else {
+      $('#dashboardDropdownOut').slideToggle(220);
+    }
   },
 
   getReplicationStatus: function () {
@@ -281,7 +286,7 @@ var dashboardView = Backbone.View.extend({
       });
     }
 
-    this.options.description.models[0].attributes.figures.push(figure);
+    this.options.description.models[0].attributes.figures.unshift(figure);
   },
 
   checkInterval: function (a) {
@@ -382,6 +387,12 @@ var dashboardView = Backbone.View.extend({
       $('#detailGraph').show();
       $('.statGroups').show();
     }
+
+    if ($('#dashboardDropdownOut').is(':visible') || $('#replicationDropdownOut').is(':visible')) {
+      console.log("togled");
+      $('#replicationDropdownOut').toggle();
+      $('#dashboardDropdownOut').toggle();
+    }
   },
 
   showGroup: function (a) {
@@ -480,7 +491,6 @@ var dashboardView = Backbone.View.extend({
       }
 
       //disable ticks/label for small charts
-
       d3.select("#" + identifier + "Chart svg")
       .call(chart)
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
@@ -491,6 +501,8 @@ var dashboardView = Backbone.View.extend({
 
     //fix position for last x-value label in detailgraph
     $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
+    //fix position of small graphs
+    $('.svgClass .nv-lineChart').attr('transform','translate(5,5)');
   },
 
   calculateSeries: function (flush) {
@@ -619,9 +631,10 @@ var dashboardView = Backbone.View.extend({
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
+    //tooltips small charts
     $('.db-info').tooltip({
       placement: "top",
-      delay: {show: 3000, hide: 100}
+      delay: {show: 100, hide: 100}
     });
   }
 
