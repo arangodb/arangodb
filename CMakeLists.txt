@@ -15,19 +15,23 @@ project(arangodb)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98 -g")
 
-set(LIB_ARANGO         arango)
-set(LIB_ARANGO_CLIENT  arango_client)
-set(LIB_ARANGO_FE      arango_fe)
-set(LIB_ARANGO_V8      arango_v8)
-
-set(BIN_ARANGOSH  arangosh)
-
 add_definitions("-DTRI_BITS=64")
 
 add_definitions("-D_REENTRANT") 
 add_definitions("-D_THREAD_SAFE") 
 add_definitions("-DHAVE_CONFIG_H") 
-add_definitions("-D_SYSCONFDIR_=\"/usr/local/etc/arangodb\"")
+
+set(LIB_ARANGO         arango)
+set(LIB_ARANGO_CLIENT  arango_client)
+set(LIB_ARANGO_FE      arango_fe)
+set(LIB_ARANGO_V8      arango_v8)
+
+set(BIN_ARANGOB       arangob)
+set(BIN_ARANGODUMP    arangodump)
+set(BIN_ARANGOIMP     arangoimp)
+set(BIN_ARANGOIRB     arangoirb)
+set(BIN_ARANGORESTORE arangorestore)
+set(BIN_ARANGOSH      arangosh)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           OPTIONS
@@ -37,7 +41,7 @@ add_definitions("-D_SYSCONFDIR_=\"/usr/local/etc/arangodb\"")
 ### @brief MRUBY
 ################################################################################
 
-option(USE_MRUBY "Do you want to use MRUBY")
+option(USE_MRUBY "Do you want to use MRUBY" OFF)
 
 ################################################################################
 ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
@@ -48,6 +52,8 @@ set(ARANGODB_CONF_DIR ${SYSCONFDIR}/arangodb)
 
 file(TO_NATIVE_PATH "${SYSCONFDIR}" SYSCONFDIR)
 file(TO_NATIVE_PATH "${ARANGODB_CONF_DIR}" ARANGODB_CONF_DIR)
+
+add_definitions("-D_SYSCONFDIR_=\"${ARANGODB_CONF_DIR}\"")
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   COMMON INCLUDES
@@ -179,6 +185,10 @@ add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 add_subdirectory(lib)
 add_subdirectory(arangosh)
+
+if (USE_MRUBY)
+  add_subdirectory(arangoirb)
+endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                          PACKAGES
