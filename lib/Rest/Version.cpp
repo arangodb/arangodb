@@ -70,6 +70,7 @@ void Version::initialise () {
   Values["openssl-version"] = getOpenSSLVersion();
   Values["v8-version"] = getV8Version();
   Values["libev-version"] = getLibevVersion();
+  Values["zlib-version"] = getZLibVersion();
   Values["configure"] = getConfigure();
   Values["env"] = getConfigureEnvironment();
   Values["build-date"] = getBuildDate();
@@ -111,6 +112,18 @@ std::string Version::getOpenSSLVersion () {
 std::string Version::getLibevVersion () {
 #ifdef TRI_LIBEV_VERSION
   return std::string(TRI_LIBEV_VERSION);
+#else
+  return std::string("");
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get zlib version
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getZLibVersion () {
+#ifdef TRI_ZLIB_VERSION
+  return std::string(TRI_ZLIB_VERSION);
 #else
   return std::string("");
 #endif
@@ -184,11 +197,12 @@ std::string Version::getBuildDate () {
 std::string Version::getVerboseVersionString () {
   std::ostringstream version;
 
-  version << "ArangoDB " << getServerVersion() <<
-    " -- " <<
-    "ICU " << getICUVersion() << ", " <<
-    "V8 version " << getV8Version() << ", "
-    "SSL engine " << getOpenSSLVersion();
+  version << "ArangoDB "
+          << getServerVersion()
+          << " -- "
+          << "ICU " << getICUVersion() << ", "
+          << "V8 version " << getV8Version() << ", "
+          << "SSL engine " << getOpenSSLVersion();
 
   return version.str();
 }
