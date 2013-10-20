@@ -28,6 +28,7 @@ set(LIB_ARANGO_MRUBY   arango_mruby)
 set(LIB_ARANGO_V8      arango_v8)
 
 set(BIN_ARANGOB       arangob)
+set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGOIRB     arangoirb)
@@ -205,6 +206,7 @@ add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 add_subdirectory(lib)
 add_subdirectory(arangosh)
+add_subdirectory(arangod)
 
 if (USE_MRUBY)
   add_subdirectory(arangoirb)
