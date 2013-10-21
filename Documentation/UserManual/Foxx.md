@@ -16,8 +16,6 @@ If you just want to install an existing application, please use the
 @ref UserManualFoxxManager. If you want to create your own application, 
 please continue.
 
-So let's get started, shall we?
-
 Overview
 ========
 
@@ -41,8 +39,6 @@ entity that is responsible for a collection and specifically:
 To represent an entry in this collection it will use a **Model**, which is a wrapper around
 the raw data from the database. Here you can implement helper functions or simple access
 methods.
-
-Now let's get into the details.
 
 Your first Foxx app in 5 minutes - a step-by-step tutorial 
 ==========================================================
@@ -205,6 +201,66 @@ The adjusted manifest now looks like this:
 Note: browsers tend to cache results of redirections. To see the new default 
 document in effect, first clear your browser's cache and point your browser
 to `http://localhost:8529/dev/my_app/`.
+
+Accessing collections from FOXX
+===============================
+
+Foxx assumes by default that an application has itws own collections. 
+Accessing collections directly by name could cause problems, for 
+instance if you had two completely independent Foxx applications that 
+both access their own collection 'users'. 
+
+To prevent such issues, Foxx provides functions that return an 
+application-specific collection name. 
+For example, applicationContext.collectionName('users') will return the 
+collection name prefixed with the application name, e.g. "myapp_users". 
+This allows to have a 'users' collection which is specific for each 
+application. 
+
+Additionally, a Foxx controller has a function "collection" that returns 
+a reference to a collection prefixed like above, in the same way as 
+db.<collection-name> would do. 
+In the example, controller.collection('users') would return the 
+collection object for the "myapp_users" collection, and you could use it 
+like any other collection with the db object, e.g. 
+
+    controller.collection('users').toArray() 
+    controller.collection('users').save(...) 
+    controller.collection('users').remove(...) 
+    controller.collection('users').replace(...) 
+
+Of course you still use any collection directly with the db object even 
+from Foxx. To access an collection called "movies" this could be one solution: 
+
+    app.get("/all", function(req, res) { 
+        var db = require("org/arangodb").db; 
+        res.json({ movies: db.movies.toArray() }); 
+    }); 
+
+Of course this completely bypasses prefixing and repositories, but works 
+well especially for quick tests or shared collections that are NOT 
+application-specific. 
+
+Then there are Foxx repositories. These are objects that you can create 
+to hide the internals of the database access from the application so 
+that the application will just use the repository but not the database. 
+
+A repository is an object that wrap access to a collection (or multiple 
+collections if you want), whereas controller.collection returns the 
+collection itself. That's the main difference. 
+
+To return a list of users from a controller using a repository, you 
+could use it like this: 
+
+    var foxx = require("org/arangodb/foxx"); 
+    var db = require("org/arangodb").db; 
+    var usersRepo = new foxx.Repository(db._collection("users")); 
+    app.get("/all", function(req, res) { 
+       res.json({ users: usersRepo.collection.toArray() }); 
+    }); 
+
+Of course you can create your own methods in the repository to add extra 
+functionality. 
 
 Details on FoxxController{#UserManualFoxxDetailsController}
 =============================================================
