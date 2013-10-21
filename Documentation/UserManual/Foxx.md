@@ -202,7 +202,7 @@ Note: browsers tend to cache results of redirections. To see the new default
 document in effect, first clear your browser's cache and point your browser
 to `http://localhost:8529/dev/my_app/`.
 
-Accessing collections from FOXX
+Accessing collections from Foxx
 ===============================
 
 Foxx assumes by default that an application has itws own collections. 
