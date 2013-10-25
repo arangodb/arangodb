@@ -592,6 +592,11 @@ table.dataTable thead th {
   cursor: default !important;
 }
 
+#newIndexView input[type='checkbox'] {
+  float: left;
+  margin-top: -9px;
+}
+
 #newIndexView table tr {
   width: 600px !important;
 }
