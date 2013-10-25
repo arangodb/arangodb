@@ -56,6 +56,7 @@ var collectionInfoView = Backbone.View.extend({
       this.data = window.arangoCollectionsStore.getFigures(this.options.colId, true);
       this.revision = window.arangoCollectionsStore.getRevision(this.options.colId, true);
       this.properties = window.arangoCollectionsStore.getProperties(this.options.colId, true);
+      //remove 
       this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
       this.fillLoadedModal(this.data);
       //this.convertFigures(this.data);

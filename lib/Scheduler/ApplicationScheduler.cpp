@@ -574,7 +574,7 @@ void ApplicationScheduler::stop () {
 
     for (size_t count = 0;  count < MAX_TRIES && _scheduler->isRunning();  ++count) {
       LOGGER_TRACE("waiting for scheduler to stop");
-      usleep(1000000);
+      usleep(100000);
     }
 
     _scheduler->shutdown();

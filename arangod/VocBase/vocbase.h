@@ -367,6 +367,7 @@ typedef struct TRI_vocbase_s {
   }
   _compactionBlockers;
 
+  TRI_condition_t            _compactorCondition;
   TRI_condition_t            _cleanupCondition;
   TRI_condition_t            _syncWaitersCondition;
   int64_t                    _syncWaiters;

@@ -100,7 +100,36 @@ string const& RestVersionHandler::queue () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief returns the server version
+///
+/// @RESTHEADER{GET /_api/version,returns the server version}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{details,boolean,optional}
+/// If set to `true`, the response will contain a `details` attribute with
+/// additional information about included components and their versions. The
+/// attribute names and internals of the `details` object may vary depending on 
+/// platform and ArangoDB version.
+///
+/// @RESTDESCRIPTION
+/// Returns the server name and version number. The response is a JSON object
+/// with the following attributes:
+/// 
+/// - `server`: will always contain `arango`
+///
+/// - `version`: the server version string. The string has the format 
+///   "`major`.`minor`.`sub`". `major` and `minor` will be numeric, and `sub`
+///   may contain a number or a textual version. 
+///
+/// - `details`: an optional JSON object with additional details. This is
+///   returned only if the `details` URL parameter is set to `true` in the 
+///   request.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned in all cases.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestVersionHandler::execute () {

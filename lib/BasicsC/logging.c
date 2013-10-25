@@ -152,6 +152,12 @@ static TRI_log_buffer_t BufferOutput[OUTPUT_LOG_LEVELS][OUTPUT_BUFFER_SIZE];
 static TRI_mutex_t BufferLock;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief condition variable for the logger
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_condition_t LogCondition;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief message queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -790,7 +796,9 @@ static void MessageQueueWorker (void* data) {
     }
 
     if (LoggingActive) {
-      usleep(sl);
+      TRI_LockCondition(&LogCondition);
+      TRI_TimedWaitCondition(&LogCondition, (uint64_t) sl);
+      TRI_UnlockCondition(&LogCondition);
     }
     else {
       TRI_LockMutex(&LogMessageQueueLock);
@@ -1905,6 +1913,7 @@ void TRI_InitialiseLogging (bool threaded) {
   ThreadedLogging = threaded;
 
   if (threaded) {
+    TRI_InitCondition(&LogCondition);
     TRI_InitMutex(&LogMessageQueueLock);
 
     TRI_InitVector(&LogMessageQueue, TRI_CORE_MEM_ZONE, sizeof(log_message_t));
@@ -1943,9 +1952,14 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
 
   // join with the logging thread
   if (ThreadedLogging) {
+    TRI_LockCondition(&LogCondition);
+    TRI_SignalCondition(&LogCondition);
+    TRI_UnlockCondition(&LogCondition);
+
     TRI_JoinThread(&LoggingThread);
     TRI_DestroyMutex(&LogMessageQueueLock);
     TRI_DestroyVector(&LogMessageQueue);
+    TRI_DestroyCondition(&LogCondition);
   }
 
   // cleanup appenders

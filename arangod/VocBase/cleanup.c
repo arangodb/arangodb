@@ -305,9 +305,11 @@ void TRI_CleanupVocBase (void* data) {
       // clean up expired compactor locks
       TRI_CleanupCompactorVocBase(vocbase);
 
-      TRI_LockCondition(&vocbase->_cleanupCondition);
-      TRI_TimedWaitCondition(&vocbase->_cleanupCondition, (uint64_t) CLEANUP_INTERVAL);
-      TRI_UnlockCondition(&vocbase->_cleanupCondition);
+      if (state == 1) {
+        TRI_LockCondition(&vocbase->_cleanupCondition);
+        TRI_TimedWaitCondition(&vocbase->_cleanupCondition, (uint64_t) CLEANUP_INTERVAL);
+        TRI_UnlockCondition(&vocbase->_cleanupCondition);
+      }
     }
 
     if (state == 3) {

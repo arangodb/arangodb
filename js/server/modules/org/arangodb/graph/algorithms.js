@@ -432,8 +432,16 @@ Vertex.prototype.measurement = function (measurement) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all shortest paths
 ///
-/// @FUN{@FA{graph}.geodesics()}
+/// @FUN{@FA{graph}.geodesics(@FA{options})}
 ///
+/// Return all shortest paths
+/// An optional `options` JSON object can be specified to control the result.
+/// `options` can have the following sub-attributes:
+/// - `grouped`: if not specified or set to `false`, the result will be a flat
+///   list. If set to `true`, the result will be a list containing list of 
+///   paths, grouped for each combination of source and target. 
+/// - `threshold`: if not specified, all paths will be returned. If `threshold`
+///   is `true`, only paths with a minimum length of 3 will be returned
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.geodesics = function (options) {
@@ -476,7 +484,10 @@ Graph.prototype.geodesics = function (options) {
 ///
 /// @FUN{@FA{graph}.measurement(@FA{measurement})}
 ///
-/// Calculates the diameter or radius of a graph
+/// Calculates the diameter or radius of a graph.
+/// `measurement` can either be: 
+/// - `diameter`: to calculate the diameter
+/// - `radius`: to calculate the radius
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
