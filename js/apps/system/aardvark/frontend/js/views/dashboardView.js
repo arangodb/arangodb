@@ -7,6 +7,7 @@ var dashboardView = Backbone.View.extend({
   updateFrequency: 5, // the actual update rate (5 s)
   updateFrequencyR: 5, // the actual update rate (5 s) REPLICATION
   updateCounter: 0,
+  updateCounterR: 0,
   arraySize: 20, // how many values will we keep per figure?
   seriesData: {},
   charts: {},
@@ -30,6 +31,7 @@ var dashboardView = Backbone.View.extend({
 
         window.setInterval(function() {
           self.updateCounter++;
+          self.updateCounterR++;
 
           if (self.updateNOW === true) {
             self.calculateSeries();
@@ -37,13 +39,15 @@ var dashboardView = Backbone.View.extend({
             self.updateNOW = false;
           }
 
-          if (self.updateCounter < self.updateFrequency) {
-            return false;
+          if (window.location.hash === '' && self.updateCounterR > self.updateFrequencyR) {
+            console.log(self.updateCounter);
+            console.log(self.updateFrequencyR);
+            self.getReplicationStatus();
+            self.updateCounterR = 0;
           }
 
-          //need other solution here -> split repl & graph update interval
-          if (window.location.hash === '' && self.updateCounter >= self.updateFrequencyR) {
-            self.getReplicationStatus();
+          if (self.updateCounter < self.updateFrequency) {
+            return false;
           }
 
           self.updateCounter = 0;
@@ -300,9 +304,10 @@ var dashboardView = Backbone.View.extend({
     this.renderCharts();
   },
   checkIntervalR: function (a) {
-    this.updateFrequencyR = a.target.value;
-    self.getReplicationStatus();
-    console.log("asd");
+    if (a.target.value) {
+      this.updateFrequencyR = a.target.value;
+      this.getReplicationStatus();
+    }
   },
 
   checkEnabled: function (a) {
@@ -442,7 +447,7 @@ var dashboardView = Backbone.View.extend({
   renderCharts: function () {
     var self = this;
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
-    $('#every'+self.updateFrequency+'secondsR').prop('checked',true);
+    $('#every'+self.updateFrequencyR+'secondsR').prop('checked',true);
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
