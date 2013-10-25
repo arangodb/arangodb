@@ -40,8 +40,6 @@ var dashboardView = Backbone.View.extend({
           }
 
           if (window.location.hash === '' && self.updateCounterR > self.updateFrequencyR) {
-            console.log(self.updateCounter);
-            console.log(self.updateFrequencyR);
             self.getReplicationStatus();
             self.updateCounterR = 0;
           }
