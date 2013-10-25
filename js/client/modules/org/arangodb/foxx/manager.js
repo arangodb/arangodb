@@ -705,6 +705,18 @@ exports.run = function (args) {
              res.appId, 
              res.mount);
     }
+    else if (type === 'replace') {
+      if (3 < args.length) {
+        res = exports.replace(args[1], args[2], JSON.parse(args[3]));
+      }
+      else {
+        res = exports.replace(args[1], args[2]);
+      }
+
+      printf("Application %s replaced successfully at mount point %s\n", 
+             res.appId, 
+             res.mount);
+    }
     else if (type === 'uninstall') {
       res = exports.uninstall(args[1]);
 
@@ -722,7 +734,7 @@ exports.run = function (args) {
     else if (type === 'config') {
       exports.config();
     }
-    else if (type === 'list') {
+    else if (type === 'list' || type === 'installed') {
       if (1 < args.length && args[1] === "prefix") {
         exports.list(true);
       }
@@ -899,6 +911,52 @@ exports.unmount = function (mount) {
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
 
   return arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.replace = function (name, mount, options) {
+  'use strict';
+
+  checkParameter(
+    "replace(<name>, <mount>, [<options>])",
+    [ [ "Name", "string" ],
+      [ "Mount path", "string" ]],
+    [ name, mount ] );
+
+  validateMount(mount);
+
+  var aal = getStorage();
+  var existing = aal.firstExample({ type: "mount", name: name, mount: mount });
+
+  if (existing === null) {
+    throw new Error("Cannot find application '" + name + "' at mount '" + mount + "'");
+  }
+
+  var appId = existing.app;
+
+  // .............................................................................
+  // install at path
+  // .............................................................................
+
+  if (appId === null) {
+    throw new Error("Cannot extract application id");
+  }
+
+  options = options || {};
+
+  if (typeof options.setup === "undefined") {
+    options.setup = true;
+  }
+
+  options.reload = true;
+
+  exports.unmount(mount);
+  var res = exports.mount(appId, mount, options);
+
+  return res;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1356,23 +1414,25 @@ exports.help = function () {
   'use strict';
 
   var commands = {
-    "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
-    "mount"        : "mounts a fetched foxx application to a local URL",
-    "setup"        : "setup executes the setup script (app must already be mounted)",
-    "install"      : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL "
-                   + "and sets it up",
-    "teardown"     : "teardown execute the teardown script (app must be still be mounted)",
-    "unmount"      : "unmounts a mounted foxx application",
-    "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",
-    "purge"        : "physically removes a foxx application and all mounts",
-    "list"         : "lists all installed foxx applications",
-    "fetched"      : "lists all fetched foxx applications that were fetched into the local repository", 
-    "available"    : "lists all foxx applications available in the local repository",
-    "info"         : "displays information about a foxx application",
-    "search"       : "searches the local foxx-apps repository",
-    "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-    "config"       : "returns configuration information from the server",
-    "help"         : "shows this help"
+    "fetch"     : "fetches a foxx application from the central foxx-apps repository into the local repository",
+    "mount"     : "mounts a fetched foxx application to a local URL",
+    "setup"     : "setup executes the setup script (app must already be mounted)",
+    "install"   : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL " +
+                  "and sets it up",
+    "replace"   : "replaces an aleady existing foxx application with the current local version",
+    "teardown"  : "teardown execute the teardown script (app must be still be mounted)",
+    "unmount"   : "unmounts a mounted foxx application",
+    "uninstall" : "unmounts a mounted foxx application and calls its teardown method",
+    "purge"     : "physically removes a foxx application and all mounts",
+    "list"      : "lists all installed foxx applications",
+    "installed" : "lists all installed foxx applications (alias for list)",
+    "fetched"   : "lists all fetched foxx applications that were fetched into the local repository", 
+    "available" : "lists all foxx applications available in the local repository",
+    "info"      : "displays information about a foxx application",
+    "search"    : "searches the local foxx-apps repository",
+    "update"    : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+    "config"    : "returns configuration information from the server",
+    "help"      : "shows this help"
   };
 
   arangodb.print("\nThe following commands are available:");

@@ -89,6 +89,10 @@
         {
             "path": "api-docs/user.{format}", 
             "description": "user API"
+        }, 
+        {
+            "path": "api-docs/version.{format}", 
+            "description": "version API"
         }
     ]
 }

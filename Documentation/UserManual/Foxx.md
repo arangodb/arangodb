@@ -16,10 +16,8 @@ If you just want to install an existing application, please use the
 @ref UserManualFoxxManager. If you want to create your own application, 
 please continue.
 
-So let's get started, shall we?
-
 Overview
---------
+========
 
 The typical request to a Foxx application will work as follows (only conceptually,
 a lot of the steps are cached in reality):
@@ -42,10 +40,8 @@ To represent an entry in this collection it will use a **Model**, which is a wra
 the raw data from the database. Here you can implement helper functions or simple access
 methods.
 
-Now let's get into the details.
-
-Creating the application files
-------------------------------
+Your first Foxx app in 5 minutes - a step-by-step tutorial 
+==========================================================
 
 An application built with Foxx is written in JavaScript and deployed to 
 ArangoDB directly. ArangoDB serves this application, you do not need a 
@@ -137,6 +133,9 @@ directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your
 database directory.  In development mode the server automatically reloads all
 application files on every request, so changes to the underlying files are
 visible instantly. 
+Note: if you use the development mode for the first time or choose a different
+directory for `dev-app-path`, it may be necessary to start ArangoDB with the
+`--upgrade` option once. This will initialise the specified application directory.
 
 Note: the development mode is convenient when developing applications but the
 permanent reloading has an impact on performance. Therefore permanent reloading is
@@ -202,6 +201,66 @@ The adjusted manifest now looks like this:
 Note: browsers tend to cache results of redirections. To see the new default 
 document in effect, first clear your browser's cache and point your browser
 to `http://localhost:8529/dev/my_app/`.
+
+Accessing collections from Foxx
+===============================
+
+Foxx assumes by default that an application has itws own collections. 
+Accessing collections directly by name could cause problems, for 
+instance if you had two completely independent Foxx applications that 
+both access their own collection 'users'. 
+
+To prevent such issues, Foxx provides functions that return an 
+application-specific collection name. 
+For example, applicationContext.collectionName('users') will return the 
+collection name prefixed with the application name, e.g. "myapp_users". 
+This allows to have a 'users' collection which is specific for each 
+application. 
+
+Additionally, a Foxx controller has a function "collection" that returns 
+a reference to a collection prefixed like above, in the same way as 
+db.<collection-name> would do. 
+In the example, controller.collection('users') would return the 
+collection object for the "myapp_users" collection, and you could use it 
+like any other collection with the db object, e.g. 
+
+    controller.collection('users').toArray() 
+    controller.collection('users').save(...) 
+    controller.collection('users').remove(...) 
+    controller.collection('users').replace(...) 
+
+Of course you still use any collection directly with the db object even 
+from Foxx. To access an collection called "movies" this could be one solution: 
+
+    app.get("/all", function(req, res) { 
+        var db = require("org/arangodb").db; 
+        res.json({ movies: db.movies.toArray() }); 
+    }); 
+
+Of course this completely bypasses prefixing and repositories, but works 
+well especially for quick tests or shared collections that are NOT 
+application-specific. 
+
+Then there are Foxx repositories. These are objects that you can create 
+to hide the internals of the database access from the application so 
+that the application will just use the repository but not the database. 
+
+A repository is an object that wrap access to a collection (or multiple 
+collections if you want), whereas controller.collection returns the 
+collection itself. That's the main difference. 
+
+To return a list of users from a controller using a repository, you 
+could use it like this: 
+
+    var foxx = require("org/arangodb/foxx"); 
+    var db = require("org/arangodb").db; 
+    var usersRepo = new foxx.Repository(db._collection("users")); 
+    app.get("/all", function(req, res) { 
+       res.json({ users: usersRepo.collection.toArray() }); 
+    }); 
+
+Of course you can create your own methods in the repository to add extra 
+functionality. 
 
 Details on FoxxController{#UserManualFoxxDetailsController}
 =============================================================
@@ -827,3 +886,45 @@ you provided, you also have access to all your view helpers.
 ### Render
 
 @copydetails JSF_foxx_TemplateMiddleware_response_render
+
+Iteratively Developing an Application{#UserManualFoxxDevelopment}
+=================================================================
+
+While developing a Foxx application, it is recommended to use the development
+mode. The development mode makes ArangoDB reload all components of all Foxx
+applications on every request. While this has a negative impact on performance,
+it allows to view and debug changes in the application instantly. It is not
+recommended to use the development mode in production.
+
+During development it is often necessary to log some debug output. ArangoDB
+provides a few mechanisms for this:
+
+- using `console.log`:
+  ArangoDB provides the `console` module, which you can use from within your
+  Foxx application like this:
+        
+      require("console").log(value);
+
+  The `console` module will log all output to ArangoDB's logfile. If you are
+  not redirecting to log output to stdout, it is recommended that you follow
+  ArangoDB's logfile using a `tail -f` command or something similar.
+  Please refer to @ref JSModuleConsole for details.
+
+- using `internal.print`:
+  The `print` method of the `internal` module writes data to the standard
+  output of the ArangoDB server process. If you have start ArangoDB manually
+  and do not run it as an (unattended) daemon, this is a convenient method:
+
+      require("internal").print(value);
+
+- tapping requests / responses:
+  Foxx allows to tap incoming requests and outgoing responses using the `before`
+  and `after` hooks. To print all incoming requests to the stdout of the ArangoDB
+  server process, you could use some code like this in your controller:
+   
+      controller.before("/*", function (req, res) {
+        require("internal").print(req);
+      });
+
+  Of course you can also use `console.log` or any other means of logging output.
+

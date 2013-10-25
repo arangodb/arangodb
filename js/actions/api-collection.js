@@ -108,7 +108,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 /// @RESTHEADER{POST /_api/collection,creates a collection}
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// the body with name, options of a collection.
+/// the body with name and options for a collection.
 ///
 /// @RESTDESCRIPTION
 /// Creates an new collection with a given name. The request must contain an
@@ -300,9 +300,10 @@ function post_api_collection (req, res) {
 ///
 /// @RESTHEADER{GET /_api/collection,reads all collections}
 ///
-/// @RESTURLPARAMETERS
+/// @RESTQUERYPARAMETERS
 ///
-/// @RESTURLPARAM{excludeSystem,boolean,optional}
+/// @RESTQUERYPARAM{excludeSystem,boolean,optional}
+/// Whether or not system collections should be excluded from the result.
 ///
 /// @RESTDESCRIPTION
 /// Returns an object with an attribute `collections` containing a 
@@ -368,6 +369,7 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 /// 
 /// @RESTDESCRIPTION
 /// The result is an object describing the collection with the following
@@ -406,6 +408,7 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
@@ -475,6 +478,7 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents.
@@ -522,6 +526,7 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents
@@ -614,6 +619,7 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will also contain the
@@ -660,10 +666,15 @@ function get_api_collections (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
-/// @RESTURLPARAM{withRevisions,boolean,optional}
+/// @RESTQUERYPARAMETERS
 ///
-/// @RESTURLPARAM{withData,boolean,optional}
+/// @RESTQUERYPARAM{withRevisions,boolean,optional}
+/// Whether or not to include document revision ids in the checksum calculation.
+///
+/// @RESTQUERYPARAM{withData,boolean,optional}
+/// Whether or not to include document body data in the checksum calculation.
 ///
 /// @RESTDESCRIPTION
 /// Will calculate a checksum of the meta-data (keys and optionally revision ids) and 
@@ -881,6 +892,7 @@ function get_api_collection (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// Loads a collection into memory. Returns the collection on success.
@@ -1027,6 +1039,7 @@ function put_api_collection_unload (req, res, collection) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
@@ -1069,6 +1082,7 @@ function put_api_collection_truncate (req, res, collection) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// Changes the properties of a collection. Expects an object with the
@@ -1143,6 +1157,7 @@ function put_api_collection_properties (req, res, collection) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection to rename.
 ///
 /// @RESTDESCRIPTION
 /// Renames a collection. Expects an object with the attribute(s)
@@ -1213,6 +1228,7 @@ function put_api_collection_rename (req, res, collection) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// Rotates the journal of a collection. The current journal of the collection will be closed 
@@ -1336,6 +1352,7 @@ function put_api_collection (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection to delete.
 ///
 /// @RESTDESCRIPTION
 /// Deletes a collection identified by `collection-name`.

@@ -184,7 +184,6 @@ var queryView = Backbone.View.extend({
         $('#queryOutput').height(windowHeight / 3);
         $('#aqlEditor').height(windowHeight / 2);
 
-        outputEditor.setTheme("ace/theme/merbivore_soft");
         inputEditor.resize();
         outputEditor.resize();
 
@@ -193,7 +192,7 @@ var queryView = Backbone.View.extend({
         this.deselect(inputEditor);
 
         $('#queryDiv').show();
-        outputEditor.setTheme("ace/theme/merbivore_soft");
+        //outputEditor.setTheme("ace/theme/merbivore_soft");
 
         return this;
     },
@@ -232,7 +231,8 @@ var queryView = Backbone.View.extend({
         }
 
         this.hideDeleteField();
-        $('#edit-aql-queries').modal('show');
+        $('#queryDropdown').slideToggle();
+        //$('#edit-aql-queries').modal('show');
         this.renderSelectboxes(true);
         this.updateEditSelect();
     },
@@ -386,7 +386,7 @@ var queryView = Backbone.View.extend({
         else {
             selector = '#querySelect';
             $(selector).empty();
-            $(selector).append('<option id="emptyquery">(please select)</option>');
+            $(selector).append('<option id="emptyquery">Insert Query</option>');
 
             $(selector).append('<optgroup label="Example queries">');
             $.each(this.queries, function (k, v) {

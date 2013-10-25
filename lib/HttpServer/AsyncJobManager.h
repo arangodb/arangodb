@@ -414,6 +414,8 @@ namespace triagens {
           if (jobId == 0) {
             return;
           }
+            
+          double now = TRI_microtime();
 
           WRITE_LOCKER(_lock);
           JobList::iterator it = _jobs.find(jobId); 
@@ -426,7 +428,7 @@ namespace triagens {
           else {
             (*it).second._response = handler->stealResponse();
             (*it).second._status = AsyncJobResult::JOB_DONE;
-            (*it).second._stamp = TRI_microtime();
+            (*it).second._stamp = now; 
           }
         }
 

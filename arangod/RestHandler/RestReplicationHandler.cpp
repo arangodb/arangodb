@@ -800,6 +800,9 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTHEADER{POST /_api/replication/batch,creates a new dump batch}
 ///
+/// @RESTBODYPARAM{body,json,required}
+/// A JSON object with the batch configration.
+///
 /// @RESTDESCRIPTION
 /// Creates a new dump batch and returns the batch's id.
 ///
@@ -827,6 +830,11 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{PUT /_api/replication/batch/`id`,prolongs an existing dump batch}
+///
+/// @RESTBODYPARAM{body,json,required}
+/// A JSON object with the batch configration.
+///
+/// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{id,string,required}
 /// The id of the batch.
@@ -857,6 +865,8 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{DELETE /_api/replication/batch/`id`,deletes an existing dump batch}
+///
+/// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{id,string,required}
 /// The id of the batch.
@@ -2427,8 +2437,6 @@ void RestReplicationHandler::handleCommandDump () {
 /// @brief synchronises data from a remote endpoint
 ///
 /// @RESTHEADER{PUT /_api/replication/sync,synchronises data from a remote endpoint}
-///
-/// @RESTQUERYPARAMETERS
 ///
 /// @RESTBODYPARAM{configuration,json,required}
 /// A JSON representation of the configuration.

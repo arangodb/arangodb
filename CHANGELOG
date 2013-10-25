@@ -1,5 +1,17 @@
-v1.4
-----
+v1.4.0-XXXXX (2013-XX-XX)
+-------------------------
+* added function to manage indexes (web interface)
+
+* improved server shutdown time by signalling shutdown to applicationserver,
+  logging, cleanup and compactor threads
+
+* added foxx-manager `replace` command
+
+* added foxx-manager `installed` command (a more intuitive alias for `list`) 
+
+* fixed issue #617: Swagger API is missing '/_api/version'
+
+* fixed issue #615: Swagger API: Some commands have no parameter entry forms
 
 * fixed issue #614: API : Typo in : Request URL /_api/database/current
 

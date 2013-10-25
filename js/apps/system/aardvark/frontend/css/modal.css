@@ -97,7 +97,7 @@
 }
 
 .figuresHeader {
-  border-bottom: 1px solid #888888;
+  border-bottom: 1px solid #C2C2C2;
 }
 
 .figuresHeader th {
@@ -153,9 +153,7 @@
 
 #tab-content-collection-info #info,
 #tab-content-collection-info #figures,
-#tab-content-collection-info #index,
-#tab-content-collection-edit #main,
-#tab-content-collection-edit #editIndex {
+#tab-content-collection-info #index {
   padding-top: 10px;
   border-top: 1px solid #888888 !important;
   margin-left: 0px !important;
@@ -193,8 +191,9 @@
 .modal-body .glyphicon-info-sign {
   color: #736B68;
   font-size: 18px;
-  margin-left: 5px;
-  margin-top: 2px;
+  right: 12px;
+  position: absolute;
+  margin-top: -10px;
 }
 
 .modal-body .glyphicon-info-sign:hover {
@@ -247,4 +246,35 @@
 
 #add-collection .accordion {
   margin-top: 10px;
+}
+
+#add-collection .collectionThSec {
+  width: 380px !important;
+}
+
+#add-collection input {
+  width: 380px !important;
+  margin-left: 45px;
+}
+
+#add-collection select {
+  width: 394px !important;
+  margin-left: 45px;
+}
+
+#add-collection .accordion-toggle {
+  width: 457px !important;
+}
+
+#change-collection input {
+  width: 384px !important;
+}
+
+#change-collection select {
+  width: 398px !important;
+}
+
+#figures .glyphicon-info-sign{
+  position: relative !important;
+  right: -4px !important;
 }

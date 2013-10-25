@@ -1,3 +1,7 @@
+.toolbarUL ul {
+  margin-top: 2px;
+}
+
 .ui-resizable-s {
   bottom: 0;
   height: 10px;
@@ -17,11 +21,11 @@
 #queryOutput .ui-resizable-handle {
   border-left: 0;
   border-bottom: 0;
+  border-top: 0;
 }
 
 #editorToolbar {
-  width: auto;
-  margin-top: 20px !important;
+  margin-top: 5px;
   margin-left: 0px;
   margin-right: 0px;
   border-top: 1px solid #A0A0A0;
@@ -42,17 +46,15 @@
 
 #outputToolbar span, #editorToolbar span {
   position: relative;
-  float:right;
-  height: 10px !important;
   margin-right: 5px;
   margin-left: 5px;
   top: 2px;
+  float:right;
 }
 
 
 #outputToolbar {
   position: relative;
-  margin-top: 5px;
   margin-left: 0;
   margin-right: 0;
   width: auto;
@@ -68,19 +70,8 @@
 }
 
 #editorToolbar i , #outputToolbar i {
-  float: right;
   margin-right: 5px;
   margin-top: 3px;
-}
-
-#editorToolbar select {
-  float: left !important;
-}
-
-#addAQL, #editAQL {
-  float: left !important;
-  margin-left: 5px;
-  margin-right: 0 !important;
 }
 
 #editor {
@@ -88,11 +79,14 @@
 }
 
 #editorLabel, #outputLabel {
-  float: left;
-  background-color: #F0F0F0;
-  width: 150px;
-  text-align: center;
-  border-right: 1px solid #C0C0C0;
+  width: 100%;
+}
+
+#editorLabel h6, #outputLabel h6 {
+  font-family: 'Open Sans', sans-serif;
+  margin-bottom: 5px;
+  font-weight: 400;
+  font-size: 16px;
 }
 
 #aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
@@ -102,6 +96,7 @@
 #aqlEditor .ui-resizable-handle {
   border-left: 0 !important;
   border-bottom: 0 !important;
+  border-top: 0 !important;
 }
 
 #aqlEditor {
@@ -112,12 +107,17 @@
   height: 200px;
   min-height: 100px;
   border: 1px solid #A0A0A0;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
-#submitQueryButton {
+#wideButtonDiv {
+  width: 100%;
+  height: 20px;
+  margin-bottom: 15px;
+}
+
+#submitQueryButton, #clearQueryButton {
   float: right;
-  margin-top: 0px;
 }
 
 .querynavbar {
@@ -138,6 +138,7 @@
   height: 200px;
   margin-right: 0px;
   margin-left: 0px;
+  margin-bottom: 10px;
   min-height: 100px;
   overflow-y: hidden;
   border: 1px solid #c0c0c0;
@@ -150,11 +151,9 @@
 }
 
 #querySelect {
-  height: 20px !important;
   line-height: 20px !important;
   z-index: 9999 !important;
   border-radius: 0 !important;
-  padding: 0 !important;
   margin-bottom: 0;
   border: 0 !important;
 }
@@ -163,18 +162,6 @@
   z-index: 9999 !important;
 }
 
-#querySize {
-  height: 20px !important;
-  line-height: 20px !important;
-  z-index: 9999 !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  margin-bottom: 0;
-  border: 0 !important;
-  float: left !important;
-  margin-left: 50px;
-  margin-right: 0 !important;
-}
 
 .queryTH {
   width: 20% !important;
@@ -198,10 +185,10 @@
   resize: vertical !important;
 }
 
-#queryOutput .ace_gutter-cell {
+/*#queryOutput .ace_gutter-cell {
   color: white;
   background-color: #686766 !important;
-}
+}*/
 
 .ace_print-margin {
   visibility: hidden !important;
@@ -214,4 +201,108 @@
 #editorToolbar .arango-icon-disk,
 #commentText, #redoText, #undoText, #clearInput, #clearOutput {
   margin-top: 1px;
+}
+
+#shortcutDiv {
+  float: left;
+  width: auto;
+  margin-top: -5px;
+}
+
+#queryDiv > * {
+  border: 0 !important;
+}
+
+.styled-select select {
+  background: white;
+  width: 268px;
+  padding: 5px;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1;
+  border: 0;
+  border-radius: 0;
+  height: 30px;
+  -webkit-appearance: none;
+  padding-left: 5px !important;
+  padding-top: 3px !important;
+}
+
+.styled-select {
+  float: right;
+  width: 240px;
+  height: 30px;
+  overflow: hidden;
+}
+
+.querySizeDiv {
+  margin-right: 10px;
+  height: 30px !important;
+  width: 95px !important;
+}
+
+.querySizeDiv select {
+  height: 30px !important;
+}
+
+#querySize {
+  width: 115px !important;
+  line-height: 20px !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
+}
+
+#queryDropdown {
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+  background-color: rgba(0,0,0,0.15);
+}
+
+#queryDropdownIn {
+  background-color: #FFFFFF;
+  padding: 10px;
+}
+
+#queryDropdownIn a {
+  width: 100%;
+  margin-bottom: 5px;
+  font-size: 16px;
+  font-weight: bolder;
+  color: #686766;
+}
+
+#queryDropdownRight {
+  width: 100%;
+}
+
+#queryModalSelect {
+  width: 100%;
+  padding-left: 0;
+}
+
+#queryDropdownRight textarea {
+  width: 100%;
+  padding: 5px 0 0 0px;
+  resize: vertical;
+}
+
+#queryDropdownRight textarea:focus {
+  outline: none;
+  border-color: #8AA051;
+  box-shadow: 0 0 3px #8AA051;
+}
+
+#queryDropdownLeft {
+  width: 100%;
+  margin-top: 10px;
+}
+
+#queryDropdownIn #save-edit-query {
+  margin-left: 7px !important;
+}
+
+#queryDropdownIn #delete-edit-query {
+  margin-left: 0 !important;
 }

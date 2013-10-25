@@ -5,7 +5,9 @@ var dashboardView = Backbone.View.extend({
   el: '#content',
   updateInterval: 1000, // 1 second, constant
   updateFrequency: 5, // the actual update rate (5 s)
+  updateFrequencyR: 5, // the actual update rate (5 s) REPLICATION
   updateCounter: 0,
+  updateCounterR: 0,
   arraySize: 20, // how many values will we keep per figure?
   seriesData: {},
   charts: {},
@@ -29,6 +31,7 @@ var dashboardView = Backbone.View.extend({
 
         window.setInterval(function() {
           self.updateCounter++;
+          self.updateCounterR++;
 
           if (self.updateNOW === true) {
             self.calculateSeries();
@@ -36,11 +39,13 @@ var dashboardView = Backbone.View.extend({
             self.updateNOW = false;
           }
 
+          if (window.location.hash === '' && self.updateCounterR > self.updateFrequencyR) {
+            self.getReplicationStatus();
+            self.updateCounterR = 0;
+          }
+
           if (self.updateCounter < self.updateFrequency) {
             return false;
-          }
-          if (window.location.hash === '#dashboard') {
-            self.getReplicationStatus();
           }
 
           self.updateCounter = 0;
@@ -64,6 +69,7 @@ var dashboardView = Backbone.View.extend({
   events: {
     "click #dashboardDropdown li"  : "checkEnabled",
     "click #intervalUL li"         : "checkInterval",
+    "click #intervalULR li"        : "checkIntervalR",
     "click .db-zoom"               : "renderDetailChart",
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",
@@ -76,7 +82,12 @@ var dashboardView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   toggleEvent: function () {
-    $('#dashboardDropdownOut').slideToggle(220);
+    if ($('#detailReplication').is(':visible')) {
+      $('#replicationDropdownOut').slideToggle(220);
+    }
+    else {
+      $('#dashboardDropdownOut').slideToggle(220);
+    }
   },
 
   getReplicationStatus: function () {
@@ -223,6 +234,7 @@ var dashboardView = Backbone.View.extend({
       self.renderFigure(this);
     });
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
+    $('#every'+self.updateFrequencyR+'secondsR').prop('checked',true);
 
     if (this.collection.models[0] === undefined) {
       this.collection.fetch({
@@ -281,13 +293,19 @@ var dashboardView = Backbone.View.extend({
       });
     }
 
-    this.options.description.models[0].attributes.figures.push(figure);
+    this.options.description.models[0].attributes.figures.unshift(figure);
   },
 
   checkInterval: function (a) {
     this.updateFrequency = a.target.value;
     this.calculateSeries();
     this.renderCharts();
+  },
+  checkIntervalR: function (a) {
+    if (a.target.value) {
+      this.updateFrequencyR = a.target.value;
+      this.getReplicationStatus();
+    }
   },
 
   checkEnabled: function (a) {
@@ -375,12 +393,20 @@ var dashboardView = Backbone.View.extend({
     if (parent === 'replSwitch') {
       $('#detailGraph').hide();
       $('.statGroups').hide();
-      $('#detailReplication').show();
+        $('#detailReplication').show();
+      if ($('#dashboardDropdown').is(':visible') || $('#replicationDropdown').is(':visible')) {
+        $('#replicationDropdownOut').show();
+        $('#dashboardDropdownOut').hide();
+      }
     }
     else if (parent === 'statSwitch') {
       $('#detailReplication').hide();
       $('#detailGraph').show();
       $('.statGroups').show();
+      if ($('#dashboardDropdown').is(':visible') || $('#replicationDropdown').is(':visible')) {
+        $('#replicationDropdownOut').hide();
+        $('#dashboardDropdownOut').show();
+      }
     }
   },
 
@@ -419,6 +445,7 @@ var dashboardView = Backbone.View.extend({
   renderCharts: function () {
     var self = this;
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
+    $('#every'+self.updateFrequencyR+'secondsR').prop('checked',true);
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
@@ -480,7 +507,6 @@ var dashboardView = Backbone.View.extend({
       }
 
       //disable ticks/label for small charts
-
       d3.select("#" + identifier + "Chart svg")
       .call(chart)
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
@@ -491,6 +517,8 @@ var dashboardView = Backbone.View.extend({
 
     //fix position for last x-value label in detailgraph
     $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
+    //fix position of small graphs
+    $('.svgClass .nv-lineChart').attr('transform','translate(5,5)');
   },
 
   calculateSeries: function (flush) {
@@ -592,9 +620,11 @@ var dashboardView = Backbone.View.extend({
     $.each(this.graphState, function(k,v) {
       if (v === true) {
         $("#"+k).show();
+        $('#'+k+'Checkbox').prop('checked', true);
       }
       else {
         $("#"+k).hide();
+        $('#'+k+'Checkbox').prop('checked', false);
       }
     });
   },
@@ -619,9 +649,10 @@ var dashboardView = Backbone.View.extend({
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
+    //tooltips small charts
     $('.db-info').tooltip({
       placement: "top",
-      delay: {show: 3000, hide: 100}
+      delay: {show: 100, hide: 100}
     });
   }
 
