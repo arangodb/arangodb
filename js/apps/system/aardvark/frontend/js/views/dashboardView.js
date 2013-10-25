@@ -390,18 +390,20 @@ var dashboardView = Backbone.View.extend({
     if (parent === 'replSwitch') {
       $('#detailGraph').hide();
       $('.statGroups').hide();
-      $('#detailReplication').show();
+        $('#detailReplication').show();
+      if ($('#dashboardDropdown').is(':visible') || $('#replicationDropdown').is(':visible')) {
+        $('#replicationDropdownOut').show();
+        $('#dashboardDropdownOut').hide();
+      }
     }
     else if (parent === 'statSwitch') {
       $('#detailReplication').hide();
       $('#detailGraph').show();
       $('.statGroups').show();
-    }
-
-    if ($('#dashboardDropdownOut').is(':visible') || $('#replicationDropdownOut').is(':visible')) {
-      console.log("togled");
-      $('#replicationDropdownOut').toggle();
-      $('#dashboardDropdownOut').toggle();
+      if ($('#dashboardDropdown').is(':visible') || $('#replicationDropdown').is(':visible')) {
+        $('#replicationDropdownOut').hide();
+        $('#dashboardDropdownOut').show();
+      }
     }
   },
 
