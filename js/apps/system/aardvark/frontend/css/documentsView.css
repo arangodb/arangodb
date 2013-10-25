@@ -523,8 +523,7 @@ table.dataTable thead th {
 
 #documentsToolbar li a {
   margin-top: 0px !important;
-  padding-top: 6px;
-  padding-bottom: 1px;
+  padding: 5px 11px 2px 9px;
 }
 
 #documentsToolbar span {
@@ -534,4 +533,73 @@ table.dataTable thead th {
 }
 
 #resetView, #filterSend, #confirmDocImport {
+}
+
+#indexHeaderContent {
+  margin-left: 5px;
+  margin-right: 5px;
+  background-color: white;
+}
+
+#indexHeaderContent > div {
+  padding: 10px;
+}
+
+#figuresHeader th {
+  width: 100% !important;
+}
+
+#figuresHeader .collectionInfoTh {
+  width: 25% !important;
+}
+
+#createIndex, #addIndex, #cancelIndex {
+  margin-top: 15px !important;
+  margin-left: 0;
+}
+
+#collectionEditIndexTable {
+  min-width: 100% !important;
+}
+
+#collectionEditIndexTable tr:nth-child(even) {
+  background-color: white !important;
+}
+
+#collectionEditIndexTable tr:nth-child(odd) {
+  background-color: #F1F0EE !important;
+}
+
+#collectionEditIndexTable th {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+}
+
+#collectionEditIndexTable .glyphicon {
+  font-size: 18px !important;
+  position: relative;
+  top: 2px;
+}
+
+#collectionEditIndexTable .glyphicon-minus-sign {
+  color: #B30000;
+}
+
+#collectionEditIndexTable .glyphicon-ban-circle {
+  color: #C2C2C2;
+  cursor: default !important;
+}
+
+#newIndexView table tr {
+  width: 600px !important;
+}
+
+#newIndexView table tr th:last-child {
+  width: 50px !important;
+}
+
+#newIndexView table th {
+  width: 200px !important;
+  font-weight: 300 !important;
 }

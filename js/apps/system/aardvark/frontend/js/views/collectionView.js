@@ -23,14 +23,6 @@ var collectionView = Backbone.View.extend({
       placement: "left"
     });
 
-    $('#collectionTab a').click(function (e) {
-      e.preventDefault();
-      $(this).tab('show');
-      if ($(this).attr('href') === '#editIndex') {
-        self.resetIndexForms();
-      }
-    });
-
     return this;
   },
   events: {
@@ -42,12 +34,7 @@ var collectionView = Backbone.View.extend({
     "click #confirmDeleteCollection"        :    "confirmDeleteCollection",
     "click #abortDeleteCollection"          :    "abortDeleteCollection",
     "keydown #change-collection-name"       :    "listenKey",
-    "keydown #change-collection-size"       :    "listenKey",
-    "click #editIndex .glyphicon-plus-sign"     :    "toggleNewIndexView",
-    "click #editIndex .glyphicon-remove-circle" :    "toggleNewIndexView",
-    "change #newIndexType" : "selectIndexType",
-    "click #createIndex" : "createIndex",
-    "click .deleteIndex" : "deleteIndex"
+    "keydown #change-collection-size"       :    "listenKey"
   },
   listenKey: function(e) {
     if (e.keyCode === 13) {
@@ -56,16 +43,6 @@ var collectionView = Backbone.View.extend({
   },
   hidden: function () {
     window.App.navigate("#collections", {trigger: true});
-  },
-  toggleNewIndexView: function () {
-    $('#indexEditView').toggle("fast");
-    $('#newIndexView').toggle("fast");
-    this.resetIndexForms();
-  },
-  selectIndexType: function () {
-    $('.newIndexClass').hide();
-    var type = $('#newIndexType').val();
-    $('#newIndexType'+type).show();
   },
   fillModal: function() {
     try {
@@ -99,156 +76,11 @@ var collectionView = Backbone.View.extend({
       this.fillLoadedModal(data);
     }
   },
-  stringToArray: function (fieldString) {
-    var fields = [];
-    fieldString.split(',').forEach(function(field){
-      field = field.replace(/(^\s+|\s+$)/g,'');
-      if (field !== '') {
-        fields.push(field);
-      }
-    });
-    return fields;
-  },
-  checkboxToValue: function (id) {
-    var checked = $(id).is('checked');
-    return checked;
-  },
-  createIndex: function (e) {
-    //e.preventDefault();
-    var self = this;
-    var collection = this.myCollection.name;
-    var indexType = $('#newIndexType').val();
-    var result;
-    var postParameter = {};
-    var fields;
-    var unique;
-
-    switch(indexType) {
-      case 'Cap':
-        var size = parseInt($('#newCapSize').val(), 10) || 0;
-        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-        postParameter = {
-          type: 'cap',
-          size: size,
-          byteSize: byteSize
-        };
-        break;
-      case 'Geo':
-        //HANDLE ARRAY building
-        fields = $('#newGeoFields').val();
-        var geoJson = self.checkboxToValue('#newGeoJson');
-        var constraint = self.checkboxToValue('#newGeoConstraint');
-        var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
-        postParameter = {
-          type: 'geo',
-          fields: self.stringToArray(fields),
-          geoJson: geoJson,
-          constraint: constraint,
-          ignoreNull: ignoreNull
-        };
-        break;
-      case 'Hash':
-        fields = $('#newHashFields').val();
-        unique = self.checkboxToValue('#newHashUnique');
-        postParameter = {
-          type: 'hash',
-          fields: self.stringToArray(fields),
-          unique: unique
-        };
-        break;
-      case 'Fulltext':
-        fields = ($('#newFulltextFields').val());
-        var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
-        postParameter = {
-          type: 'fulltext',
-          fields: self.stringToArray(fields),
-          minLength: minLength
-        };
-        break;
-      case 'Skiplist':
-        fields = $('#newSkiplistFields').val();
-        unique = self.checkboxToValue('#newSkiplistUnique');
-        postParameter = {
-          type: 'skiplist',
-          fields: self.stringToArray(fields),
-          unique: unique
-        };
-        break;
-    }
-    result = window.arangoCollectionsStore.createIndex(collection, postParameter);
-    if (result === true) {
-      $('#collectionEditIndexTable tr').remove();
-      self.getIndex();
-      self.toggleNewIndexView();
-      self.resetIndexForms();
-    }
-    else {
-      arangoHelper.arangoError("Could not create index");
-    }
-  },
-
-  resetIndexForms: function () {
-    $('#editIndex input').val('').prop("checked", false);
-    $('#newIndexType').val('Cap').prop('selected',true);
-  },
-
-  deleteIndex: function (e) {
-    var collection = this.myCollection.name;
-    var id = $(e.currentTarget).parent().parent().first().children().first().text();
-    var result = window.arangoCollectionsStore.deleteIndex(collection, id);
-    if (result === true) {
-      $(e.currentTarget).parent().parent().remove();
-    } 
-    else {
-      arangoHelper.arangoError("Could not delete index");
-    }
-  },
-
-  getIndex: function () {
-    this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
-    var cssClass = 'collectionInfoTh modal-text';
-    if (this.index) {
-      var fieldString = '';
-      var indexId = '';
-      var actionString = '';
-
-      $.each(this.index.indexes, function(k,v) {
-
-        if (v.type === 'primary' || v.type === 'edge') {
-          actionString = '<span class="glyphicon glyphicon-ban-circle" ' +
-                         'data-original-title="No action"></span>';
-        }
-        else {
-          actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" ' +
-                         'data-original-title="Delete index"></span>';
-        }
-
-        if (v.fields !== undefined) {
-          fieldString = v.fields.join(", ");
-        }
-
-        //cut index id
-        var position = v.id.indexOf('/');
-        var indexId = v.id.substr(position+1, v.id.length);
-
-        $('#collectionEditIndexTable').append(
-          '<tr>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>'+
-          '</tr>'
-        );
-      });
-    }
-  },
 
   fillLoadedModal: function (data) {
 
     //show tabs & render figures tab-view
     $('#change-collection .nav-tabs').css("visibility","visible");
-    this.getIndex();
 
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();

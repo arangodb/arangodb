@@ -231,7 +231,8 @@ var queryView = Backbone.View.extend({
         }
 
         this.hideDeleteField();
-        $('#edit-aql-queries').modal('show');
+        $('#queryDropdown').slideToggle();
+        //$('#edit-aql-queries').modal('show');
         this.renderSelectboxes(true);
         this.updateEditSelect();
     },
