@@ -751,7 +751,14 @@ var documentsView = Backbone.View.extend({
       self.resetIndexForms();
     }
     else {
-      arangoHelper.arangoError("Could not create index");
+      console.log(result);
+      if (result.responseText) {
+        var message = JSON.parse(result.responseText);
+        arangoHelper.arangoNotification(message.errorMessage);
+      }
+      else {
+        arangoHelper.arangoNotification("Could not create index.");
+      }
     }
   },
 
