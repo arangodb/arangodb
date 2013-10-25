@@ -3,6 +3,7 @@
     <div id="documentsToolbar" class="pagination pagination-small pagination-right">
 
     <!-- remove marker for docupdiv--!>
+      <ul><li class="enabled"><a id="indexCollection"><span class="glyphicon glyphicon-list-alt" title="Index collection"></span></a></li></ul>
       <ul><li class="enabled"><a id="filterCollection"><span class="glyphicon glyphicon-filter" title="Filter collection"></span></a></li></ul>
       <ul><li class="enabled"><a id="importCollection"><span class="arangoicon arango-icon-import" title="Upload documents"></span></a></li></ul>
     <ul>
@@ -40,6 +41,143 @@
     </div>
   </div>
 
+  <div id="indexHeader"class="dropdownIn" style="display:none">
+    <div class="contentIn" id="indexHeaderContent">
+        <div id="indexEditView">
+          <table id="collectionEditIndexTable">
+            <tr class="figuresHeader">
+              <th class="collectionInfoTh">ID</th>
+              <th class="collectionInfoTh">Type</th>
+              <th class="collectionInfoTh">Unique</th>
+              <th class="collectionInfoTh">Fields</th>
+              <th class="collectionInfoTh">Action</th>
+            </tr>
+          </table>
+          <button id="addIndex" class="btn btn-primary btn-success">Add Index</button>
+      </div>
+
+        <div id="newIndexView" style="display:none">
+          <a id="newIndexHeader" class="arangoHeader">Add Index:</a>
+          <table>
+            <tr>
+              <th class="collectionTh">Type:</th>
+              <th class="">
+                <select id="newIndexType">
+                  <option value="Cap">Cap Constraints</option>
+                  <option value="Geo">Geo Index</option>
+                  <option value="Hash">Hash Index</option>
+                  <option value="Fulltext">Fulltext Index</option>
+                  <option value="Skiplist">Skip-List Index</option>
+                </select>
+              </th>
+              <th class="" style="width: 18px"/>
+            </tr>
+          </table>
+
+          <div id="newIndexTypeCap" class="newIndexClass">
+            <table>
+              <tr>
+                <th class="collectionTh">Size:</th>
+                <th><input type="text" id="newCapSize" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal number of documents for the collection."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Bytesize:</th>
+                <th><input type="text" id="newCapByteSize" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal size of the active document data in the collection."/></th>
+              </tr>
+            </table>
+          </div>
+          <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newGeoFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list with one or two attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Geo JSON:</th>
+                <th>
+                  <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Constraint:</th>
+                <th>
+                  <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If constraint is true, then a geo-spatial constraint is created."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Ignore Null:</th>
+                <th>
+                  <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newHashFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+          <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newFulltextFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ]."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Min. length:</th>
+                <th><input type="text" id="newFulltextMinLength" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."/></th>
+              </tr>
+            </table>
+
+          </div>
+
+          <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newSkiplistFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <button id="createIndex" class="btn btn-success">Save</button>
+          <button id="cancelIndex" class="btn btn-danger">Cancel</button>
+
+    </div>
+  </div>
+  </div>
+
 </div>
 
 <div id="documentsDiv">
@@ -69,11 +207,26 @@
     <a class="arangoHeader">Delete Document?</a>
   </div>
   <div class="modal-body" id="deleteDoc">
-    <p>Theres no way back…</p>
+    <p>There is no way back…</p>
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmDeleteBtn" class="btn btn-danger" style="float:right" disabled="true">Delete</button>
+  </div>
+</div>
+
+<!-- Delete Index Modal -->
+<div id="indexDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Delete Index?</a>
+  </div>
+  <div class="modal-body" id="deleteIndex">
+    <p>There is no way back…</p>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmDeleteIndexBtn" class="btn btn-danger" style="float:right">Delete</button>
   </div>
 </div>
 
