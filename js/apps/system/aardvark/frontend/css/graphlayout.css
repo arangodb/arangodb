@@ -8,6 +8,14 @@ img.searchSubmit {
   background-image:url("../img/enter_icon.png");
 }
 
+.link > line{
+  cursor: pointer;
+  stroke-width: 2; 
+}
+
+.node {
+  cursor: pointer;
+}
 .searchSubmit:hover {
   opacity: 0.8;
   cursor: pointer;
