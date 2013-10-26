@@ -259,7 +259,8 @@ add_subdirectory(utils)
 ## --SECTION--                                                    DOCUMENTATIONS
 ## -----------------------------------------------------------------------------
 
-INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/ DESTINATION share/man)
+INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
+        DESTINATION share/man)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             TESTS
