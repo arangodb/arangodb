@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2009, International Business Machines
+*   Copyright (C) 2002-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -639,12 +639,14 @@ TestCaseCompare(void) {
 
     lenMixed=u_strlen(mixed);
     lenOtherDefault=u_strlen(otherDefault);
+    (void)lenOtherDefault;    /* Suppress set but not used warning. */
     lenOtherExcludeSpecialI=u_strlen(otherExcludeSpecialI);
     lenDifferent=u_strlen(different);
 
     /* if unicodeVersion()>=3.1 then test exclude-special-i cases as well */
     u_getUnicodeVersion(unicodeVersion);
     isUnicode_3_1= uprv_memcmp(unicodeVersion, unicode_3_1, 4)>=0;
+    (void)isUnicode_3_1;    /* Suppress set but not used warning. */
 
     /* test u_strcasecmp() */
     result=u_strcasecmp(mixed, otherDefault, U_FOLD_CASE_DEFAULT);

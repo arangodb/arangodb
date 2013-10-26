@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/metaZones.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/metaZones.xml
 // *
 // ***************************************************************************
 metaZones:table(nofallback){
@@ -223,7 +223,6 @@ metaZones:table(nofallback){
         }
         China{
             001{"Asia/Shanghai"}
-            MO{"Asia/Macau"}
         }
         Choibalsan{
             001{"Asia/Choibalsan"}
@@ -302,6 +301,7 @@ metaZones:table(nofallback){
             SM{"Europe/San_Marino"}
             TN{"Africa/Tunis"}
             VA{"Europe/Vatican"}
+            XK{"Europe/Belgrade"}
         }
         Europe_Eastern{
             001{"Europe/Bucharest"}
@@ -311,7 +311,6 @@ metaZones:table(nofallback){
             EG{"Africa/Cairo"}
             FI{"Europe/Helsinki"}
             GR{"Europe/Athens"}
-            JO{"Asia/Amman"}
             LB{"Asia/Beirut"}
             SY{"Asia/Damascus"}
         }
@@ -343,7 +342,6 @@ metaZones:table(nofallback){
             GM{"Africa/Banjul"}
             GN{"Africa/Conakry"}
             IE{"Europe/Dublin"}
-            LR{"Africa/Monrovia"}
             ML{"Africa/Bamako"}
             MR{"Africa/Nouakchott"}
             SH{"Atlantic/St_Helena"}
@@ -1055,6 +1053,11 @@ metaZones:table(nofallback){
             {
                 "Europe_Eastern",
                 "1997-10-03 22:00",
+                "2012-11-10 00:00",
+            }
+            {
+                "Europe_Central",
+                "2012-11-10 00:00",
                 "9999-12-31 23:59",
             }
         }
@@ -2576,6 +2579,13 @@ metaZones:table(nofallback){
         "Asia:Amman"{
             {
                 "Europe_Eastern",
+                "1970-01-01 00:00",
+                "2012-10-25 22:00",
+            }
+            {
+                "Arabian",
+                "2012-10-25 22:00",
+                "9999-12-31 23:59",
             }
         }
         "Asia:Anadyr"{
@@ -2901,6 +2911,23 @@ metaZones:table(nofallback){
                 "Nepal",
             }
         }
+        "Asia:Khandyga"{
+            {
+                "Yakutsk",
+                "1970-01-01 00:00",
+                "2003-12-31 15:00",
+            }
+            {
+                "Vladivostok",
+                "2003-12-31 15:00",
+                "2011-09-12 13:00",
+            }
+            {
+                "Yakutsk",
+                "2011-09-12 13:00",
+                "9999-12-31 23:59",
+            }
+        }
         "Asia:Krasnoyarsk"{
             {
                 "Krasnoyarsk",
@@ -3187,6 +3214,23 @@ metaZones:table(nofallback){
                 "9999-12-31 23:59",
             }
         }
+        "Asia:Ust-Nera"{
+            {
+                "Yakutsk",
+                "1970-01-01 00:00",
+                "1981-03-31 15:00",
+            }
+            {
+                "Magadan",
+                "1981-03-31 15:00",
+                "2011-09-12 12:00",
+            }
+            {
+                "Vladivostok",
+                "2011-09-12 12:00",
+                "9999-12-31 23:59",
+            }
+        }
         "Asia:Vientiane"{
             {
                 "Indochina",
@@ -3406,6 +3450,11 @@ metaZones:table(nofallback){
             }
         }
         "Europe:Budapest"{
+            {
+                "Europe_Central",
+            }
+        }
+        "Europe:Busingen"{
             {
                 "Europe_Central",
             }
@@ -4141,5 +4190,18 @@ metaZones:table(nofallback){
                 "Wallis",
             }
         }
+    }
+    primaryZones{
+        CL{"America/Santiago"}
+        CN{"Asia/Shanghai"}
+        DE{"Europe/Berlin"}
+        EC{"America/Guayaquil"}
+        ES{"Europe/Madrid"}
+        MH{"Pacific/Majuro"}
+        MY{"Asia/Kuala_Lumpur"}
+        NZ{"Pacific/Auckland"}
+        PT{"Europe/Lisbon"}
+        UA{"Europe/Kiev"}
+        UZ{"Asia/Tashkent"}
     }
 }

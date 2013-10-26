@@ -97,9 +97,6 @@
     <ClCompile Include="rbbitblb.cpp">
       <Filter>break iteration</Filter>
     </ClCompile>
-    <ClCompile Include="triedict.cpp">
-      <Filter>break iteration</Filter>
-    </ClCompile>
     <ClCompile Include="ubrk.cpp">
       <Filter>break iteration</Filter>
     </ClCompile>
@@ -157,16 +154,13 @@
     <ClCompile Include="locmap.c">
       <Filter>configuration</Filter>
     </ClCompile>
-    <ClCompile Include="mutex.cpp">
-      <Filter>configuration</Filter>
-    </ClCompile>
     <ClCompile Include="putil.cpp">
       <Filter>configuration</Filter>
     </ClCompile>
     <ClCompile Include="umath.c">
       <Filter>configuration</Filter>
     </ClCompile>
-    <ClCompile Include="umutex.c">
+    <ClCompile Include="umutex.cpp">
       <Filter>configuration</Filter>
     </ClCompile>
     <ClCompile Include="utrace.c">
@@ -262,7 +256,7 @@
     <ClCompile Include="udataswp.c">
       <Filter>data &amp; memory</Filter>
     </ClCompile>
-    <ClCompile Include="uinit.c">
+    <ClCompile Include="uinit.cpp">
       <Filter>data &amp; memory</Filter>
     </ClCompile>
     <ClCompile Include="umapfile.c">
@@ -409,6 +403,9 @@
     <ClCompile Include="uscript.c">
       <Filter>properties &amp; sets</Filter>
     </ClCompile>
+    <ClCompile Include="uscript_props.cpp">
+      <Filter>properties &amp; sets</Filter>
+    </ClCompile>
     <ClCompile Include="uset.cpp">
       <Filter>properties &amp; sets</Filter>
     </ClCompile>
@@ -526,6 +523,45 @@
     <ClCompile Include="utf_impl.c">
       <Filter>strings</Filter>
     </ClCompile>
+    <ClCompile Include="bytestrie.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
+    <ClCompile Include="bytestrieiterator.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
+    <ClCompile Include="bytestriebuilder.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
+    <ClCompile Include="listformatter.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="messagepattern.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="appendable.cpp">
+      <Filter>strings</Filter>
+    </ClCompile>
+    <ClCompile Include="dictionarydata.cpp">
+      <Filter>break iteration</Filter>
+    </ClCompile>
+    <ClCompile Include="ucnv_ct.c">
+      <Filter>conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="ucharstrie.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
+    <ClCompile Include="ucharstriebuilder.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
+    <ClCompile Include="ucharstrieiterator.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
+    <ClCompile Include="patternprops.cpp">
+      <Filter>properties &amp; sets</Filter>
+    </ClCompile>
+    <ClCompile Include="stringtriebuilder.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ubidi_props.h">
@@ -559,9 +595,6 @@
       <Filter>break iteration</Filter>
     </ClInclude>
     <ClInclude Include="rbbitblb.h">
-      <Filter>break iteration</Filter>
-    </ClInclude>
-    <ClInclude Include="triedict.h">
       <Filter>break iteration</Filter>
     </ClInclude>
     <ClInclude Include="ubrkimpl.h">
@@ -744,9 +777,6 @@
     <ClInclude Include="uset_imp.h">
       <Filter>properties &amp; sets</Filter>
     </ClInclude>
-    <ClInclude Include="unicode\icuplug.h">
-      <Filter>registration</Filter>
-    </ClInclude>
     <ClInclude Include="icuplugimp.h">
       <Filter>registration</Filter>
     </ClInclude>
@@ -779,6 +809,36 @@
     </ClInclude>
     <ClInclude Include="ustr_imp.h">
       <Filter>strings</Filter>
+    </ClInclude>
+    <ClInclude Include="utypeinfo.h">
+      <Filter>configuration</Filter>
+    </ClInclude>
+    <ClInclude Include="localsvc.h">
+      <Filter>locales &amp; resources</Filter>
+    </ClInclude>
+    <ClInclude Include="msvcres.h">
+      <Filter>configuration</Filter>
+    </ClInclude>
+    <ClInclude Include="propname_data.h">
+      <Filter>properties &amp; sets</Filter>
+    </ClInclude>
+    <ClInclude Include="ubidi_props_data.h">
+      <Filter>bidi</Filter>
+    </ClInclude>
+    <ClInclude Include="ucase_props_data.h">
+      <Filter>properties &amp; sets</Filter>
+    </ClInclude>
+    <ClInclude Include="uchar_props_data.h">
+      <Filter>properties &amp; sets</Filter>
+    </ClInclude>
+    <ClInclude Include="messageimpl.h">
+      <Filter>formatting</Filter>
+    </ClInclude>
+    <ClInclude Include="dictionarydata.h">
+      <Filter>break iteration</Filter>
+    </ClInclude>
+    <ClInclude Include="patternprops.h">
+      <Filter>properties &amp; sets</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1005,6 +1065,39 @@
     </CustomBuild>
     <CustomBuild Include="unicode\utf_old.h">
       <Filter>strings</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\bytestrie.h">
+      <Filter>collections</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\bytestriebuilder.h">
+      <Filter>collections</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\messagepattern.h">
+      <Filter>formatting</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\listformatter.h">
+      <Filter>formatting</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\appendable.h">
+      <Filter>strings</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\ustringtrie.h">
+      <Filter>collections</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\ucharstrie.h">
+      <Filter>collections</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\ucharstriebuilder.h">
+      <Filter>collections</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\enumset.h">
+      <Filter>data &amp; memory</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\icuplug.h">
+      <Filter>configuration</Filter>
+    </CustomBuild>
+    <CustomBuild Include="unicode\stringtriebuilder.h">
+      <Filter>collections</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>

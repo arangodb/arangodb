@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*******************************************************************************
@@ -279,6 +279,18 @@ static void doTestVariant(UCollator* myCollation, const UChar source[], const UC
     UColAttributeValue norm = ucol_getAttribute(myCollation, UCOL_NORMALIZATION_MODE, &status);
 
     UCharIterator sIter, tIter;
+
+    compareResult  = ucol_strcoll(myCollation, source, sLen, target, tLen);
+    if (compareResult != result) {
+        log_err("ucol_strcoll with explicit length returned wrong result (%i exp. %i): %s, %s\n",
+            compareResult, result, aescstrdup(source,-1), aescstrdup(target,-1));
+    }
+    compareResulta = ucol_strcoll(myCollation, source, -1,   target, -1); 
+    if (compareResulta != result) {
+        log_err("ucol_strcoll with null terminated strings returned wrong result (%i exp. %i): %s, %s\n",
+            compareResult, result, aescstrdup(source,-1), aescstrdup(target,-1));
+    }
+
     uiter_setString(&sIter, source, sLen);
     uiter_setString(&tIter, target, tLen);
     compareResultIter = ucol_strcollIter(myCollation, &sIter, &tIter, &status);
@@ -286,42 +298,65 @@ static void doTestVariant(UCollator* myCollation, const UChar source[], const UC
         log_err("different results in iterative comparison for UTF-16 encoded strings. %s, %s\n", aescstrdup(source,-1), aescstrdup(target,-1));
     }
 
-    /* convert the strings to UTF-8 and do try comparing with char iterator */
-    if(getTestOption(QUICK_OPTION) <= 0) { /*!QUICK*/
-      char utf8Source[256], utf8Target[256];
-      int32_t utf8SourceLen = 0, utf8TargetLen = 0;
-      u_strToUTF8(utf8Source, 256, &utf8SourceLen, source, sLen, &status);
-      if(U_FAILURE(status)) { /* probably buffer is not big enough */
-        log_verbose("Src UTF-8 buffer too small! Will not compare!\n");
-      } else {
-        u_strToUTF8(utf8Target, 256, &utf8TargetLen, target, tLen, &status);
-        if(U_SUCCESS(status)) { /* probably buffer is not big enough */
-          UCollationResult compareResultUTF8 = result, compareResultUTF8Norm = result;
-          /*UCharIterator sIter, tIter;*/
-          /*log_verbose("Strings converted to UTF-8:%s, %s\n", aescstrdup(source,-1), aescstrdup(target,-1));*/
-          uiter_setUTF8(&sIter, utf8Source, utf8SourceLen);
-          uiter_setUTF8(&tIter, utf8Target, utf8TargetLen);
-       /*uiter_setString(&sIter, source, sLen);
-      uiter_setString(&tIter, target, tLen);*/
-          compareResultUTF8 = ucol_strcollIter(myCollation, &sIter, &tIter, &status);
-          ucol_setAttribute(myCollation, UCOL_NORMALIZATION_MODE, UCOL_ON, &status);
-          sIter.move(&sIter, 0, UITER_START);
-          tIter.move(&tIter, 0, UITER_START);
-          compareResultUTF8Norm = ucol_strcollIter(myCollation, &sIter, &tIter, &status);
-          ucol_setAttribute(myCollation, UCOL_NORMALIZATION_MODE, norm, &status);
-          if(compareResultUTF8 != compareResultIter) {
-            log_err("different results in iterative comparison for UTF-16 and UTF-8 encoded strings. %s, %s\n", aescstrdup(source,-1), aescstrdup(target,-1));
-          }
-          if(compareResultUTF8 != compareResultUTF8Norm) {
-            log_err("different results in iterative when normalization is turned on with UTF-8 strings. %s, %s\n", aescstrdup(source,-1), aescstrdup(target,-1));
-          }
+    /* convert the strings to UTF-8 and do try comparing with char iterator and ucol_strcollUTF8 */
+    {
+        char utf8Source[256], utf8Target[256];
+        int32_t utf8SourceLen = 0, utf8TargetLen = 0;
+
+        u_strToUTF8(utf8Source, 256, &utf8SourceLen, source, sLen, &status);
+        if(U_FAILURE(status)) { /* probably buffer is not big enough */
+            log_verbose("Src UTF-8 buffer too small! Will not compare!\n");
         } else {
-          log_verbose("Target UTF-8 buffer too small! Did not compare!\n");
+            u_strToUTF8(utf8Target, 256, &utf8TargetLen, target, tLen, &status);
+            if(U_SUCCESS(status)) {
+                {
+                    /* ucol_strcollUTF8 */
+                    compareResulta = ucol_strcollUTF8(myCollation, utf8Source, utf8SourceLen, utf8Target, utf8TargetLen, &status);
+                    if (U_FAILURE(status)) {
+                        log_err("Error in ucol_strcollUTF8 with explicit length\n");
+                        status = U_ZERO_ERROR;
+                    } else if (compareResulta != result) {
+                        log_err("ucol_strcollUTF8 with explicit length returned wrong result (%i exp. %i): %s, %s\n",
+                            compareResulta, result, aescstrdup(source,-1), aescstrdup(target,-1));
+                    }
+                    compareResulta = ucol_strcollUTF8(myCollation, utf8Source, -1, utf8Target, -1, &status);
+                    if (U_FAILURE(status)) {
+                        log_err("Error in ucol_strcollUTF8 with null terminated strings\n");
+                        status = U_ZERO_ERROR;
+                    } else if (compareResulta != result) {
+                        log_err("ucol_strcollUTF8 with null terminated strings returned wrong result (%i exp. %i): %s, %s\n",
+                            compareResulta, result, aescstrdup(source,-1), aescstrdup(target,-1));
+                    }
+                }
+
+                {
+                    /* char iterator over UTF8 */
+                    UCollationResult compareResultUTF8Iter = result, compareResultUTF8IterNorm = result;
+
+                    uiter_setUTF8(&sIter, utf8Source, utf8SourceLen);
+                    uiter_setUTF8(&tIter, utf8Target, utf8TargetLen);
+                    compareResultUTF8Iter = ucol_strcollIter(myCollation, &sIter, &tIter, &status);
+
+                    ucol_setAttribute(myCollation, UCOL_NORMALIZATION_MODE, UCOL_ON, &status);
+                    sIter.move(&sIter, 0, UITER_START);
+                    tIter.move(&tIter, 0, UITER_START);
+                    compareResultUTF8IterNorm = ucol_strcollIter(myCollation, &sIter, &tIter, &status);
+
+                    ucol_setAttribute(myCollation, UCOL_NORMALIZATION_MODE, norm, &status);
+                    if(compareResultUTF8Iter != compareResultIter) {
+                        log_err("different results in iterative comparison for UTF-16 and UTF-8 encoded strings. %s, %s\n", aescstrdup(source,-1), aescstrdup(target,-1));
+                    }
+                    if(compareResultUTF8Iter != compareResultUTF8IterNorm) {
+                        log_err("different results in iterative when normalization is turned on with UTF-8 strings. %s, %s\n", aescstrdup(source,-1), aescstrdup(target,-1));
+                    }
+                }
+            } else {
+                log_verbose("Target UTF-8 buffer too small! Did not compare!\n");
+            }
+            if(U_FAILURE(status)) {
+                log_verbose("UTF-8 strcoll failed! Ignoring result\n");
+            }
         }
-        if(U_FAILURE(status)) {
-          log_verbose("UTF-8 strcoll failed! Ignoring result\n");
-        }
-      }
     }
 
     /* testing the partial sortkeys */
@@ -358,18 +393,12 @@ static void doTestVariant(UCollator* myCollation, const UChar source[], const UC
       /*log_verbose("\n");*/
     }
 
-    
-    compareResult  = ucol_strcoll(myCollation, source, sLen, target, tLen);
-    compareResulta = ucol_strcoll(myCollation, source, -1,   target, -1); 
-    if (compareResult != compareResulta) {
-        log_err("ucol_strcoll result from null terminated and explicit length strings differs.\n");
-    }
-
     sortklen1=ucol_getSortKey(myCollation, source, sLen,  NULL, 0);
     sortklen2=ucol_getSortKey(myCollation, target, tLen,  NULL, 0);
 
     sortklenmax = (sortklen1>sortklen2?sortklen1:sortklen2);
     sortklenmin = (sortklen1<sortklen2?sortklen1:sortklen2);
+    (void)sortklenmin;  /* Suppress set but not used warning. */
 
     sortKey1 =(uint8_t*)malloc(sizeof(uint8_t) * (sortklenmax+1));
     sortKey1a=(uint8_t*)malloc(sizeof(uint8_t) * (sortklenmax+1));
@@ -491,14 +520,14 @@ void
 backAndForth(UCollationElements *iter)
 {
     /* Run through the iterator forwards and stick it into an array */
-    int32_t index, o;
+    int32_t idx, o;
     UErrorCode status = U_ZERO_ERROR;
     int32_t orderLength = 0;
     OrderAndOffset *orders = getOrders(iter, &orderLength);
 
 
     /* Now go through it backwards and make sure we get the same values */
-    index = orderLength;
+    idx = orderLength;
     ucol_reset(iter);
 
     /* synwee : changed */
@@ -508,39 +537,39 @@ backAndForth(UCollationElements *iter)
 #endif
         ucol_getOffset(iter);
 
-      index -= 1;
-      if (o != orders[index].order) {
+      idx -= 1;
+      if (o != orders[idx].order) {
         if (o == 0)
-          index ++;
+          idx ++;
         else {
-          while (index > 0 && orders[-- index].order == 0) {
+          while (idx > 0 && orders[-- idx].order == 0) {
             /* nothing... */
           }
 
-          if (o != orders[index].order) {
-              log_err("Mismatched order at index %d: 0x%8.8X vs. 0x%8.8X\n", index,
-                orders[index].order, o);
+          if (o != orders[idx].order) {
+              log_err("Mismatched order at index %d: 0x%8.8X vs. 0x%8.8X\n", idx,
+                orders[idx].order, o);
             goto bail;
           }
         }
       }
 
 #if TEST_OFFSETS
-      if (offset != orders[index].offset) {
-        log_err("Mismatched offset at index %d: %d vs. %d\n", index,
-            orders[index].offset, offset);
+      if (offset != orders[idx].offset) {
+        log_err("Mismatched offset at index %d: %d vs. %d\n", idx,
+            orders[idx].offset, offset);
         goto bail;
       }
 #endif
 
     }
 
-    while (index != 0 && orders[index - 1].order == 0) {
-      index -= 1;
+    while (idx != 0 && orders[idx - 1].order == 0) {
+      idx -= 1;
     }
 
-    if (index != 0) {
-        log_err("Didn't get back to beginning - index is %d\n", index);
+    if (idx != 0) {
+        log_err("Didn't get back to beginning - index is %d\n", idx);
 
         ucol_reset(iter);
         log_err("\nnext: ");
@@ -872,6 +901,7 @@ static void TestJB581(void)
     }
     /* Now, do the same comparison with keys */
     sourceKeyOut = ucol_getSortKey(myCollator, source, -1, sourceKeyArray, 100);
+    (void)sourceKeyOut;    /* Suppress set but not used warning. */
     targetKeyOut = ucol_getSortKey(myCollator, target, -1, targetKeyArray, 100);
     bufferLen = ((targetKeyOut > 100) ? 100 : targetKeyOut);
     if (memcmp(sourceKeyArray, targetKeyArray, bufferLen) != 0)
@@ -1162,6 +1192,7 @@ TestInvalidRules(){
         u_memset(parseError.postContext,0x0000,U_PARSE_CONTEXT_LEN);
         /* open the rules and test */
         coll = ucol_openRules(rules,u_strlen(rules),UCOL_OFF,UCOL_DEFAULT_STRENGTH,&parseError,&status);
+        (void)coll;   /* Suppress set but not used warning. */
         if(u_strcmp(parseError.preContext,preContextExp)!=0){
             log_err_status(status, "preContext in UParseError for ucol_openRules does not match\n");
         }

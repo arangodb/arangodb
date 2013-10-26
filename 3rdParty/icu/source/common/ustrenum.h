@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2002-2009, International Business Machines
+* Copyright (c) 2002-2012, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 * Author: Alan Liu
@@ -13,15 +13,6 @@
 
 #include "unicode/uenum.h"
 #include "unicode/strenum.h"
-
-/**
- * Given an array of const char* strings (invariant chars only),
- * return a UEnumeration.  Must have strings[i] != 0 for i in
- * 0..count-1.
- */
-U_CAPI UEnumeration* U_EXPORT2
-uenum_openCharStringsEnumeration(const char* const* strings, int32_t count,
-                                 UErrorCode* ec);
 
 //----------------------------------------------------------------------
 U_NAMESPACE_BEGIN
@@ -55,6 +46,8 @@ public:
      * @return number of elements in the iterator.
      */
     virtual int32_t count(UErrorCode& status) const;
+
+    virtual const char* next(int32_t *resultLength, UErrorCode& status);
 
     /**
      * Returns the next element a UnicodeString*.  If there are no

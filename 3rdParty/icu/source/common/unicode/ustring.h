@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1998-2010, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -20,9 +20,14 @@
 #include "unicode/putil.h"
 #include "unicode/uiter.h"
 
-/** Simple declaration for u_strToTitle() to avoid including unicode/ubrk.h. @stable ICU 2.1*/
+/**
+ * \def UBRK_TYPEDEF_UBREAK_ITERATOR
+ * @internal 
+ */
+
 #ifndef UBRK_TYPEDEF_UBREAK_ITERATOR
 #   define UBRK_TYPEDEF_UBREAK_ITERATOR
+/** Simple declaration for u_strToTitle() to avoid including unicode/ubrk.h. @stable ICU 2.1*/
     typedef struct UBreakIterator UBreakIterator;
 #endif
 
@@ -146,8 +151,8 @@ u_strcat(UChar     *dst,
  * If <code>n&lt;=0</code> then dst is not modified.
  *
  * @param dst The destination string.
- * @param src The source string.
- * @param n The maximum number of characters to append.
+ * @param src The source string (can be NULL/invalid if n<=0).
+ * @param n The maximum number of characters to append; no-op if <=0.
  * @return A pointer to <code>dst</code>.
  * @stable ICU 2.0
  */
@@ -550,9 +555,9 @@ u_strCaseCompare(const UChar *s1, int32_t length1,
  * Compare two ustrings for bitwise equality. 
  * Compares at most <code>n</code> characters.
  *
- * @param ucs1 A string to compare.
- * @param ucs2 A string to compare.
- * @param n The maximum number of characters to compare.
+ * @param ucs1 A string to compare (can be NULL/invalid if n<=0).
+ * @param ucs2 A string to compare (can be NULL/invalid if n<=0).
+ * @param n The maximum number of characters to compare; always returns 0 if n<=0.
  * @return 0 if <code>s1</code> and <code>s2</code> are bitwise equal; a negative
  * value if <code>s1</code> is bitwise less than <code>s2</code>; a positive
  * value if <code>s1</code> is bitwise greater than <code>s2</code>.
@@ -667,8 +672,8 @@ u_strcpy(UChar     *dst,
  * if the length of <code>src</code> is less than <code>n</code>.
  *
  * @param dst The destination string.
- * @param src The source string.
- * @param n The maximum number of characters to copy.
+ * @param src The source string (can be NULL/invalid if n<=0).
+ * @param n The maximum number of characters to copy; no-op if <=0.
  * @return A pointer to <code>dst</code>.
  * @stable ICU 2.0
  */
@@ -742,8 +747,8 @@ U_STABLE char* U_EXPORT2 u_austrncpy(char *dst,
 /**
  * Synonym for memcpy(), but with UChars only.
  * @param dest The destination string
- * @param src The source string
- * @param count The number of characters to copy
+ * @param src The source string (can be NULL/invalid if count<=0)
+ * @param count The number of characters to copy; no-op if <=0
  * @return A pointer to <code>dest</code>
  * @stable ICU 2.0
  */
@@ -753,8 +758,8 @@ u_memcpy(UChar *dest, const UChar *src, int32_t count);
 /**
  * Synonym for memmove(), but with UChars only.
  * @param dest The destination string
- * @param src The source string
- * @param count The number of characters to move
+ * @param src The source string (can be NULL/invalid if count<=0)
+ * @param count The number of characters to move; no-op if <=0
  * @return A pointer to <code>dest</code>
  * @stable ICU 2.0
  */
@@ -918,7 +923,7 @@ u_memrchr32(const UChar *s, UChar32 c, int32_t count);
  *    }
  * </pre>
  * 
- * Note that the macros will NOT consistently work if their argument is another #define. 
+ * Note that the macros will NOT consistently work if their argument is another <code>#define</code>. 
  *  The following will not work on all platforms, don't use it.
  * 
  * <pre>
@@ -934,7 +939,7 @@ u_memrchr32(const UChar *s, UChar32 c, int32_t count);
  * @stable ICU 2.0
  */
 #if defined(U_DECLARE_UTF16)
-#   define U_STRING_DECL(var, cs, length) static const UChar var[(length)+1]=U_DECLARE_UTF16(cs)
+#   define U_STRING_DECL(var, cs, length) static const UChar *var=(const UChar *)U_DECLARE_UTF16(cs)
     /**@stable ICU 2.0 */
 #   define U_STRING_INIT(var, cs, length)
 #elif U_SIZEOF_WCHAR_T==U_SIZEOF_UCHAR && (U_CHARSET_FAMILY==U_ASCII_FAMILY || (U_SIZEOF_UCHAR == 2 && defined(U_WCHAR_IS_UTF16)))
@@ -1154,10 +1159,12 @@ u_strToTitle(UChar *dest, int32_t destCapacity,
 #endif
 
 /**
- * Case-fold the characters in a string.
+ * Case-folds the characters in a string.
+ *
  * Case-folding is locale-independent and not context-sensitive,
  * but there is an option for whether to include or exclude mappings for dotted I
- * and dotless i that are marked with 'I' in CaseFolding.txt.
+ * and dotless i that are marked with 'T' in CaseFolding.txt.
+ *
  * The result may be longer or shorter than the original.
  * The source string and the destination buffer are allowed to overlap.
  *

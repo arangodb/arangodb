@@ -1,6 +1,6 @@
 //*******************************************************************************
 //*
-//*   Copyright (C) 2002-2009, International Business Machines
+//*   Copyright (C) 2002-2012, International Business Machines
 //*   Corporation and others.  All Rights Reserved.
 //*
 //*******************************************************************************
@@ -28,7 +28,7 @@ testaliases:table(nofallback)
     LocaleScript:alias { "/ICUDATA/ja/LocaleScript" }
 
     // aliasing using position
-    boundaries:alias { "/ICUDATA-brkitr/ja" } // Referencing corresponding resource in another bundle
+    boundaries:alias { "/ICUDATA-brkitr/th" } // Referencing corresponding resource in another bundle
 
     // aliasing arrays
     zoneTests {

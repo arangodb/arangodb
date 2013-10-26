@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2005-2010, International Business Machines
+*   Copyright (C) 2005-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -50,6 +50,20 @@ public:
 
     /* Destructor. */
     ~Package();
+
+    /**
+     * Uses the prefix of the first entry of the package in readPackage(),
+     * rather than the package basename.
+     */
+    void setAutoPrefix() { doAutoPrefix=TRUE; }
+    /**
+     * Same as setAutoPrefix(), plus the prefix must end with the platform type letter.
+     */
+    void setAutoPrefixWithType() {
+        doAutoPrefix=TRUE;
+        prefixEndsWithType=TRUE;
+    }
+    void setPrefix(const char *p);
 
     /*
      * Read an existing .dat package file.
@@ -141,12 +155,15 @@ private:
 
     // data fields
     char inPkgName[MAX_PKG_NAME_LENGTH];
+    char pkgPrefix[MAX_PKG_NAME_LENGTH];
 
     uint8_t *inData;
     uint8_t header[1024];
     int32_t inLength, headerLength;
     uint8_t inCharset;
     UBool inIsBigEndian;
+    UBool doAutoPrefix;
+    UBool prefixEndsWithType;
 
     int32_t itemCount;
     int32_t itemMax;

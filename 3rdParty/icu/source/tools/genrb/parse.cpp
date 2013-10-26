@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2012, International Business Machines
+*   Copyright (C) 1998-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -73,7 +73,7 @@ const char *tokenNames[TOK_TOKEN_COUNT] =
 };
 
 /* Just to store "TRUE" */
-static const UChar trueValue[] = {0x0054, 0x0052, 0x0055, 0x0045, 0x0000};
+//static const UChar trueValue[] = {0x0054, 0x0052, 0x0055, 0x0045, 0x0000};
 
 typedef struct {
     struct Lookahead  lookahead[MAX_LOOKAHEAD + 1];
@@ -139,7 +139,7 @@ static void
 cleanupLookahead(ParseState* state)
 {
     uint32_t i;
-    for (i = 0; i < MAX_LOOKAHEAD; i++)
+    for (i = 0; i <= MAX_LOOKAHEAD; i++)
     {
         ustr_deinit(&state->lookahead[i].value);
         ustr_deinit(&state->lookahead[i].comment);
@@ -262,7 +262,7 @@ static char *getInvariantString(ParseState* state, uint32_t *line, struct UStrin
         return NULL;
     }
 
-    result = reinterpret_cast<char *>(uprv_malloc(count+1));
+    result = static_cast<char *>(uprv_malloc(count+1));
 
     if (result == NULL)
     {
@@ -283,7 +283,6 @@ parseUCARules(ParseState* state, char *tag, uint32_t startline, const struct USt
     char              filename[256] = { '\0' };
     char              cs[128]       = { '\0' };
     uint32_t          line;
-    int               len=0;
     UBool quoted = FALSE;
     UCHARBUF *ucbuf=NULL;
     UChar32   c     = 0;
@@ -363,7 +362,7 @@ parseUCARules(ParseState* state, char *tag, uint32_t startline, const struct USt
              * append at the end of the loop
              */
             while(c != ENDCOMMAND) {
-                U_APPEND_CHAR32(c, target,len);
+                U_APPEND_CHAR32_ONLY(c, target);
                 c = ucbuf_getc(ucbuf, status);
             }
         }
@@ -396,7 +395,7 @@ parseUCARules(ParseState* state, char *tag, uint32_t startline, const struct USt
         /* Append UChar * after dissembling if c > 0xffff*/
         if (c != (UChar32)U_EOF)
         {
-            U_APPEND_CHAR32(c, target,len);
+            U_APPEND_CHAR32_ONLY(c, target);
         }
         else
         {
@@ -938,7 +937,6 @@ addCollation(ParseState* state, struct SResource  *result, uint32_t startline, U
                     data = (uint8_t *)uprv_malloc(len);
                     intStatus = U_ZERO_ERROR;
                     len = ucol_cloneBinary(coll, data, len, &intStatus);
-                    /*data = ucol_cloneRuleData(coll, &len, &intStatus);*/
 
                     /* tailoring rules version */
                     /* This is wrong! */
@@ -1478,7 +1476,7 @@ parseBinary(ParseState* state, char *tag, uint32_t startline, const struct UStri
     count = (uint32_t)uprv_strlen(string);
     if (count > 0){
         if((count % 2)==0){
-            value = reinterpret_cast<uint8_t *>(uprv_malloc(sizeof(uint8_t) * count));
+            value = static_cast<uint8_t *>(uprv_malloc(sizeof(uint8_t) * count));
 
             if (value == NULL)
             {
@@ -1765,6 +1763,8 @@ parseInclude(ParseState* state, char *tag, uint32_t startline, const struct UStr
     uBuffer = ucbuf_getBuffer(ucbuf,&len,status);
     result = string_open(state->bundle, tag, uBuffer, len, comment, status);
 
+    ucbuf_close(ucbuf);
+
     uprv_free(pTarget);
 
     uprv_free(filename);
@@ -1789,7 +1789,6 @@ U_STRING_DECL(k_type_alias,     "alias",     5);
 U_STRING_DECL(k_type_intvector, "intvector", 9);
 U_STRING_DECL(k_type_import,    "import",    6);
 U_STRING_DECL(k_type_include,   "include",   7);
-U_STRING_DECL(k_type_reserved,  "reserved",  8);
 
 /* Various non-standard processing plugins that create one or more special resources. */
 U_STRING_DECL(k_type_plugin_uca_rules,      "process(uca_rules)",        18);
@@ -1853,7 +1852,6 @@ void initParser(UBool omitCollationRules)
     U_STRING_INIT(k_type_alias,     "alias",     5);
     U_STRING_INIT(k_type_intvector, "intvector", 9);
     U_STRING_INIT(k_type_import,    "import",    6);
-    U_STRING_INIT(k_type_reserved,  "reserved",  8);
     U_STRING_INIT(k_type_include,   "include",   7);
 
     U_STRING_INIT(k_type_plugin_uca_rules,      "process(uca_rules)",        18);

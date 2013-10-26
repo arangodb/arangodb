@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2005-2011, International Business Machines
+*   Copyright (C) 2005-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -146,6 +146,7 @@ private:
     UnicodeString &format(int32_t numDigits, UnicodeString &appendTo, wchar_t *format, ...) const;
 
     UBool fCurrency;
+    Locale fLocale;
     int32_t fLCID;
     FormatInfo *fFormatInfo;
     UBool fFractionDigitsSet;

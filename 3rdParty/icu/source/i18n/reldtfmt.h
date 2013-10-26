@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2011, International Business Machines Corporation and    *
+* Copyright (C) 2007-2012, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 */
@@ -18,6 +18,7 @@
 #if !UCONFIG_NO_FORMATTING
 
 #include "unicode/datefmt.h"
+#include "unicode/smpdtfmt.h"
 
 U_NAMESPACE_BEGIN
 
@@ -233,12 +234,12 @@ public:
 
 
 private:
-    DateFormat *fDateFormat; // the held date format
-    DateFormat *fTimeFormat; // the held time format
+    SimpleDateFormat *fDateTimeFormatter;
+    UnicodeString fDatePattern;
+    UnicodeString fTimePattern;
     MessageFormat *fCombinedFormat; //  the {0} {1} format.
 
     UDateFormatStyle fDateStyle;
-    UDateFormatStyle fTimeStyle;
     Locale  fLocale;
 
     int32_t fDayMin;    // day id of lowest #

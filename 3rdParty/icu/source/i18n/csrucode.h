@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2006, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -36,7 +36,7 @@ public:
     /* (non-Javadoc)
      * @see com.ibm.icu.text.CharsetRecognizer#match(com.ibm.icu.text.CharsetDetector)
      */
-    int32_t match(InputText* textIn) = 0;
+    UBool match(InputText* textIn, CharsetMatch *results) const = 0;
 };
 
 
@@ -48,7 +48,7 @@ public:
 
     const char *getName() const;
 
-    int32_t match(InputText* textIn);
+    UBool match(InputText* textIn, CharsetMatch *results) const;
 };
 
 class CharsetRecog_UTF_16_LE : public CharsetRecog_Unicode
@@ -59,7 +59,7 @@ public:
 
     const char *getName() const;
 
-    int32_t match(InputText* textIn);
+    UBool match(InputText* textIn, CharsetMatch *results) const;
 };
 
 class CharsetRecog_UTF_32 : public CharsetRecog_Unicode
@@ -72,7 +72,7 @@ public:
 
     const char* getName() const = 0;
 
-    int32_t match(InputText* textIn);
+    UBool match(InputText* textIn, CharsetMatch *results) const;
 };
 
 

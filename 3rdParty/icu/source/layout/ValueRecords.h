@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2005 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -39,6 +39,7 @@ private:
     static le_int16    getFieldCount(ValueFormat valueFormat);
     static le_int16    getFieldIndex(ValueFormat valueFormat, ValueRecordField field);
 };
+LE_VAR_ARRAY(ValueRecord, values)
 
 enum ValueRecordFields
 {

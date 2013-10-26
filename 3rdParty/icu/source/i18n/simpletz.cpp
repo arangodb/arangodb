@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 1997-2011, International Business Machines Corporation and
+ * Copyright (C) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  *******************************************************************************
  *
@@ -21,7 +21,7 @@
  ********************************************************************************
  */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/utypes.h"
 
@@ -32,6 +32,7 @@
 #include "unicode/smpdtfmt.h"
 
 #include "gregoimp.h"
+#include "umutex.h"
 
 U_NAMESPACE_BEGIN
 
@@ -506,7 +507,7 @@ SimpleTimeZone::getOffset(uint8_t era, int32_t year, int32_t month, int32_t day,
 
 void
 SimpleTimeZone::getOffsetFromLocal(UDate date, int32_t nonExistingTimeOpt, int32_t duplicatedTimeOpt,
-                                   int32_t& rawOffsetGMT, int32_t& savingsDST, UErrorCode& status) /*const*/ {
+                                   int32_t& rawOffsetGMT, int32_t& savingsDST, UErrorCode& status) const {
     if (U_FAILURE(status)) {
         return;
     }
@@ -967,13 +968,13 @@ SimpleTimeZone::decodeEndRule(UErrorCode& status)
 }
 
 UBool
-SimpleTimeZone::getNextTransition(UDate base, UBool inclusive, TimeZoneTransition& result) /*const*/ {
+SimpleTimeZone::getNextTransition(UDate base, UBool inclusive, TimeZoneTransition& result) const {
     if (!useDaylight) {
         return FALSE;
     }
 
     UErrorCode status = U_ZERO_ERROR;
-    initTransitionRules(status);
+    checkTransitionRules(status);
     if (U_FAILURE(status)) {
         return FALSE;
     }
@@ -1001,13 +1002,13 @@ SimpleTimeZone::getNextTransition(UDate base, UBool inclusive, TimeZoneTransitio
 }
 
 UBool
-SimpleTimeZone::getPreviousTransition(UDate base, UBool inclusive, TimeZoneTransition& result) /*const*/ {
+SimpleTimeZone::getPreviousTransition(UDate base, UBool inclusive, TimeZoneTransition& result) const {
     if (!useDaylight) {
         return FALSE;
     }
 
     UErrorCode status = U_ZERO_ERROR;
-    initTransitionRules(status);
+    checkTransitionRules(status);
     if (U_FAILURE(status)) {
         return FALSE;
     }
@@ -1060,6 +1061,35 @@ SimpleTimeZone::deleteTransitionRules(void) {
     clearTransitionRules();
  }
 
+/*
+ * Lazy transition rules initializer
+ *
+ *    Note On the removal of UMTX_CHECK from checkTransitionRules():
+ *
+ *         It would be faster to have a UInitOnce as part of a SimpleTimeZone object,
+ *         which would avoid needing to lock a mutex to check the initialization state.
+ *         But we can't easily because simpletz.h is a public header, and including
+ *         a UInitOnce as a member of SimpleTimeZone would publicly expose internal ICU headers.
+ *
+ *         Alternatively we could have a pointer to a UInitOnce in the SimpleTimeZone object,
+ *         allocate it in the constructors. This would be a more intrusive change, but doable
+ *         if performance turns out to be an issue.
+ */
+static UMutex gLock = U_MUTEX_INITIALIZER;
+
+void
+SimpleTimeZone::checkTransitionRules(UErrorCode& status) const {
+    if (U_FAILURE(status)) {
+        return;
+    }
+    umtx_lock(&gLock);
+    if (!transitionRulesInitialized) {
+        SimpleTimeZone *ncThis = const_cast<SimpleTimeZone*>(this);
+        ncThis->initTransitionRules(status);
+    }
+    umtx_unlock(&gLock);
+}
+
 void
 SimpleTimeZone::initTransitionRules(UErrorCode& status) {
     if (U_FAILURE(status)) {
@@ -1099,8 +1129,8 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         }
         // Check for Null pointer
         if (dtRule == NULL) {
-        	status = U_MEMORY_ALLOCATION_ERROR;
-        	return;
+            status = U_MEMORY_ALLOCATION_ERROR;
+            return;
         }
         // For now, use ID + "(DST)" as the name
         dstRule = new AnnualTimeZoneRule(tzid+UnicodeString(DST_STR), getRawOffset(), getDSTSavings(),
@@ -1108,9 +1138,9 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         
         // Check for Null pointer
         if (dstRule == NULL) {
-        	status = U_MEMORY_ALLOCATION_ERROR;
-        	deleteTransitionRules();
-        	return;
+            status = U_MEMORY_ALLOCATION_ERROR;
+            deleteTransitionRules();
+            return;
         }
  
         // Calculate the first DST start time
@@ -1136,9 +1166,9 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         
         // Check for Null pointer
         if (dtRule == NULL) {
-        	status = U_MEMORY_ALLOCATION_ERROR;
-        	deleteTransitionRules();
-        	return;
+            status = U_MEMORY_ALLOCATION_ERROR;
+            deleteTransitionRules();
+            return;
         }
         // For now, use ID + "(STD)" as the name
         stdRule = new AnnualTimeZoneRule(tzid+UnicodeString(STD_STR), getRawOffset(), 0,
@@ -1146,9 +1176,9 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         
         //Check for Null pointer
         if (stdRule == NULL) {
-        	status = U_MEMORY_ALLOCATION_ERROR;
-        	deleteTransitionRules();
-        	return;
+            status = U_MEMORY_ALLOCATION_ERROR;
+            deleteTransitionRules();
+            return;
         }
 
         // Calculate the first STD start time
@@ -1164,9 +1194,9 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         }
         // Check for null pointers.
         if (initialRule == NULL || firstTransition == NULL) {
-        	status = U_MEMORY_ALLOCATION_ERROR;
-        	deleteTransitionRules();
-        	return;
+            status = U_MEMORY_ALLOCATION_ERROR;
+            deleteTransitionRules();
+            return;
         }
         
     } else {
@@ -1174,17 +1204,17 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         initialRule = new InitialTimeZoneRule(tzid, getRawOffset(), 0);
         // Check for null pointer.
         if (initialRule == NULL) {
-        	status = U_MEMORY_ALLOCATION_ERROR;
-        	deleteTransitionRules();
-        	return;
+            status = U_MEMORY_ALLOCATION_ERROR;
+            deleteTransitionRules();
+            return;
         }
     }
 
-    transitionRulesInitialized = true;
+    transitionRulesInitialized = TRUE;
 }
 
 int32_t
-SimpleTimeZone::countTransitionRules(UErrorCode& /*status*/) /*const*/ {
+SimpleTimeZone::countTransitionRules(UErrorCode& /*status*/) const {
     return (useDaylight) ? 2 : 0;
 }
 
@@ -1192,11 +1222,11 @@ void
 SimpleTimeZone::getTimeZoneRules(const InitialTimeZoneRule*& initial,
                                  const TimeZoneRule* trsrules[],
                                  int32_t& trscount,
-                                 UErrorCode& status) /*const*/ {
+                                 UErrorCode& status) const {
     if (U_FAILURE(status)) {
         return;
     }
-    initTransitionRules(status);
+    checkTransitionRules(status);
     if (U_FAILURE(status)) {
         return;
     }

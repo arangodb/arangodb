@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2011, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -15,6 +15,8 @@
 #include "csrecog.h"
 
 U_NAMESPACE_BEGIN
+
+class CharsetMatch;
 
 /**
  *  class CharsetRecog_2022  part of the ICU charset detection imlementation.
@@ -46,7 +48,10 @@ protected:
      * @param escapeSequences the byte escape sequences to test for.
      * @return match quality, in the range of 0-100.
      */
-    int32_t match_2022(const uint8_t *text, int32_t textLen, const uint8_t escapeSequences[][5], int32_t escapeSequences_length);
+    int32_t match_2022(const uint8_t *text,
+                       int32_t textLen,
+                       const uint8_t escapeSequences[][5],
+                       int32_t escapeSequences_length) const;
 
 };
 
@@ -57,7 +62,7 @@ public:
 
     const char *getName() const;
 
-    int32_t match(InputText *textIn);
+    UBool match(InputText *textIn, CharsetMatch *results) const;
 };
 
 class CharsetRecog_2022KR :public CharsetRecog_2022 {
@@ -66,7 +71,7 @@ public:
 
     const char *getName() const;
 
-    int32_t match(InputText *textIn);
+    UBool match(InputText *textIn, CharsetMatch *results) const;
 
 };
 
@@ -77,7 +82,7 @@ public:
 
     const char* getName() const;
 
-    int32_t match(InputText *textIn);
+    UBool match(InputText *textIn, CharsetMatch *results) const;
 };
 
 U_NAMESPACE_END

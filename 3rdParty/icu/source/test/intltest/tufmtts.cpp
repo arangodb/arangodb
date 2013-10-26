@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 2008-2011, International Business Machines Corporation and
+ * Copyright (c) 2008-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -25,7 +25,8 @@ void TimeUnitTest::runIndexedTest( int32_t index, UBool exec, const char* &name,
     switch (index) {
         TESTCASE(0, testBasic);
         TESTCASE(1, testAPI);
-        TESTCASE(2, testGreek);
+        TESTCASE(2, testGreekWithFallback);
+        TESTCASE(3, testGreekWithSanitization);
         default: name = ""; break;
     }
 }
@@ -208,7 +209,7 @@ void TimeUnitTest::testAPI() {
  * to long unit names for a locale where the locale data does not 
  * provide short unit names. As of CLDR 1.9, Greek is one such language.
  */
-void TimeUnitTest::testGreek() {
+void TimeUnitTest::testGreekWithFallback() {
     UErrorCode status = U_ZERO_ERROR;
 
     const char* locales[] = {"el-GR", "el"};
@@ -217,39 +218,51 @@ void TimeUnitTest::testGreek() {
     const int numbers[] = {1, 7};
 
     const UChar oneSecond[] = {0x0031, 0x0020, 0x03b4, 0x03b5, 0x03c5, 0x03c4, 0x03b5, 0x03c1, 0x03cc, 0x03bb, 0x03b5, 0x03c0, 0x03c4, 0x03bf, 0};
+    const UChar oneSecondShort[] = {0x0031, 0x0020, 0x03b4, 0x03b5, 0x03c5, 0x03c4, 0x002e, 0};
     const UChar oneMinute[] = {0x0031, 0x0020, 0x03bb, 0x03b5, 0x03c0, 0x03c4, 0x03cc, 0};
+    const UChar oneMinuteShort[] = {0x0031, 0x0020, 0x03bb, 0x03b5, 0x03c0, 0x002e, 0};
     const UChar oneHour[] = {0x0031, 0x0020, 0x03ce, 0x03c1, 0x03b1, 0};
     const UChar oneDay[] = {0x0031, 0x0020, 0x03b7, 0x03bc, 0x03ad, 0x03c1, 0x03b1, 0};
     const UChar oneMonth[] = {0x0031, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x03b1, 0x03c2, 0};
+    const UChar oneMonthShort[] = {0x0031, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x002e, 0};
     const UChar oneYear[] = {0x0031, 0x0020, 0x03ad, 0x03c4, 0x03bf, 0x03c2, 0};
     const UChar sevenSeconds[] = {0x0037, 0x0020, 0x03b4, 0x03b5, 0x03c5, 0x03c4, 0x03b5, 0x03c1, 0x03cc, 0x03bb, 0x03b5, 0x03c0, 0x03c4, 0x03b1, 0};
+    const UChar sevenSecondsShort[] = {0x0037, 0x0020, 0x03b4, 0x03b5, 0x03c5, 0x03c4, 0x002e, 0};
     const UChar sevenMinutes[] = {0x0037, 0x0020, 0x03bb, 0x03b5, 0x03c0, 0x03c4, 0x03ac, 0};
+    const UChar sevenMinutesShort[] = {0x0037, 0x0020, 0x03bb, 0x03b5, 0x03c0, 0x002e, 0};
     const UChar sevenHours[] = {0x0037, 0x0020, 0x03ce, 0x03c1, 0x03b5, 0x03c2, 0};
     const UChar sevenDays[] = {0x0037, 0x0020, 0x03b7, 0x03bc, 0x03ad, 0x03c1, 0x03b5, 0x03c2, 0};
     const UChar sevenMonths[] = {0x0037, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x03b5, 0x3c2, 0};
+    const UChar sevenMonthsShort[] = {0x0037, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x002e, 0};
     const UChar sevenYears[] = {0x0037, 0x0020, 0x03ad, 0x03c4, 0x03b7, 0};
 
     const UnicodeString oneSecondStr(oneSecond);
+    const UnicodeString oneSecondShortStr(oneSecondShort);
     const UnicodeString oneMinuteStr(oneMinute);
+    const UnicodeString oneMinuteShortStr(oneMinuteShort);
     const UnicodeString oneHourStr(oneHour);
     const UnicodeString oneDayStr(oneDay);
     const UnicodeString oneMonthStr(oneMonth);
+    const UnicodeString oneMonthShortStr(oneMonthShort);
     const UnicodeString oneYearStr(oneYear);
     const UnicodeString sevenSecondsStr(sevenSeconds);
+    const UnicodeString sevenSecondsShortStr(sevenSecondsShort);
     const UnicodeString sevenMinutesStr(sevenMinutes);
+    const UnicodeString sevenMinutesShortStr(sevenMinutesShort);
     const UnicodeString sevenHoursStr(sevenHours);
     const UnicodeString sevenDaysStr(sevenDays);
     const UnicodeString sevenMonthsStr(sevenMonths);
+    const UnicodeString sevenMonthsShortStr(sevenMonthsShort);
     const UnicodeString sevenYearsStr(sevenYears);
 
     const UnicodeString expected[] = {oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
-                              oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
+                              oneSecondShortStr, oneMinuteShortStr, oneHourStr, oneDayStr, oneMonthShortStr, oneYearStr,
                               sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
-                              sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
+                              sevenSecondsShortStr, sevenMinutesShortStr, sevenHoursStr, sevenDaysStr, sevenMonthsShortStr, sevenYearsStr,
                               oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
-                              oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
+                              oneSecondShortStr, oneMinuteShortStr, oneHourStr, oneDayStr, oneMonthShortStr, oneYearStr,
                               sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
-                              sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr};
+                              sevenSecondsShortStr, sevenMinutesShortStr, sevenHoursStr, sevenDaysStr, sevenMonthsShortStr, sevenYearsStr};
 
     int counter = 0;
     for ( unsigned int locIndex = 0;
@@ -321,6 +334,24 @@ void TimeUnitTest::testGreek() {
             }
         }
     }
+}
+
+// Test bug9042
+void TimeUnitTest::testGreekWithSanitization() {
+    
+    UErrorCode status = U_ZERO_ERROR;
+    Locale elLoc("el");
+    NumberFormat* numberFmt = NumberFormat::createInstance(Locale("el"), status);
+    if (!assertSuccess("NumberFormat::createInstance for el locale", status, TRUE)) return;
+    numberFmt->setMaximumFractionDigits(1);
+
+    TimeUnitFormat* timeUnitFormat = new TimeUnitFormat(elLoc, status);
+    if (!assertSuccess("TimeUnitFormat::TimeUnitFormat for el locale", status)) return;
+
+    timeUnitFormat->setNumberFormat(*numberFmt, status);
+
+    delete numberFmt;
+    delete timeUnitFormat;
 }
 
 #endif

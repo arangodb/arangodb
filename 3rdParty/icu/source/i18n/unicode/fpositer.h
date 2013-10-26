@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2010, International Business Machines
+*   Copyright (C) 2010-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -108,9 +108,6 @@ private:
 
     UVector32 *data;
     int32_t pos;
-
-    // No ICU "poor man's RTTI" for this class nor its subclasses.
-    virtual UClassID getDynamicClassID() const;
 };
 
 U_NAMESPACE_END

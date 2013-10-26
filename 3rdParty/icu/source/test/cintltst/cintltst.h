@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -22,6 +22,12 @@ The main root for C API tests
 #include "unicode/utypes.h"
 #include "unicode/putil.h"
 #include "unicode/ctest.h"
+
+#if U_NO_DEFAULT_INCLUDE_UTF_HEADERS
+/* deprecated  - make tests pass with U_NO_DEFAULT_INCLUDE_UTF_HEADERS */
+#include "unicode/utf_old.h" 
+#endif
+
 #include <stdlib.h>
 
 #ifndef U_USE_DEPRECATED_API
@@ -41,21 +47,43 @@ U_CFUNC const char* ctest_dataOutDir(void);
  */
 U_CFUNC const char* ctest_dataSrcDir(void);
 
+/**
+ * Convert a char string into a UChar string, with unescaping
+ * The result buffer has been malloc()'ed (not ctst_malloc) and needs to be free()'ed by the caller.
+ */
 U_CFUNC UChar* CharsToUChars(const char* chars);
 
 /**
  * Convert a const UChar* into a char*
- * Caller owns storage, but in practice this function
- * LEAKS so be aware of that.
+ * Result is allocated with ctst_malloc and will be freed at the end of the test.
  * @param unichars UChars (null terminated) to be converted
  * @return new char* to the unichars in host format
  */
  
 U_CFUNC char *austrdup(const UChar* unichars);
-U_CFUNC char *aescstrdup(const UChar* unichars, int32_t length);
-U_CFUNC void *ctst_malloc(size_t size);
-U_CFUNC void ctst_freeAll(void);
 
+/**
+ * Convert a const UChar* into an escaped char*
+ * Result is allocated with ctst_malloc and will be freed at the end of the test.
+ * @param unichars UChars to be converted
+ * @param length length of chars
+ * @return new char* to the unichars in host format
+ */
+U_CFUNC char *aescstrdup(const UChar* unichars, int32_t length);
+
+/**
+ * Special memory allocation function for test use. At the end of cintltst, 
+ * or every few thousand allocations, memory allocated by this function will be freed.
+ * Do not manually free memory returned by this function, and do not retain a pointer
+ * outside of a single instruction scope (i.e. long enough to display the value).
+ * @see #ctst_freeAll
+ */
+U_CFUNC void *ctst_malloc(size_t size);
+
+/**
+ * Return the path to cintltst's data ( icu/source/data/testdata ) directory. 
+ * Return value is allocated by ctst_malloc and should not be deleted.
+ */
 U_CFUNC const char* loadTestData(UErrorCode* err);
 
 /**
@@ -89,6 +117,12 @@ U_CFUNC UBool ctest_resetICU(void);
 U_CFUNC UBool assertSuccess(const char* msg, UErrorCode* ec);
 
 /**
+ * Assert that the given UErrorCode succeeds, and return TRUE if it does.
+ * Give data error if UErrorCode fails and possibleDataError is TRUE.
+ */
+U_CFUNC UBool assertSuccessCheck(const char* msg, UErrorCode* ec, UBool possibleDataError);
+
+/**
  * Assert that the UBool is TRUE, and return TRUE if it does.
  *
  * NOTE: Use 'int condition' rather than 'UBool condition' so the
@@ -104,14 +138,9 @@ U_CFUNC UBool assertTrue(const char* msg, int condition);
 U_CFUNC UBool assertEquals(const char* msg, const char* expectedString,
                            const char* actualString);
 
-/**
- * Returns true if u_getVersion() < major.minor.milli.
+/*
+ * note - isICUVersionBefore and isICUVersionAtLeast have been removed.
+ * use log_knownIssue() instead.
  */
-U_CFUNC UBool isICUVersionBefore(int major, int minor, int milli);
-
-/**
- * Returns true if u_getVersion() >= major.minor.milli.
- */
-U_CFUNC UBool isICUVersionAtLeast(int major, int minor, int milli);
 
 #endif

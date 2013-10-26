@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/et.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/et.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/et.xml
+ * ICU <specials> source: <path>/common/main/et.xml
  */
 et{
     Countries{
@@ -29,7 +29,7 @@ et{
         034{"Lõuna-Aasia"}
         035{"Kagu-Aasia"}
         039{"Lõuna-Euroopa"}
-        053{"Austraalia ja Uus-Meremaa"}
+        053{"Australaasia"}
         054{"Melaneesia"}
         057{"Mikroneesia"}
         061{"Polüneesia"}
@@ -72,6 +72,7 @@ et{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Boliivia"}
+        BQ{"Hollandi Kariibi mere saared"}
         BR{"Brasiilia"}
         BS{"Bahama"}
         BT{"Bhutan"}
@@ -93,9 +94,9 @@ et{
         CO{"Colombia"}
         CP{"Clippertoni saar"}
         CR{"Costa Rica"}
-        CS{"Serbia ja Montenegro"}
         CU{"Kuuba"}
         CV{"Roheneemesaared"}
+        CW{"Curaçao"}
         CX{"Jõulusaar"}
         CY{"Küpros"}
         CZ{"Tšehhi"}
@@ -194,7 +195,7 @@ et{
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongoolia"}
-        MO{"Aomen - Hiina erihalduspiirkond"}
+        MO{"Macau - Hiina erihalduspiirkond"}
         MP{"Põhja-Mariaanid"}
         MQ{"Martinique"}
         MR{"Mauritaania"}
@@ -227,9 +228,9 @@ et{
         PK{"Pakistan"}
         PL{"Poola"}
         PM{"Saint Pierre ja Miquelon"}
-        PN{"Pitcairn"}
+        PN{"Pitcairni saared"}
         PR{"Puerto Rico"}
-        PS{"Palestiina ala"}
+        PS{"Palestiina alad"}
         PT{"Portugal"}
         PW{"Belau"}
         PY{"Paraguay"}
@@ -255,8 +256,10 @@ et{
         SN{"Senegal"}
         SO{"Somaalia"}
         SR{"Suriname"}
+        SS{"Lõuna-Sudaan"}
         ST{"São Tomé ja Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Süüria"}
         SZ{"Svaasimaa"}
         TA{"Tristan da Cunha"}
@@ -291,12 +294,20 @@ et{
         VU{"Vanuatu"}
         WF{"Wallis ja Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Jeemen"}
         YT{"Mayotte"}
         ZA{"Lõuna-Aafrika Vabariik"}
         ZM{"Sambia"}
         ZW{"Zimbabwe"}
-        ZZ{"määramata"}
+        ZZ{"Tundmatu piirkond"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"Suurbritannia"}
+        HK{"Hongkong"}
+        MO{"Macau"}
+        PS{"Palestiina"}
+        US{"USA"}
+    }
+    Version{"2.0.92.87"}
 }

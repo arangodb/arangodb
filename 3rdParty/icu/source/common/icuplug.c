@@ -538,6 +538,7 @@ uplug_loadPlugFromEntrypoint(UPlugEntrypoint *entrypoint, const char *config, UE
   return plug;
 }
 
+#if U_ENABLE_DYLOAD
 
 static UPlugData* 
 uplug_initErrorPlug(const char *libName, const char *sym, const char *config, const char *nameOrError, UErrorCode loadStatus, UErrorCode *status)
@@ -571,9 +572,6 @@ uplug_initErrorPlug(const char *libName, const char *sym, const char *config, co
 /**
  * Fetch a plugin from DLL, and then initialize it from a library- but don't load it.
  */
-
-#if U_ENABLE_DYLOAD
-
 static UPlugData* 
 uplug_initPlugFromLibrary(const char *libName, const char *sym, const char *config, UErrorCode *status) {
   void *lib = NULL;
@@ -641,6 +639,8 @@ static UBool U_CALLCONV uplug_cleanup(void)
   return TRUE;
 }
 
+#if U_ENABLE_DYLOAD
+
 static void uplug_loadWaitingPlugs(UErrorCode *status) {
   int32_t i;
   UPlugLevel currentLevel = uplug_getCurrentLevel();
@@ -693,7 +693,6 @@ static void uplug_loadWaitingPlugs(UErrorCode *status) {
 #endif
 }
 
-#if U_ENABLE_DYLOAD
 /* Name of the plugin config file */
 static char plugin_file[2048] = "";
 #endif

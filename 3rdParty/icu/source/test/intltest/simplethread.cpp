@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1999-2011, International Business Machines Corporation and
+ * Copyright (c) 1999-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -32,6 +32,7 @@
 #include "unicode/uloc.h"
 #include "unicode/locid.h"
 #include "putilimp.h"
+#include "intltest.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -49,9 +50,11 @@
 /* Needed by z/OS to get usleep */
 #if U_PLATFORM == U_PF_OS390
 #define __DOT1 1
-#define __UU
+#ifndef __UU
+#   define __UU
+#endif
 #ifndef _XPG4_2
-#define _XPG4_2
+#   define _XPG4_2
 #endif
 #include <unistd.h>
 #endif

@@ -1,6 +1,6 @@
 /**
  ************************************************************************************
- * Copyright (C) 2006-2007, International Business Machines Corporation and others. *
+ * Copyright (C) 2006-2012, International Business Machines Corporation and others. *
  * All Rights Reserved.                                                             *
  ************************************************************************************
  */
@@ -17,7 +17,7 @@ U_NAMESPACE_BEGIN
 
 class UnicodeSet;
 class UStack;
-class CompactTrieDictionary;
+class DictionaryMatcher;
 
 /*******************************************************************
  * LanguageBreakEngine
@@ -259,8 +259,7 @@ class ICULanguageBreakFactory : public LanguageBreakFactory {
   */
   virtual const LanguageBreakEngine *getEngineFor(UChar32 c, int32_t breakType);
 
- protected:
-
+protected:
  /**
   * <p>Create a LanguageBreakEngine for the set of characters to which
   * the supplied character belongs, for the specified break type.</p>
@@ -273,17 +272,15 @@ class ICULanguageBreakFactory : public LanguageBreakFactory {
   */
   virtual const LanguageBreakEngine *loadEngineFor(UChar32 c, int32_t breakType);
 
- /**
-  * <p>Create a CompactTrieDictionary for the specified script and break type.</p>
-  *
-  * @param script An ISO 15924 script code that identifies the dictionary to be
-  * created.
-  * @param breakType The kind of text break for which a dictionary is
-  * sought.
-  * @return A CompactTrieDictionary with the desired characteristics, or 0.
-  */
-  virtual const CompactTrieDictionary *loadDictionaryFor(UScriptCode script, int32_t breakType);
-
+  /**
+   * <p>Create a DictionaryMatcher for the specified script and break type.</p>
+   * @param script An ISO 15924 script code that identifies the dictionary to be
+   * created.
+   * @param breakType The kind of text break for which a dictionary is 
+   * sought.
+   * @return A DictionaryMatcher with the desired characteristics, or NULL.
+   */
+  virtual DictionaryMatcher *loadDictionaryMatcherFor(UScriptCode script, int32_t breakType);
 };
 
 U_NAMESPACE_END

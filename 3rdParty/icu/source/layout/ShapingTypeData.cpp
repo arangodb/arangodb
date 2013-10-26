@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008. All Rights Reserved.
+ * (C) Copyright IBM Corp. 1998-2013. All Rights Reserved.
  *
  * WARNING: THIS FILE IS MACHINE GENERATED. DO NOT HAND EDIT IT UNLESS
  * YOU REALLY KNOW WHAT YOU'RE DOING.
@@ -96,5 +96,7 @@ const le_uint8 ArabicShaping::shapingTypeTable[] = {
     0xFB, 0x1E, 0xFB, 0x1E, 0x00, 0x05, 0xFE, 0x00, 0xFE, 0x0F, 0x00, 0x05, 0xFE, 0x20, 0xFE, 0x26, 
     0x00, 0x05, 0xFE, 0xFF, 0xFE, 0xFF, 0x00, 0x05, 0xFF, 0xF9, 0xFF, 0xFB, 0x00, 0x05
 };
+
+const size_t ArabicShaping::shapingTypeTableLen = sizeof(shapingTypeTable)/sizeof(shapingTypeTable[0]);
 
 U_NAMESPACE_END

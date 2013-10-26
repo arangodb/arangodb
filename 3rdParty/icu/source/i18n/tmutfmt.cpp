@@ -1,16 +1,17 @@
 /*
  *******************************************************************************
- * Copyright (C) 2008-2011, Google, International Business Machines Corporation
+ * Copyright (C) 2008-2013, Google, International Business Machines Corporation
  * and others. All Rights Reserved.
  *******************************************************************************
  */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/tmutfmt.h"
 
 #if !UCONFIG_NO_FORMATTING
 
+#include "uvector.h"
 #include "charstr.h"
 #include "cmemory.h"
 #include "cstring.h"
@@ -74,7 +75,6 @@ static const UChar DEFAULT_PATTERN_FOR_YEAR[] = {LEFT_CURLY_BRACKET, DIGIT_ZERO,
 static const UChar PLURAL_COUNT_ZERO[] = {LOW_Z, LOW_E, LOW_R, LOW_O, 0};
 static const UChar PLURAL_COUNT_ONE[] = {LOW_O, LOW_N, LOW_E, 0};
 static const UChar PLURAL_COUNT_TWO[] = {LOW_T, LOW_W, LOW_O, 0};
-
 
 TimeUnitFormat::TimeUnitFormat(UErrorCode& status)
 :   fNumberFormat(NULL),
@@ -355,13 +355,12 @@ TimeUnitFormat::parseObject(const UnicodeString& source,
     }
 }
 
-
 void
 TimeUnitFormat::create(const Locale& locale, UTimeUnitFormatStyle style, UErrorCode& status) {
     if (U_FAILURE(status)) {
         return;
     }
-    if (style < UTMUTFMT_FULL_STYLE || style > UTMUTFMT_ABBREVIATED_STYLE) {
+    if (style < UTMUTFMT_FULL_STYLE || style >= UTMUTFMT_FORMAT_STYLE_COUNT) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
         return;
     }
@@ -386,10 +385,21 @@ TimeUnitFormat::create(const Locale& locale, UTimeUnitFormatStyle style, UErrorC
 void 
 TimeUnitFormat::setup(UErrorCode& err) {
     initDataMembers(err);
-    readFromCurrentLocale(UTMUTFMT_FULL_STYLE, gUnitsTag, err);
+
+    UVector pluralCounts(0, uhash_compareUnicodeString, 6, err);
+    StringEnumeration* keywords = fPluralRules->getKeywords(err);
+    if (U_FAILURE(err)) {
+        return;
+    }
+    UnicodeString* pluralCount;
+    while ((pluralCount = const_cast<UnicodeString*>(keywords->snext(err))) != NULL) {
+      pluralCounts.addElement(pluralCount, err);
+    }
+    readFromCurrentLocale(UTMUTFMT_FULL_STYLE, gUnitsTag, pluralCounts, err);
     checkConsistency(UTMUTFMT_FULL_STYLE, gUnitsTag, err);
-    readFromCurrentLocale(UTMUTFMT_ABBREVIATED_STYLE, gShortUnitsTag, err);
+    readFromCurrentLocale(UTMUTFMT_ABBREVIATED_STYLE, gShortUnitsTag, pluralCounts, err);
     checkConsistency(UTMUTFMT_ABBREVIATED_STYLE, gShortUnitsTag, err);
+    delete keywords;
 }
 
 
@@ -411,11 +421,9 @@ TimeUnitFormat::initDataMembers(UErrorCode& err){
     }
 }
 
-
-
-
 void
-TimeUnitFormat::readFromCurrentLocale(UTimeUnitFormatStyle style, const char* key, UErrorCode& err) {
+TimeUnitFormat::readFromCurrentLocale(UTimeUnitFormatStyle style, const char* key,
+                                      const UVector& pluralCounts, UErrorCode& err) {
     if (U_FAILURE(err)) {
         return;
     }
@@ -427,6 +435,7 @@ TimeUnitFormat::readFromCurrentLocale(UTimeUnitFormatStyle style, const char* ke
     UResourceBundle *rb, *unitsRes;
     rb = ures_open(NULL, fLocale.getName(), &status);
     unitsRes = ures_getByKey(rb, key, NULL, &status);
+    unitsRes = ures_getByKey(unitsRes, "duration", unitsRes, &status);
     if (U_FAILURE(status)) {
         ures_close(unitsRes);
         ures_close(rb);
@@ -490,12 +499,15 @@ TimeUnitFormat::readFromCurrentLocale(UTimeUnitFormatStyle style, const char* ke
                 if (U_FAILURE(status)) {
                     continue;
                 }
+                UnicodeString pluralCountUniStr(pluralCount, -1, US_INV);
+                if (!pluralCounts.contains(&pluralCountUniStr)) {
+                  continue;
+                }
                 MessageFormat* messageFormat = new MessageFormat(pattern, fLocale, err);
                 if ( U_SUCCESS(err) ) {
                   if (fNumberFormat != NULL) {
                     messageFormat->setFormat(0, *fNumberFormat);
                   }
-                  UnicodeString pluralCountUniStr(pluralCount, -1, US_INV);
                   MessageFormat** formatters = (MessageFormat**)countToPatterns->get(pluralCountUniStr);
                   if (formatters == NULL) {
                     formatters = (MessageFormat**)uprv_malloc(UTMUTFMT_FORMAT_STYLE_COUNT*sizeof(MessageFormat*));
@@ -763,6 +775,7 @@ TimeUnitFormat::setNumberFormat(const NumberFormat& format, UErrorCode& status){
         while ((elem = fTimeUnitToCountToPatterns[i]->nextElement(pos)) != NULL){
             const UHashTok keyTok = elem->value;
             MessageFormat** pattern = (MessageFormat**)keyTok.pointer;
+
             pattern[UTMUTFMT_FULL_STYLE]->setFormat(0, format);
             pattern[UTMUTFMT_ABBREVIATED_STYLE]->setFormat(0, format);
         }

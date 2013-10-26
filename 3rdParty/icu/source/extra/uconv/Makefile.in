@@ -52,7 +52,7 @@ endif
 ## generic settings for data - common.
 PKGMODE=common
 INSTALLTO=$(DESTDIR)$(ICUDATA_DIR)
-UCONVMSG_LIB=dummy
+UCONVMSG_LIB=package-resfiles
 
 ## Static mode
 ifeq ($(UCONVMSG_MODE),static)
@@ -77,7 +77,8 @@ DEPS = $(OBJECTS:.o=.d)
 
 ## List of phony targets
 .PHONY : all all-local install install-local clean clean-local \
-distclean resclean distclean-local dist dist-local check check-local resfiles package-resfiles install-resfiles install-man
+distclean resclean distclean-local dist dist-local \
+check check-local build-dir package-resfiles install-resfiles install-man
 
 ## Clear suffix list
 .SUFFIXES :
@@ -91,7 +92,7 @@ distclean : distclean-local
 dist: dist-local
 check: check-local
 
-all-local: $(TARGET) resfiles $(ALL_MAN_FILES)
+all-local: build-dir $(TARGET) $(ALL_MAN_FILES)
 
 install-local: all-local install-target install-resfiles install-man
 
@@ -128,6 +129,9 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 pkgdata.inc: pkgdataMakefile
 	$(MAKE) -f pkgdataMakefile
 
+build-dir:
+	@$(MKINSTALLDIRS) $(RESDIR)
+
 pkgdataMakefile:
 	cd $(top_builddir) \
 	&& CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
@@ -140,18 +144,16 @@ $(TARGET) : $(OBJECTS)  $(UCONVMSG_LIB)
 	$(LINK.cc) $(OUTOPT)$@ $(OBJECTS) $(LIBS)
 	$(POST_BUILD_STEP)
 
-resfiles: $(RESFILES) package-resfiles
-
-ifeq ($(UCONVMSG_STATIC),YES)
-$(UCONVMSG_LIB): resfiles
+# The | is an order-only prerequisite. This helps when the -j option is used,
+# and we don't want the files to be built before the directories are built.
+ifneq ($(filter order-only,$(.FEATURES)),)
+$(RESFILES) $(RESDIR)/$(RESDIR).lst: | build-dir
 endif
 
-
-package-resfiles: $(RESFILES) $(RESDIR)/$(RESDIR).lst pkgdata.inc
+$(UCONVMSG_LIB): $(RESFILES) $(RESDIR)/$(RESDIR).lst pkgdata.inc
 	$(INVOKE) $(PKGDATA_INVOKE_OPTS) $(TOOLBINDIR)/pkgdata -p $(MSGNAME) $(PKGDATA_OPTS) -m $(PKGMODE) -s $(RESDIR) -d $(RESDIR) -T $(RESDIR) $(RESDIR)/$(RESDIR).lst
 
 $(RESDIR)/$(RESDIR).lst: Makefile $(srcdir)/resfiles.mk
-	@$(MKINSTALLDIRS) $(RESDIR)
 	@-$(RMV) $@
 	@for file in $(RESFILES:$(RESDIR)/%.res=%.res); do \
 	  echo $$file >> $@; \
@@ -166,11 +168,7 @@ else
 install-resfiles:
 endif
 
-##
-$(UCONVMSG_LIB): resfiles
-
 $(MSGNAME)/%.res: $(srcdir)/$(RESOURCESDIR)/%.txt
-	$(MKINSTALLDIRS) $(@D)
 	$(INVOKE) $(TOOLBINDIR)/genrb -e UTF-8 -s $(^D) -d $(@D) $(^F)
 
 install-man: $(ALL_MAN_FILES)

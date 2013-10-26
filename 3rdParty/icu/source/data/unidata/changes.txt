@@ -1,4 +1,4 @@
-﻿* Copyright (C) 2004-2012, International Business Machines
+﻿* Copyright (C) 2004-2013, International Business Machines
 * Corporation and others.  All Rights Reserved.
 *
 *   file name:  changes.txt
@@ -10,6 +10,386 @@
 *   created by: Markus W. Scherer
 *
 * change log for Unicode updates
+
+---------------------------------------------------------------------------- ***
+
+Unicode 6.3 update
+
+http://www.unicode.org/review/pri249/  -- beta review
+http://www.unicode.org/reports/uax-proposed-updates.html
+http://www.unicode.org/versions/beta-6.3.0.html#notable_issues
+http://www.unicode.org/reports/tr44/tr44-11.html
+
+*** ICU Trac
+
+- ticket 10128: update ICU to Unicode 6.3 beta
+- ticket 10168: update ICU to Unicode 6.3 final
+- C++ branches/markus/uni63 at r33552 from trunk at r33551
+- Java branches/markus/uni63 at r33550 from trunk at r33553
+
+- ticket 10142: implement Unicode 6.3 bidi algorithm additions
+
+*** Unicode version numbers
+- makedata.mak
+- uchar.h
+  (configure.in & configure: have been modified to extract the version from uchar.h)
+- com.ibm.icu.util.VersionInfo
+- com.ibm.icu.dev.test.lang.UCharacterTest.VERSION_
+
+- Run ICU4C "configure" _after_ updating the Unicode version number in uchar.h
+  so that the makefiles see the new version number.
+
+*** data files & enums & parser code
+
+* file preparation
+
+- download UCD, UCA & IDNA files
+- make sure that the Unicode data folder passed into preparseucd.py
+  includes a copy of the latest IdnaMappingTable.txt (can be in some subfolder)
+- modify preparseucd.py:
+  parse new file BidiBrackets.txt
+  with new properties bpb=Bidi_Paired_Bracket and bpt=Bidi_Paired_Bracket_Type
+- ~/svn.icutools/trunk/src/unicode$ py/preparseucd.py ~/unidata/uni63/20130425 ~/svn.icu/uni63/src ~/svn.icutools/trunk/src
+- This writes files (especially ppucd.txt) to the ICU4C unidata and testdata subfolders.
+- Check test file diffs for previously commented-out, known-failing data lines;
+  probably need to keep those commented out.
+
+* PropertyAliases.txt changes
+- 1 new Enumerated Property
+  bpt                      ; Bidi_Paired_Bracket_Type
+  -> uchar.h & UProperty.java & UCharacter.BidiPairedBracketType
+  -> ubidi_props.h & .c & UBiDiProps.java
+  -> remember to write the max value at UBIDI_MAX_VALUES_INDEX
+  -> uprops.cpp
+  -> change ubidi.icu format version from 2.0 to 2.1
+- 1 new Miscellaneous Property
+  bpb                      ; Bidi_Paired_Bracket
+  -> uchar.h & UProperty.java
+  -> ppucd.h & .cpp
+
+* PropertyValueAliases.txt changes
+- 3 Bidi_Paired_Bracket_Type (bpt) values:
+  bpt; c                                ; Close
+  bpt; n                                ; None
+  bpt; o                                ; Open
+  -> uchar.h & UCharacter.BidiPairedBracketType
+  -> ubidi_props.h & .c & UBiDiProps.java
+  -> change ubidi.icu format version from 2.0 to 2.1
+- 4 new Bidi_Class (bc) values:
+  bc ; FSI                              ; First_Strong_Isolate
+  bc ; LRI                              ; Left_To_Right_Isolate
+  bc ; RLI                              ; Right_To_Left_Isolate
+  bc ; PDI                              ; Pop_Directional_Isolate
+  -> uchar.h & UCharacterEnums.ECharacterDirection
+  -> until the bidi code gets updated,
+     Roozbeh suggests mapping the new bc values to ON (Other_Neutral)
+- 3 new Word_Break (WB) values:
+  WB ; HL                               ; Hebrew_Letter
+  WB ; SQ                               ; Single_Quote
+  WB ; DQ                               ; Double_Quote
+  -> uchar.h & UCharacter.WordBreak
+  -> first time Word_Break numeric constants exceed 4 bits (now 17 values)
+- 2 new script codes from ISO 15924 http://www.unicode.org/iso15924/codechanges.html
+  (added 2012-10-16)
+  Aghb  239     Caucasian Albanian
+  Mahj  314     Mahajani
+  -> uscript.h
+  -> com.ibm.icu.lang.UScript
+    find     USCRIPT_([^ ]+) *= ([0-9]+),(.+)
+    replace  public static final int \1 = \2;\3
+  -> preparseucd.py _scripts_only_in_iso15924
+  -> add to expectedLong and expectedShort names in cintltst/cucdapi.c/TestUScriptCodeAPI()
+      and in com.ibm.icu.dev.test.lang.TestUScript.java
+  -> update Script metadata: SCRIPT_PROPS[] in uscript_props.cpp & UScript.ScriptMetadata
+     (not strictly necessary for NOT_ENCODED scripts)
+
+* generate normalization data files
+- ~/svn.icu/uni63/dbg$ export LD_LIBRARY_PATH=~/svn.icu/uni63/dbg/lib
+- ~/svn.icu/uni63/dbg$ SRC_DATA_IN=~/svn.icu/uni63/src/source/data/in
+- ~/svn.icu/uni63/dbg$ UNIDATA=~/svn.icu/uni63/src/source/data/unidata
+- ~/svn.icu/uni63/dbg$ bin/gennorm2 -o $SRC_DATA_IN/nfc.nrm     -s $UNIDATA/norm2 nfc.txt
+- ~/svn.icu/uni63/dbg$ bin/gennorm2 -o $SRC_DATA_IN/nfkc.nrm    -s $UNIDATA/norm2 nfc.txt nfkc.txt
+- ~/svn.icu/uni63/dbg$ bin/gennorm2 -o $SRC_DATA_IN/nfkc_cf.nrm -s $UNIDATA/norm2 nfc.txt nfkc.txt nfkc_cf.txt
+- ~/svn.icu/uni63/dbg$ bin/gennorm2 -o $SRC_DATA_IN/uts46.nrm   -s $UNIDATA/norm2 nfc.txt uts46.txt
+
+* build ICU (make install)
+  so that the tools build can pick up the new definitions from the installed header files.
+
+~/svn.icu/uni63/dbg$ echo;echo;make -j5 install > out.txt 2>&1 ; tail -n 20 out.txt
+
+* build Unicode tools using CMake+make
+
+~/svn.icutools/trunk/src/unicode/c/icudefs.txt:
+
+# Location (--prefix) of where ICU was installed.
+set(ICU_INST_DIR /home/mscherer/svn.icu/uni63/inst)
+# Location of the ICU source tree.
+set(ICU_SRC_DIR /home/mscherer/svn.icu/uni63/src)
+
+~/svn.icutools/trunk/dbg/unicode/c$ cmake ../../../src/unicode/c
+~/svn.icutools/trunk/dbg/unicode/c$ make
+
+* generate core properties data files
+- ~/svn.icutools/trunk/dbg/unicode/c$ genprops/genprops ~/svn.icu/uni63/src
+- ~/svn.icutools/trunk/dbg/unicode/c$ genuca/genuca -i ~/svn.icu/uni63/dbg/data/out/build/icudt52l ~/svn.icu/uni63/src
+- rebuild ICU (make install) & tools
+- run genuca again (see step above) so that it picks up the new case mappings and nfc.nrm
+- rebuild ICU (make install) & tools
+
+* update uts46test.cpp and UTS46Test.java if there are new characters that are equivalent to
+  sequences with non-LDH ASCII (that is, their decompositions contain '=' or similar)
+- grep IdnaMappingTable.txt or uts46.txt for "disallowed_STD3_valid" on non-ASCII characters
+- Unicode 6.0..6.3: U+2260, U+226E, U+226F
+- nothing new in 6.3, no test file to update
+
+* update Java data files
+- refresh just the UCD-related files, just to be safe
+- see (ICU4C)/source/data/icu4j-readme.txt
+- mkdir /tmp/icu4j
+- ~/svn.icu/uni63/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+  output:
+    ...
+    Unicode .icu files built to ./out/build/icudt52l
+    mkdir -p ./out/icu4j/com/ibm/icu/impl/data/icudt52b
+    mkdir -p ./out/icu4j/tzdata/com/ibm/icu/impl/data/icudt52b
+    echo pnames.icu ubidi.icu ucase.icu uprops.icu > ./out/icu4j/add.txt
+    LD_LIBRARY_PATH=../lib:../stubdata:../tools/ctestfw:$LD_LIBRARY_PATH  ../bin/icupkg ./out/tmp/icudt52l.dat ./out/icu4j/icudt52b.dat -a ./out/icu4j/add.txt -s ./out/build/icudt52l -x '*' -tb -d ./out/icu4j/com/ibm/icu/impl/data/icudt52b
+    mv ./out/icu4j/"com/ibm/icu/impl/data/icudt52b/zoneinfo64.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt52b/metaZones.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt52b/timezoneTypes.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt52b/windowsZones.res" "./out/icu4j/tzdata/com/ibm/icu/impl/data/icudt52b"
+    jar cf ./out/icu4j/icudata.jar -C ./out/icu4j com/ibm/icu/impl/data/icudt52b/
+    mkdir -p /tmp/icu4j/main/shared/data
+    cp ./out/icu4j/icudata.jar /tmp/icu4j/main/shared/data
+    jar cf ./out/icu4j/icutzdata.jar -C ./out/icu4j/tzdata com/ibm/icu/impl/data/icudt52b/
+    mkdir -p /tmp/icu4j/main/shared/data
+    cp ./out/icu4j/icutzdata.jar /tmp/icu4j/main/shared/data
+    make[1]: Leaving directory `/home/mscherer/svn.icu/uni63/dbg/data'
+- copy the big-endian Unicode data files to another location,
+  separate from the other data files
+    mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/coll
+    mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/brkitr
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt52b/*.icu /tmp/icu4j/com/ibm/icu/impl/data/icudt52b
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ rm /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/cnvalias.icu
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt52b/*.nrm /tmp/icu4j/com/ibm/icu/impl/data/icudt52b
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt52b/coll/*.icu /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/coll
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt52b/brkitr/* /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/brkitr
+- refresh ICU4J
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ jar uf ~/svn.icu4j/trunk/src/main/shared/data/icudata.jar -C /tmp/icu4j com/ibm/icu/impl/data/icudt52b
+
+* refresh Java test .txt files
+- copy new .txt files into ICU4J's main/tests/core/src/com/ibm/icu/dev/data/unicode
+
+* UCA -- mostly skipped for ICU 52 / Unicode 6.3, except update coll/* files
+
+- get output from Mark's tools; look in http://www.unicode.org/Public/UCA/<beta version>/
+- CLDR root files for ICU are in CollationAuxiliary.zip; unpack that
+- update source/data/unidata/FractionalUCA.txt with FractionalUCA_SHORT.txt
+- update source/data/unidata/UCARules.txt with UCA_Rules_SHORT.txt
+  (note removing the underscore before "Rules")
+- update (ICU4C)/source/test/testdata/CollationTest_*.txt
+  and (ICU4J)/main/tests/collate/src/com/ibm/icu/dev/data/CollationTest_*.txt
+  with output from Mark's Unicode tools (..._CLDR_..._SHORT.txt)
+- check test file diffs for previously commented-out, known-failing data lines;
+  probably need to keep those commented out
+- check FractionalUCA.txt for manual changes of lead bytes from IMPLICIT to Hani
+- run genuca, see command line above
+- rebuild ICU4C
+- refresh ICU4J collation data:
+  (subset of instructions above for properties data refresh, except copies all coll/*)
+    ~/svn.icu/uni63/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+    ~/svn.icu/uni63/dbg$ mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/coll
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt52b/coll/* /tmp/icu4j/com/ibm/icu/impl/data/icudt52b/coll
+    ~/svn.icu/uni63/dbg/data/out/icu4j$ jar uf ~/svn.icu4j/trunk/src/main/shared/data/icudata.jar -C /tmp/icu4j com/ibm/icu/impl/data/icudt52b
+- run all tests with the *_SHORT.txt or the full files (the full ones have comments, useful for debugging)
+- note on intltest: if collate/UCAConformanceTest fails, then
+  utility/MultithreadTest/TestCollators will fail as well;
+  fix the conformance test before looking into the multi-thread test
+
+* test ICU, fix test code where necessary
+
+* When refreshing all of ICU4J data from ICU4C
+- ~/svn.icu/uni63/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+- cp /tmp/icu4j/main/shared/data/icudata.jar ~/svn.icu4j/trunk/src/main/shared/data
+or
+- ~/svn.icu/uni63/dbg$ make ICU4J_ROOT=~/svn.icu4j/trunk/src icu4j-data-install
+
+*** LayoutEngine script information
+- skipped for Unicode 6.3: no new scripts
+
+*** merge the Unicode update branches back onto the trunk
+- do not merge the icudata.jar and testdata.jar,
+  instead rebuild them from merged & tested ICU4C
+
+---------------------------------------------------------------------------- ***
+
+Unicode 6.2 update
+
+http://www.unicode.org/review/pri230/
+http://www.unicode.org/versions/beta-6.2.0.html
+http://www.unicode.org/reports/tr44/tr44-9.html#Unicode_6.2.0
+http://www.unicode.org/review/pri227/  Changes to Script Extensions Property Values
+http://www.unicode.org/review/pri228/  Changing some common characters from Punctuation to Symbol
+http://www.unicode.org/review/pri229/  Linebreaking Changes for Pictographic Symbols
+http://www.unicode.org/reports/tr46/tr46-8.html  IDNA
+http://unicode.org/Public/idna/6.2.0/
+
+*** ICU Trac
+
+- ticket 9515: Unicode 6.2: final ICU update
+
+- ticket 9514: UCA 6.2: fix UCARules.txt
+
+- ticket 9437: update ICU to Unicode 6.2
+- C++ branches/markus/uni62 at r32050 from trunk at r32041
+- Java branches/markus/uni62 at r32068 from trunk at r32066
+
+*** Unicode version numbers
+- makedata.mak
+- uchar.h
+  (configure.in & configure: have been modified to extract the version from uchar.h)
+- com.ibm.icu.util.VersionInfo
+- com.ibm.icu.dev.test.lang.UCharacterTest.VERSION_
+
+*** data files & enums & parser code
+
+* file preparation
+
+- download UCD, UCA & IDNA files
+- make sure that the Unicode data folder passed into preparseucd.py
+  includes a copy of the latest IdnaMappingTable.txt (can be in some subfolder)
+- modify preparseucd.py: NamesList.txt is now in UTF-8
+- ~/svn.icu/tools/trunk/src/unicode$ py/preparseucd.py ~/uni62/20120816 ~/svn.icu/uni62/src ~/svn.icu/tools/trunk/src
+- This writes files (especially ppucd.txt) to the ICU4C unidata and testdata subfolders.
+- Check test file diffs for previously commented-out, known-failing data lines;
+  probably need to keep those commented out.
+
+* PropertyValueAliases.txt changes
+- 1 new Line_Break (lb) value:
+  lb ; RI                               ; Regional_Indicator
+  -> uchar.h & UCharacter.LineBreak
+- 1 new Word_Break (WB) value:
+  WB ; RI                               ; Regional_Indicator
+  -> uchar.h & UCharacter.WordBreak
+- 1 new Grapheme_Cluster_Break (GCB) value:
+  GCB; RI                               ; Regional_Indicator
+  -> uchar.h & UCharacter.GraphemeClusterBreak
+
+* 3 new numeric values
+  The new value -1, which was really supposed to be NaN but that would have required
+  new UnicodeData.txt syntax, can already be represented as a "fraction" of -1/1,
+  but encodeNumericValue() in corepropsbuilder.cpp had to be fixed.
+    cp;12456;na=CUNEIFORM NUMERIC SIGN NIGIDAMIN;nv=-1
+    cp;12457;na=CUNEIFORM NUMERIC SIGN NIGIDAESH;nv=-1
+  The two new values 216000 and 432000 require an addition to the encoding of numeric values.
+    cp;12432;na=CUNEIFORM NUMERIC SIGN SHAR2 TIMES GAL PLUS DISH;nv=216000
+    cp;12433;na=CUNEIFORM NUMERIC SIGN SHAR2 TIMES GAL PLUS MIN;nv=432000
+  -> uprops.h, uchar.c & UCharacterProperty.java
+  -> cucdtst.c & UCharacterTest.java
+
+* generate normalization data files
+- ~/svn.icu/uni62/dbg$ export LD_LIBRARY_PATH=~/svn.icu/uni62/dbg/lib
+- ~/svn.icu/uni62/dbg$ SRC_DATA_IN=~/svn.icu/uni62/src/source/data/in
+- ~/svn.icu/uni62/dbg$ UNIDATA=~/svn.icu/uni62/src/source/data/unidata
+- ~/svn.icu/uni62/dbg$ bin/gennorm2 -o $SRC_DATA_IN/nfc.nrm     -s $UNIDATA/norm2 nfc.txt
+- ~/svn.icu/uni62/dbg$ bin/gennorm2 -o $SRC_DATA_IN/nfkc.nrm    -s $UNIDATA/norm2 nfc.txt nfkc.txt
+- ~/svn.icu/uni62/dbg$ bin/gennorm2 -o $SRC_DATA_IN/nfkc_cf.nrm -s $UNIDATA/norm2 nfc.txt nfkc.txt nfkc_cf.txt
+- ~/svn.icu/uni62/dbg$ bin/gennorm2 -o $SRC_DATA_IN/uts46.nrm   -s $UNIDATA/norm2 nfc.txt uts46.txt
+
+* build ICU (make install)
+  so that the tools build can pick up the new definitions from the installed header files.
+* build Unicode tools using CMake+make
+
+* generate core properties data files
+- ~/svn.icu/tools/trunk/dbg/unicode$ c/genprops/genprops ~/svn.icu/uni62/src
+- in initial bootstrapping, change the UCA version
+  in source/data/unidata/FractionalUCA.txt to match the new Unicode version
+- ~/svn.icu/tools/trunk/dbg/unicode$ c/genuca/genuca -i ~/svn.icu/uni62/dbg/data/out/build/icudt50l ~/svn.icu/uni62/src
+- rebuild ICU (make install) & tools
+  + if genrb fails to build coll/root.res with an U_INVALID_FORMAT_ERROR,
+    check if the UCA version in FractionalUCA.txt matches the new Unicode version
+    (see step above)
+- run genuca again (see step above) so that it picks up the new case mappings and nfc.nrm
+- rebuild ICU (make install) & tools
+
+* update uts46test.cpp and UTS46Test.java if there are new characters that are equivalent to
+  sequences with non-LDH ASCII (that is, their decompositions contain '=' or similar)
+- grep IdnaMappingTable.txt or uts46.txt for "disallowed_STD3_valid" on non-ASCII characters
+- Unicode 6.0..6.2: U+2260, U+226E, U+226F
+- nothing new in 6.2, no test file to update
+
+* update Java data files
+- refresh just the UCD-related files, just to be safe
+- see (ICU4C)/source/data/icu4j-readme.txt
+- mkdir /tmp/icu4j
+- ~/svn.icu/uni62/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+  output:
+    ...
+    Unicode .icu files built to ./out/build/icudt50l
+    mkdir -p ./out/icu4j/com/ibm/icu/impl/data/icudt50b
+    mkdir -p ./out/icu4j/tzdata/com/ibm/icu/impl/data/icudt50b
+    echo pnames.icu ubidi.icu ucase.icu uprops.icu > ./out/icu4j/add.txt
+    LD_LIBRARY_PATH=../lib:../stubdata:../tools/ctestfw:$LD_LIBRARY_PATH  ../bin/icupkg ./out/tmp/icudt50l.dat ./out/icu4j/icudt50b.dat -a ./out/icu4j/add.txt -s ./out/build/icudt50l -x '*' -tb -d ./out/icu4j/com/ibm/icu/impl/data/icudt50b
+    mv ./out/icu4j/"com/ibm/icu/impl/data/icudt50b/zoneinfo64.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt50b/metaZones.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt50b/timezoneTypes.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt50b/windowsZones.res" "./out/icu4j/tzdata/com/ibm/icu/impl/data/icudt50b"
+    jar cf ./out/icu4j/icudata.jar -C ./out/icu4j com/ibm/icu/impl/data/icudt50b/
+    mkdir -p /tmp/icu4j/main/shared/data
+    cp ./out/icu4j/icudata.jar /tmp/icu4j/main/shared/data
+    jar cf ./out/icu4j/icutzdata.jar -C ./out/icu4j/tzdata com/ibm/icu/impl/data/icudt50b/
+    mkdir -p /tmp/icu4j/main/shared/data
+    cp ./out/icu4j/icutzdata.jar /tmp/icu4j/main/shared/data
+    make[1]: Leaving directory `/home/mscherer/svn.icu/uni62/dbg/data'
+- copy the big-endian Unicode data files to another location,
+  separate from the other data files
+    mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/coll
+    mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/brkitr
+    ~/svn.icu/uni62/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt50b/*.icu /tmp/icu4j/com/ibm/icu/impl/data/icudt50b
+    ~/svn.icu/uni62/dbg/data/out/icu4j$ rm /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/cnvalias.icu
+    ~/svn.icu/uni62/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt50b/*.nrm /tmp/icu4j/com/ibm/icu/impl/data/icudt50b
+    ~/svn.icu/uni62/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt50b/coll/*.icu /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/coll
+    ~/svn.icu/uni62/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt50b/brkitr/* /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/brkitr
+- refresh ICU4J
+    ~/svn.icu/uni62/dbg/data/out/icu4j$ jar uf ~/svn.icu4j/trunk/src/main/shared/data/icudata.jar -C /tmp/icu4j com/ibm/icu/impl/data/icudt50b
+
+* refresh Java test .txt files
+- copy new .txt files into ICU4J's main/tests/core/src/com/ibm/icu/dev/data/unicode
+
+* UCA
+
+- get output from Mark's tools; look in http://www.unicode.org/Public/UCA/<beta version>/
+- CLDR root files for ICU are in CollationAuxiliary.zip; unpack that
+- update source/data/unidata/FractionalUCA.txt with FractionalUCA_SHORT.txt
+- update source/data/unidata/UCARules.txt with UCA_Rules_SHORT.txt
+  (note removing the underscore before "Rules")
+- update (ICU4C)/source/test/testdata/CollationTest_*.txt
+  and (ICU4J)/main/tests/collate/src/com/ibm/icu/dev/data/CollationTest_*.txt
+  with output from Mark's Unicode tools (..._CLDR_..._SHORT.txt)
+- check test file diffs for previously commented-out, known-failing data lines;
+  probably need to keep those commented out
+- check FractionalUCA.txt for manual changes of lead bytes from IMPLICIT to Hani
+- run genuca, see command line above
+- rebuild ICU4C
+- refresh ICU4J collation data:
+  (subset of instructions above for properties data refresh, except copies all coll/*)
+    ~/svn.icu/uni62/bld$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+    ~/svn.icu/uni62/bld$ mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/coll
+    ~/svn.icu/uni62/bld/data/out/icu4j$ cp com/ibm/icu/impl/data/icudt50b/coll/* /tmp/icu4j/com/ibm/icu/impl/data/icudt50b/coll
+    ~/svn.icu/uni62/bld/data/out/icu4j$ jar uf ~/svn.icu4j/trunk/src/main/shared/data/icudata.jar -C /tmp/icu4j com/ibm/icu/impl/data/icudt50b
+- run all tests with the *_SHORT.txt or the full files (the full ones have comments, useful for debugging)
+- note on intltest: if collate/UCAConformanceTest fails, then
+  utility/MultithreadTest/TestCollators will fail as well;
+  fix the conformance test before looking into the multi-thread test
+
+* test ICU, fix test code where necessary
+
+* When refreshing all of ICU4J data from ICU4C
+- ~/svn.icu/uni62/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+- cp /tmp/icu4j/main/shared/data/icudata.jar ~/svn.icu4j/trunk/src/main/shared/data
+or
+- ~/svn.icu/uni62/dbg$ make ICU4J_ROOT=~/svn.icu4j/trunk/src icu4j-data-install
+
+*** LayoutEngine script information
+- skipped for Unicode 6.2: no new scripts
+
+*** merge the Unicode update branches back onto the trunk
+- do not merge the icudata.jar and testdata.jar,
+  instead rebuild them from merged & tested ICU4C
 
 ---------------------------------------------------------------------------- ***
 

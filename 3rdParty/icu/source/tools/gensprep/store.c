@@ -314,42 +314,25 @@ storeMappingData(){
 
                 /* sanity check are we exceeding the max number allowed */
                 if(currentIndex+value->length+1 > _SPREP_MAX_INDEX_VALUE){
-                    fprintf(stderr, "Too many entries in the mapping table %i. Maximum allowed is %i\n", currentIndex+value->length, _SPREP_MAX_INDEX_VALUE);
+                    fprintf(stderr, "Too many entries in the mapping table %i. Maximum allowed is %i\n", 
+                        currentIndex+value->length, _SPREP_MAX_INDEX_VALUE);
                     exit(U_INDEX_OUTOFBOUNDS_ERROR);
                 }
 
                 /* copy the mapping data */
-                if(currentIndex+value->length+1 <= mappingDataCapacity){
-                    /* write the length */
-                    if(mappingLength > _SPREP_MAX_INDEX_TOP_LENGTH ){
-                         /* the cast here is safe since we donot expect the length to be > 65535 */
-                         mappingData[currentIndex++] = (uint16_t) mappingLength;
-                    }
-                    /* copy the contents to mappindData array */
-                    uprv_memmove(mappingData+currentIndex, value->mapping, value->length*U_SIZEOF_UCHAR);
-                    currentIndex += value->length;
-                   
-                }else{
-                    /* realloc */
-                    UChar* newMappingData = (uint16_t*) uprv_malloc(U_SIZEOF_UCHAR * mappingDataCapacity*2);
-                    if(newMappingData == NULL){
-                        fprintf(stderr, "Could not realloc the mapping data!\n");
-                        exit(U_MEMORY_ALLOCATION_ERROR);
-                    }
-                    uprv_memmove(newMappingData, mappingData, U_SIZEOF_UCHAR * mappingDataCapacity);
-                    mappingDataCapacity *= 2;
-                    uprv_free(mappingData);
-                    mappingData = newMappingData;
-                    /* write the length */
-                    if(mappingLength > _SPREP_MAX_INDEX_TOP_LENGTH ){
-                         /* the cast here is safe since we donot expect the length to be > 65535 */
-                         mappingData[currentIndex++] = (uint16_t) mappingLength;
-                    }
-                    /* continue copying */
-                    uprv_memmove(mappingData+currentIndex, value->mapping, value->length*U_SIZEOF_UCHAR);
-                    currentIndex += value->length;
+                /* write the length */
+                if(mappingLength > _SPREP_MAX_INDEX_TOP_LENGTH ){
+                     /* the cast here is safe since we donot expect the length to be > 65535 */
+                     mappingData[currentIndex++] = (uint16_t) mappingLength;
                 }
-                          
+                /* copy the contents to mappindData array */
+                uprv_memmove(mappingData+currentIndex, value->mapping, value->length*U_SIZEOF_UCHAR);
+                currentIndex += value->length;
+                if (currentIndex > mappingDataCapacity) {
+                    /* If this happens there is a bug in the computation of the mapping data size in storeMapping() */
+                    fprintf(stderr, "gensprep, fatal error at %s, %d.  Aborting.\n", __FILE__, __LINE__);
+                    exit(U_INTERNAL_PROGRAM_ERROR);
+                }
             }
         }
         mappingLength++;
@@ -373,7 +356,7 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
     
  
     UChar* map = NULL;
-    int16_t adjustedLen=0, i;
+    int16_t adjustedLen=0, i, j;
     uint16_t trieWord = 0;
     ValueStruct *value = NULL;
     uint32_t savedTrieWord = 0;
@@ -402,11 +385,7 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
 
     /* figure out the real length */ 
     for(i=0; i<length; i++){
-        if(mapping[i] > 0xFFFF){
-            adjustedLen +=2;
-        }else{
-            adjustedLen++;
-        }      
+        adjustedLen += U16_LENGTH(mapping[i]);
     }
 
     if(adjustedLen == 0){
@@ -457,21 +436,14 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
     }
 
     map = (UChar*) uprv_calloc(adjustedLen + 1, U_SIZEOF_UCHAR);
-    i=0;
     
-    while(i<length){
-        if(mapping[i] <= 0xFFFF){
-            map[i] = (uint16_t)mapping[i];
-        }else{
-            map[i]   = U16_LEAD(mapping[i]);
-            map[i+1] = U16_TRAIL(mapping[i]);
-        }
-        i++;
+    for (i=0, j=0; i<length; i++) {
+        U16_APPEND_UNSAFE(map, j, mapping[i]);
     }
     
     value = (ValueStruct*) uprv_malloc(sizeof(ValueStruct));
     value->mapping = map;
-    value->type   = type;
+    value->type    = type;
     value->length  = adjustedLen;
     if(value->length > _SPREP_MAX_INDEX_TOP_LENGTH){
         mappingDataCapacity++;
@@ -650,13 +622,15 @@ generateData(const char *dataDir, const char* bundleName) {
         uhash_close(hashTable);
     }
 #endif
+
+    uprv_free(fileName);
 }
 
 #if !UCONFIG_NO_IDNA
 
 extern void
 cleanUpData(void) {
-
+    uprv_free(mappingData);
     utrie_close(sprepTrie);
     uprv_free(sprepTrie);
 }

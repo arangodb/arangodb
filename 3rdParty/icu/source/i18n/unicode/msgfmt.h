@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2007-2012, International Business Machines Corporation and
+* Copyright (C) 2007-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 ********************************************************************************
 *
@@ -36,7 +36,7 @@
 U_CDECL_BEGIN
 // Forward declaration.
 struct UHashtable;
-typedef struct UHashtable UHashtable;
+typedef struct UHashtable UHashtable; /**< @internal */
 U_CDECL_END
 
 U_NAMESPACE_BEGIN
@@ -104,13 +104,14 @@ class NumberFormat;
  * <pre>
  * message = messageText (argument messageText)*
  * argument = noneArg | simpleArg | complexArg
- * complexArg = choiceArg | pluralArg | selectArg
+ * complexArg = choiceArg | pluralArg | selectArg | selectordinalArg
  *
  * noneArg = '{' argNameOrNumber '}'
  * simpleArg = '{' argNameOrNumber ',' argType [',' argStyle] '}'
  * choiceArg = '{' argNameOrNumber ',' "choice" ',' choiceStyle '}'
  * pluralArg = '{' argNameOrNumber ',' "plural" ',' pluralStyle '}'
  * selectArg = '{' argNameOrNumber ',' "select" ',' selectStyle '}'
+ * selectordinalArg = '{' argNameOrNumber ',' "selectordinal" ',' pluralStyle '}'
  *
  * choiceStyle: see {@link ChoiceFormat}
  * pluralStyle: see {@link PluralFormat}
@@ -695,25 +696,6 @@ public:
                                   UErrorCode& status) const;
 
     /**
-     * Formats the given array of arguments into a user-readable
-     * string.  The array must be stored within a single Formattable
-     * object of type kArray. If the Formattable object type is not of
-     * type kArray, then returns a failing UErrorCode.
-     *
-     * @param obj       The object to format
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @param status    Input/output error code.  If the
-     *                  pattern cannot be parsed, set to failure code.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.0
-     */
-    UnicodeString& format(const Formattable& obj,
-                          UnicodeString& appendTo,
-                          UErrorCode& status) const;
-
-
-    /**
      * Formats the given array of arguments into a user-defined argument name
      * array. This function supports both named and numbered
      * arguments-- if numbered, the formatName is the
@@ -892,14 +874,15 @@ private:
       */
     class U_I18N_API PluralSelectorProvider : public PluralFormat::PluralSelector {
     public:
-        PluralSelectorProvider(const Locale* loc);
+        PluralSelectorProvider(const MessageFormat &mf, UPluralType type);
         virtual ~PluralSelectorProvider();
-        virtual UnicodeString select(double number, UErrorCode& ec) const;
+        virtual UnicodeString select(void *ctx, double number, UErrorCode& ec) const;
 
-        void reset(const Locale* loc);
+        void reset();
     private:
-        const Locale* locale;
+        const MessageFormat &msgFormat;
         PluralRules* rules;
+        UPluralType type;
     };
 
     /**
@@ -938,6 +921,7 @@ private:
     UHashtable* customFormatArgStarts;
 
     PluralSelectorProvider pluralProvider;
+    PluralSelectorProvider ordinalProvider;
 
     /**
      * Method to retrieve default formats (or NULL on failure).
@@ -972,7 +956,7 @@ private:
      * AppendableWrapper, updates the field position.
      *
      * @param msgStart      Index to msgPattern part to start formatting from.
-     * @param pluralNumber  Zero except when formatting a plural argument sub-message
+     * @param plNumber      NULL except when formatting a plural argument sub-message
      *                      where a '#' is replaced by the format string for this number.
      * @param arguments     The formattable objects array. (Must not be NULL.)
      * @param argumentNames NULL if numbered values are used. Otherwise the same
@@ -985,7 +969,7 @@ private:
      * @param success       The error code status.
      */
     void format(int32_t msgStart,
-                double pluralNumber,
+                const void *plNumber,
                 const Formattable* arguments,
                 const UnicodeString *argumentNames,
                 int32_t cnt,
@@ -1024,6 +1008,20 @@ private:
     FieldPosition* updateMetaData(AppendableWrapper& dest, int32_t prevLength,
                                   FieldPosition* fp, const Formattable* argId) const;
 
+    /**
+     * Finds the "other" sub-message.
+     * @param partIndex the index of the first PluralFormat argument style part.
+     * @return the "other" sub-message start part index.
+     */
+    int32_t findOtherSubMessage(int32_t partIndex) const;
+
+    /**
+     * Returns the ARG_START index of the first occurrence of the plural number in a sub-message.
+     * Returns -1 if it is a REPLACE_NUMBER.
+     * Returns 0 if there is neither.
+     */
+    int32_t findFirstPluralNumberArg(int32_t msgStart, const UnicodeString &argName) const;
+
     Format* getCachedFormatter(int32_t argumentNumber) const;
 
     UnicodeString getLiteralStringUntilNextArgument(int32_t from) const;
@@ -1031,7 +1029,7 @@ private:
     void copyObjects(const MessageFormat& that, UErrorCode& ec);
 
     void formatComplexSubMessage(int32_t msgStart,
-                                 double pluralNumber,
+                                 const void *plNumber,
                                  const Formattable* arguments,
                                  const UnicodeString *argumentNames,
                                  int32_t cnt,
@@ -1049,7 +1047,6 @@ private:
      * for public consumption.
      * @param listCount  Output parameter to receive the size of array
      * @return           The array of formattable types in the pattern
-     * @internal
      */
     const Formattable::Type* getArgTypeList(int32_t& listCount) const {
         listCount = argTypeCount;
@@ -1064,32 +1061,29 @@ private:
     /**
      * A DummyFormatter that we use solely to store a NULL value. UHash does
      * not support storing NULL values.
-     * @internal
      */
     class U_I18N_API DummyFormat : public Format {
     public:
         virtual UBool operator==(const Format&) const;
         virtual Format* clone() const;
+        virtual UnicodeString& format(const Formattable& obj,
+                              UnicodeString& appendTo,
+                              UErrorCode& status) const;
         virtual UnicodeString& format(const Formattable&,
                                       UnicodeString& appendTo,
                                       FieldPosition&,
                                       UErrorCode& status) const;
+        virtual UnicodeString& format(const Formattable& obj,
+                                      UnicodeString& appendTo,
+                                      FieldPositionIterator* posIter,
+                                      UErrorCode& status) const;
         virtual void parseObject(const UnicodeString&,
                                  Formattable&,
                                  ParsePosition&) const;
-        virtual UClassID getDynamicClassID() const;
     };
 
     friend class MessageFormatAdapter; // getFormatTypeList() access
 };
-
-inline UnicodeString&
-MessageFormat::format(const Formattable& obj,
-                      UnicodeString& appendTo,
-                      UErrorCode& status) const {
-    return Format::format(obj, appendTo, status);
-}
-
 
 U_NAMESPACE_END
 

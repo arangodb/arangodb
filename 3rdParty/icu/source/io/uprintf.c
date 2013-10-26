@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -37,7 +37,7 @@
 
 static UFILE *gStdOut = NULL;
 
-static UBool U_CALLCONV uprintf_cleanup()
+static UBool U_CALLCONV uprintf_cleanup(void)
 {
     if (gStdOut != NULL) {
         u_fclose(gStdOut);

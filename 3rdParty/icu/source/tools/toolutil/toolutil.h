@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -107,6 +107,16 @@ getCurrentYear(void);
  */
 U_CAPI void U_EXPORT2
 uprv_mkdir(const char *pathname, UErrorCode *status);
+
+#if !UCONFIG_NO_FILE_IO
+/**
+ * Return TRUE if the named item exists
+ * @param file filename
+ * @return TRUE if named item (file, dir, etc) exists, FALSE otherwise
+ */
+U_CAPI UBool U_EXPORT2
+uprv_fileExists(const char *file);
+#endif
 
 /**
  * Return the modification date for the specified file or directory.

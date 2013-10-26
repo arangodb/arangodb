@@ -1,17 +1,18 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/es_PA.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_PA.xml
 // *
 // ***************************************************************************
 es_PA{
+    %%Parent{"es_419"}
     Currencies{
         PAB{
             "B/.",
             "balboa panameño",
         }
     }
-    Version{"2.0.64.50"}
+    Version{"2.0.90.61"}
 }

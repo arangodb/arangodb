@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -25,9 +25,9 @@ class LEGlyphStorage;
 class SimpleArrayProcessor : public NonContextualGlyphSubstitutionProcessor
 {
 public:
-    virtual void process(LEGlyphStorage &glyphStorage);
+    virtual void process(LEGlyphStorage &glyphStorage, LEErrorCode &success);
 
-    SimpleArrayProcessor(const MorphSubtableHeader *morphSubtableHeader);
+    SimpleArrayProcessor(const LEReferenceTo<MorphSubtableHeader> &morphSubtableHeader, LEErrorCode &success);
 
     virtual ~SimpleArrayProcessor();
 
@@ -49,7 +49,7 @@ private:
     SimpleArrayProcessor();
 
 protected:
-    const SimpleArrayLookupTable *simpleArrayLookupTable;
+    LEReferenceTo<SimpleArrayLookupTable> simpleArrayLookupTable;
 
 };
 

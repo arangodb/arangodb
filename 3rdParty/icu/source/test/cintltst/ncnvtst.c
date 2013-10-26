@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*****************************************************************************
@@ -390,14 +390,14 @@ static void TestErrorBehaviour(){
                 expectedSUB, sizeof(expectedSUB), "ibm-1363", 0, TRUE, U_ZERO_ERROR))
             log_err("u-> ibm-1363 [UCNV_DBCS portion] is supposed to fail\n");
         if(!convertFromU(sampleText, sizeof(sampleText)/sizeof(sampleText[0]),
-                expected, sizeof(expected), "ibm-1363", 0, FALSE, U_ZERO_ERROR))
+                expected, sizeof(expected), "ibm-1363", 0, FALSE, U_AMBIGUOUS_ALIAS_WARNING))
             log_err("u-> ibm-1363 [UCNV_DBCS portion] is supposed to fail\n");
 
         if(!convertFromU(sampleText, sizeof(sampleText)/sizeof(sampleText[0]),
                 expectedSUB, sizeof(expectedSUB), "ibm-1363", offsetsSUB, TRUE, U_ZERO_ERROR))
             log_err("u-> ibm-1363 [UCNV_DBCS portion] is supposed to fail\n");
         if(!convertFromU(sampleText, sizeof(sampleText)/sizeof(sampleText[0]),
-                expected, sizeof(expected), "ibm-1363", offsets, FALSE, U_ZERO_ERROR))
+                expected, sizeof(expected), "ibm-1363", offsets, FALSE, U_AMBIGUOUS_ALIAS_WARNING))
             log_err("u-> ibm-1363 [UCNV_DBCS portion] is supposed to fail\n");
 
         
@@ -413,7 +413,7 @@ static void TestErrorBehaviour(){
                 expectedSUB, sizeof(expectedSUB), "ibm-1363", 0, TRUE, U_ZERO_ERROR))
             log_err("u-> ibm-1363 [UCNV_MBCS] \n");
         if(!convertFromU(sampleText, sizeof(sampleText)/sizeof(sampleText[0]),
-                expected, sizeof(expected), "ibm-1363", 0, FALSE, U_ZERO_ERROR))
+                expected, sizeof(expected), "ibm-1363", 0, FALSE, U_AMBIGUOUS_ALIAS_WARNING))
             log_err("u-> ibm-1363 [UCNV_MBCS] \n");
 
         if(!convertFromU(sampleText2, sizeof(sampleText2)/sizeof(sampleText2[0]),
@@ -434,10 +434,10 @@ static void TestErrorBehaviour(){
             log_err("u-> ibm-1363 [UCNV_MBCS] \n");
 
         if(!convertFromU(sampleText4MBCS, sizeof(sampleText4MBCS)/sizeof(sampleText4MBCS[0]),
-                expected4MBCS, sizeof(expected4MBCS), "euc-jp", offsets4MBCS, TRUE, U_ZERO_ERROR))
+                expected4MBCS, sizeof(expected4MBCS), "IBM-eucJP", offsets4MBCS, TRUE, U_ZERO_ERROR))
             log_err("u-> euc-jp [UCNV_MBCS] \n");
         if(!convertFromU(sampleText4MBCS, sizeof(sampleText4MBCS)/sizeof(sampleText4MBCS[0]),
-                expected4MBCS, sizeof(expected4MBCS), "euc-jp", offsets4MBCS, FALSE, U_ZERO_ERROR))
+                expected4MBCS, sizeof(expected4MBCS), "IBM-eucJP", offsets4MBCS, FALSE, U_ZERO_ERROR))
             log_err("u-> euc-jp [UCNV_MBCS] \n");
     }
 
@@ -460,8 +460,8 @@ static void TestErrorBehaviour(){
                 expectedSUB, sizeof(expectedSUB), "iso-2022-jp", offsets, TRUE, U_ZERO_ERROR))
             log_err("u-> iso-2022-jp [UCNV_MBCS] \n");
         if(!convertFromU(sampleText, sizeof(sampleText)/sizeof(sampleText[0]),
-                expected, sizeof(expected), "iso-2022-jp", offsets, FALSE, U_ZERO_ERROR))
-            log_err("u-> ibm-1363 [UCNV_MBCS] \n");
+                expected, sizeof(expected), "iso-2022-jp", offsets, FALSE, U_AMBIGUOUS_ALIAS_WARNING))
+            log_err("u-> iso-2022-jp [UCNV_MBCS] \n");
 
         if(!convertFromU(sampleText2, sizeof(sampleText2)/sizeof(sampleText2[0]),
                 expected2, sizeof(expected2), "iso-2022-jp", offsets2, TRUE, U_ZERO_ERROR))
@@ -636,10 +636,10 @@ static void TestToUnicodeErrorBehaviour()
         const UChar expected[] = { 0x00a1 };
         
         if(!convertToU(sampleText, sizeof(sampleText), 
-                expected, sizeof(expected)/sizeof(expected[0]), "ibm-1363", 0, TRUE, U_ZERO_ERROR ))
+                expected, sizeof(expected)/sizeof(expected[0]), "ibm-1363", 0, TRUE, U_AMBIGUOUS_ALIAS_WARNING ))
             log_err("DBCS (ibm-1363)->Unicode  did not match.\n");
         if(!convertToU(sampleText, sizeof(sampleText), 
-                expected, sizeof(expected)/sizeof(expected[0]), "ibm-1363", 0, FALSE, U_ZERO_ERROR ))
+                expected, sizeof(expected)/sizeof(expected[0]), "ibm-1363", 0, FALSE, U_AMBIGUOUS_ALIAS_WARNING ))
             log_err("DBCS (ibm-1363)->Unicode  with flush = false did not match.\n");
     }
     log_verbose("Testing error conditions for SBCS\n");

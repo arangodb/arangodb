@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2006, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -32,7 +32,7 @@ class CharsetRecog_UTF8: public CharsetRecognizer {
     /* (non-Javadoc)
      * @see com.ibm.icu.text.CharsetRecognizer#match(com.ibm.icu.text.CharsetDetector)
      */
-    int32_t match(InputText *det);
+    UBool match(InputText *input, CharsetMatch *results) const;
 	
 };
 

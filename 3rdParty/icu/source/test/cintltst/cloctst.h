@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -122,4 +122,10 @@ static void TestLikelySubtags(void);
  */
 static void TestForLanguageTag(void);
 static void TestToLanguageTag(void);
+
+/**
+ * locale data
+ */
+static void TestEnglishExemplarCharacters(void);
+
 #endif

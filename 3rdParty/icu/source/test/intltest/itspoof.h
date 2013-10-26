@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 2011, International Business Machines Corporation 
+* Copyright (C) 2011-2013, International Business Machines Corporation 
 * and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -35,6 +35,14 @@ public:
     void testConfData();
 
     void testBug8654();
+
+    void testIdentifierInfo();
+
+    void testScriptSet();
+
+    void testRestrictionLevel();
+
+    void testMixedNumbers();
 
     // Internal function to run a single skeleton test case.
     void  checkSkeleton(const USpoofChecker *sc, uint32_t flags, 

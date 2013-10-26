@@ -1,16 +1,16 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/am.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/am.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/am.xml
+ * ICU <specials> source: <path>/common/main/am.xml
  */
 am{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"አቢጃን"}
@@ -86,6 +86,9 @@ am{
         }
         "Africa:Johannesburg"{
             ec{"ጆሃንስበርግ"}
+        }
+        "Africa:Juba"{
+            ec{"ጁባ"}
         }
         "Africa:Kampala"{
             ec{"ካምፓላ"}
@@ -205,10 +208,13 @@ am{
             ec{"አሩባ"}
         }
         "America:Asuncion"{
-            ec{"አሱኒሲኦን"}
+            ec{"አሱንሲዮን"}
         }
         "America:Bahia"{
             ec{"ባሂአ"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"ባሂያ ባንደራስ"}
         }
         "America:Barbados"{
             ec{"ባርቤዶስ"}
@@ -270,11 +276,14 @@ am{
         "America:Costa_Rica"{
             ec{"ኮስታሪካ"}
         }
+        "America:Creston"{
+            ec{"ክረስተን"}
+        }
         "America:Cuiaba"{
             ec{"ኩየአባ"}
         }
         "America:Curacao"{
-            ec{"ኩራካኦ"}
+            ec{"ኩራሳዎ"}
         }
         "America:Danmarkshavn"{
             ec{"ዳንማርክሻቭን"}
@@ -384,6 +393,9 @@ am{
         "America:Kentucky:Monticello"{
             ec{"ሞንቲሴሎ, ኪንታኪ"}
         }
+        "America:Kralendijk"{
+            ec{"ክራለንዲይክ"}
+        }
         "America:La_Paz"{
             ec{"ላ ፓዝ"}
         }
@@ -395,6 +407,9 @@ am{
         }
         "America:Louisville"{
             ec{"ሊውስቪል"}
+        }
+        "America:Lower_Princes"{
+            ec{"የታችኛው ልዑል ሩብ"}
         }
         "America:Maceio"{
             ec{"ሜሲኦ"}
@@ -411,6 +426,9 @@ am{
         "America:Martinique"{
             ec{"ማርቲኒክ"}
         }
+        "America:Matamoros"{
+            ec{"ማታሞሮስ"}
+        }
         "America:Mazatlan"{
             ec{"ማዛትላን"}
         }
@@ -422,6 +440,9 @@ am{
         }
         "America:Merida"{
             ec{"ሜሪዳ"}
+        }
+        "America:Metlakatla"{
+            ec{"መትላካትላ"}
         }
         "America:Mexico_City"{
             ec{"ሜክሲኮ ከተማ"}
@@ -457,7 +478,7 @@ am{
             ec{"ኖሜ"}
         }
         "America:Noronha"{
-            ec{"ሎሮንሃ"}
+            ec{"ኖሮኛ"}
         }
         "America:North_Dakota:Beulah"{
             ec{"ቤኡላህ, ሰሜን ዳኮታ"}
@@ -467,6 +488,9 @@ am{
         }
         "America:North_Dakota:New_Salem"{
             ec{"አዲስ ሳሌም, ሰሜን ዳኮታ"}
+        }
+        "America:Ojinaga"{
+            ec{"ኦዪናጋ"}
         }
         "America:Panama"{
             ec{"ፓናማ"}
@@ -510,6 +534,9 @@ am{
         "America:Rio_Branco"{
             ec{"ሪዮ ብራንኮ"}
         }
+        "America:Santa_Isabel"{
+            ec{"ሳንታ ኢዛቤል"}
+        }
         "America:Santarem"{
             ec{"ሳንታሬም"}
         }
@@ -528,14 +555,17 @@ am{
         "America:Shiprock"{
             ec{"ሺፕሮክ"}
         }
+        "America:Sitka"{
+            ec{"ሲትካ"}
+        }
         "America:St_Barthelemy"{
             ec{"ቅድስት ቤርተሎሜ"}
         }
         "America:St_Johns"{
-            ec{"የቅዱስ ዮሃንስ"}
+            ec{"ቅዱስ ዮሐንስ"}
         }
         "America:St_Kitts"{
-            ec{"ቅዱስኪትስ"}
+            ec{"ቅዱስ ኪትስ"}
         }
         "America:St_Lucia"{
             ec{"ቅድስት ሉሲያ"}
@@ -590,6 +620,9 @@ am{
         }
         "Antarctica:DumontDUrville"{
             ec{"ደሞንት ዲኡርቪል"}
+        }
+        "Antarctica:Macquarie"{
+            ec{"ማከሪ"}
         }
         "Antarctica:Mawson"{
             ec{"ናውሰን"}
@@ -690,6 +723,9 @@ am{
         "Asia:Harbin"{
             ec{"ሃሪቢን"}
         }
+        "Asia:Hebron"{
+            ec{"ኬብሮን"}
+        }
         "Asia:Hong_Kong"{
             ec{"ሆንግ ኮንግ"}
         }
@@ -723,6 +759,9 @@ am{
         "Asia:Katmandu"{
             ec{"ካትማንዱ"}
         }
+        "Asia:Khandyga"{
+            ec{"ካንዲጋ"}
+        }
         "Asia:Krasnoyarsk"{
             ec{"ክራስኖያርስክ"}
         }
@@ -752,6 +791,9 @@ am{
         }
         "Asia:Nicosia"{
             ec{"ኒኮሲአ"}
+        }
+        "Asia:Novokuznetsk"{
+            ec{"ኖቮኩትዝኔክ"}
         }
         "Asia:Novosibirsk"{
             ec{"ኖቮሲቢሪስክ"}
@@ -824,6 +866,9 @@ am{
         }
         "Asia:Urumqi"{
             ec{"ኡሩምኪ"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"ኡስት-ኔራ"}
         }
         "Asia:Vientiane"{
             ec{"ቬንቲአን"}
@@ -935,6 +980,9 @@ am{
         }
         "Europe:Budapest"{
             ec{"ቡዳፔስት"}
+        }
+        "Europe:Busingen"{
+            ec{"ቡሲንገን"}
         }
         "Europe:Chisinau"{
             ec{"ቺስናኡ"}
@@ -1096,7 +1144,7 @@ am{
             ec{"ማሄ"}
         }
         "Indian:Maldives"{
-            ec{"ሞልዶቫ"}
+            ec{"ማልዲቨ"}
         }
         "Indian:Mauritius"{
             ec{"ሞሪሽየስ"}
@@ -1105,7 +1153,7 @@ am{
             ec{"ማዮቴ"}
         }
         "Indian:Reunion"{
-            ec{"ሪዩኒዮን"}
+            ec{"ሬዩኒየን"}
         }
         "Pacific:Apia"{
             ec{"አፒአ"}
@@ -1221,6 +1269,23 @@ am{
         "Pacific:Wallis"{
             ec{"ዋሊስ"}
         }
+        "meta:Afghanistan"{
+            ls{"የአፍጋኒስታን ሰዓት"}
+        }
+        "meta:Africa_Central"{
+            ls{"የመካከለኛው አፍሪካ ሰዓት"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"የምስራቅ አፍሪካ ሰዓት"}
+        }
+        "meta:Africa_Southern"{
+            ls{"የደቡብ አፍሪካ መደበኛ ሰዓት"}
+        }
+        "meta:Africa_Western"{
+            ld{"የምዕራብ አፍሪካ ክረምት ሰዓት"}
+            lg{"የምዕራብ አፍሪካ ሰዓት"}
+            ls{"የምዕራብ አፍሪካ መደበኛ ሰዓት"}
+        }
         "meta:Alaska"{
             ld{"የአላስካ የቀን ሰዓት አቆጣጠር"}
             lg{"የአላስካ ሰዓት አቆጣጠር"}
@@ -1229,7 +1294,7 @@ am{
         "meta:Amazon"{
             ld{"የአማዞን የቀን ሰዓት አቆጣጠር"}
             lg{"የአማዞን ሰዓት አቆጣጠር"}
-            ls{"የአማዞን ሰዓት አቆጣጠር"}
+            ls{"የአማዞን መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:America_Central"{
             ld{"የመካከላዊ የቀን ሰዓት አቆጣጠር"}
@@ -1256,15 +1321,25 @@ am{
             lg{"የአናድይር ሰዓት አቆጣጠር"}
             ls{"የአናዲይር ሰዓት አቆጣጠር"}
         }
+        "meta:Arabian"{
+            ld{"የአረቢያ የቀን ብርሃን ሰዓት"}
+            lg{"የአረቢያ ሰዓት"}
+            ls{"የአረቢያ መደበኛ ሰዓት"}
+        }
         "meta:Argentina"{
             ld{"የአርጀንቲና የበጋ ሰዓት አቆጣጠር"}
             lg{"የአርጀንቲና የሰዓት አቆጣጠር"}
-            ls{"የአርጀንቲና ሰዓት አቆጣጠር"}
+            ls{"የአርጀንቲና መደበኛ ጊዜ"}
         }
         "meta:Argentina_Western"{
             ld{"የአርጀንቲና ምስራቃዊ በጋ ሰዓት አቆጣጠር"}
             lg{"የአርጀንቲና ምስራቃዊ ሰዓት አቆጣጠር"}
-            ls{"የምስራቃዊ አርጀንቲና ሰዓት አቆጣጠር"}
+            ls{"የምዕራባዊ አርጀንቲና መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Armenia"{
+            ld{"የአርመኒያ ክረምት ሰዓት"}
+            lg{"የአርመኒያ ሰዓት"}
+            ls{"የአርመኒያ መደበኛ ሰዓት"}
         }
         "meta:Atlantic"{
             ld{"የአትላንቲክ የቀን ሰዓት አቆጣጠር"}
@@ -1291,39 +1366,217 @@ am{
             lg{"የምስራቃዊ አውስትራሊያ ሰዓት አቆጣጠር"}
             ls{"የአውስትራሊያ ምስራቃዊ መደበኛ ሰዓት አቆጣጠር"}
         }
+        "meta:Azerbaijan"{
+            ld{"የአዘርባይጃን ክረምት ሰዓት"}
+            lg{"የአዘርባይጃን ሰዓት"}
+            ls{"የአዘርባይጃን መደበኛ ሰዓት"}
+        }
+        "meta:Azores"{
+            ld{"የአዞረስ ክረምት ሰዓት"}
+            lg{"የአዞረስ ሰዓት"}
+            ls{"የአዞረስ መደበኛ ሰዓት"}
+        }
+        "meta:Bangladesh"{
+            ld{"የባንግላዴሽ ክረምት ሰዓት"}
+            lg{"የባንግላዴሽ ሰዓት"}
+            ls{"የባንግላዴሽ መደበኛ ሰዓት"}
+        }
+        "meta:Bhutan"{
+            ls{"የቡታን ሰዓት"}
+        }
+        "meta:Bolivia"{
+            ls{"የቦሊቪያ ሰዓት"}
+        }
         "meta:Brasilia"{
             ld{"የብራዚላ የበጋ ሰዓት አቆጣጠር"}
             lg{"የብራዚላዊ ሰዓት አቆጣጠር"}
-            ls{"የብራዚላዊ የሰዓት አቆጣጠር"}
+            ls{"የብራሲሊያ መደበኛ ጊዜ"}
+        }
+        "meta:Brunei"{
+            ls{"የብሩኔይ ዳሩሳላም ሰዓት"}
+        }
+        "meta:Cape_Verde"{
+            ld{"የኬፕ ቨርዴ ክረምት ሰዓት"}
+            lg{"የኬፕ ቨርዴ ሰዓት"}
+            ls{"የኬፕ ቨርዴ መደበኛ ሰዓት"}
+        }
+        "meta:Chamorro"{
+            ls{"የቻሞሮ መደበኛ ሰዓት"}
+        }
+        "meta:Chatham"{
+            ld{"የቻታም የቀን ብርሃን ሰዓት"}
+            lg{"የቻታም ሰዓት"}
+            ls{"የቻታም መደበኛ ሰዓት"}
+        }
+        "meta:Chile"{
+            ld{"የቺሊ ክረምት ሰዓት"}
+            lg{"የቺሊ ሰዓት"}
+            ls{"የቺሊ መደበኛ ሰዓት"}
+        }
+        "meta:China"{
+            ld{"የቻይና የቀን ብርሃን ሰዓት"}
+            lg{"የቻይና ሰዓት"}
+            ls{"የቻይና መደበኛ ሰዓት"}
         }
         "meta:Choibalsan"{
             ld{"የቾይባልሳን የበጋ የሰአት አቆጣጠር"}
             lg{"የቾይባልሳ ሰዓት አቆጣጠር"}
-            ls{"የቾይባልሳን ሰዓት አቆጣጠር"}
+            ls{"የቾይባልሳን መደበኛ የሰዓት አቆጣጠር"}
+        }
+        "meta:Christmas"{
+            ls{"የገና ደሴት ሰዓት"}
+        }
+        "meta:Cocos"{
+            ls{"የኮኮስ ደሴቶች ሰዓት"}
+        }
+        "meta:Colombia"{
+            ld{"የኮሎምቢያ ክረምት ሰዓት"}
+            lg{"የኮሎምቢያ ሰዓት"}
+            ls{"የኮሎምቢያ መደበኛ ሰዓት"}
+        }
+        "meta:Cook"{
+            ld{"የኩክ ደሴቶች ግማሽ ክረምት ሰዓት"}
+            lg{"የኩክ ደሴቶች ሰዓት"}
+            ls{"የኩክ ደሴቶች መደበኛ ሰዓት"}
+        }
+        "meta:Cuba"{
+            ld{"የኩባ የቀን ብርሃን ሰዓት"}
+            lg{"ኩባ ሰዓት"}
+            ls{"የኩባ መደበኛ ሰዓት"}
+        }
+        "meta:Davis"{
+            ls{"የዴቪስ ሰዓት"}
+        }
+        "meta:DumontDUrville"{
+            ls{"የዱሞንት-ዱርቪል ሰዓት"}
+        }
+        "meta:East_Timor"{
+            ls{"የምስራቅ ቲሞር ሰዓት"}
+        }
+        "meta:Easter"{
+            ld{"የኢስተር ደሴት ክረምት ሰዓት"}
+            lg{"የኢስተር ደሴት ሰዓት"}
+            ls{"የኢስተር ደሴት መደበኛ ሰዓት"}
+        }
+        "meta:Ecuador"{
+            ls{"የኢኳዶር ሰዓት"}
+        }
+        "meta:Europe_Central"{
+            ld{"የመካከለኛው አውሮፓ ክረምት ሰዓት"}
+            lg{"የመካከለኛው አውሮፓ ሰዓት"}
+            ls{"የመካከለኛው አውሮፓ መደበኛ ሰዓት"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"የምስራቃዊ አውሮፓ ክረምት ሰዓት"}
+            lg{"የምስራቃዊ አውሮፓ ሰዓት"}
+            ls{"የምስራቃዊ አውሮፓ መደበኛ ሰዓት"}
+        }
+        "meta:Europe_Western"{
+            ld{"የምዕራባዊ አውሮፓ ክረምት ሰዓት"}
+            lg{"የምዕራባዊ አውሮፓ ሰዓት"}
+            ls{"የምዕራባዊ አውሮፓ መደበኛ ሰዓት"}
+        }
+        "meta:Falkland"{
+            ld{"የፋልክላንድ ደሴቶች ክረምት ሰዓት"}
+            lg{"የፋልክላንድ ደሴቶች ሰዓት"}
+            ls{"የፋልክላንድ ደሴቶች መደበኛ ሰዓት"}
+        }
+        "meta:Fiji"{
+            ld{"የፊጂ ክረምት ሰዓት"}
+            lg{"የፊጂ ሰዓት"}
+            ls{"የፊጂ መደበኛ ሰዓት"}
+        }
+        "meta:French_Guiana"{
+            ls{"የፈረንሳይ ጉያና ሰዓት"}
+        }
+        "meta:French_Southern"{
+            ls{"የፈረንሳይ ደቡባዊ እና አንታርክቲክ ሰዓት"}
+        }
+        "meta:GMT"{
+            ls{"ግሪንዊች ማዕከላዊ ሰዓት"}
+        }
+        "meta:Galapagos"{
+            ls{"የጋላፓጎስ ሰዓት"}
+        }
+        "meta:Gambier"{
+            ls{"የጋምቢየር ሰዓት"}
+        }
+        "meta:Georgia"{
+            ld{"የጂዮርጂያ ክረምት ሰዓት"}
+            lg{"የጂዮርጂያ ሰዓት"}
+            ls{"የጂዮርጂያ መደበኛ ሰዓት"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"የጂልበርት ደሴቶች ሰዓት"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"የምስራቅ ግሪንላንድ ክረምት ሰዓት"}
+            lg{"የምስራቅ ግሪንላንድ ሰዓት"}
+            ls{"የምስራቅ ግሪንላንድ መደበኛ ሰዓት"}
+        }
+        "meta:Greenland_Western"{
+            ld{"የምዕራብ ግሪንላንድ ክረምት ሰዓት"}
+            lg{"የምዕራብ ግሪንላንድ ሰዓት"}
+            ls{"የምዕራብ ግሪንላንድ መደበኛ ሰዓት"}
+        }
+        "meta:Gulf"{
+            ls{"የባህረሰላጤ መደበኛ ሰዓት"}
+        }
+        "meta:Guyana"{
+            ls{"የጉያና ሰዓት"}
         }
         "meta:Hawaii_Aleutian"{
             ld{"የሃዋይ አሌኡት የቀን ሰዓት አቆጣጠር"}
             lg{"የሃዋይ አሌኡት ሰዓት አቆጣጠር"}
-            ls{"የሃዋይ አሌኡት ሰዓት አቆጣጠር"}
+            ls{"የሃዋይ አሌኡት መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Hong_Kong"{
+            ld{"የሆንግ ኮንግ ክረምት ሰዓት"}
+            lg{"የሆንግ ኮንግ ሰዓት"}
+            ls{"የሆንግ ኮንግ መደበኛ ሰዓት"}
         }
         "meta:Hovd"{
             ld{"የሆቭድ የበጋ ሰዓት አቆጣጠር"}
             lg{"የሆቭድ ሰዓት አቆጣጠር"}
-            ls{"የሆቭድ የሰዓት አቆጣጠር"}
+            ls{"የሆቭድ መደበኛ የሰዓት አቆጣጠር"}
+        }
+        "meta:India"{
+            ls{"የህንድ መደበኛ ሰዓት"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"የህንድ ውቅያኖስ ሰዓት"}
+        }
+        "meta:Indochina"{
+            ls{"የኢንዶቻይና ሰዓት"}
         }
         "meta:Indonesia_Central"{
-            ls{"የኢንዶኔዥያ መካከለኛ የሰዓት አቆጣጠር"}
+            ls{"የመካከለኛው ኢንዶኔዢያ ሰዓት"}
         }
         "meta:Indonesia_Eastern"{
-            ls{"የኢንዶኔዥያ ምዕራባዊ ሰዓት አቆጣጠር"}
+            ls{"የምስራቃዊ ኢንዶኔዢያ ሰዓት"}
         }
         "meta:Indonesia_Western"{
-            ls{"የኢንዶኔዥያ ምስራቃዊ የሰዓት አቆጣጠር"}
+            ls{"የምዕራባዊ ኢንዶኔዢያ ሰዓት"}
+        }
+        "meta:Iran"{
+            ld{"የኢራን የቀን ብርሃን ሰዓት"}
+            lg{"የኢራን ሰዓት"}
+            ls{"የኢራን መደበኛ ሰዓት"}
         }
         "meta:Irkutsk"{
             ld{"ኢርኩትስክ የበጋ የሰዓት አቆጣጠር"}
             lg{"የኢርኩትስክ ሰዓት አቆጣጠር"}
-            ls{"የኢርኩትስክ የሰዓት አቆጣጠር"}
+            ls{"የኢርኩትስክ መደበኛ የሰዓት አቆጣጠር"}
+        }
+        "meta:Israel"{
+            ld{"የእስራኤል የቀን ብርሃን ሰዓት"}
+            lg{"የእስራኤል ሰዓት"}
+            ls{"የእስራኤል መደበኛ ሰዓት"}
+        }
+        "meta:Japan"{
+            ld{"የጃፓን የቀን ብርሃን ሰዓት"}
+            lg{"የጃፓን ሰዓት"}
+            ls{"የጃፓን መደበኛ ሰዓት"}
         }
         "meta:Kamchatka"{
             ld{"የፔትሮፓቭሎስኪ - ካምቻትስኪ የበጋ ሰዓት አቆጣጠር"}
@@ -1331,19 +1584,29 @@ am{
             ls{"የፔትሮፓቭሎስኪ - ካምቻትስኪ ሰዓት አቆጣጠር"}
         }
         "meta:Kazakhstan_Eastern"{
-            ld{"የካዛኪስታን ምዕራባዊ የበጋ ሰዓት አቆጣጠር"}
-            lg{"የምዕራብ ካዛኪስታን ሰዓት አቆጣጠር"}
-            ls{"የምዕራብ ካዛኪስታን መደበኛ የሰዓት አቆጣጠር"}
+            ls{"የምስራቅ ካዛኪስታን ጊዜ"}
         }
         "meta:Kazakhstan_Western"{
-            ld{"የካዛኪስታን ምስራቃዊ የበጋ ሰዓት አቆጣጠር"}
-            lg{"የምስራቅ ካዛኪስታን ሰዓት አቆጣጠር"}
-            ls{"የምስራቅ ካዛኪስታን መደበኛ የሰዓት አቆጣጠር"}
+            ls{"የምዕራብ ካዛኪስታን ጊዜ"}
+        }
+        "meta:Korea"{
+            ld{"የኮሪያ የቀን ብርሃን ሰዓት"}
+            lg{"የኮሪያ ሰዓት"}
+            ls{"የኮሪያ መደበኛ ሰዓት"}
+        }
+        "meta:Kosrae"{
+            ls{"የኮስራኤ ሰዓት"}
         }
         "meta:Krasnoyarsk"{
             ld{"የክራስኖያርስክ የበጋ ሰዓት አቆጣጠር"}
             lg{"የክራስኖያርስክ ሰዓት አቆጣጠር"}
-            ls{"የክራስኖይአርስክ ሰዓት አቆጣጠር"}
+            ls{"የክራስኖይአርስክ መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Kyrgystan"{
+            ls{"የኪርጊስታን ሰዓት"}
+        }
+        "meta:Line_Islands"{
+            ls{"የላይን ደሴቶች ሰዓት"}
         }
         "meta:Lord_Howe"{
             ld{"የሎርድ ሆዌ የቀን ሰዓት አቆጣጠር"}
@@ -1351,77 +1614,250 @@ am{
             ls{"የሎርድ ሆዌ መደበኛ የሰዓት አቆጣጠር"}
         }
         "meta:Macquarie"{
-            ls{"የማኳሪ የሰዓት አቆጣጠር"}
+            ls{"የማከሪ ደሴት ሰዓት"}
         }
         "meta:Magadan"{
             ld{"የማጋዳን በጋ ሰዓት አቆጣጠር"}
             lg{"የማጋዳን የሰዓት አቆጣጠር"}
-            ls{"የማጋዳን ሰዓት አቆጣጠር"}
+            ls{"የማጋዳን መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Malaysia"{
+            ls{"የማሌይዢያ ሰዓት"}
+        }
+        "meta:Maldives"{
+            ls{"የማልዲቭስ ሰዓት"}
+        }
+        "meta:Marquesas"{
+            ls{"የማርኴሳስ ሰዓት"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"የማርሻል ደሴቶች ሰዓት"}
+        }
+        "meta:Mauritius"{
+            ld{"የማውሪሺየስ ክረምት ሰዓት"}
+            lg{"የማውሪሺየስ ሰዓት"}
+            ls{"የማውሪሺየስ መደበኛ ሰዓት"}
+        }
+        "meta:Mawson"{
+            ls{"የማውሰን ሰዓት"}
         }
         "meta:Mongolia"{
             ld{"የኡላን ባቶር የበጋ ሰዓት አቆጣጠር"}
-            lg{"የሞንጎልያ ሰዓት አቆጣጠር"}
-            ls{"የኡላን ባቶር ሰዓት አቆጣጠር"}
+            lg{"የኡላን ባቶር ጊዜ"}
+            ls{"የኡላን ባቶር መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:Moscow"{
             ld{"የሞስኮ የበጋ ሰዓት አቆጣጠር"}
             lg{"የሞስኮ ሰዓት አቆጣጠር"}
             ls{"የሞስኮ መደበኛ ሰዓት አቆጣጠር"}
         }
+        "meta:Myanmar"{
+            ls{"የሚያንማር ሰዓት"}
+        }
+        "meta:Nauru"{
+            ls{"የናውሩ ሰዓት"}
+        }
+        "meta:Nepal"{
+            ls{"የኔፓል ሰዓት"}
+        }
+        "meta:New_Caledonia"{
+            ld{"የኒው ካሌዶኒያ ክረምት ሰዓት"}
+            lg{"የኒው ካሌዶኒያ ሰዓት"}
+            ls{"የኒው ካሌዶኒያ መደበኛ ሰዓት"}
+        }
+        "meta:New_Zealand"{
+            ld{"የኒው ዚላንድ የቀን ብርሃን ሰዓት"}
+            lg{"የኒው ዚላንድ ሰዓት"}
+            ls{"የኒው ዚላንድ መደበኛ ሰዓት"}
+        }
         "meta:Newfoundland"{
             ld{"የኒውፋውንድላንድ የቀን የሰዓት አቆጣጠር"}
             lg{"የኒውፋውንድላንድ የሰዓት አቆጣጠር"}
             ls{"የኒውፋውንድላንድ መደበኛ የሰዓት አቆጣጠር"}
         }
+        "meta:Niue"{
+            ls{"የኒዩዌ ሰዓት"}
+        }
+        "meta:Norfolk"{
+            ls{"የኖርፎልክ ደሴቶች ሰዓት"}
+        }
         "meta:Noronha"{
             ld{"የፈርናንዶ ዲ ኖሮንሃ የበጋ የሰዓት አቆጣጠር"}
             lg{"የኖሮንሃ ሰዓት አቆጣጠር"}
-            ls{"የፈርናንዶ ዲ ኖሮንቻ ሰዓት አቆጣጠር"}
+            ls{"የፈርናንዶ ዲ ኖሮንቻ መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:Novosibirsk"{
             ld{"የኖቮሲብሪስክ የበጋ ሰአት አቆጣጠር"}
             lg{"የኖቮሲብሪስክ የሰዓት አቆጣጠር"}
-            ls{"የኖቮሲቢርስክ የሰአት አቆጣጠር"}
+            ls{"የኖቮሲቢርስክ መደበኛ የሰዓት አቆጣጠር"}
         }
         "meta:Omsk"{
             ld{"የኦምስክ የበጋ ሰዓት አቆጣጠር"}
             lg{"የኦምስክ የሰዓት አቆጣጠር"}
-            ls{"የኦምስክ ሰዓት አቆጣጠር"}
+            ls{"የኦምስክ መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Pakistan"{
+            ld{"የፓኪስታን ክረምት ሰዓት"}
+            lg{"የፓኪስታን ሰዓት"}
+            ls{"የፓኪስታን መደበኛ ሰዓት"}
+        }
+        "meta:Palau"{
+            ls{"የፓላው ሰዓት"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"የፓፗ ኒው ጊኒ ሰዓት"}
+        }
+        "meta:Paraguay"{
+            ld{"የፓራጓይ ክረምት ሰዓት"}
+            lg{"የፓራጓይ ሰዓት"}
+            ls{"የፓራጓይ መደበኛ ሰዓት"}
+        }
+        "meta:Peru"{
+            ld{"የፔሩ ክረምት ሰዓት"}
+            lg{"የፔሩ ሰዓት"}
+            ls{"የፔሩ መደበኛ ሰዓት"}
+        }
+        "meta:Philippines"{
+            ld{"የፊሊፒን ክረምት ሰዓት"}
+            lg{"የፊሊፒን ሰዓት"}
+            ls{"የፊሊፒን መደበኛ ሰዓት"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"የፊኒክስ ደሴቶች ሰዓት"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"ቅዱስ የፒዬር እና ሚኴሎን የቀን ብርሃን ሰዓት"}
+            lg{"ቅዱስ የፒዬር እና ሚኴሎን ሰዓት"}
+            ls{"ቅዱስ የፒዬር እና ሚኴሎን መደበኛ ሰዓት"}
+        }
+        "meta:Pitcairn"{
+            ls{"የፒትካይርን ሰዓት"}
+        }
+        "meta:Ponape"{
+            ls{"የፖናፔ ሰዓት"}
+        }
+        "meta:Reunion"{
+            ls{"የሬዩኒየን ሰዓት"}
+        }
+        "meta:Rothera"{
+            ls{"የሮቴራ ሰዓት"}
         }
         "meta:Sakhalin"{
             ld{"የሳክሃሊን የበጋ ሰዓት አቆጣጠር"}
             lg{"የሳክሃሊን ሰዓት አቆጣጠር"}
-            ls{"የሳክሃሊን ሰዓት አቆጣጠር"}
+            ls{"የሳክሃሊን መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:Samara"{
             ld{"የሳማራ የበጋ ሰዓት አቆጣጠር"}
             lg{"የሳማራ ሰዓት አቆጣጠር"}
-            ls{"የሳማራ ሰዓት አቆጣጠር"}
+            ls{"የሳማራ መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Samoa"{
+            ld{"የሳሞዋ የበጋ ሰዓት"}
+            lg{"የሳሞዋ ሰዓት"}
+            ls{"የሳሞዋ መደበኛ ሰዓት"}
+        }
+        "meta:Seychelles"{
+            ls{"የሴሸልስ ሰዓት"}
+        }
+        "meta:Singapore"{
+            ls{"የሲንጋፒር መደበኛ ሰዓት"}
+        }
+        "meta:Solomon"{
+            ls{"የሰለሞን ደሴቶች ሰዓት"}
+        }
+        "meta:South_Georgia"{
+            ls{"የደቡብ ጂዮርጂያ ሰዓት"}
+        }
+        "meta:Suriname"{
+            ls{"የሱሪናም ሰዓት"}
+        }
+        "meta:Syowa"{
+            ls{"የሲዮዋ ሰዓት"}
+        }
+        "meta:Tahiti"{
+            ls{"የታሂቲ ሰዓት"}
+        }
+        "meta:Taipei"{
+            ld{"የታይፔይ የቀን ብርሃን ሰዓት"}
+            lg{"የታይፔይ ሰዓት"}
+            ls{"የታይፔይ መደበኛ ሰዓት"}
+        }
+        "meta:Tajikistan"{
+            ls{"የታጂኪስታን ሰዓት"}
+        }
+        "meta:Tokelau"{
+            ls{"የቶኬላው ሰዓት"}
+        }
+        "meta:Tonga"{
+            ld{"የቶንጋ ክረምት ሰዓት"}
+            lg{"የቶንጋ ሰዓት"}
+            ls{"የቶንጋ መደበኛ ሰዓት"}
+        }
+        "meta:Truk"{
+            ls{"የቹክ ሰዓት"}
+        }
+        "meta:Turkmenistan"{
+            ld{"የቱርክመኒስታን ክረምት ሰዓት"}
+            lg{"የቱርክመኒስታን ሰዓት"}
+            ls{"የቱርክመኒስታን መደበኛ ሰዓት"}
+        }
+        "meta:Tuvalu"{
+            ls{"የቱቫሉ ሰዓት"}
+        }
+        "meta:Uruguay"{
+            ld{"የኡራጓይ ክረምት ሰዓት"}
+            lg{"የኡራጓይ ሰዓት"}
+            ls{"የኡራጓይ መደበኛ ሰዓት"}
+        }
+        "meta:Uzbekistan"{
+            ld{"የኡዝቤኪስታን ክረምት ሰዓት"}
+            lg{"የኡዝቤኪስታን ሰዓት"}
+            ls{"የኡዝቤኪስታን መደበኛ ሰዓት"}
+        }
+        "meta:Vanuatu"{
+            ld{"የቫኗቱ ክረምት ሰዓት"}
+            lg{"የቫኗቱ ሰዓት"}
+            ls{"የቫኗቱ መደበኛ ሰዓት"}
+        }
+        "meta:Venezuela"{
+            ls{"የቬኔዝዌላ ሰዓት"}
         }
         "meta:Vladivostok"{
             ld{"የቭላዲቮስቶክ የበጋ የሰዓት አቆጣጠር"}
             lg{"የቭላዲቮስቶክ የሰዓት አቆጣጠር"}
-            ls{"የቪላዲቮስቶክ የሰዓት አቆጣጠር"}
+            ls{"የቪላዲቮስቶክ መደበኛ የሰዓት አቆጣጠር"}
         }
         "meta:Volgograd"{
             ld{"የቫልጎራድ የበጋ ሰዓት አቆጣጠር"}
             lg{"የቮልጎራድ የሰዓት አቆጣጠር"}
-            ls{"የቮልጎራድ ሰዓት አቆጣጠር"}
+            ls{"የቮልጎራድ መደበኛ ሰዓት አቆጣጠር"}
+        }
+        "meta:Vostok"{
+            ls{"የቮስቶክ ሰዓት"}
+        }
+        "meta:Wake"{
+            ls{"የዌክ ደሴት ሰዓት"}
+        }
+        "meta:Wallis"{
+            ls{"የዋሊስ እና ፉቱና ሰዓት"}
         }
         "meta:Yakutsk"{
             ld{"የያኩትስክ የበጋ ሰዓት አቆጣጠር"}
             lg{"ያኩትስክ የሰዓት አቆጣጠር"}
-            ls{"ያኩትስክ ሰዓት አቆጣጠር"}
+            ls{"ያኩትስክ መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:Yekaterinburg"{
             ld{"የየካተሪንበርግ የበጋ ሰዓት አቆጣጠር"}
             lg{"የየካተሪንበርግ ሰዓት አቆጣጠር"}
-            ls{"የየካተሪንበርግ ሰዓት አቆጣጠር"}
+            ls{"የየካተሪንበርግ መደበኛ ሰዓት አቆጣጠር"}
         }
-        fallbackRegionFormat{"{1} ሰዓት({0})"}
+        fallbackFormat{"{1} ({0})"}
         gmtFormat{"ጂ ኤም ቲ{0}"}
         gmtZeroFormat{"ጂ ኤም ቲ"}
         hourFormat{"+HHmm;-HHmm"}
         regionFormat{"{0} ጊዜ"}
+        regionFormatDaylight{"{0} የቀን ብርሃን ሰዓት"}
+        regionFormatStandard{"{0} መደበኛ ሰዓት"}
     }
 }

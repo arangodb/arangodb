@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 #ifndef _TESTMESSAGEFORMAT
@@ -113,10 +113,11 @@ public:
     void testAdopt(void);
     void TestTurkishCasing(void);
     void testAutoQuoteApostrophe(void);
+    void testCoverage();
+    void testGetFormatNames();
     void TestTrimArgumentName();
-
-    /* Provide better code coverage */
-    void testCoverage(void);
+    void TestSelectOrdinal();
+    void TestDecimals();
 
 private:
     UnicodeString GetPatternAndSkipSyntax(const MessagePattern& pattern);

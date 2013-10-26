@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 1996-2012, International Business Machines
+*   Copyright (C) 1996-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 * Modification History:
@@ -187,8 +187,8 @@ unum_formatInt64(const UNumberFormat* fmt,
     if(pos != 0)
         fp.setField(pos->field);
     
-    ((const NumberFormat*)fmt)->format(number, res, fp);
-    
+    ((const NumberFormat*)fmt)->format(number, res, fp, *status);
+
     if(pos != 0) {
         pos->beginIndex = fp.getBeginIndex();
         pos->endIndex = fp.getEndIndex();
@@ -220,7 +220,7 @@ unum_formatDouble(    const    UNumberFormat*  fmt,
   if(pos != 0)
     fp.setField(pos->field);
   
-  ((const NumberFormat*)fmt)->format(number, res, fp);
+  ((const NumberFormat*)fmt)->format(number, res, fp, *status);
   
   if(pos != 0) {
     pos->beginIndex = fp.getBeginIndex();
@@ -231,7 +231,7 @@ unum_formatDouble(    const    UNumberFormat*  fmt,
 }
 
 
-U_DRAFT int32_t U_EXPORT2 
+U_CAPI int32_t U_EXPORT2 
 unum_formatDecimal(const    UNumberFormat*  fmt,
             const char *    number,
             int32_t         length,
@@ -468,70 +468,12 @@ unum_getAttribute(const UNumberFormat*          fmt,
     // Supported for all subclasses
     return nf->isLenient();
   }
+
   // The remaining attributea are only supported for DecimalFormat
   const DecimalFormat* df = dynamic_cast<const DecimalFormat*>(nf);
   if (df != NULL) {
-    switch(attr) {
-    case UNUM_PARSE_INT_ONLY:
-        return df->isParseIntegerOnly();
-        
-    case UNUM_GROUPING_USED:
-        return df->isGroupingUsed();
-        
-    case UNUM_DECIMAL_ALWAYS_SHOWN:
-        return df->isDecimalSeparatorAlwaysShown();    
-        
-    case UNUM_MAX_INTEGER_DIGITS:
-        return df->getMaximumIntegerDigits();
-        
-    case UNUM_MIN_INTEGER_DIGITS:
-        return df->getMinimumIntegerDigits();
-        
-    case UNUM_INTEGER_DIGITS:
-        // TBD: what should this return?
-        return df->getMinimumIntegerDigits();
-        
-    case UNUM_MAX_FRACTION_DIGITS:
-        return df->getMaximumFractionDigits();
-        
-    case UNUM_MIN_FRACTION_DIGITS:
-        return df->getMinimumFractionDigits();
-        
-    case UNUM_FRACTION_DIGITS:
-        // TBD: what should this return?
-        return df->getMinimumFractionDigits();
-        
-    case UNUM_SIGNIFICANT_DIGITS_USED:
-        return df->areSignificantDigitsUsed();
-        
-    case UNUM_MAX_SIGNIFICANT_DIGITS:
-        return df->getMaximumSignificantDigits();
-        
-    case UNUM_MIN_SIGNIFICANT_DIGITS:
-        return df->getMinimumSignificantDigits();
-        
-    case UNUM_MULTIPLIER:
-        return df->getMultiplier();    
-        
-    case UNUM_GROUPING_SIZE:
-        return df->getGroupingSize();    
-        
-    case UNUM_ROUNDING_MODE:
-        return df->getRoundingMode();
-        
-    case UNUM_FORMAT_WIDTH:
-        return df->getFormatWidth();
-        
-    case UNUM_PADDING_POSITION:
-        return df->getPadPosition();
-        
-    case UNUM_SECONDARY_GROUPING_SIZE:
-        return df->getSecondaryGroupingSize();
-
-    default:
-        /* enums out of sync? unsupported enum? */
-        break;
-    }
+    UErrorCode ignoredStatus = U_ZERO_ERROR;
+    return df->getAttribute( attr, ignoredStatus );
   }
 
   return -1;
@@ -545,97 +487,14 @@ unum_setAttribute(    UNumberFormat*          fmt,
   NumberFormat* nf = reinterpret_cast<NumberFormat*>(fmt);
   if ( attr == UNUM_LENIENT_PARSE ) {
     // Supported for all subclasses
+    // keep this here as the class may not be a DecimalFormat
     return nf->setLenient(newValue != 0);
   }
   // The remaining attributea are only supported for DecimalFormat
   DecimalFormat* df = dynamic_cast<DecimalFormat*>(nf);
   if (df != NULL) {
-    switch(attr) {
-    case UNUM_PARSE_INT_ONLY:
-        df->setParseIntegerOnly(newValue!=0);
-        break;
-        
-    case UNUM_GROUPING_USED:
-        df->setGroupingUsed(newValue!=0);
-        break;
-        
-    case UNUM_DECIMAL_ALWAYS_SHOWN:
-        df->setDecimalSeparatorAlwaysShown(newValue!=0);
-        break;
-        
-    case UNUM_MAX_INTEGER_DIGITS:
-        df->setMaximumIntegerDigits(newValue);
-        break;
-        
-    case UNUM_MIN_INTEGER_DIGITS:
-        df->setMinimumIntegerDigits(newValue);
-        break;
-        
-    case UNUM_INTEGER_DIGITS:
-        df->setMinimumIntegerDigits(newValue);
-        df->setMaximumIntegerDigits(newValue);
-        break;
-        
-    case UNUM_MAX_FRACTION_DIGITS:
-        df->setMaximumFractionDigits(newValue);
-        break;
-        
-    case UNUM_MIN_FRACTION_DIGITS:
-        df->setMinimumFractionDigits(newValue);
-        break;
-        
-    case UNUM_FRACTION_DIGITS:
-        df->setMinimumFractionDigits(newValue);
-        df->setMaximumFractionDigits(newValue);
-        break;
-        
-    case UNUM_SIGNIFICANT_DIGITS_USED:
-        df->setSignificantDigitsUsed(newValue!=0);
-        break;
-
-    case UNUM_MAX_SIGNIFICANT_DIGITS:
-        df->setMaximumSignificantDigits(newValue);
-        break;
-        
-    case UNUM_MIN_SIGNIFICANT_DIGITS:
-        df->setMinimumSignificantDigits(newValue);
-        break;
-        
-    case UNUM_MULTIPLIER:
-        df->setMultiplier(newValue);    
-        break;
-        
-    case UNUM_GROUPING_SIZE:
-        df->setGroupingSize(newValue);    
-        break;
-        
-    case UNUM_ROUNDING_MODE:
-        df->setRoundingMode((DecimalFormat::ERoundingMode)newValue);
-        break;
-        
-    case UNUM_FORMAT_WIDTH:
-        df->setFormatWidth(newValue);
-        break;
-        
-    case UNUM_PADDING_POSITION:
-        /** The position at which padding will take place. */
-        df->setPadPosition((DecimalFormat::EPadPosition)newValue);
-        break;
-        
-    case UNUM_SECONDARY_GROUPING_SIZE:
-        df->setSecondaryGroupingSize(newValue);
-        break;
-
-#if UCONFIG_HAVE_PARSEALLINPUT
-    case UNUM_PARSE_ALL_INPUT:
-        df->setParseAllInput((UNumberFormatAttributeValue)newValue);
-        break;
-#endif
-
-    default:
-        /* Shouldn't get here anyway */
-        break;
-    }
+    UErrorCode ignoredStatus = U_ZERO_ERROR;
+    df->setAttribute(attr, newValue, ignoredStatus);
   }
 }
 
@@ -922,6 +781,62 @@ unum_getLocaleByType(const UNumberFormat *fmt,
         return NULL;
     }
     return ((const Format*)fmt)->getLocaleID(type, *status);
+}
+
+U_INTERNAL UFormattable * U_EXPORT2
+unum_parseToUFormattable(const UNumberFormat* fmt,
+                         UFormattable *result,
+                         const UChar* text,
+                         int32_t textLength,
+                         int32_t* parsePos, /* 0 = start */
+                         UErrorCode* status) {
+  UFormattable *newFormattable = NULL;
+  if (U_FAILURE(*status)) return result;
+  if (fmt == NULL || (text==NULL && textLength!=0)) {
+    *status = U_ILLEGAL_ARGUMENT_ERROR;
+    return result;
+  }
+  if (result == NULL) { // allocate if not allocated.
+    newFormattable = result = ufmt_open(status);
+  }
+  parseRes(*(Formattable::fromUFormattable(result)), fmt, text, textLength, parsePos, status);
+  if (U_FAILURE(*status) && newFormattable != NULL) {
+    ufmt_close(newFormattable);
+    result = NULL; // deallocate if there was a parse error
+  }
+  return result;
+}
+
+U_INTERNAL int32_t U_EXPORT2
+unum_formatUFormattable(const UNumberFormat* fmt,
+                        const UFormattable *number,
+                        UChar *result,
+                        int32_t resultLength,
+                        UFieldPosition *pos, /* ignored if 0 */
+                        UErrorCode *status) {
+    if (U_FAILURE(*status)) {
+      return 0;
+    }
+    if (fmt == NULL || number==NULL ||
+        (result==NULL ? resultLength!=0 : resultLength<0)) {
+      *status = U_ILLEGAL_ARGUMENT_ERROR;
+      return 0;
+    }
+    UnicodeString res(result, 0, resultLength);
+
+    FieldPosition fp;
+
+    if(pos != 0)
+        fp.setField(pos->field);
+
+    ((const NumberFormat*)fmt)->format(*(Formattable::fromUFormattable(number)), res, fp, *status);
+
+    if(pos != 0) {
+        pos->beginIndex = fp.getBeginIndex();
+        pos->endIndex = fp.getEndIndex();
+    }
+
+    return res.extract(result, resultLength, *status);
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

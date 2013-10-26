@@ -1,7 +1,7 @@
 #!/usr/local/bin/perl
 #  ***********************************************************************
 #  * COPYRIGHT:
-#  * Copyright (c) 2002-2008, International Business Machines Corporation
+#  * Copyright (c) 2002-2013, International Business Machines Corporation
 #  * and others. All Rights Reserved.
 #  ***********************************************************************
 
@@ -36,14 +36,14 @@ sub setupOptions {
   if($options{"passes"}) {
     $NUMPASSES = $options{"passes"};
   }
-	
+
   if($options{"dataDir"}) {
     $DATADIR = $options{"dataDir"};
   }
   
   # Added by Doug
   if ($options{"iterations"}) {
-  	$ITERATIONS = $options{"iterations"};
+    $ITERATIONS = $options{"iterations"};
   }
 }
 
@@ -68,19 +68,19 @@ sub runTests {
   if (%datafiles) {
     foreach $locale (sort keys %datafiles ) {
       foreach $data (@{ $datafiles{$locale} }) {
-	closeTable;
-	my $locdata = "";
-	if(!($locale eq "")) {
-	  $locdata = "<b>Locale:</b> $locale<br>";
-	}
-	$locdata .= "<b>Datafile:</b> $data<br>";
-	startTest($locdata);
+        closeTable;
+        my $locdata = "";
+        if(!($locale eq "")) {
+          $locdata = "<b>Locale:</b> $locale<br>";
+        }
+        $locdata .= "<b>Datafile:</b> $data<br>";
+        startTest($locdata);
 
-	if($DATADIR) {
-	  compareLoop ($tests, $locale, $DATADIR."/".$data);
-	} else {
-	  compareLoop ($tests, $locale, $data);
-	}
+        if($DATADIR) {
+          compareLoop ($tests, $locale, $DATADIR."/".$data);
+        } else {
+          compareLoop ($tests, $locale, $data);
+        }
       }
     }
   } else {
@@ -102,7 +102,7 @@ sub compareLoop {
   if($datafile) {
     $locAndData .= " -f $datafile";
   }
-	  
+
   my $args;
   my ($i, $j, $aref);
   foreach $i ( sort keys %tests ) {
@@ -118,14 +118,14 @@ sub compareLoop {
     for $j ( 0 .. $#{$aref} ) {
     # first we calibrate. Use time from somewhere
     # first test is used for calibration
-      ($program, @argsAndTest) = split(/\ /, @{ $tests{$i} }[$j]);
+      ($program, @argsAndTest) = split(/,/, @{ $tests{$i} }[$j]);
       #Modified by Doug
       my $commandLine;
       if ($ITERATIONS) {
-      	$commandLine = "$program -i $ITERATIONS -p $NUMPASSES $locAndData @argsAndTest";
+        $commandLine = "$program -i $ITERATIONS -p $NUMPASSES $locAndData @argsAndTest";
       } else {
-      	$commandLine = "$program -t $TIME -p $NUMPASSES $locAndData @argsAndTest";
-    	}
+        $commandLine = "$program -t $TIME -p $NUMPASSES $locAndData @argsAndTest";
+      }
       #my $commandLine = "$program -i 5 -p $NUMPASSES $locAndData @argsAndTest";
       my @res = measure1($commandLine);
       store("$i, $program @argsAndTest", @res);
@@ -134,9 +134,8 @@ sub compareLoop {
       push(@noopers, shift(@res));
       my @data = @{ shift(@res) };
       if($#res >= 0) {
-	push(@noevents, shift(@res));
-      }
-    
+      push(@noevents, shift(@res));
+    }
 
       shift(@data) if (@data > 1); # discard first run
 

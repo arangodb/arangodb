@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2011, International Business Machines
+ *   Copyright (C) 2005-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -32,13 +32,28 @@
 #define NEW_ARRAY(type,count) (type *) uprv_malloc((count) * sizeof(type))
 #define DELETE_ARRAY(array) uprv_free((void *) (array))
 
-U_CDECL_BEGIN
-static icu::CharsetRecognizer **fCSRecognizers = NULL;
+U_NAMESPACE_BEGIN
 
+struct CSRecognizerInfo : public UMemory {
+    CSRecognizerInfo(CharsetRecognizer *recognizer, UBool isDefaultEnabled)
+        : recognizer(recognizer), isDefaultEnabled(isDefaultEnabled) {};
+
+    ~CSRecognizerInfo() {delete recognizer;};
+
+    CharsetRecognizer *recognizer;
+    UBool isDefaultEnabled;
+};
+
+U_NAMESPACE_END
+
+static icu::CSRecognizerInfo **fCSRecognizers = NULL;
+static icu::UInitOnce gCSRecognizersInitOnce;
 static int32_t fCSRecognizers_size = 0;
 
+U_CDECL_BEGIN
 static UBool U_CALLCONV csdet_cleanup(void)
 {
+    U_NAMESPACE_USE
     if (fCSRecognizers != NULL) {
         for(int32_t r = 0; r < fCSRecognizers_size; r += 1) {
             delete fCSRecognizers[r];
@@ -49,6 +64,7 @@ static UBool U_CALLCONV csdet_cleanup(void)
         fCSRecognizers = NULL;
         fCSRecognizers_size = 0;
     }
+    gCSRecognizersInitOnce.reset();
 
     return TRUE;
 }
@@ -65,113 +81,74 @@ charsetMatchComparator(const void * /*context*/, const void *left, const void *r
     return (*csm_r)->getConfidence() - (*csm_l)->getConfidence();
 }
 
+static void U_CALLCONV initRecognizers(UErrorCode &status) {
+    U_NAMESPACE_USE
+    ucln_i18n_registerCleanup(UCLN_I18N_CSDET, csdet_cleanup);
+    CSRecognizerInfo *tempArray[] = {
+        new CSRecognizerInfo(new CharsetRecog_UTF8(), TRUE),
+
+        new CSRecognizerInfo(new CharsetRecog_UTF_16_BE(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_UTF_16_LE(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_UTF_32_BE(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_UTF_32_LE(), TRUE),
+
+        new CSRecognizerInfo(new CharsetRecog_8859_1(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_2(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_5_ru(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_6_ar(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_7_el(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_8_I_he(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_8_he(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_windows_1251(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_windows_1256(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_KOI8_R(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_8859_9_tr(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_sjis(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_gb_18030(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_euc_jp(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_euc_kr(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_big5(), TRUE),
+
+        new CSRecognizerInfo(new CharsetRecog_2022JP(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_2022KR(), TRUE),
+        new CSRecognizerInfo(new CharsetRecog_2022CN(), TRUE),
+
+        new CSRecognizerInfo(new CharsetRecog_IBM424_he_rtl(), FALSE),
+        new CSRecognizerInfo(new CharsetRecog_IBM424_he_ltr(), FALSE),
+        new CSRecognizerInfo(new CharsetRecog_IBM420_ar_rtl(), FALSE),
+        new CSRecognizerInfo(new CharsetRecog_IBM420_ar_ltr(), FALSE)
+    };
+    int32_t rCount = ARRAY_SIZE(tempArray);
+
+    fCSRecognizers = NEW_ARRAY(CSRecognizerInfo *, rCount);
+
+    if (fCSRecognizers == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+    } 
+    else {
+        fCSRecognizers_size = rCount;
+        for (int32_t r = 0; r < rCount; r += 1) {
+            fCSRecognizers[r] = tempArray[r];
+            if (fCSRecognizers[r] == NULL) {
+                status = U_MEMORY_ALLOCATION_ERROR;
+            }
+        }
+    }
+}
+
 U_CDECL_END
 
 U_NAMESPACE_BEGIN
 
 void CharsetDetector::setRecognizers(UErrorCode &status)
 {
-    UBool needsInit;
-    CharsetRecognizer **recognizers;
-
-    if (U_FAILURE(status)) {
-        return;
-    }
-
-    UMTX_CHECK(NULL, (UBool) (fCSRecognizers == NULL), needsInit);
-
-    if (needsInit) {
-        CharsetRecognizer *tempArray[] = {
-            new CharsetRecog_UTF8(),
-
-            new CharsetRecog_UTF_16_BE(),
-            new CharsetRecog_UTF_16_LE(),
-            new CharsetRecog_UTF_32_BE(),
-            new CharsetRecog_UTF_32_LE(),
-
-            new CharsetRecog_8859_1_en(),
-            new CharsetRecog_8859_1_da(),
-            new CharsetRecog_8859_1_de(),
-            new CharsetRecog_8859_1_es(),
-            new CharsetRecog_8859_1_fr(),
-            new CharsetRecog_8859_1_it(),
-            new CharsetRecog_8859_1_nl(),
-            new CharsetRecog_8859_1_no(),
-            new CharsetRecog_8859_1_pt(),
-            new CharsetRecog_8859_1_sv(),
-            new CharsetRecog_8859_2_cs(),
-            new CharsetRecog_8859_2_hu(),
-            new CharsetRecog_8859_2_pl(),
-            new CharsetRecog_8859_2_ro(),
-            new CharsetRecog_8859_5_ru(),
-            new CharsetRecog_8859_6_ar(),
-            new CharsetRecog_8859_7_el(),
-            new CharsetRecog_8859_8_I_he(),
-            new CharsetRecog_8859_8_he(),
-            new CharsetRecog_windows_1251(),
-            new CharsetRecog_windows_1256(),
-            new CharsetRecog_KOI8_R(),
-            new CharsetRecog_8859_9_tr(),
-            new CharsetRecog_sjis(),
-            new CharsetRecog_gb_18030(),
-            new CharsetRecog_euc_jp(),
-            new CharsetRecog_euc_kr(),
-            new CharsetRecog_big5(),
-
-            new CharsetRecog_2022JP(),
-            new CharsetRecog_2022KR(),
-            new CharsetRecog_2022CN(),
-            
-            new CharsetRecog_IBM424_he_rtl(),
-            new CharsetRecog_IBM424_he_ltr(),
-            new CharsetRecog_IBM420_ar_rtl(),
-            new CharsetRecog_IBM420_ar_ltr()
-        };
-        int32_t rCount = ARRAY_SIZE(tempArray);
-        int32_t r;
-
-        recognizers = NEW_ARRAY(CharsetRecognizer *, rCount);
-
-        if (recognizers == NULL) {
-            status = U_MEMORY_ALLOCATION_ERROR;
-            return;
-        } else {
-            for (r = 0; r < rCount; r += 1) {
-                recognizers[r] = tempArray[r];
-
-                if (recognizers[r] == NULL) {
-                    status = U_MEMORY_ALLOCATION_ERROR;
-                    break;
-                }
-            }
-        }
-
-        if (U_SUCCESS(status)) {
-            umtx_lock(NULL);
-            if (fCSRecognizers == NULL) {
-                fCSRecognizers_size = rCount;
-                fCSRecognizers = recognizers;
-            }
-            umtx_unlock(NULL);
-        }
-
-        if (fCSRecognizers != recognizers) {
-            for (r = 0; r < rCount; r += 1) {
-                delete recognizers[r];
-                recognizers[r] = NULL;
-            }
-
-            DELETE_ARRAY(recognizers);
-        }
-
-        recognizers = NULL;
-        ucln_i18n_registerCleanup(UCLN_I18N_CSDET, csdet_cleanup);
-    }
+    umtx_initOnce(gCSRecognizersInitOnce, &initRecognizers, status);
 }
 
 CharsetDetector::CharsetDetector(UErrorCode &status)
   : textIn(new InputText(status)), resultArray(NULL),
-    resultCount(0), fStripTags(FALSE), fFreshTextSet(FALSE)
+    resultCount(0), fStripTags(FALSE), fFreshTextSet(FALSE),
+    fEnabledRecognizers(NULL)
 {
     if (U_FAILURE(status)) {
         return;
@@ -209,6 +186,10 @@ CharsetDetector::~CharsetDetector()
     }
 
     uprv_free(resultArray);
+
+    if (fEnabledRecognizers) {
+        uprv_free(fEnabledRecognizers);
+    }
 }
 
 void CharsetDetector::setText(const char *in, int32_t len)
@@ -263,10 +244,8 @@ const CharsetMatch * const *CharsetDetector::detectAll(int32_t &maxMatchesFound,
         status = U_MISSING_RESOURCE_ERROR;// TODO:  Need to set proper status code for input text not set
 
         return NULL;
-    } else if(fFreshTextSet) {
+    } else if (fFreshTextSet) {
         CharsetRecognizer *csr;
-        int32_t            detectResults;
-        int32_t            confidence;
         int32_t            i;
 
         textIn->MungeInput(fStripTags);
@@ -275,53 +254,61 @@ const CharsetMatch * const *CharsetDetector::detectAll(int32_t &maxMatchesFound,
         // give a match quality > 0.
         resultCount = 0;
         for (i = 0; i < fCSRecognizers_size; i += 1) {
-            csr = fCSRecognizers[i];
-            detectResults = csr->match(textIn);
-            confidence = detectResults;
-
-            if (confidence > 0)  {
-                resultArray[resultCount++]->set(textIn, csr, confidence);
+            csr = fCSRecognizers[i]->recognizer;
+            if (csr->match(textIn, resultArray[resultCount])) {
+                resultCount++;
             }
         }
 
-        for(i = resultCount; i < fCSRecognizers_size; i += 1) {
-            resultArray[i]->set(textIn, 0, 0);
+        if (resultCount > 1) {
+            uprv_sortArray(resultArray, resultCount, sizeof resultArray[0], charsetMatchComparator, NULL, TRUE, &status);
         }
-
-        uprv_sortArray(resultArray, resultCount, sizeof resultArray[0], charsetMatchComparator, NULL, TRUE, &status);
-
-        // Remove duplicate charsets from the results.
-        // Simple minded, brute force approach - check each entry against all that follow.
-        // The first entry of any duplicated set is the one that should be kept because it will
-        // be the one with the highest confidence rating.
-        //   (Duplicate matches have different languages, only the charset is the same)
-        // Because the resultArray contains preallocated CharsetMatch objects, they aren't actually
-        // deleted, just reordered, with the unwanted duplicates placed after the good results.
-        int32_t j, k;
-        for (i=0; i<resultCount; i++) {
-            const char *charSetName = resultArray[i]->getName();
-            for (j=i+1; j<resultCount; ) {
-                if (uprv_strcmp(charSetName, resultArray[j]->getName()) != 0) {
-                    // Not a duplicate.
-                    j++;
-                } else {
-                    // Duplicate entry at index j.  
-                    CharsetMatch *duplicate = resultArray[j];
-                    for (k=j; k<resultCount-1; k++) {
-                        resultArray[k] = resultArray[k+1];
-                    }
-                    resultCount--;
-                    resultArray[resultCount] = duplicate;
-                }
-            }
-        }
-
         fFreshTextSet = FALSE;
     }
 
     maxMatchesFound = resultCount;
 
     return resultArray;
+}
+
+void CharsetDetector::setDetectableCharset(const char *encoding, UBool enabled, UErrorCode &status)
+{
+    if (U_FAILURE(status)) {
+        return;
+    }
+
+    int32_t modIdx = -1;
+    UBool isDefaultVal = FALSE;
+    for (int32_t i = 0; i < fCSRecognizers_size; i++) {
+        CSRecognizerInfo *csrinfo = fCSRecognizers[i];
+        if (uprv_strcmp(csrinfo->recognizer->getName(), encoding) == 0) {
+            modIdx = i;
+            isDefaultVal = (csrinfo->isDefaultEnabled == enabled);
+            break;
+        }
+    }
+    if (modIdx < 0) {
+        // No matching encoding found
+        status = U_ILLEGAL_ARGUMENT_ERROR;
+        return;
+    }
+
+    if (fEnabledRecognizers == NULL && !isDefaultVal) {
+        // Create an array storing the non default setting
+        fEnabledRecognizers = NEW_ARRAY(UBool, fCSRecognizers_size);
+        if (fEnabledRecognizers == NULL) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+            return;
+        }
+        // Initialize the array with default info
+        for (int32_t i = 0; i < fCSRecognizers_size; i++) {
+            fEnabledRecognizers[i] = fCSRecognizers[i]->isDefaultEnabled;
+        }
+    }
+
+    if (fEnabledRecognizers != NULL) {
+        fEnabledRecognizers[modIdx] = enabled;
+    }
 }
 
 /*const char *CharsetDetector::getCharsetName(int32_t index, UErrorCode &status) const
@@ -340,6 +327,8 @@ U_NAMESPACE_END
 U_CDECL_BEGIN
 typedef struct {
     int32_t currIndex;
+    UBool all;
+    UBool *enabledRecognizers;
 } Context;
 
 
@@ -354,26 +343,72 @@ enumClose(UEnumeration *en) {
 }
 
 static int32_t U_CALLCONV
-enumCount(UEnumeration *, UErrorCode *) {
-    return fCSRecognizers_size;
+enumCount(UEnumeration *en, UErrorCode *) {
+    if (((Context *)en->context)->all) {
+        // ucsdet_getAllDetectableCharsets, all charset detector names
+        return fCSRecognizers_size;
+    }
+
+    // Otherwise, ucsdet_getDetectableCharsets - only enabled ones
+    int32_t count = 0;
+    UBool *enabledArray = ((Context *)en->context)->enabledRecognizers;
+    if (enabledArray != NULL) {
+        // custom set
+        for (int32_t i = 0; i < fCSRecognizers_size; i++) {
+            if (enabledArray[i]) {
+                count++;
+            }
+        }
+    } else {
+        // default set
+        for (int32_t i = 0; i < fCSRecognizers_size; i++) {
+            if (fCSRecognizers[i]->isDefaultEnabled) {
+                count++;
+            }
+        }
+    }
+    return count;
 }
 
 static const char* U_CALLCONV
 enumNext(UEnumeration *en, int32_t *resultLength, UErrorCode * /*status*/) {
-    if(((Context *)en->context)->currIndex >= fCSRecognizers_size) {
-        if(resultLength != NULL) {
-            *resultLength = 0;
+    const char *currName = NULL;
+
+    if (((Context *)en->context)->currIndex < fCSRecognizers_size) {
+        if (((Context *)en->context)->all) {
+            // ucsdet_getAllDetectableCharsets, all charset detector names
+            currName = fCSRecognizers[((Context *)en->context)->currIndex]->recognizer->getName();
+            ((Context *)en->context)->currIndex++;
+        } else {
+            // ucsdet_getDetectableCharsets
+            UBool *enabledArray = ((Context *)en->context)->enabledRecognizers;
+            if (enabledArray != NULL) {
+                // custome set
+                while (currName == NULL && ((Context *)en->context)->currIndex < fCSRecognizers_size) {
+                    if (enabledArray[((Context *)en->context)->currIndex]) {
+                        currName = fCSRecognizers[((Context *)en->context)->currIndex]->recognizer->getName();
+                    }
+                    ((Context *)en->context)->currIndex++;
+                }
+            } else {
+                // default set
+                while (currName == NULL && ((Context *)en->context)->currIndex < fCSRecognizers_size) {
+                    if (fCSRecognizers[((Context *)en->context)->currIndex]->isDefaultEnabled) {
+                        currName = fCSRecognizers[((Context *)en->context)->currIndex]->recognizer->getName();
+                    }
+                    ((Context *)en->context)->currIndex++;
+                }
+            }
         }
-        return NULL;
     }
-    const char *currName = fCSRecognizers[((Context *)en->context)->currIndex]->getName();
+
     if(resultLength != NULL) {
-        *resultLength = (int32_t)uprv_strlen(currName);
+        *resultLength = currName == NULL ? 0 : (int32_t)uprv_strlen(currName);
     }
-    ((Context *)en->context)->currIndex++;
 
     return currName;
 }
+
 
 static void U_CALLCONV
 enumReset(UEnumeration *en, UErrorCode *) {
@@ -390,25 +425,61 @@ static const UEnumeration gCSDetEnumeration = {
     enumReset
 };
 
-U_CAPI  UEnumeration * U_EXPORT2
-ucsdet_getAllDetectableCharsets(const UCharsetDetector * /*ucsd*/, UErrorCode *status)
-{
-    U_NAMESPACE_USE
+U_CDECL_END
 
-    if(U_FAILURE(*status)) {
+U_NAMESPACE_BEGIN
+
+UEnumeration * CharsetDetector::getAllDetectableCharsets(UErrorCode &status)
+{
+
+    /* Initialize recognized charsets. */
+    setRecognizers(status);
+
+    if(U_FAILURE(status)) {
         return 0;
     }
 
-    /* Initialize recognized charsets. */
-    CharsetDetector::getDetectableCount();
-
     UEnumeration *en = NEW_ARRAY(UEnumeration, 1);
+    if (en == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return 0;
+    }
     memcpy(en, &gCSDetEnumeration, sizeof(UEnumeration));
     en->context = (void*)NEW_ARRAY(Context, 1);
+    if (en->context == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        DELETE_ARRAY(en);
+        return 0;
+    }
     uprv_memset(en->context, 0, sizeof(Context));
+    ((Context*)en->context)->all = TRUE;
     return en;
 }
-U_CDECL_END
+
+UEnumeration * CharsetDetector::getDetectableCharsets(UErrorCode &status) const
+{
+    if(U_FAILURE(status)) {
+        return 0;
+    }
+
+    UEnumeration *en = NEW_ARRAY(UEnumeration, 1);
+    if (en == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return 0;
+    }
+    memcpy(en, &gCSDetEnumeration, sizeof(UEnumeration));
+    en->context = (void*)NEW_ARRAY(Context, 1);
+    if (en->context == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        DELETE_ARRAY(en);
+        return 0;
+    }
+    uprv_memset(en->context, 0, sizeof(Context));
+    ((Context*)en->context)->all = FALSE;
+    ((Context*)en->context)->enabledRecognizers = fEnabledRecognizers;
+    return en;
+}
+
+U_NAMESPACE_END
 
 #endif
-

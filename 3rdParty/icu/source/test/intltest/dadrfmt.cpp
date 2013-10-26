@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2013 International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -73,14 +73,16 @@ void DataDrivenFormatTest::runIndexedTest(int32_t index, UBool exec,
 
 
 /*
- *             Headers { "locale","spec", "date", "str"}
+ *             Headers { "locale", "zone", "spec", "date", "str"}
             // locale: locale including calendar type
+            // zone:   time zone name, or "" to not explicitly set zone
             // spec:   either 'PATTERN=y mm h' etc, or 'DATE=SHORT,TIME=LONG'
             // date:   either an unsigned long (millis), or a calendar spec ERA=0,YEAR=1, etc.. applied to the calendar type specified by the locale
             // str:   the expected unicode string
             Cases { 
                {
-                    "en_US@calendar=gregorian",         
+                    "en_US@calendar=gregorian",
+                    "",
                     "DATE=SHORT,TIME=SHORT",
                     "ERA=1,YEAR=2007,MONTH=AUGUST,DATE=8,HOUR=18,MINUTE=54,SECOND=12",
                     "8/8/2007 6:54pm"
@@ -112,6 +114,7 @@ void DataDrivenFormatTest::testConvertDate(TestData *testData,
         DateTimeStyleSet styleSet;
         UnicodeString pattern;
         UBool usePattern = FALSE;
+        (void)usePattern;   // Suppress unused warning.
         CalendarFieldsSet fromSet;
         UDate fromDate = 0;
         UBool useDate = FALSE;
@@ -128,6 +131,11 @@ void DataDrivenFormatTest::testConvertDate(TestData *testData,
         UnicodeString locale = currentCase->getString("locale", status);
         if (U_FAILURE(status)) {
             errln("case %d: No 'locale' line.", n);
+            continue;
+        }
+        UnicodeString zone = currentCase->getString("zone", status);
+        if (U_FAILURE(status)) {
+            errln("case %d: No 'zone' line.", n);
             continue;
         }
         UnicodeString spec = currentCase->getString("spec", status);
@@ -175,6 +183,13 @@ void DataDrivenFormatTest::testConvertDate(TestData *testData,
         if(U_FAILURE(status)) {
             errln("case %d: could not create calendar from %s", n, calLoc);
         }
+        
+        if (zone.length() > 0) {
+            TimeZone * tz = TimeZone::createTimeZone(zone);
+            cal->setTimeZone(*tz);
+            format->setTimeZone(*tz);
+            delete tz;
+        }
 
         // parse 'date'
         if(date.startsWith(kMILLIS)) {
@@ -197,8 +212,13 @@ void DataDrivenFormatTest::testConvertDate(TestData *testData,
             for (int q=0; q<UCAL_FIELD_COUNT; q++) {
                 if (fromSet.isSet((UCalendarDateFields)q)) {
                     //int32_t oldv = cal->get((UCalendarDateFields)q, status);
-                    cal->add((UCalendarDateFields)q,
-                                fromSet.get((UCalendarDateFields)q), status);
+                    if (q == UCAL_DATE) {
+                        cal->add((UCalendarDateFields)q,
+                                    fromSet.get((UCalendarDateFields)q), status);
+                    } else {
+                        cal->set((UCalendarDateFields)q,
+                                    fromSet.get((UCalendarDateFields)q));
+                    }
                     //int32_t newv = cal->get((UCalendarDateFields)q, status);
                 }
             }

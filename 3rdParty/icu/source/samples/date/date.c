@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -64,7 +64,7 @@ main(int argc,
 {
   int printUsage = 0;
   int printVersion = 0;
-  int optind = 1;
+  int optInd = 1;
   char *arg;
   const UChar *tz = 0;
   UDateFormatStyle style = UDAT_DEFAULT;
@@ -76,8 +76,8 @@ main(int argc,
   UDate when;
 
   /* parse the options */
-  for(optind = 1; optind < argc; ++optind) {
-    arg = argv[optind];
+  for(optInd = 1; optInd < argc; ++optInd) {
+    arg = argv[optInd];
     
     /* version info */
     if(strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0) {
@@ -108,30 +108,30 @@ main(int argc,
       style = UDAT_SHORT;
     }
     else if(strcmp(arg, "-F") == 0 || strcmp(arg, "--format") == 0) {
-      if ( optind + 1 < argc ) { 
-         optind++;
-         format = argv[optind];
+      if ( optInd + 1 < argc ) { 
+         optInd++;
+         format = argv[optInd];
       }
     } else if(strcmp(arg, "-r") == 0) {
-      if ( optind + 1 < argc ) { 
-         optind++;
-         seconds = argv[optind];
+      if ( optInd + 1 < argc ) { 
+         optInd++;
+         seconds = argv[optInd];
       }
     } else if(strcmp(arg, "-R") == 0) {
-      if ( optind + 1 < argc ) { 
-         optind++;
-         millis = argv[optind];
+      if ( optInd + 1 < argc ) { 
+         optInd++;
+         millis = argv[optInd];
       }
     } else if(strcmp(arg, "-P") == 0) {
-      if ( optind + 1 < argc ) { 
-         optind++;
-         parse = argv[optind];
+      if ( optInd + 1 < argc ) { 
+         optInd++;
+         parse = argv[optInd];
       }
     }
     /* POSIX.1 says all arguments after -- are not options */
     else if(strcmp(arg, "--") == 0) {
       /* skip the -- */
-      ++optind;
+      ++optInd;
       break;
     }
     /* unrecognized option */
@@ -252,10 +252,10 @@ date(UDate when,
 
   if( format != NULL ) {
     if(!strcmp(format,FORMAT_MILLIS)) {
-      printf("%.0lf\n", when);
+      printf("%.0f\n", when);
       return;
     } else if(!strcmp(format, FORMAT_SECONDS)) {
-      printf("%.3lf\n", when/1000.0);
+      printf("%.3f\n", when/1000.0);
       return;
     }
   }
@@ -325,7 +325,7 @@ static UDate getWhen(const char *millis, const char *seconds, const char *format
     when = udat_parse(fmt, uParse, -1, &parsepos, status);
     if(U_FAILURE(*status)) {
       fprintf(stderr, "Error in Parse: %s\n", u_errorName(*status));
-      if(parsepos>0&&parsepos<=strlen(parse)) {
+      if(parsepos > 0 && parsepos <= (int32_t)strlen(parse)) {
         fprintf(stderr, "ERR>\"%s\" @%d\n"
                         "ERR> %*s^\n",
                 parse,parsepos,parsepos,"");

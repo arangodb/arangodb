@@ -1,12 +1,19 @@
 ## -*-makefile-*-
 ## OS400-specific setup (for cross build)
-## Copyright (c) 1999-2011, International Business Machines Corporation and
+## Copyright (c) 1999-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
+
+# This otherwise breaks on OS400 - can't find "shell"
+CURR_FULL_DIR=.
+CURR_SRCCODE_FULL_DIR=.
 
 GEN_DEPS.c=	$(CC1) -E -M $(DEFS) $(CPPFLAGS)
 GEN_DEPS.cc=	$(CXX1) -E -M $(DEFS) $(CPPFLAGS)
 
 THREADSCPPFLAGS = -D_MULTI_THREADED
+
+# put this in the environment to get threading
+THREADSENVFLAGS = QIBM_MULTI_THREADED=Y ;
 
 ## Commands to compile
 # -qTERASPACE: large pointers

@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2011, International Business Machines
+*   Copyright (C) 2010-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  bytetrietest.cpp
@@ -170,10 +170,10 @@ void BytesTrieTest::TestBranches() {
         { "t", 0x400000 },
         { "uu", 0x800000 },
         { "vv", 0x7fffffff },
-        { "zz", 0x80000000 }
+        { "zz", (int32_t)0x80000000 }
     };
     for(int32_t length=2; length<=LENGTHOF(data); ++length) {
-        infoln("TestBranches length=%d", (int)length);
+        logln("TestBranches length=%d", (int)length);
         checkData(data, length);
     }
 }
@@ -217,7 +217,7 @@ void BytesTrieTest::TestLongBranch() {
         { "r", 0x333333 },
         { "s2345", 0x4444444 },
         { "t234567890", 0x77777777 },
-        { "z", 0x80000001 }
+        { "z", (int32_t)0x80000001 }
     };
     checkData(data, LENGTHOF(data));
 }

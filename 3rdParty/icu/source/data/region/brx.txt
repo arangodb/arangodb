@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/brx.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/brx.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/brx.xml
+ * ICU <specials> source: <path>/common/main/brx.xml
  */
 brx{
     Countries{
@@ -91,7 +91,6 @@ brx{
         CN{"चीन"}
         CO{"कोलम्बिया"}
         CR{"कोस्टारीका"}
-        CS{"सर्बिया एवं मॉण्टेनेग्रो"}
         CU{"क्यूबा"}
         CV{"कैप वेर्दे"}
         CX{"क्रिस्मस द्वीप"}
@@ -110,6 +109,7 @@ brx{
         ER{"एरिट्रिया"}
         ES{"स्पेन"}
         ET{"इथिओपिया"}
+        EU{"यूरोपीय संघ"}
         FI{"फिनलैंड"}
         FJ{"फिजी"}
         FK{"फ़ॉल्कलैंड द्वीप"}
@@ -229,7 +229,6 @@ brx{
         PY{"पारागुए"}
         QA{"क़तार"}
         QO{"बाहरिय ओशेआनिया"}
-        QU{"यूरोपीय संघ"}
         RE{"रेयूनियॉं"}
         RO{"रोमानिया"}
         RS{"सर्बिया"}
@@ -292,5 +291,5 @@ brx{
         ZW{"ज़ीम्बाब्वे"}
         ZZ{"अज्ञात या अवैध प्रदेश"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

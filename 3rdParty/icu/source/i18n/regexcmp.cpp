@@ -1,7 +1,7 @@
 //
 //  file:  regexcmp.cpp
 //
-//  Copyright (C) 2002-2012 International Business Machines Corporation and others.
+//  Copyright (C) 2002-2013 International Business Machines Corporation and others.
 //  All Rights Reserved.
 //
 //  This file contains the ICU regular expression compiler, which is responsible
@@ -2254,6 +2254,8 @@ void        RegexCompile::compileSet(UnicodeSet *theSet)
 //                      Except for the specific opcodes used, the code is the same
 //                      for all three types (greedy, non-greedy, possessive) of
 //                      intervals.  The opcodes are supplied as parameters.
+//                      (There are two sets of opcodes - greedy & possessive use the
+//                      same ones, while non-greedy has it's own.)
 //
 //                      The code for interval loops has this form:
 //                         0  CTR_INIT   counter loc (in stack frame)
@@ -2275,9 +2277,15 @@ void        RegexCompile::compileInterval(int32_t InitOp,  int32_t LoopOp)
     insertOp(topOfBlock);
 
     // The operands for the CTR_INIT opcode include the index in the matcher data
-    //   of the counter.  Allocate it now.
+    //   of the counter.  Allocate it now. There are two data items
+    //        counterLoc   -->  Loop counter
+    //               +1    -->  Input index (for breaking non-progressing loops)
+    //                          (Only present if unbounded upper limit on loop)
     int32_t   counterLoc = fRXPat->fFrameSize;
     fRXPat->fFrameSize++;
+    if (fIntervalUpper < 0) {
+        fRXPat->fFrameSize++;
+    }
 
     int32_t   op = URX_BUILD(InitOp, counterLoc);
     fRXPat->fCompiledPat->setElementAt(op, topOfBlock);
@@ -3335,14 +3343,46 @@ int32_t   RegexCompile::maxMatchLength(int32_t start, int32_t end) {
 
         case URX_CTR_INIT:
         case URX_CTR_INIT_NG:
+            // For Loops, recursively call this function on the pattern for the loop body,
+            //   then multiply the result by the maximum loop count.
+            {
+                int32_t  loopEndLoc = URX_VAL(fRXPat->fCompiledPat->elementAti(loc+1));
+                if (loopEndLoc == loc+4) {
+                    // Loop has an empty body. No affect on max match length.
+                    // Continue processing with code after the loop end.
+                    loc = loopEndLoc;
+                    break;
+                }
+                
+                int32_t maxLoopCount = fRXPat->fCompiledPat->elementAti(loc+3);
+                if (maxLoopCount == -1) {
+                    // Unbounded Loop. No upper bound on match length.
+                    currentLen = INT32_MAX;
+                    break;
+                }
+
+                U_ASSERT(loopEndLoc >= loc+4);
+                int32_t  blockLen = maxMatchLength(loc+4, loopEndLoc-1);  // Recursive call.
+                if (blockLen == INT32_MAX) {
+                    currentLen = blockLen;
+                    break;
+                }
+                currentLen += blockLen * maxLoopCount;
+                loc = loopEndLoc;
+                break;
+            }
+
         case URX_CTR_LOOP:
         case URX_CTR_LOOP_NG:
+            // These opcodes will be skipped over by code for URX_CRT_INIT.
+            // We shouldn't encounter them here.
+            U_ASSERT(FALSE);
+            break;
+
         case URX_LOOP_SR_I:
         case URX_LOOP_DOT_I:
         case URX_LOOP_C:
             // For anything to do with loops, make the match length unbounded.
-            //   Note:  INIT instructions are multi-word.  Can ignore because
-            //          INT32_MAX length will stop the per-instruction loop.
             currentLen = INT32_MAX;
             break;
 
@@ -3595,10 +3635,10 @@ static const UChar      chDigit7    = 0x37;      // '9'
 static const UChar      chColon     = 0x3A;      // ':'
 static const UChar      chE         = 0x45;      // 'E'
 static const UChar      chQ         = 0x51;      // 'Q'
-static const UChar      chN         = 0x4E;      // 'N'
+//static const UChar      chN         = 0x4E;      // 'N'
 static const UChar      chP         = 0x50;      // 'P'
 static const UChar      chBackSlash = 0x5c;      // '\'  introduces a char escape
-static const UChar      chLBracket  = 0x5b;      // '['
+//static const UChar      chLBracket  = 0x5b;      // '['
 static const UChar      chRBracket  = 0x5d;      // ']'
 static const UChar      chUp        = 0x5e;      // '^'
 static const UChar      chLowerP    = 0x70;

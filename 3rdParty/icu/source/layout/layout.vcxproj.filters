@@ -36,7 +36,13 @@
     <ClCompile Include="ClassDefinitionTables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ContextualGlyphInsertionProc2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ContextualGlyphSubstProc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ContextualGlyphSubstProc2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ContextualSubstSubtables.cpp">
@@ -87,6 +93,9 @@
     <ClCompile Include="GXLayoutEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GXLayoutEngine2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="HangulLayoutEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -100,6 +109,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IndicRearrangementProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IndicRearrangementProcessor2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IndicReordering.cpp">
@@ -127,6 +139,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="LigatureSubstProc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LigatureSubstProc2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="LigatureSubstSubtables.cpp">
@@ -162,6 +177,9 @@
     <ClCompile Include="MorphTables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MorphTables2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="MPreFixups.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -169,6 +187,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="NonContextualGlyphSubstProc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NonContextualGlyphSubstProc2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="OpenTypeLayoutEngine.cpp">
@@ -189,13 +210,22 @@
     <ClCompile Include="SegmentArrayProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SegmentArrayProcessor2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="SegmentSingleProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SegmentSingleProcessor2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ShapingTypeData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SimpleArrayProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleArrayProcessor2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SinglePositioningSubtables.cpp">
@@ -207,13 +237,22 @@
     <ClCompile Include="SingleTableProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SingleTableProcessor2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="StateTableProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StateTableProcessor2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SubstitutionLookups.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SubtableProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SubtableProcessor2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ThaiLayoutEngine.cpp">
@@ -232,6 +271,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TrimmedArrayProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrimmedArrayProcessor2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ValueRecords.cpp">
@@ -266,10 +308,16 @@
     <ClInclude Include="ContextualGlyphInsertion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ContextualGlyphInsertionProc2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="ContextualGlyphSubstitution.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ContextualGlyphSubstProc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ContextualGlyphSubstProc2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ContextualSubstSubtables.h">
@@ -320,6 +368,9 @@
     <ClInclude Include="GXLayoutEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GXLayoutEngine2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="HangulLayoutEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -336,6 +387,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IndicRearrangementProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IndicRearrangementProcessor2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IndicReordering.h">
@@ -357,6 +411,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LigatureSubstProc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LigatureSubstProc2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LigatureSubstSubtables.h">
@@ -401,6 +458,9 @@
     <ClInclude Include="NonContextualGlyphSubstProc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NonContextualGlyphSubstProc2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="OpenTypeLayoutEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -422,10 +482,19 @@
     <ClInclude Include="SegmentArrayProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SegmentArrayProcessor2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="SegmentSingleProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SegmentSingleProcessor2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="SimpleArrayProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleArrayProcessor2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SinglePositioningSubtables.h">
@@ -437,7 +506,13 @@
     <ClInclude Include="SingleTableProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SingleTableProcessor2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="StateTableProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StateTableProcessor2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StateTables.h">
@@ -447,6 +522,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SubtableProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SubtableProcessor2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ThaiLayoutEngine.h">
@@ -462,6 +540,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TrimmedArrayProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrimmedArrayProcessor2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ValueRecords.h">

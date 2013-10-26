@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2010, International Business Machines
+ *   Copyright (C) 2005-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *   file name:  ucsdet.h
@@ -321,11 +321,20 @@ ucsdet_getUChars(const UCharsetMatch *ucsm,
   *  The returned UEnumeration provides access to the names of
   *  the charsets.
   *
+  *  <p>
   *  The state of the Charset detector that is passed in does not
   *  affect the result of this function, but requiring a valid, open
   *  charset detector as a parameter insures that the charset detection
   *  service has been safely initialized and that the required detection
   *  data is available.
+  *
+  *  <p>
+  *  <b>Note:</b> Multiple different charset encodings in a same family may use
+  *  a single shared name in this implementation. For example, this method returns
+  *  an array including "ISO-8859-1" (ISO Latin 1), but not including "windows-1252"
+  *  (Windows Latin 1). However, actual detection result could be "windows-1252"
+  *  when the input data matches Latin 1 code points with any points only available
+  *  in "windows-1252".
   *
   *  @param ucsd a Charset detector.
   *  @param status  Any error conditions are reported back in this variable.
@@ -334,7 +343,6 @@ ucsdet_getUChars(const UCharsetMatch *ucsm,
   */
 U_STABLE  UEnumeration * U_EXPORT2
 ucsdet_getAllDetectableCharsets(const UCharsetDetector *ucsd,  UErrorCode *status);
-
 
 /**
   *  Test whether input filtering is enabled for this charset detector.
@@ -346,6 +354,7 @@ ucsdet_getAllDetectableCharsets(const UCharsetDetector *ucsd,  UErrorCode *statu
   *  @return TRUE if filtering is enabled.
   *  @stable ICU 3.6
   */
+
 U_STABLE  UBool U_EXPORT2
 ucsdet_isInputFilterEnabled(const UCharsetDetector *ucsd);
 
@@ -363,6 +372,40 @@ ucsdet_isInputFilterEnabled(const UCharsetDetector *ucsd);
  */
 U_STABLE  UBool U_EXPORT2
 ucsdet_enableInputFilter(UCharsetDetector *ucsd, UBool filter);
+
+#ifndef U_HIDE_INTERNAL_API
+/**
+  *  Get an iterator over the set of detectable charsets -
+  *  over the charsets that are enabled by the specified charset detector.
+  *
+  *  The returned UEnumeration provides access to the names of
+  *  the charsets.
+  *
+  *  @param ucsd a Charset detector.
+  *  @param status  Any error conditions are reported back in this variable.
+  *  @return an iterator providing access to the detectable charset names by
+  *  the specified charset detector.
+  *  @internal
+  */
+U_INTERNAL UEnumeration * U_EXPORT2
+ucsdet_getDetectableCharsets(const UCharsetDetector *ucsd,  UErrorCode *status);
+
+/**
+  * Enable or disable individual charset encoding.
+  * A name of charset encoding must be included in the names returned by
+  * {@link #getAllDetectableCharsets()}.
+  *
+  * @param ucsd a Charset detector.
+  * @param encoding encoding the name of charset encoding.
+  * @param enabled <code>TRUE</code> to enable, or <code>FALSE</code> to disable the
+  *   charset encoding.
+  * @param status receives the return status. When the name of charset encoding
+  *   is not supported, U_ILLEGAL_ARGUMENT_ERROR is set.
+  * @internal
+  */
+U_INTERNAL void U_EXPORT2
+ucsdet_setDetectableCharset(UCharsetDetector *ucsd, const char *encoding, UBool enabled, UErrorCode *status);
+#endif  /* U_HIDE_INTERNAL_API */
 
 #endif
 #endif   /* __UCSDET_H */

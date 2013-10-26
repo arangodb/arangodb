@@ -1,60 +1,57 @@
 /*
 *******************************************************************************
-* Copyright (C) 2009-2012, International Business Machines Corporation and    *
-* others. All Rights Reserved.                                                *
+* Copyright (C) 2009-2013, International Business Machines Corporation and
+* others. All Rights Reserved.
 *******************************************************************************
 */
-
-/**
- * \file
- * \brief C API: AlphabeticIndex class
- */
 
 #include "unicode/utypes.h"
 
 #if !UCONFIG_NO_COLLATION && !UCONFIG_NO_NORMALIZATION
 
 #include "unicode/alphaindex.h"
+#include "unicode/coleitr.h"
 #include "unicode/coll.h"
+#include "unicode/localpointer.h"
 #include "unicode/normalizer2.h"
-#include "unicode/strenum.h"
 #include "unicode/tblcoll.h"
 #include "unicode/ulocdata.h"
 #include "unicode/uniset.h"
 #include "unicode/uobject.h"
-#include "unicode/uscript.h"
 #include "unicode/usetiter.h"
-#include "unicode/ustring.h"
 #include "unicode/utf16.h"
 
+#include "cmemory.h"
 #include "cstring.h"
-#include "mutex.h"
 #include "uassert.h"
-#include "ucln_in.h"
-#include "uhash.h"
 #include "uvector.h"
 
 //#include <string>
 //#include <iostream>
+
+#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+
 U_NAMESPACE_BEGIN
 
-UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(AlphabeticIndex)
+namespace {
 
-// Forward Declarations
-static int32_t U_CALLCONV
-PreferenceComparator(const void *context, const void *left, const void *right);
+/**
+ * Prefix string for Chinese index buckets.
+ * See http://unicode.org/repos/cldr/trunk/specs/ldml/tr35-collation.html#Collation_Indexes
+ */
+const UChar BASE[1] = { 0xFDD0 };
+const int32_t BASE_LENGTH = 1;
+
+UBool isOneLabelBetterThanOther(const Normalizer2 &nfkdNormalizer,
+                                const UnicodeString &one, const UnicodeString &other);
+
+}  // namespace
 
 static int32_t U_CALLCONV
-sortCollateComparator(const void *context, const void *left, const void *right);
+collatorComparator(const void *context, const void *left, const void *right);
 
 static int32_t U_CALLCONV
 recordCompareFn(const void *context, const void *left, const void *right);
-
-//  UVector<Bucket *> support function, delete a Bucket.
-static void U_CALLCONV
-alphaIndex_deleteBucket(void *obj) {
-    delete static_cast<AlphabeticIndex::Bucket *>(obj);
-}
 
 //  UVector<Record *> support function, delete a Record.
 static void U_CALLCONV
@@ -62,58 +59,177 @@ alphaIndex_deleteRecord(void *obj) {
     delete static_cast<AlphabeticIndex::Record *>(obj);
 }
 
+namespace {
 
+UnicodeString *ownedString(const UnicodeString &s, LocalPointer<UnicodeString> &owned,
+                           UErrorCode &errorCode) {
+    if (U_FAILURE(errorCode)) { return NULL; }
+    if (owned.isValid()) {
+        return owned.orphan();
+    }
+    UnicodeString *p = new UnicodeString(s);
+    if (p == NULL) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+    }
+    return p;
+}
 
-static const Normalizer2 *nfkdNormalizer;
+inline UnicodeString *getString(const UVector &list, int32_t i) {
+    return static_cast<UnicodeString *>(list[i]);
+}
 
-//
-//  Append the contents of a UnicodeSet to a UVector of UnicodeStrings.
-//  Append everything - individual characters are handled as strings of length 1.
-//  The destination vector owns the appended strings.
+inline AlphabeticIndex::Bucket *getBucket(const UVector &list, int32_t i) {
+    return static_cast<AlphabeticIndex::Bucket *>(list[i]);
+}
 
-static void appendUnicodeSetToUVector(UVector &dest, const UnicodeSet &source, UErrorCode &status) {
-    UnicodeSetIterator setIter(source);
-    while (setIter.next()) {
-        const UnicodeString &str = setIter.getString();
-        dest.addElement(str.clone(), status);
+inline AlphabeticIndex::Record *getRecord(const UVector &list, int32_t i) {
+    return static_cast<AlphabeticIndex::Record *>(list[i]);
+}
+
+/**
+ * Like Java Collections.binarySearch(List, String, Comparator).
+ *
+ * @return the index>=0 where the item was found,
+ *         or the index<0 for inserting the string at ~index in sorted order
+ */
+int32_t binarySearch(const UVector &list, const UnicodeString &s, const Collator &coll) {
+    if (list.size() == 0) { return ~0; }
+    int32_t start = 0;
+    int32_t limit = list.size();
+    for (;;) {
+        int32_t i = (start + limit) / 2;
+        const UnicodeString *si = static_cast<UnicodeString *>(list.elementAt(i));
+        UErrorCode errorCode = U_ZERO_ERROR;
+        UCollationResult cmp = coll.compare(s, *si, errorCode);
+        if (cmp == UCOL_EQUAL) {
+            return i;
+        } else if (cmp < 0) {
+            if (i == start) {
+                return ~start;  // insert s before *si
+            }
+            limit = i;
+        } else {
+            if (i == start) {
+                return ~(start + 1);  // insert s after *si
+            }
+            start = i;
+        }
     }
 }
 
+}  // namespace
 
-AlphabeticIndex::AlphabeticIndex(const Locale &locale, UErrorCode &status) {
-    init(status);
-    if (U_FAILURE(status)) {
-        return;
+// The BucketList is not in the anonymous namespace because only Clang
+// seems to support its use in other classes from there.
+// However, we also don't need U_I18N_API because it is not used from outside the i18n library.
+class BucketList : public UObject {
+public:
+    BucketList(UVector *bucketList, UVector *publicBucketList)
+            : bucketList_(bucketList), immutableVisibleList_(publicBucketList) {
+        int32_t displayIndex = 0;
+        for (int32_t i = 0; i < publicBucketList->size(); ++i) {
+            getBucket(*publicBucketList, i)->displayIndex_ = displayIndex++;
+        }
     }
-    locale_ = locale;
-    langType_ = langTypeFromLocale(locale_);
 
-    collator_ = Collator::createInstance(locale, status);
-    if (collator_ != NULL) {
-        collatorPrimaryOnly_ = collator_->clone();
+    // The virtual destructor must not be inline.
+    // See ticket #8454 for details.
+    virtual ~BucketList();
+
+    int32_t getBucketCount() const {
+        return immutableVisibleList_->size();
     }
-    if (collatorPrimaryOnly_ != NULL) {
-        collatorPrimaryOnly_->setStrength(Collator::PRIMARY);
+
+    int32_t getBucketIndex(const UnicodeString &name, const Collator &collatorPrimaryOnly,
+                           UErrorCode &errorCode) {
+        // binary search
+        int32_t start = 0;
+        int32_t limit = bucketList_->size();
+        while ((start + 1) < limit) {
+            int32_t i = (start + limit) / 2;
+            const AlphabeticIndex::Bucket *bucket = getBucket(*bucketList_, i);
+            UCollationResult nameVsBucket =
+                collatorPrimaryOnly.compare(name, bucket->lowerBoundary_, errorCode);
+            if (nameVsBucket < 0) {
+                limit = i;
+            } else {
+                start = i;
+            }
+        }
+        const AlphabeticIndex::Bucket *bucket = getBucket(*bucketList_, start);
+        if (bucket->displayBucket_ != NULL) {
+            bucket = bucket->displayBucket_;
+        }
+        return bucket->displayIndex_;
     }
-    getIndexExemplars(*initialLabels_, locale, status);
-    indexBuildRequired_ = TRUE;
-    if ((collator_ == NULL || collatorPrimaryOnly_ == NULL) && U_SUCCESS(status)) {
-        status = U_MEMORY_ALLOCATION_ERROR;
+
+    /** All of the buckets, visible and invisible. */
+    UVector *bucketList_;
+    /** Just the visible buckets. */
+    UVector *immutableVisibleList_;
+};
+
+BucketList::~BucketList() {
+    delete bucketList_;
+    if (immutableVisibleList_ != bucketList_) {
+        delete immutableVisibleList_;
     }
-    firstScriptCharacters_ = firstStringsInScript(status);
 }
+
+AlphabeticIndex::ImmutableIndex::~ImmutableIndex() {
+    delete buckets_;
+    delete collatorPrimaryOnly_;
+}
+
+int32_t
+AlphabeticIndex::ImmutableIndex::getBucketCount() const {
+    return buckets_->getBucketCount();
+}
+
+int32_t
+AlphabeticIndex::ImmutableIndex::getBucketIndex(
+        const UnicodeString &name, UErrorCode &errorCode) const {
+    return buckets_->getBucketIndex(name, *collatorPrimaryOnly_, errorCode);
+}
+
+const AlphabeticIndex::Bucket *
+AlphabeticIndex::ImmutableIndex::getBucket(int32_t index) const {
+    if (0 <= index && index < buckets_->getBucketCount()) {
+        return icu::getBucket(*buckets_->immutableVisibleList_, index);
+    } else {
+        return NULL;
+    }
+}
+
+AlphabeticIndex::AlphabeticIndex(const Locale &locale, UErrorCode &status)
+        : inputList_(NULL),
+          labelsIterIndex_(-1), itemsIterIndex_(0), currentBucket_(NULL),
+          maxLabelCount_(99),
+          initialLabels_(NULL), firstCharsInScripts_(NULL),
+          collator_(NULL), collatorPrimaryOnly_(NULL),
+          buckets_(NULL) {
+    init(&locale, status);
+}
+
+
+AlphabeticIndex::AlphabeticIndex(RuleBasedCollator *collator, UErrorCode &status)
+        : inputList_(NULL),
+          labelsIterIndex_(-1), itemsIterIndex_(0), currentBucket_(NULL),
+          maxLabelCount_(99),
+          initialLabels_(NULL), firstCharsInScripts_(NULL),
+          collator_(collator), collatorPrimaryOnly_(NULL),
+          buckets_(NULL) {
+    init(NULL, status);
+}
+
 
 
 AlphabeticIndex::~AlphabeticIndex() {
-    uhash_close(alreadyIn_);
-    delete bucketList_;
     delete collator_;
     delete collatorPrimaryOnly_;
-    delete firstScriptCharacters_;
-    delete labels_;
-    delete inputRecords_;
-    delete noDistinctSorting_;
-    delete notAlphabetic_;
+    delete firstCharsInScripts_;
+    delete buckets_;
+    delete inputList_;
     delete initialLabels_;
 }
 
@@ -123,317 +239,602 @@ AlphabeticIndex &AlphabeticIndex::addLabels(const UnicodeSet &additions, UErrorC
         return *this;
     }
     initialLabels_->addAll(additions);
+    clearBuckets();
     return *this;
 }
 
 
 AlphabeticIndex &AlphabeticIndex::addLabels(const Locale &locale, UErrorCode &status) {
-    if (U_FAILURE(status)) {
-        return *this;
-    }
-    UnicodeSet additions;
-    getIndexExemplars(additions, locale, status);
-    initialLabels_->addAll(additions);
+    addIndexExemplars(locale, status);
+    clearBuckets();
     return *this;
 }
 
 
+AlphabeticIndex::ImmutableIndex *AlphabeticIndex::buildImmutableIndex(UErrorCode &errorCode) {
+    if (U_FAILURE(errorCode)) { return NULL; }
+    // In C++, the ImmutableIndex must own its copy of the BucketList,
+    // even if it contains no records, for proper memory management.
+    // We could clone the buckets_ if they are not NULL,
+    // but that would be worth it only if this method is called multiple times,
+    // or called after using the old-style bucket iterator API.
+    LocalPointer<BucketList> immutableBucketList(createBucketList(errorCode));
+    LocalPointer<RuleBasedCollator> coll(
+        static_cast<RuleBasedCollator *>(collatorPrimaryOnly_->clone()));
+    if (immutableBucketList.isNull() || coll.isNull()) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    ImmutableIndex *immIndex = new ImmutableIndex(immutableBucketList.getAlias(), coll.getAlias());
+    if (immIndex == NULL) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    // The ImmutableIndex adopted its parameter objects.
+    immutableBucketList.orphan();
+    coll.orphan();
+    return immIndex;
+}
+
 int32_t AlphabeticIndex::getBucketCount(UErrorCode &status) {
-    buildIndex(status);
+    initBuckets(status);
     if (U_FAILURE(status)) {
         return 0;
     }
-    return bucketList_->size();
+    return buckets_->getBucketCount();
 }
 
 
 int32_t AlphabeticIndex::getRecordCount(UErrorCode &status) {
-    if (U_FAILURE(status)) {
+    if (U_FAILURE(status) || inputList_ == NULL) {
         return 0;
     }
-    return inputRecords_->size();
+    return inputList_->size();
 }
 
+void AlphabeticIndex::initLabels(UVector &indexCharacters, UErrorCode &errorCode) const {
+    const Normalizer2 *nfkdNormalizer = Normalizer2::getNFKDInstance(errorCode);
+    if (U_FAILURE(errorCode)) { return; }
 
-void AlphabeticIndex::buildIndex(UErrorCode &status) {
-    if (U_FAILURE(status)) {
-        return;
+    const UnicodeString &firstScriptBoundary = *getString(*firstCharsInScripts_, 0);
+    const UnicodeString &overflowBoundary =
+        *getString(*firstCharsInScripts_, firstCharsInScripts_->size() - 1);
+
+    // We make a sorted array of elements.
+    // Some of the input may be redundant.
+    // That is, we might have c, ch, d, where "ch" sorts just like "c", "h".
+    // We filter out those cases.
+    UnicodeSetIterator iter(*initialLabels_);
+    while (iter.next()) {
+        const UnicodeString *item = &iter.getString();
+        LocalPointer<UnicodeString> ownedItem;
+        UBool checkDistinct;
+        int32_t itemLength = item->length();
+        if (!item->hasMoreChar32Than(0, itemLength, 1)) {
+            checkDistinct = FALSE;
+        } else if(item->charAt(itemLength - 1) == 0x2a &&  // '*'
+                item->charAt(itemLength - 2) != 0x2a) {
+            // Use a label if it is marked with one trailing star,
+            // even if the label string sorts the same when all contractions are suppressed.
+            ownedItem.adoptInstead(new UnicodeString(*item, 0, itemLength - 1));
+            item = ownedItem.getAlias();
+            if (item == NULL) {
+                errorCode = U_MEMORY_ALLOCATION_ERROR;
+                return;
+            }
+            checkDistinct = FALSE;
+        } else {
+            checkDistinct = TRUE;
+        }
+        if (collatorPrimaryOnly_->compare(*item, firstScriptBoundary, errorCode) < 0) {
+            // Ignore a primary-ignorable or non-alphabetic index character.
+        } else if (collatorPrimaryOnly_->compare(*item, overflowBoundary, errorCode) >= 0) {
+            // Ignore an index characters that will land in the overflow bucket.
+        } else if (checkDistinct &&
+                collatorPrimaryOnly_->compare(*item, separated(*item), errorCode) == 0) {
+            // Ignore a multi-code point index character that does not sort distinctly
+            // from the sequence of its separate characters.
+        } else {
+            int32_t insertionPoint = binarySearch(indexCharacters, *item, *collatorPrimaryOnly_);
+            if (insertionPoint < 0) {
+                indexCharacters.insertElementAt(
+                    ownedString(*item, ownedItem, errorCode), ~insertionPoint, errorCode);
+            } else {
+                const UnicodeString &itemAlreadyIn = *getString(indexCharacters, insertionPoint);
+                if (isOneLabelBetterThanOther(*nfkdNormalizer, *item, itemAlreadyIn)) {
+                    indexCharacters.setElementAt(
+                        ownedString(*item, ownedItem, errorCode), insertionPoint);
+                }
+            }
+        }
     }
-    if (!indexBuildRequired_) {
-        return;
+    if (U_FAILURE(errorCode)) { return; }
+
+    // if the result is still too large, cut down to maxCount elements, by removing every nth element
+
+    int32_t size = indexCharacters.size() - 1;
+    if (size > maxLabelCount_) {
+        int32_t count = 0;
+        int32_t old = -1;
+        for (int32_t i = 0; i < indexCharacters.size();) {
+            ++count;
+            int32_t bump = count * maxLabelCount_ / size;
+            if (bump == old) {
+                indexCharacters.removeElementAt(i);
+            } else {
+                old = bump;
+                ++i;
+            }
+        }
     }
+}
 
-    // Discard any already-built data.
-    // This is important when the user builds and uses an index, then subsequently modifies it,
-    // necessitating a rebuild.
+namespace {
 
-    bucketList_->removeAllElements();
-    labels_->removeAllElements();
-    uhash_removeAll(alreadyIn_);
-    noDistinctSorting_->clear();
-    notAlphabetic_->clear();
+const UnicodeString &fixLabel(const UnicodeString &current, UnicodeString &temp) {
+    if (!current.startsWith(BASE, BASE_LENGTH)) {
+        return current;
+    }
+    UChar rest = current.charAt(BASE_LENGTH);
+    if (0x2800 < rest && rest <= 0x28FF) { // stroke count
+        int32_t count = rest-0x2800;
+        temp.setTo((UChar)(0x30 + count % 10));
+        if (count >= 10) {
+            count /= 10;
+            temp.insert(0, (UChar)(0x30 + count % 10));
+            if (count >= 10) {
+                count /= 10;
+                temp.insert(0, (UChar)(0x30 + count));
+            }
+        }
+        return temp.append((UChar)0x5283);
+    }
+    return temp.setTo(current, BASE_LENGTH);
+}
 
-    // first sort the incoming Labels, with a "best" ordering among items
-    // that are the same according to the collator
+UBool hasMultiplePrimaryWeights(
+        CollationElementIterator &cei, int32_t variableTop,
+        const UnicodeString &s, UErrorCode &errorCode) {
+    cei.setText(s, errorCode);
+    UBool seenPrimary = FALSE;
+    for (;;) {
+        int32_t ce32 = cei.next(errorCode);
+        if (ce32 == CollationElementIterator::NULLORDER) {
+            break;
+        }
+        int32_t p = CollationElementIterator::primaryOrder(ce32);
+        if (p > variableTop && (ce32 & 0xc0) != 0xc0) {
+            // not primary ignorable, and not a continuation CE
+            if (seenPrimary) {
+                return TRUE;
+            }
+            seenPrimary = TRUE;
+        }
+    }
+    return FALSE;
+}
 
-    UVector preferenceSorting(status);   // Vector of UnicodeStrings; owned by the vector.
-    preferenceSorting.setDeleter(uprv_deleteUObject);
-    appendUnicodeSetToUVector(preferenceSorting, *initialLabels_, status);
-    preferenceSorting.sortWithUComparator(PreferenceComparator, &status, status);
+}  // namespace
 
-    // We now make a set of Labels.
-    // Some of the input may, however, be redundant.
-    // That is, we might have c, ch, d, where "ch" sorts just like "c", "h"
-    // So we make a pass through, filtering out those cases.
-    // TODO: filtering these out would seem to be at odds with the eventual goal
-    //       of being able to split buckets that contain too many items.
+BucketList *AlphabeticIndex::createBucketList(UErrorCode &errorCode) const {
+    // Initialize indexCharacters.
+    UVector indexCharacters(errorCode);
+    indexCharacters.setDeleter(uprv_deleteUObject);
+    initLabels(indexCharacters, errorCode);
+    if (U_FAILURE(errorCode)) { return NULL; }
 
-    UnicodeSet labelSet;
-    for (int32_t psIndex=0; psIndex<preferenceSorting.size(); psIndex++) {
-        UnicodeString item = *static_cast<const UnicodeString *>(preferenceSorting.elementAt(psIndex));
-        // TODO:  Since preferenceSorting was originally populated from the contents of a UnicodeSet,
-        //        is it even possible for duplicates to show up in this check?
-        if (labelSet.contains(item)) {
-            UnicodeSetIterator itemAlreadyInIter(labelSet);
-            while (itemAlreadyInIter.next()) {
-                const UnicodeString &itemAlreadyIn = itemAlreadyInIter.getString();
-                if (collatorPrimaryOnly_->compare(item, itemAlreadyIn) == 0) {
-                    UnicodeSet *targets = static_cast<UnicodeSet *>(uhash_get(alreadyIn_, &itemAlreadyIn));
-                    if (targets == NULL) {
-                        // alreadyIn.put(itemAlreadyIn, targets = new LinkedHashSet<String>());
-                        targets = new UnicodeSet();
-                        uhash_put(alreadyIn_, itemAlreadyIn.clone(), targets, &status);
+    // Variables for hasMultiplePrimaryWeights().
+    LocalPointer<CollationElementIterator> cei(
+        collatorPrimaryOnly_->createCollationElementIterator(emptyString_));
+    if (cei.isNull()) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    int32_t variableTop;
+    if (collatorPrimaryOnly_->getAttribute(UCOL_ALTERNATE_HANDLING, errorCode) == UCOL_SHIFTED) {
+        variableTop = CollationElementIterator::primaryOrder(
+            (int32_t)collatorPrimaryOnly_->getVariableTop(errorCode));
+    } else {
+        variableTop = 0;
+    }
+    UBool hasInvisibleBuckets = FALSE;
+
+    // Helper arrays for Chinese Pinyin collation.
+    Bucket *asciiBuckets[26] = {
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    };
+    Bucket *pinyinBuckets[26] = {
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    };
+    UBool hasPinyin = FALSE;
+
+    LocalPointer<UVector> bucketList(new UVector(errorCode));
+    if (bucketList.isNull()) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    bucketList->setDeleter(uprv_deleteUObject);
+
+    // underflow bucket
+    Bucket *bucket = new Bucket(getUnderflowLabel(), emptyString_, U_ALPHAINDEX_UNDERFLOW);
+    if (bucket == NULL) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    bucketList->addElement(bucket, errorCode);
+    if (U_FAILURE(errorCode)) { return NULL; }
+
+    UnicodeString temp;
+
+    // fix up the list, adding underflow, additions, overflow
+    // Insert inflow labels as needed.
+    int32_t scriptIndex = -1;
+    const UnicodeString *scriptUpperBoundary = &emptyString_;
+    for (int32_t i = 0; i < indexCharacters.size(); ++i) {
+        UnicodeString &current = *getString(indexCharacters, i);
+        if (collatorPrimaryOnly_->compare(current, *scriptUpperBoundary, errorCode) >= 0) {
+            // We crossed the script boundary into a new script.
+            const UnicodeString &inflowBoundary = *scriptUpperBoundary;
+            UBool skippedScript = FALSE;
+            for (;;) {
+                scriptUpperBoundary = getString(*firstCharsInScripts_, ++scriptIndex);
+                if (collatorPrimaryOnly_->compare(current, *scriptUpperBoundary, errorCode) < 0) {
+                    break;
+                }
+                skippedScript = TRUE;
+            }
+            if (skippedScript && bucketList->size() > 1) {
+                // We are skipping one or more scripts,
+                // and we are not just getting out of the underflow label.
+                bucket = new Bucket(getInflowLabel(), inflowBoundary, U_ALPHAINDEX_INFLOW);
+                if (bucket == NULL) {
+                    errorCode = U_MEMORY_ALLOCATION_ERROR;
+                    return NULL;
+                }
+                bucketList->addElement(bucket, errorCode);
+            }
+        }
+        // Add a bucket with the current label.
+        bucket = new Bucket(fixLabel(current, temp), current, U_ALPHAINDEX_NORMAL);
+        if (bucket == NULL) {
+            errorCode = U_MEMORY_ALLOCATION_ERROR;
+            return NULL;
+        }
+        bucketList->addElement(bucket, errorCode);
+        // Remember ASCII and Pinyin buckets for Pinyin redirects.
+        UChar c;
+        if (current.length() == 1 && 0x41 <= (c = current.charAt(0)) && c <= 0x5A) {  // A-Z
+            asciiBuckets[c - 0x41] = bucket;
+        } else if (current.length() == BASE_LENGTH + 1 && current.startsWith(BASE, BASE_LENGTH) &&
+                0x41 <= (c = current.charAt(BASE_LENGTH)) && c <= 0x5A) {
+            pinyinBuckets[c - 0x41] = bucket;
+            hasPinyin = TRUE;
+        }
+        // Check for multiple primary weights.
+        if (!current.startsWith(BASE, BASE_LENGTH) &&
+                hasMultiplePrimaryWeights(*cei, variableTop, current, errorCode) &&
+                current.charAt(current.length() - 1) != 0xFFFF /* !current.endsWith("\uffff") */) {
+            // "AE-ligature" or "Sch" etc.
+            for (int32_t i = bucketList->size() - 2;; --i) {
+                Bucket *singleBucket = getBucket(*bucketList, i);
+                if (singleBucket->labelType_ != U_ALPHAINDEX_NORMAL) {
+                    // There is no single-character bucket since the last
+                    // underflow or inflow label.
+                    break;
+                }
+                if (singleBucket->displayBucket_ == NULL &&
+                        !hasMultiplePrimaryWeights(
+                            *cei, variableTop, singleBucket->lowerBoundary_, errorCode)) {
+                    // Add an invisible bucket that redirects strings greater than the expansion
+                    // to the previous single-character bucket.
+                    // For example, after ... Q R S Sch we add Sch\uFFFF->S
+                    // and after ... Q R S Sch Sch\uFFFF St we add St\uFFFF->S.
+                    bucket = new Bucket(emptyString_,
+                        UnicodeString(current).append((UChar)0xFFFF),
+                        U_ALPHAINDEX_NORMAL);
+                    if (bucket == NULL) {
+                        errorCode = U_MEMORY_ALLOCATION_ERROR;
+                        return NULL;
                     }
-                    targets->add(item);
+                    bucket->displayBucket_ = singleBucket;
+                    bucketList->addElement(bucket, errorCode);
+                    hasInvisibleBuckets = TRUE;
                     break;
                 }
             }
-        } else if (item.moveIndex32(0, 1) < item.length() &&  // Label contains more than one code point.
-                   collatorPrimaryOnly_->compare(item, separated(item)) == 0) {
-            noDistinctSorting_->add(item);
-        } else if (!ALPHABETIC->containsSome(item)) {
-            notAlphabetic_->add(item);
-        } else {
-            labelSet.add(item);
         }
     }
-
-    // If we have no labels, hard-code a fallback default set of [A-Z]
-    // This case can occur with locales that don't have exemplar character data, including root.
-    // A no-labels situation will cause other problems; it needs to be avoided.
-    if (labelSet.isEmpty()) {
-        labelSet.add((UChar32)0x41, (UChar32)0x5A);
+    if (U_FAILURE(errorCode)) { return NULL; }
+    if (bucketList->size() == 1) {
+        // No real labels, show only the underflow label.
+        BucketList *bl = new BucketList(bucketList.getAlias(), bucketList.getAlias());
+        if (bl == NULL) {
+            errorCode = U_MEMORY_ALLOCATION_ERROR;
+            return NULL;
+        }
+        bucketList.orphan();
+        return bl;
     }
+    // overflow bucket
+    bucket = new Bucket(getOverflowLabel(), *scriptUpperBoundary, U_ALPHAINDEX_OVERFLOW);
+    if (bucket == NULL) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    bucketList->addElement(bucket, errorCode); // final
 
-    // Move the set of Labels from the set into a vector, and sort
-    // according to the collator.
-
-    appendUnicodeSetToUVector(*labels_, labelSet, status);
-    labels_->sortWithUComparator(sortCollateComparator, collatorPrimaryOnly_, status);
-
-    // if the result is still too large, cut down to maxLabelCount_ elements, by removing every nth element
-    //    Implemented by copying the elements to be retained to a new UVector.
-
-    const int32_t size = labelSet.size() - 1;
-    if (size > maxLabelCount_) {
-        UVector *newLabels = new UVector(status);
-        newLabels->setDeleter(uprv_deleteUObject);
-        int32_t count = 0;
-        int32_t old = -1;
-        for (int32_t srcIndex=0; srcIndex<labels_->size(); srcIndex++) {
-            const UnicodeString *str = static_cast<const UnicodeString *>(labels_->elementAt(srcIndex));
-            ++count;
-            const int32_t bump = count * maxLabelCount_ / size;
-            if (bump == old) {
-                // it.remove();
-            } else {
-                newLabels->addElement(str->clone(), status);
-                old = bump;
+    if (hasPinyin) {
+        // Redirect Pinyin buckets.
+        Bucket *asciiBucket = NULL;
+        for (int32_t i = 0; i < 26; ++i) {
+            if (asciiBuckets[i] != NULL) {
+                asciiBucket = asciiBuckets[i];
+            }
+            if (pinyinBuckets[i] != NULL && asciiBucket != NULL) {
+                pinyinBuckets[i]->displayBucket_ = asciiBucket;
+                hasInvisibleBuckets = TRUE;
             }
         }
-        delete labels_;
-        labels_ = newLabels;
     }
 
-    // We now know the list of labels.
-    // Create a corresponding list of buckets, one per label.
-    
-    buildBucketList(status);    // Corresponds to Java BucketList constructor.
-
-    // Bin the Records into the Buckets.
-    bucketRecords(status);
-
-    indexBuildRequired_ = FALSE;
-    resetBucketIterator(status);
-}
-
-//
-//  buildBucketList()    Corresponds to the BucketList constructor in the Java version.
-
-void AlphabeticIndex::buildBucketList(UErrorCode &status) {
-    UnicodeString labelStr = getUnderflowLabel();
-    Bucket *b = new Bucket(labelStr, *EMPTY_STRING, U_ALPHAINDEX_UNDERFLOW, status);
-    bucketList_->addElement(b, status);
-
-    // Build up the list, adding underflow, additions, overflow
-    // insert infix labels as needed, using \uFFFF.
-    const UnicodeString *last = static_cast<UnicodeString *>(labels_->elementAt(0));
-    b = new Bucket(*last, *last, U_ALPHAINDEX_NORMAL, status);
-    bucketList_->addElement(b, status);
-
-    UnicodeSet lastSet;
-    UnicodeSet set;
-    AlphabeticIndex::getScriptSet(lastSet, *last, status);
-    lastSet.removeAll(*IGNORE_SCRIPTS);
-
-    for (int i = 1; i < labels_->size(); ++i) {
-        UnicodeString *current = static_cast<UnicodeString *>(labels_->elementAt(i));
-        getScriptSet(set, *current, status);
-        set.removeAll(*IGNORE_SCRIPTS);
-        if (lastSet.containsNone(set)) {
-            // check for adjacent
-            const UnicodeString &overflowComparisonString = getOverflowComparisonString(*last, status);
-            if (collatorPrimaryOnly_->compare(overflowComparisonString, *current) < 0) {
-                labelStr = getInflowLabel();
-                b = new Bucket(labelStr, overflowComparisonString, U_ALPHAINDEX_INFLOW, status);
-                bucketList_->addElement(b, status);
-                i++;
-                lastSet = set;
+    if (U_FAILURE(errorCode)) { return NULL; }
+    if (!hasInvisibleBuckets) {
+        BucketList *bl = new BucketList(bucketList.getAlias(), bucketList.getAlias());
+        if (bl == NULL) {
+            errorCode = U_MEMORY_ALLOCATION_ERROR;
+            return NULL;
+        }
+        bucketList.orphan();
+        return bl;
+    }
+    // Merge inflow buckets that are visually adjacent.
+    // Iterate backwards: Merge inflow into overflow rather than the other way around.
+    int32_t i = bucketList->size() - 1;
+    Bucket *nextBucket = getBucket(*bucketList, i);
+    while (--i > 0) {
+        bucket = getBucket(*bucketList, i);
+        if (bucket->displayBucket_ != NULL) {
+            continue;  // skip invisible buckets
+        }
+        if (bucket->labelType_ == U_ALPHAINDEX_INFLOW) {
+            if (nextBucket->labelType_ != U_ALPHAINDEX_NORMAL) {
+                bucket->displayBucket_ = nextBucket;
+                continue;
             }
         }
-        b = new Bucket(*current, *current, U_ALPHAINDEX_NORMAL, status);
-        bucketList_->addElement(b, status);
-        last = current;
-        lastSet = set;
+        nextBucket = bucket;
     }
-    const UnicodeString &limitString = getOverflowComparisonString(*last, status);
-    b = new Bucket(getOverflowLabel(), limitString, U_ALPHAINDEX_OVERFLOW, status);
-    bucketList_->addElement(b, status);
-    // final overflow bucket
+
+    LocalPointer<UVector> publicBucketList(new UVector(errorCode));
+    if (bucketList.isNull()) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    // Do not call publicBucketList->setDeleter():
+    // This vector shares its objects with the bucketList.
+    for (int32_t i = 0; i < bucketList->size(); ++i) {
+        bucket = getBucket(*bucketList, i);
+        if (bucket->displayBucket_ == NULL) {
+            publicBucketList->addElement(bucket, errorCode);
+        }
+    }
+    if (U_FAILURE(errorCode)) { return NULL; }
+    BucketList *bl = new BucketList(bucketList.getAlias(), publicBucketList.getAlias());
+    if (bl == NULL) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return NULL;
+    }
+    bucketList.orphan();
+    publicBucketList.orphan();
+    return bl;
 }
 
-
-//
-//   Place all of the raw input records into the correct bucket.
-//
-//       Begin by sorting the input records; this lets us bin them in a single pass.
-//
-//       Note on storage management:  The input records are owned by the
-//       inputRecords_ vector, and will (eventually) be auto-deleted by it.
-//       The Bucket objects have pointers to the Record objects, but do not own them.
-//
-void AlphabeticIndex::bucketRecords(UErrorCode &status) {
-    if (U_FAILURE(status)) {
+/**
+ * Creates an index, and buckets and sorts the list of records into the index.
+ */
+void AlphabeticIndex::initBuckets(UErrorCode &errorCode) {
+    if (U_FAILURE(errorCode) || buckets_ != NULL) {
+        return;
+    }
+    buckets_ = createBucketList(errorCode);
+    if (U_FAILURE(errorCode) || inputList_ == NULL || inputList_->isEmpty()) {
         return;
     }
 
-    inputRecords_->sortWithUComparator(recordCompareFn, collator_, status);
-    U_ASSERT(bucketList_->size() > 0);   // Should always have at least an overflow
-                                         //   bucket, even if no user labels.
-    int32_t bucketIndex = 0;
-    Bucket *destBucket = static_cast<Bucket *>(bucketList_->elementAt(bucketIndex));
-    Bucket *nextBucket = NULL;
-    if (bucketIndex+1 < bucketList_->size()) {
-        nextBucket = static_cast<Bucket *>(bucketList_->elementAt(bucketIndex+1));
-    }
-    int32_t recordIndex = 0;
-    Record *r = static_cast<Record *>(inputRecords_->elementAt(recordIndex));
-    while (recordIndex < inputRecords_->size()) {
-        if (nextBucket == NULL ||
-            collatorPrimaryOnly_->compare(r->sortingName_, nextBucket->lowerBoundary_) < 0) {
-                // Record goes in current bucket.  Advance to next record,
-                // stay on current bucket.
-                destBucket->records_->addElement(r, status);
-                ++recordIndex;
-                r = static_cast<Record *>(inputRecords_->elementAt(recordIndex));
-        } else {
-            // Advance to the next bucket, stay on current record.
-            bucketIndex++;
-            destBucket = nextBucket;
-            if (bucketIndex+1 < bucketList_->size()) {
-                nextBucket = static_cast<Bucket *>(bucketList_->elementAt(bucketIndex+1));
-            } else {
-                nextBucket = NULL;
-            }
-            U_ASSERT(destBucket != NULL);
-        }
-    }
+    // Sort the records by name.
+    // Stable sort preserves input order of collation duplicates.
+    inputList_->sortWithUComparator(recordCompareFn, collator_, errorCode);
 
+    // Now, we traverse all of the input, which is now sorted.
+    // If the item doesn't go in the current bucket, we find the next bucket that contains it.
+    // This makes the process order n*log(n), since we just sort the list and then do a linear process.
+    // However, if the user adds an item at a time and then gets the buckets, this isn't efficient, so
+    // we need to improve it for that case.
+
+    Bucket *currentBucket = getBucket(*buckets_->bucketList_, 0);
+    int32_t bucketIndex = 1;
+    Bucket *nextBucket;
+    const UnicodeString *upperBoundary;
+    if (bucketIndex < buckets_->bucketList_->size()) {
+        nextBucket = getBucket(*buckets_->bucketList_, bucketIndex++);
+        upperBoundary = &nextBucket->lowerBoundary_;
+    } else {
+        nextBucket = NULL;
+        upperBoundary = NULL;
+    }
+    for (int32_t i = 0; i < inputList_->size(); ++i) {
+        Record *r = getRecord(*inputList_, i);
+        // if the current bucket isn't the right one, find the one that is
+        // We have a special flag for the last bucket so that we don't look any further
+        while (upperBoundary != NULL &&
+                collatorPrimaryOnly_->compare(r->name_, *upperBoundary, errorCode) >= 0) {
+            currentBucket = nextBucket;
+            // now reset the boundary that we compare against
+            if (bucketIndex < buckets_->bucketList_->size()) {
+                nextBucket = getBucket(*buckets_->bucketList_, bucketIndex++);
+                upperBoundary = &nextBucket->lowerBoundary_;
+            } else {
+                upperBoundary = NULL;
+            }
+        }
+        // now put the record into the bucket.
+        Bucket *bucket = currentBucket;
+        if (bucket->displayBucket_ != NULL) {
+            bucket = bucket->displayBucket_;
+        }
+        if (bucket->records_ == NULL) {
+            bucket->records_ = new UVector(errorCode);
+            if (bucket->records_ == NULL) {
+                errorCode = U_MEMORY_ALLOCATION_ERROR;
+                return;
+            }
+        }
+        bucket->records_->addElement(r, errorCode);
+    }
+}
+
+void AlphabeticIndex::clearBuckets() {
+    if (buckets_ != NULL) {
+        delete buckets_;
+        buckets_ = NULL;
+        internalResetBucketIterator();
+    }
+}
+
+void AlphabeticIndex::internalResetBucketIterator() {
+    labelsIterIndex_ = -1;
+    currentBucket_ = NULL;
 }
 
 
-void AlphabeticIndex::getIndexExemplars(UnicodeSet  &dest, const Locale &locale, UErrorCode &status) {
-    if (U_FAILURE(status)) {
-        return;
+void AlphabeticIndex::addIndexExemplars(const Locale &locale, UErrorCode &status) {
+    if (U_FAILURE(status)) { return; }
+    // Chinese index characters, which are specific to each of the several Chinese tailorings,
+    // take precedence over the single locale data exemplar set per language.
+    const char *language = locale.getLanguage();
+    if (uprv_strcmp(language, "zh") == 0 || uprv_strcmp(language, "ja") == 0 ||
+            uprv_strcmp(language, "ko") == 0) {
+        // TODO: This should be done regardless of the language, but it's expensive.
+        // We should add a Collator function (can be @internal)
+        // to enumerate just the contractions that start with a given code point or string.
+        if (addChineseIndexCharacters(status) || U_FAILURE(status)) {
+            return;
+        }
     }
 
     LocalULocaleDataPointer uld(ulocdata_open(locale.getName(), &status));
+    if (U_FAILURE(status)) {
+        return;
+    }
+
     UnicodeSet exemplars;
     ulocdata_getExemplarSet(uld.getAlias(), exemplars.toUSet(), 0, ULOCDATA_ES_INDEX, &status);
     if (U_SUCCESS(status)) {
-        dest.addAll(exemplars);
+        initialLabels_->addAll(exemplars);
         return;
     }
     status = U_ZERO_ERROR;  // Clear out U_MISSING_RESOURCE_ERROR
 
-    // Locale data did not include explicit Index characters.
+    // The locale data did not include explicit Index characters.
     // Synthesize a set of them from the locale's standard exemplar characters.
-
     ulocdata_getExemplarSet(uld.getAlias(), exemplars.toUSet(), 0, ULOCDATA_ES_STANDARD, &status);
     if (U_FAILURE(status)) {
         return;
     }
 
-    // Upper-case any that aren't already so.
-    //   (We only do this for synthesized index characters.)
-
-    UnicodeSetIterator it(exemplars);
-    UnicodeString upperC;
-    UnicodeSet  lowersToRemove;
-    UnicodeSet  uppersToAdd;
-    while (it.next()) {
-        const UnicodeString &exemplarC = it.getString();
-        upperC = exemplarC;
-        upperC.toUpper(locale);
-        if (exemplarC != upperC) {
-            lowersToRemove.add(exemplarC);
-            uppersToAdd.add(upperC);
-        }
-    }
-    exemplars.removeAll(lowersToRemove);
-    exemplars.addAll(uppersToAdd);
-
-    // get the exemplars, and handle special cases
-
     // question: should we add auxiliary exemplars?
-    if (exemplars.containsSome(*CORE_LATIN)) {
-        exemplars.addAll(*CORE_LATIN);
+    if (exemplars.containsSome(0x61, 0x7A) /* a-z */ || exemplars.size() == 0) {
+        exemplars.add(0x61, 0x7A);
     }
-    if (exemplars.containsSome(*HANGUL)) {
+    if (exemplars.containsSome(0xAC00, 0xD7A3)) {  // Hangul syllables
         // cut down to small list
-        UnicodeSet BLOCK_HANGUL_SYLLABLES(UNICODE_STRING_SIMPLE("[:block=hangul_syllables:]"), status);
-        exemplars.removeAll(BLOCK_HANGUL_SYLLABLES);
-        exemplars.addAll(*HANGUL);
+        exemplars.remove(0xAC00, 0xD7A3).
+            add(0xAC00).add(0xB098).add(0xB2E4).add(0xB77C).
+            add(0xB9C8).add(0xBC14).add(0xC0AC).add(0xC544).
+            add(0xC790).add(0xCC28).add(0xCE74).add(0xD0C0).
+            add(0xD30C).add(0xD558);
     }
-    if (exemplars.containsSome(*ETHIOPIC)) {
+    if (exemplars.containsSome(0x1200, 0x137F)) {  // Ethiopic block
         // cut down to small list
         // make use of the fact that Ethiopic is allocated in 8's, where
         // the base is 0 mod 8.
-        UnicodeSetIterator  it(*ETHIOPIC);
+        UnicodeSet ethiopic(
+            UNICODE_STRING_SIMPLE("[[:Block=Ethiopic:]&[:Script=Ethiopic:]]"), status);
+        UnicodeSetIterator it(ethiopic);
         while (it.next() && !it.isString()) {
             if ((it.getCodepoint() & 0x7) != 0) {
                 exemplars.remove(it.getCodepoint());
             }
         }
     }
-    dest.addAll(exemplars);
+
+    // Upper-case any that aren't already so.
+    //   (We only do this for synthesized index characters.)
+    UnicodeSetIterator it(exemplars);
+    UnicodeString upperC;
+    while (it.next()) {
+        const UnicodeString &exemplarC = it.getString();
+        upperC = exemplarC;
+        upperC.toUpper(locale);
+        initialLabels_->add(upperC);
+    }
+}
+
+UBool AlphabeticIndex::addChineseIndexCharacters(UErrorCode &errorCode) {
+    UnicodeSet contractions;
+    ucol_getContractionsAndExpansions(collatorPrimaryOnly_->getUCollator(),
+                                      contractions.toUSet(), NULL, FALSE, &errorCode);
+    if (U_FAILURE(errorCode)) { return FALSE; }
+    UnicodeString firstHanBoundary;
+    UBool hasPinyin = FALSE;
+    UnicodeSetIterator iter(contractions);
+    while (iter.next()) {
+        const UnicodeString &s = iter.getString();
+        if (s.startsWith(BASE, BASE_LENGTH)) {
+            initialLabels_->add(s);
+            if (firstHanBoundary.isEmpty() ||
+                    collatorPrimaryOnly_->compare(s, firstHanBoundary, errorCode) < 0) {
+                firstHanBoundary = s;
+            }
+            UChar c = s.charAt(s.length() - 1);
+            if (0x41 <= c && c <= 0x5A) {  // A-Z
+                hasPinyin = TRUE;
+            }
+        }
+    }
+    if (hasPinyin) {
+        initialLabels_->add(0x41, 0x5A);  // A-Z
+    }
+    if (!firstHanBoundary.isEmpty()) {
+        // The hardcoded list of script boundaries includes U+4E00
+        // which is tailored to not be the first primary
+        // in all Chinese tailorings except "unihan".
+        // Replace U+4E00 with the first boundary string from the tailoring.
+        // TODO: This becomes obsolete when the root collator gets
+        // reliable script-first-primary mappings.
+        int32_t hanIndex = binarySearch(
+                *firstCharsInScripts_, UnicodeString((UChar)0x4E00), *collatorPrimaryOnly_);
+        if (hanIndex >= 0) {
+            UnicodeString *fh = new UnicodeString(firstHanBoundary);
+            if (fh == NULL) {
+                errorCode = U_MEMORY_ALLOCATION_ERROR;
+                return FALSE;
+            }
+            firstCharsInScripts_->setElementAt(fh, hanIndex);
+        }
+        return TRUE;
+    } else {
+        return FALSE;
+    }
 }
 
 
 /*
  * Return the string with interspersed CGJs. Input must have more than 2 codepoints.
  */
-static const UChar32 CGJ = (UChar)0x034F;
+static const UChar CGJ = 0x034F;
 UnicodeString AlphabeticIndex::separated(const UnicodeString &item) {
     UnicodeString result;
     if (item.length() == 0) {
@@ -486,21 +887,21 @@ const UnicodeString &AlphabeticIndex::getUnderflowLabel() const {
 
 AlphabeticIndex &AlphabeticIndex::setInflowLabel(const UnicodeString &label, UErrorCode &/*status*/) {
     inflowLabel_ = label;
-    indexBuildRequired_ = TRUE;
+    clearBuckets();
     return *this;
 }
 
 
 AlphabeticIndex &AlphabeticIndex::setOverflowLabel(const UnicodeString &label, UErrorCode &/*status*/) {
     overflowLabel_ = label;
-    indexBuildRequired_ = TRUE;
+    clearBuckets();
     return *this;
 }
 
 
 AlphabeticIndex &AlphabeticIndex::setUnderflowLabel(const UnicodeString &label, UErrorCode &/*status*/) {
     underflowLabel_ = label;
-    indexBuildRequired_ = TRUE;
+    clearBuckets();
     return *this;
 }
 
@@ -519,213 +920,86 @@ AlphabeticIndex &AlphabeticIndex::setMaxLabelCount(int32_t maxLabelCount, UError
         return *this;
     }
     maxLabelCount_ = maxLabelCount;
-    if (maxLabelCount < bucketList_->size()) {
-        indexBuildRequired_ = TRUE;
-    }
+    clearBuckets();
     return *this;
 }
 
-
-const UnicodeString &AlphabeticIndex::getOverflowComparisonString(const UnicodeString &lowerLimit, UErrorCode &/*status*/) {
-    for (int32_t i=0; i<firstScriptCharacters_->size(); i++) {
-        const UnicodeString *s =
-                static_cast<const UnicodeString *>(firstScriptCharacters_->elementAt(i));
-        if (collator_->compare(*s, lowerLimit) > 0) {
-            return *s;
-        }
-    }
-    return *EMPTY_STRING;
-}
-
-UnicodeSet *AlphabeticIndex::getScriptSet(UnicodeSet &dest, const UnicodeString &codePoint, UErrorCode &status) {
-    if (U_FAILURE(status)) {
-        return &dest;
-    }
-    UChar32 cp = codePoint.char32At(0);
-    UScriptCode scriptCode = uscript_getScript(cp, &status);
-    dest.applyIntPropertyValue(UCHAR_SCRIPT, scriptCode, status);
-    return &dest;
-}
 
 //
 //  init() - Common code for constructors.
 //
 
-void AlphabeticIndex::init(UErrorCode &status) {
-    // Initialize statics if needed.
-    AlphabeticIndex::staticInit(status);
-
-    // Put the object into a known state so that the destructor will function.
-
-    alreadyIn_             = NULL;
-    bucketList_            = NULL;
-    collator_              = NULL;
-    collatorPrimaryOnly_   = NULL;
-    currentBucket_         = NULL;
-    firstScriptCharacters_ = NULL;
-    initialLabels_         = NULL;
-    indexBuildRequired_    = TRUE;
-    inputRecords_          = NULL;
-    itemsIterIndex_        = 0;
-    labels_                = NULL;
-    labelsIterIndex_       = 0;
-    maxLabelCount_         = 99;
-    noDistinctSorting_     = NULL;
-    notAlphabetic_         = NULL;
-    recordCounter_         = 0;
-
-    if (U_FAILURE(status)) {
+void AlphabeticIndex::init(const Locale *locale, UErrorCode &status) {
+    if (U_FAILURE(status)) { return; }
+    if (locale == NULL && collator_ == NULL) {
+        status = U_ILLEGAL_ARGUMENT_ERROR;
         return;
     }
-    alreadyIn_             = uhash_open(uhash_hashUnicodeString,    // Key Hash,
-                                        uhash_compareUnicodeString, // key Comparator,
-                                        NULL,                       // value Comparator
-                                        &status);
-    uhash_setKeyDeleter(alreadyIn_, uprv_deleteUObject);
-    uhash_setValueDeleter(alreadyIn_, uprv_deleteUObject);
 
-    bucketList_            = new UVector(status);
-    bucketList_->setDeleter(alphaIndex_deleteBucket);
-    labels_                = new UVector(status);
-    labels_->setDeleter(uprv_deleteUObject);
-    labels_->setComparer(uhash_compareUnicodeString);
-    inputRecords_          = new UVector(status);
-    inputRecords_->setDeleter(alphaIndex_deleteRecord);
-
-    noDistinctSorting_     = new UnicodeSet();
-    notAlphabetic_         = new UnicodeSet();
     initialLabels_         = new UnicodeSet();
+    if (initialLabels_ == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return;
+    }
 
-    inflowLabel_.remove();
-    inflowLabel_.append((UChar)0x2026);    // Ellipsis
+    inflowLabel_.setTo((UChar)0x2026);    // Ellipsis
     overflowLabel_ = inflowLabel_;
     underflowLabel_ = inflowLabel_;
 
-    // TODO:  check for memory allocation failures.
-}
-
-
-static  UBool  indexCharactersAreInitialized = FALSE;
-
-//  Index Characters Clean up function.  Delete statically allocated constant stuff.
-U_CDECL_BEGIN
-static UBool U_CALLCONV indexCharacters_cleanup(void) {
-    AlphabeticIndex::staticCleanup();
-    return TRUE;
-}
-U_CDECL_END
-
-void AlphabeticIndex::staticCleanup() {
-    delete ALPHABETIC;
-    ALPHABETIC = NULL;
-    delete HANGUL;
-    HANGUL = NULL;
-    delete ETHIOPIC;
-    ETHIOPIC = NULL;
-    delete CORE_LATIN;
-    CORE_LATIN = NULL;
-    delete IGNORE_SCRIPTS;
-    IGNORE_SCRIPTS = NULL;
-    delete TO_TRY;
-    TO_TRY = NULL;
-    delete UNIHAN;
-    UNIHAN = NULL;
-    delete EMPTY_STRING;
-    EMPTY_STRING = NULL;
-    nfkdNormalizer = NULL;  // ref to a singleton.  Do not delete.
-    indexCharactersAreInitialized = FALSE;
-}
-
-
-UnicodeSet *AlphabeticIndex::ALPHABETIC;
-UnicodeSet *AlphabeticIndex::HANGUL;
-UnicodeSet *AlphabeticIndex::ETHIOPIC;
-UnicodeSet *AlphabeticIndex::CORE_LATIN;
-UnicodeSet *AlphabeticIndex::IGNORE_SCRIPTS;
-UnicodeSet *AlphabeticIndex::TO_TRY;
-UnicodeSet *AlphabeticIndex::UNIHAN;
-const UnicodeString *AlphabeticIndex::EMPTY_STRING;
-
-//
-//  staticInit()    One-time initialization of constants.
-//                  Thread safe.  Called from constructors.
-//                  Mutex overhead is not a concern.  AlphabeticIndex constructors are
-//                  sufficiently heavy that the cost of the mutex check is not significant.
-
-void AlphabeticIndex::staticInit(UErrorCode &status) {
-    static UMTX IndexCharsInitMutex;
-
-    Mutex mutex(&IndexCharsInitMutex);
-    if (indexCharactersAreInitialized || U_FAILURE(status)) {
-        return;
-    }
-    UBool finishedInit = FALSE;
-
-    {
-        UnicodeString alphaString = UNICODE_STRING_SIMPLE("[[:alphabetic:]-[:mark:]]");
-        ALPHABETIC = new UnicodeSet(alphaString, status);
-        if (ALPHABETIC == NULL) {
-            goto err;
-        }
-
-        HANGUL = new UnicodeSet();
-        HANGUL->add(0xAC00).add(0xB098).add(0xB2E4).add(0xB77C).add(0xB9C8).add(0xBC14).add(0xC0AC).
-                add(0xC544).add(0xC790).add(0xCC28).add(0xCE74).add(0xD0C0).add(0xD30C).add(0xD558);
-        if (HANGUL== NULL) {
-            goto err;
-        }
-
-
-        UnicodeString EthiopicStr = UNICODE_STRING_SIMPLE("[[:Block=Ethiopic:]&[:Script=Ethiopic:]]");
-        ETHIOPIC = new UnicodeSet(EthiopicStr, status);
-        if (ETHIOPIC == NULL) {
-            goto err;
-        }
-
-        CORE_LATIN = new UnicodeSet((UChar32)0x61, (UChar32)0x7a);  // ('a', 'z');
-        if (CORE_LATIN == NULL) {
-            goto err;
-        }
-
-        UnicodeString IgnoreStr= UNICODE_STRING_SIMPLE(
-                "[[:sc=Common:][:sc=inherited:][:script=Unknown:][:script=braille:]]");
-        IGNORE_SCRIPTS = new UnicodeSet(IgnoreStr, status);
-        IGNORE_SCRIPTS->freeze();
-        if (IGNORE_SCRIPTS == NULL) {
-            goto err;
-        }
-
-        UnicodeString nfcqcStr = UNICODE_STRING_SIMPLE("[:^nfcqc=no:]");
-        TO_TRY = new UnicodeSet(nfcqcStr, status);
-        if (TO_TRY == NULL) {
-            goto err;
-        }
-
-        UnicodeString unihanStr = UNICODE_STRING_SIMPLE("[:script=Hani:]");
-        UNIHAN = new UnicodeSet(unihanStr, status);
-        if (UNIHAN == NULL) {
-            goto err;
-        }
-
-        EMPTY_STRING = new UnicodeString();
-
-        nfkdNormalizer = Normalizer2::getNFKDInstance(status);
-        if (nfkdNormalizer == NULL) {
-            goto err;
+    if (collator_ == NULL) {
+        collator_ = static_cast<RuleBasedCollator *>(Collator::createInstance(*locale, status));
+        if (U_FAILURE(status)) { return; }
+        if (collator_ == NULL) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+            return;
         }
     }
-    finishedInit = TRUE;
-
-  err:
-    if (!finishedInit && U_SUCCESS(status)) {
+    collatorPrimaryOnly_ = static_cast<RuleBasedCollator *>(collator_->clone());
+    if (collatorPrimaryOnly_ == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
-    }
-    if (U_FAILURE(status)) {
-        indexCharacters_cleanup();
         return;
     }
-    ucln_i18n_registerCleanup(UCLN_I18N_INDEX_CHARACTERS, indexCharacters_cleanup);
-    indexCharactersAreInitialized = TRUE;
+    collatorPrimaryOnly_->setAttribute(UCOL_STRENGTH, UCOL_PRIMARY, status);
+    firstCharsInScripts_ = firstStringsInScript(status);
+    if (U_FAILURE(status)) { return; }
+    firstCharsInScripts_->sortWithUComparator(collatorComparator, collatorPrimaryOnly_, status);
+    UnicodeString _4E00((UChar)0x4E00);
+    UnicodeString _1100((UChar)0x1100);
+    UnicodeString _1112((UChar)0x1112);
+    if (collatorPrimaryOnly_->compare(_4E00, _1112, status) <= 0 &&
+            collatorPrimaryOnly_->compare(_1100, _4E00, status) <= 0) {
+        // The standard Korean tailoring sorts Hanja (Han characters)
+        // as secondary differences from Hangul syllables.
+        // This makes U+4E00 not useful as a Han-script boundary.
+        // TODO: This becomes obsolete when the root collator gets
+        // reliable script-first-primary mappings.
+        int32_t hanIndex = binarySearch(
+                *firstCharsInScripts_, _4E00, *collatorPrimaryOnly_);
+        if (hanIndex >= 0) {
+            firstCharsInScripts_->removeElementAt(hanIndex);
+        }
+    }
+    // Guard against a degenerate collator where
+    // some script boundary strings are primary ignorable.
+    for (;;) {
+        if (U_FAILURE(status)) { return; }
+        if (firstCharsInScripts_->isEmpty()) {
+            // AlphabeticIndex requires some non-ignorable script boundary strings.
+            status = U_ILLEGAL_ARGUMENT_ERROR;
+            return;
+        }
+        if (collatorPrimaryOnly_->compare(
+                *static_cast<UnicodeString *>(firstCharsInScripts_->elementAt(0)),
+                emptyString_, status) == UCOL_EQUAL) {
+            firstCharsInScripts_->removeElementAt(0);
+        } else {
+            break;
+        }
+    }
+
+    if (locale != NULL) {
+        addIndexExemplars(*locale, status);
+    }
 }
 
 
@@ -733,12 +1007,11 @@ void AlphabeticIndex::staticInit(UErrorCode &status) {
 //  Comparison function for UVector<UnicodeString *> sorting with a collator.
 //
 static int32_t U_CALLCONV
-sortCollateComparator(const void *context, const void *left, const void *right) {
+collatorComparator(const void *context, const void *left, const void *right) {
     const UElement *leftElement = static_cast<const UElement *>(left);
     const UElement *rightElement = static_cast<const UElement *>(right);
     const UnicodeString *leftString  = static_cast<const UnicodeString *>(leftElement->pointer);
     const UnicodeString *rightString = static_cast<const UnicodeString *>(rightElement->pointer);
-    const Collator *col = static_cast<const Collator *>(context);
 
     if (leftString == rightString) {
         // Catches case where both are NULL
@@ -750,8 +1023,9 @@ sortCollateComparator(const void *context, const void *left, const void *right) 
     if (rightString == NULL) {
         return -1;
     }
-    Collator::EComparisonResult r = col->compare(*leftString, *rightString);
-    return (int32_t) r;
+    const Collator *col = static_cast<const Collator *>(context);
+    UErrorCode errorCode = U_ZERO_ERROR;
+    return col->compare(*leftString, *rightString, errorCode);
 }
 
 //
@@ -764,130 +1038,68 @@ recordCompareFn(const void *context, const void *left, const void *right) {
     const AlphabeticIndex::Record *leftRec  = static_cast<const AlphabeticIndex::Record *>(leftElement->pointer);
     const AlphabeticIndex::Record *rightRec = static_cast<const AlphabeticIndex::Record *>(rightElement->pointer);
     const Collator *col = static_cast<const Collator *>(context);
-
-    Collator::EComparisonResult r = col->compare(leftRec->sortingName_, rightRec->sortingName_);
-    if (r == Collator::EQUAL) {
-        if (leftRec->serialNumber_ < rightRec->serialNumber_) {
-            r = Collator::LESS;
-        } else if (leftRec->serialNumber_ > rightRec->serialNumber_) {
-            r = Collator::GREATER;
-        }
-    }
-    return (int32_t) r;
+    UErrorCode errorCode = U_ZERO_ERROR;
+    return col->compare(leftRec->name_, rightRec->name_, errorCode);
 }
 
 
-#if 0
-//
-//  First characters in scripts.
-//  Create a UVector whose contents are pointers to UnicodeStrings for the First Characters in each script.
-//  The vector is sorted according to this index's collation.
-//
-//  This code is too slow to use, so for now hard code the data.
-//    Hard coded implementation is follows.
-//
-UVector *AlphabeticIndex::firstStringsInScript(Collator *ruleBasedCollator, UErrorCode &status) {
-
-    if (U_FAILURE(status)) {
-        return NULL;
-    }
-
-    UnicodeString results[USCRIPT_CODE_LIMIT];
-    UnicodeString LOWER_A = UNICODE_STRING_SIMPLE("a");
-
-    UnicodeSetIterator siter(*TO_TRY);
-    while (siter.next()) {
-        const UnicodeString &current = siter.getString();
-        Collator::EComparisonResult r = ruleBasedCollator->compare(current, LOWER_A);
-        if (r < 0) {  // TODO fix; we only want "real" script characters, not
-                      // symbols.
-            continue;
-        }
-
-        int script = uscript_getScript(current.char32At(0), &status);
-        if (results[script].length() == 0) {
-            results[script] = current;
-        }
-        else if (ruleBasedCollator->compare(current, results[script]) < 0) {
-            results[script] = current;
-        }
-    }
-
-    UnicodeSet extras;
-    UnicodeSet expansions;
-    RuleBasedCollator *rbc = dynamic_cast<RuleBasedCollator *>(ruleBasedCollator);
-    const UCollator *uRuleBasedCollator = rbc->getUCollator();
-    ucol_getContractionsAndExpansions(uRuleBasedCollator, extras.toUSet(), expansions.toUSet(), true, &status);
-    extras.addAll(expansions).removeAll(*TO_TRY);
-    if (extras.size() != 0) {
-        const Normalizer2 *normalizer = Normalizer2::getNFKCInstance(status);
-        UnicodeSetIterator extrasIter(extras);
-        while (extrasIter.next()) {
-            const UnicodeString &current = extrasIter.next();
-            if (!TO_TRY->containsAll(current))
-                continue;
-            if (!normalizer->isNormalized(current, status) ||
-                ruleBasedCollator->compare(current, LOWER_A) < 0) {
-                continue;
-            }
-            int script = uscript_getScript(current.char32At(0), &status);
-            if (results[script].length() == 0) {
-                results[script] = current;
-            } else if (ruleBasedCollator->compare(current, results[script]) < 0) {
-                results[script] = current;
-            }
-        }
-    }
-
-    UVector *dest = new UVector(status);
-    dest->setDeleter(uprv_deleteUObject);
-    for (uint32_t i = 0; i < sizeof(results) / sizeof(results[0]); ++i) {
-        if (results[i].length() > 0) {
-            dest->addElement(results[i].clone(), status);
-        }
-    }
-    dest->sortWithUComparator(sortCollateComparator, ruleBasedCollator, status);
-    return dest;
-}
-#endif
-
-
-//
-//  First characters in scripts.
-//  Create a UVector whose contents are pointers to UnicodeStrings for the First Characters in each script.
-//  The vector is sorted according to this index's collation.
-//
-//  It takes too much time to compute this from character properties, so hard code it for now.
-//  Character constants copied from corresponding declaration in ICU4J.
-//  See main/classes/collate/src/com/ibm/icu/text/AlphabeticIndex.java
-
-static UChar HACK_FIRST_CHARS_IN_SCRIPTS[] =  { 0x61, 0, 0x03B1, 0,
-            0x2C81, 0, 0x0430, 0, 0x2C30, 0, 0x10D0, 0, 0x0561, 0, 0x05D0, 0, 0xD802, 0xDD00, 0, 0x0800, 0, 0x0621, 0, 0x0710, 0,
-            0x0780, 0, 0x07CA, 0, 0x2D30, 0, 0x1200, 0, 0x0950, 0, 0x0985, 0, 0x0A74, 0, 0x0AD0, 0, 0x0B05, 0, 0x0BD0, 0,
-            0x0C05, 0, 0x0C85, 0, 0x0D05, 0, 0x0D85, 0,
-            0xAAF2, 0,  // Meetei Mayek
-            0xA800, 0, 0xA882, 0, 0xD804, 0xDC83, 0,
-            U16_LEAD(0x111C4), U16_TRAIL(0x111C4), 0,  // Sharada
-            U16_LEAD(0x11680), U16_TRAIL(0x11680), 0,  // Takri
-            0x1B83, 0,
-            0xD802, 0xDE00, 0, 0x0E01, 0,
-            0x0EDE, 0,  // Lao
-            0xAA80, 0, 0x0F40, 0, 0x1C00, 0, 0xA840, 0, 0x1900, 0, 0x1700, 0, 0x1720, 0,
-            0x1740, 0, 0x1760, 0, 0x1A00, 0, 0xA930, 0, 0xA90A, 0, 0x1000, 0,
-            U16_LEAD(0x11103), U16_TRAIL(0x11103), 0,  // Chakma
-            0x1780, 0, 0x1950, 0, 0x1980, 0, 0x1A20, 0,
-            0xAA00, 0, 0x1B05, 0, 0xA984, 0, 0x1880, 0, 0x1C5A, 0, 0x13A0, 0, 0x1401, 0, 0x1681, 0, 0x16A0, 0, 0xD803, 0xDC00, 0,
-            0xA500, 0, 0xA6A0, 0, 0x1100, 0, 0x3041, 0, 0x30A1, 0, 0x3105, 0, 0xA000, 0, 0xA4F8, 0,
-            U16_LEAD(0x16F00), U16_TRAIL(0x16F00), 0,  // Miao
-            0xD800, 0xDE80, 0,
-            0xD800, 0xDEA0, 0, 0xD802, 0xDD20, 0, 0xD800, 0xDF00, 0, 0xD800, 0xDF30, 0, 0xD801, 0xDC28, 0, 0xD801, 0xDC50, 0,
-            0xD801, 0xDC80, 0,
-            U16_LEAD(0x110D0), U16_TRAIL(0x110D0), 0,  // Sora Sompeng
-            0xD800, 0xDC00, 0, 0xD802, 0xDC00, 0, 0xD802, 0xDE60, 0, 0xD802, 0xDF00, 0, 0xD802, 0xDC40, 0,
-            0xD802, 0xDF40, 0, 0xD802, 0xDF60, 0, 0xD800, 0xDF80, 0, 0xD800, 0xDFA0, 0, 0xD808, 0xDC00, 0, 0xD80C, 0xDC00, 0,
-            U16_LEAD(0x109A0), U16_TRAIL(0x109A0), 0,  // Meroitic Cursive
-            U16_LEAD(0x10980), U16_TRAIL(0x10980), 0,  // Meroitic Hieroglyphs
-            0x4E00, 0 };
+/**
+ * This list contains one character per script that has the
+ * lowest primary weight for that script in the root collator.
+ * This list will be copied and sorted to account for script reordering.
+ *
+ * <p>TODO: This is fragile. If the first character of a script is tailored
+ * so that it does not map to the script's lowest primary weight any more,
+ * then the buckets will be off.
+ * There are hacks in the code to handle the known CJK tailorings of U+4E00.
+ *
+ * <p>We use "A" not "a" because the en_US_POSIX tailoring sorts A primary-before a.
+ *
+ * Keep this in sync with HACK_FIRST_CHARS_IN_SCRIPTS in
+ * ICU4J main/classes/collate/src/com/ibm/icu/text/AlphabeticIndex.java
+ */
+static const UChar HACK_FIRST_CHARS_IN_SCRIPTS[] =  {
+    0x41, 0, 0x03B1, 0,
+    0x2C81, 0, 0x0430, 0, 0x2C30, 0, 0x10D0, 0, 0x0561, 0, 0x05D0, 0, 0xD802, 0xDD00, 0, 0x0800, 0, 0x0621, 0, 0x0710, 0,
+    0x0780, 0, 0x07CA, 0, 0x2D30, 0, 0x1200, 0, 0x0950, 0, 0x0985, 0, 0x0A74, 0, 0x0AD0, 0, 0x0B05, 0, 0x0BD0, 0,
+    0x0C05, 0, 0x0C85, 0, 0x0D05, 0, 0x0D85, 0,
+    0xAAF2, 0,  // Meetei Mayek
+    0xA800, 0, 0xA882, 0, 0xD804, 0xDC83, 0,
+    U16_LEAD(0x111C4), U16_TRAIL(0x111C4), 0,  // Sharada
+    U16_LEAD(0x11680), U16_TRAIL(0x11680), 0,  // Takri
+    0x1B83, 0,
+    0xD802, 0xDE00, 0, 0x0E01, 0,
+    0x0EDE, 0,  // Lao
+    0xAA80, 0, 0x0F40, 0, 0x1C00, 0, 0xA840, 0, 0x1900, 0, 0x1700, 0, 0x1720, 0,
+    0x1740, 0, 0x1760, 0, 0x1A00, 0, 0xA930, 0, 0xA90A, 0, 0x1000, 0,
+    U16_LEAD(0x11103), U16_TRAIL(0x11103), 0,  // Chakma
+    0x1780, 0, 0x1950, 0, 0x1980, 0, 0x1A20, 0,
+    0xAA00, 0, 0x1B05, 0, 0xA984, 0, 0x1880, 0, 0x1C5A, 0, 0x13A0, 0, 0x1401, 0, 0x1681, 0, 0x16A0, 0, 0xD803, 0xDC00, 0,
+    0xA500, 0, 0xA6A0, 0, 0x1100, 0, 0x3041, 0, 0x30A1, 0, 0x3105, 0, 0xA000, 0, 0xA4F8, 0,
+    U16_LEAD(0x16F00), U16_TRAIL(0x16F00), 0,  // Miao
+    0xD800, 0xDE80, 0,
+    0xD800, 0xDEA0, 0, 0xD802, 0xDD20, 0, 0xD800, 0xDF00, 0, 0xD800, 0xDF30, 0, 0xD801, 0xDC28, 0, 0xD801, 0xDC50, 0,
+    0xD801, 0xDC80, 0,
+    U16_LEAD(0x110D0), U16_TRAIL(0x110D0), 0,  // Sora Sompeng
+    0xD800, 0xDC00, 0, 0xD802, 0xDC00, 0, 0xD802, 0xDE60, 0, 0xD802, 0xDF00, 0, 0xD802, 0xDC40, 0,
+    0xD802, 0xDF40, 0, 0xD802, 0xDF60, 0, 0xD800, 0xDF80, 0, 0xD800, 0xDFA0, 0, 0xD808, 0xDC00, 0, 0xD80C, 0xDC00, 0,
+    U16_LEAD(0x109A0), U16_TRAIL(0x109A0), 0,  // Meroitic Cursive
+    U16_LEAD(0x10980), U16_TRAIL(0x10980), 0,  // Meroitic Hieroglyphs
+    0x4E00, 0,
+    // TODO: The overflow bucket's lowerBoundary string should be the
+    // first item after the last reordering group in the collator's script order.
+    // This should normally be the first Unicode code point
+    // that is unassigned (U+0378 in Unicode 6.3) and untailored.
+    // However, at least up to ICU 51 the Hani reordering group includes
+    // unassigned code points,
+    // and there is no stable string for the start of the trailing-weights range.
+    // The only known string that sorts "high" is U+FFFF.
+    // When ICU separates Hani vs. unassigned reordering groups, we need to fix this,
+    // and fix relevant test code.
+    // Ideally, FractionalUCA.txt will have a "script first primary"
+    // for unassigned code points.
+    0xFFFF, 0
+};
 
 UVector *AlphabeticIndex::firstStringsInScript(UErrorCode &status) {
     if (U_FAILURE(status)) {
@@ -895,14 +1107,12 @@ UVector *AlphabeticIndex::firstStringsInScript(UErrorCode &status) {
     }
     UVector *dest = new UVector(status);
     if (dest == NULL) {
-        if (U_SUCCESS(status)) {
-            status = U_MEMORY_ALLOCATION_ERROR;
-        }
+        status = U_MEMORY_ALLOCATION_ERROR;
         return NULL;
     }
     dest->setDeleter(uprv_deleteUObject);
     const UChar *src  = HACK_FIRST_CHARS_IN_SCRIPTS;
-    const UChar *limit = src + sizeof(HACK_FIRST_CHARS_IN_SCRIPTS) / sizeof(HACK_FIRST_CHARS_IN_SCRIPTS[0]);
+    const UChar *limit = src + LENGTHOF(HACK_FIRST_CHARS_IN_SCRIPTS);
     do {
         if (U_FAILURE(status)) {
             return dest;
@@ -910,225 +1120,41 @@ UVector *AlphabeticIndex::firstStringsInScript(UErrorCode &status) {
         UnicodeString *str = new UnicodeString(src, -1);
         if (str == NULL) {
             status = U_MEMORY_ALLOCATION_ERROR;
-        } else {
-            dest->addElement(str, status);
-            src += str->length() + 1;
+            return dest;
         }
+        dest->addElement(str, status);
+        src += str->length() + 1;
     } while (src < limit);
-    dest->sortWithUComparator(sortCollateComparator, collator_, status);
     return dest;
 }
 
 
-AlphabeticIndex::ELangType AlphabeticIndex::langTypeFromLocale(const Locale &loc) {
-    const char *lang = loc.getLanguage();
-    if (uprv_strcmp(lang, "zh") != 0) {
-        return kNormal;
-    }
-    const char *script = loc.getScript();
-    if (uprv_strcmp(script, "Hant") == 0) {
-        return kTraditional;
-    }
-    const char *country = loc.getCountry();
-    if (uprv_strcmp(country, "TW") == 0) {
-        return kTraditional;
-    }
-    return kSimplified;
-}
-
-
-//
-// Pinyin Hacks.  Direct port from Java.
-//
-
-static const UChar32  probeCharInLong = 0x28EAD;
-
-
-static const UChar PINYIN_LOWER_BOUNDS_SHORT[] = {      // "\u0101bcd\u0113fghjkl\u1E3F\u0144\u014Dpqrstwxyz"
-            0x0101, 0x62, 0x63, 0x64, 0x0113, 0x66, 0x67, 0x68, 0x6A, 0x6B, /*l*/0x6C, 0x1E3F, 0x0144, 0x014D,
-            /*p*/0x70, 0x71, 0x72, 0x73, 0x74, /*w*/0x77, 0x78, 0x79, 0x7A};
-
-
-// Pinyin lookup tables copied, pasted (and reformatted) from the ICU4J code.
-
-AlphabeticIndex::PinyinLookup AlphabeticIndex::HACK_PINYIN_LOOKUP_SHORT = {
-        {(UChar)0,      (UChar)0, (UChar)0}, // A 
-        {(UChar)0x516B, (UChar)0, (UChar)0}, // B 
-        {(UChar)0x5693, (UChar)0, (UChar)0}, // C 
-        {(UChar)0x5491, (UChar)0, (UChar)0}, // D 
-        {(UChar)0x59B8, (UChar)0, (UChar)0}, // E 
-        {(UChar)0x53D1, (UChar)0, (UChar)0}, // F 
-        {(UChar)0x65EE, (UChar)0, (UChar)0}, // G 
-        {(UChar)0x54C8, (UChar)0, (UChar)0}, // H 
-        {(UChar)0x4E0C, (UChar)0, (UChar)0}, // J 
-        {(UChar)0x5494, (UChar)0, (UChar)0}, // K 
-        {(UChar)0x5783, (UChar)0, (UChar)0}, // L 
-        {(UChar)0x5452, (UChar)0, (UChar)0}, // M 
-        {(UChar)0x5514, (UChar)0, (UChar)0}, // N 
-        {(UChar)0x5594, (UChar)0, (UChar)0}, // O 
-        {(UChar)0x5991, (UChar)0, (UChar)0}, // P 
-        {(UChar)0x4E03, (UChar)0, (UChar)0}, // Q 
-        {(UChar)0x513F, (UChar)0, (UChar)0}, // R 
-        {(UChar)0x4EE8, (UChar)0, (UChar)0}, // S 
-        {(UChar)0x4ED6, (UChar)0, (UChar)0}, // T 
-        {(UChar)0x7A75, (UChar)0, (UChar)0}, // W 
-        {(UChar)0x5915, (UChar)0, (UChar)0}, // X 
-        {(UChar)0x4E2B, (UChar)0, (UChar)0}, // Y 
-        {(UChar)0x5E00, (UChar)0, (UChar)0}, // Z 
-        {(UChar)0xFFFF, (UChar)0, (UChar)0}, // mark end of array 
-    };
-
-static const UChar PINYIN_LOWER_BOUNDS_LONG[] = {   // "\u0101bcd\u0113fghjkl\u1E3F\u0144\u014Dpqrstwxyz";
-            0x0101, 0x62, 0x63, 0x64, 0x0113, 0x66, 0x67, 0x68, 0x6A, 0x6B, /*l*/0x6C, 0x1E3F, 0x0144, 0x014D,
-            /*p*/0x70, 0x71, 0x72, 0x73, 0x74, /*w*/0x77, 0x78, 0x79, 0x7A};
-
-AlphabeticIndex::PinyinLookup AlphabeticIndex::HACK_PINYIN_LOOKUP_LONG = {
-        {(UChar)0,      (UChar)0,      (UChar)0}, // A
-        {(UChar)0x516B, (UChar)0,      (UChar)0}, // b 
-        {(UChar)0xD863, (UChar)0xDEAD, (UChar)0}, // c 
-        {(UChar)0xD844, (UChar)0xDE51, (UChar)0}, // d 
-        {(UChar)0x59B8, (UChar)0,      (UChar)0}, // e 
-        {(UChar)0x53D1, (UChar)0,      (UChar)0}, // f 
-        {(UChar)0xD844, (UChar)0xDE45, (UChar)0}, // g 
-        {(UChar)0x54C8, (UChar)0,      (UChar)0}, // h 
-        {(UChar)0x4E0C, (UChar)0,      (UChar)0}, // j 
-        {(UChar)0x5494, (UChar)0,      (UChar)0}, // k 
-        {(UChar)0x3547, (UChar)0,      (UChar)0}, // l 
-        {(UChar)0x5452, (UChar)0,      (UChar)0}, // m 
-        {(UChar)0x5514, (UChar)0,      (UChar)0}, // n 
-        {(UChar)0x5594, (UChar)0,      (UChar)0}, // o 
-        {(UChar)0xD84F, (UChar)0xDC7A, (UChar)0}, // p 
-        {(UChar)0x4E03, (UChar)0,      (UChar)0}, // q 
-        {(UChar)0x513F, (UChar)0,      (UChar)0}, // r 
-        {(UChar)0x4EE8, (UChar)0,      (UChar)0}, // s 
-        {(UChar)0x4ED6, (UChar)0,      (UChar)0}, // t 
-        {(UChar)0x7A75, (UChar)0,      (UChar)0}, // w 
-        {(UChar)0x5915, (UChar)0,      (UChar)0}, // x 
-        {(UChar)0x4E2B, (UChar)0,      (UChar)0}, // y 
-        {(UChar)0x5E00, (UChar)0,      (UChar)0}, // z 
-        {(UChar)0xFFFF, (UChar)0,      (UChar)0}, // mark end of array 
-    };
-
-
-//
-//  Probe the collation data, and decide which Pinyin tables should be used
-//
-//  ICU can be built with a choice between two Chinese collations.
-//  The hack Pinyin tables to use depend on which one is in use.
-//  We can assume that any given copy of ICU will have only one of the collations available,
-//  and that there is no way, in a given process, to create two alphabetic indexes using
-//  different Chinese collations.  Which means the probe can be done once
-//  and the results cached.
-//
-//  This whole arrangement is temporary.
-//
-AlphabeticIndex::PinyinLookup *AlphabeticIndex::HACK_PINYIN_LOOKUP  = NULL;
-const UChar  *AlphabeticIndex::PINYIN_LOWER_BOUNDS = NULL;
-
-void AlphabeticIndex::initPinyinBounds(const Collator *col, UErrorCode &status) {
-    {
-        Mutex m;
-        if (PINYIN_LOWER_BOUNDS != NULL) {
-            return;
-        }
-    }
-    UnicodeSet *colSet = col->getTailoredSet(status);
-    if (U_FAILURE(status) || colSet == NULL) {
-        delete colSet;
-        if (U_SUCCESS(status))  {
-            status = U_MEMORY_ALLOCATION_ERROR;
-        }
-        return;
-    }
-    UBool useLongTables = colSet->contains(probeCharInLong);
-    delete colSet;
-    {
-        Mutex m;
-        if (useLongTables) {
-            PINYIN_LOWER_BOUNDS = PINYIN_LOWER_BOUNDS_LONG;
-            HACK_PINYIN_LOOKUP  = &HACK_PINYIN_LOOKUP_LONG;
-        } else {
-            PINYIN_LOWER_BOUNDS = PINYIN_LOWER_BOUNDS_SHORT;
-            HACK_PINYIN_LOOKUP  = &HACK_PINYIN_LOOKUP_SHORT;
-        }
-    }
-}
-
-// Pinyin Hack:
-//    Modify a Chinese name by prepending a Latin letter.  The modified name is used
-//      when putting records (names) into buckets, to put the name under a Latin index heading.
-
-void AlphabeticIndex::hackName(UnicodeString &dest, const UnicodeString &name, const Collator *col) {
-
-    if (langType_ != kSimplified || !UNIHAN->contains(name.char32At(0))) {
-        dest = name;
-        return;
-    }
-
-    UErrorCode status = U_ZERO_ERROR;
-    initPinyinBounds(col, status);
-    if (U_FAILURE(status)) {
-        dest = name;
-        return;
-    }
-    // TODO:  use binary search
-    int index;
-    for (index=0; ; index++) {
-        if ((*HACK_PINYIN_LOOKUP)[index][0] == (UChar)0xffff) {
-            index--;
-            break;
-        }
-        int32_t compareResult = col->compare(name, UnicodeString(TRUE, (*HACK_PINYIN_LOOKUP)[index], -1));
-        if (compareResult < 0) {
-            index--;
-        }
-        if (compareResult <= 0) {
-            break;
-        }
-    }
-    UChar c = PINYIN_LOWER_BOUNDS[index];
-    dest.setTo(c);
-    dest.append(name);
-    return;
-}
-
-
+namespace {
 
 /**
- * Comparator that returns "better" items first, where shorter NFKD is better, and otherwise NFKD binary order is
- * better, and otherwise binary order is better.
- *
- * For use with array sort or UVector.
- * @param context  A UErrorCode pointer.
- * @param left     A UElement pointer, which must refer to a UnicodeString *
- * @param right    A UElement pointer, which must refer to a UnicodeString *
+ * Returns true if one index character string is "better" than the other.
+ * Shorter NFKD is better, and otherwise NFKD-binary-less-than is
+ * better, and otherwise binary-less-than is better.
  */
-
-static int32_t U_CALLCONV
-PreferenceComparator(const void *context, const void *left, const void *right) {
-    const UElement *leftElement  = static_cast<const UElement *>(left);
-    const UElement *rightElement = static_cast<const UElement *>(right);
-    const UnicodeString *s1  = static_cast<const UnicodeString *>(leftElement->pointer);
-    const UnicodeString *s2  = static_cast<const UnicodeString *>(rightElement->pointer);
-    UErrorCode &status       = *(UErrorCode *)(context);   // Cast off both static and const.
-    if (s1 == s2) {
-        return 0;
-    }
-
-    UnicodeString n1 = nfkdNormalizer->normalize(*s1, status);
-    UnicodeString n2 = nfkdNormalizer->normalize(*s2, status);
-    int32_t result = n1.length() - n2.length();
+UBool isOneLabelBetterThanOther(const Normalizer2 &nfkdNormalizer,
+                                const UnicodeString &one, const UnicodeString &other) {
+    // This is called with primary-equal strings, but never with one.equals(other).
+    UErrorCode status = U_ZERO_ERROR;
+    UnicodeString n1 = nfkdNormalizer.normalize(one, status);
+    UnicodeString n2 = nfkdNormalizer.normalize(other, status);
+    if (U_FAILURE(status)) { return FALSE; }
+    int32_t result = n1.countChar32() - n2.countChar32();
     if (result != 0) {
-        return result;
+        return result < 0;
     }
-
     result = n1.compareCodePointOrder(n2);
     if (result != 0) {
-        return result;
+        return result < 0;
     }
-    return s1->compareCodePointOrder(*s2);
+    return one.compareCodePointOrder(other) < 0;
 }
 
+}  // namespace
 
 //
 //  Constructor & Destructor for AlphabeticIndex::Record
@@ -1136,14 +1162,9 @@ PreferenceComparator(const void *context, const void *left, const void *right) {
 //     Records are internal only, instances are not directly surfaced in the public API.
 //     This class is mostly struct-like, with all public fields.
 
-AlphabeticIndex::Record::Record(AlphabeticIndex *alphaIndex, const UnicodeString &name, const void *data):
-    alphaIndex_(alphaIndex), name_(name), data_(data) 
-{
-    UnicodeString prefixedName;
-    alphaIndex->hackName(sortingName_, name_, alphaIndex->collatorPrimaryOnly_);
-    serialNumber_ = ++alphaIndex->recordCounter_;
-}
-    
+AlphabeticIndex::Record::Record(const UnicodeString &name, const void *data)
+        : name_(name), data_(data) {}
+
 AlphabeticIndex::Record::~Record() {
 }
 
@@ -1152,9 +1173,21 @@ AlphabeticIndex & AlphabeticIndex::addRecord(const UnicodeString &name, const vo
     if (U_FAILURE(status)) {
         return *this;
     }
-    Record *r = new Record(this, name, data);
-    inputRecords_->addElement(r, status);
-    indexBuildRequired_ = TRUE;
+    if (inputList_ == NULL) {
+        inputList_ = new UVector(status);
+        if (inputList_ == NULL) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+            return *this;
+        }
+        inputList_->setDeleter(alphaIndex_deleteRecord);
+    }
+    Record *r = new Record(name, data);
+    if (r == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return *this;
+    }
+    inputList_->addElement(r, status);
+    clearBuckets();
     //std::string ss;
     //std::string ss2;
     //std::cout << "added record: name = \"" << r->name_.toUTF8String(ss) << "\"" << 
@@ -1164,40 +1197,19 @@ AlphabeticIndex & AlphabeticIndex::addRecord(const UnicodeString &name, const vo
 
 
 AlphabeticIndex &AlphabeticIndex::clearRecords(UErrorCode &status) {
-    if (U_FAILURE(status)) {
-        return *this;
+    if (U_SUCCESS(status) && inputList_ != NULL && !inputList_->isEmpty()) {
+        inputList_->removeAllElements();
+        clearBuckets();
     }
-    inputRecords_->removeAllElements();
-    indexBuildRequired_ = TRUE;
     return *this;
 }
 
-
 int32_t AlphabeticIndex::getBucketIndex(const UnicodeString &name, UErrorCode &status) {
-    buildIndex(status);
+    initBuckets(status);
     if (U_FAILURE(status)) {
         return 0;
     }
-
-    // For simplified Chinese prepend a prefix to the name.
-    //   For non-Chinese locales or non-Chinese names, the name is not modified.
-
-    UnicodeString prefixedName;
-    hackName(prefixedName, name, collatorPrimaryOnly_);
-
-    // TODO:  use a binary search.
-    for (int32_t i = 0; i < bucketList_->size(); ++i) {
-        Bucket *bucket = static_cast<Bucket *>(bucketList_->elementAt(i));
-        Collator::EComparisonResult comp = collatorPrimaryOnly_->compare(prefixedName, bucket->lowerBoundary_);
-        if (comp < 0) {
-            return i - 1;
-        }
-    }
-    // Loop runs until we find the bucket following the one that would hold prefixedName.
-    // If the prefixedName belongs in the last bucket the loop will drop out the bottom rather
-    //  than returning from the middle.
-
-    return bucketList_->size() - 1;
+    return buckets_->getBucketIndex(name, *collatorPrimaryOnly_, status);
 }
 
 
@@ -1210,20 +1222,20 @@ UBool AlphabeticIndex::nextBucket(UErrorCode &status) {
     if (U_FAILURE(status)) {
         return FALSE;
     }
-    if (indexBuildRequired_ && currentBucket_ != NULL) {
+    if (buckets_ == NULL && currentBucket_ != NULL) {
         status = U_ENUM_OUT_OF_SYNC_ERROR;
         return FALSE;
     }
-    buildIndex(status);
+    initBuckets(status);
     if (U_FAILURE(status)) {
         return FALSE;
     }
     ++labelsIterIndex_;
-    if (labelsIterIndex_ >= bucketList_->size()) {
-        labelsIterIndex_ = bucketList_->size();
+    if (labelsIterIndex_ >= buckets_->getBucketCount()) {
+        labelsIterIndex_ = buckets_->getBucketCount();
         return FALSE;
     }
-    currentBucket_ = static_cast<Bucket *>(bucketList_->elementAt(labelsIterIndex_));
+    currentBucket_ = getBucket(*buckets_->immutableVisibleList_, labelsIterIndex_);
     resetRecordIterator();
     return TRUE;
 }
@@ -1232,7 +1244,7 @@ const UnicodeString &AlphabeticIndex::getBucketLabel() const {
     if (currentBucket_ != NULL) {
         return currentBucket_->label_;
     } else {
-        return *EMPTY_STRING;
+        return emptyString_;
     }
 }
 
@@ -1247,7 +1259,7 @@ UAlphabeticIndexLabelType AlphabeticIndex::getBucketLabelType() const {
 
 
 int32_t AlphabeticIndex::getBucketRecordCount() const {
-    if (currentBucket_ != NULL) {
+    if (currentBucket_ != NULL && currentBucket_->records_ != NULL) {
         return currentBucket_->records_->size();
     } else {
         return 0;
@@ -1259,9 +1271,7 @@ AlphabeticIndex &AlphabeticIndex::resetBucketIterator(UErrorCode &status) {
     if (U_FAILURE(status)) {
         return *this;
     }
-    buildIndex(status);
-    labelsIterIndex_ = -1;
-    currentBucket_ = NULL;
+    internalResetBucketIterator();
     return *this;
 }
 
@@ -1276,8 +1286,11 @@ UBool AlphabeticIndex::nextRecord(UErrorCode &status) {
         status = U_INVALID_STATE_ERROR;
         return FALSE;
     }
-    if (indexBuildRequired_) {
+    if (buckets_ == NULL) {
         status = U_ENUM_OUT_OF_SYNC_ERROR;
+        return FALSE;
+    }
+    if (currentBucket_->records_ == NULL) {
         return FALSE;
     }
     ++itemsIterIndex_;
@@ -1290,8 +1303,8 @@ UBool AlphabeticIndex::nextRecord(UErrorCode &status) {
 
 
 const UnicodeString &AlphabeticIndex::getRecordName() const {
-    const UnicodeString *retStr = EMPTY_STRING;
-    if (currentBucket_ != NULL &&
+    const UnicodeString *retStr = &emptyString_;
+    if (currentBucket_ != NULL && currentBucket_->records_ != NULL &&
         itemsIterIndex_ >= 0 &&
         itemsIterIndex_ < currentBucket_->records_->size()) {
             Record *item = static_cast<Record *>(currentBucket_->records_->elementAt(itemsIterIndex_));
@@ -1302,7 +1315,7 @@ const UnicodeString &AlphabeticIndex::getRecordName() const {
 
 const void *AlphabeticIndex::getRecordData() const {
     const void *retPtr = NULL;
-    if (currentBucket_ != NULL &&
+    if (currentBucket_ != NULL && currentBucket_->records_ != NULL &&
         itemsIterIndex_ >= 0 &&
         itemsIterIndex_ < currentBucket_->records_->size()) {
             Record *item = static_cast<Record *>(currentBucket_->records_->elementAt(itemsIterIndex_));
@@ -1321,16 +1334,10 @@ AlphabeticIndex & AlphabeticIndex::resetRecordIterator() {
 
 AlphabeticIndex::Bucket::Bucket(const UnicodeString &label,
                                 const UnicodeString &lowerBoundary,
-                                UAlphabeticIndexLabelType type,
-                                UErrorCode &status):
-         label_(label), lowerBoundary_(lowerBoundary), labelType_(type), records_(NULL) {
-    if (U_FAILURE(status)) {
-        return;
-    }
-    records_ = new UVector(status);
-    if (records_ == NULL && U_SUCCESS(status)) {
-        status = U_MEMORY_ALLOCATION_ERROR;
-    }
+                                UAlphabeticIndexLabelType type)
+        : label_(label), lowerBoundary_(lowerBoundary), labelType_(type),
+          displayBucket_(NULL), displayIndex_(-1),
+          records_(NULL) {
 }
 
 

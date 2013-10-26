@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -17,7 +17,8 @@
 *   07/10/97    helena      Made ParsePosition a class and get rid of the function
 *                           hiding problems.
 *   09/09/97    aliu        Ported over support for exponential formats.
-*    07/20/98    stephen        Changed documentation
+*   07/20/98    stephen     Changed documentation
+*   01/30/13    emmons      Added Scaling methods
 ********************************************************************************
 */
 
@@ -38,9 +39,10 @@
 #include "unicode/fpositer.h"
 #include "unicode/stringpiece.h"
 #include "unicode/curramt.h"
+#include "unicode/enumset.h"
 
 /**
- * \def UNUM_DECIMFORMAT_INTERNAL_SIZE
+ * \def UNUM_DECIMALFORMAT_INTERNAL_SIZE
  * @internal
  */
 #if UCONFIG_FORMAT_FASTPATHS_49
@@ -55,6 +57,15 @@ class CurrencyPluralInfo;
 class Hashtable;
 class UnicodeSet;
 class FieldPositionHandler;
+class DecimalFormatStaticSets;
+class FixedDecimal;
+
+// explicit template instantiation. see digitlst.h
+#if defined (_MSC_VER)
+template class U_I18N_API    EnumSet<UNumberFormatAttribute,
+            UNUM_MAX_NONBOOLEAN_ATTRIBUTE+1, 
+            UNUM_LIMIT_BOOLEAN_ATTRIBUTE>;
+#endif
 
 /**
  * DecimalFormat is a concrete subclass of NumberFormat that formats decimal
@@ -749,22 +760,50 @@ public:
      * @param style             style of decimal format
      * @param status            Output param set to success/failure code. If the
      *                          pattern is invalid this will be set to a failure code.
-     * @internal ICU 4.2
+     * @internal
      */
     DecimalFormat(  const UnicodeString& pattern,
                     DecimalFormatSymbols* symbolsToAdopt,
                     UNumberFormatStyle style,
                     UErrorCode& status);
 
-
 #if UCONFIG_HAVE_PARSEALLINPUT
     /**
-     * @internal 
+     * @internal
      */
     void setParseAllInput(UNumberFormatAttributeValue value);
 #endif
 
 #endif  /* U_HIDE_INTERNAL_API */
+
+
+    /**
+     * Set an integer attribute on this DecimalFormat.
+     * May return U_UNSUPPORTED_ERROR if this instance does not support
+     * the specified attribute.
+     * @param attr the attribute to set
+     * @param newvalue new value
+     * @param status the error type
+     * @return *this - for chaining (example: format.setAttribute(...).setAttribute(...) )
+     * @draft ICU 51
+     */
+    virtual DecimalFormat& setAttribute( UNumberFormatAttribute attr,
+                                       int32_t newvalue,
+                                       UErrorCode &status);
+
+    /**
+     * Get an integer
+     * May return U_UNSUPPORTED_ERROR if this instance does not support
+     * the specified attribute.
+     * @param attr the attribute to set
+     * @param status the error type
+     * @return the attribute value. Undefined if there is an error.
+     * @draft ICU 51
+     */
+    virtual int32_t getAttribute( UNumberFormatAttribute attr,
+                                  UErrorCode &status) const;
+
+
 
     /**
      * Create a DecimalFormat from the given pattern and symbols.
@@ -869,6 +908,24 @@ public:
                                   UnicodeString& appendTo,
                                   FieldPosition& pos) const;
 
+
+    /**
+     * Format a double or long number using base-10 representation.
+     *
+     * @param number    The value to be formatted.
+     * @param appendTo  Output parameter to receive result.
+     *                  Result is appended to existing contents.
+     * @param pos       On input: an alignment field, if desired.
+     *                  On output: the offsets of the alignment field.
+     * @param status
+     * @return          Reference to 'appendTo' parameter.
+     * @internal
+     */
+    virtual UnicodeString& format(double number,
+                                  UnicodeString& appendTo,
+                                  FieldPosition& pos,
+                                  UErrorCode &status) const;
+
     /**
      * Format a double or long number using base-10 representation.
      *
@@ -908,6 +965,22 @@ public:
      * @param number    The value to be formatted.
      * @param appendTo  Output parameter to receive result.
      *                  Result is appended to existing contents.
+     * @param pos       On input: an alignment field, if desired.
+     *                  On output: the offsets of the alignment field.
+     * @return          Reference to 'appendTo' parameter.
+     * @internal
+     */
+    virtual UnicodeString& format(int32_t number,
+                                  UnicodeString& appendTo,
+                                  FieldPosition& pos,
+                                  UErrorCode &status) const;
+
+    /**
+     * Format a long number using base-10 representation.
+     *
+     * @param number    The value to be formatted.
+     * @param appendTo  Output parameter to receive result.
+     *                  Result is appended to existing contents.
      * @param posIter   On return, can be used to iterate over positions
      *                  of fields generated by this format call.
      *                  Can be NULL.
@@ -934,6 +1007,22 @@ public:
     virtual UnicodeString& format(int64_t number,
                                   UnicodeString& appendTo,
                                   FieldPosition& pos) const;
+
+    /**
+     * Format an int64 number using base-10 representation.
+     *
+     * @param number    The value to be formatted.
+     * @param appendTo  Output parameter to receive result.
+     *                  Result is appended to existing contents.
+     * @param pos       On input: an alignment field, if desired.
+     *                  On output: the offsets of the alignment field.
+     * @return          Reference to 'appendTo' parameter.
+     * @internal
+     */
+    virtual UnicodeString& format(int64_t number,
+                                  UnicodeString& appendTo,
+                                  FieldPosition& pos,
+                                  UErrorCode &status) const;
 
     /**
      * Format an int64 number using base-10 representation.
@@ -1015,79 +1104,8 @@ public:
                                   FieldPosition& pos,
                                   UErrorCode& status) const;
 
+   using NumberFormat::parse;
 
-    /**
-     * Format a Formattable using base-10 representation.
-     *
-     * @param obj       The value to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @param pos       On input: an alignment field, if desired.
-     *                  On output: the offsets of the alignment field.
-     * @param status    Error code indicating success or failure.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.0
-     */
-    virtual UnicodeString& format(const Formattable& obj,
-                                  UnicodeString& appendTo,
-                                  FieldPosition& pos,
-                                  UErrorCode& status) const;
-
-    /**
-     * Redeclared NumberFormat method.
-     * Formats an object to produce a string.
-     *
-     * @param obj       The object to format.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @param status    Output parameter filled in with success or failure status.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.0
-     */
-    UnicodeString& format(const Formattable& obj,
-                          UnicodeString& appendTo,
-                          UErrorCode& status) const;
-
-    /**
-     * Redeclared NumberFormat method.
-     * Format a double number.
-     *
-     * @param number    The value to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.0
-     */
-    UnicodeString& format(double number,
-                          UnicodeString& appendTo) const;
-
-    /**
-     * Redeclared NumberFormat method.
-     * Format a long number. These methods call the NumberFormat
-     * pure virtual format() methods with the default FieldPosition.
-     *
-     * @param number    The value to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.0
-     */
-    UnicodeString& format(int32_t number,
-                          UnicodeString& appendTo) const;
-
-    /**
-     * Redeclared NumberFormat method.
-     * Format an int64 number. These methods call the NumberFormat
-     * pure virtual format() methods with the default FieldPosition.
-     *
-     * @param number    The value to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.8
-     */
-    UnicodeString& format(int64_t number,
-                          UnicodeString& appendTo) const;
    /**
     * Parse the given string using this object's choices. The method
     * does string comparisons to try to find an optimal match.
@@ -1111,20 +1129,6 @@ public:
                        Formattable& result,
                        ParsePosition& parsePosition) const;
 
-    // Declare here again to get rid of function hiding problems.
-    /**
-     * Parse the given string using this object's choices.
-     *
-     * @param text           The text to be parsed.
-     * @param result         Formattable to be set to the parse result.
-     * @param status    Output parameter filled in with success or failure status.
-     * @stable ICU 2.0
-     */
-    virtual void parse(const UnicodeString& text,
-                       Formattable& result,
-                       UErrorCode& status) const;
-
-/* Cannot use #ifndef U_HIDE_DRAFT_API for the following draft method since it is virtual */
     /**
      * Parses text from the given string as a currency amount.  Unlike
      * the parse() method, this method will attempt to parse a generic
@@ -1142,7 +1146,7 @@ public:
      * @return     if parse succeeds, a pointer to a newly-created CurrencyAmount
      *             object (owned by the caller) containing information about
      *             the parsed currency; if parse fails, this is NULL.
-     * @draft ICU 49
+     * @stable ICU 49
      */
     virtual CurrencyAmount* parseCurrency(const UnicodeString& text,
                                           ParsePosition& pos) const;
@@ -1300,7 +1304,7 @@ public:
 
     /**
      * Get the rounding increment.
-     * @return A positive rounding increment, or 0.0 if a rounding
+     * @return A positive rounding increment, or 0.0 if a custom rounding
      * increment is not in effect.
      * @see #setRoundingIncrement
      * @see #getRoundingMode
@@ -1312,7 +1316,8 @@ public:
     /**
      * Set the rounding increment.  In the absence of a rounding increment,
      *    numbers will be rounded to the number of digits displayed.
-     * @param newValue A positive rounding increment.
+     * @param newValue A positive rounding increment, or 0.0 to
+     * use the default rounding increment.
      * Negative increments are equivalent to 0.0.
      * @see #getRoundingIncrement
      * @see #getRoundingMode
@@ -1445,7 +1450,7 @@ public:
      * @see #setExponentSignAlwaysShown
      * @stable ICU 2.0
      */
-    virtual UBool isScientificNotation(void);
+    virtual UBool isScientificNotation(void) const;
 
     /**
      * Set whether or not scientific notation is used. When scientific notation
@@ -1502,7 +1507,7 @@ public:
      * @see #setExponentSignAlwaysShown
      * @stable ICU 2.0
      */
-    virtual UBool isExponentSignAlwaysShown(void);
+    virtual UBool isExponentSignAlwaysShown(void) const;
 
     /**
      * Set whether the exponent sign is always shown.  This has no effect
@@ -1778,8 +1783,10 @@ public:
      * Sets the minimum number of significant digits that will be
      * displayed.  If <code>min</code> is less than one then it is set
      * to one.  If the maximum significant digits count is less than
-     * <code>min</code>, then it is set to <code>min</code>. This
-     * value has no effect unless areSignificantDigits() returns true.
+     * <code>min</code>, then it is set to <code>min</code>.
+     * This function also enables the use of significant digits
+     * by this formatter - areSignificantDigitsUsed() will return TRUE.
+     * @see #areSignificantDigitsUsed
      * @param min the fewest significant digits to be shown
      * @stable ICU 3.0
      */
@@ -1790,8 +1797,9 @@ public:
      * displayed.  If <code>max</code> is less than one then it is set
      * to one.  If the minimum significant digits count is greater
      * than <code>max</code>, then it is set to <code>max</code>.
-     * This value has no effect unless areSignificantDigits() returns
-     * true.
+     * This function also enables the use of significant digits
+     * by this formatter - areSignificantDigitsUsed() will return TRUE.
+     * @see #areSignificantDigitsUsed
      * @param max the most significant digits to be shown
      * @stable ICU 3.0
      */
@@ -1843,6 +1851,32 @@ public:
      */
     static const char fgNumberPatterns[];
 
+#ifndef U_HIDE_INTERNAL_API
+    /**
+     *  Get a FixedDecimal corresponding to a double as it would be
+     *  formatted by this DecimalFormat.
+     *  Internal, not intended for public use.
+     *  @internal
+     */
+     FixedDecimal getFixedDecimal(double number, UErrorCode &status) const;
+
+    /**
+     *  Get a FixedDecimal corresponding to a formattable as it would be
+     *  formatted by this DecimalFormat.
+     *  Internal, not intended for public use.
+     *  @internal
+     */
+     FixedDecimal getFixedDecimal(const Formattable &number, UErrorCode &status) const;
+
+    /**
+     *  Get a FixedDecimal corresponding to a DigitList as it would be
+     *  formatted by this DecimalFormat. Note: the DigitList may be modified.
+     *  Internal, not intended for public use.
+     *  @internal
+     */
+     FixedDecimal getFixedDecimal(DigitList &number, UErrorCode &status) const;
+#endif  /* U_HIDE_INTERNAL_API */
+
 public:
 
     /**
@@ -1878,15 +1912,15 @@ private:
     int32_t precision() const;
 
     /**
-     *   Initialize all fields of a new DecimalFormatter.
+     *   Initialize all fields of a new DecimalFormatter to a safe default value.
      *      Common code for use by constructors.
      */
-    void init(UErrorCode& status);
+    void init();
 
     /**
      * Do real work of constructing a new DecimalFormat.
      */
-    void construct(UErrorCode&               status,
+    void construct(UErrorCode&              status,
                    UParseError&             parseErr,
                    const UnicodeString*     pattern = 0,
                    DecimalFormatSymbols*    symbolsToAdopt = 0
@@ -1954,7 +1988,8 @@ private:
     UnicodeString& subformat(UnicodeString& appendTo,
                              FieldPositionHandler& handler,
                              DigitList&     digits,
-                             UBool          isInteger) const;
+                             UBool          isInteger, 
+                             UErrorCode &status) const;
 
 
     void parse(const UnicodeString& text,
@@ -1972,7 +2007,7 @@ private:
                    const UnicodeString* negSuffix,
                    const UnicodeString* posPrefix,
                    const UnicodeString* posSuffix,
-                   UBool currencyParsing,
+                   UBool complexCurrencyParsing,
                    int8_t type,
                    ParsePosition& parsePosition,
                    DigitList& digits, UBool* status,
@@ -1996,18 +2031,26 @@ private:
                          UBool isNegative,
                          UBool isPrefix,
                          const UnicodeString* affixPat,
-                         UBool currencyParsing,
+                         UBool complexCurrencyParsing,
                          int8_t type,
                          UChar* currency) const;
 
-    static int32_t compareSimpleAffix(const UnicodeString& affix,
+    static UnicodeString& trimMarksFromAffix(const UnicodeString& affix, UnicodeString& trimmedAffix);
+
+    UBool equalWithSignCompatibility(UChar32 lhs, UChar32 rhs) const;
+
+    int32_t compareSimpleAffix(const UnicodeString& affix,
                                       const UnicodeString& input,
                                       int32_t pos,
-                                      UBool lenient);
+                                      UBool lenient) const;
 
     static int32_t skipPatternWhiteSpace(const UnicodeString& text, int32_t pos);
 
     static int32_t skipUWhiteSpace(const UnicodeString& text, int32_t pos);
+
+    static int32_t skipUWhiteSpaceAndMarks(const UnicodeString& text, int32_t pos);
+
+    static int32_t skipBidiMarks(const UnicodeString& text, int32_t pos);
 
     int32_t compareComplexAffix(const UnicodeString& affixPat,
                                 const UnicodeString& input,
@@ -2109,10 +2152,12 @@ private:
 
     UnicodeString& _format(int64_t number,
                            UnicodeString& appendTo,
-                           FieldPositionHandler& handler) const;
+                           FieldPositionHandler& handler,
+                           UErrorCode &status) const;
     UnicodeString& _format(double number,
                            UnicodeString& appendTo,
-                           FieldPositionHandler& handler) const;
+                           FieldPositionHandler& handler,
+                           UErrorCode &status) const;
     UnicodeString& _format(const DigitList &number,
                            UnicodeString& appendTo,
                            FieldPositionHandler& handler,
@@ -2147,6 +2192,7 @@ private:
     ChoiceFormat*           fCurrencyChoice;
 
     DigitList *             fMultiplier;   // NULL for multiplier of one
+    int32_t                 fScale;        
     int32_t                 fGroupingSize;
     int32_t                 fGroupingSize2;
     UBool                   fDecimalSeparatorAlwaysShown;
@@ -2159,6 +2205,11 @@ private:
     UBool                   fUseExponentialNotation;
     int8_t                  fMinExponentDigits;
     UBool                   fExponentSignAlwaysShown;
+
+    EnumSet<UNumberFormatAttribute,
+            UNUM_MAX_NONBOOLEAN_ATTRIBUTE+1, 
+            UNUM_LIMIT_BOOLEAN_ATTRIBUTE>  
+                            fBoolFlags;
 
     DigitList*              fRoundingIncrement;  // NULL if no rounding increment specified.
     ERoundingMode           fRoundingMode;
@@ -2282,8 +2333,19 @@ private:
     UNumberFormatAttributeValue fParseAllInput;
 #endif
 
+    // Decimal Format Static Sets singleton.
+    const DecimalFormatStaticSets *fStaticSets;
+
 
 protected:
+
+#ifndef U_HIDE_INTERNAL_API
+    /**
+     * Rounds a value according to the rules of this object.
+     * @internal
+     */
+    DigitList& _round(const DigitList& number, DigitList& adjustedNum, UBool& isNegative, UErrorCode& status) const;
+#endif  /* U_HIDE_INTERNAL_API */
 
     /**
      * Returns the currency in effect for this formatter.  Subclasses
@@ -2332,35 +2394,10 @@ protected:
 #endif
 };
 
-inline UnicodeString&
-DecimalFormat::format(const Formattable& obj,
-                      UnicodeString& appendTo,
-                      UErrorCode& status) const {
-    // Don't use Format:: - use immediate base class only,
-    // in case immediate base modifies behavior later.
-    return NumberFormat::format(obj, appendTo, status);
-}
-
-inline UnicodeString&
-DecimalFormat::format(double number,
-                      UnicodeString& appendTo) const {
-    FieldPosition pos(0);
-    return format(number, appendTo, pos);
-}
-
-inline UnicodeString&
-DecimalFormat::format(int32_t number,
-                      UnicodeString& appendTo) const {
-    FieldPosition pos(0);
-    return format((int64_t)number, appendTo, pos);
-}
-
-#ifndef U_HIDE_INTERNAL_API
 inline const UnicodeString &
 DecimalFormat::getConstSymbol(DecimalFormatSymbols::ENumberFormatSymbol symbol) const {
     return fSymbols->getConstSymbol(symbol);
 }
-#endif
 
 U_NAMESPACE_END
 

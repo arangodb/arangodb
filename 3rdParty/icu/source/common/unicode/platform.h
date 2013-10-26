@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -36,7 +36,7 @@
  * and/or from other macros that are predefined by the compiler
  * or defined in standard (POSIX or platform or compiler) headers.
  *
- * As a temporary workaround, you can add an explicit #define for some macros
+ * As a temporary workaround, you can add an explicit <code>#define</code> for some macros
  * before it is first tested, or add an equivalent -D macro definition
  * to the compiler's command line.
  *
@@ -49,6 +49,19 @@
  * (You can provide an actual empty .c file rather than /dev/null.
  * <code>-x c++</code> is for C++.)
  */
+
+/**
+ * Define some things so that they can be documented.
+ * @internal
+ */
+#ifdef U_IN_DOXYGEN
+/*
+ * Problem: "platform.h:335: warning: documentation for unknown define U_HAVE_STD_STRING found." means that U_HAVE_STD_STRING is not documented.
+ * Solution: #define any defines for non @internal API here, so that they are visible in the docs.  If you just set PREDEFINED in Doxyfile.in,  they won't be documented.
+ */
+
+/* None for now. */
+#endif
 
 /**
  * \def U_PLATFORM
@@ -131,7 +144,14 @@
 #   include <android/api-level.h>
 #elif defined(linux) || defined(__linux__) || defined(__linux)
 #   define U_PLATFORM U_PF_LINUX
-#elif defined(BSD) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+#elif defined(__APPLE__) && defined(__MACH__)
+#   include <TargetConditionals.h>
+#   if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE  /* variant of TARGET_OS_MAC */
+#       define U_PLATFORM U_PF_IPHONE
+#   else
+#       define U_PLATFORM U_PF_DARWIN
+#   endif
+#elif defined(BSD) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__MirBSD__)
 #   define U_PLATFORM U_PF_BSD
 #elif defined(sun) || defined(__sun)
     /* Check defined(__SVR4) || defined(__svr4__) to distinguish Solaris from SunOS? */
@@ -149,13 +169,6 @@
 #   define U_PLATFORM U_PF_HPUX
 #elif defined(sgi) || defined(__sgi)
 #   define U_PLATFORM U_PF_IRIX
-#elif defined(__APPLE__) && defined(__MACH__)
-#   include <TargetConditionals.h>
-#   if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE  /* variant of TARGET_OS_MAC */
-#       define U_PLATFORM U_PF_IPHONE
-#   else
-#       define U_PLATFORM U_PF_DARWIN
-#   endif
 #elif defined(macintosh)
 #   define U_PLATFORM U_PF_CLASSIC_MACOS
 #elif defined(__QNX__) || defined(__QNXNTO__)
@@ -259,7 +272,7 @@
 #ifdef U_HAVE_STDINT_H
     /* Use the predefined value. */
 #elif U_PLATFORM_USES_ONLY_WIN32_API
-#   if defined(__BORLANDC__) || (defined(_MSC_VER) && _MSC_VER>=1600)
+#   if defined(__BORLANDC__) || U_PLATFORM == U_PF_MINGW || (defined(_MSC_VER) && _MSC_VER>=1600)
         /* Windows Visual Studio 9 and below do not have stdint.h & inttypes.h, but VS 2010 adds them. */
 #       define U_HAVE_STDINT_H 1
 #   else
@@ -267,6 +280,9 @@
 #   endif
 #elif U_PLATFORM == U_PF_SOLARIS
     /* Solaris has inttypes.h but not stdint.h. */
+#   define U_HAVE_STDINT_H 0
+#elif U_PLATFORM == U_PF_AIX && !defined(_AIX51) && defined(_POWER)
+    /* PPC AIX <= 4.3 has inttypes.h but not stdint.h. */
 #   define U_HAVE_STDINT_H 0
 #else
 #   define U_HAVE_STDINT_H 1
@@ -282,6 +298,9 @@
     /* Use the predefined value. */
 #elif U_PLATFORM == U_PF_SOLARIS
     /* Solaris has inttypes.h but not stdint.h. */
+#   define U_HAVE_INTTYPES_H 1
+#elif U_PLATFORM == U_PF_AIX && !defined(_AIX51) && defined(_POWER)
+    /* PPC AIX <= 4.3 has inttypes.h but not stdint.h. */
 #   define U_HAVE_INTTYPES_H 1
 #else
     /* Most platforms have both inttypes.h and stdint.h, or neither. */
@@ -320,8 +339,6 @@
  */
 #ifdef U_HAVE_STD_STRING
     /* Use the predefined value. */
-#elif U_PLATFORM == U_PF_ANDROID
-#   define U_HAVE_STD_STRING 0
 #else
 #   define U_HAVE_STD_STRING 1
 #endif
@@ -329,6 +346,22 @@
 /*===========================================================================*/
 /** @{ Compiler and environment features                                     */
 /*===========================================================================*/
+
+/**
+ * \def U_GCC_MAJOR_MINOR
+ * Indicates whether the compiler is gcc (test for != 0),
+ * and if so, contains its major (times 100) and minor version numbers.
+ * If the compiler is not gcc, then U_GCC_MAJOR_MINOR == 0.
+ *
+ * For example, for testing for whether we have gcc, and whether it's 4.6 or higher,
+ * use "#if U_GCC_MAJOR_MINOR >= 406".
+ * @internal
+ */
+#ifdef __GNUC__
+#   define U_GCC_MAJOR_MINOR (__GNUC__ * 100 + __GNUC_MINOR__)
+#else
+#   define U_GCC_MAJOR_MINOR 0
+#endif
 
 /**
  * \def U_IS_BIG_ENDIAN
@@ -351,6 +384,9 @@
 #   define U_IS_BIG_ENDIAN 1
 #elif defined(_PA_RISC1_0) || defined(_PA_RISC1_1) || defined(_PA_RISC2_0)
     /* HPPA do not appear to predefine any endianness macros. */
+#   define U_IS_BIG_ENDIAN 1
+#elif defined(sparc) || defined(__sparc) || defined(__sparc__)
+    /* Some sparc based systems (e.g. Linux) do not predefine any endianness macros. */
 #   define U_IS_BIG_ENDIAN 1
 #else
 #   define U_IS_BIG_ENDIAN 0
@@ -381,6 +417,35 @@
 #   define U_HAVE_DEBUG_LOCATION_NEW 1
 #else
 #   define U_HAVE_DEBUG_LOCATION_NEW 0
+#endif
+
+/* Compatibility with non clang compilers */
+#ifndef __has_attribute
+#    define __has_attribute(x) 0
+#endif
+
+/**
+ * \def U_MALLOC_ATTR
+ * Attribute to mark functions as malloc-like
+ * @internal
+ */
+#if defined(__GNUC__) && __GNUC__>=3
+#    define U_MALLOC_ATTR __attribute__ ((__malloc__))
+#else
+#    define U_MALLOC_ATTR
+#endif
+
+/**
+ * \def U_ALLOC_SIZE_ATTR
+ * Attribute to specify the size of the allocated buffer for malloc-like functions
+ * @internal
+ */
+#if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))) || __has_attribute(alloc_size)
+#   define U_ALLOC_SIZE_ATTR(X) __attribute__ ((alloc_size(X)))
+#   define U_ALLOC_SIZE_ATTR2(X,Y) __attribute__ ((alloc_size(X,Y)))
+#else
+#   define U_ALLOC_SIZE_ATTR(X)
+#   define U_ALLOC_SIZE_ATTR2(X,Y)
 #endif
 
 /** @} */
@@ -597,8 +662,13 @@
      * does not support u"abc" string literals.
      * gcc 4.4 defines the __CHAR16_TYPE__ macro to a usable type but
      * does not support u"abc" string literals.
+     * C++11 and C11 require support for UTF-16 literals
      */
-#   define U_HAVE_CHAR16_T 0
+#   if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+#       define U_HAVE_CHAR16_T 1
+#   else
+#       define U_HAVE_CHAR16_T 0
+#   endif
 #endif
 
 /**
@@ -610,15 +680,11 @@
  */
 #ifdef U_DECLARE_UTF16
     /* Use the predefined value. */
-#elif (defined(__xlC__) && defined(__IBM_UTF_LITERAL) && U_SIZEOF_WCHAR_T != 2) \
+#elif U_HAVE_CHAR16_T \
+    || (defined(__xlC__) && defined(__IBM_UTF_LITERAL) && U_SIZEOF_WCHAR_T != 2) \
     || (defined(__HP_aCC) && __HP_aCC >= 035000) \
-    || (defined(__HP_cc) && __HP_cc >= 111106) \
-    || U_HAVE_CHAR16_T
+    || (defined(__HP_cc) && __HP_cc >= 111106)
 #   define U_DECLARE_UTF16(string) u ## string
-#elif (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x550)
-/* || (defined(__SUNPRO_C) && __SUNPRO_C >= 0x580) */
-/* Sun's C compiler has issues with this notation, and it's unreliable. */
-#   define U_DECLARE_UTF16(string) U ## string
 #elif U_SIZEOF_WCHAR_T == 2 \
     && (U_CHARSET_FAMILY == 0 || (U_PF_OS390 <= U_PLATFORM && U_PLATFORM <= U_PF_OS400 && defined(__UCS2__)))
 #   define U_DECLARE_UTF16(string) L ## string

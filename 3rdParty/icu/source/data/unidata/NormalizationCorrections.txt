@@ -1,10 +1,10 @@
-# NormalizationCorrections-6.1.0.txt
-# Date: 2011-06-23, 00:46:00 GMT [KW, LI]
+# NormalizationCorrections-6.3.0.txt
+# Date: 2013-01-02, 08:39:00 GMT [KW, LI]
 #
 # This file is a normative contributory data file in the
 # Unicode Character Database.
 #
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 #
 # The normalization stability policy of the Unicode Consortium
@@ -46,3 +46,5 @@ F951;96FB;964B;3.2.0 # Corrigendum 3
 2F91F;43AB;243AB;4.0.0 # Corrigendum 4
 2F95F;7AAE;7AEE;4.0.0 # Corrigendum 4
 2F9BF;4D57;45D7;4.0.0 # Corrigendum 4
+
+# EOF

@@ -107,7 +107,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\..\bin\icutu49.dll</OutputFile>
+      <OutputFile>..\..\..\bin\icutu52.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>.\..\..\..\lib\icutu.pdb</ProgramDatabaseFile>
@@ -151,7 +151,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\..\bin\icutu49d.dll</OutputFile>
+      <OutputFile>..\..\..\bin\icutu52d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -193,7 +193,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\..\bin64\icutu49.dll</OutputFile>
+      <OutputFile>..\..\..\bin64\icutu52.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>.\..\..\..\lib64\icutu.pdb</ProgramDatabaseFile>
@@ -235,7 +235,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\..\bin64\icutu49d.dll</OutputFile>
+      <OutputFile>..\..\..\bin64\icutu52d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -266,7 +266,9 @@
     <ClCompile Include="pkg_icu.cpp" />
     <ClCompile Include="pkgitems.cpp" />
     <ClCompile Include="ppucd.cpp" />
-    <ClCompile Include="swapimpl.cpp" />
+    <ClCompile Include="swapimpl.cpp">
+    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="toolutil.cpp">
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableLanguageExtensions>

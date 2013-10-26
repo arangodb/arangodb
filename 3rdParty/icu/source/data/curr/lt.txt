@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/lt.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lt.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/lt.xml
+ * ICU <specials> source: <path>/common/main/lt.xml
  */
 lt{
     Currencies{
@@ -17,19 +17,19 @@ lt{
         }
         AED{
             "AED",
-            "JAE dirhamas",
+            "Jungtinių Arabų Emyratų dirhamas",
         }
         AFA{
             "AFA",
-            "Afganis (1927-2002)",
+            "Afganistano afganis (1927–2002)",
         }
         AFN{
             "AFN",
-            "Afganis",
+            "Afganistano afganis",
         }
         ALK{
-            "ALK" /** ===  */,
-            "Senasis albanų lekë",
+            "ALK",
+            "Albanijos lekas (1946–1965)",
         }
         ALL{
             "ALL",
@@ -41,7 +41,7 @@ lt{
         }
         ANG{
             "ANG",
-            "Nyderlandų Antilų guldenas",
+            "Olandijos Antilų guldenas",
         }
         AOA{
             "AOA",
@@ -49,7 +49,7 @@ lt{
         }
         AOK{
             "AOK",
-            "Angolos kvanza (1977-1990)",
+            "Angolos kvanza (1977–1990)",
         }
         AON{
             "AON",
@@ -73,7 +73,7 @@ lt{
         }
         ARP{
             "ARP",
-            "Argentinos pesas (1983-1985)",
+            "Argentinos pesas (1983–1985)",
         }
         ARS{
             "ARS",
@@ -84,7 +84,7 @@ lt{
             "Austrijos šilingas",
         }
         AUD{
-            "AU$",
+            "AUD",
             "Australijos doleris",
         }
         AWG{
@@ -93,7 +93,7 @@ lt{
         }
         AZM{
             "AZM",
-            "Azerbaidžano manatas (1993-2006)",
+            "Azerbaidžano manatas (1993–2006)",
         }
         AZN{
             "AZN",
@@ -101,7 +101,7 @@ lt{
         }
         BAD{
             "BAD",
-            "Bosnijos ir Hercegovinos dinaras",
+            "Bosnijos ir Hercegovinos dinaras (1992–1994)",
         }
         BAM{
             "BAM",
@@ -109,7 +109,7 @@ lt{
         }
         BAN{
             "BAN",
-            "Naujieji Borsnijos ir Hercogovinos dinarai",
+            "Bosnijos ir Hercegovinos naujasis dinaras (1994–1997)",
         }
         BBD{
             "BBD",
@@ -133,7 +133,7 @@ lt{
         }
         BGL{
             "BGL",
-            "Bulgarijos levas (1962-1999)",
+            "Bulgarijos levas (1962–1999)",
         }
         BGM{
             "BGM",
@@ -145,7 +145,7 @@ lt{
         }
         BGO{
             "BGO",
-            "Senasis bulgarų lev",
+            "Bulgarijos levas (1879–1952)",
         }
         BHD{
             "BHD",
@@ -169,7 +169,7 @@ lt{
         }
         BOL{
             "BOL",
-            "Senosios boliviečių bolivianos",
+            "Bolivijos bolivijanas (1863–1963)",
         }
         BOP{
             "BOP",
@@ -189,10 +189,10 @@ lt{
         }
         BRE{
             "BRE",
-            "Brazilijos kruzeiras (1990-1993)",
+            "Brazilijos kruzeiras (1990–1993)",
         }
         BRL{
-            "R$",
+            "BRL",
             "Brazilijos realas",
         }
         BRN{
@@ -217,7 +217,7 @@ lt{
         }
         BUK{
             "BUK",
-            "Birmos kyats",
+            "Birmos kijatas",
         }
         BWP{
             "BWP",
@@ -225,7 +225,7 @@ lt{
         }
         BYB{
             "BYB",
-            "Baltarusijos naujasis rublis",
+            "Baltarusijos naujasis rublis (1994–1999)",
         }
         BYR{
             "BYR",
@@ -236,7 +236,7 @@ lt{
             "Belizo doleris",
         }
         CAD{
-            "CA$",
+            "CAD",
             "Kanados doleris",
         }
         CDF{
@@ -253,7 +253,7 @@ lt{
         }
         CHW{
             "CHW",
-            "WIR frankai",
+            "WIR frankas",
         }
         CLE{
             "CLE",
@@ -268,12 +268,12 @@ lt{
             "Čilės pesas",
         }
         CNX{
-            "CNX" /** ===  */,
-            "Kinijos \"People\" banko doleriai",
+            "CNX",
+            "Kinijos \u0022People\u0022 banko doleris",
         }
         CNY{
-            "CN¥",
-            "Kinijos juanis",
+            "CNY",
+            "Kinijos ženminbi juanis",
         }
         COP{
             "COP",
@@ -289,15 +289,15 @@ lt{
         }
         CSD{
             "CSD",
-            "Senasis Serbijos dinaras",
+            "Serbijos dinaras (2002–2006)",
         }
         CSK{
             "CSK",
-            "Čekoslovakų sunkieji korunai",
+            "Čekoslovakų sunkusis korunas",
         }
         CUC{
             "CUC",
-            "Kubos konvertuojamas pesas",
+            "Kubos konvertuojamasis pesas",
         }
         CUP{
             "CUP",
@@ -305,7 +305,7 @@ lt{
         }
         CVE{
             "CVE",
-            "Verdean iškyšulio eskudas",
+            "Žaliojo Kyšulio eskudas",
         }
         CYP{
             "CYP",
@@ -317,7 +317,7 @@ lt{
         }
         DDM{
             "DDM",
-            "Rytų Vokietijos ostmarkė",
+            "Rytų Vokietijos markė",
         }
         DEM{
             "DEM",
@@ -389,14 +389,14 @@ lt{
         }
         FKP{
             "FKP",
-            "Folklando salų svaras",
+            "Falklando salų svaras",
         }
         FRF{
             "FRF",
             "Prancūzijos frankas",
         }
         GBP{
-            "£",
+            "GBP",
             "Didžiosios Britanijos svaras sterlingų",
         }
         GEK{
@@ -409,7 +409,7 @@ lt{
         }
         GHC{
             "GHC",
-            "Ganos sedis (1979-2007)",
+            "Ganos sedis (1979–2007)",
         }
         GHS{
             "GHS",
@@ -441,7 +441,7 @@ lt{
         }
         GTQ{
             "GTQ",
-            "Gvatemalos kecalis",
+            "Gvatemalos ketcalis",
         }
         GWE{
             "GWE",
@@ -456,7 +456,7 @@ lt{
             "Gajanos doleris",
         }
         HKD{
-            "HK$",
+            "HKD",
             "Honkongo doleris",
         }
         HNL{
@@ -492,15 +492,15 @@ lt{
             "Izraelio svaras",
         }
         ILR{
-            "ILR" /** ===  */,
-            "Senieji izraeliečių sheqels",
+            "ILR",
+            "Izraelio šekelis (1980–1985)",
         }
         ILS{
-            "₪",
-            "Izraelio šekelis",
+            "ILS",
+            "Izraelio naujasis šekelis",
         }
         INR{
-            "₹",
+            "INR",
             "Indijos rupija",
         }
         IQD{
@@ -512,8 +512,8 @@ lt{
             "Irano rialas",
         }
         ISJ{
-            "ISJ" /** ===  */,
-            "Senosios islandų krónur",
+            "ISJ",
+            "Islandijos krona (1918–1981)",
         }
         ISK{
             "ISK",
@@ -532,7 +532,7 @@ lt{
             "Jordanijos dinaras",
         }
         JPY{
-            "JP¥",
+            "JPY",
             "Japonijos jena",
         }
         KES{
@@ -545,7 +545,7 @@ lt{
         }
         KHR{
             "KHR",
-            "Chmerų riel",
+            "Kambodžos rielis",
         }
         KMF{
             "KMF",
@@ -557,14 +557,14 @@ lt{
         }
         KRH{
             "KRH",
-            "Pietų Korėjos hwan",
+            "Pietų Korėjos hwanas (1953–1962)",
         }
         KRO{
             "KRO",
-            "Senasis Pietų Korėjos vonas",
+            "Pietų Korėjos vonas (1945–1953)",
         }
         KRW{
-            "₩",
+            "KRW",
             "Pietų Korėjos vonas",
         }
         KWD{
@@ -601,7 +601,7 @@ lt{
         }
         LTL{
             "Lt",
-            "Litas",
+            "Lietuvos litas",
         }
         LTT{
             "LTT",
@@ -641,7 +641,7 @@ lt{
         }
         MCF{
             "MCF",
-            "Monegasque frankai",
+            "Monegasque frankas",
         }
         MDC{
             "MDC",
@@ -665,7 +665,7 @@ lt{
         }
         MKN{
             "MKN",
-            "Senieji Makedonijos denarai",
+            "Makedonijos denaras (1992–1993)",
         }
         MLF{
             "MLF",
@@ -701,19 +701,19 @@ lt{
         }
         MVR{
             "MVR",
-            "Maldyvų salų rufija",
+            "Maldyvų rufija",
         }
         MWK{
             "MWK",
             "Malavio kvača",
         }
         MXN{
-            "MX$",
+            "MXN",
             "Meksikos pesas",
         }
         MXP{
             "MXP",
-            "Meksikos sidabrinis pesas (1861-1992)",
+            "Meksikos sidabrinis pesas (1861–1992)",
         }
         MXV{
             "MXV",
@@ -729,7 +729,7 @@ lt{
         }
         MZM{
             "MZM",
-            "Senasis Mozambiko metikalis",
+            "Mozambiko metikalis (1980–2006)",
         }
         MZN{
             "MZN",
@@ -745,11 +745,11 @@ lt{
         }
         NIC{
             "NIC",
-            "Nikaragvos kardoba",
+            "Nikaragvos kardoba (1988–1991)",
         }
         NIO{
             "NIO",
-            "Nikaragvos kardoba oras",
+            "Nikaragvos kordoba",
         }
         NLG{
             "NLG",
@@ -764,7 +764,7 @@ lt{
             "Nepalo rupija",
         }
         NZD{
-            "NZ$",
+            "NZD",
             "Naujosios Zelandijos doleris",
         }
         OMR{
@@ -785,7 +785,7 @@ lt{
         }
         PES{
             "PES",
-            "Peru solis",
+            "Peru solis (1863–1965)",
         }
         PGK{
             "PGK",
@@ -805,7 +805,7 @@ lt{
         }
         PLZ{
             "PLZ",
-            "Lenkijos zlotas (1950-1995)",
+            "Lenkijos zlotas (1950–1995)",
         }
         PTE{
             "PTE",
@@ -825,11 +825,11 @@ lt{
         }
         ROL{
             "ROL",
-            "Senoji Rumunijos lėja",
+            "Rumunijos lėja (1952–2006)",
         }
         RON{
             "RON",
-            "Naujoji Rumunijos lėja",
+            "Rumunijos lėja",
         }
         RSD{
             "RSD",
@@ -841,7 +841,7 @@ lt{
         }
         RUR{
             "RUR",
-            "Rusijos rublis (1991-1998)",
+            "Rusijos rublis (1991–1998)",
         }
         RWF{
             "RWF",
@@ -849,7 +849,7 @@ lt{
         }
         SAR{
             "SAR",
-            "Saudo Arabijos rialas",
+            "Saudo Arabijos rijalas",
         }
         SBD{
             "SBD",
@@ -857,11 +857,11 @@ lt{
         }
         SCR{
             "SCR",
-            "Seišelių salų rupija",
+            "Seišelių rupija",
         }
         SDD{
             "SDD",
-            "Senasis Sudano dinaras",
+            "Sudano dinaras (1992–2007)",
         }
         SDG{
             "SDG",
@@ -869,7 +869,7 @@ lt{
         }
         SDP{
             "SDP",
-            "Senasis Sudano svaras",
+            "Sudano svaras (1957–1998)",
         }
         SEK{
             "SEK",
@@ -907,13 +907,17 @@ lt{
             "SRG",
             "Surimano guldenas",
         }
+        SSP{
+            "SSP",
+            "Pietų Sudano svaras",
+        }
         STD{
             "STD",
-            "Sao Tomės ir Principės dobra",
+            "San Tomės ir Principės dobra",
         }
         SUR{
             "SUR",
-            "Sovietų Sąjungos rublis",
+            "Sovietų rublis",
         }
         SVC{
             "SVC",
@@ -925,10 +929,10 @@ lt{
         }
         SZL{
             "SZL",
-            "Svazilendo lilangenis",
+            "Svazilando lilangenis",
         }
         THB{
-            "฿",
+            "THB",
             "Tailando batas",
         }
         TJR{
@@ -941,11 +945,11 @@ lt{
         }
         TMM{
             "TMM",
-            "Turkmėnistano manatas",
+            "Turkmėnistano manatas (1993–2009)",
         }
         TMT{
             "TMT",
-            "Turkmėnistano Naujas Manat",
+            "Turkmėnistano manatas",
         }
         TND{
             "TND",
@@ -961,19 +965,19 @@ lt{
         }
         TRL{
             "TRL",
-            "Senoji Turkijos lira",
+            "Turkijos lira (1922–2005)",
         }
         TRY{
             "TRY",
-            "Naujoji Turkijos lira",
+            "Turkijos lira",
         }
         TTD{
             "TTD",
             "Trinidado ir Tobago doleris",
         }
         TWD{
-            "NT$",
-            "Naujasis Taivano doleris",
+            "TWD",
+            "Taivano naujasis doleris",
         }
         TZS{
             "TZS",
@@ -989,14 +993,14 @@ lt{
         }
         UGS{
             "UGS",
-            "Ugandos šilingas (1966-1987)",
+            "Ugandos šilingas (1966–1987)",
         }
         UGX{
             "UGX",
             "Ugandos šilingas",
         }
         USD{
-            "US$",
+            "USD",
             "JAV doleris",
         }
         USN{
@@ -1013,7 +1017,7 @@ lt{
         }
         UYP{
             "UYP",
-            "Urugvajaus pesas (1975-1993)",
+            "Urugvajaus pesas (1975–1993)",
         }
         UYU{
             "UYU",
@@ -1025,30 +1029,30 @@ lt{
         }
         VEB{
             "VEB",
-            "Venesuelos bolivaras",
+            "Venesuelos bolivaras (1871–2008)",
         }
         VEF{
             "VEF",
-            "Stiprusis Venesuelos bolivaras",
+            "Venesuelos bolivaras",
         }
         VND{
-            "₫",
+            "VND",
             "Vietnamo dongas",
         }
         VNN{
             "VNN",
-            "Senasis Vietnamo dongas",
+            "Vietnamo dongas (1978–1985)",
         }
         VUV{
             "VUV",
-            "Vanuatu Vatu",
+            "Vanuatu vatas",
         }
         WST{
             "WST",
-            "Vakarų Samoa tala",
+            "Samoa tala",
         }
         XAF{
-            "FCFA",
+            "XAF",
             "CFA BEAC frankas",
         }
         XAG{
@@ -1076,7 +1080,7 @@ lt{
             "Europos valiutos / apskaitos vienetas (XBD)",
         }
         XCD{
-            "EC$",
+            "XCD",
             "Rytų Karibų doleris",
         }
         XDR{
@@ -1085,7 +1089,7 @@ lt{
         }
         XEU{
             "XEU",
-            "Europos piniginis vienetas (1993-1999)",
+            "Europos piniginis vienetas (1993–1999)",
         }
         XFO{
             "XFO",
@@ -1093,10 +1097,10 @@ lt{
         }
         XFU{
             "XFU",
-            "Uic - frankas",
+            "Prancūzijos UIC - frankas",
         }
         XOF{
-            "CFA",
+            "XOF",
             "CFA BCEAO frankas",
         }
         XPD{
@@ -1104,7 +1108,7 @@ lt{
             "Paladis",
         }
         XPF{
-            "CFPF",
+            "XPF",
             "CFP frankas",
         }
         XPT{
@@ -1121,7 +1125,7 @@ lt{
         }
         XXX{
             "XXX",
-            "Nežinoma valiuta",
+            "nežinoma valiuta",
         }
         YDD{
             "YDD",
@@ -1133,11 +1137,11 @@ lt{
         }
         YUD{
             "YUD",
-            "Jugoslavijos kietieji dinarai",
+            "Jugoslavijos kietasis dinaras (1966–1990)",
         }
         YUM{
             "YUM",
-            "Jugoslavijos naujasis dinaras",
+            "Jugoslavijos naujasis dinaras (1994–2002)",
         }
         YUN{
             "YUN",
@@ -1153,10 +1157,14 @@ lt{
         }
         ZAR{
             "ZAR",
-            "Pietų Afrikos randas",
+            "Pietų Afrikos Respublikos randas",
         }
         ZMK{
             "ZMK",
+            "Zambijos kvača (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Zambijos kvača",
         }
         ZRN{
@@ -1169,7 +1177,7 @@ lt{
         }
         ZWD{
             "ZWD",
-            "Zimbabvės doleris",
+            "Zimbabvės doleris (1980–2008)",
         }
         ZWL{
             "ZWL",
@@ -1183,1463 +1191,1768 @@ lt{
     CurrencyPlurals{
         ADP{
             few{"Andoros pesetos"}
+            many{"Andoros pesetos"}
             one{"Andoros peseta"}
             other{"Andoros pesetos"}
         }
         AED{
-            few{"UAE dirhams"}
-            one{"UAE dirham"}
-            other{"UAE dirhams"}
+            few{"JAE dirhamai"}
+            many{"JAE dirhamo"}
+            one{"JAE dirhamas"}
+            other{"JAE dirhamų"}
         }
         AFA{
-            few{"Afganiai (1927-2002)"}
-            one{"Afganis (1927-2002)"}
-            other{"Afganiai (1927-2002)"}
+            few{"Afganistano afganiai (1927–2002)"}
+            many{"Afganistano afganio (1927–2002)"}
+            one{"Afganistano afganis (1927–2002)"}
+            other{"Afganistano afganių (1927–2002)"}
         }
         AFN{
-            few{"Afganiai"}
-            one{"Afganis"}
-            other{"Afganiai"}
+            few{"Afganistano afganiai"}
+            many{"Afganistano afganio"}
+            one{"Afganistano afganis"}
+            other{"Afganistano afganių"}
         }
         ALK{
-            few{"Senasis albanų lekë"}
-            one{"Senasis albanų lek"}
-            other{"Senasis albanų lekë"}
+            few{"Albanijos lekai (1946–1965)"}
+            many{"Albanijos leko (1946–1965)"}
+            one{"Albanijos lekas (1946–1965)"}
+            other{"Albanijos lekų (1946–1965)"}
         }
         ALL{
             few{"Albanijos lekai"}
+            many{"Albanijos leko"}
             one{"Albanijos lekas"}
-            other{"Albanijos lekai"}
+            other{"Albanijos lekų"}
         }
         AMD{
             few{"Armėnijos dramai"}
+            many{"Armėnijos dramo"}
             one{"Armėnijos dramas"}
-            other{"Armėnijos dramai"}
+            other{"Armėnijos dramų"}
         }
         ANG{
-            few{"Nyderlandų Antilų guldenas"}
-            one{"Nyderlandų Antillean guldenas"}
-            other{"Nyderlandų Antilų guldenai"}
+            few{"Olandijos Antilų guldenai"}
+            many{"Olandijos Antilų guldeno"}
+            one{"Olandijos Antilų guldenas"}
+            other{"Olandijos Antilų guldenų"}
         }
         AOA{
             few{"Angolos kvanzos"}
+            many{"Angolos kvanzos"}
             one{"Angolos kvanza"}
-            other{"Angolos kvanzai"}
+            other{"Angolos kvanzų"}
         }
         AOK{
-            few{"Angolos kvanzos (1977-1990)"}
-            one{"Angolos kvanza (1977-1990)"}
-            other{"Angolos kvanzai (1977-1990)"}
+            few{"Angolos kvanzos (1977–1990)"}
+            many{"Angolos kvanzos (1977–1990)"}
+            one{"Angolos kvanza (1977–1990)"}
+            other{"Angolos kvanzų (1977–1990)"}
         }
         AON{
             few{"Angolos naujosios kvanzos"}
+            many{"Angolos naujosios kvanzos"}
             one{"Angolos naujoji kvanza"}
             other{"Angolos naujosios kvanzos"}
         }
         AOR{
             few{"Angolan kwanzas reajustado (AOR)"}
+            many{"Angolan kwanzas reajustado (AOR)"}
             one{"Angolan kwanzas reajustado (AOR)"}
             other{"Angolan kwanzas reajustado (AOR)"}
         }
         ARA{
             few{"Argentinos australs"}
+            many{"Argentinos australs"}
             one{"Argentinos austral"}
             other{"Argentinos australs"}
         }
         ARL{
             few{"Argentinos pesos ley"}
+            many{"Argentinos pesos ley"}
             one{"Argentinos pesos ley"}
             other{"Argentinos pesos ley"}
         }
         ARM{
             few{"Argentinos pesai moneda nacional"}
+            many{"Argentinos pesai moneda nacional"}
             one{"Argentinos pesai moneda nacional"}
             other{"Argentinos pesai moneda nacional"}
         }
         ARP{
-            few{"Argentinos pesai (1983-1985)"}
-            one{"Argentinos pesas (1983-1985)"}
-            other{"Argentinos pesai (1983-1985)"}
+            few{"Argentinos pesai (1983–1985)"}
+            many{"Argentinos pesai (1983–1985)"}
+            one{"Argentinos pesas (1983–1985)"}
+            other{"Argentinos pesai (1983–1985)"}
         }
         ARS{
             few{"Argentinos pesai"}
+            many{"Argentinos peso"}
             one{"Argentinos pesas"}
-            other{"Argentinos pesai"}
+            other{"Argentinos pesų"}
         }
         ATS{
             few{"Austrijos šilingai"}
+            many{"Austrijos šilingo"}
             one{"Austrijos šilingas"}
-            other{"Austrijos šilingai"}
+            other{"Austrijos šilingų"}
         }
         AUD{
-            few{"Australijos pesi"}
+            few{"Australijos doleriai"}
+            many{"Australijos dolerio"}
             one{"Australijos doleris"}
-            other{"Australijos doleriai"}
+            other{"Australijos dolerių"}
         }
         AWG{
             few{"Arubos guldenai"}
+            many{"Arubos guldeno"}
             one{"Arubos guldenas"}
-            other{"Arubos guldenai"}
+            other{"Arubos guldenų"}
         }
         AZM{
-            few{"Azerbaidžano manatai (1993-2006)"}
-            one{"Azerbaidžano manatas (1993-2006)"}
-            other{"Azerbaidžano manatai (1993-2006)"}
+            few{"Azerbaidžano manatai (1993–2006)"}
+            many{"Azerbaidžano manato (1993–2006)"}
+            one{"Azerbaidžano manatas (1993–2006)"}
+            other{"Azerbaidžano manatų (1993–2006)"}
         }
         AZN{
             few{"Azerbaidžano manatai"}
+            many{"Azerbaidžano manato"}
             one{"Azerbaidžano manatas"}
-            other{"Azerbaidžano manatai"}
+            other{"Azerbaidžano manatų"}
         }
         BAD{
-            few{"Bosnijos ir Hercegovinos dinarai"}
-            one{"Bosnijos ir Hercegovinos dinaras"}
-            other{"Bosnijos ir Hercegovinos dinarai"}
+            few{"Bosnijos ir Hercegovinos dinarai (1992–1994)"}
+            many{"Bosnijos ir Hercegovinos dinaro (1992–1994)"}
+            one{"Bosnijos ir Hercegovinos dinaras (1992–1994)"}
+            other{"Bosnijos ir Hercegovinos dinarų (1992–1994)"}
         }
         BAM{
             few{"Bosnijos ir Hercegovinos konvertuojamosios markės"}
+            many{"Bosnijos ir Hercegovinos konvertuojamosios markės"}
             one{"Bosnijos ir Hercegovinos konvertuojamoji markė"}
-            other{"Bosnijos ir Hercegovinos konvertuojamosios markės"}
+            other{"Bosnijos ir Hercegovinos konvertuojamųjų markių"}
         }
         BAN{
-            few{"Naujasis Borsnijos ir Hercogovinos dinaras"}
-            one{"Naujasis Borsnijos ir Hercogovinos dinaras"}
-            other{"Naujieji Borsnijos ir Hercogovinos dinarai"}
+            few{"Bosnijos ir Hercegovinos naujieji dinarai (1994–1997)"}
+            many{"Bosnijos ir Hercegovinos naujojo dinaro (1994–1997)"}
+            one{"Bosnijos ir Hercegovinos naujasis dinaras (1994–1997)"}
+            other{"Bosnijos ir Hercegovinos naujųjų dinarų (1994–1997)"}
         }
         BBD{
             few{"Barbadoso doleriai"}
+            many{"Barbadoso dolerio"}
             one{"Barbadoso doleris"}
-            other{"Barbadoso doleriai"}
+            other{"Barbadoso dolerių"}
         }
         BDT{
             few{"Bangladešo takos"}
+            many{"Bangladešo takos"}
             one{"Bangladešo taka"}
-            other{"Bangladešo takos"}
+            other{"Bangladešo takų"}
         }
         BEC{
             few{"Belgijos frankai (konvertuojami)"}
+            many{"Belgijos franko (konvertuojamo)"}
             one{"Belgijos frankas (konvertuojamas)"}
-            other{"Belgijos frankai (konvertuojami)"}
+            other{"Belgijos frankų (konvertuojamų)"}
         }
         BEF{
             few{"Belgijos frankai"}
+            many{"Belgijos franko"}
             one{"Belgijos frankas"}
-            other{"Belgijos frankai"}
+            other{"Belgijos frankų"}
         }
         BEL{
             few{"Belgijos frankai (finansiniai)"}
+            many{"Belgijos franko (finansinio)"}
             one{"Belgijos frankas (finansinis)"}
-            other{"Belgijos frankai (finansiniai)"}
+            other{"Belgijos frankų (finansinių)"}
         }
         BGL{
-            few{"Bulgarijos levai"}
-            one{"Bulgarijos levas (1962-1999)"}
-            other{"Bulgarijos levai"}
+            few{"Bulgarijos levai (1962–1999)"}
+            many{"Bulgarijos levo (1962–1999)"}
+            one{"Bulgarijos levas (1962–1999)"}
+            other{"Bulgarijos levų (1962–1999)"}
         }
         BGM{
             few{"Bulgarų socialistų leva"}
+            many{"Bulgarų socialistų leva"}
             one{"Bulgarų socialistų lev"}
             other{"Bulgarų socialistų leva"}
         }
         BGN{
-            few{"Bulgarų leva"}
-            one{"Bulgarijos naujasis levas"}
-            other{"Bulgarijos naujasis levai"}
+            few{"Bulgarijos levai"}
+            many{"Bulgarijos levo"}
+            one{"Bulgarijos levas"}
+            other{"Bulgarijos levų"}
         }
         BGO{
-            few{"Senoji bulgarų leva"}
-            one{"Senasis bulgarų lev"}
-            other{"Senasis bulgarų lev"}
+            few{"Bulgarijos levai (1879–1952)"}
+            many{"Bulgarijos levo (1879–1952)"}
+            one{"Bulgarijos levas (1879–1952)"}
+            other{"Bulgarijos levų (1879–1952)"}
         }
         BHD{
             few{"Bahreino dinarai"}
+            many{"Bahreino dinaro"}
             one{"Bahreino dinaras"}
-            other{"Bahreino dinarai"}
+            other{"Bahreino dinarų"}
         }
         BIF{
             few{"Burundžio frankai"}
+            many{"Burundžio franko"}
             one{"Burundžio frankas"}
-            other{"Burundžio frankai"}
+            other{"Burundžio frankų"}
         }
         BMD{
             few{"Bermudos doleriai"}
+            many{"Bermudos dolerio"}
             one{"Bermudos doleris"}
-            other{"Bermudos doleriai"}
+            other{"Bermudos dolerių"}
         }
         BND{
             few{"Brunėjaus doleriai"}
+            many{"Brunėjaus dolerio"}
             one{"Brunėjaus doleris"}
-            other{"Brunėjaus doleriai"}
+            other{"Brunėjaus dolerių"}
         }
         BOB{
-            few{"Boliviečių bolivianos"}
+            few{"Bolivijos bolivijanai"}
+            many{"Bolivijos bolivijano"}
             one{"Bolivijos bolivijanas"}
-            other{"Bolivijos bolivijanai"}
+            other{"Bolivijos bolivijanų"}
         }
         BOL{
-            few{"Senosios boliviečių bolivianos"}
-            one{"Senasis boliviečių boliviano"}
-            other{"Senosios boliviečių bolivianos"}
+            few{"Bolivijos bolivijanai (1863–1963)"}
+            many{"Bolivijos bolivijano (1863–1963)"}
+            one{"Bolivijos bolivijanas (1863–1963)"}
+            other{"Bolivijos bolivijanų (1863–1963)"}
         }
         BOP{
             few{"Bolivijos pesai"}
+            many{"Bolivijos peso"}
             one{"Bolivijos pesas"}
-            other{"Bolivijos pesai"}
+            other{"Bolivijos pesų"}
         }
         BOV{
             few{"Boliviečių mvdols"}
+            many{"Bolivijos mvdol"}
             one{"Bolivijos mvdol"}
             other{"Bolivijos mvdol"}
         }
         BRB{
             few{"Brazilijos naujieji kruzeirai"}
+            many{"Brazilijos naujieji kruzeirai"}
             one{"Brazilijos naujasis kruzeiras"}
             other{"Brazilijos naujieji kruzeirai"}
         }
         BRC{
             few{"Brazilijos kruzadai"}
+            many{"Brazilijos kruzadai"}
             one{"Brazilijos kruzadas"}
             other{"Brazilijos kruzadai"}
         }
         BRE{
-            few{"Brazilijos kruzeirai (1990-1993)"}
-            one{"Brazilijos kruzeiras (1990-1993)"}
-            other{"Brazilijos kruzeirai (1990-1993)"}
+            few{"Brazilijos kruzeirai (1990–1993)"}
+            many{"Brazilijos kruzeirai (1990–1993)"}
+            one{"Brazilijos kruzeiras (1990–1993)"}
+            other{"Brazilijos kruzeirai (1990–1993)"}
         }
         BRL{
             few{"Brazilijos realai"}
+            many{"Brazilijos realo"}
             one{"Brazilijos realas"}
-            other{"Brazilijos realai"}
+            other{"Brazilijos realų"}
         }
         BRN{
             few{"Brazilijos naujieji kruzadai"}
+            many{"Brazilijos naujieji kruzadai"}
             one{"Brazilijos naujasis kruzadas"}
             other{"Brazilijos naujieji kruzadai"}
         }
         BRR{
             few{"Brazilijos kruzeirai"}
+            many{"Brazilijos kruzeirai"}
             one{"Brazilijos kruzeiras"}
             other{"Brazilijos kruzeirai"}
         }
         BRZ{
             few{"Senasis brazilų cruzeiros"}
+            many{"Senasis brazilų cruzeiros"}
             one{"Senasis brazilų cruzeiros"}
             other{"Senasis brazilų cruzeiros"}
         }
         BSD{
             few{"Bahamų doleriai"}
+            many{"Bahamų dolerio"}
             one{"Bahamų doleris"}
-            other{"Bahamų doleriai"}
+            other{"Bahamų dolerių"}
         }
         BTN{
             few{"Butano ngultrumai"}
+            many{"Butano ngultrumo"}
             one{"Butano ngultrumas"}
-            other{"Butano ngultrumai"}
+            other{"Butano ngultrumų"}
         }
         BUK{
-            few{"Birmos kyats"}
-            one{"Birmos kyats"}
-            other{"Birmos kyats"}
+            few{"Birmos kijatai"}
+            many{"Birmos kijato"}
+            one{"Birmos kijatas"}
+            other{"Birmos kijatų"}
         }
         BWP{
             few{"Botsvanos pulos"}
+            many{"Botsvanos pulos"}
             one{"Botsvanos pula"}
-            other{"Botsvanos pulos"}
+            other{"Botsvanos pulų"}
         }
         BYB{
-            few{"Naujieji Belarusijos rubliai (BYB)"}
-            one{"Baltarusijos naujasis rublis"}
-            other{"Baltarusijos naujieji rubliai"}
+            few{"Baltarusijos naujieji rubliai (1994–1999)"}
+            many{"Baltarusijos naujojo rublio (1994–1999)"}
+            one{"Baltarusijos naujasis rublis (1994–1999)"}
+            other{"Baltarusijos naujųjų rublių"}
         }
         BYR{
-            few{"Belarusijos rubliai"}
+            few{"Baltarusijos rubliai"}
+            many{"Baltarusijos rublio"}
             one{"Baltarusijos rublis"}
-            other{"Baltarusijos rubliai"}
+            other{"Baltarusijos rublių"}
         }
         BZD{
             few{"Belizo doleriai"}
+            many{"Belizo dolerio"}
             one{"Belizo doleris"}
-            other{"Belizo doleriai"}
+            other{"Belizo dolerių"}
         }
         CAD{
-            few{"Kanados doleriaidoleriai"}
+            few{"Kanados doleriai"}
+            many{"Kanados dolerio"}
             one{"Kanados doleris"}
-            other{"Kanados doleriai"}
+            other{"Kanados dolerių"}
         }
         CDF{
             few{"Kongo frankai"}
+            many{"Kongo franko"}
             one{"Kongo frankas"}
-            other{"Kongo frankai"}
+            other{"Kongo frankų"}
         }
         CHE{
             few{"WIR eurai"}
+            many{"WIR euro"}
             one{"WIR euras"}
-            other{"WIR eurai"}
+            other{"WIR eurų"}
         }
         CHF{
             few{"Šveicarijos frankai"}
+            many{"Šveicarijos franko"}
             one{"Šveicarijos frankas"}
-            other{"Šveicarijos frankai"}
+            other{"Šveicarijos frankų"}
         }
         CHW{
             few{"WIR frankai"}
+            many{"WIR franko"}
             one{"WIR frankas"}
-            other{"WIR frankai"}
+            other{"WIR frankų"}
         }
         CLE{
             few{"Čilės eskudai"}
+            many{"Čilės eskudo"}
             one{"Čilės eskudas"}
-            other{"Čilės eskudai"}
+            other{"Čilės eskudų"}
         }
         CLF{
             few{"Čiliečių unidades de fomentos"}
+            many{"Čiliečių unidades de fomentos"}
             one{"Čiliečių unidades de fomentos"}
             other{"Čiliečių unidades de fomentos"}
         }
         CLP{
-            few{"Čilės pesas"}
+            few{"Čilės pesai"}
+            many{"Čilės peso"}
             one{"Čilės pesas"}
-            other{"Čilės pesai"}
+            other{"Čilės pesų"}
         }
         CNX{
-            few{"Kinijos \"People\" banko doleriai"}
-            one{"Kinijos \"People\" banko doleris"}
-            other{"Kinijos \"People\" banko doleriai"}
+            few{"Kinijos \u0022People\u0022 banko doleriai"}
+            many{"Kinijos \u0022People\u0022 banko dolerio"}
+            one{"Kinijos \u0022People\u0022 banko doleris"}
+            other{"Kinijos \u0022People\u0022 banko dolerių"}
         }
         CNY{
-            few{"Kinijos juanis"}
-            one{"Kinijos juanis"}
-            other{"Kinijos juaniai"}
+            few{"Kinijos ženminbi juaniai"}
+            many{"Kinijos ženminbi juanio"}
+            one{"Kinijos ženminbi juanis"}
+            other{"Kinijos ženminbi juanių"}
         }
         COP{
-            few{"Kolumbijos pesas"}
+            few{"Kolumbijos pesai"}
+            many{"Kolumbijos peso"}
             one{"Kolumbijos pesas"}
-            other{"Kolumbijos pesai"}
+            other{"Kolumbijos pesų"}
         }
         COU{
             few{"unidad de valor realai"}
+            many{"unidad de valor realai"}
             one{"unidad de valor realas"}
             other{"unidad de valor realai"}
         }
         CRC{
-            few{"Kosta Rican colóns"}
+            few{"Kosta Rikos kolonai"}
+            many{"Kosta Rikos kolono"}
             one{"Kosta Rikos kolonas"}
-            other{"Kosta Rikos kolonai"}
+            other{"Kosta Rikos kolonų"}
         }
         CSD{
-            few{"Senosios Serbijos dinarai"}
-            one{"Senosios Serbijos dinaras"}
-            other{"Senosios Serbijos dinarai"}
+            few{"Serbijos dinarai (2002–2006)"}
+            many{"Serbijos dinaro (2002–2006)"}
+            one{"Serbijos dinaras (2002–2006)"}
+            other{"Serbijos dinarų (2002–2006)"}
         }
         CSK{
             few{"Čekoslovakų sunkieji korunai"}
+            many{"Čekoslovakų sunkiejio koruno"}
             one{"Čekoslovakų sunkusis korunas"}
-            other{"Čekoslovakų sunkieji korunai"}
+            other{"Čekoslovakų sunkiejių korunų"}
         }
         CUC{
-            few{"Konvertuojamas Kubos pesas"}
-            one{"Konvertuojamas Kubos pesas"}
-            other{"Konvertuojamas Kubos pesas"}
+            few{"Kubos konvertuojamieji pesai"}
+            many{"Kubos konvertuojamojo peso"}
+            one{"Kubos konvertuojamasis pesas"}
+            other{"Kubos konvertuojamųjų pesų"}
         }
         CUP{
             few{"Kubos pesai"}
+            many{"Kubos peso"}
             one{"Kubos pesas"}
-            other{"Kubos pesai"}
+            other{"Kubos pesų"}
         }
         CVE{
-            few{"Verdean iškyšulio eskudai"}
-            one{"Verdean iškyšulio eskudai"}
-            other{"Verdean iškyšulio eskudai"}
+            few{"Žaliojo Kyšulio eskudai"}
+            many{"Žaliojo Kyšulio eskudo"}
+            one{"Žaliojo Kyšulio eskudas"}
+            other{"Žaliojo Kyšulio eskudų"}
         }
         CYP{
-            few{"Kipriečių svarai"}
-            one{"Kipriečių svaras"}
-            other{"Kipriečių svarai"}
+            few{"Kipro svarai"}
+            many{"Kipro svaro"}
+            one{"Kipro svaras"}
+            other{"Kipro svarų"}
         }
         CZK{
-            few{"Čekijos Respublikos korunai"}
-            one{"Čekijos Respublikos korunas"}
-            other{"Čekijos Respublikos korunai"}
+            few{"Čekijos kronos"}
+            many{"Čekijos kronos"}
+            one{"Čekijos krona"}
+            other{"Čekijos kronų"}
         }
         DDM{
             few{"Rytų Vokietijos markės"}
+            many{"Rytų Vokietijos markės"}
             one{"Rytų Vokietijos markė"}
             other{"Rytų Vokietijos markės"}
         }
         DEM{
             few{"Vokietijos markės"}
+            many{"Vokietijos markės"}
             one{"Vokietijos markė"}
             other{"Vokietijos markės"}
         }
         DJF{
-            few{"Džibučio frankas"}
+            few{"Džibučio frankai"}
+            many{"Džibučio franko"}
             one{"Džibučio frankas"}
-            other{"Džibučio frankas"}
+            other{"Džibučio frankų"}
         }
         DKK{
-            few{"Danijos krona"}
+            few{"Danijos kronos"}
+            many{"Danijos kronos"}
             one{"Danijos krona"}
-            other{"Danijos krona"}
+            other{"Danijos kronų"}
         }
         DOP{
-            few{"Dominikos pesas"}
+            few{"Dominikos pesai"}
+            many{"Dominikos peso"}
             one{"Dominikos pesas"}
-            other{"Dominikos pesas"}
+            other{"Dominikos pesų"}
         }
         DZD{
             few{"Alžyro dinarai"}
+            many{"Alžyro dinaro"}
             one{"Alžyro dinaras"}
-            other{"Alžyro dinarai"}
+            other{"Alžyro dinarų"}
         }
         ECS{
             few{"Ekvadoro sucres"}
+            many{"Ekvadoro sucres"}
             one{"Ekvadoro sucre"}
             other{"Ekvadoro sucres"}
         }
         ECV{
             few{"Ekvadoro unidads de narsa Constante (UVC)"}
+            many{"Ekvadoro unidads de narsa Constante (UVC)"}
             one{"Ekvadoro unidads de narsa Constante (UVC)"}
             other{"Ekvadoro unidads de narsa Constante (UVC)"}
         }
         EEK{
-            few{"Estijos krona"}
+            few{"Estijos kronos"}
+            many{"Estijos kronos"}
             one{"Estijos krona"}
-            other{"Estijos krona"}
+            other{"Estijos kronų"}
         }
         EGP{
             few{"Egipto svarai"}
+            many{"Egipto svaro"}
             one{"Egipto svaras"}
-            other{"Egipto svarai"}
+            other{"Egipto svarų"}
         }
         ERN{
-            few{"Eritrėjos nakfas"}
+            few{"Eritrėjos nakfos"}
+            many{"Eritrėjos nakfos"}
             one{"Eritrėjos nakfa"}
-            other{"Eritrėjos nakfas"}
+            other{"Eritrėjos nakfų"}
         }
         ESA{
             few{"Ispanų pesetai (A sąskaita)"}
+            many{"Ispanų pesetai (A sąskaita)"}
             one{"Ispanų pesetas (A sąskaita)"}
             other{"Ispanų pesetai (A sąskaita)"}
         }
         ESB{
             few{"Ispanų pesetai (konvertuojama sąskaita)"}
+            many{"Ispanų pesetai (konvertuojama sąskaita)"}
             one{"Ispanų pesetas (konvertuojama sąskaita)"}
             other{"Ispanų pesetai (konvertuojama sąskaita)"}
         }
         ESP{
             few{"Ispanų pesetai"}
+            many{"Ispanų pesetai"}
             one{"Ispanų pesetas"}
             other{"Ispanų pesetai"}
         }
         ETB{
-            few{"Etiopijos biras"}
+            few{"Etiopijos birai"}
+            many{"Etiopijos biro"}
             one{"Etiopijos biras"}
-            other{"Etiopijos birai"}
+            other{"Etiopijos birų"}
         }
         EUR{
             few{"eurai"}
+            many{"euro"}
             one{"euras"}
+            other{"eurų"}
         }
         FIM{
             few{"Suomijos markės"}
+            many{"Suomijos markės"}
             one{"Suomijos markė"}
             other{"Suomijos markės"}
         }
         FJD{
             few{"Fidžio doleriai"}
+            many{"Fidžio dolerio"}
             one{"Fidžio doleris"}
-            other{"Fidžio doleriai"}
+            other{"Fidžio dolerių"}
         }
         FKP{
-            few{"Folklandų salų svarai"}
-            one{"Folklandų salų svaras"}
-            other{"Folklandų salų svarai"}
+            few{"Falklando salų svarai"}
+            many{"Falklando salų svaro"}
+            one{"Falklando salų svaras"}
+            other{"Falklando salų svarų"}
         }
         FRF{
             few{"Prancūzijos frankai"}
+            many{"Prancūzijos franko"}
             one{"Prancūzijos frankas"}
-            other{"Prancūzijos frankai"}
+            other{"Prancūzijos frankų"}
         }
         GBP{
-            few{"Didžiosios Britanijos svaro sterlingai"}
+            few{"Didžiosios Britanijos svarai sterlingų"}
+            many{"Didžiosios Britanijos svaro sterlingų"}
             one{"Didžiosios Britanijos svaras sterlingų"}
-            other{"Didžiosios Britanijos svarai sterlingų"}
+            other{"Didžiosios Britanijos svarų sterlingų"}
         }
         GEK{
             few{"Gruzinų kupon larits"}
+            many{"Gruzinų kupon larits"}
             one{"Gruzinų kupon larit"}
             other{"Gruzinų kupon larits"}
         }
         GEL{
-            few{"Gruzijos laris"}
-            one{"Gruzijos lari"}
-            other{"Gruzijos laris"}
+            few{"Gruzijos lariai"}
+            many{"Gruzijos lario"}
+            one{"Gruzijos laris"}
+            other{"Gruzijos larių"}
         }
         GHC{
-            few{"Ganos sedžiai (GHC)"}
-            one{"Ganos sedis (GHC)"}
-            other{"Ganos sedžiai(GHC)"}
+            few{"Ganos sedžiai (1979–2007)"}
+            many{"Ganos sedžio (1979–2007)"}
+            one{"Ganos sedis (1979–2007)"}
+            other{"Ganos sedžių (1979–2007)"}
         }
         GHS{
             few{"Ganos sedžiai"}
+            many{"Ganos sedžio"}
             one{"Ganos sedis"}
-            other{"Ganos sedžiai"}
+            other{"Ganos sedžių"}
         }
         GIP{
             few{"Gibraltaro svarai"}
+            many{"Gibraltaro svaro"}
             one{"Gibraltaro svaras"}
-            other{"Gibraltaro svarai"}
+            other{"Gibraltaro svarų"}
         }
         GMD{
             few{"Gambijos dalasiai"}
+            many{"Gambijos dalasio"}
             one{"Gambijos dalasis"}
-            other{"Gambijos dalasiai"}
+            other{"Gambijos dalasių"}
         }
         GNF{
             few{"Gvinėjos frankai"}
+            many{"Gvinėjos franko"}
             one{"Gvinėjos frankas"}
-            other{"Gvinėjos frankai"}
+            other{"Gvinėjos frankų"}
         }
         GNS{
             few{"Guinean sylis"}
+            many{"Guinean sylis"}
             one{"Guinean syli"}
             other{"Guinean sylis"}
         }
         GQE{
             few{"Pusiaujo Guinean ekwele"}
+            many{"Pusiaujo Guinean ekwele"}
             one{"Pusiaujo Guinean ekwele"}
             other{"Pusiaujo Guinean ekwele"}
         }
         GRD{
             few{"Graikijos drachmos"}
+            many{"Graikijos drachmos"}
             one{"Graikijos drachma"}
             other{"Graikijos drachmos"}
         }
         GTQ{
-            few{"Gvatemalinis quetzals"}
-            one{"Gvatemalinis quetzal"}
-            other{"Gvatemalinis quetzals"}
+            few{"Gvatemalos ketcaliai"}
+            many{"Gvatemalos ketcalio"}
+            one{"Gvatemalos ketcalis"}
+            other{"Gvatemalos ketcalių"}
         }
         GWE{
             few{"Portugalijos Gvinėjos eskudai"}
+            many{"Portugalijos Gvinėjos eskudo"}
             one{"Portugalijos Gvinėjos eskudas"}
-            other{"Portugalijos Gvinėjos eskudai"}
+            other{"Portugalijos Gvinėjos eskudų"}
         }
         GWP{
             few{"Bisau Gvinėjos pesai"}
+            many{"Bisau Gvinėjos peso"}
             one{"Bisau Gvinėjos pesas"}
             other{"Bisau Gvinėjos pesai"}
         }
         GYD{
             few{"Gajanos doleriai"}
+            many{"Gajanos dolerio"}
             one{"Gajanos doleris"}
-            other{"Gajanos doleriai"}
+            other{"Gajanos dolerių"}
         }
         HKD{
             few{"Honkongo doleriai"}
+            many{"Honkongo dolerio"}
             one{"Honkongo doleris"}
-            other{"Honkongo doleriai"}
+            other{"Honkongo dolerių"}
         }
         HNL{
             few{"Hondūro lempiros"}
+            many{"Hondūro lempiros"}
             one{"Hondūro lempira"}
-            other{"Hondūro lempiros"}
+            other{"Hondūro lempirų"}
         }
         HRD{
             few{"Krotaijos dinarai"}
+            many{"Kroatijos dinaro"}
             one{"Kroatijos dinaras"}
-            other{"Kroatijos dinarai"}
+            other{"Kroatijos dinarų"}
         }
         HRK{
-            few{"Kroatijos kunai"}
+            few{"Kroatijos kunos"}
+            many{"Kroatijos kunos"}
             one{"Kroatijos kuna"}
-            other{"Kroatijos kunai"}
+            other{"Kroatijos kunų"}
         }
         HTG{
             few{"Haičio gurdai"}
+            many{"Haičio gurdo"}
             one{"Haičio gurdas"}
-            other{"Haičio gurdai"}
+            other{"Haičio gurdų"}
         }
         HUF{
             few{"Vengrijos forintai"}
+            many{"Vengrijos forinto"}
             one{"Vengrijos forintas"}
-            other{"Vengrijos forintai"}
+            other{"Vengrijos forintų"}
         }
         IDR{
             few{"Indonezijos rupijos"}
+            many{"Indonezijos rupijos"}
             one{"Indonezijos rupija"}
-            other{"Indonezijos rupijos"}
+            other{"Indonezijos rupijų"}
         }
         IEP{
             few{"Airijos svarai"}
+            many{"Airijos svaro"}
             one{"Airijos svaras"}
-            other{"Airijos svarai"}
+            other{"Airijos svarų"}
         }
         ILP{
             few{"Izraelio svarai"}
+            many{"Izraelio svaro"}
             one{"Izraelio svaras"}
-            other{"Izraelio svarai"}
+            other{"Izraelio svarų"}
         }
         ILR{
-            few{"Senieji izraeliečių sheqels"}
-            one{"Senasis izraeliečių sheqel"}
-            other{"Senieji izraeliečių sheqels"}
+            few{"Izraelio šekeliai (1980–1985)"}
+            many{"Izraelio šekelio (1980–1985)"}
+            one{"Izraelio šekelis (1980–1985)"}
+            other{"Izraelio šekelių (1980–1985)"}
         }
         ILS{
-            few{"Naujieji Izraelio šekeliai"}
-            one{"Naujasis Izraelio šekelis"}
-            other{"Naujieji Izraelio šekeliai"}
+            few{"Izraelio naujieji šekeliai"}
+            many{"Izraelio naujojo šekelio"}
+            one{"Izraelio naujasis šekelis"}
+            other{"Izraelio naujųjų šekelių"}
         }
         INR{
             few{"Indijos rupijos"}
+            many{"Indijos rupijos"}
             one{"Indijos rupija"}
-            other{"Indijos rupijos"}
+            other{"Indijos rupijų"}
         }
         IQD{
             few{"Irako dinarai"}
+            many{"Irako dinaro"}
             one{"Irako dinaras"}
-            other{"Irako dinarai"}
+            other{"Irako dinarų"}
         }
         IRR{
             few{"Irano rialai"}
+            many{"Irano rialo"}
             one{"Irano rialas"}
-            other{"Irano rialai"}
+            other{"Irano rialų"}
         }
         ISJ{
-            few{"Senosios islandų krónur"}
-            one{"Senoji islandų króna"}
-            other{"Senosios islandų krónur"}
+            few{"Islandijos kronos (1918–1981)"}
+            many{"Islandijos kronos (1918–1981)"}
+            one{"Islandijos krona (1918–1981)"}
+            other{"Islandijos kronų (1918–1981)"}
         }
         ISK{
             few{"Islandijos kronos"}
+            many{"Islandijos kronos"}
             one{"Islandijos krona"}
-            other{"Islandijos kronos"}
+            other{"Islandijos kronų"}
         }
         ITL{
             few{"Italijos liros"}
+            many{"Italijos liros"}
             one{"Italijos lira"}
-            other{"Italijos liros"}
+            other{"Italijos lirų"}
         }
         JMD{
             few{"Jamaikos doleriai"}
+            many{"Jamaikos dolerio"}
             one{"Jamaikos doleris"}
-            other{"Jamaikos doleriai"}
+            other{"Jamaikos dolerių"}
         }
         JOD{
             few{"Jordanijos dinarai"}
+            many{"Jordanijos dinaro"}
             one{"Jordanijos dinaras"}
-            other{"Jordanijos dinarai"}
+            other{"Jordanijos dinarų"}
         }
         JPY{
             few{"Japonijos jenos"}
+            many{"Japonijos jenos"}
             one{"Japonijos jena"}
             other{"Japonijos jenų"}
         }
         KES{
             few{"Kenijos šilingai"}
+            many{"Kenijos šilingo"}
             one{"Kenijos šilingas"}
-            other{"Kenijos šilingai"}
+            other{"Kenijos šilingų"}
         }
         KGS{
             few{"Kirgizijos somai"}
+            many{"Kirgizijos somo"}
             one{"Kirgizijos somas"}
-            other{"Kirgizijos somai"}
+            other{"Kirgizijos somų"}
         }
         KHR{
-            few{"Chmerų riel"}
-            one{"Chmerų riel"}
-            other{"Chmerų riel"}
+            few{"Kambodžos rieliai"}
+            many{"Kambodžos rielio"}
+            one{"Kambodžos rielis"}
+            other{"Kambodžos rielių"}
         }
         KMF{
             few{"Komoro frankai"}
+            many{"Komoro franko"}
             one{"Komoro frankas"}
-            other{"Komoro frankai"}
+            other{"Komoro frankų"}
         }
         KPW{
-            few{"Šiaurės Korėjos vonas"}
+            few{"Šiaurės Korėjos vonai"}
+            many{"Šiaurės Korėjos vono"}
             one{"Šiaurės Korėjos vonas"}
-            other{"Šiaurės Korėjos vonas"}
+            other{"Šiaurės Korėjos vonų"}
         }
         KRH{
-            few{"Pietų Korėjos hwan"}
-            one{"Pietų Korėjos hwan"}
-            other{"Pietų Korėjos hwan"}
+            few{"Pietų Korėjos hwanai (1953–1962)"}
+            many{"Pietų Korėjos hwano (1953–1962)"}
+            one{"Pietų Korėjos hwanas (1953–1962)"}
+            other{"Pietų Korėjos hwanų (1953–1962)"}
         }
         KRO{
-            few{"Senasis Pietų Korėjos vonas"}
-            one{"Senasis Pietų Korėjos vonas"}
-            other{"Senasis Pietų Korėjos vonas"}
+            few{"Pietų Korėjos vonai (1945–1953)"}
+            many{"Pietų Korėjos vono (1945–1953)"}
+            one{"Pietų Korėjos vonas (1945–1953)"}
+            other{"Pietų Korėjos vonų (1945–1953)"}
         }
         KRW{
-            few{"Pietų Korėjos vonas"}
+            few{"Pietų Korėjos vonai"}
+            many{"Pietų Korėjos vono"}
             one{"Pietų Korėjos vonas"}
-            other{"Pietų Korėjos vonas"}
+            other{"Pietų Korėjos vonų"}
         }
         KWD{
             few{"Kuveito dinarai"}
+            many{"Kuveito dinaro"}
             one{"Kuveito dinaras"}
-            other{"Kuveito dinarai"}
+            other{"Kuveito dinarų"}
         }
         KYD{
             few{"Kaimanų salų doleriai"}
+            many{"Kaimanų salų dolerio"}
             one{"Kaimanų salų doleris"}
-            other{"Kaimanų salų doleriai"}
+            other{"Kaimanų salų dolerių"}
         }
         KZT{
             few{"Kazachstano tengės"}
+            many{"Kazachstano tengės"}
             one{"Kazachstano tengė"}
-            other{"Kazachstano tengės"}
+            other{"Kazachstano tengių"}
         }
         LAK{
             few{"Laoso kipai"}
+            many{"Laoso kipo"}
             one{"Laoso kipas"}
-            other{"Laoso kipai"}
+            other{"Laoso kipų"}
         }
         LBP{
             few{"Libano svarai"}
+            many{"Libano svaro"}
             one{"Libano svaras"}
-            other{"Libano svarai"}
+            other{"Libano svarų"}
         }
         LKR{
             few{"Šri Lankos rupijos"}
+            many{"Šri Lankos rupijos"}
             one{"Šri Lankos rupija"}
-            other{"Šri Lankos rupijos"}
+            other{"Šri Lankos rupijų"}
         }
         LRD{
             few{"Liberijos doleriai"}
+            many{"Liberijos dolerio"}
             one{"Liberijos doleris"}
-            other{"Liberijos doleriai"}
+            other{"Liberijos dolerių"}
         }
         LSL{
             few{"Lesoto lotis"}
+            many{"Lesoto lotis"}
             one{"Lesoto loti"}
             other{"Lesoto lotis"}
         }
         LTL{
             few{"Lietuvos litai"}
+            many{"Lietuvos lito"}
             one{"Lietuvos litas"}
             other{"Lietuvos litų"}
         }
         LTT{
             few{"Lietuvos talonai"}
+            many{"Lietuvos talonai"}
             one{"Lietuvos talonas"}
             other{"Lietuvos talonai"}
         }
         LUC{
             few{"Liuksemburgo konvertuojami frankai"}
+            many{"Liuksemburgo konvertuojamo franko"}
             one{"Liuksemburgo konvertuojas frankas"}
-            other{"Liuksemburgo konvertuojami frankai"}
+            other{"Liuksemburgo konvertuojamų frankų"}
         }
         LUF{
             few{"Liuksemburgo frankai"}
+            many{"Liuksemburgo franko"}
             one{"Liuksemburgo frankas"}
-            other{"Liuksemburgo frankai"}
+            other{"Liuksemburgo frankų"}
         }
         LUL{
             few{"Liuksemburgo finansiniai frankai"}
+            many{"Liuksemburgo finansinio franko"}
             one{"Liuksemburgo finansinis frankas"}
-            other{"Liuksemburgo finansiniai frankai"}
+            other{"Liuksemburgo finansinių frankų"}
         }
         LVL{
-            few{"Latvijos latas"}
-            one{"Latvijos latai"}
-            other{"Latvijos latas"}
+            few{"Latvijos latai"}
+            many{"Latvijos lato"}
+            one{"Latvijos latas"}
+            other{"Latvijos latų"}
         }
         LVR{
             few{"Latvijos rubliai"}
+            many{"Latvijos rublio"}
             one{"Latvijos rublis"}
-            other{"Latvijos rubliai"}
+            other{"Latvijos rublių"}
         }
         LYD{
             few{"Libijos dinarai"}
+            many{"Libijos dinaro"}
             one{"Libijos dinaras"}
-            other{"Libijos dinarai"}
+            other{"Libijos dinarų"}
         }
         MAD{
             few{"Maroko dirhamai"}
+            many{"Maroko dirhamo"}
             one{"Maroko dirhamas"}
-            other{"Maroko dirhamai"}
+            other{"Maroko dirhamų"}
         }
         MAF{
-            few{"Marokiečių frankai"}
-            one{"Marokiečių frankas"}
-            other{"Marokiečių frankai"}
+            few{"Maroko frankai"}
+            many{"Maroko franko"}
+            one{"Maroko frankas"}
+            other{"Maroko frankų"}
         }
         MCF{
             few{"Monegasque frankai"}
+            many{"Monegasque franko"}
             one{"Monegasque frankas"}
-            other{"Monegasque frankai"}
+            other{"Monegasque frankų"}
         }
         MDC{
             few{"Moldovų cupon"}
+            many{"Moldovų cupon"}
             one{"Moldovų cupon"}
             other{"Moldovų cupon"}
         }
         MDL{
-            few{"Moldovos lėja"}
-            one{"Moldovos lėjai"}
-            other{"Moldovos lėja"}
+            few{"Moldovos lėjos"}
+            many{"Moldovos lėjos"}
+            one{"Moldovos lėja"}
+            other{"Moldovos lėjų"}
         }
         MGA{
             few{"Madagaskaro ariariai"}
+            many{"Madagaskaro ariario"}
             one{"Madagaskaro ariaris"}
-            other{"Madagaskaro ariariai"}
+            other{"Madagaskaro ariarių"}
         }
         MGF{
-            few{"Malagasijos frankai"}
-            one{"Malagasijos frankas"}
-            other{"Malagasijos frankai"}
+            few{"Madagaskaro frankai"}
+            many{"Madagaskaro franko"}
+            one{"Madagaskaro frankas"}
+            other{"Madagaskaro frankų"}
         }
         MKD{
             few{"Makedonijos denarai"}
+            many{"Makedonijos denaro"}
             one{"Makedonijos denaras"}
-            other{"Makedonijos denarai"}
+            other{"Makedonijos denarų"}
         }
         MKN{
-            few{"Senieji Makedonijos denarai"}
-            one{"Senasis Makedonijos denaras"}
-            other{"Senieji Makedonijos denarai"}
+            few{"Makedonijos denarai (1992–1993)"}
+            many{"Makedonijos denaro (1992–1993)"}
+            one{"Makedonijos denaras (1992–1993)"}
+            other{"Makedonijos denarų (1992–1993)"}
         }
         MLF{
             few{"Malio frankai"}
+            many{"Malio franko"}
             one{"Malio frankas"}
-            other{"Malio frankai"}
+            other{"Malio frankų"}
         }
         MMK{
             few{"Mianmaro kijatai"}
+            many{"Mianmaro kijato"}
             one{"Mianmaro kijatas"}
-            other{"Mianmaro kijatai"}
+            other{"Mianmaro kijatų"}
         }
         MNT{
             few{"Mongolijos tugrikai"}
+            many{"Mongolijos tugriko"}
             one{"Mongolijos tugrikas"}
-            other{"Mongolijos tugrikai"}
+            other{"Mongolijos tugrikų"}
         }
         MOP{
             few{"Makao patakos"}
+            many{"Makao patakos"}
             one{"Makao pataka"}
-            other{"Makao patakos"}
+            other{"Makao patakų"}
         }
         MRO{
             few{"Mauritanijos ugijos"}
+            many{"Mauritanijos ugijos"}
             one{"Mauritanijos ugija"}
-            other{"Mauritanijos ugijos"}
+            other{"Mauritanijos ugijų"}
         }
         MTL{
             few{"Maltos lira"}
+            many{"Maltos lira"}
             one{"Maltos lira"}
             other{"Maltos lira"}
         }
         MTP{
             few{"Maltos svarai"}
+            many{"Maltos svaro"}
             one{"Maltos svaras"}
-            other{"Maltos svarai"}
+            other{"Maltos svarų"}
         }
         MUR{
             few{"Mauricijaus rupijos"}
+            many{"Mauricijaus rupijos"}
             one{"Mauricijaus rupija"}
-            other{"Mauricijaus rupijos"}
+            other{"Mauricijaus rupijų"}
         }
         MVR{
-            few{"Maldyvų salų rufijos"}
-            one{"Maldyvų salų rufija"}
-            other{"Maldyvų salų rufijos"}
+            few{"Maldyvų rufijos"}
+            many{"Maldyvų rufijos"}
+            one{"Maldyvų rufija"}
+            other{"Maldyvų rufijų"}
         }
         MWK{
             few{"Malavio kvačos"}
+            many{"Malavio kvačos"}
             one{"Malavio kvača"}
-            other{"Malavio kvačos"}
+            other{"Malavio kvačų"}
         }
         MXN{
             few{"Meksikos pesai"}
+            many{"Meksikos peso"}
             one{"Meksikos pesas"}
-            other{"Meksikos pesai"}
+            other{"Meksikos pesų"}
         }
         MXP{
-            few{"Meksikos sidabriniai pesai (MXP)"}
-            one{"Meksikos sidabrinis pesas (MXP))"}
-            other{"Meksikos sidabriniai pesai (MXP))"}
+            few{"Meksikos sidabriniai pesai (1861–1992)"}
+            many{"Meksikos sidabrino peso (1861–1992)"}
+            one{"Meksikos sidabrinis pesas (1861–1992)"}
+            other{"Meksikos sidabrinių pesų (1861–1992)"}
         }
         MXV{
             few{"Meksikos unidads de inversija (UDI)"}
+            many{"Meksikos unidads de inversija (UDI)"}
             one{"Meksikos unidad de inversija (UDI)"}
             other{"Meksikos unidads de inversija (UDI)"}
         }
         MYR{
             few{"Malaizijos ringitai"}
+            many{"Malaizijos ringito"}
             one{"Malaizijos ringitas"}
-            other{"Malaizijos ringitai"}
+            other{"Malaizijos ringitų"}
         }
         MZE{
-            few{"Mozambican eskudai"}
-            one{"Mozambican eskudas"}
-            other{"Mozambican eskudai"}
+            few{"Mozambiko eskudai"}
+            many{"Mozambiko eskudo"}
+            one{"Mozambiko eskudas"}
+            other{"Mozambiko eskudų"}
         }
         MZM{
-            few{"Senieji Mozambiko metikaliai"}
-            one{"Senasis Mozambiko metikalis"}
-            other{"Senieji Mozambiko metikaliai"}
+            few{"Mozambiko metikaliai (1980–2006)"}
+            many{"Mozambiko metikalio (1980–2006)"}
+            one{"Mozambiko metikalis (1980–2006)"}
+            other{"Mozambiko metikalių (1980–2006)"}
         }
         MZN{
             few{"Mozambiko metikaliai"}
+            many{"Mozambiko metikalio"}
             one{"Mozambiko metikalis"}
-            other{"Mozambiko metikaliai"}
+            other{"Mozambiko metikalių"}
         }
         NAD{
             few{"Namibijos doleriai"}
+            many{"Namibijos dolerio"}
             one{"Namibijos doleris"}
-            other{"Namibijos doleriai"}
+            other{"Namibijos dolerių"}
         }
         NGN{
             few{"Nigerijos nairos"}
+            many{"Nigerijos nairos"}
             one{"Nigerijos naira"}
-            other{"Nigerijos nairos"}
+            other{"Nigerijos nairų"}
         }
         NIC{
-            few{"Nikaragvos kordobas"}
-            one{"Nikaragvos kordoba"}
-            other{"Nikaragvos kordobas"}
+            few{"Nikaragvos kordobai (1988–1991)"}
+            many{"Nikaragvos kordobos (1988–1991)"}
+            one{"Nikaragvos kordoba (1988–1991)"}
+            other{"Nikaragvos kordobų (1988–1991)"}
         }
         NIO{
-            few{"Nikaragvos kardobas oras"}
-            one{"Nikaragvos kardoba oras"}
-            other{"Nikaragvos kardobas oras"}
+            few{"Nikaragvos kordobai"}
+            many{"Nikaragvos kordobos"}
+            one{"Nikaragvos kordoba"}
+            other{"Nikaragvos kordobų"}
         }
         NLG{
             few{"Nyderlandų guldenai"}
+            many{"Nyderlandų guldeno"}
             one{"Nyderlandų guldenas"}
-            other{"Nyderlandų guldenai"}
+            other{"Nyderlandų guldenų"}
         }
         NOK{
             few{"Norvegijos kronos"}
+            many{"Norvegijos kronos"}
             one{"Norvegijos krona"}
-            other{"Norvegijos kronos"}
+            other{"Norvegijos kronų"}
         }
         NPR{
             few{"Nepalo rupijos"}
+            many{"Nepalo rupijos"}
             one{"Nepalo rupija"}
-            other{"Nepalo rupijos"}
+            other{"Nepalo rupijų"}
         }
         NZD{
-            few{"Naujosios Zelandijos doleris"}
-            one{"Naujosios Zelandijos doleriai"}
-            other{"Naujosios Zelandijos doleriai"}
+            few{"Naujosios Zelandijos doleriai"}
+            many{"Naujosios Zelandijos dolerio"}
+            one{"Naujosios Zelandijos doleris"}
+            other{"Naujosios Zelandijos dolerių"}
         }
         OMR{
             few{"Omano rialai"}
+            many{"Omano rialo"}
             one{"Omano rialas"}
-            other{"Omano rialai"}
+            other{"Omano rialų"}
         }
         PAB{
-            few{"Panamos balbojaos"}
+            few{"Panamos balbojos"}
+            many{"Panamos balbojos"}
             one{"Panamos balboja"}
-            other{"Panamos balbojos"}
+            other{"Panamos balbojų"}
         }
         PEI{
             few{"Peru intis"}
+            many{"Peru intis"}
             one{"Peru inti"}
             other{"Peru intis"}
         }
         PEN{
             few{"Peru naujieji soliai"}
+            many{"Peru naujojo solio"}
             one{"Peru naujasis solis"}
-            other{"Peru naujieji soliai"}
+            other{"Peru naujųjų solių"}
         }
         PES{
-            few{"Peru soliai"}
-            one{"Peru solis"}
-            other{"Peru soliai"}
+            few{"Peru soliai (1863–1965)"}
+            many{"Peru solio (1863–1965)"}
+            one{"Peru solis (1863–1965)"}
+            other{"Peru solių (1863–1965)"}
         }
         PGK{
-            few{"Papua Naujosios Gvinėjos kina"}
+            few{"Papua Naujosios Gvinėjos kinos"}
+            many{"Papua Naujosios Gvinėjos kinos"}
             one{"Papua Naujosios Gvinėjos kina"}
-            other{"Papua Naujosios Gvinėjos kina"}
+            other{"Papua Naujosios Gvinėjos kinų"}
         }
         PHP{
             few{"Filipinų pesai"}
+            many{"Filipinų peso"}
             one{"Filipinų pesas"}
-            other{"Filipinų pesai"}
+            other{"Filipinų pesų"}
         }
         PKR{
             few{"Pakistano rupijos"}
+            many{"Pakistano rupijos"}
             one{"Pakistano rupija"}
-            other{"Pakistano rupijos"}
+            other{"Pakistano rupijų"}
         }
         PLN{
             few{"Lenkijos zlotai"}
+            many{"Lenkijos zloto"}
             one{"Lenkijos zlotas"}
-            other{"Lenkijos zlotai"}
+            other{"Lenkijos zlotų"}
         }
         PLZ{
-            few{"Lenkijos zlotai (PLZ)"}
-            one{"Lenkijos zlotas (PLZ)"}
-            other{"Lenkijos zlotai (PLZ)"}
+            few{"Lenkijos zlotai (1950–1995)"}
+            many{"Lenkijos zloto (1950–1995)"}
+            one{"Lenkijos zlotas (1950–1995)"}
+            other{"Lenkijos zlotų (1950–1995)"}
         }
         PTE{
             few{"Portugalijos eskudai"}
+            many{"Portugalijos eskudo"}
             one{"Portugalijos eskudas"}
-            other{"Portugalijos eskudai"}
+            other{"Portugalijos eskudų"}
         }
         PYG{
             few{"Paragvajaus guaraniai"}
+            many{"Paragvajaus guaranio"}
             one{"Paragvajaus guaranis"}
-            other{"Paragvajaus guaraniai"}
+            other{"Paragvajaus guaranių"}
         }
         QAR{
             few{"Kataro rialai"}
+            many{"Kataro rialo"}
             one{"Kataro rialas"}
-            other{"Kataro rialai"}
+            other{"Kataro rialų"}
         }
         RHD{
             few{"Rodezijos doleriai"}
+            many{"Rodezijos dolerio"}
             one{"Rodezijos doleris"}
-            other{"Rodezijos doleriai"}
+            other{"Rodezijos dolerių"}
         }
         ROL{
-            few{"Senosios Rumunijos lėjos"}
-            one{"Senoji Rumunijos lėja"}
-            other{"Senosios Rumunijos lėjos"}
+            few{"Rumunijos lėjos (1952–2006)"}
+            many{"Rumunijos lėjos (1952–2006)"}
+            one{"Rumunijos lėja (1952–2006)"}
+            other{"Rumunijos lėjų (1952–2006)"}
         }
         RON{
             few{"Rumunijos lėjos"}
+            many{"Rumunijos lėjos"}
             one{"Rumunijos lėja"}
-            other{"Rumunijos lėjos"}
+            other{"Rumunijos lėjų"}
         }
         RSD{
             few{"Serbijos dinarai"}
+            many{"Serbijos dinaro"}
             one{"Serbijos dinaras"}
-            other{"Serbijos dinarai"}
+            other{"Serbijos dinarų"}
         }
         RUB{
             few{"Rusijos rubliai"}
+            many{"Rusijos rublio"}
             one{"Rusijos rublis"}
             other{"Rusijos rublių"}
         }
         RUR{
-            few{"Rusijos rubliai (RUR)"}
-            one{"Rusijos rublis (RUR)"}
-            other{"Rusijos rubliai (RUR)"}
+            few{"Rusijos rubliai (1991–1998)"}
+            many{"Rusijos rublio (1991–1998)"}
+            one{"Rusijos rublis (1991–1998)"}
+            other{"Rusijos rublių (1991–1998)"}
         }
         RWF{
             few{"Ruandos frankai"}
+            many{"Ruandos franko"}
             one{"Ruandos frankas"}
-            other{"Ruandos frankai"}
+            other{"Ruandos frankų"}
         }
         SAR{
-            few{"Saudo Arabijos rialai"}
-            one{"Saudo Arabijos rialas"}
-            other{"Saudo Arabijos rialai"}
+            few{"Saudo Arabijos rijalai"}
+            many{"Saudo Arabijos rijalo"}
+            one{"Saudo Arabijos rijalas"}
+            other{"Saudo Arabijos rijalų"}
         }
         SBD{
             few{"Saliamono salų doleriai"}
+            many{"Saliamono salų dolerio"}
             one{"Saliamono salų doleris"}
-            other{"Saliamono salų doleriai"}
+            other{"Saliamono salų dolerių"}
         }
         SCR{
-            few{"Seišelių salų rupijos"}
-            one{"Seišelių salų rupija"}
-            other{"Seišelių salų rupijos"}
+            few{"Seišelių rupijos"}
+            many{"Seišelių rupijos"}
+            one{"Seišelių rupija"}
+            other{"Seišelių rupijų"}
         }
         SDD{
-            few{"Senieji Sudano dinarai"}
-            one{"Senasis Sudano dinaras"}
-            other{"Senieji Sudano dinarai"}
+            few{"Sudano dinarai (1992–2007)"}
+            many{"Sudano dinaro (1992–2007)"}
+            one{"Sudano dinaras (1992–2007)"}
+            other{"Sudano dinarų (1992–2007)"}
         }
         SDG{
             few{"Sudano svarai"}
+            many{"Sudano svaro"}
             one{"Sudano svaras"}
-            other{"Sudano svarai"}
+            other{"Sudano svarų"}
         }
         SDP{
-            few{"Senieji Sudano svarai"}
-            one{"Senasis Sudano svaras"}
-            other{"Senieji Sudano svarai"}
+            few{"Sudano svarai (1957–1998)"}
+            many{"Sudano svaro (1957–1998)"}
+            one{"Sudano svaras (1957–1998)"}
+            other{"Sudano svarų (1957–1998)"}
         }
         SEK{
             few{"Švedijos kronos"}
+            many{"Švedijos kronos"}
             one{"Švedijos krona"}
-            other{"Švedijos kronos"}
+            other{"Švedijos kronų"}
         }
         SGD{
             few{"Singapūro doleriai"}
+            many{"Singapūro dolerio"}
             one{"Singapūro doleris"}
-            other{"Singapūro doleriai"}
+            other{"Singapūro dolerių"}
         }
         SHP{
             few{"Šv. Elenos salų svarai"}
+            many{"Šv. Elenos salų svaro"}
             one{"Šv. Elenos salų svaras"}
-            other{"Šv. Elenos salų svarai"}
+            other{"Šv. Elenos salų svarų"}
         }
         SIT{
             few{"Slovėnijos tolars"}
+            many{"Slovėnijos tolar"}
             one{"Slovėnijos tolars"}
             other{"Slovėnijos tolar"}
         }
         SKK{
             few{"Slovakijos kronos"}
+            many{"Slovakijos kronos"}
             one{"Slovakijos krona"}
-            other{"Slovakijos kronos"}
+            other{"Slovakijos kronų"}
         }
         SLL{
             few{"Siera Leonės leonės"}
+            many{"Siera Leonės leonės"}
             one{"Siera Leonės leonė"}
-            other{"Siera Leonės leonės"}
+            other{"Siera Leonės leonių"}
         }
         SOS{
             few{"Somalio šilingai"}
+            many{"Somalio šilingo"}
             one{"Somalio šilingas"}
-            other{"Somalio šilingai"}
+            other{"Somalio šilingų"}
         }
         SRD{
             few{"Surimano doleriai"}
+            many{"Surimano dolerio"}
             one{"Surimano doleris"}
-            other{"Surimano doleriai"}
+            other{"Surimano dolerių"}
         }
         SRG{
             few{"Surimano guldenai"}
+            many{"Surimano guldeno"}
             one{"Surimano guldenas"}
-            other{"Surimano guldenai"}
+            other{"Surimano guldenų"}
+        }
+        SSP{
+            few{"Pietų Sudano svarai"}
+            many{"Pietų Sudano svaro"}
+            one{"Pietų Sudano svaras"}
+            other{"Pietų Sudano svarų"}
         }
         STD{
-            few{"Sao Tomės ir Principės dobros"}
-            one{"Sao Tomės ir Principės dobra"}
-            other{"Sao Tomės ir Principės dobros"}
+            few{"San Tomės ir Principės dobros"}
+            many{"San Tomės ir Principės dobros"}
+            one{"San Tomės ir Principės dobra"}
+            other{"Sao Tomės ir Principės dobrų"}
         }
         SUR{
             few{"Sovietų rubliai"}
+            many{"Sovietų rublio"}
             one{"Sovietų rublis"}
-            other{"Sovietų rubliai"}
+            other{"Sovietų rublių"}
         }
         SVC{
             few{"Salvadoro kolonai"}
+            many{"Salvadoro kolonai"}
             one{"Salvadoro kolonas"}
             other{"Salvadoro kolonai"}
         }
         SYP{
             few{"Sirijos svarai"}
+            many{"Sirijos svaro"}
             one{"Sirijos svaras"}
-            other{"Sirijos svarai"}
+            other{"Sirijos svarų"}
         }
         SZL{
-            few{"Svazilendo lilangeniai"}
-            one{"Svazilendo lilangenis"}
-            other{"Svazileindo lilangenia"}
+            few{"Svazilando lilangeniai"}
+            many{"Svazilendo lilangenio"}
+            one{"Svazilando lilangenis"}
+            other{"Svazilendo lilangenių"}
         }
         THB{
-            few{"Tailando batas"}
+            few{"Tailando batai"}
+            many{"Tailando bato"}
             one{"Tailando batas"}
-            other{"Tailando batas"}
+            other{"Tailando batų"}
         }
         TJR{
             few{"Tadžikistano rubliai"}
+            many{"Tadžikistano rublio"}
             one{"Tadžikistano rublis"}
-            other{"Tadžikistano rubliai"}
+            other{"Tadžikistano rublių"}
         }
         TJS{
             few{"Tadžikistano somoniai"}
+            many{"Tadžikistano somonio"}
             one{"Tadžikistano somonis"}
-            other{"Tadžikistano somoniai"}
+            other{"Tadžikistano somonių"}
         }
         TMM{
-            few{"Turkmėnistano manatas"}
-            one{"Turkmėnistano manatas"}
-            other{"Turkmėnistano manatas"}
+            few{"Turkmėnistano manatai (1993–2009)"}
+            many{"Turkmėnistano manato (1993–2009)"}
+            one{"Turkmėnistano manatas (1993–2009)"}
+            other{"Turkmėnistano manatų (1993–2009)"}
         }
         TMT{
-            few{"Naujasis Turkmėnistano manatas"}
-            one{"Naujasis Turkmėnistano manatas"}
-            other{"Naujasis Turkmėnistano manatas"}
+            few{"Turkmėnistano manatai"}
+            many{"Turkmėnistano manato"}
+            one{"Turkmėnistano manatas"}
+            other{"Turkmėnistano manatų"}
         }
         TND{
             few{"Tuniso dinarai"}
+            many{"Tuniso dinaro"}
             one{"Tuniso dinaras"}
-            other{"Tuniso dinarai"}
+            other{"Tuniso dinarų"}
         }
         TOP{
-            few{"Tongo paanga"}
+            few{"Tongo paangos"}
+            many{"Tongo paangos"}
             one{"Tongo paanga"}
-            other{"Tongo paanga"}
+            other{"Tongo paangų"}
         }
         TPE{
-            few{"Timorese eskudai"}
-            one{"Timorese eskudas"}
-            other{"Timorese eskudai"}
+            few{"Timoro eskudai"}
+            many{"Timoro eskudo"}
+            one{"Timoro eskudas"}
+            other{"Timoro eskudų"}
         }
         TRL{
-            few{"Senoji Turkijos lira"}
-            one{"Senoji Turkijos lira"}
-            other{"Senoji Turkijos lira"}
+            few{"Turkijos liros (1922–2005)"}
+            many{"Turkijos liros (1922–2005)"}
+            one{"Turkijos lira (1922–2005)"}
+            other{"Turkijos lirų (1922–2005)"}
         }
         TRY{
-            few{"Turkijos lira"}
+            few{"Turkijos liros"}
+            many{"Turkijos liros"}
             one{"Turkijos lira"}
-            other{"Turkijos lira"}
+            other{"Turkijos lirų"}
         }
         TTD{
             few{"Trinidado ir Tobago doleriai"}
+            many{"Trinidado ir Tobago dolerio"}
             one{"Trinidado ir Tobago doleris"}
-            other{"Trinidado ir Tobago doleriai"}
+            other{"Trinidado ir Tobago dolerių"}
         }
         TWD{
-            few{"Naujieji Taivano doleriai"}
-            one{"Naujasis Taivano doleris"}
-            other{"Naujieji Taivano doleriai"}
+            few{"Taivano naujieji doleriai"}
+            many{"Taivano naujojo dolerio"}
+            one{"Taivano naujasis doleris"}
+            other{"Taivano naujųjų dolerių"}
         }
         TZS{
             few{"Tanzanijos šilingai"}
+            many{"Tanzanijos šilingo"}
             one{"Tanzanijos šilingas"}
-            other{"Tanzanijos šilingai"}
+            other{"Tanzanijos šilingų"}
         }
         UAH{
             few{"Ukrainos grivinos"}
+            many{"Ukrainos grivinos"}
             one{"Ukrainos grivina"}
-            other{"Ukrainos grivinos"}
+            other{"Ukrainos grivinų"}
         }
         UAK{
             few{"Ukrainos karbovantsiv"}
+            many{"Ukrainos karbovantsiv"}
             one{"Ukrainos karbovanets"}
             other{"Ukrainos karbovantsiv"}
         }
         UGS{
-            few{"Ugandos šilingai (UGS)"}
-            one{"Ugandos šilingas (UGS)"}
-            other{"Ugandos šilingai (UGS)"}
+            few{"Ugandos šilingai (1966–1987)"}
+            many{"Ugandos šilingo (1966–1987)"}
+            one{"Ugandos šilingas (1966–1987)"}
+            other{"Ugandos šilingų (1966–1987)"}
         }
         UGX{
-            few{"Ugandos šilingas"}
-            one{"Ugandos šilingai"}
-            other{"Ugandos šilingas"}
+            few{"Ugandos šilingai"}
+            many{"Ugandos šilingo"}
+            one{"Ugandos šilingas"}
+            other{"Ugandos šilingų"}
         }
         USD{
             few{"JAV doleriai"}
+            many{"JAV dolerio"}
             one{"JAV doleris"}
             other{"JAV dolerių"}
         }
         USN{
             few{"JAV doleriai (kitą dieną)"}
+            many{"JAV dolerio (kitą dieną)"}
             one{"JAV doleris (kitą dieną)"}
-            other{"JAV doleriai (kitą dieną)"}
+            other{"JAV dolerių (kitą dieną)"}
         }
         USS{
             few{"JAV doleriai (tą pačią dieną)"}
+            many{"JAV dolerio (tą pačią dieną)"}
             one{"JAV doleris (tą pačią dieną)"}
-            other{"JAV doleriai (tą pačią dieną)"}
+            other{"JAV dolerių (tą pačią dieną)"}
         }
         UYI{
             few{"Uragvajaus pesai en unidades indexadas"}
+            many{"Urugvajaus pesai en unidades indexadas"}
             one{"Urugvajaus pesas en unidades indexadas"}
             other{"Urugvajaus pesai en unidades indexadas"}
         }
         UYP{
-            few{"Urugvajaus pesai (UYP)"}
-            one{"Urugvajaus pesas (UYP)"}
-            other{"Urugvajaus pesai (UYP)"}
+            few{"Urugvajaus pesai (1975–1993)"}
+            many{"Urugvajaus peso (1975–1993)"}
+            one{"Urugvajaus pesas (1975–1993)"}
+            other{"Urugvajaus pesų (1975–1993)"}
         }
         UYU{
             few{"Urugvajaus pesai"}
+            many{"Urugvajaus peso"}
             one{"Urugvajaus pesas"}
-            other{"Urugvajaus pesai"}
+            other{"Urugvajaus pesų"}
         }
         UZS{
-            few{"Uzbekistano sumas"}
+            few{"Uzbekistano sumai"}
+            many{"Uzbekistano sumo"}
             one{"Uzbekistano sumas"}
-            other{"Uzbekistano sumas"}
+            other{"Uzbekistano sumų"}
         }
         VEB{
-            few{"Venesuelos bolivarai"}
-            one{"Venesuelos bolivaras"}
-            other{"Venesuelos bolivarai"}
+            few{"Venesuelos bolivarai (1871–2008)"}
+            many{"Venesuelos bolivaro (1871–2008)"}
+            one{"Venesuelos bolivaras (1871–2008)"}
+            other{"Venesuelos bolivarų (1871–2008)"}
         }
         VEF{
-            few{"Stiprieji Venesuelos bolivarai"}
-            one{"Stiprusis Venesuelos bolivaras"}
-            other{"Stiprieji Venesuelos bolivarai"}
+            few{"Venesuelos bolivarai"}
+            many{"Venesuelos bolivaro"}
+            one{"Venesuelos bolivaras"}
+            other{"Venesuelos bolivarų"}
         }
         VND{
-            few{"Vietnamo dongas"}
+            few{"Vietnamo dongai"}
+            many{"Vietnamo dongo"}
             one{"Vietnamo dongas"}
-            other{"Vietnamo dongas"}
+            other{"Vietnamo dongų"}
         }
         VNN{
-            few{"Senasis Vietnamo dongas"}
-            one{"Senasis Vietnamo dongas"}
-            other{"Senasis Vietnamo dongas"}
+            few{"Vietnamo dongai (1978–1985)"}
+            many{"Vietnamo dongo (1978–1985)"}
+            one{"Vietnamo dongas (1978–1985)"}
+            other{"Vietnamo dongų (1978–1985)"}
         }
         VUV{
-            few{"Vanuatu vatus"}
-            one{"Vanuatu vatu"}
-            other{"Vanuatu vatus"}
+            few{"Vanuatu vatai"}
+            many{"Vanuatu vato"}
+            one{"Vanuatu vatas"}
+            other{"Vanuatu vatų"}
         }
         WST{
-            few{"Vakarų Samoa tala"}
-            one{"Vakarų Samoa tala"}
-            other{"Vakarų Samoa tala"}
+            few{"Samoa talos"}
+            many{"Samoa talos"}
+            one{"Samoa tala"}
+            other{"Samoa talų"}
         }
         XAF{
             few{"CFA BEAC frankai"}
+            many{"CFA BEAC franko"}
             one{"CFA BEAC frankas"}
-            other{"CFA BEAC frankai"}
+            other{"CFA BEAC frankų"}
         }
         XAG{
             few{"Sidabras"}
+            many{"Sidabras"}
             one{"Sidabras"}
             other{"Sidabras"}
         }
         XAU{
             few{"Auksas"}
+            many{"Auksas"}
             one{"Auksas"}
             other{"Auksas"}
         }
         XBA{
             few{"Europos suvestinės vienetai"}
+            many{"Europos suvestinės vienetai"}
             one{"Europos suvestinės vienetas"}
             other{"Europos suvestinės vienetai"}
         }
         XBB{
             few{"Europos piniginiai vienetai"}
+            many{"Europos piniginiai vienetai"}
             one{"Europos piniginis vienetas"}
             other{"Europos piniginiai vienetai"}
         }
         XBC{
             few{"Europos valiutos / apskaitos vienetai (XBC)"}
+            many{"Europos valiutos / apskaitos vienetai (XBC)"}
             one{"Europos valiutos / apskaitos vienetas (XBC)"}
             other{"Europos valiutos / apskaitos vienetai (XBC)"}
         }
         XBD{
             few{"Europos valiutos / apskaitos vienetas (XBD)"}
+            many{"Europos valiutos / apskaitos vienetai (XBD)"}
             one{"Europos valiutos / apskaitos vienetas (XBD)"}
             other{"Europos valiutos / apskaitos vienetai (XBD)"}
         }
         XCD{
             few{"Rytų Karibų doleriai"}
+            many{"Rytų Karibų dolerio"}
             one{"Rytų Karibų doleris"}
-            other{"Rytų Karibų doleriai"}
+            other{"Rytų Karibų dolerių"}
         }
         XDR{
             few{"SDR tarptautinis valiutos fondas"}
+            many{"SDR tarptautinis valiutos fondas"}
             one{"SDR tarptautinis valiutos fondas"}
             other{"SDR tarptautinis valiutos fondas"}
         }
         XFO{
             few{"Aukso frankai"}
+            many{"Aukso franko"}
             one{"Aukso frankas"}
-            other{"Aukso frankai"}
+            other{"Aukso frankų"}
         }
         XFU{
-            few{"Prancūzijos UIC - frankas"}
-            one{"Prancūzijos UIC - frankai"}
-            other{"Prancūzijos UIC - frankai"}
+            few{"Prancūzijos UIC - frankai"}
+            many{"Prancūzijos UIC - franko"}
+            one{"Prancūzijos UIC - frankas"}
+            other{"Prancūzijos UIC - frankų"}
         }
         XOF{
             few{"CFA BCEAO frankai"}
+            many{"CFA BCEAO franko"}
             one{"CFA BCEAO frankas"}
-            other{"CFA BCEAO frankai"}
+            other{"CFA BCEAO frankų"}
         }
         XPD{
             few{"Paladis"}
+            many{"Paladis"}
             one{"Paladis"}
             other{"Paladis"}
         }
         XPF{
             few{"CFP frankai"}
+            many{"CFP franko"}
             one{"CFP frankas"}
-            other{"CFP frankai"}
+            other{"CFP frankų"}
         }
         XPT{
             few{"Platina"}
+            many{"Platina"}
             one{"Platina"}
             other{"Platina"}
         }
         XRE{
             few{"RINET fondai"}
+            many{"RINET fondai"}
             one{"RINET fondas"}
             other{"RINET fondai"}
         }
         XTS{
             few{"Tikrinamas valiutos kodas"}
+            many{"Tikrinamas valiutos kodas"}
             one{"Tikrinamas valiutos kodas"}
             other{"Tikrinamas valiutos kodas"}
         }
         XXX{
-            few{"Nežinoma arba neteisinga valiuta"}
-            one{"Nežinoma arba neteisinga valiuta"}
-            other{"Nežinoma arba neteisinga valiuta"}
+            few{"(nežinoma valiuta)"}
+            many{"(nežinoma valiuta)"}
+            one{"(nežinoma valiuta)"}
+            other{"(nežinoma valiuta)"}
         }
         YDD{
-            few{"Yemeni dinarai"}
-            one{"Yemeni dinaras"}
-            other{"Yemeni dinarai"}
+            few{"Jemeno dinarai"}
+            many{"Jemeno dinaro"}
+            one{"Jemeno dinaras"}
+            other{"Jemeno dinarų"}
         }
         YER{
             few{"Jemeno rialai"}
+            many{"Jemeno rialo"}
             one{"Jemeno rialas"}
-            other{"Jemeno rialai"}
+            other{"Jemeno rialų"}
         }
         YUD{
-            few{"Jugoslavijos kietieji dinarai"}
-            one{"Jugoslavijos kietasis dinaras"}
-            other{"Jugoslavijos kietieji dinarai"}
+            few{"Jugoslavijos kietieji dinarai (1966–1990)"}
+            many{"Jugoslavijos kietiejo dinaro (1966–1990)"}
+            one{"Jugoslavijos kietasis dinaras (1966–1990)"}
+            other{"Jugoslavijos kietiejų dinarų (1966–1990)"}
         }
         YUM{
-            few{"Jugoslavijos Noviy dinarai"}
-            one{"Jugoslavijos Noviy dinaras"}
-            other{"Jugoslavijos Noviy dinarai"}
+            few{"Jugoslavijos naujieji dinarai (1994–2002)"}
+            many{"Jugoslavijos naujojo dinaro (1994–2002)"}
+            one{"Jugoslavijos naujasis dinaras (1994–2002)"}
+            other{"Jugoslavijos naujųjų dinarų (1994–2002)"}
         }
         YUN{
             few{"Jugoslavijos konvertuoti dinarai"}
+            many{"Jugoslavijos konvertuoti dinarai"}
             one{"Jugoslavijos konvertuotas dinaras"}
             other{"Jugoslavijos konvertuoti dinarai"}
         }
         YUR{
             few{"Jugoslavijos reformuoti dinarai"}
+            many{"Jugoslavijos reformuoti dinarai"}
             one{"Jugoslavijos reformuotas dinaras"}
             other{"Jugoslavijos reformuoti dinarai"}
         }
         ZAL{
-            few{"Pietų Afrikos randas (finansinis)"}
+            few{"Pietų Afrikos randai (finansinis)"}
+            many{"Pietų Afrikos rando (finansinis)"}
             one{"Pietų Afrikos randas (finansinis)"}
-            other{"Pietų Afrikos randas (finansinis)"}
+            other{"Pietų Afrikos randų (finansinis)"}
         }
         ZAR{
-            few{"Pietų Afrikos randas"}
-            one{"Pietų Afrikos randas"}
-            other{"Pietų Afrikos randas"}
+            few{"Pietų Afrikos Respublikos randai"}
+            many{"Pietų Afrikos Respublikos rando"}
+            one{"Pietų Afrikos Respublikos randas"}
+            other{"Pietų Afrikos Respublikos randų"}
         }
         ZMK{
+            few{"Zambijos kvačos (1968–2012)"}
+            many{"Zambijos kvačos (1968–2012)"}
+            one{"Zambijos kvača (1968–2012)"}
+            other{"Zambijos kvačų (1968–2012)"}
+        }
+        ZMW{
             few{"Zambijos kvačos"}
+            many{"Zambijos kvačos"}
             one{"Zambijos kvača"}
-            other{"Zambijos kvačos"}
+            other{"Zambijos kvačų"}
         }
         ZRN{
             few{"Naujieji Zairo zairai"}
+            many{"Naujieji Zairo zairai"}
             one{"Naujasis Zairo zairas"}
             other{"Naujieji Zairo zairai"}
         }
         ZRZ{
             few{"Zairo zairai"}
+            many{"Zairo zairai"}
             one{"Zairo zairas"}
             other{"Zairo zairai"}
         }
         ZWD{
-            few{"Zimbabvės doleriai"}
-            one{"Zimbabvės doleris"}
-            other{"Zimbabvės doleriai"}
+            few{"Zimbabvės doleriai (1980–2008)"}
+            many{"Zimbabvės dolerio (1980–2008)"}
+            one{"Zimbabvės doleris (1980–2008)"}
+            other{"Zimbabvės dolerių (1980–2008)"}
         }
         ZWL{
             few{"Zimbabvės doleriai (2009)"}
-            one{"Zimbabvės doleriai (2009)"}
-            other{"Zimbabvės doleriai (2009)"}
+            many{"Zimbabvės dolerio (2009)"}
+            one{"Zimbabvės doleris (2009)"}
+            other{"Zimbabvės dolerių (2009)"}
         }
         ZWR{
             few{"Zimbabvės doleriai (2008)"}
+            many{"Zimbabvės dolerio (2008)"}
             one{"Zimbabvės doleris (2008)"}
-            other{"Zimbabvės doleriai (2008)"}
+            other{"Zimbabvės dolerių (2008)"}
         }
     }
     CurrencyUnitPatterns{
         few{"{0} {1}"}
+        many{"{0} {1}"}
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.93.19"}
 }

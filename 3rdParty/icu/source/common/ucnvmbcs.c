@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2000-2012, International Business Machines
+*   Copyright (C) 2000-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -54,9 +54,9 @@
 #include "ucnvmbcs.h"
 #include "ucnv_ext.h"
 #include "ucnv_cnv.h"
-#include "umutex.h"
 #include "cmemory.h"
 #include "cstring.h"
+#include "cmutex.h"
 
 /* control optimizations according to the platform */
 #define MBCS_UNROLL_SINGLE_TO_BMP 1
@@ -1343,7 +1343,6 @@ reconstituteData(UConverterMBCSTable *mbcsTable,
                  UErrorCode *pErrorCode) {
     uint16_t *stage1;
     uint32_t *stage2;
-    uint8_t *bytes;
     uint32_t dataLength=stage1Length*2+fullStage2Length*4+mbcsTable->fromUBytesLength;
     mbcsTable->reconstitutedData=(uint8_t *)uprv_malloc(dataLength);
     if(mbcsTable->reconstitutedData==NULL) {
@@ -1362,7 +1361,7 @@ reconstituteData(UConverterMBCSTable *mbcsTable,
                 stage2Length*4);
 
     mbcsTable->fromUnicodeTable=stage1;
-    mbcsTable->fromUnicodeBytes=bytes=(uint8_t *)(stage2+fullStage2Length);
+    mbcsTable->fromUnicodeBytes=(uint8_t *)(stage2+fullStage2Length);
 
     /* indexes into stage 2 count from the bottom of the fromUnicodeTable */
     stage2=(uint32_t *)stage1;
@@ -3941,9 +3940,10 @@ ucnv_MBCSFromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
     uint32_t stage2Entry;
     uint32_t asciiRoundtrips;
     uint32_t value;
-    uint8_t si_value[2] = {0, 0}; 
-    uint8_t so_value[2] = {0, 0}; 
-    uint8_t si_value_length, so_value_length;
+    /* Shift-In and Shift-Out byte sequences differ by encoding scheme. */
+    uint8_t siBytes[2] = {0, 0};
+    uint8_t soBytes[2] = {0, 0};
+    uint8_t siLength, soLength;
     int32_t length = 0, prevLength;
     uint8_t unicodeMask;
 
@@ -4016,8 +4016,8 @@ ucnv_MBCSFromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
     nextSourceIndex=0;
 
     /* Get the SI/SO character for the converter */
-    si_value_length = getSISOBytes(SI, cnv->options, si_value);
-    so_value_length = getSISOBytes(SO, cnv->options, so_value);
+    siLength = getSISOBytes(SI, cnv->options, siBytes);
+    soLength = getSISOBytes(SO, cnv->options, soBytes);
 
     /* conversion loop */
     /*
@@ -4108,12 +4108,12 @@ ucnv_MBCSFromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
                             length=1;
                         } else {
                             /* change from double-byte mode to single-byte */
-                            if (si_value_length == 1) {
-                                value|=(uint32_t)si_value[0]<<8;
+                            if (siLength == 1) {
+                                value|=(uint32_t)siBytes[0]<<8;
                                 length = 2;
-                            } else if (si_value_length == 2) {
-                                value|=(uint32_t)si_value[1]<<8;
-                                value|=(uint32_t)si_value[0]<<16;
+                            } else if (siLength == 2) {
+                                value|=(uint32_t)siBytes[1]<<8;
+                                value|=(uint32_t)siBytes[0]<<16;
                                 length = 3;
                             }
                             prevLength=1;
@@ -4123,12 +4123,12 @@ ucnv_MBCSFromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
                             length=2;
                         } else {
                             /* change from single-byte mode to double-byte */
-                            if (so_value_length == 1) {
-                                value|=(uint32_t)so_value[0]<<16;
+                            if (soLength == 1) {
+                                value|=(uint32_t)soBytes[0]<<16;
                                 length = 3;
-                            } else if (so_value_length == 2) {
-                                value|=(uint32_t)so_value[1]<<16;
-                                value|=(uint32_t)so_value[0]<<24;
+                            } else if (soLength == 2) {
+                                value|=(uint32_t)soBytes[1]<<16;
+                                value|=(uint32_t)soBytes[0]<<24;
                                 length = 4;
                             }
                             prevLength=2;
@@ -4340,12 +4340,12 @@ getTrail:
                             length=1;
                         } else {
                             /* change from double-byte mode to single-byte */
-                            if (si_value_length == 1) {
-                                value|=(uint32_t)si_value[0]<<8;
+                            if (siLength == 1) {
+                                value|=(uint32_t)siBytes[0]<<8;
                                 length = 2;
-                            } else if (si_value_length == 2) {
-                                value|=(uint32_t)si_value[1]<<8;
-                                value|=(uint32_t)si_value[0]<<16;
+                            } else if (siLength == 2) {
+                                value|=(uint32_t)siBytes[1]<<8;
+                                value|=(uint32_t)siBytes[0]<<16;
                                 length = 3;
                             }
                             prevLength=1;
@@ -4355,12 +4355,12 @@ getTrail:
                             length=2;
                         } else {
                             /* change from single-byte mode to double-byte */
-                            if (so_value_length == 1) {
-                                value|=(uint32_t)so_value[0]<<16;
+                            if (soLength == 1) {
+                                value|=(uint32_t)soBytes[0]<<16;
                                 length = 3;
-                            } else if (so_value_length == 2) {
-                                value|=(uint32_t)so_value[1]<<16;
-                                value|=(uint32_t)so_value[0]<<24;
+                            } else if (soLength == 2) {
+                                value|=(uint32_t)soBytes[1]<<16;
+                                value|=(uint32_t)soBytes[0]<<24;
                                 length = 4;
                             }
                             prevLength=2;
@@ -4615,14 +4615,14 @@ unassigned:
     ) {
         /* EBCDIC_STATEFUL ending with DBCS: emit an SI to return the output stream to SBCS */
         if(targetCapacity>0) {
-            *target++=(uint8_t)si_value[0];
-            if (si_value_length == 2) {
+            *target++=(uint8_t)siBytes[0];
+            if (siLength == 2) {
                 if (targetCapacity<2) {
-                    cnv->charErrorBuffer[0]=(uint8_t)si_value[1];
+                    cnv->charErrorBuffer[0]=(uint8_t)siBytes[1];
                     cnv->charErrorBufferLength=1;
                     *pErrorCode=U_BUFFER_OVERFLOW_ERROR;
                 } else {
-                    *target++=(uint8_t)si_value[1];
+                    *target++=(uint8_t)siBytes[1];
                 }
             }
             if(offsets!=NULL) {
@@ -4631,11 +4631,11 @@ unassigned:
             }
         } else {
             /* target is full */
-            cnv->charErrorBuffer[0]=(uint8_t)si_value[0];
-            if (si_value_length == 2) {
-                cnv->charErrorBuffer[1]=(uint8_t)si_value[1];
+            cnv->charErrorBuffer[0]=(uint8_t)siBytes[0];
+            if (siLength == 2) {
+                cnv->charErrorBuffer[1]=(uint8_t)siBytes[1];
             }
-            cnv->charErrorBufferLength=si_value_length;
+            cnv->charErrorBufferLength=siLength;
             *pErrorCode=U_BUFFER_OVERFLOW_ERROR;
         }
         prevLength=1; /* we switched into SBCS */
@@ -4931,7 +4931,7 @@ ucnv_SBCSFromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
             if(U8_IS_TRAIL(b)) {
                 ++i;
             } else {
-                if(i<utf8_countTrailBytes[b]) {
+                if(i<U8_COUNT_TRAIL_BYTES(b)) {
                     /* exit the conversion loop before the lead byte if there are not enough trail bytes for it */
                     sourceLimit-=i+1;
                 }
@@ -5024,7 +5024,7 @@ ucnv_SBCSFromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
                     /* handle "complicated" and error cases, and continuing partial characters */
                     oldToULength=0;
                     toULength=1;
-                    toULimit=utf8_countTrailBytes[b]+1;
+                    toULimit=U8_COUNT_TRAIL_BYTES(b)+1;
                     c=b;
 moreBytes:
                     while(toULength<toULimit) {
@@ -5123,6 +5123,7 @@ moreBytes:
                      * but then exit the loop because the extension match would
                      * have consumed the source.
                      */
+                    *pErrorCode=U_USING_DEFAULT_WARNING;
                     break;
                 } else {
                     /* a mapping was written to the target, continue */
@@ -5143,10 +5144,12 @@ moreBytes:
      * to stop before a truncated sequence.
      * If so, then collect the truncated sequence now.
      */
-    if(U_SUCCESS(*pErrorCode) && source<(sourceLimit=(uint8_t *)pToUArgs->sourceLimit)) {
+    if(U_SUCCESS(*pErrorCode) &&
+            cnv->preFromUFirstCP<0 &&
+            source<(sourceLimit=(uint8_t *)pToUArgs->sourceLimit)) {
         c=utf8->toUBytes[0]=b=*source++;
         toULength=1;
-        toULimit=utf8_countTrailBytes[b]+1;
+        toULimit=U8_COUNT_TRAIL_BYTES(b)+1;
         while(source<sourceLimit) {
             utf8->toUBytes[toULength++]=b=*source++;
             c=(c<<6)+b;
@@ -5228,7 +5231,7 @@ ucnv_DBCSFromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
             if(U8_IS_TRAIL(b)) {
                 ++i;
             } else {
-                if(i<utf8_countTrailBytes[b]) {
+                if(i<U8_COUNT_TRAIL_BYTES(b)) {
                     /* exit the conversion loop before the lead byte if there are not enough trail bytes for it */
                     sourceLimit-=i+1;
                 }
@@ -5301,7 +5304,7 @@ ucnv_DBCSFromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
                     /* handle "complicated" and error cases, and continuing partial characters */
                     oldToULength=0;
                     toULength=1;
-                    toULimit=utf8_countTrailBytes[b]+1;
+                    toULimit=U8_COUNT_TRAIL_BYTES(b)+1;
                     c=b;
 moreBytes:
                     while(toULength<toULimit) {
@@ -5429,6 +5432,7 @@ unassigned:
                      * but then exit the loop because the extension match would
                      * have consumed the source.
                      */
+                    *pErrorCode=U_USING_DEFAULT_WARNING;
                     break;
                 } else {
                     /* a mapping was written to the target, continue */
@@ -5450,10 +5454,12 @@ unassigned:
      * to stop before a truncated sequence.
      * If so, then collect the truncated sequence now.
      */
-    if(U_SUCCESS(*pErrorCode) && source<(sourceLimit=(uint8_t *)pToUArgs->sourceLimit)) {
+    if(U_SUCCESS(*pErrorCode) &&
+            cnv->preFromUFirstCP<0 &&
+            source<(sourceLimit=(uint8_t *)pToUArgs->sourceLimit)) {
         c=utf8->toUBytes[0]=b=*source++;
         toULength=1;
-        toULimit=utf8_countTrailBytes[b]+1;
+        toULimit=U8_COUNT_TRAIL_BYTES(b)+1;
         while(source<sourceLimit) {
             utf8->toUBytes[toULength++]=b=*source++;
             c=(c<<6)+b;

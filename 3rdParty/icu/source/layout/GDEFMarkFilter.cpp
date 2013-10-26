@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998 - 2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998 - 2013 - All Rights Reserved
  *
  */
 
@@ -11,9 +11,12 @@
 
 U_NAMESPACE_BEGIN
 
-GDEFMarkFilter::GDEFMarkFilter(const GlyphDefinitionTableHeader *gdefTable)
+GDEFMarkFilter::GDEFMarkFilter(const LEReferenceTo<GlyphDefinitionTableHeader> &gdefTable, LEErrorCode &success)
+  : classDefTable(gdefTable->getGlyphClassDefinitionTable(gdefTable, success))
 {
-    classDefTable = gdefTable->getGlyphClassDefinitionTable();
+  if(!classDefTable.isValid()) {
+    success = LE_INTERNAL_ERROR;
+  }
 }
 
 GDEFMarkFilter::~GDEFMarkFilter()

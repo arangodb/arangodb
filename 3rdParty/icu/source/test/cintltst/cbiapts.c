@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -38,7 +38,9 @@ log_data_err("Failure at file %s, line %d, error = %s (Are you missing data?)\n"
 #define TEST_ASSERT(expr) {if ((expr)==FALSE) { \
 log_data_err("Test Failure at file %s, line %d (Are you missing data?)\n", __FILE__, __LINE__);}}
 
+#if !UCONFIG_NO_FILE_IO
 static void TestBreakIteratorSafeClone(void);
+#endif
 static void TestBreakIteratorRules(void);
 static void TestBreakIteratorRuleError(void);
 static void TestBreakIteratorStatusVec(void);
@@ -135,6 +137,7 @@ static void freeToUCharStrings(void **hook) {
 }
 
 
+#if !UCONFIG_NO_FILE_IO
 static void TestBreakIteratorCAPI()
 {
     UErrorCode status = U_ZERO_ERROR;
@@ -195,6 +198,9 @@ static void TestBreakIteratorCAPI()
     }
     /*trying to open an illegal iterator*/
     bogus     = ubrk_open((UBreakIteratorType)5, "en_US", text, u_strlen(text), &status);
+    if(bogus != NULL) {
+        log_err("FAIL: expected NULL from opening an invalid break iterator.\n");
+    }
     if(U_SUCCESS(status)){
         log_err("FAIL: Error in ubrk_open() for BOGUS breakiterator. Expected U_ILLEGAL_ARGUMENT_ERROR\n");
     }
@@ -395,28 +401,30 @@ static void TestBreakIteratorSafeClone(void)
         /* Check the various error & informational states */
 
         /* Null status - just returns NULL */
-        if (0 != ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, 0))
+        if (NULL != ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, NULL))
         {
             log_err("FAIL: Cloned Iterator failed to deal correctly with null status\n");
         }
         /* error status - should return 0 & keep error the same */
         status = U_MEMORY_ALLOCATION_ERROR;
-        if (0 != ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, &status) || status != U_MEMORY_ALLOCATION_ERROR)
+        if (NULL != ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, &status) || status != U_MEMORY_ALLOCATION_ERROR)
         {
             log_err("FAIL: Cloned Iterator failed to deal correctly with incoming error status\n");
         }
         status = U_ZERO_ERROR;
 
-        /* Null buffer size pointer - just returns NULL & set error to U_ILLEGAL_ARGUMENT_ERROR*/
-        if (0 != ubrk_safeClone(someIterators[i], buffer[i], 0, &status) || status != U_ILLEGAL_ARGUMENT_ERROR)
+        /* Null buffer size pointer is ok */
+        if (NULL == (brk = ubrk_safeClone(someIterators[i], buffer[i], NULL, &status)) || U_FAILURE(status))
         {
             log_err("FAIL: Cloned Iterator failed to deal correctly with null bufferSize pointer\n");
         }
+        ubrk_close(brk);
         status = U_ZERO_ERROR;
-    
+
         /* buffer size pointer is 0 - fill in pbufferSize with a size */
         bufferSize = 0;
-        if (0 != ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, &status) || U_FAILURE(status) || bufferSize <= 0)
+        if (NULL != ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, &status) ||
+                U_FAILURE(status) || bufferSize <= 0)
         {
             log_err("FAIL: Cloned Iterator failed a sizing request ('preflighting')\n");
         }
@@ -426,15 +434,17 @@ static void TestBreakIteratorSafeClone(void)
           log_err("FAIL: Pre-calculated buffer size is too small - %d but needed %d\n", U_BRK_SAFECLONE_BUFFERSIZE, bufferSize);
         }
         /* Verify we can use this run-time calculated size */
-        if (0 == (brk = ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, &status)) || U_FAILURE(status))
+        if (NULL == (brk = ubrk_safeClone(someIterators[i], buffer[i], &bufferSize, &status)) || U_FAILURE(status))
         {
             log_err("FAIL: Iterator can't be cloned with run-time size\n");
         }
         if (brk)
             ubrk_close(brk);
         /* size one byte too small - should allocate & let us know */
-        --bufferSize;
-        if (0 == (brk = ubrk_safeClone(someIterators[i], 0, &bufferSize, &status)) || status != U_SAFECLONE_ALLOCATED_WARNING)
+        if (bufferSize > 1) {
+            --bufferSize;
+        }
+        if (NULL == (brk = ubrk_safeClone(someIterators[i], NULL, &bufferSize, &status)) || status != U_SAFECLONE_ALLOCATED_WARNING)
         {
             log_err("FAIL: Cloned Iterator failed to deal correctly with too-small buffer size\n");
         }
@@ -444,7 +454,7 @@ static void TestBreakIteratorSafeClone(void)
         bufferSize = U_BRK_SAFECLONE_BUFFERSIZE;
 
         /* Null buffer pointer - return Iterator & set error to U_SAFECLONE_ALLOCATED_ERROR */
-        if (0 == (brk = ubrk_safeClone(someIterators[i], 0, &bufferSize, &status)) || status != U_SAFECLONE_ALLOCATED_WARNING)
+        if (NULL == (brk = ubrk_safeClone(someIterators[i], NULL, &bufferSize, &status)) || status != U_SAFECLONE_ALLOCATED_WARNING)
         {
             log_err("FAIL: Cloned Iterator failed to deal correctly with null buffer pointer\n");
         }
@@ -455,22 +465,13 @@ static void TestBreakIteratorSafeClone(void)
         /* Mis-aligned buffer pointer. */
         {
             char  stackBuf[U_BRK_SAFECLONE_BUFFERSIZE+sizeof(void *)];
-            void  *p;
-            int32_t offset;
 
             brk = ubrk_safeClone(someIterators[i], &stackBuf[1], &bufferSize, &status);
-            if (U_FAILURE(status) || brk == 0) {
+            if (U_FAILURE(status) || brk == NULL) {
                 log_err("FAIL: Cloned Iterator failed with misaligned buffer pointer\n");
             }
             if (status == U_SAFECLONE_ALLOCATED_WARNING) {
-                log_err("FAIL: Cloned Iterator allocated when using a mis-aligned buffer.\n");
-            }
-            offset = (int32_t)((char *)&p-(char*)brk);
-            if (offset < 0) {
-                offset = -offset;
-            }
-            if (offset % sizeof(void *) != 0) {
-                log_err("FAIL: Cloned Iterator failed to align correctly with misaligned buffer pointer\n");
+                log_verbose("Cloned Iterator allocated when using a mis-aligned buffer.\n");
             }
             if (brk)
                 ubrk_close(brk);
@@ -478,7 +479,7 @@ static void TestBreakIteratorSafeClone(void)
 
 
         /* Null Iterator - return NULL & set U_ILLEGAL_ARGUMENT_ERROR */
-        if (0 != ubrk_safeClone(0, buffer[i], &bufferSize, &status) || status != U_ILLEGAL_ARGUMENT_ERROR)
+        if (NULL != ubrk_safeClone(NULL, buffer[i], &bufferSize, &status) || status != U_ILLEGAL_ARGUMENT_ERROR)
         {
             log_err("FAIL: Cloned Iterator failed to deal correctly with null Iterator pointer\n");
         }
@@ -499,6 +500,7 @@ static void TestBreakIteratorSafeClone(void)
         ubrk_close(someIterators[i]);
     }
 }
+#endif
 
 
 /*
@@ -768,7 +770,7 @@ typedef struct {
 
 static const RBBITailoringTest tailoringTests[] = {
     { "en", UBRK_CHARACTER, thTest, thTestOffs_thFwd, thTestOffs_thRev, sizeof(thTestOffs_thFwd)/sizeof(thTestOffs_thFwd[0]) },
-    { "th", UBRK_CHARACTER, thTest, thTestOffs_thFwd, thTestOffs_thRev, sizeof(thTestOffs_thFwd)/sizeof(thTestOffs_thFwd[0]) },
+    { "en_US_POSIX", UBRK_CHARACTER, thTest, thTestOffs_thFwd, thTestOffs_thRev, sizeof(thTestOffs_thFwd)/sizeof(thTestOffs_thFwd[0]) },
     { "en", UBRK_LINE,      heTest, heTestOffs_heFwd, heTestOffs_heRev, sizeof(heTestOffs_heFwd)/sizeof(heTestOffs_heFwd[0]) },
     { "he", UBRK_LINE,      heTest, heTestOffs_heFwd, heTestOffs_heRev, sizeof(heTestOffs_heFwd)/sizeof(heTestOffs_heFwd[0]) },
     { "en", UBRK_LINE,      fiTest, fiTestOffs_enFwd, fiTestOffs_enRev, sizeof(fiTestOffs_enFwd)/sizeof(fiTestOffs_enFwd[0]) },

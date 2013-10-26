@@ -1,5 +1,5 @@
 /******************************************************************************
- *   Copyright (C) 2008-2009, International Business Machines
+ *   Copyright (C) 2008-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *******************************************************************************
  */
@@ -56,8 +56,8 @@ isListTextFile(const char *listname) {
  * Otherwise, read the file itself as a single-item list.
  */
 U_CAPI Package * U_EXPORT2
-readList(const char *filesPath, const char *listname, UBool readContents) {
-    Package *listPkg;
+readList(const char *filesPath, const char *listname, UBool readContents, Package *listPkgIn) {
+    Package *listPkg = listPkgIn;
     FILE *file;
     const char *listNameEnd;
 
@@ -66,10 +66,12 @@ readList(const char *filesPath, const char *listname, UBool readContents) {
         return NULL;
     }
 
-    listPkg=new Package();
-    if(listPkg==NULL) {
-        fprintf(stderr, "icupkg: not enough memory\n");
-        exit(U_MEMORY_ALLOCATION_ERROR);
+    if (listPkg == NULL) {
+        listPkg=new Package();
+        if(listPkg==NULL) {
+            fprintf(stderr, "icupkg: not enough memory\n");
+            exit(U_MEMORY_ALLOCATION_ERROR);
+        }
     }
 
     listNameEnd=strchr(listname, 0);
@@ -133,6 +135,8 @@ readList(const char *filesPath, const char *listname, UBool readContents) {
         fclose(file);
     } else if((listNameEnd-listname)>4 && 0==memcmp(listNameEnd-4, ".dat", 4)) {
         // read the ICU .dat package
+        // Accept a .dat file whose name differs from the ToC prefixes.
+        listPkg->setAutoPrefix();
         listPkg->readPackage(listname);
     } else {
         // list the single file itself
@@ -158,7 +162,7 @@ writePackageDatFile(const char *outFilename, const char *outComment, const char 
             return U_MEMORY_ALLOCATION_ERROR;
         }
 
-        addListPkg = readList(sourcePath, addList, TRUE);
+        addListPkg = readList(sourcePath, addList, TRUE, NULL);
         if(addListPkg != NULL) {
             pkg->addItems(*addListPkg);
         } else {

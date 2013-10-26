@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ga.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ga.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ga.xml
+ * ICU <specials> source: <path>/common/main/ga.xml
  */
 ga{
     Currencies{
@@ -21,7 +21,7 @@ ga{
         }
         AFA{
             "AFA",
-            "Afgainí (1927-2002)",
+            "Afgainí (1927–2002)",
         }
         AFN{
             "AFN",
@@ -45,15 +45,15 @@ ga{
         }
         AOK{
             "AOK",
-            "Kwanza Angólach (1977-1990)",
+            "Kwanza Angólach (1977–1990)",
         }
         AON{
             "AON",
-            "Kwanza Nua Angólach (1990-2000)",
+            "Kwanza Nua Angólach (1990–2000)",
         }
         AOR{
             "AOR",
-            "Kwanza Reajustado Angólach (1995-1999)",
+            "Kwanza Reajustado Angólach (1995–1999)",
         }
         ARA{
             "ARA",
@@ -61,7 +61,7 @@ ga{
         }
         ARP{
             "ARP",
-            "Peso na Airgintíne (1983-1985)",
+            "Peso na Airgintíne (1983–1985)",
         }
         ARS{
             "ARS",
@@ -72,7 +72,7 @@ ga{
             "Scilling Ostarach",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dollar Astrálach",
         }
         AWG{
@@ -149,7 +149,7 @@ ga{
         }
         BRB{
             "BRB",
-            "Cruzeiro Novo Brasaíleach (1967-1986)",
+            "Cruzeiro Novo Brasaíleach (1967–1986)",
         }
         BRC{
             "BRC",
@@ -157,7 +157,7 @@ ga{
         }
         BRE{
             "BRE",
-            "Cruzeiro Brasaíleach (1990-1993)",
+            "Cruzeiro Brasaíleach (1990–1993)",
         }
         BRL{
             "R$",
@@ -189,7 +189,7 @@ ga{
         }
         BYB{
             "BYB",
-            "Rúbal Nua Béalarúiseach (1994-1999)",
+            "Rúbal Nua Béalarúiseach (1994–1999)",
         }
         BYR{
             "BYR",
@@ -597,7 +597,7 @@ ga{
         }
         MXP{
             "MXP",
-            "Peso Airgid Meicsiceo (1861-1992)",
+            "Peso Airgid Meicsiceo (1861–1992)",
         }
         MXV{
             "MXV",
@@ -685,7 +685,7 @@ ga{
         }
         PLZ{
             "PLZ",
-            "Zloty Polannach (1950-1995)",
+            "Zloty Polannach (1950–1995)",
         }
         PTE{
             "PTE",
@@ -709,7 +709,7 @@ ga{
         }
         RUR{
             "RUR",
-            "Rúbal Rúiseach (1991-1998)",
+            "Rúbal Rúiseach (1991–1998)",
         }
         RWF{
             "RWF",
@@ -841,7 +841,7 @@ ga{
         }
         UGS{
             "UGS",
-            "Scilling Uganda (1966-1987)",
+            "Scilling Uganda (1966–1987)",
         }
         UGX{
             "UGX",
@@ -861,7 +861,7 @@ ga{
         }
         UYP{
             "UYP",
-            "Peso Uragua (1975-1993)",
+            "Peso Uragua (1975–1993)",
         }
         UYU{
             "UYU",
@@ -873,6 +873,10 @@ ga{
         }
         VEB{
             "VEB",
+            "Bolivar Veiniséala (1871–2008)",
+        }
+        VEF{
+            "VEF",
             "Bolivar Veiniséala",
         }
         VND{
@@ -969,6 +973,10 @@ ga{
         }
         ZMK{
             "ZMK",
+            "Kwacha Saimbiach (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Kwacha Saimbiach",
         }
         ZRN{
@@ -984,5 +992,5 @@ ga{
             "Dollar Siombábach",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

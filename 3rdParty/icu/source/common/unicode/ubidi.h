@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2012, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -387,7 +387,7 @@ typedef uint8_t UBiDiLevel;
  * (The maximum resolved level can be up to <code>UBIDI_MAX_EXPLICIT_LEVEL+1</code>).
  * @stable ICU 2.0
  */
-#define UBIDI_MAX_EXPLICIT_LEVEL 61
+#define UBIDI_MAX_EXPLICIT_LEVEL 125
 
 /** Bit flag for level input.
  *  Overrides directional properties.
@@ -1128,7 +1128,7 @@ ubidi_getReorderingOptions(UBiDi *pBiDi);
  * @see ubidi_setPara
  * @stable ICU 4.8
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 ubidi_setContext(UBiDi *pBiDi,
                  const UChar *prologue, int32_t proLength,
                  const UChar *epilogue, int32_t epiLength,
@@ -1315,7 +1315,7 @@ ubidi_getDirection(const UBiDi *pBiDi);
  * @see UBiDiDirection
  * @stable ICU 4.6
  */
-U_DRAFT UBiDiDirection U_EXPORT2
+U_STABLE UBiDiDirection U_EXPORT2
 ubidi_getBaseDirection(const UChar *text,  int32_t length );
 
 /**
