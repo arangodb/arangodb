@@ -4,12 +4,8 @@
 ## --SECTION--                                                   COMMON INCLUDES
 ## -----------------------------------------------------------------------------
 
-include_directories(.)
-include_directories(${PROJECT_SOURCE_DIR}/lib)
-include_directories(${PROJECT_SOURCE_DIR}/arangosh)
-
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                       EXECUTABLES
+## --SECTION--                                                           SCRIPTS
 ## -----------------------------------------------------------------------------
 
 ################################################################################
@@ -19,41 +15,40 @@ include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
-### @brief arangoirb
+### @brief arango-dfdb
 ################################################################################
 
-add_executable(
-    ${BIN_ARANGOIRB}
-    ../arangosh/ArangoShell/ArangoClient.cpp
-    MRClient/MRubyClientConnection.cpp
-    MRClient/arangoirb.cpp
-)
+FILE(READ ${PROJECT_SOURCE_DIR}/utils/${SCRIPT_ARANGO_DFDB}.in FileContent)
 
-target_link_libraries(
-    ${BIN_ARANGOIRB}
-    ${LIB_ARANGO_MRUBY}
-    ${LIB_ARANGO_CLIENT}
-    ${LIB_ARANGO}
-    ${V8_LIBS} # need this for rest::Version
-    ${MRUBY_LIBS}
-    ${ICU_LIBS}
-    ${ZLIB_LIBS}
-    ${READLINE_LIBS}
-    ${OPENSSL_LIBS}
-)
+STRING(REPLACE "@SBINDIR@" "${TRI_SBINDIR}" 
+       FileContent "${FileContent}")
+
+STRING(REPLACE "@DATABASEDIR@" "${TRI_DATABASEDIR}" 
+       FileContent "${FileContent}")
+
+STRING(REPLACE "@PKGDATADIR@" "${TRI_PKGDATADIR}" 
+       FileContent "${FileContent}")
+
+FILE(WRITE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${SCRIPT_ARANGO_DFDB} "${FileContent}")
 
 install(
-  TARGETS ${BIN_ARANGOIRB}
-  RUNTIME DESTINATION bin)
+  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${SCRIPT_ARANGO_DFDB}
+  DESTINATION bin)
+
+################################################################################
+### @brief foxx-manager
+################################################################################
+
+FILE(READ ${PROJECT_SOURCE_DIR}/utils/${SCRIPT_FOXX_MANAGER}.in FileContent)
+
+STRING(REPLACE "@BINDIR@" "${TRI_BINDIR}" 
+       FileContent "${FileContent}")
+
+FILE(WRITE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${SCRIPT_FOXX_MANAGER} "${FileContent}")
 
 install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf
-  DESTINATION ${ARANGODB_CONF_DIR})
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/client
-  DESTINATION share/arangodb/mr
-  FILES_MATCHING PATTERN "*.rb")
+  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${SCRIPT_FOXX_MANAGER}
+  DESTINATION bin)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

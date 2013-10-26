@@ -243,7 +243,10 @@ nobase_pkgdata_DATA = \
 if ENABLE_MRUBY
 
 nobase_pkgdata_DATA += \
-	$(shell find @srcdir@/mr/actions -name "*.rb" -print) 
+	$(shell find @srcdir@/mr/actions -name "*.rb" -print) \
+	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
+	$(shell find @srcdir@/mr/common -name "*.rb" -print) \
+	$(shell find @srcdir@/mr/server -name "*.rb" -print)
 
 endif
 
