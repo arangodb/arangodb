@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************/
@@ -15,6 +15,9 @@
  *         wrapper functions.
  *
  *----------------------------------------------------------------------------*/
+/* Defines _XOPEN_SOURCE for access to POSIX functions.
+ * Must be before any other #includes. */
+#include "uposixdefs.h"
 
 #include "unicode/putil.h"
 #include "udatamem.h"

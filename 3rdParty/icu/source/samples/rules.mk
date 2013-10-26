@@ -1,4 +1,4 @@
-# Copyright (c) 2002-2010 IBM, Inc. and others
+# Copyright (c) 2002-2012 IBM, Inc. and others
 # sample code rules for a single-target simple sample
 
 # list of targets that aren't actually created
@@ -7,7 +7,7 @@
 all: $(ALL_SUBDIR) $(RESTARGET) $(TARGET)  
 
 $(TARGET): $(OBJECTS)
-	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@ $(XTRALIBS)
+	$(LINK.cc) $(LOADLIBES) $(LDLIBS) -o $@ $(XTRALIBS) -licui18n -licuuc
 
 $(RESTARGET): $(RESFILES)
 	$(PKGDATA) --name $(RESNAME) --mode $(RESMODE) $(PKGDATAOPTS) $(RESLIST)

@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ee.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ee.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ee.xml
+ * ICU <specials> source: <path>/common/main/ee.xml
  */
 ee{
     Countries{
@@ -80,7 +80,7 @@ ee{
         BY{"Belarus nutome"}
         BZ{"Belize nutome"}
         CA{"Kanada nutome"}
-        CC{"Kokos [Kiling] fudomekpo nutome"}
+        CC{"Kokos (Kiling) fudomekpo nutome"}
         CD{"Kongo Kinshasa nutome"}
         CF{"Titina Afrika repɔblik nutome"}
         CG{"Kongo Brazzaville nutome"}
@@ -93,7 +93,6 @@ ee{
         CO{"Kolombia nutome"}
         CP{"Klipaton ƒudomekpo nutome"}
         CR{"Kosta Rika nutome"}
-        CS{"Serbia kple Montenegro nutome"}
         CU{"Kuba nutome"}
         CV{"Kape Verde nutome"}
         CX{"Kristmas ƒudomekpo nutome"}
@@ -192,7 +191,7 @@ ee{
         MH{"Marshal ƒudomekpowo nutome"}
         MK{"Makedonia nutome"}
         ML{"Mali nutome"}
-        MM{"Myanmar [Burma] nutome"}
+        MM{"Myanmar (Burma) nutome"}
         MN{"Mongolia nutome"}
         MO{"Macau SAR Tsaina nutome"}
         MP{"Dziehe Marina ƒudomekpowo nutome"}
@@ -297,5 +296,9 @@ ee{
         ZW{"Zimbabwe nutome"}
         ZZ{"nutome manya"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        HK{"Hɔng Kɔng nutome"}
+        MO{"Macau nutome"}
+    }
+    Version{"2.0.93.8"}
 }

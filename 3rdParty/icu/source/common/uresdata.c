@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *                                                                             *
-* Copyright (C) 1999-2011, International Business Machines Corporation        *
+* Copyright (C) 1999-2012, International Business Machines Corporation        *
 *               and others. All Rights Reserved.                              *
 *                                                                             *
 *******************************************************************************
@@ -173,7 +173,7 @@ res_init(ResourceData *pResData,
     }
 
     /* currently, we accept only resources that have a Table as their roots */
-    rootType=RES_GET_TYPE(pResData->rootRes);
+    rootType=(UResType)RES_GET_TYPE(pResData->rootRes);
     if(!URES_IS_TABLE(rootType)) {
         *errorCode=U_INVALID_FORMAT_ERROR;
         res_unload(pResData);
@@ -559,7 +559,7 @@ res_findResource(const ResourceData *pResData, Resource r, char** path, const ch
   Resource t1 = r;
   Resource t2;
   int32_t indexR = 0;
-  UResType type = RES_GET_TYPE(t1);
+  UResType type = (UResType)RES_GET_TYPE(t1);
 
   /* if you come in with an empty path, you'll be getting back the same resource */
   if(!uprv_strlen(pathP)) {
@@ -611,7 +611,7 @@ res_findResource(const ResourceData *pResData, Resource r, char** path, const ch
       t2 = RES_BOGUS;
     }
     t1 = t2;
-    type = RES_GET_TYPE(t1);
+    type = (UResType)RES_GET_TYPE(t1);
     /* position pathP to next resource key/index */
     pathP = *path;
   }

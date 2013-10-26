@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/eo.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/eo.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/eo.xml
+ * ICU <specials> source: <path>/common/main/eo.xml
  */
 eo{
     Languages{
@@ -110,7 +110,7 @@ eo{
         ps{"paŝtoa"}
         pt{"portugala"}
         pt_BR{"brazilportugala"}
-        pt_PT{"portugalportugala"}
+        pt_PT{"eŭropportugala"}
         qu{"keĉua"}
         rm{"romanĉa"}
         rn{"burunda"}
@@ -150,7 +150,7 @@ eo{
         tw{"akana"}
         ug{"ujgura"}
         uk{"ukraina"}
-        und{"nekonata aŭ nevalida lingvo"}
+        und{"nekonata lingvo"}
         ur{"urduo"}
         uz{"uzbeka"}
         vi{"vjetnama"}
@@ -166,5 +166,5 @@ eo{
         zu{"zulua"}
         zxx{"nelingvaĵo"}
     }
-    Version{"2.0.58.6"}
+    Version{"2.0.90.61"}
 }

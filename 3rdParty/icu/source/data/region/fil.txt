@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/fil.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fil.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/fil.xml
+ * ICU <specials> source: <path>/common/main/fil.xml
  */
 fil{
     Countries{
@@ -16,30 +16,30 @@ fil{
         003{"North America"}
         005{"South America"}
         009{"Oceania"}
-        011{"Kanlurang Africa"}
-        013{"Gitnang Amerika"}
-        014{"Silangang Africa"}
-        015{"Hilagang Africa"}
-        017{"Gitnang Africa"}
-        018{"Katimugang Africa"}
+        011{"Western Africa"}
+        013{"Central America"}
+        014{"Eastern Africa"}
+        015{"Northern Africa"}
+        017{"Middle Africa"}
+        018{"Southern Africa"}
         019{"Americas"}
-        021{"Hilagang Amerika"}
+        021{"Northern America"}
         029{"Carribbean"}
-        030{"Silangang Asya"}
-        034{"Katimugang Asya"}
-        035{"Timog-Silangang Asya"}
-        039{"Katimugang Europa"}
-        053{"Australia at New Zealand"}
+        030{"Eastern Asia"}
+        034{"Southern Asia"}
+        035{"South-Eastern Asia"}
+        039{"Southern Europe"}
+        053{"Australasia"}
         054{"Melanesia"}
-        057{"Rehiyong Micronesia"}
+        057{"Micronesian Region"}
         061{"Polynesia"}
-        142{"Asya"}
-        143{"Gitnang Asya"}
-        145{"Kanlurang Asya"}
-        150{"Europa"}
-        151{"Silangang Europa"}
-        154{"Hilagang Europa"}
-        155{"Kanlurang Europa"}
+        142{"Asia"}
+        143{"Central Asia"}
+        145{"Western Asia"}
+        150{"Europe"}
+        151{"Eastern Europe"}
+        154{"Northern Europe"}
+        155{"Western Europe"}
         419{"Latin America"}
         AC{"Acsencion island"}
         AD{"Andorra"}
@@ -51,13 +51,13 @@ fil{
         AM{"Armenia"}
         AN{"Netherlands Antilles"}
         AO{"Angola"}
-        AQ{"Antartica"}
+        AQ{"Antarctica"}
         AR{"Argentina"}
         AS{"American Samoa"}
         AT{"Austria"}
         AU{"Australia"}
         AW{"Aruba"}
-        AX{"Aland Islands"}
+        AX{"Åland Islands"}
         AZ{"Azerbaijan"}
         BA{"Bosnia and Herzegovina"}
         BB{"Barbados"}
@@ -72,6 +72,7 @@ fil{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
+        BQ{"Caribbean Netherlands"}
         BR{"Brazil"}
         BS{"Bahamas"}
         BT{"Bhutan"}
@@ -80,7 +81,7 @@ fil{
         BY{"Belarus"}
         BZ{"Belize"}
         CA{"Canada"}
-        CC{"Cocos [Keeling] Islands"}
+        CC{"Cocos (Keeling) Islands"}
         CD{"Congo - Kinshasa"}
         CF{"Central African Republic"}
         CG{"Congo - Brazzaville"}
@@ -95,6 +96,7 @@ fil{
         CR{"Costa Rica"}
         CU{"Cuba"}
         CV{"Cape Verde"}
+        CW{"Curaçao"}
         CX{"Christmas Island"}
         CY{"Cyprus"}
         CZ{"Czech Republic"}
@@ -111,7 +113,7 @@ fil{
         EG{"Egypt"}
         EH{"Western Sahara"}
         ER{"Eritrea"}
-        ES{"Espanya"}
+        ES{"Spain"}
         ET{"Ethiopia"}
         EU{"European Union"}
         FI{"Finland"}
@@ -134,7 +136,7 @@ fil{
         GP{"Guadeloupe"}
         GQ{"Equatorial Guinea"}
         GR{"Greece"}
-        GS{"South Georgia and The South Sandwich Islands"}
+        GS{"South Georgia and the South Sandwich Islands"}
         GT{"Guatemala"}
         GU{"Guam"}
         GW{"Guinea-Bissau"}
@@ -155,7 +157,7 @@ fil{
         IQ{"Iraq"}
         IR{"Iran"}
         IS{"Iceland"}
-        IT{"Italya"}
+        IT{"Italy"}
         JE{"Jersey"}
         JM{"Jamaica"}
         JO{"Jordan"}
@@ -191,7 +193,7 @@ fil{
         MH{"Marshall Islands"}
         MK{"Macedonia"}
         ML{"Mali"}
-        MM{"Myanmar"}
+        MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
         MO{"Macau SAR China"}
         MP{"Northern Mariana Islands"}
@@ -226,18 +228,18 @@ fil{
         PK{"Pakistan"}
         PL{"Poland"}
         PM{"Saint Pierre and Miquelon"}
-        PN{"Pitcairn"}
+        PN{"Pitcairn Islands"}
         PR{"Puerto Rico"}
-        PS{"Palestinian Territory"}
+        PS{"Palestinian Territories"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
         QA{"Qatar"}
-        QO{"Malayong bahagi ng Oceania"}
+        QO{"Outlying Oceania"}
         RE{"Réunion"}
         RO{"Romania"}
         RS{"Serbia"}
-        RU{"Russian Federation"}
+        RU{"Russia"}
         RW{"Rwanda"}
         SA{"Saudi Arabia"}
         SB{"Solomon Islands"}
@@ -245,17 +247,19 @@ fil{
         SD{"Sudan"}
         SE{"Sweden"}
         SG{"Singapore"}
-        SH{"St. Helena"}
+        SH{"Saint Helena"}
         SI{"Slovenia"}
-        SJ{"Svalbard and Jan Mayen Islands"}
+        SJ{"Svalbard and Jan Mayen"}
         SK{"Slovakia"}
         SL{"Sierra Leone"}
         SM{"San Marino"}
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Suriname"}
-        ST{"Sao Tome and Principe"}
+        SS{"South Sudan"}
+        ST{"São Tomé and Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Syria"}
         SZ{"Swaziland"}
         TA{"Tristan de Cunha"}
@@ -277,7 +281,7 @@ fil{
         TZ{"Tanzania"}
         UA{"Ukraine"}
         UG{"Uganda"}
-        UM{"Mga Minor Outlying Island ng Estados Unidos"}
+        UM{"U.S. Outlying Islands"}
         US{"Estados Unidos"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
@@ -288,14 +292,22 @@ fil{
         VI{"U.S. Virgin Islands"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
-        WF{"Wallis and the Futuna Islands"}
+        WF{"Wallis and Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
         ZA{"South Africa"}
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
-        ZZ{"Hindi kilala o Hindi wastong Rehiyon"}
+        ZZ{"Hindi Kilalang Rehiyon"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"U.K."}
+        HK{"Hong Kong"}
+        MO{"Macau"}
+        PS{"Palestine"}
+        US{"U.S."}
+    }
+    Version{"2.0.92.87"}
 }

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1998-2001, International Business Machines Corporation and
+ * Copyright (c) 1998-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*
@@ -29,6 +29,7 @@ static void TestCodeUnitValues(void);
 static void TestCharLength(void);
 static void TestGetChar(void);
 static void TestNextPrevChar(void);
+static void TestNulTerminated(void);
 static void TestFwdBack(void);
 static void TestSetChar(void);
 static void TestAppendChar(void);
@@ -40,15 +41,16 @@ void addUTF16Test(TestNode** root);
 void
 addUTF16Test(TestNode** root)
 {
-  addTest(root, &TestCodeUnitValues,    "utf16tst/TestCodeUnitValues");
-  addTest(root, &TestCharLength,        "utf16tst/TestCharLength"    );
-  addTest(root, &TestGetChar,           "utf16tst/TestGetChar"       );
-  addTest(root, &TestNextPrevChar,      "utf16tst/TestNextPrevChar"  );
-  addTest(root, &TestFwdBack,           "utf16tst/TestFwdBack"       );
-  addTest(root, &TestSetChar,           "utf16tst/TestSetChar"       );
-  addTest(root, &TestAppendChar,        "utf16tst/TestAppendChar"    );
-  addTest(root, &TestAppend,            "utf16tst/TestAppend"        );
-  addTest(root, &TestSurrogate,         "utf16tst/TestSurrogate"     );
+    addTest(root, &TestCodeUnitValues,          "utf16tst/TestCodeUnitValues");
+    addTest(root, &TestCharLength,              "utf16tst/TestCharLength");
+    addTest(root, &TestGetChar,                 "utf16tst/TestGetChar");
+    addTest(root, &TestNextPrevChar,            "utf16tst/TestNextPrevChar");
+    addTest(root, &TestNulTerminated,           "utf16tst/TestNulTerminated");
+    addTest(root, &TestFwdBack,                 "utf16tst/TestFwdBack");
+    addTest(root, &TestSetChar,                 "utf16tst/TestSetChar");
+    addTest(root, &TestAppendChar,              "utf16tst/TestAppendChar");
+    addTest(root, &TestAppend,                  "utf16tst/TestAppend");
+    addTest(root, &TestSurrogate,               "utf16tst/TestSurrogate");
 }
 
 static void TestCodeUnitValues()
@@ -325,6 +327,72 @@ static void TestNextPrevChar(){
          i=(uint16_t)(i+6);
     }
 
+}
+
+/* keep this in sync with utf8tst.c's TestNulTerminated() */
+static void TestNulTerminated() {
+    static const UChar input[]={
+        /*  0 */  0x61,
+        /*  1 */  0xd801, 0xdc01,
+        /*  3 */  0xdc01,
+        /*  4 */  0x62,
+        /*  5 */  0xd801,
+        /*  6 */  0x00
+        /*  7 */
+    };
+    static const UChar32 result[]={
+        0x61,
+        0x10401,
+        0xdc01,
+        0x62,
+        0xd801,
+        0
+    };
+
+    UChar32 c, c2;
+    int32_t i0, i=0, j, k, expectedIndex;
+    int32_t cpIndex=0;
+    do {
+        i0=i;
+        U16_NEXT(input, i, -1, c);
+        if(c!=result[cpIndex]) {
+            log_err("U16_NEXT(from %d)=U+%04x != U+%04x\n", i0, c, result[cpIndex]);
+        }
+        j=i0;
+        U16_FWD_1(input, j, -1);
+        if(j!=i) {
+            log_err("U16_FWD_1() moved to index %d but U16_NEXT() moved to %d\n", j, i);
+        }
+        ++cpIndex;
+        /*
+         * Move by this many code points from the start.
+         * U16_FWD_N() stops at the end of the string, that is, at the NUL if necessary.
+         */
+        expectedIndex= (c==0) ? i-1 : i;
+        k=0;
+        U16_FWD_N(input, k, -1, cpIndex);
+        if(k!=expectedIndex) {
+            log_err("U16_FWD_N(code points from 0) moved to index %d but expected %d\n", k, expectedIndex);
+        }
+    } while(c!=0);
+
+    i=0;
+    do {
+        j=i0=i;
+        U16_NEXT(input, i, -1, c);
+        do {
+            U16_GET(input, 0, j, -1, c2);
+            if(c2!=c) {
+                log_err("U16_NEXT(from %d)=U+%04x != U+%04x=U16_GET(at %d)\n", i0, c, c2, j);
+            }
+            /* U16_SET_CP_LIMIT moves from a non-lead byte to the limit of the code point */
+            k=j+1;
+            U16_SET_CP_LIMIT(input, 0, k, -1);
+            if(k!=i) {
+                log_err("U16_NEXT() moved to %d but U16_SET_CP_LIMIT(%d) moved to %d\n", i, j+1, k);
+            }
+        } while(++j<i);
+    } while(c!=0);
 }
 
 static void TestFwdBack(){ 

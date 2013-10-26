@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2000-2011, International Business Machines
+*   Copyright (C) 2000-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  ucnv2022.cpp
@@ -78,7 +78,7 @@
 #endif
 
 static const char SHIFT_IN_STR[]  = "\x0F";
-static const char SHIFT_OUT_STR[] = "\x0E";
+// static const char SHIFT_OUT_STR[] = "\x0E";
 
 #define CR      0x0D
 #define LF      0x0A

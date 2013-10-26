@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2001-2011, International Business Machines
+* Copyright (c) 2001-2012, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -23,11 +23,11 @@ UnicodeMatcher::~UnicodeMatcher() {}
 UnicodeFilter::~UnicodeFilter() {}
 
 /**
- * UnicodeFunctor API.  Cast 'this' to a UnicodeMatcher* pointer
- * and return the pointer.
+ * UnicodeFunctor API.
+ *   Note that UnicodeMatcher is a base class of UnicodeFilter.
  */
 UnicodeMatcher* UnicodeFilter::toMatcher() const {
-    return (UnicodeMatcher*) this;
+  return const_cast<UnicodeFilter *>(this);
 }
 
 void UnicodeFilter::setData(const TransliterationRuleData*) {}

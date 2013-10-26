@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/fi.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fi.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/fi.xml
+ * ICU <specials> source: <path>/common/main/fi.xml
  */
 fi{
     Countries{
@@ -29,7 +29,7 @@ fi{
         034{"Etelä-Aasia"}
         035{"Kaakkois-Aasia"}
         039{"Etelä-Eurooppa"}
-        053{"Australia ja Uusi-Seelanti"}
+        053{"Australaasia"}
         054{"Melanesia"}
         057{"Mikronesia"}
         061{"Polynesia"}
@@ -72,6 +72,7 @@ fi{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
+        BQ{"Karibian Alankomaat"}
         BR{"Brasilia"}
         BS{"Bahama"}
         BT{"Bhutan"}
@@ -80,7 +81,7 @@ fi{
         BY{"Valko-Venäjä"}
         BZ{"Belize"}
         CA{"Kanada"}
-        CC{"Kookossaaret"}
+        CC{"Kookossaaret (Keelingsaaret)"}
         CD{"Kongon demokraattinen tasavalta"}
         CF{"Keski-Afrikan tasavalta"}
         CG{"Kongon tasavalta"}
@@ -93,9 +94,9 @@ fi{
         CO{"Kolumbia"}
         CP{"Clippertoninsaari"}
         CR{"Costa Rica"}
-        CS{"Serbia ja Montenegro"}
         CU{"Kuuba"}
         CV{"Kap Verde"}
+        CW{"Curaçao"}
         CX{"Joulusaari"}
         CY{"Kypros"}
         CZ{"Tšekki"}
@@ -114,6 +115,7 @@ fi{
         ER{"Eritrea"}
         ES{"Espanja"}
         ET{"Etiopia"}
+        EU{"Euroopan unioni"}
         FI{"Suomi"}
         FJ{"Fidži"}
         FK{"Falklandinsaaret"}
@@ -121,7 +123,7 @@ fi{
         FO{"Färsaaret"}
         FR{"Ranska"}
         GA{"Gabon"}
-        GB{"Britannia"}
+        GB{"Yhdistynyt kuningaskunta"}
         GD{"Grenada"}
         GE{"Georgia"}
         GF{"Ranskan Guayana"}
@@ -140,7 +142,7 @@ fi{
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
         HK{"Hongkong – Kiinan e.h.a."}
-        HM{"Heard- ja McDonaldinsaaret"}
+        HM{"Heard ja McDonaldinsaaret"}
         HN{"Honduras"}
         HR{"Kroatia"}
         HT{"Haiti"}
@@ -191,7 +193,7 @@ fi{
         MH{"Marshallinsaaret"}
         MK{"Makedonia"}
         ML{"Mali"}
-        MM{"Myanmar [Burma]"}
+        MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
         MO{"Macao – Kiinan e.h.a."}
         MP{"Pohjois-Mariaanit"}
@@ -228,7 +230,7 @@ fi{
         PM{"Saint-Pierre ja Miquelon"}
         PN{"Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Palestiina"}
+        PS{"Palestiinalaisalueet"}
         PT{"Portugali"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -254,8 +256,10 @@ fi{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
+        SS{"Etelä-Sudan"}
         ST{"São Tomé ja Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Syyria"}
         SZ{"Swazimaa"}
         TA{"Tristan da Cunha"}
@@ -277,7 +281,7 @@ fi{
         TZ{"Tansania"}
         UA{"Ukraina"}
         UG{"Uganda"}
-        UM{"Yhdysvaltain pienet erillissaaret"}
+        UM{"Yhdysvaltain erillissaaret"}
         US{"Yhdysvallat"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
@@ -290,12 +294,20 @@ fi{
         VU{"Vanuatu"}
         WF{"Wallis ja Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
         ZA{"Etelä-Afrikka"}
         ZM{"Sambia"}
         ZW{"Zimbabwe"}
-        ZZ{"tuntematon tai virheellinen alue"}
+        ZZ{"tuntematon alue"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"Britannia"}
+        HK{"Hongkong"}
+        MO{"Macao"}
+        PS{"Palestiina"}
+        US{"USA"}
+    }
+    Version{"2.0.92.87"}
 }

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -20,6 +20,7 @@
 #include "cstring.h"
 #include "unicode/ustring.h"
 #include "unicode/putil.h"
+#include "unicode/utf16.h"
 
 /* Protos */
 static void ustr_resize(struct UString *s, int32_t len, UErrorCode *status);

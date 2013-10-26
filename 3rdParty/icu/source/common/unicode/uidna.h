@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2012, International Business Machines
+ *   Copyright (C) 2003-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -96,7 +96,6 @@ enum {
      * @stable ICU 4.6
      */
     UIDNA_NONTRANSITIONAL_TO_UNICODE=0x20,
-#ifndef U_HIDE_DRAFT_API
     /**
      * IDNA option to check for whether the input conforms to the CONTEXTO rules.
      * For use in static worker and factory methods.
@@ -104,10 +103,9 @@ enum {
      * (The CONTEXTO check is new in IDNA2008.)
      * <p>This is for use by registries for IDNA2008 conformance.
      * UTS #46 does not require the CONTEXTO check.
-     * @draft ICU 49
+     * @stable ICU 49
      */
     UIDNA_CHECK_CONTEXTO=0x40
-#endif  /* U_HIDE_DRAFT_API */
 };
 
 /**
@@ -134,7 +132,7 @@ typedef struct UIDNA UIDNA;  /**< C typedef for struct UIDNA. @stable ICU 4.6 */
  * @return the UTS #46 UIDNA instance, if successful
  * @stable ICU 4.6
  */
-U_DRAFT UIDNA * U_EXPORT2
+U_STABLE UIDNA * U_EXPORT2
 uidna_openUTS46(uint32_t options, UErrorCode *pErrorCode);
 
 /**
@@ -142,7 +140,7 @@ uidna_openUTS46(uint32_t options, UErrorCode *pErrorCode);
  * @param idna UIDNA instance to be closed
  * @stable ICU 4.6
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 uidna_close(UIDNA *idna);
 
 #if U_SHOW_CPLUSPLUS_API
@@ -174,7 +172,7 @@ U_NAMESPACE_END
  * \endcode
  * @stable ICU 4.6
  */
-struct UIDNAInfo {
+typedef struct UIDNAInfo {
     /** sizeof(UIDNAInfo) @stable ICU 4.6 */
     int16_t size;
     /**
@@ -192,8 +190,7 @@ struct UIDNAInfo {
     uint32_t errors;
     int32_t reservedI2;  /**< Reserved field, do not use. @internal */
     int32_t reservedI3;  /**< Reserved field, do not use. @internal */
-};
-typedef struct UIDNAInfo UIDNAInfo;
+} UIDNAInfo;
 
 /**
  * Static initializer for a UIDNAInfo struct.
@@ -227,7 +224,7 @@ typedef struct UIDNAInfo UIDNAInfo;
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_labelToASCII(const UIDNA *idna,
                    const UChar *label, int32_t length,
                    UChar *dest, int32_t capacity,
@@ -254,7 +251,7 @@ uidna_labelToASCII(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_labelToUnicode(const UIDNA *idna,
                      const UChar *label, int32_t length,
                      UChar *dest, int32_t capacity,
@@ -283,7 +280,7 @@ uidna_labelToUnicode(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_nameToASCII(const UIDNA *idna,
                   const UChar *name, int32_t length,
                   UChar *dest, int32_t capacity,
@@ -310,7 +307,7 @@ uidna_nameToASCII(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_nameToUnicode(const UIDNA *idna,
                     const UChar *name, int32_t length,
                     UChar *dest, int32_t capacity,
@@ -335,7 +332,7 @@ uidna_nameToUnicode(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_labelToASCII_UTF8(const UIDNA *idna,
                         const char *label, int32_t length,
                         char *dest, int32_t capacity,
@@ -358,7 +355,7 @@ uidna_labelToASCII_UTF8(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_labelToUnicodeUTF8(const UIDNA *idna,
                          const char *label, int32_t length,
                          char *dest, int32_t capacity,
@@ -381,7 +378,7 @@ uidna_labelToUnicodeUTF8(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_nameToASCII_UTF8(const UIDNA *idna,
                        const char *name, int32_t length,
                        char *dest, int32_t capacity,
@@ -404,7 +401,7 @@ uidna_nameToASCII_UTF8(const UIDNA *idna,
  * @return destination string length
  * @stable ICU 4.6
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uidna_nameToUnicodeUTF8(const UIDNA *idna,
                         const char *name, int32_t length,
                         char *dest, int32_t capacity,
@@ -491,21 +488,19 @@ enum {
      * @stable ICU 4.6
      */
     UIDNA_ERROR_CONTEXTJ=0x1000,
-#ifndef U_HIDE_DRAFT_API
     /**
      * A label does not meet the IDNA CONTEXTO requirements for punctuation characters.
      * Some punctuation characters "Would otherwise have been DISALLOWED"
      * but are allowed in certain contexts. (RFC 5892)
-     * @draft ICU 49
+     * @stable ICU 49
      */
     UIDNA_ERROR_CONTEXTO_PUNCTUATION=0x2000,
     /**
      * A label does not meet the IDNA CONTEXTO requirements for digits.
      * Arabic-Indic Digits (U+066x) must not be mixed with Extended Arabic-Indic Digits (U+06Fx).
-     * @draft ICU 49
+     * @stable ICU 49
      */
     UIDNA_ERROR_CONTEXTO_DIGITS=0x4000
-#endif  /* U_HIDE_DRAFT_API */
 };
 
 /* IDNA2003 API ------------------------------------------------------------- */

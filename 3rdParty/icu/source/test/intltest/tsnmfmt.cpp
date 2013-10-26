@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation
+ * Copyright (c) 1997-2012, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -369,7 +369,7 @@ IntlTestNumberFormat::tryIt(int32_t aNumber)
     fFormat->format(number, stringNum, status);
     if (U_FAILURE(status))
     {
-        errln("**** FAIL: Formatting " + aNumber);
+        errln(UnicodeString("**** FAIL: Formatting ") + aNumber);
         return;
     }
     fFormat->parse(stringNum, number, status);

@@ -59,15 +59,10 @@
  * operator==(). Nothing else should be done with them.
  *
  * \par
- * getDynamicClassID() is declared in the base class of the hierarchy as
- * a pure virtual.  Each concrete subclass implements it in the same way:
+ * In class hierarchies that implement "poor man's RTTI",
+ * each concrete subclass implements getDynamicClassID() in the same way:
  *
  * \code
- *      class Base {
- *      public:
- *          virtual UClassID getDynamicClassID() const = 0;
- *      }
- *
  *      class Derived {
  *      public:
  *          virtual UClassID getDynamicClassID() const
@@ -210,10 +205,7 @@ public:
  * and all other public ICU C++ classes
  * are derived from UObject (starting with ICU 2.2).
  *
- * UObject contains common virtual functions like for ICU's "poor man's RTTI".
- * It does not contain default implementations of virtual methods
- * like getDynamicClassID to allow derived classes such as Format
- * to declare these as pure virtual.
+ * UObject contains common virtual functions, in particular a virtual destructor.
  *
  * The clone() function is not available in UObject because it is not
  * implemented by all ICU classes.
@@ -237,21 +229,23 @@ public:
 
     /**
      * ICU4C "poor man's RTTI", returns a UClassID for the actual ICU class.
+     * The base class implementation returns a dummy value.
+     *
+     * Use compiler RTTI rather than ICU's "poor man's RTTI".
+     * Since ICU 4.6, new ICU C++ class hierarchies do not implement "poor man's RTTI".
      *
      * @stable ICU 2.2
      */
-    virtual UClassID getDynamicClassID() const = 0;
+    virtual UClassID getDynamicClassID() const;
 
 protected:
     // the following functions are protected to prevent instantiation and
     // direct use of UObject itself
 
     // default constructor
-    // commented out because UObject is abstract (see getDynamicClassID)
     // inline UObject() {}
 
     // copy constructor
-    // commented out because UObject is abstract (see getDynamicClassID)
     // inline UObject(const UObject &other) {}
 
 #if 0
@@ -286,19 +280,6 @@ protected:
      * here would be to declare and empty-implement a protected or public one.
     UObject &UObject::operator=(const UObject &);
      */
-
-// Future implementation for RTTI that support subtyping. [alan]
-// 
-//  public:
-//     /**
-//      * @internal
-//      */
-//     static UClassID getStaticClassID();
-// 
-//     /**
-//      * @internal
-//      */
-//     UBool instanceOf(UClassID type) const;
 };
 
 #ifndef U_HIDE_INTERNAL_API
@@ -332,34 +313,6 @@ protected:
         return (UClassID)&classID; \
     }
 
-/**
- * This is a simple macro to express that a class and its subclasses do not offer
- * ICU's "poor man's RTTI".
- * Beginning with ICU 4.6, ICU requires C++ compiler RTTI.
- * This does not go into the header. This should only be used in *.cpp files.
- * Use this with a private getDynamicClassID() in an immediate subclass of UObject.
- *
- * @param myClass The name of the class that needs RTTI defined.
- * @internal
- */
-#define UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(myClass) \
-    UClassID myClass::getDynamicClassID() const { return NULL; }
-
-// /**
-//  * This macro adds ICU RTTI to an ICU concrete class implementation.
-//  * This macro should be invoked in *.cpp files.  The corresponding
-//  * header should declare getDynamicClassID and getStaticClassID.
-//  *
-//  * @param myClass The name of the class that needs RTTI defined.
-//  * @param myParent The name of the myClass's parent.
-//  * @internal
-//  */
-/*#define UOBJECT_DEFINE_RTTI_IMPLEMENTATION(myClass, myParent) \
-    UOBJECT_DEFINE_ABSTRACT_RTTI_IMPLEMENTATION(myClass, myParent) \
-    UClassID myClass::getDynamicClassID() const { \
-        return myClass::getStaticClassID(); \
-    }
-*/
 #endif  /* U_HIDE_INTERNAL_API */
 
 U_NAMESPACE_END

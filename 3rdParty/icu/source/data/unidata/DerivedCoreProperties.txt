@@ -1,8 +1,8 @@
-# DerivedCoreProperties-6.1.0.txt
-# Date: 2011-12-11, 18:26:55 GMT [MD]
+# DerivedCoreProperties-6.3.0.txt
+# Date: 2013-09-25, 18:58:40 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 
@@ -83,7 +83,10 @@
 21DD          ; Math
 21E4..21E5    ; Math
 21F4..22FF    ; Math
-2308..230B    ; Math
+2308          ; Math
+2309          ; Math
+230A          ; Math
+230B          ; Math
 2320..2321    ; Math
 237C          ; Math
 239B..23B3    ; Math
@@ -643,7 +646,8 @@ FFE9..FFEC    ; Math
 19C8..19C9    ; Alphabetic
 1A00..1A16    ; Alphabetic
 1A17..1A18    ; Alphabetic
-1A19..1A1B    ; Alphabetic
+1A19..1A1A    ; Alphabetic
+1A1B          ; Alphabetic
 1A20..1A54    ; Alphabetic
 1A55          ; Alphabetic
 1A56          ; Alphabetic
@@ -2326,7 +2330,7 @@ FF21..FF3A    ; Uppercase
 # ================================================
 
 # Derived Property:   Cased (Cased)
-#  As defined by Unicode Standard Definition D120
+#  As defined by Unicode Standard Definition D135
 #  C has the Lowercase or Uppercase property or has a General_Category value of Titlecase_Letter.
 
 0041..005A    ; Cased
@@ -2466,9 +2470,9 @@ FF41..FF5A    ; Cased
 # ================================================
 
 # Derived Property:   Case_Ignorable (CI)
-#  As defined by Unicode Standard Definition D121
+#  As defined by Unicode Standard Definition D136
 #  C is defined to be case-ignorable if
-#    Word_Break(C) = MidLetter or MidNumLet, or
+#    Word_Break(C) = MidLetter or MidNumLet or Single_Quote, or
 #    General_Category(C) = Nonspacing_Mark (Mn), Enclosing_Mark (Me), Format (Cf), Modifier_Letter (Lm), or Modifier_Symbol (Sk).
 
 0027          ; Case_Ignorable
@@ -2509,6 +2513,7 @@ FF41..FF5A    ; Cased
 05F4          ; Case_Ignorable
 0600..0604    ; Case_Ignorable
 0610..061A    ; Case_Ignorable
+061C          ; Case_Ignorable
 0640          ; Case_Ignorable
 064B..065F    ; Case_Ignorable
 0670          ; Case_Ignorable
@@ -2630,6 +2635,7 @@ FF41..FF5A    ; Cased
 17D7          ; Case_Ignorable
 17DD          ; Case_Ignorable
 180B..180D    ; Case_Ignorable
+180E          ; Case_Ignorable
 1843          ; Case_Ignorable
 18A9          ; Case_Ignorable
 1920..1922    ; Case_Ignorable
@@ -2637,6 +2643,7 @@ FF41..FF5A    ; Cased
 1932          ; Case_Ignorable
 1939..193B    ; Case_Ignorable
 1A17..1A18    ; Case_Ignorable
+1A1B          ; Case_Ignorable
 1A56          ; Case_Ignorable
 1A58..1A5E    ; Case_Ignorable
 1A60          ; Case_Ignorable
@@ -2685,7 +2692,7 @@ FF41..FF5A    ; Cased
 2027          ; Case_Ignorable
 202A..202E    ; Case_Ignorable
 2060..2064    ; Case_Ignorable
-206A..206F    ; Case_Ignorable
+2066..206F    ; Case_Ignorable
 2071          ; Case_Ignorable
 207F          ; Case_Ignorable
 2090..209C    ; Case_Ignorable
@@ -2805,13 +2812,13 @@ E0001         ; Case_Ignorable
 E0020..E007F  ; Case_Ignorable
 E0100..E01EF  ; Case_Ignorable
 
-# Total code points: 1799
+# Total code points: 1806
 
 # ================================================
 
 # Derived Property:   Changes_When_Lowercased (CWL)
 #  Characters whose normalized forms are not stable under a toLowercase mapping.
-#  For more information, see D124 in Section 3.13, "Default Case Algorithms".
+#  For more information, see D139 in Section 3.13, "Default Case Algorithms".
 #  Changes_When_Lowercased(X) is true when toLowercase(toNFD(X)) != toNFD(X)
 
 0041..005A    ; Changes_When_Lowercased
@@ -3392,7 +3399,7 @@ FF21..FF3A    ; Changes_When_Lowercased
 
 # Derived Property:   Changes_When_Uppercased (CWU)
 #  Characters whose normalized forms are not stable under a toUppercase mapping.
-#  For more information, see D125 in Section 3.13, "Default Case Algorithms".
+#  For more information, see D140 in Section 3.13, "Default Case Algorithms".
 #  Changes_When_Uppercased(X) is true when toUppercase(toNFD(X)) != toNFD(X)
 
 0061..007A    ; Changes_When_Uppercased
@@ -3988,7 +3995,7 @@ FF41..FF5A    ; Changes_When_Uppercased
 
 # Derived Property:   Changes_When_Titlecased (CWT)
 #  Characters whose normalized forms are not stable under a toTitlecase mapping.
-#  For more information, see D126 in Section 3.13, "Default Case Algorithms".
+#  For more information, see D141 in Section 3.13, "Default Case Algorithms".
 #  Changes_When_Titlecased(X) is true when toTitlecase(toNFD(X)) != toNFD(X)
 
 0061..007A    ; Changes_When_Titlecased
@@ -4585,7 +4592,7 @@ FF41..FF5A    ; Changes_When_Titlecased
 
 # Derived Property:   Changes_When_Casefolded (CWCF)
 #  Characters whose normalized forms are not stable under case folding.
-#  For more information, see D127 in Section 3.13, "Default Case Algorithms".
+#  For more information, see D142 in Section 3.13, "Default Case Algorithms".
 #  Changes_When_Casefolded(X) is true when toCasefold(toNFD(X)) != toNFD(X)
 
 0041..005A    ; Changes_When_Casefolded
@@ -5177,7 +5184,7 @@ FF21..FF3A    ; Changes_When_Casefolded
 
 # Derived Property:   Changes_When_Casemapped (CWCM)
 #  Characters whose normalized forms are not stable under case mapping.
-#  For more information, see D128 in Section 3.13, "Default Case Algorithms".
+#  For more information, see D143 in Section 3.13, "Default Case Algorithms".
 #  Changes_When_Casemapped(X) is true when CWL(X), or CWT(X), or CWU(X)
 
 0041..005A    ; Changes_When_Casemapped
@@ -6307,7 +6314,8 @@ FFDA..FFDC    ; ID_Start
 19DA          ; ID_Continue
 1A00..1A16    ; ID_Continue
 1A17..1A18    ; ID_Continue
-1A19..1A1B    ; ID_Continue
+1A19..1A1A    ; ID_Continue
+1A1B          ; ID_Continue
 1A20..1A54    ; ID_Continue
 1A55          ; ID_Continue
 1A56          ; ID_Continue
@@ -7831,7 +7839,8 @@ FFDA..FFDC    ; XID_Start
 19DA          ; XID_Continue
 1A00..1A16    ; XID_Continue
 1A17..1A18    ; XID_Continue
-1A19..1A1B    ; XID_Continue
+1A19..1A1A    ; XID_Continue
+1A1B          ; XID_Continue
 1A20..1A54    ; XID_Continue
 1A55          ; XID_Continue
 1A56          ; XID_Continue
@@ -8356,14 +8365,16 @@ E0100..E01EF  ; XID_Continue
 
 00AD          ; Default_Ignorable_Code_Point
 034F          ; Default_Ignorable_Code_Point
+061C          ; Default_Ignorable_Code_Point
 115F..1160    ; Default_Ignorable_Code_Point
 17B4..17B5    ; Default_Ignorable_Code_Point
 180B..180D    ; Default_Ignorable_Code_Point
+180E          ; Default_Ignorable_Code_Point
 200B..200F    ; Default_Ignorable_Code_Point
 202A..202E    ; Default_Ignorable_Code_Point
 2060..2064    ; Default_Ignorable_Code_Point
-2065..2069    ; Default_Ignorable_Code_Point
-206A..206F    ; Default_Ignorable_Code_Point
+2065          ; Default_Ignorable_Code_Point
+2066..206F    ; Default_Ignorable_Code_Point
 3164          ; Default_Ignorable_Code_Point
 FE00..FE0F    ; Default_Ignorable_Code_Point
 FEFF          ; Default_Ignorable_Code_Point
@@ -8378,7 +8389,7 @@ E0080..E00FF  ; Default_Ignorable_Code_Point
 E0100..E01EF  ; Default_Ignorable_Code_Point
 E01F0..E0FFF  ; Default_Ignorable_Code_Point
 
-# Total code points: 4167
+# Total code points: 4169
 
 # ================================================
 
@@ -8521,6 +8532,7 @@ E01F0..E0FFF  ; Default_Ignorable_Code_Point
 1932          ; Grapheme_Extend
 1939..193B    ; Grapheme_Extend
 1A17..1A18    ; Grapheme_Extend
+1A1B          ; Grapheme_Extend
 1A56          ; Grapheme_Extend
 1A58..1A5E    ; Grapheme_Extend
 1A60          ; Grapheme_Extend
@@ -8629,7 +8641,7 @@ FF9E..FF9F    ; Grapheme_Extend
 1D242..1D244  ; Grapheme_Extend
 E0100..E01EF  ; Grapheme_Extend
 
-# Total code points: 1317
+# Total code points: 1318
 
 # ================================================
 
@@ -9077,7 +9089,6 @@ E0100..E01EF  ; Grapheme_Extend
 1800..1805    ; Grapheme_Base
 1806          ; Grapheme_Base
 1807..180A    ; Grapheme_Base
-180E          ; Grapheme_Base
 1810..1819    ; Grapheme_Base
 1820..1842    ; Grapheme_Base
 1843          ; Grapheme_Base
@@ -9103,7 +9114,7 @@ E0100..E01EF  ; Grapheme_Extend
 19DA          ; Grapheme_Base
 19DE..19FF    ; Grapheme_Base
 1A00..1A16    ; Grapheme_Base
-1A19..1A1B    ; Grapheme_Base
+1A19..1A1A    ; Grapheme_Base
 1A1E..1A1F    ; Grapheme_Base
 1A20..1A54    ; Grapheme_Base
 1A55          ; Grapheme_Base
@@ -9228,7 +9239,7 @@ E0100..E01EF  ; Grapheme_Extend
 208D          ; Grapheme_Base
 208E          ; Grapheme_Base
 2090..209C    ; Grapheme_Base
-20A0..20B9    ; Grapheme_Base
+20A0..20BA    ; Grapheme_Base
 2100..2101    ; Grapheme_Base
 2102          ; Grapheme_Base
 2103..2106    ; Grapheme_Base
@@ -9286,7 +9297,10 @@ E0100..E01EF  ; Grapheme_Extend
 21D5..21F3    ; Grapheme_Base
 21F4..22FF    ; Grapheme_Base
 2300..2307    ; Grapheme_Base
-2308..230B    ; Grapheme_Base
+2308          ; Grapheme_Base
+2309          ; Grapheme_Base
+230A          ; Grapheme_Base
+230B          ; Grapheme_Base
 230C..231F    ; Grapheme_Base
 2320..2321    ; Grapheme_Base
 2322..2328    ; Grapheme_Base
@@ -9980,7 +9994,7 @@ FFFC..FFFD    ; Grapheme_Base
 2B740..2B81D  ; Grapheme_Base
 2F800..2FA1D  ; Grapheme_Base
 
-# Total code points: 108660
+# Total code points: 108659
 
 # ================================================
 

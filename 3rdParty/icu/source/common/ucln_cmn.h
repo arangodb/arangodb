@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *                                                                            *
-* Copyright (C) 2001-2010, International Business Machines                   *
+* Copyright (C) 2001-2013, International Business Machines                   *
 *                Corporation and others. All Rights Reserved.                *
 *                                                                            *
 ******************************************************************************
@@ -49,6 +49,8 @@ typedef enum ECleanupCommonType {
     UCLN_COMMON_UCNV_IO,
     UCLN_COMMON_UDATA,
     UCLN_COMMON_PUTIL,
+    UCLN_COMMON_LIST_FORMATTER,
+    UCLN_COMMON_UINIT,
     UCLN_COMMON_COUNT /* This must be last */
 } ECleanupCommonType;
 

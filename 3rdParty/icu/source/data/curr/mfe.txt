@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/mfe.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mfe.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/mfe.xml
+ * ICU <specials> source: <path>/common/main/mfe.xml
  */
 mfe{
     Currencies{
@@ -20,7 +20,7 @@ mfe{
             "kwanza angole",
         }
         AUD{
-            "AU$",
+            "A$",
             "dolar ostralien",
         }
         BHD{
@@ -136,7 +136,7 @@ mfe{
             "ouguiya moritanien",
         }
         MUR{
-            "MUR",
+            "Rs",
             "roupi morisien",
         }
         MWK{
@@ -225,6 +225,10 @@ mfe{
         }
         ZMK{
             "ZMK",
+            "kwacha zanbien (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "kwacha zanbien",
         }
         ZWD{
@@ -232,5 +236,5 @@ mfe{
             "dolar zimbawe",
         }
     }
-    Version{"2.0.64.50"}
+    Version{"2.0.92.75"}
 }

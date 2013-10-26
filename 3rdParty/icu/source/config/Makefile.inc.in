@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 #******************************************************************************
-#   Copyright (C) 1999-2011, International Business Machines
+#   Copyright (C) 1999-2012, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #******************************************************************************
 # This Makefile.inc is designed to be included into projects which make use
@@ -223,6 +223,9 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 INSTALL-L = ${INSTALL_DATA}
 
+# for derivative builds - don't bother with VERBOSE/NONVERBOSE SILENT_COMPILE
+SILENT_COMPILE=$(1)  #M#
+ICU_MSG=@echo "   $(1)	"  #M#
 
 ##################################################################
 ##################################################################

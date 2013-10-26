@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 ## BSD-specific setup (FreeBSD, OpenBSD, NetBSD, *BSD)
-## Copyright (c) 1999-2009, International Business Machines Corporation and
+## Copyright (c) 1999-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Commands to generate dependency files
@@ -63,5 +63,18 @@ STATIC_O = ao
 %.$(SO): %.$(SO).$(SO_TARGET_VERSION_MAJOR)
 	$(RM) $@ && ln -s ${*F}.$(SO).$(SO_TARGET_VERSION) $@
 
-## End FreeBSD-specific setup
+##  Bind internal references
+ 
+# LDflags that pkgdata will use
+BIR_LDFLAGS= -Wl,-Bsymbolic
+
+# Dependencies [i.e. map files] for the final library
+BIR_DEPS=
+
+## Remove shared library 's'
+STATIC_PREFIX_WHEN_USED = 
+STATIC_PREFIX = 
+
+## End BSD-specific setup
+
 

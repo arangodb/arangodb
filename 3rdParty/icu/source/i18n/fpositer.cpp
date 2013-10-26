@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-* Copyright (C) 2009-2010, International Business Machines Corporation and
+* Copyright (C) 2009-2012, International Business Machines Corporation and
 * others. All Rights Reserved.
 ******************************************************************************
 *   Date        Name        Description
@@ -17,8 +17,6 @@
 #include "uvectr32.h"
 
 U_NAMESPACE_BEGIN
-
-UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(FieldPositionIterator)
 
 FieldPositionIterator::~FieldPositionIterator() {
   delete data;

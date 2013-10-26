@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -420,67 +420,8 @@ public:
                                   UnicodeString& appendTo,
                                   FieldPosition& pos,
                                   UErrorCode& success) const;
-    /**
-     * Formats an object using this object's choices.
-     *
-     *
-     * @param obj       The object to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @param pos       On input: an alignment field, if desired.
-     *                  On output: the offsets of the alignment field.
-     * @param status    Output param set to success/failure code on
-     *                  exit.
-     * @return          Reference to 'appendTo' parameter.
-     * @deprecated ICU 49 Use MessageFormat instead, with plural and select arguments.
-     */
-    virtual UnicodeString& format(const Formattable& obj,
-                                  UnicodeString& appendTo,
-                                  FieldPosition& pos,
-                                  UErrorCode& status) const;
 
-    /**
-     * Redeclared NumberFormat method.
-     *
-     * @param obj       The object to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @param status    Output param set to success/failure code on
-     *                  exit.
-     * @return          Reference to 'appendTo' parameter.
-     * @deprecated ICU 49 Use MessageFormat instead, with plural and select arguments.
-     */
-    UnicodeString& format(const Formattable& obj,
-                          UnicodeString& appendTo,
-                          UErrorCode& status) const;
-
-    /**
-     * Redeclared NumberFormat method.
-     * Formats a double number. These methods call the NumberFormat
-     * pure virtual format() methods with the default FieldPosition.
-     *
-     * @param number    The value to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @return          Reference to 'appendTo' parameter.
-     * @deprecated ICU 49 Use MessageFormat instead, with plural and select arguments.
-     */
-    UnicodeString& format(  double number,
-                            UnicodeString& appendTo) const;
-
-    /**
-     * Redeclared NumberFormat method.
-     * Formats an int32_t number. These methods call the NumberFormat
-     * pure virtual format() methods with the default FieldPosition.
-     *
-     * @param number    The value to be formatted.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @return          Reference to 'appendTo' parameter.
-     * @deprecated ICU 49 Use MessageFormat instead, with plural and select arguments.
-     */
-    UnicodeString& format(  int32_t number,
-                            UnicodeString& appendTo) const;
+   using NumberFormat::parse;
 
    /**
     * Looks for the longest match of any message string on the input text and,
@@ -499,22 +440,6 @@ public:
     virtual void parse(const UnicodeString& text,
                        Formattable& result,
                        ParsePosition& parsePosition) const;
-
-    /**
-     * Looks for the longest match of any message string on the input text and,
-     * if there is a match, sets the result object to the corresponding range's number.
-     *
-     * If no string matches, then the UErrorCode is set to U_INVALID_FORMAT_ERROR.
-     *
-     * @param text           The text to be parsed.
-     * @param result         Formattable to be set to the parse result.
-     *                       If parse fails, return contents are undefined.
-     * @param status         Output param with the formatted string.
-     * @deprecated ICU 49 Use MessageFormat instead, with plural and select arguments.
-     */
-    virtual void parse(const UnicodeString& text,
-                       Formattable& result,
-                       UErrorCode& status) const;
 
     /**
      * Returns a unique class ID POLYMORPHICALLY. Part of ICU's "poor man's RTTI".
@@ -659,26 +584,7 @@ private:
     // int32_t         fCount;
 };
 
-inline UnicodeString&
-ChoiceFormat::format(const Formattable& obj,
-                     UnicodeString& appendTo,
-                     UErrorCode& status) const {
-    // Don't use Format:: - use immediate base class only,
-    // in case immediate base modifies behavior later.
-    return NumberFormat::format(obj, appendTo, status);
-}
 
-inline UnicodeString&
-ChoiceFormat::format(double number,
-                     UnicodeString& appendTo) const {
-    return NumberFormat::format(number, appendTo);
-}
-
-inline UnicodeString&
-ChoiceFormat::format(int32_t number,
-                     UnicodeString& appendTo) const {
-    return NumberFormat::format(number, appendTo);
-}
 U_NAMESPACE_END
 
 #endif  // U_HIDE_DEPRECATED_API

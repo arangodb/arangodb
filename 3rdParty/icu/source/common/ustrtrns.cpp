@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -33,6 +33,8 @@
 #include "cmemory.h"
 #include "ustr_imp.h"
 #include "uassert.h"
+
+#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 U_CAPI UChar* U_EXPORT2 
 u_strFromUTF32WithSub(UChar *dest,
@@ -381,7 +383,7 @@ utf8_nextCharSafeBodyPointer(const uint8_t **ps, const uint8_t *limit, UChar32 c
 
     /* correct sequence - all trail bytes have (b7..b6)==(10)? */
     /* illegal is also set if count>=4 */
-    U_ASSERT(count<sizeof(utf8_minLegal)/sizeof(utf8_minLegal[0]));
+    U_ASSERT(illegal || count<LENGTHOF(utf8_minLegal));
     if(illegal || c<utf8_minLegal[count] || U_IS_SURROGATE(c)) {
         /* error handling */
         /* don't go beyond this sequence */
@@ -1310,7 +1312,7 @@ u_strFromJavaModifiedUTF8WithSub(
     }
 
     /* Faster loop without ongoing checking for pSrcLimit and pDestLimit. */
-    pSrcLimit = pSrc + srcLength;
+    pSrcLimit = (pSrc == NULL) ? NULL : pSrc + srcLength;
     for(;;) {
         count = (int32_t)(pDestLimit - pDest);
         srcLength = (int32_t)(pSrcLimit - pSrc);

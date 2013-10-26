@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2006, International Business Machines
+*   Copyright (C) 2003-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -86,6 +86,7 @@ typedef enum UTraceFunctionNumber {
     UTRACE_UCOL_NEXTSORTKEYPART,
     UTRACE_UCOL_STRCOLLITER,
     UTRACE_UCOL_OPEN_FROM_SHORT_STRING,
+    UTRACE_UCOL_STRCOLLUTF8, /**< @stable ICU 50 */
     UTRACE_COLLATION_LIMIT
 } UTraceFunctionNumber;
 

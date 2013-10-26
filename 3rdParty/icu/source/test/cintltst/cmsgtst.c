@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  *
@@ -27,6 +27,8 @@
 #include "cintltst.h"
 #include "cmsgtst.h"
 #include "cformtst.h"
+
+#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 static const char* const txt_testCasePatterns[] = {
    "Quotes '', '{', a {0,number,integer} '{'0}",
@@ -87,6 +89,9 @@ static void FreeStrings( void )
     strings_initialized = FALSE;
 }
 
+#if (U_PLATFORM == U_PF_LINUX) /* add platforms here .. */
+/* Keep the #if above in sync with the one below that has the same "add platforms here .." comment. */
+#else
 /* Platform dependent test to detect if this type will return NULL when interpreted as a pointer. */
 static UBool returnsNullForType(int firstParam, ...) {
     UBool isNULL;
@@ -96,6 +101,7 @@ static UBool returnsNullForType(int firstParam, ...) {
     va_end(marker);
     return isNULL;
 }
+#endif
 
 /* Test u_formatMessage() with various test patterns() */
 static void MessageFormatTest( void ) 
@@ -219,7 +225,7 @@ static void MessageFormatTest( void )
                         austrdup(result), austrdup(testResultStrings[i]) );
                 }
 
-#if U_PLATFORM_IS_DARWIN_BASED || (U_PLATFORM == U_PF_LINUX) /* add platforms here .. */
+#if (U_PLATFORM == U_PF_LINUX) /* add platforms here .. */
                 log_verbose("Skipping potentially crashing test for mismatched varargs.\n");
 #else
                 log_verbose("Note: the next is a platform dependent test. If it crashes, add an exclusion for your platform near %s:%d\n", __FILE__, __LINE__); 
@@ -995,6 +1001,7 @@ static void TestJ904(void) {
                              result, 256, &status,
                              string, 1/7.0,
                              789.0+1000*(56+60*(34+60*12)));
+    (void)length;   /* Suppress set but not used warning. */
 
     u_austrncpy(cresult, result, sizeof(cresult));
 
@@ -1110,6 +1117,24 @@ static void MessageLength(void)
     }
 }
 
+static void TestMessageWithUnusedArgNumber() {
+    UErrorCode errorCode = U_ZERO_ERROR;
+    U_STRING_DECL(pattern, "abc {1} def", 11);
+    UChar x[2] = { 0x78, 0 };  // "x"
+    UChar y[2] = { 0x79, 0 };  // "y"
+    U_STRING_DECL(expected, "abc y def", 9);
+    UChar result[20];
+    int32_t length;
+
+    U_STRING_INIT(pattern, "abc {1} def", 11);
+    U_STRING_INIT(expected, "abc y def", 9);
+    length = u_formatMessage("en", pattern, -1, result, LENGTHOF(result), &errorCode, x, y);
+    if (U_FAILURE(errorCode) || length != u_strlen(expected) || u_strcmp(result, expected) != 0) {
+        log_err("u_formatMessage(pattern with only {1}, 2 args) failed: result length %d, UErrorCode %s \n",
+                (int)length, u_errorName(errorCode));
+    }
+}
+
 static void TestErrorChaining(void) {
     UErrorCode status = U_USELESS_COLLATOR_ERROR;
 
@@ -1164,6 +1189,7 @@ void addMsgForTest(TestNode** root)
     addTest(root, &TestParseMessageWithValist, "tsformat/cmsgtst/TestParseMessageWithValist");
     addTest(root, &TestJ904, "tsformat/cmsgtst/TestJ904");
     addTest(root, &MessageLength, "tsformat/cmsgtst/MessageLength");
+    addTest(root, &TestMessageWithUnusedArgNumber, "tsformat/cmsgtst/TestMessageWithUnusedArgNumber");
     addTest(root, &TestErrorChaining, "tsformat/cmsgtst/TestErrorChaining");
     addTest(root, &TestMsgFormatSelect, "tsformat/cmsgtst/TestMsgFormatSelect");
 }

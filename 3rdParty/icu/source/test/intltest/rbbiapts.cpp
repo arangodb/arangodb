@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1999-2011, International Business Machines
+ * Copyright (c) 1999-2013, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************
  *   Date        Name        Description
@@ -157,10 +157,13 @@ void RBBIAPITest::TestBoilerPlate()
     if(*a!=*b){
         errln("Failed: boilerplate method operator!= does not return correct results");
     }
-    BreakIterator* c = BreakIterator::createWordInstance(Locale("ja"),status);
-    if(a && c){
-        if(*c==*a){
-            errln("Failed: boilerplate method opertator== does not return correct results");
+    // Japanese word break iterators are identical to root with
+    // a dictionary-based break iterator
+    BreakIterator* c = BreakIterator::createCharacterInstance(Locale("ja"),status);
+    BreakIterator* d = BreakIterator::createCharacterInstance(Locale("root"),status);
+    if(c && d){
+        if(*c!=*d){
+            errln("Failed: boilerplate method operator== does not return correct results");
         }
     }else{
         errln("creation of break iterator failed");
@@ -168,6 +171,7 @@ void RBBIAPITest::TestBoilerPlate()
     delete a;
     delete b;
     delete c;
+    delete d;
 }
 
 void RBBIAPITest::TestgetRules()
@@ -636,25 +640,25 @@ void RBBIAPITest::TestQuoteGrouping() {
 //
 void RBBIAPITest::TestRuleStatus() {
      UChar str[30];
-     u_unescape("plain word 123.45 \\u9160\\u9161 \\u30a1\\u30a2 \\u3041\\u3094",
-              // 012345678901234567  8      9    0  1      2    3  4      5    6
-              //                    Ideographic    Katakana       Hiragana
+     //no longer test Han or hiragana breaking here: ruleStatusVec would return nothing
+     // changed UBRK_WORD_KANA to UBRK_WORD_IDEO
+     u_unescape("plain word 123.45 \\u30a1\\u30a2 ",
+              // 012345678901234567  8      9    0      
+              //                     Katakana      
                 str, 30);
      UnicodeString testString1(str);
-     int32_t bounds1[] = {0, 5, 6, 10, 11, 17, 18, 19, 20, 21, 23, 24, 25, 26};
+     int32_t bounds1[] = {0, 5, 6, 10, 11, 17, 18, 20, 21};
      int32_t tag_lo[]  = {UBRK_WORD_NONE,     UBRK_WORD_LETTER, UBRK_WORD_NONE,    UBRK_WORD_LETTER,
                           UBRK_WORD_NONE,     UBRK_WORD_NUMBER, UBRK_WORD_NONE,
-                          UBRK_WORD_IDEO,     UBRK_WORD_IDEO,   UBRK_WORD_NONE,
-                          UBRK_WORD_KANA,     UBRK_WORD_NONE,   UBRK_WORD_KANA,    UBRK_WORD_KANA};
+                          UBRK_WORD_IDEO,     UBRK_WORD_NONE};
 
      int32_t tag_hi[]  = {UBRK_WORD_NONE_LIMIT, UBRK_WORD_LETTER_LIMIT, UBRK_WORD_NONE_LIMIT, UBRK_WORD_LETTER_LIMIT,
                           UBRK_WORD_NONE_LIMIT, UBRK_WORD_NUMBER_LIMIT, UBRK_WORD_NONE_LIMIT,
-                          UBRK_WORD_IDEO_LIMIT, UBRK_WORD_IDEO_LIMIT,   UBRK_WORD_NONE_LIMIT,
-                          UBRK_WORD_KANA_LIMIT, UBRK_WORD_NONE_LIMIT,   UBRK_WORD_KANA_LIMIT, UBRK_WORD_KANA_LIMIT};
+                          UBRK_WORD_IDEO_LIMIT, UBRK_WORD_NONE_LIMIT};
 
      UErrorCode status=U_ZERO_ERROR;
 
-     RuleBasedBreakIterator *bi = (RuleBasedBreakIterator *)BreakIterator::createWordInstance(Locale::getEnglish(), status);
+     BreakIterator *bi = BreakIterator::createWordInstance(Locale::getEnglish(), status);
      if(U_FAILURE(status)) {
          errcheckln(status, "Fail : in construction - %s", u_errorName(status));
      } else {
@@ -691,8 +695,7 @@ void RBBIAPITest::TestRuleStatus() {
      testString1 =   "test line. \n";
      // break type    s    s     h
 
-     bi = (RuleBasedBreakIterator *)
-         BreakIterator::createLineInstance(Locale::getEnglish(), status);
+     bi = BreakIterator::createLineInstance(Locale::getEnglish(), status);
      if(U_FAILURE(status)) {
          errcheckln(status, "failed to create word break iterator. - %s", u_errorName(status));
      } else {
@@ -871,7 +874,6 @@ void RBBIAPITest::TestRegistration() {
 #if !UCONFIG_NO_SERVICE
     UErrorCode status = U_ZERO_ERROR;
     BreakIterator* ja_word = BreakIterator::createWordInstance("ja_JP", status);
-
     // ok to not delete these if we exit because of error?
     BreakIterator* ja_char = BreakIterator::createCharacterInstance("ja_JP", status);
     BreakIterator* root_word = BreakIterator::createWordInstance("", status);
@@ -879,6 +881,7 @@ void RBBIAPITest::TestRegistration() {
     
     if (status == U_MISSING_RESOURCE_ERROR || status == U_FILE_ACCESS_ERROR) {
         dataerrln("Error creating instances of break interactors - %s", u_errorName(status));
+
         delete ja_word;
         delete ja_char;
         delete root_word;
@@ -889,9 +892,11 @@ void RBBIAPITest::TestRegistration() {
 
     URegistryKey key = BreakIterator::registerInstance(ja_word, "xx", UBRK_WORD, status);
     {
+#if 0 // With a dictionary based word breaking, ja_word is identical to root.
         if (ja_word && *ja_word == *root_word) {
             errln("japan not different from root");
         }
+#endif
     }
 
     {
@@ -1046,7 +1051,6 @@ void RBBIAPITest::TestRoundtripRules() {
     RoundtripRule("line");
     RoundtripRule("char");
     if (!quick) {
-        RoundtripRule("word_ja");
         RoundtripRule("word_POSIX");
     }
 }
@@ -1214,7 +1218,7 @@ void RBBIAPITest::runIndexedTest( int32_t index, UBool exec, const char* &name, 
 //Internal subroutines
 //---------------------------------------------
 
-void RBBIAPITest::doBoundaryTest(RuleBasedBreakIterator& bi, UnicodeString& text, int32_t *boundaries){
+void RBBIAPITest::doBoundaryTest(BreakIterator& bi, UnicodeString& text, int32_t *boundaries){
      logln((UnicodeString)"testIsBoundary():");
         int32_t p = 0;
         UBool isB;

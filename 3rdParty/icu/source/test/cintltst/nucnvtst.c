@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*******************************************************************************
@@ -33,7 +33,9 @@ static void TestNextUCharError(UConverter* cnv, const char* source, const char* 
 #if !UCONFIG_NO_COLLATION
 static void TestJitterbug981(void);
 #endif
+#if !UCONFIG_NO_LEGACY_CONVERSION
 static void TestJitterbug1293(void);
+#endif
 static void TestNewConvertWithBufferSizes(int32_t osize, int32_t isize) ;
 static void TestConverterTypesAndStarters(void);
 static void TestAmbiguous(void);
@@ -5422,6 +5424,7 @@ static void TestJitterbug981(){
 
 #endif
 
+#if !UCONFIG_NO_LEGACY_CONVERSION
 static void TestJitterbug1293(){
     static const UChar src[] = {0x30DE, 0x30A4, 0x5E83, 0x544A, 0x30BF, 0x30A4, 0x30D7,0x000};
     char target[256];
@@ -5449,6 +5452,8 @@ static void TestJitterbug1293(){
     }
     ucnv_close(conv);
 }
+#endif
+
 static void TestJB5275_1(){
 
     static const char* data = "\x3B\xB3\x0A" /* Easy characters */

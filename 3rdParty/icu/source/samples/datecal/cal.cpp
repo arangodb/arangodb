@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2003, International Business Machines
+*   Copyright (C) 2002-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -11,7 +11,7 @@
 #include "unicode/gregocal.h"
 #include <stdio.h>
 
-extern "C" {  extern void c_main(); };
+extern "C" void c_main();
 
 void cpp_main()
 {

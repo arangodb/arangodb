@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2002-2010, International Business Machines
+ *   Copyright (C) 2002-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -331,6 +331,8 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
         fCharCount = -1;
         return;
     }
+
+    (void)fVertical;  // Suppress warning for unused field fVertical.
 
     // FIXME: should check the limit arrays for consistency...
 

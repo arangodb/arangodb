@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -217,6 +217,7 @@ static UOption options[]={
 
 extern int
 main(int argc, char* argv[]) {
+    int i, n;
     char pathBuf[512];
     FileStream *in;
     UNewDataMemory *out;
@@ -303,6 +304,15 @@ main(int argc, char* argv[]) {
     if(U_FAILURE(errorCode)) {
         fprintf(stderr, "gencnval: error finishing output file - %s\n", u_errorName(errorCode));
         exit(errorCode);
+    }
+
+    /* clean up tags */
+    for (i = 0; i < MAX_TAG_COUNT; i++) {
+        for (n = 0; n < MAX_CONV_COUNT; n++) {
+            if (tags[i].aliasList[n].aliases!=NULL) {
+                uprv_free(tags[i].aliasList[n].aliases);
+            }
+        }
     }
 
     return 0;
@@ -644,7 +654,6 @@ addToKnownAliases(const char *alias) {
 static uint16_t
 addAlias(const char *alias, uint16_t standard, uint16_t converter, UBool defaultName) {
     uint32_t idx, idx2;
-    UBool dupFound = FALSE;
     UBool startEmptyWithoutDefault = FALSE;
     AliasList *aliasList;
 
@@ -713,7 +722,6 @@ addAlias(const char *alias, uint16_t standard, uint16_t converter, UBool default
                             GET_ALIAS_STR(converters[converter].converter),
                             GET_ALIAS_STR(converters[idx].converter));
                     }
-                    dupFound = TRUE;
                     break;
                 }
             }
@@ -1054,8 +1062,9 @@ writeAliasTable(UNewDataMemory *out) {
         uprv_free(normalizedStrings);
     }
 
-    uprv_free(aliasArrLists);
+    uprv_free(uniqueAliasesToConverter);
     uprv_free(uniqueAliases);
+    uprv_free(aliasArrLists);
 }
 
 static char *

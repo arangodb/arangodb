@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/seh.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/seh.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/seh.xml
+ * ICU <specials> source: <path>/common/main/seh.xml
  */
 seh{
     Currencies{
@@ -20,7 +20,7 @@ seh{
             "Cuanza angolano",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dólar australiano",
         }
         BHD{
@@ -85,7 +85,7 @@ seh{
         }
         GHC{
             "GHC",
-            "Cedi de Gana (1979-2007)",
+            "Cedi de Gana (1979–2007)",
         }
         GMD{
             "GMD",
@@ -209,7 +209,7 @@ seh{
         }
         UGX{
             "UGX",
-            "Xelim ugandense (1966-1987)",
+            "Xelim ugandense (1966–1987)",
         }
         USD{
             "US$",
@@ -229,6 +229,10 @@ seh{
         }
         ZMK{
             "ZMK",
+            "Cuacha zambiano (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Cuacha zambiano",
         }
         ZWD{
@@ -236,5 +240,5 @@ seh{
             "Dólar do Zimbábue",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

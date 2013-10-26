@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -18,6 +18,7 @@
 #include "unicode/ucnv.h"
 #include "unicode/ustring.h"
 #include "unicode/putil.h"
+#include "unicode/ustdio.h"
 
 #include "uresimp.h"
 #include "cmemory.h"
@@ -26,44 +27,24 @@
 #include "toolutil.h"
 #include "ustrfmt.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <ctype.h>
+#if !UCONFIG_NO_FORMATTING
 
-#if U_PLATFORM_HAS_WIN32_API
-#include <io.h>
-#include <fcntl.h>
-#define USE_FILENO_BINARY_MODE 1
-/* Windows likes to rename Unix-like functions */
-#ifndef fileno
-#define fileno _fileno
-#endif
-#ifndef setmode
-#define setmode _setmode
-#endif
-#ifndef O_BINARY
-#define O_BINARY _O_BINARY
-#endif
-#endif
-
-#define DERB_VERSION "1.0"
+#define DERB_VERSION "1.1"
 
 #define DERB_DEFAULT_TRUNC 80
 
-static UConverter *defaultConverter = 0;
-
 static const int32_t indentsize = 4;
 static int32_t truncsize = DERB_DEFAULT_TRUNC;
-static UBool trunc = FALSE;
+static UBool opt_truncate = FALSE;
 
 static const char *getEncodingName(const char *encoding);
 static void reportError(const char *pname, UErrorCode *status, const char *when);
 static UChar *quotedString(const UChar *string);
-static void printOutBundle(FILE *out, UConverter *converter, UResourceBundle *resource, int32_t indent, const char *pname, UErrorCode *status);
-static void printString(FILE *out, UConverter *converter, const UChar *str, int32_t len);
-static void printCString(FILE *out, UConverter *converter, const char *str, int32_t len);
-static void printIndent(FILE *out, UConverter *converter, int32_t indent);
-static void printHex(FILE *out, UConverter *converter, uint8_t what);
+static void printOutBundle(UFILE *out, UConverter *converter, UResourceBundle *resource, int32_t indent, const char *pname, UErrorCode *status);
+static void printString(UFILE *out, UConverter *converter, const UChar *str, int32_t len);
+static void printCString(UFILE *out, UConverter *converter, const char *str, int32_t len);
+static void printIndent(UFILE *out, UConverter *converter, int32_t indent);
+static void printHex(UFILE *out, UConverter *converter, uint8_t what);
 
 static UOption options[]={
     UOPTION_HELP_H,
@@ -77,11 +58,12 @@ static UOption options[]={
 /* 8 */    { "bom", NULL, NULL, NULL, 0, UOPT_NO_ARG, 0 },
 /* 9 */    UOPTION_ICUDATADIR,
 /* 10 */   UOPTION_VERSION,
-/* 11 */   { "suppressAliases", NULL, NULL, NULL, 'A', UOPT_NO_ARG, 0 }
+/* 11 */   { "suppressAliases", NULL, NULL, NULL, 'A', UOPT_NO_ARG, 0 },
 };
 
 static UBool verbose = FALSE;
 static UBool suppressAliases = FALSE;
+static UFILE *ustderr = NULL;
 
 extern int
 main(int argc, char* argv[]) {
@@ -97,7 +79,7 @@ main(int argc, char* argv[]) {
     UErrorCode status = U_ZERO_ERROR;
     int32_t i = 0;
 
-    UConverter *converter;
+    UConverter *converter = NULL; // not used
 
     const char* arg;
 
@@ -148,18 +130,22 @@ main(int argc, char* argv[]) {
     }
 
     if (options[3].doesOccur) {
-        tostdout = 1;
+      if(options[2].doesOccur) {
+        fprintf(stderr, "%s: Error: don't specify an encoding (-e) when writing to stdout (-c).\n", pname);
+        return 3;
+      }
+      tostdout = 1;
     }
 
     if(options[4].doesOccur) {
-        trunc = TRUE;
+        opt_truncate = TRUE;
         if(options[4].value != NULL) {
             truncsize = atoi(options[4].value); /* user defined printable size */
         } else {
             truncsize = DERB_DEFAULT_TRUNC; /* we'll use default omitting size */
         }
     } else {
-        trunc = FALSE;
+        opt_truncate = FALSE;
     }
 
     if(options[5].doesOccur) {
@@ -186,22 +172,8 @@ main(int argc, char* argv[]) {
       suppressAliases = TRUE;
     }
 
-    converter = ucnv_open(encoding, &status);
-    if (U_FAILURE(status)) {
-        fprintf(stderr, "%s: couldn't create %s converter for encoding\n", pname, encoding ? encoding : ucnv_getDefaultName());
-        return 2;
-    }
-    ucnv_setFromUCallBack(converter, UCNV_FROM_U_CALLBACK_ESCAPE, UCNV_ESCAPE_C, 0, 0, &status);
-    if (U_FAILURE(status)) {
-        fprintf(stderr, "%s: couldn't configure converter for encoding\n", pname);
-        return 3;
-    }
-
-    defaultConverter = ucnv_open(0, &status);
-    if (U_FAILURE(status)) {
-        fprintf(stderr, "%s: couldn't create %s converter for encoding\n", ucnv_getDefaultName(), pname);
-        return 2;
-    }
+    fflush(stderr); // use ustderr now.
+    ustderr = u_finit(stderr, NULL, NULL);
 
     for (i = 1; i < argc; ++i) {
         static const UChar sp[] = { 0x0020 }; /* " " */
@@ -213,7 +185,7 @@ main(int argc, char* argv[]) {
         arg = getLongPathname(argv[i]);
 
         if (verbose) {
-            printf("processing bundle \"%s\"\n", argv[i]);
+          u_fprintf(ustderr, "processing bundle \"%s\"\n", argv[i]);
         }
 
         p = uprv_strrchr(arg, U_FILE_SEP_CHAR);
@@ -267,7 +239,7 @@ main(int argc, char* argv[]) {
             bundle = ures_open(fromICUData ? 0 : inputDir, locale, &status);
         }
         if (status == U_ZERO_ERROR) {
-            FILE *out;
+            UFILE *out = NULL;
 
             const char *filename = 0;
             const char *ext = 0;
@@ -292,13 +264,7 @@ main(int argc, char* argv[]) {
             }
 
             if (tostdout) {
-                out = stdout;
-#if U_PLATFORM_HAS_WIN32_API
-                if (setmode(fileno(out), O_BINARY) == -1) {
-                    fprintf(stderr, "%s: couldn't set standard output to binary mode\n", pname);
-                    return 4;
-                }
-#endif
+                out = u_get_stdout();
             } else {
                 char thefile[4096], *tp;
                 int32_t len;
@@ -319,42 +285,47 @@ main(int argc, char* argv[]) {
                 }
                 uprv_strcpy(tp, "txt");
 
-                out = fopen(thefile, "w");
+                out = u_fopen(thefile, "w", NULL, encoding);
                 if (!out) {
-                    fprintf(stderr, "%s: couldn't create %s\n", pname, thefile);
-                    return 4;
+                  u_fprintf(ustderr, "%s: couldn't create %s\n", pname, thefile);
+                  u_fclose(ustderr);
+                  return 4;
                 }
             }
 
+            // now, set the callback.
+            ucnv_setFromUCallBack(u_fgetConverter(out), UCNV_FROM_U_CALLBACK_ESCAPE, UCNV_ESCAPE_C, 0, 0, &status);
+            if (U_FAILURE(status)) {
+              u_fprintf(ustderr, "%s: couldn't configure converter for encoding\n", pname);
+              u_fclose(ustderr);
+              if(!tostdout) {
+                u_fclose(out);
+              }
+              return 3;
+            }
+
             if (prbom) { /* XXX: Should be done only for UTFs */
-                static const UChar bom[] = { 0xFEFF };
-                printString(out, converter, bom, (int32_t)(sizeof(bom)/sizeof(*bom)));
+              u_fputc(0xFEFF, out);
             }
-
-            printCString(out, converter, "// -*- Coding: ", -1);
-            printCString(out, converter, encoding ? encoding : getEncodingName(ucnv_getDefaultName()), -1);
-            printCString(out, converter, "; -*-\n//\n", -1);
-            printCString(out, converter, "// This file was dumped by derb(8) from ", -1);
+            u_fprintf(out, "// -*- Coding: %s; -*-\n//\n", encoding ? encoding : getEncodingName(ucnv_getDefaultName()));
+            u_fprintf(out, "// This file was dumped by derb(8) from ");
             if (thename) {
-                printCString(out, converter, thename, -1);
+              u_fprintf(out, "%s", thename);
             } else if (fromICUData) {
-                printCString(out, converter, "the ICU internal ", -1);
-                printCString(out, converter, locale, -1);
-                printCString(out, converter, " locale", -1);
+              u_fprintf(out, "the ICU internal %s locale", locale);
             }
 
-            printCString(out, converter, "\n// derb(8) by Vladimir Weinstein and Yves Arrouye\n\n", -1);
+            u_fprintf(out, "\n// derb(8) by Vladimir Weinstein and Yves Arrouye\n\n");
 
             if (locale[0]) {
-                printCString(out, converter, locale, -1);
+              u_fprintf(out, "%s", locale);
             } else {
-                printCString(out, converter, filename, (int32_t)(ext - filename));
-                printString(out, converter, sp, (int32_t)(sizeof(sp)/sizeof(*sp)));
+              u_fprintf(out, "%.*s%.*S", (int32_t)(ext - filename),  filename, (int32_t)(sizeof(sp)/sizeof(*sp)), sp);
             }
             printOutBundle(out, converter, bundle, 0, pname, &status);
 
-            if (out != stdout) {
-                fclose(out);
+            if (!tostdout) {
+                u_fclose(out);
             }
         }
         else {
@@ -364,7 +335,6 @@ main(int argc, char* argv[]) {
         ures_close(bundle);
     }
 
-    ucnv_close(defaultConverter);
     ucnv_close(converter);
 
     return 0;
@@ -407,47 +377,19 @@ static UChar *quotedString(const UChar *string) {
 }
 
 
-static void printString(FILE *out, UConverter *converter, const UChar *str, int32_t len) {
-    char buf[256];
-    const UChar *strEnd;
-
-    if (len < 0) {
-        len = u_strlen(str);
-    }
-    strEnd = str + len;
-
-    do {
-        UErrorCode err = U_ZERO_ERROR;
-        char *bufp = buf, *bufend = buf + sizeof(buf) - 1 ;
-
-        ucnv_fromUnicode(converter, &bufp, bufend, &str, strEnd, 0, 0, &err);
-        *bufp = 0;
-
-        fprintf(out, "%s", buf);
-    } while (str < strEnd);
+static void printString(UFILE *out, UConverter *converter, const UChar *str, int32_t len) {
+  u_file_write(str, len, out);
 }
 
-static void printCString(FILE *out, UConverter *converter, const char *str, int32_t len) {
-    UChar buf[256];
-    const char *strEnd;
-
-    if (len < 0) {
-        len = (int32_t)uprv_strlen(str);
-    }
-    strEnd = str + len;
-
-    do {
-        UErrorCode err = U_ZERO_ERROR;
-        UChar *bufp = buf, *bufend = buf + (sizeof(buf)/sizeof(buf[0])) - 1 ;
-
-        ucnv_toUnicode(defaultConverter, &bufp, bufend, &str, strEnd, 0, 0, &err);
-        *bufp = 0;
-
-        printString(out, converter, buf, (int32_t)(bufp - buf));
-    } while (str < strEnd);
+static void printCString(UFILE *out, UConverter *converter, const char *str, int32_t len) {
+  if(len==-1) {
+    u_fprintf(out, "%s", str);
+  } else {
+    u_fprintf(out, "%.*s", len, str);
+  }
 }
 
-static void printIndent(FILE *out, UConverter *converter, int32_t indent) {
+static void printIndent(UFILE *out, UConverter *converter, int32_t indent) {
     UChar inchar[256];
     int32_t i = 0;
     for(i = 0; i<indent; i++) {
@@ -458,7 +400,7 @@ static void printIndent(FILE *out, UConverter *converter, int32_t indent) {
     printString(out, converter, inchar, indent);
 }
 
-static void printHex(FILE *out, UConverter *converter, uint8_t what) {
+static void printHex(UFILE *out, UConverter *converter, uint8_t what) {
     static const char map[] = "0123456789ABCDEF";
     UChar hex[2];
 
@@ -468,12 +410,12 @@ static void printHex(FILE *out, UConverter *converter, uint8_t what) {
     printString(out, converter, hex, (int32_t)(sizeof(hex)/sizeof(*hex)));
 }
 
-static void printOutAlias(FILE *out,  UConverter *converter, UResourceBundle *parent, Resource r, const char *key, int32_t indent, const char *pname, UErrorCode *status) {
+static void printOutAlias(UFILE *out,  UConverter *converter, UResourceBundle *parent, Resource r, const char *key, int32_t indent, const char *pname, UErrorCode *status) {
     static const UChar cr[] = { '\n' };
     int32_t len = 0;
     const UChar* thestr = res_getAlias(&(parent->fResData), r, &len);
     UChar *string = quotedString(thestr);
-    if(trunc && len > truncsize) {
+    if(opt_truncate && len > truncsize) {
         char msg[128];
         printIndent(out, converter, indent);
         sprintf(msg, "// WARNING: this resource, size %li is truncated to %li\n",
@@ -501,7 +443,7 @@ static void printOutAlias(FILE *out,  UConverter *converter, UResourceBundle *pa
     uprv_free(string);
 }
 
-static void printOutBundle(FILE *out, UConverter *converter, UResourceBundle *resource, int32_t indent, const char *pname, UErrorCode *status)
+static void printOutBundle(UFILE *out, UConverter *converter, UResourceBundle *resource, int32_t indent, const char *pname, UErrorCode *status)
 {
     static const UChar cr[] = { '\n' };
 
@@ -517,7 +459,7 @@ static void printOutBundle(FILE *out, UConverter *converter, UResourceBundle *re
             UChar *string = quotedString(thestr);
 
             /* TODO: String truncation */
-            if(trunc && len > truncsize) {
+            if(opt_truncate && len > truncsize) {
                 char msg[128];
                 printIndent(out, converter, indent);
                 sprintf(msg, "// WARNING: this resource, size %li is truncated to %li\n",
@@ -576,7 +518,7 @@ static void printOutBundle(FILE *out, UConverter *converter, UResourceBundle *re
         {
             int32_t len = 0;
             const int8_t *data = (const int8_t *)ures_getBinary(resource, &len, status);
-            if(trunc && len > truncsize) {
+            if(opt_truncate && len > truncsize) {
                 char msg[128];
                 printIndent(out, converter, indent);
                 sprintf(msg, "// WARNING: this resource, size %li is truncated to %li\n",
@@ -724,13 +666,19 @@ static const char *getEncodingName(const char *encoding) {
 }
 
 static void reportError(const char *pname, UErrorCode *status, const char *when) {
-    fprintf(stderr, "%s: error %d while %s: %s\n", pname, *status, when, u_errorName(*status));
+  u_fprintf(ustderr, "%s: error %d while %s: %s\n", pname, *status, when, u_errorName(*status));
 }
+
+#else
+extern int
+main(int argc, char* argv[]) {
+    /* Changing stdio.h ustdio.h requires that formatting not be disabled. */
+    return 3;
+}
+#endif /* !UCONFIG_NO_FORMATTING */
 
 /*
  * Local Variables:
  * indent-tabs-mode: nil
  * End:
  */
-
-

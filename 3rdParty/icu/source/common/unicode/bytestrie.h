@@ -62,7 +62,7 @@ public:
      * @stable ICU 4.8
      */
     BytesTrie(const void *trieBytes)
-            : ownedArray_(NULL), bytes_(reinterpret_cast<const uint8_t *>(trieBytes)),
+            : ownedArray_(NULL), bytes_(static_cast<const uint8_t *>(trieBytes)),
               pos_(bytes_), remainingMatchLength_(-1) {}
 
     /**
@@ -349,8 +349,8 @@ private:
      * This constructor is only called by the builder.
      */
     BytesTrie(void *adoptBytes, const void *trieBytes)
-            : ownedArray_(reinterpret_cast<uint8_t *>(adoptBytes)),
-              bytes_(reinterpret_cast<const uint8_t *>(trieBytes)),
+            : ownedArray_(static_cast<uint8_t *>(adoptBytes)),
+              bytes_(static_cast<const uint8_t *>(trieBytes)),
               pos_(bytes_), remainingMatchLength_(-1) {}
 
     // No assignment operator.

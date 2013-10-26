@@ -1,7 +1,7 @@
 /*
 ********************************************************************************
 *
-*   Copyright (C) 1996-2012, International Business Machines
+*   Copyright (C) 1996-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ********************************************************************************
@@ -15,8 +15,8 @@
 
 #include "unicode/utrace.h"
 #include "unicode/uclean.h"
-#include "umutex.h"
 #include "putilimp.h"
+#include "udbgutil.h"
 
 /* NOTES:
    3/20/1999 srl - strncpy called w/o setting nulls at the end
@@ -89,6 +89,7 @@ static void help ( const char *argv0 );
  */
 static void vlog_err(const char *prefix, const char *pattern, va_list ap);
 static void vlog_verbose(const char *prefix, const char *pattern, va_list ap);
+static UBool vlog_knownIssue(const char *ticket, const char *pattern, va_list ap);
 
 /**
  * Log test structure, with indent
@@ -110,6 +111,9 @@ static int ERROR_COUNT = 0; /* Count of errors from all tests. */
 static int ONE_ERROR = 0; /* were there any other errors? */
 static int DATA_ERROR_COUNT = 0; /* count of data related errors or warnings */
 static int INDENT_LEVEL = 0;
+static UBool NO_KNOWN = FALSE;
+static void *knownList = NULL;
+static char gTestName[1024] = "";
 static UBool ON_LINE = FALSE; /* are we on the top line with our test name? */
 static UBool HANGING_OUTPUT = FALSE; /* did the user leave us without a trailing \n ? */
 static int GLOBAL_PRINT_COUNT = 0; /* global count of printouts */
@@ -122,11 +126,10 @@ int WARN_ON_MISSING_DATA = 0; /* Reduce data errs to warnings? */
 UTraceLevel ICU_TRACE = UTRACE_OFF;  /* ICU tracing level */
 size_t MINIMUM_MEMORY_SIZE_FAILURE = (size_t)-1; /* Minimum library memory allocation window that will fail. */
 size_t MAXIMUM_MEMORY_SIZE_FAILURE = (size_t)-1; /* Maximum library memory allocation window that will fail. */
-int32_t ALLOCATION_COUNT = 0;
 static const char *ARGV_0 = "[ALL]";
 static const char *XML_FILE_NAME=NULL;
 static char XML_PREFIX[256];
-
+static const char *SUMMARY_FILE = NULL;
 FILE *XML_FILE = NULL;
 /*-------------------------------------------*/
 
@@ -381,6 +384,7 @@ static void iterateTestsWithLevel ( const TestNode* root,
 #if SHOW_TIMES
         startTime = uprv_getRawUTCtime();
 #endif
+        strcpy(gTestName, pathToFunction);
         root->test();   /* PERFORM THE TEST ************************/
 #if SHOW_TIMES
         stopTime = uprv_getRawUTCtime();
@@ -514,6 +518,13 @@ runTests ( const TestNode *root )
 
     ON_LINE=FALSE; /* just in case */
 
+    if(knownList != NULL) {
+      if( udbg_knownIssue_print(knownList) ) {
+        fprintf(stdout, "(To run suppressed tests, use the -K option.) \n\n");
+      }
+      udbg_knownIssue_close(knownList);
+    }
+
     if (ERROR_COUNT)
     {
         fprintf(stdout,"\nSUMMARY:\n");
@@ -523,6 +534,14 @@ runTests ( const TestNode *root )
         fprintf(stdout, " Errors in\n");
         for (i=0;i < ERRONEOUS_FUNCTION_COUNT; i++)
             fprintf(stdout, "[%s]\n",ERROR_LOG[i]);
+	if(SUMMARY_FILE != NULL) {
+	  FILE *summf = fopen(SUMMARY_FILE, "w");
+	  if(summf!=NULL) {
+	    for (i=0;i < ERRONEOUS_FUNCTION_COUNT; i++)
+	      fprintf(summf, "%s\n",ERROR_LOG[i]);
+	    fclose(summf);
+	  }
+	}
     }
     else
     {
@@ -673,6 +692,29 @@ static void vlog_err(const char *prefix, const char *pattern, va_list ap)
     GLOBAL_PRINT_COUNT++;
 }
 
+static UBool vlog_knownIssue(const char *ticket, const char *pattern, va_list ap)
+{
+    char buf[2048];
+    UBool firstForTicket;
+    UBool firstForWhere;
+
+    if(NO_KNOWN) return FALSE;
+    if(pattern==NULL) pattern="";
+
+    vsprintf(buf, pattern, ap);
+    knownList = udbg_knownIssue_open(knownList, ticket, gTestName, buf,
+                                     &firstForTicket, &firstForWhere);
+
+    if(firstForTicket || firstForWhere) {
+      log_info("(Known issue #%s) %s", ticket, buf);
+    } else {
+      log_verbose("(Known issue #%s) %s", ticket, buf);
+    }
+
+    return TRUE;
+}
+
+
 void T_CTEST_EXPORT2
 vlog_info(const char *prefix, const char *pattern, va_list ap)
 {
@@ -758,6 +800,13 @@ log_err(const char* pattern, ...)
     }
     va_start(ap, pattern);
     vlog_err(NULL, pattern, ap);
+}
+
+UBool T_CTEST_EXPORT2
+log_knownIssue(const char *ticket, const char *pattern, ...) {
+  va_list ap;
+  va_start(ap, pattern);
+  return vlog_knownIssue(ticket, pattern, ap);
 }
 
 void T_CTEST_EXPORT2
@@ -874,7 +923,6 @@ static void *U_CALLCONV ctest_libMalloc(const void *context, size_t size) {
     if (MINIMUM_MEMORY_SIZE_FAILURE <= size && size <= MAXIMUM_MEMORY_SIZE_FAILURE) {
         return NULL;
     }
-    umtx_atomic_inc(&ALLOCATION_COUNT);
     return malloc(size);
 }
 static void *U_CALLCONV ctest_libRealloc(const void *context, void *mem, size_t size) {
@@ -885,16 +933,9 @@ static void *U_CALLCONV ctest_libRealloc(const void *context, void *mem, size_t 
         /*free(mem);*/ /* Realloc doesn't free on failure. */
         return NULL;
     }
-    if (mem == NULL) {
-        /* New allocation. */
-        umtx_atomic_inc(&ALLOCATION_COUNT);
-    }
     return realloc(mem, size);
 }
 static void U_CALLCONV ctest_libFree(const void *context, void *mem) {
-    if (mem != NULL) {
-        umtx_atomic_dec(&ALLOCATION_COUNT);
-    }
     free(mem);
 }
 
@@ -936,6 +977,14 @@ initArgs( int argc, const char* const argv[], ArgHandlerPtr argHandler, void *co
         else if (strcmp( argv[i], "-e") ==0)
         {
             QUICK = 0;
+        }
+        else if (strcmp( argv[i], "-K") ==0)
+        {
+            NO_KNOWN = 1;
+        }
+        else if (strncmp( argv[i], "-E",2) ==0)
+        {
+	    SUMMARY_FILE=argv[i]+2;
         }
         else if (strcmp( argv[i], "-w") ==0)
         {
@@ -1130,6 +1179,7 @@ static void help ( const char *argv0 )
     printf("    -v  To turn ON verbosity(same as -verbose)\n");
     printf("    -x file.xml   Write junit format output to file.xml\n");
     printf("    -h  To print this message\n");
+    printf("    -K  to turn OFF suppressing known issues\n");
     printf("    -n  To turn OFF printing error messages\n");
     printf("    -w  Don't fail on data-loading errs, just warn. Useful if\n"
            "        user has reduced/changed the common set of ICU data \n");
@@ -1182,7 +1232,7 @@ setTestOption ( int32_t testOption, int32_t value) {
             REPEAT_TESTS = value;
             break;
         case ICU_TRACE_OPTION:
-            ICU_TRACE = value;
+            ICU_TRACE = (UTraceLevel)value;
             break;
         default :
             break;
@@ -1243,10 +1293,10 @@ ctest_xml_fini(void) {
 
 int32_t
 T_CTEST_EXPORT2
-ctest_xml_testcase(const char *classname, const char *name, const char *time, const char *failMsg) {
+ctest_xml_testcase(const char *classname, const char *name, const char *timeSeconds, const char *failMsg) {
   if(!XML_FILE) return 0;
 
-  fprintf(XML_FILE, "\t<testcase classname=\"%s:%s\" name=\"%s:%s\" time=\"%s\"", XML_PREFIX, classname, XML_PREFIX, name, time);
+  fprintf(XML_FILE, "\t<testcase classname=\"%s:%s\" name=\"%s:%s\" time=\"%s\"", XML_PREFIX, classname, XML_PREFIX, name, timeSeconds);
   if(failMsg) {
     fprintf(XML_FILE, ">\n\t\t<failure type=\"err\" message=\"%s\"/>\n\t</testcase>\n", failMsg);
   } else {

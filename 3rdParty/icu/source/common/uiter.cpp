@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2011, International Business Machines
+*   Copyright (C) 2002-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -600,12 +600,8 @@ utf8IteratorGetIndex(UCharIterator *iter, UCharIteratorOrigin origin) {
             i=index=0;
             limit=iter->start; /* count up to the UTF-8 index */
             while(i<limit) {
-                U8_NEXT(s, i, limit, c);
-                if(c<=0xffff) {
-                    ++index;
-                } else {
-                    index+=2;
-                }
+                U8_NEXT_OR_FFFD(s, i, limit, c);
+                index+=U16_LENGTH(c);
             }
 
             iter->start=i; /* just in case setState() did not get us to a code point boundary */
@@ -636,12 +632,8 @@ utf8IteratorGetIndex(UCharIterator *iter, UCharIteratorOrigin origin) {
 
                 /* count from the beginning to the current index */
                 while(i<limit) {
-                    U8_NEXT(s, i, limit, c);
-                    if(c<=0xffff) {
-                        ++length;
-                    } else {
-                        length+=2;
-                    }
+                    U8_NEXT_OR_FFFD(s, i, limit, c);
+                    length+=U16_LENGTH(c);
                 }
 
                 /* assume i==limit==iter->start, set the UTF-16 index */
@@ -658,12 +650,8 @@ utf8IteratorGetIndex(UCharIterator *iter, UCharIteratorOrigin origin) {
             /* count from the current index to the end */
             limit=iter->limit;
             while(i<limit) {
-                U8_NEXT(s, i, limit, c);
-                if(c<=0xffff) {
-                    ++length;
-                } else {
-                    length+=2;
-                }
+                U8_NEXT_OR_FFFD(s, i, limit, c);
+                length+=U16_LENGTH(c);
             }
             iter->length=length;
         }
@@ -787,8 +775,8 @@ utf8IteratorMove(UCharIterator *iter, int32_t delta, UCharIteratorOrigin origin)
             --delta;
         }
         while(delta>0 && i<limit) {
-            U8_NEXT(s, i, limit, c);
-            if(c<0xffff) {
+            U8_NEXT_OR_FFFD(s, i, limit, c);
+            if(c<=0xffff) {
                 ++pos;
                 --delta;
             } else if(delta>=2) {
@@ -817,8 +805,8 @@ utf8IteratorMove(UCharIterator *iter, int32_t delta, UCharIteratorOrigin origin)
             ++delta;
         }
         while(delta<0 && i>0) {
-            U8_PREV(s, 0, i, c);
-            if(c<0xffff) {
+            U8_PREV_OR_FFFD(s, 0, i, c);
+            if(c<=0xffff) {
                 --pos;
                 ++delta;
             } else if(delta<=-2) {
@@ -867,10 +855,8 @@ utf8IteratorCurrent(UCharIterator *iter) {
         UChar32 c;
         int32_t i=iter->start;
 
-        U8_NEXT(s, i, iter->limit, c);
-        if(c<0) {
-            return 0xfffd;
-        } else if(c<=0xffff) {
+        U8_NEXT_OR_FFFD(s, i, iter->limit, c);
+        if(c<=0xffff) {
             return c;
         } else {
             return U16_LEAD(c);
@@ -895,7 +881,7 @@ utf8IteratorNext(UCharIterator *iter) {
         const uint8_t *s=(const uint8_t *)iter->context;
         UChar32 c;
 
-        U8_NEXT(s, iter->start, iter->limit, c);
+        U8_NEXT_OR_FFFD(s, iter->start, iter->limit, c);
         if((index=iter->index)>=0) {
             iter->index=++index;
             if(iter->length<0 && iter->start==iter->limit) {
@@ -904,9 +890,7 @@ utf8IteratorNext(UCharIterator *iter) {
         } else if(iter->start==iter->limit && iter->length>=0) {
             iter->index= c<=0xffff ? iter->length : iter->length-1;
         }
-        if(c<0) {
-            return 0xfffd;
-        } else if(c<=0xffff) {
+        if(c<=0xffff) {
             return c;
         } else {
             iter->reservedField=c;
@@ -933,15 +917,13 @@ utf8IteratorPrevious(UCharIterator *iter) {
         const uint8_t *s=(const uint8_t *)iter->context;
         UChar32 c;
 
-        U8_PREV(s, 0, iter->start, c);
+        U8_PREV_OR_FFFD(s, 0, iter->start, c);
         if((index=iter->index)>0) {
             iter->index=index-1;
         } else if(iter->start<=1) {
             iter->index= c<=0xffff ? iter->start : iter->start+1;
         }
-        if(c<0) {
-            return 0xfffd;
-        } else if(c<=0xffff) {
+        if(c<=0xffff) {
             return c;
         } else {
             iter->start+=4; /* back to behind this supplementary code point for consistent state */
@@ -991,7 +973,7 @@ utf8IteratorSetState(UCharIterator *iter,
             } else {
                 /* verified index>=4 above */
                 UChar32 c;
-                U8_PREV((const uint8_t *)iter->context, 0, index, c);
+                U8_PREV_OR_FFFD((const uint8_t *)iter->context, 0, index, c);
                 if(c<=0xffff) {
                     *pErrorCode=U_INDEX_OUTOFBOUNDS_ERROR;
                 } else {

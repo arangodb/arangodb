@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2004-2007, International Business Machines
+*   Copyright (C) 2004-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  strtst.c
@@ -716,6 +716,7 @@ static void Test_u_vfprintf(const char *expectedResult, const char *format, ...)
 
     va_start(ap, format);
     count = u_vsprintf(uBuffer, format, ap);
+    (void)count;    /* Suppress set but not used warning */
     va_end(ap);
     u_uastrcpy(uBuffer2, expectedResult);
     if (u_strcmp(uBuffer, uBuffer2) != 0) {

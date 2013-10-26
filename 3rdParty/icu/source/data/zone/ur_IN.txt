@@ -1,0 +1,34 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ur_IN.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ur_IN.xml
+ */
+ur_IN{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "America:Kralendijk"{
+            ec{"کرالینڈیک"}
+        }
+        "America:Matamoros"{
+            ec{"میٹا موروس"}
+        }
+        "America:Metlakatla"{
+            ec{"میٹلاکاٹلا"}
+        }
+        "America:Sitka"{
+            ec{"Sitka"}
+        }
+        "Asia:Novokuznetsk"{
+            ec{"نوووکیوزنیسک"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"Ust-Nera"}
+        }
+    }
+}

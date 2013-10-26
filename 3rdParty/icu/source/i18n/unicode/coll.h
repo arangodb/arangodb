@@ -206,11 +206,11 @@ public:
      */
     enum ECollationStrength
     {
-        PRIMARY    = 0,
-        SECONDARY  = 1,
-        TERTIARY   = 2,
-        QUATERNARY = 3,
-        IDENTICAL  = 15
+        PRIMARY    = UCOL_PRIMARY,  // 0
+        SECONDARY  = UCOL_SECONDARY,  // 1
+        TERTIARY   = UCOL_TERTIARY,  // 2
+        QUATERNARY = UCOL_QUATERNARY,  // 3
+        IDENTICAL  = UCOL_IDENTICAL  // 15
     };
 
     /**
@@ -225,9 +225,9 @@ public:
      */
     enum EComparisonResult
     {
-        LESS = -1,
-        EQUAL = 0,
-        GREATER = 1
+        LESS = UCOL_LESS,  // -1
+        EQUAL = UCOL_EQUAL,  // 0
+        GREATER = UCOL_GREATER  // 1
     };
 
     // Collator public destructor -----------------------------------------
@@ -241,24 +241,37 @@ public:
     // Collator public methods --------------------------------------------
 
     /**
-     * Returns true if "other" is the same as "this"
+     * Returns TRUE if "other" is the same as "this".
+     *
+     * The base class implementation returns TRUE if "other" has the same type/class as "this":
+     * <code>typeid(*this) == typeid(other)</code>.
+     *
+     * Subclass implementations should do something like the following:
+     * <pre>
+     *   if (this == &other) { return TRUE; }
+     *   if (!Collator::operator==(other)) { return FALSE; }  // not the same class
+     *
+     *   const MyCollator &o = (const MyCollator&)other;
+     *   (compare this vs. o's subclass fields)
+     * </pre>
      * @param other Collator object to be compared
-     * @return true if other is the same as this.
+     * @return TRUE if other is the same as this.
      * @stable ICU 2.0
      */
     virtual UBool operator==(const Collator& other) const;
 
     /**
      * Returns true if "other" is not the same as "this".
+     * Calls ! operator==(const Collator&) const which works for all subclasses.
      * @param other Collator object to be compared
-     * @return true if other is not the same as this.
+     * @return TRUE if other is not the same as this.
      * @stable ICU 2.0
      */
     virtual UBool operator!=(const Collator& other) const;
 
     /**
-     * Makes a shallow copy of the current object.
-     * @return a copy of this object
+     * Makes a copy of this object.
+     * @return a copy of this object, owned by the caller
      * @stable ICU 2.0
      */
     virtual Collator* clone(void) const = 0;
@@ -404,6 +417,24 @@ public:
      * The comparison function compares the character data stored in two
      * different string arrays. Returns information about whether a string array
      * is less than, greater than or equal to another string array.
+     * <p>Example of use:
+     * <pre>
+     * .       UChar ABC[] = {0x41, 0x42, 0x43, 0};  // = "ABC"
+     * .       UChar abc[] = {0x61, 0x62, 0x63, 0};  // = "abc"
+     * .       UErrorCode status = U_ZERO_ERROR;
+     * .       Collator *myCollation =
+     * .                         Collator::createInstance(Locale::US, status);
+     * .       if (U_FAILURE(status)) return;
+     * .       myCollation->setStrength(Collator::PRIMARY);
+     * .       // result would be Collator::EQUAL ("abc" == "ABC")
+     * .       // (no primary difference between "abc" and "ABC")
+     * .       Collator::EComparisonResult result =
+     * .                             myCollation->compare(abc, 3, ABC, 3);
+     * .       myCollation->setStrength(Collator::TERTIARY);
+     * .       // result would be Collator::LESS ("abc" &lt;&lt;&lt; "ABC")
+     * .       // (with tertiary difference between "abc" and "ABC")
+     * .       result = myCollation->compare(abc, 3, ABC, 3);
+     * </pre>
      * @param source the source string array to be compared with.
      * @param sourceLength the length of the source string array.  If this value
      *        is equal to -1, the string array is null-terminated.
@@ -484,7 +515,7 @@ public:
      * @param status the error code status.
      * @return the collation key of the string based on the collation rules.
      * @see CollationKey#compare
-     * @deprecated ICU 2.8 Use getSortKey(...) instead
+     * @stable ICU 2.0
      */
     virtual CollationKey& getCollationKey(const UnicodeString&  source,
                                           CollationKey& key,
@@ -504,7 +535,7 @@ public:
      * @param status the error code status.
      * @return the collation key of the string based on the collation rules.
      * @see CollationKey#compare
-     * @deprecated ICU 2.8 Use getSortKey(...) instead
+     * @stable ICU 2.0
      */
     virtual CollationKey& getCollationKey(const UChar*source,
                                           int32_t sourceLength,
@@ -528,7 +559,7 @@ public:
      * @deprecated ICU 2.8 This API is under consideration for revision
      * in ICU 3.0.
      */
-    virtual const Locale getLocale(ULocDataLocaleType type, UErrorCode& status) const = 0;
+    virtual Locale getLocale(ULocDataLocaleType type, UErrorCode& status) const = 0;
 
     /**
      * Convenience method for comparing two strings based on the collation rules.
@@ -566,7 +597,7 @@ public:
     UBool equals(const UnicodeString& source, const UnicodeString& target) const;
 
     /**
-     * Determines the minimum strength that will be use in comparison or
+     * Determines the minimum strength that will be used in comparison or
      * transformation.
      * <p>E.g. with strength == SECONDARY, the tertiary difference is ignored
      * <p>E.g. with strength == PRIMARY, the secondary and tertiary difference
@@ -575,7 +606,7 @@ public:
      * @see Collator#setStrength
      * @deprecated ICU 2.6 Use getAttribute(UCOL_STRENGTH...) instead
      */
-    virtual ECollationStrength getStrength(void) const = 0;
+    virtual ECollationStrength getStrength(void) const;
 
     /**
      * Sets the minimum strength to be used in comparison or transformation.
@@ -595,7 +626,7 @@ public:
      * @param newStrength the new comparison level.
      * @deprecated ICU 2.6 Use setAttribute(UCOL_STRENGTH...) instead
      */
-    virtual void setStrength(ECollationStrength newStrength) = 0;
+    virtual void setStrength(ECollationStrength newStrength);
 
     /**
      * Retrieves the reordering codes for this collator.
@@ -612,9 +643,9 @@ public:
      * @see UColReorderCode
      * @stable ICU 4.8 
      */
-     virtual int32_t U_EXPORT2 getReorderCodes(int32_t *dest,
-                                    int32_t destCapacity,
-                                    UErrorCode& status) const;
+     virtual int32_t getReorderCodes(int32_t *dest,
+                                     int32_t destCapacity,
+                                     UErrorCode& status) const;
 
     /**
      * Sets the ordering of scripts for this collator.
@@ -630,9 +661,9 @@ public:
      * @see UColReorderCode
      * @stable ICU 4.8 
      */
-     virtual void U_EXPORT2 setReorderCodes(const int32_t* reorderCodes,
-                                int32_t reorderCodesLength,
-                                UErrorCode& status) ;
+     virtual void setReorderCodes(const int32_t* reorderCodes,
+                                  int32_t reorderCodesLength,
+                                  UErrorCode& status) ;
 
     /**
      * Retrieves the reorder codes that are grouped with the given reorder code. Some reorder
@@ -849,7 +880,7 @@ public:
      * @stable ICU 2.2
      */
     virtual UColAttributeValue getAttribute(UColAttribute attr,
-                                            UErrorCode &status) = 0;
+                                            UErrorCode &status) const = 0;
 
     /**
      * Sets the variable top to a collation element value of a string supplied.
@@ -872,7 +903,7 @@ public:
      * @return a 32 bit value containing the value of the variable top in upper 16 bits. Lower 16 bits are undefined
      * @stable ICU 2.0
      */
-    virtual uint32_t setVariableTop(const UnicodeString varTop, UErrorCode &status) = 0;
+    virtual uint32_t setVariableTop(const UnicodeString &varTop, UErrorCode &status) = 0;
 
     /**
      * Sets the variable top to a collation element value supplied. Variable top is set to the upper 16 bits.
@@ -881,7 +912,7 @@ public:
      * @param status error code (not changed by function)
      * @stable ICU 2.0
      */
-    virtual void setVariableTop(const uint32_t varTop, UErrorCode &status) = 0;
+    virtual void setVariableTop(uint32_t varTop, UErrorCode &status) = 0;
 
     /**
      * Gets the variable top value of a Collator.
@@ -902,13 +933,14 @@ public:
      */
     virtual UnicodeSet *getTailoredSet(UErrorCode &status) const;
 
-
     /**
-     * Thread safe cloning operation
-     * @return pointer to the new clone, user should remove it.
-     * @stable ICU 2.2
+     * Same as clone().
+     * The base class implementation simply calls clone().
+     * @return a copy of this object, owned by the caller
+     * @see clone()
+     * @deprecated ICU 50 no need to have two methods for cloning
      */
-    virtual Collator* safeClone(void) = 0;
+    virtual Collator* safeClone(void) const;
 
     /**
      * Get the sort key as an array of bytes from an UnicodeString.

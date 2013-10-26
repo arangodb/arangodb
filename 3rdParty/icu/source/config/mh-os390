@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 ## os/390, z/OS specific setup 
-## Copyright (c) 1999-2007, International Business Machines Corporation and
+## Copyright (c) 1999-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ###################################################################
@@ -42,9 +42,9 @@ IEEE390=1#M#
 endif
 
 ifeq (${IEEE390}, 1)
-ICU_IEEE          = -Wc,'float(ieee)'
+ICU_IEEE          =#M#
 else
-ICU_IEEE          = -DIEEE_754=0#M#
+ICU_IEEE          = -Wc,'FLOAT(IEEE)' -DIEEE_754=0#M#
 endif
 
 ## Additional flags when building libraries and with threads
@@ -66,8 +66,8 @@ SHAREDLIBCXXFLAGS	= -Wc,expo
 # The DLL option must be used by the callee and caller code when using shared libraries.
 # NOCSECT might be used as an optimization option.
 # -+ means accept any file extension as a C++ file. By default only .C is accepted.
-CFLAGS          += -Wc,'langlvl(extended),ros,rent,dll' $(ICU_IEEE)
-CXXFLAGS        += -Wc,'langlvl(extended),ros,dll' $(ICU_IEEE) -+
+CFLAGS          += -Wc,DLL,ROS,RENT,'ARCH(7)','LOC(POSIX)',NOANSIALIAS,'LANGLVL(EXTENDED)' $(ICU_IEEE)
+CXXFLAGS        += -Wc,DLL,ROS,RTTI,'ARCH(7)','LOC(POSIX)',NOANSIALIAS,'LANGLVL(EXTENDED)' $(ICU_IEEE) -+
 ARFLAGS         = -cr
 
 # _MSE_PROTOS usually interacts with _XOPEN_SOURCE. It affects some standard
@@ -81,7 +81,7 @@ ifeq (${OS390_XPLINK}, 1)
 # GOFF is is the strategic object module format for S/390. It is required for XPLINK.
 # NOTEMPINC could be used if ICU starts using templates.
 ICU_XPLINK_C      = -Wc,'xplink(backchain,storeargs),goff'
-ICU_XPLINK_CXX    = -Wc,'xplink(backchain,storeargs),goff'
+ICU_XPLINK_CXX    = -Wc,'xplink(backchain,storeargs),goff' -Wc,'NOTEMPINC'
 ICU_XPLINK_L      = -Wl,xplink
 #SH# fi
 endif
@@ -137,27 +137,32 @@ DEFS      += -DOS390_STUBDATA -DU_LIBICUDATA_NAME=\"$(ICUPREFIX)$(DATA_STUBNAME)
 endif
 
 ifeq ($(OS390BATCH),1)
+## IXM is used as a name prefix for XML Toolkit, default value
+ifeq ($(PDS_NAME_PREFIX),)
+PDS_NAME_PREFIX= IXMI
+endif
 ifeq ($(OS390_STUBDATA),1)
-BATCH_STUB_TARGET=	"//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}D1)'"
-BATCH_LIBICUDT=		"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}D1)'"
+BATCH_STUB_TARGET=	"//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}D1)'"
+BATCH_LIBICUDT=		"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}D1)'"
 else
-BATCH_STUB_TARGET=	"//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}DA)'"
-BATCH_LIBICUDT=		"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}DA)'"
+BATCH_STUB_TARGET=	"//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}DA)'"
+BATCH_LIBICUDT=		"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}DA)'"
 PKGDATA_DEFS        += -DU_LIBICUDATA_NAME=\"$(ICUPREFIX)$(DATA_STUBNAME)$(ICULIBSUFFIX)\"
 endif
 
-BATCH_COMMON_TARGET="//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}UC)'"
-BATCH_I18N_TARGET="//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}IN)'"
-BATCH_IO_TARGET="//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}IO)'"
-BATCH_LAYOUT_TARGET="//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}LE)'"
-BATCH_LAYOUTEX_TARGET="//'${LOADMOD}(IXMI${SO_TARGET_VERSION_MAJOR}LX)'"
+BATCH_COMMON_TARGET="//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}UC)'"
+BATCH_I18N_TARGET="//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}IN)'"
+BATCH_IO_TARGET="//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}IO)'"
+BATCH_LAYOUT_TARGET="//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}LE)'"
+BATCH_LAYOUTEX_TARGET="//'${LOADMOD}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}LX)'"
 
-BATCH_LIBICUUC=		"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}UC)'"
-BATCH_LIBICUI18N=	"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}IN)'"
-BATCH_LIBICUIO=		"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}IO)'"
-BATCH_LIBICULE=		"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}LE)'"
-BATCH_LIBICULX=		"//'${LOADEXP}(IXMI${SO_TARGET_VERSION_MAJOR}LX)'"
+BATCH_LIBICUUC=		"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}UC)'"
+BATCH_LIBICUI18N=	"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}IN)'"
+BATCH_LIBICUIO=		"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}IO)'"
+BATCH_LIBICULE=		"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}LE)'"
+BATCH_LIBICULX=		"//'${LOADEXP}(${PDS_NAME_PREFIX}${SO_TARGET_VERSION_MAJOR}LX)'"
 endif
+
 
 ## Link commands to link to ICU libs
 LIBICUDT=	$(top_builddir)/stubdata/$(LIBICU)data$(ICULIBSUFFIX)$(STUB_SUFFIX)$(SO_TARGET_VERSION).x

@@ -1,8 +1,8 @@
-﻿# SentenceBreakTest-6.1.0.txt
-# Date: 2011-08-23, 19:45:22 GMT [MD]
+﻿# SentenceBreakTest-6.3.0.txt
+# Date: 2012-12-20, 22:18:42 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 #
@@ -15,7 +15,7 @@
 #	× wherever there is not.
 #  <comment> the format can change, but currently it shows:
 #	- the sample character name
-#	- (x) the Sentence_Break property* for the sample character
+#	- (x) the Sentence_Break property value for the sample character
 #	- [x] the rule that determines whether there is a break or not
 #
 # These samples may be extended or changed in the future.
@@ -510,4 +510,12 @@
 ÷ 2060 × 0065 × 2060 × 0074 × 2060 × 0063 × 2060 × 002E × 2060 ÷ 5B83 × 2060 × 2060 ÷	#  ÷ [0.2] WORD JOINER (Format_FE) × [12.0] LATIN SMALL LETTER E (Lower) × [5.0] WORD JOINER (Format_FE) × [12.0] LATIN SMALL LETTER T (Lower) × [5.0] WORD JOINER (Format_FE) × [12.0] LATIN SMALL LETTER C (Lower) × [5.0] WORD JOINER (Format_FE) × [12.0] FULL STOP (ATerm) × [5.0] WORD JOINER (Format_FE) ÷ [11.0] CJK UNIFIED IDEOGRAPH-5B83 (OLetter) × [5.0] WORD JOINER (Format_FE) × [5.0] WORD JOINER (Format_FE) ÷ [0.3]
 ÷ 2060 × 0065 × 2060 × 0074 × 2060 × 0063 × 2060 × 002E × 2060 × 3002 × 2060 × 2060 ÷	#  ÷ [0.2] WORD JOINER (Format_FE) × [12.0] LATIN SMALL LETTER E (Lower) × [5.0] WORD JOINER (Format_FE) × [12.0] LATIN SMALL LETTER T (Lower) × [5.0] WORD JOINER (Format_FE) × [12.0] LATIN SMALL LETTER C (Lower) × [5.0] WORD JOINER (Format_FE) × [12.0] FULL STOP (ATerm) × [5.0] WORD JOINER (Format_FE) × [8.1] IDEOGRAPHIC FULL STOP (STerm) × [5.0] WORD JOINER (Format_FE) × [5.0] WORD JOINER (Format_FE) ÷ [0.3]
 ÷ 2060 × 5B57 × 2060 × 3002 × 2060 ÷ 5B83 × 2060 × 2060 ÷	#  ÷ [0.2] WORD JOINER (Format_FE) × [12.0] CJK UNIFIED IDEOGRAPH-5B57 (OLetter) × [5.0] WORD JOINER (Format_FE) × [12.0] IDEOGRAPHIC FULL STOP (STerm) × [5.0] WORD JOINER (Format_FE) ÷ [11.0] CJK UNIFIED IDEOGRAPH-5B83 (OLetter) × [5.0] WORD JOINER (Format_FE) × [5.0] WORD JOINER (Format_FE) ÷ [0.3]
-# Lines: 490
+÷ 1F1E6 × 1F1E7 × 1F1E8 ÷	#  ÷ [0.2] REGIONAL INDICATOR SYMBOL LETTER A (Other) × [12.0] REGIONAL INDICATOR SYMBOL LETTER B (Other) × [12.0] REGIONAL INDICATOR SYMBOL LETTER C (Other) ÷ [0.3]
+÷ 1F1E6 × 200D × 1F1E7 × 1F1E8 ÷	#  ÷ [0.2] REGIONAL INDICATOR SYMBOL LETTER A (Other) × [5.0] ZERO WIDTH JOINER (Extend_FE) × [12.0] REGIONAL INDICATOR SYMBOL LETTER B (Other) × [12.0] REGIONAL INDICATOR SYMBOL LETTER C (Other) ÷ [0.3]
+÷ 1F1E6 × 1F1E7 × 200D × 1F1E8 ÷	#  ÷ [0.2] REGIONAL INDICATOR SYMBOL LETTER A (Other) × [12.0] REGIONAL INDICATOR SYMBOL LETTER B (Other) × [5.0] ZERO WIDTH JOINER (Extend_FE) × [12.0] REGIONAL INDICATOR SYMBOL LETTER C (Other) ÷ [0.3]
+÷ 0020 × 200D × 0646 ÷	#  ÷ [0.2] SPACE (Sp) × [5.0] ZERO WIDTH JOINER (Extend_FE) × [12.0] ARABIC LETTER NOON (OLetter) ÷ [0.3]
+÷ 0646 × 200D × 0020 ÷	#  ÷ [0.2] ARABIC LETTER NOON (OLetter) × [5.0] ZERO WIDTH JOINER (Extend_FE) × [12.0] SPACE (Sp) ÷ [0.3]
+#
+# Lines: 495
+#
+# EOF

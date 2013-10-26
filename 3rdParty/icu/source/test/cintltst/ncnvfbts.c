@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ***************************************************************************/
 /*****************************************************************************
@@ -747,11 +747,5 @@ static void TestConvertFallBackWithBufferSizes(int32_t outsize, int32_t insize )
             log_err("ibm-1371(MBCS conversion with single-byte) -> u  did not match.,\n");
     }
 
-}
-#else
-void addTestConverterFallBack(TestNode** root)
-{
-  /* test nothing... */
- 
 }
 #endif

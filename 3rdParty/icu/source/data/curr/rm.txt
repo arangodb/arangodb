@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/rm.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/rm.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/rm.xml
+ * ICU <specials> source: <path>/common/main/rm.xml
  */
 rm{
     Currencies{
@@ -28,7 +28,7 @@ rm{
             "afghani",
         }
         ALK{
-            "ALK" /** ===  */,
+            "ALK",
             "lek albanais (1947–1961)",
         }
         ALL{
@@ -49,7 +49,7 @@ rm{
         }
         AOK{
             "AOK",
-            "kwanza angolan (1977-1990)",
+            "kwanza angolan (1977–1990)",
         }
         AON{
             "AON",
@@ -73,7 +73,7 @@ rm{
         }
         ARP{
             "ARP",
-            "peso argentin (1983-1985)",
+            "peso argentin (1983–1985)",
         }
         ARS{
             "ARS",
@@ -84,7 +84,7 @@ rm{
             "schilling austriac",
         }
         AUD{
-            "AU$",
+            "A$",
             "dollar australian",
         }
         AWG{
@@ -93,7 +93,7 @@ rm{
         }
         AZM{
             "AZM",
-            "manat aserbaidschanic (1993-2006)",
+            "manat aserbaidschanic (1993–2006)",
         }
         AZN{
             "AZN",
@@ -181,7 +181,7 @@ rm{
         }
         BRB{
             "BRB",
-            "cruzeiro novo brasilian (1967-1986)",
+            "cruzeiro novo brasilian (1967–1986)",
         }
         BRC{
             "BRC",
@@ -189,7 +189,7 @@ rm{
         }
         BRE{
             "BRE",
-            "cruzeiro brasilian (1990-1993)",
+            "cruzeiro brasilian (1990–1993)",
         }
         BRL{
             "R$",
@@ -225,7 +225,7 @@ rm{
         }
         BYB{
             "BYB",
-            "nov rubel bieloruss (1994-1999)",
+            "nov rubel bieloruss (1994–1999)",
         }
         BYR{
             "BYR",
@@ -401,7 +401,7 @@ rm{
         }
         GHC{
             "GHC",
-            "cedi ghanais (1979-2007)",
+            "cedi ghanais (1979–2007)",
         }
         GHS{
             "GHS",
@@ -484,7 +484,7 @@ rm{
             "glivra israeliana",
         }
         ILR{
-            "ILR" /** ===  */,
+            "ILR",
             "vegl sheqel israelian",
         }
         ILS{
@@ -504,7 +504,7 @@ rm{
             "rial iranais",
         }
         ISJ{
-            "ISJ" /** ===  */,
+            "ISJ",
             "veglia cruna islandaisa",
         }
         ISK{
@@ -692,7 +692,7 @@ rm{
             "rupia dal Mauritius",
         }
         MVP{
-            "MVP" /** ===  */,
+            "MVP",
             "rupia da las Maledivas",
         }
         MVR{
@@ -709,7 +709,7 @@ rm{
         }
         MXP{
             "MXP",
-            "peso d'argient mexican (1861-1992)",
+            "peso d'argient mexican (1861–1992)",
         }
         MXV{
             "MXV",
@@ -801,7 +801,7 @@ rm{
         }
         PLZ{
             "PLZ",
-            "zloty polac (1950-1995)",
+            "zloty polac (1950–1995)",
         }
         PTE{
             "PTE",
@@ -1005,7 +1005,7 @@ rm{
         }
         UYP{
             "UYP",
-            "nov peso da l'Uruguay (1975-1993)",
+            "nov peso da l'Uruguay (1975–1993)",
         }
         UYU{
             "UYU",
@@ -1017,11 +1017,11 @@ rm{
         }
         VEB{
             "VEB",
-            "bolivar venezuelan",
+            "bolivar venezuelan (1871–2008)",
         }
         VEF{
             "VEF",
-            "bolivar fuerte venezuelan",
+            "bolivar venezuelan",
         }
         VND{
             "₫",
@@ -1117,7 +1117,7 @@ rm{
         }
         YUD{
             "YUD",
-            "dinar jugoslav (1966-1990)",
+            "dinar jugoslav (1966–1990)",
         }
         YUM{
             "YUM",
@@ -1141,6 +1141,10 @@ rm{
         }
         ZMK{
             "ZMK",
+            "kwacha da la sambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "kwacha da la sambia",
         }
         ZRN{
@@ -1160,5 +1164,5 @@ rm{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

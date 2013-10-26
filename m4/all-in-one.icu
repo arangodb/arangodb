@@ -15,7 +15,7 @@ ICU_LDFLAGS=""
 ICU_LIBS=" -ldl -lm  ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm  "
 ICU_BUILT="${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a"
 
-TRI_ICU_VERSION="49.1.2"
+TRI_ICU_VERSION="52.1"
 
 dnl ----------------------------------------------------------------------------
 dnl add substitutions

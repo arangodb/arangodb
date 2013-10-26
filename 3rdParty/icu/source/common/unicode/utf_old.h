@@ -1,11 +1,11 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2011, International Business Machines
+*   Copyright (C) 2002-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
-*   file name:  utf.h
+*   file name:  utf_old.h
 *   encoding:   US-ASCII
 *   tab size:   8 (not used)
 *   indentation:4
@@ -298,7 +298,7 @@ typedef int32_t UTextOffset;
  * Code point comparisons need to be in uint32_t because UChar32
  * may be a signed type, and negative values must be recognized.
  *
- * @deprecated ICU 2.4. Use U8_LENGTH instead, see utf_old.h.
+ * @deprecated ICU 2.4. Use U8_LENGTH instead, see utf.h.
  */
 #if 1
 #   define UTF8_CHAR_LENGTH(c) \

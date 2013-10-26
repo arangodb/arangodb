@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2000-2011, International Business Machines
+*   Copyright (C) 2000-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -399,7 +399,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
             offset+=MBCS_ENTRY_TRANSITION_OFFSET(entry);
         } else {
             if(i<length) {
-                fprintf(stderr, "error: byte sequence too long by %d bytes, final state %hu: 0x%s (U+%x)\n",
+                fprintf(stderr, "error: byte sequence too long by %d bytes, final state %u: 0x%s (U+%x)\n",
                     (int)(length-i), state, printBytes(buffer, bytes, length), (int)c);
                 return FALSE;
             }
@@ -1049,6 +1049,11 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
             staticData->hasToUnicodeFallback=TRUE;
             isOK&=MBCSAddToUnicode(mbcsData, m->b.bytes, m->bLen, c, f);
             break;
+        case 4:
+            /* move "good one-way" mappings to the extension table */
+            m->f|=MBCS_FROM_U_EXT_FLAG;
+            m->moveFlag=UCM_MOVE_TO_EXT;
+            break;
         default:
             /* will not occur because the parser checked it already */
             fprintf(stderr, "error: illegal fallback indicator %d\n", f);
@@ -1064,7 +1069,7 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
 static UBool
 transformEUC(MBCSData *mbcsData) {
     uint8_t *p8;
-    uint32_t i, value, oldLength, old3Top, new3Top;
+    uint32_t i, value, oldLength, old3Top;
     uint8_t b;
 
     oldLength=mbcsData->ucm->states.maxCharLength;
@@ -1097,7 +1102,7 @@ transformEUC(MBCSData *mbcsData) {
 
     /* modify outputType and adjust stage3Top */
     mbcsData->ucm->states.outputType=(int8_t)(MBCS_OUTPUT_3_EUC+oldLength-3);
-    mbcsData->stage3Top=new3Top=(old3Top*(oldLength-1))/oldLength;
+    mbcsData->stage3Top=(old3Top*(oldLength-1))/oldLength;
 
     /*
      * EUC-encode all byte sequences;
@@ -1494,7 +1499,7 @@ MBCSWrite(NewConverter *cnvData, const UConverterStaticData *staticData,
         header.version[0]=4;
         headerLength=MBCS_HEADER_V4_LENGTH;  /* 8 */
     }
-    header.version[1]=3;
+    header.version[1]=4;
     /* header.version[2] set above for utf8Friendly data */
 
     header.options|=(uint32_t)headerLength;

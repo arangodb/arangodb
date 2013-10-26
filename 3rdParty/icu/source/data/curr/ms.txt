@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ms.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ms.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ms.xml
+ * ICU <specials> source: <path>/common/main/ms.xml
  */
 ms{
     Currencies{
@@ -40,7 +40,7 @@ ms{
             "Peso Argentina",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dolar Australia",
         }
         AWG{
@@ -137,7 +137,7 @@ ms{
         }
         CRC{
             "CRC",
-            "Colón Costa Rica",
+            "Colon Costa Rica",
         }
         CUC{
             "CUC",
@@ -174,10 +174,6 @@ ms{
         EGP{
             "EGP",
             "Paun Mesir",
-        }
-        ERN{
-            "ERN",
-            "Nakfa Eritrea",
         }
         ETB{
             "ETB",
@@ -269,7 +265,7 @@ ms{
         }
         ISK{
             "ISK",
-            "Króna Iceland",
+            "Krona Iceland",
         }
         JMD{
             "JMD",
@@ -403,6 +399,10 @@ ms{
             "RM",
             "Ringgit Malaysia",
         }
+        MZN{
+            "MZN",
+            "Metikal Mozambique",
+        }
         NAD{
             "NAD",
             "Dolar Namibia",
@@ -413,7 +413,7 @@ ms{
         }
         NIO{
             "NIO",
-            "Córdoba Nicaragua",
+            "Cordoba Nicaragua",
         }
         NOK{
             "NOK",
@@ -462,6 +462,10 @@ ms{
         QAR{
             "QAR",
             "Rial Qatar",
+        }
+        RON{
+            "RON",
+            "Leu Romania",
         }
         RSD{
             "RSD",
@@ -515,9 +519,13 @@ ms{
             "SRD",
             "Dolar Surinam",
         }
+        SSP{
+            "SSP",
+            "Paun Sudan selatan",
+        }
         STD{
             "STD",
-            "São Tomé dan Príncipe Dobra",
+            "Dobra Sao Tome dan Principe",
         }
         SYP{
             "SYP",
@@ -575,17 +583,13 @@ ms{
             "US$",
             "Dolar AS",
         }
-        UYU{
-            "UYU",
-            "Peso Uruguay",
-        }
         UZS{
             "UZS",
             "Som Uzbekistan",
         }
         VEF{
             "VEF",
-            "Bolívar Venezuela",
+            "Bolivar Venezuela",
         }
         VND{
             "₫",
@@ -629,8 +633,353 @@ ms{
         }
         ZMK{
             "ZMK",
+            "Kwacha Zambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Kwacha Zambia",
         }
     }
-    Version{"2.0.65.46"}
+    CurrencyPlurals{
+        AFN{
+            other{"Afghani Afghanistan"}
+        }
+        ANG{
+            other{"Guilder Antillean Netherland"}
+        }
+        AOA{
+            other{"Kwanza Angola"}
+        }
+        ARS{
+            other{"Peso Argentina"}
+        }
+        AUD{
+            other{"Dolar Australia"}
+        }
+        AWG{
+            other{"Florin Aruba"}
+        }
+        BBD{
+            other{"Dolar Barbados"}
+        }
+        BDT{
+            other{"Taka Bangladesh"}
+        }
+        BIF{
+            other{"Franc Burundia"}
+        }
+        BMD{
+            other{"Dolar Bermuda"}
+        }
+        BND{
+            other{"Dolar Brunei"}
+        }
+        BOB{
+            other{"Boliviano Bolivia"}
+        }
+        BRL{
+            other{"Real Brazil"}
+        }
+        BSD{
+            other{"Dolar Bahamas"}
+        }
+        BTN{
+            other{"Ngultrum Bhutan"}
+        }
+        BZD{
+            other{"Dolar Belize"}
+        }
+        CAD{
+            other{"Dolar Kanada"}
+        }
+        CDF{
+            other{"Franc Congo"}
+        }
+        CLP{
+            other{"Peso Chile"}
+        }
+        CNY{
+            other{"Yuan Cina"}
+        }
+        COP{
+            other{"Peso Colombia"}
+        }
+        CRC{
+            other{"Colon Costa Rica"}
+        }
+        CUC{
+            other{"Peso Boleh Tukar Cuba"}
+        }
+        CUP{
+            other{"Peso Cuba"}
+        }
+        CVE{
+            other{"Escudo Tanjung Verde"}
+        }
+        DJF{
+            other{"Franc Djibouti"}
+        }
+        DOP{
+            other{"Peso Dominican"}
+        }
+        DZD{
+            other{"Dinar Algeria"}
+        }
+        EGP{
+            other{"Paun Mesir"}
+        }
+        ERN{
+            other{"Nakfa Eritrea"}
+        }
+        ETB{
+            other{"Birr Ethiopia"}
+        }
+        FJD{
+            other{"Dolar Fiji"}
+        }
+        FKP{
+            other{"Paun Kepulauan Falkland"}
+        }
+        GHS{
+            other{"Cedi Ghana"}
+        }
+        GMD{
+            other{"Dalasi Gambia"}
+        }
+        GNF{
+            other{"Franc Guinea"}
+        }
+        GTQ{
+            other{"Quetzal Guatemala"}
+        }
+        GYD{
+            other{"Dolar Guyana"}
+        }
+        HKD{
+            other{"Dolar Hong Kong"}
+        }
+        HNL{
+            other{"Lempira Honduras"}
+        }
+        HTG{
+            other{"Gourde Haiti"}
+        }
+        IDR{
+            other{"Rupiah Indonesia"}
+        }
+        INR{
+            other{"Rupee India"}
+        }
+        IQD{
+            other{"Dinar Iraq"}
+        }
+        IRR{
+            other{"Rial Iran"}
+        }
+        ISK{
+            other{"Krona Iceland"}
+        }
+        JMD{
+            other{"Dolar Jamaica"}
+        }
+        JOD{
+            other{"Dinar Jordan"}
+        }
+        JPY{
+            other{"Yen Jepun"}
+        }
+        KES{
+            other{"Syiling Kenya"}
+        }
+        KGS{
+            other{"Som Kyrgystani"}
+        }
+        KHR{
+            other{"Riel Kemboja"}
+        }
+        KMF{
+            other{"Franc Comoria"}
+        }
+        KPW{
+            other{"Won Korea Utara"}
+        }
+        KRW{
+            other{"Won Korea Selatan"}
+        }
+        KWD{
+            other{"Dinar Kuwait"}
+        }
+        KYD{
+            other{"Dolar Kepulauan Cayman"}
+        }
+        KZT{
+            other{"Tenge Kazakhstan"}
+        }
+        LAK{
+            other{"Kip Laos"}
+        }
+        LBP{
+            other{"Paun Lubnan"}
+        }
+        LKR{
+            other{"Rupee Sri Lanka"}
+        }
+        LRD{
+            other{"Dolar Liberia"}
+        }
+        LYD{
+            other{"Dinar Libya"}
+        }
+        MAD{
+            other{"Dirham Maghribi"}
+        }
+        MMK{
+            other{"Kyat Myanma"}
+        }
+        MNT{
+            other{"Tugrik Mongolia"}
+        }
+        MOP{
+            other{"Pataca Macau"}
+        }
+        MRO{
+            other{"Ouguiya Mauritania"}
+        }
+        MVR{
+            other{"Rufiyaa Maldives"}
+        }
+        MXN{
+            other{"Peso Mexico"}
+        }
+        MYR{
+            other{"Ringgit Malaysia"}
+        }
+        NGN{
+            other{"Naira Nigeria"}
+        }
+        NIO{
+            other{"Cordoba Nicaragua"}
+        }
+        NPR{
+            other{"Rupee Nepal"}
+        }
+        NZD{
+            other{"Dolar New Zealand"}
+        }
+        OMR{
+            other{"Rial Oman"}
+        }
+        PAB{
+            other{"Balboa Panama"}
+        }
+        PEN{
+            other{"Nuevo Sol Peru"}
+        }
+        PGK{
+            other{"Kina Papua New Guinea"}
+        }
+        PHP{
+            other{"Peso Filipina"}
+        }
+        PKR{
+            other{"Rupee Pakistan"}
+        }
+        PYG{
+            other{"Guarani Paraguay"}
+        }
+        QAR{
+            other{"Rial Qatar"}
+        }
+        SAR{
+            other{"Riyal Saudi"}
+        }
+        SBD{
+            other{"Dolar Kepulauan Solomon"}
+        }
+        SDG{
+            other{"Paun Sudan"}
+        }
+        SGD{
+            other{"Dolar Singapura"}
+        }
+        SHP{
+            other{"Paun Saint Helena"}
+        }
+        SLL{
+            other{"Leone Sierra Leone"}
+        }
+        SRD{
+            other{"Dolar Surinam"}
+        }
+        SSP{
+            other{"Paun Sudan selatan"}
+        }
+        STD{
+            other{"Dobra Sao Tome dan Principe"}
+        }
+        SYP{
+            other{"Paun Syria"}
+        }
+        THB{
+            other{"Baht Thai"}
+        }
+        TJS{
+            other{"Somoni Tajikistan"}
+        }
+        TMT{
+            other{"Manat Turkmenistan"}
+        }
+        TND{
+            other{"Dinar Tunisia"}
+        }
+        TOP{
+            other{"Tongan Paʻanga"}
+        }
+        TRY{
+            other{"Lira Turki"}
+        }
+        TTD{
+            other{"Dolar Trinidad dan Tobago"}
+        }
+        TWD{
+            other{"Dolar Taiwan Baru"}
+        }
+        USD{
+            other{"Dolar AS"}
+        }
+        UYU{
+            other{"Peso Uruguay"}
+        }
+        UZS{
+            other{"Som Uzbekistan"}
+        }
+        VEF{
+            other{"Bolivar Venezuela"}
+        }
+        VND{
+            other{"Dong Vietnam"}
+        }
+        VUV{
+            other{"Vatu Vanuatu"}
+        }
+        WST{
+            other{"Tala Samoa"}
+        }
+        XCD{
+            other{"Dolar Caribbean Timur"}
+        }
+        XOF{
+            other{"Franc CFA BCEAO"}
+        }
+        XPF{
+            other{"Franc CFP"}
+        }
+        YER{
+            other{"Rial Yaman"}
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
 }
