@@ -49,7 +49,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
@@ -87,7 +87,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
@@ -127,7 +127,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
@@ -165,7 +165,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
@@ -205,7 +205,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE

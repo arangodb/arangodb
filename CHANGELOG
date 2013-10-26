@@ -1,5 +1,6 @@
 v1.4.0-XXXXX (2013-XX-XX)
 -------------------------
+
 * added function to manage indexes (web interface)
 
 * improved server shutdown time by signalling shutdown to applicationserver,

@@ -30,6 +30,9 @@ set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
+set(SCRIPT_ARANGO_DFDB  arango-dfdb)
+set(SCRIPT_FOXX_MANAGER foxx-manager)
+
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
@@ -88,6 +91,12 @@ file(TO_NATIVE_PATH "${SYSCONFDIR}" SYSCONFDIR)
 file(TO_NATIVE_PATH "${ARANGODB_CONF_DIR}" ARANGODB_CONF_DIR)
 
 add_definitions("-D_SYSCONFDIR_=\"${ARANGODB_CONF_DIR}\"")
+
+set(TRI_BINDIR      "${CMAKE_INSTALL_PREFIX}/bin")
+set(TRI_DATABASEDIR "${CMAKE_INSTALL_PREFIX}/var/lib/arangodb")
+set(TRI_LOGDIR      "${CMAKE_INSTALL_PREFIX}/var/log/arangodb")
+set(TRI_PKGDATADIR  "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+set(TRI_SBINDIR     "${CMAKE_INSTALL_PREFIX}/sbin")
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   COMMON INCLUDES
@@ -243,6 +252,14 @@ add_subdirectory(arangod)
 if (USE_MRUBY)
   add_subdirectory(arangoirb)
 endif ()
+
+add_subdirectory(utils)
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                    DOCUMENTATIONS
+## -----------------------------------------------------------------------------
+
+INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/ DESTINATION share/man)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             TESTS
