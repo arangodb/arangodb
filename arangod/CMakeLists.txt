@@ -180,8 +180,13 @@ install(
   DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 
-install(CODE "FILE(MAKE_DIRECTORY \${ENV}${TRI_DATABASEDIR})")
-install(CODE "FILE(MAKE_DIRECTORY \${ENV}${TRI_LOGDIR})")
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
+  DESTINATION var/log)
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
+  DESTINATION var/lib)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

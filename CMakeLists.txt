@@ -98,6 +98,9 @@ set(TRI_LOGDIR      "${CMAKE_INSTALL_PREFIX}/var/log/arangodb")
 set(TRI_PKGDATADIR  "${CMAKE_INSTALL_PREFIX}/share/arangodb")
 set(TRI_SBINDIR     "${CMAKE_INSTALL_PREFIX}/sbin")
 
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   COMMON INCLUDES
 ## -----------------------------------------------------------------------------
