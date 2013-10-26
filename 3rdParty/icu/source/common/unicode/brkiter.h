@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -182,6 +182,11 @@ public:
      * Utext that was passed as a parameter, but that the underlying text itself
      * must not be altered while being referenced by the break iterator.
      *
+     * All index positions returned by break iterator functions are
+     * native indices from the UText. For example, when breaking UTF-8
+     * encoded text, the break positions returned by next(), previous(), etc.
+     * will be UTF-8 string indices, not UTF-16 positions.
+     *
      * @param text The UText used to change the text.
      * @param status receives any error codes.
      * @stable ICU 3.4
@@ -208,19 +213,21 @@ public:
     };
 
     /**
-     * Return the index of the first character in the text being scanned.
+     * Set the iterator position to the index of the first character in the text being scanned.
+     * @return The index of the first character in the text being scanned.
      * @stable ICU 2.0
      */
     virtual int32_t first(void) = 0;
 
     /**
-     * Return the index immediately BEYOND the last character in the text being scanned.
+     * Set the iterator position to the index immediately BEYOND the last character in the text being scanned.
+     * @return The index immediately BEYOND the last character in the text being scanned.
      * @stable ICU 2.0
      */
     virtual int32_t last(void) = 0;
 
     /**
-     * Return the boundary preceding the current boundary.
+     * Set the iterator position to the boundary preceding the current boundary.
      * @return The character index of the previous text boundary or DONE if all
      * boundaries have been returned.
      * @stable ICU 2.0
@@ -228,7 +235,7 @@ public:
     virtual int32_t previous(void) = 0;
 
     /**
-     * Return the boundary following the current boundary.
+     * Advance the iterator to the boundary following the current boundary.
      * @return The character index of the next text boundary or DONE if all
      * boundaries have been returned.
      * @stable ICU 2.0
@@ -243,7 +250,7 @@ public:
     virtual int32_t current(void) const = 0;
 
     /**
-     * Return the first boundary following the specified offset.
+     * Advance the iterator to the first boundary following the specified offset.
      * The value returned is always greater than the offset or
      * the value BreakIterator.DONE
      * @param offset the offset to begin scanning.
@@ -253,7 +260,7 @@ public:
     virtual int32_t following(int32_t offset) = 0;
 
     /**
-     * Return the first boundary preceding the specified offset.
+     * Set the iterator position to the first boundary preceding the specified offset.
      * The value returned is always smaller than the offset or
      * the value BreakIterator.DONE
      * @param offset the offset to begin scanning.
@@ -273,15 +280,61 @@ public:
     virtual UBool isBoundary(int32_t offset) = 0;
 
     /**
-     * Return the nth boundary from the current boundary
-     * @param n which boundary to return.  A value of 0
+     * Set the iterator position to the nth boundary from the current boundary
+     * @param n the number of boundaries to move by.  A value of 0
      * does nothing.  Negative values move to previous boundaries
      * and positive values move to later boundaries.
-     * @return The index of the nth boundary from the current position, or
+     * @return The new iterator position, or
      * DONE if there are fewer than |n| boundaries in the specfied direction.
      * @stable ICU 2.0
      */
     virtual int32_t next(int32_t n) = 0;
+
+   /**
+     * For RuleBasedBreakIterators, return the status tag from the 
+     * break rule that determined the most recently
+     * returned break position.
+     * <p>
+     * For break iterator types that do not support a rule status,
+     * a default value of 0 is returned.
+     * <p>
+     * @return the status from the break rule that determined the most recently
+     *         returned break position.
+     * @see RuleBaseBreakIterator::getRuleStatus()
+     * @see UWordBreak
+     * @draft ICU 52
+     */
+    virtual int32_t getRuleStatus() const;
+
+   /**
+    * For RuleBasedBreakIterators, get the status (tag) values from the break rule(s) 
+    * that determined the most recently returned break position.
+    * <p>
+    * For break iterator types that do not support rule status,
+    * no values are returned.
+    * <p>
+    * The returned status value(s) are stored into an array provided by the caller.
+    * The values are stored in sorted (ascending) order.
+    * If the capacity of the output array is insufficient to hold the data,
+    *  the output will be truncated to the available length, and a
+    *  U_BUFFER_OVERFLOW_ERROR will be signaled.
+    * <p>
+    * @see RuleBaseBreakIterator::getRuleStatusVec
+    *
+    * @param fillInVec an array to be filled in with the status values.
+    * @param capacity  the length of the supplied vector.  A length of zero causes
+    *                  the function to return the number of status values, in the
+    *                  normal way, without attemtping to store any values.
+    * @param status    receives error codes.
+    * @return          The number of rule status values from rules that determined
+    *                  the most recent boundary returned by the break iterator.
+    *                  In the event of a U_BUFFER_OVERFLOW_ERROR, the return value
+    *                  is the total number of status values that were available,
+    *                  not the reduced number that were actually returned.
+    * @see getRuleStatus
+    * @draft ICU 52
+    */
+    virtual int32_t getRuleStatusVec(int32_t *fillInVec, int32_t capacity, UErrorCode &status);
 
     /**
      * Create BreakIterator for word-breaks using the given locale.
@@ -433,6 +486,8 @@ public:
                                          UnicodeString& name);
 
     /**
+     * Deprecated functionality. Use clone() instead.
+     *
      * Thread safe client-buffer-based cloning operation
      *    Do NOT call delete on a safeclone, since 'new' is not used to create it.
      * @param stackBuffer user allocated space for the new clone. If NULL new memory will be allocated.
@@ -447,19 +502,23 @@ public:
      *  necessary.
      * @return pointer to the new clone
      *
-     * @stable ICU 2.0
+     * @deprecated ICU 52. Use clone() instead.
      */
     virtual BreakIterator *  createBufferClone(void *stackBuffer,
                                                int32_t &BufferSize,
                                                UErrorCode &status) = 0;
 
+#ifndef U_HIDE_DEPRECATED_API
+
     /**
      *   Determine whether the BreakIterator was created in user memory by
      *   createBufferClone(), and thus should not be deleted.  Such objects
      *   must be closed by an explicit call to the destructor (not delete).
-     *  @stable ICU 2.0
+     * @deprecated ICU 52. Always delete the BreakIterator.
      */
     inline UBool isBufferClone(void);
+
+#endif /* U_HIDE_DEPRECATED_API */
 
 #if !UCONFIG_NO_SERVICE
     /**
@@ -539,7 +598,7 @@ public:
      * @param status     Receives errors detected by this function.
      * @return           *this
      *
-     * @draft ICU 49
+     * @stable ICU 49
      */
     virtual BreakIterator &refreshInputText(UText *input, UErrorCode &status) = 0;
 
@@ -557,9 +616,7 @@ protected:
     /** @internal */
     BreakIterator();
     /** @internal */
-    UBool fBufferClone;
-    /** @internal */
-    BreakIterator (const BreakIterator &other) : UObject(other), fBufferClone(FALSE) {}
+    BreakIterator (const BreakIterator &other) : UObject(other) {}
 
 private:
 
@@ -574,10 +631,14 @@ private:
     BreakIterator& operator=(const BreakIterator&);
 };
 
+#ifndef U_HIDE_DEPRECATED_API
+
 inline UBool BreakIterator::isBufferClone()
 {
-    return fBufferClone;
+    return FALSE;
 }
+
+#endif /* U_HIDE_DEPRECATED_API */
 
 U_NAMESPACE_END
 
@@ -585,4 +646,3 @@ U_NAMESPACE_END
 
 #endif // _BRKITER
 //eof
-

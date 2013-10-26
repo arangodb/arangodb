@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2011, International Business Machines
+*   Copyright (C) 2010-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  stringtriebuilder.cpp
@@ -12,7 +12,7 @@
 *   created by: Markus W. Scherer
 */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 #include "unicode/utypes.h"
 #include "unicode/stringtriebuilder.h"
 #include "uassert.h"
@@ -381,8 +381,6 @@ StringTrieBuilder::equalNodes(const void *left, const void *right) {
     return *(const Node *)left==*(const Node *)right;
 }
 
-UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(StringTrieBuilder)
-
 UBool
 StringTrieBuilder::Node::operator==(const Node &other) const {
     return this==&other || (typeid(*this)==typeid(other) && hash==other.hash);
@@ -395,8 +393,6 @@ StringTrieBuilder::Node::markRightEdgesFirst(int32_t edgeNumber) {
     }
     return edgeNumber;
 }
-
-UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(StringTrieBuilder::Node)
 
 UBool
 StringTrieBuilder::FinalValueNode::operator==(const Node &other) const {

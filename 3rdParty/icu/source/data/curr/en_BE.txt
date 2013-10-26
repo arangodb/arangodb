@@ -1,25 +1,18 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/en_BE.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_BE.xml
 // *
 // ***************************************************************************
 en_BE{
+    %%Parent{"en_GB"}
     Currencies{
-        BEF{
-            "BEF",
-            "Belgian Franc",
-            {
-                /**
-                 * Duplicated from NumberPatterns resource
-                 */
-                "#,##0.00 ¤",
-                ",",
-                ".",
-            }
+        USD{
+            "US$",
+            "US Dollar",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

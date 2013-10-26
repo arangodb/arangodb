@@ -1,0 +1,261 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_MX.xml
+// *
+// ***************************************************************************
+es_MX{
+    %%Parent{"es_419"}
+    Keys{
+        calendar{"Calendario"}
+        collation{"Intercalación"}
+        currency{"Moneda"}
+        numbers{"Números"}
+    }
+    Languages{
+        ab{"abjasio"}
+        af{"afrikáans"}
+        am{"amárico"}
+        ar{"árabe"}
+        ar_001{"árabe estándar moderno"}
+        as{"asamés"}
+        az{"azerbaiyano"}
+        be{"bielorruso"}
+        bg{"búlgaro"}
+        bn{"bengalí"}
+        bo{"tibetano"}
+        bs{"bosnio"}
+        ca{"catalán"}
+        cs{"checo"}
+        cy{"galés"}
+        da{"danés"}
+        de{"alemán"}
+        de_AT{"alemán austríaco"}
+        de_CH{"alto alemán suizo"}
+        el{"griego"}
+        en{"inglés"}
+        en_AU{"inglés australiano"}
+        en_CA{"inglés canadiense"}
+        en_GB{"inglés británico"}
+        en_US{"inglés estadounidense"}
+        eo{"esperanto"}
+        es{"español"}
+        es_419{"español latinoamericano"}
+        es_ES{"español de España"}
+        es_MX{"español de México"}
+        et{"estonio"}
+        eu{"vasco"}
+        fa{"persa"}
+        fi{"finés"}
+        fil{"filipino"}
+        fj{"fiyiano"}
+        fo{"feroés"}
+        fr{"francés"}
+        fr_CA{"francés canadiense"}
+        fr_CH{"francés suizo"}
+        fy{"frisón occidental"}
+        ga{"irlandés"}
+        gl{"gallego"}
+        gn{"guaraní"}
+        gsw{"alemán suizo"}
+        gu{"gujarati"}
+        ha{"hausa"}
+        haw{"hawaiano"}
+        he{"hebreo"}
+        hi{"hindi"}
+        hr{"croata"}
+        ht{"haitiano"}
+        hu{"húngaro"}
+        hy{"armenio"}
+        id{"indonesio"}
+        ig{"igbo"}
+        is{"islandés"}
+        it{"italiano"}
+        ja{"japonés"}
+        jgo{"ngomba"}
+        jv{"javanés"}
+        ka{"georgiano"}
+        kk{"kazajo"}
+        km{"jemer"}
+        kn{"canarés"}
+        ko{"coreano"}
+        ks{"cachemiro"}
+        ku{"kurdo"}
+        ky{"kirguís"}
+        la{"latín"}
+        lb{"luxemburgués"}
+        lo{"laosiano"}
+        lt{"lituano"}
+        lv{"letón"}
+        mg{"malgache"}
+        mgo{"meta'"}
+        mi{"maorí"}
+        mk{"macedonio"}
+        ml{"malayalam"}
+        mr{"maratí"}
+        ms{"malayo"}
+        mt{"maltés"}
+        my{"birmano"}
+        nb{"bokmal noruego"}
+        ne{"nepalí"}
+        ng{"ndonga"}
+        nl{"neerlandés"}
+        nl_BE{"flamenco"}
+        nn{"nynorsk noruego"}
+        or{"oriya"}
+        pa{"panyabí"}
+        pl{"polaco"}
+        ps{"pastún"}
+        pt{"portugués"}
+        pt_BR{"portugués de Brasil"}
+        pt_PT{"portugués de Portugal"}
+        qu{"quechua"}
+        rm{"romanche"}
+        ro{"rumano"}
+        ru{"ruso"}
+        sa{"sánscrito"}
+        sd{"sindhi"}
+        si{"cingalés"}
+        sk{"eslovaco"}
+        sl{"esloveno"}
+        so{"somalí"}
+        sq{"albanés"}
+        sr{"serbio"}
+        su{"sondanés"}
+        sv{"sueco"}
+        sw{"swahili"}
+        ta{"tamil"}
+        te{"telugu"}
+        tg{"tayiko"}
+        th{"tailandés"}
+        ti{"tigriña"}
+        tk{"turcomano"}
+        to{"tongano"}
+        tr{"turco"}
+        tt{"tártaro"}
+        ug{"uigur"}
+        uk{"ucraniano"}
+        und{"lengua desconocida"}
+        ur{"urdu"}
+        uz{"uzbeko"}
+        vi{"vietnamita"}
+        wo{"wólof"}
+        xh{"xhosa"}
+        yo{"yoruba"}
+        zgh{"tamazight estándar marroquí"}
+        zh{"chino"}
+        zh_Hans{"chino simplificado"}
+        zh_Hant{"chino tradicional"}
+        zu{"zulú"}
+        zxx{"sin contenido lingüístico"}
+    }
+    LanguagesShort{
+        az{"azerí"}
+    }
+    Scripts{
+        Arab{"árabe"}
+        Armn{"armenio"}
+        Beng{"bengalí"}
+        Bopo{"bopomofo"}
+        Brai{"braille"}
+        Cyrl{"cirílico"}
+        Deva{"devanagari"}
+        Ethi{"etiópico"}
+        Geor{"georgiano"}
+        Grek{"griego"}
+        Gujr{"gujarati"}
+        Guru{"gurmuji"}
+        Hang{"hangul"}
+        Hani{"han"}
+        Hans{"han simplificado"}
+        Hant{"han tradicional"}
+        Hebr{"hebreo"}
+        Hira{"hiragana"}
+        Jpan{"japonés"}
+        Kana{"katakana"}
+        Khmr{"jemer"}
+        Knda{"canarés"}
+        Kore{"coreano"}
+        Laoo{"lao"}
+        Latn{"latín"}
+        Mlym{"malayalam"}
+        Mong{"mongol"}
+        Mymr{"birmano"}
+        Orya{"oriya"}
+        Sinh{"cingalés"}
+        Taml{"tamil"}
+        Telu{"telugú"}
+        Thaa{"thaana"}
+        Thai{"tailandés"}
+        Tibt{"tibetano"}
+        Zsym{"símbolos"}
+        Zxxx{"no escrito"}
+        Zyyy{"común"}
+        Zzzz{"alfabeto desconocido"}
+    }
+    Scripts%stand-alone{
+        Hans{"han simplificado"}
+        Hant{"han tradicional"}
+    }
+    Types{
+        calendar{
+            gregorian{"Calendario gregoriano"}
+        }
+        collation{
+            ducet{"Orden de clasificación de Unicode predeterminado"}
+            search{"Búsqueda generalizada"}
+            standard{"Orden estándar"}
+            traditional{"Orden tradicional"}
+        }
+        numbers{
+            arab{"Dígitos en arábigo-índico"}
+            arabext{"Dígitos en árabigo-índico extendido"}
+            armn{"Números en armenio"}
+            armnlow{"Números en armenio en minúscula"}
+            beng{"Dígitos en bengalí"}
+            deva{"Dígitos en devanagari"}
+            ethi{"Números en etíope"}
+            fullwide{"Dígitos en formato completo"}
+            geor{"Números en georgiano"}
+            grek{"Números en griego"}
+            greklow{"Números en griego en minúscula"}
+            gujr{"Dígitos en guyaratí"}
+            guru{"Dígitos en gurmuji"}
+            hanidec{"Numeros decimales en chino"}
+            hans{"Números en chino simplificado"}
+            hansfin{"Números financieros en chino simplificado"}
+            hant{"Números en chino tradicional"}
+            hantfin{"Números financieros en chino tradicional"}
+            hebr{"Números en hebreo"}
+            jpan{"Números en japonés"}
+            jpanfin{"Números financieros en japonés"}
+            khmr{"Dígitos en jemer"}
+            knda{"Dígitos en canarés"}
+            laoo{"Dígitos en lao"}
+            latn{"Dígitos occidentales"}
+            mlym{"Dígitos en malabar"}
+            mymr{"Dígitos en birmano"}
+            orya{"Dígitos en oriya"}
+            roman{"Números romanos"}
+            romanlow{"Números romanos en minúscula"}
+            taml{"Números en tamil"}
+            tamldec{"Dígitos en tamil"}
+            telu{"Dígitos en telugú"}
+            thai{"Dígitos en tailandés"}
+            tibt{"Dígitos en tibetano"}
+        }
+    }
+    Version{"2.0.92.87"}
+    codePatterns{
+        language{"Idioma: {0}"}
+        script{"Dialecto: {0}"}
+        territory{"Región: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

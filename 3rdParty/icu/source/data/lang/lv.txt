@@ -1,20 +1,31 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/lv.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lv.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/lv.xml
+ * ICU <specials> source: <path>/common/main/lv.xml
  */
 lv{
     Keys{
-        calendar{"kalendārs"}
-        collation{"salīdzināšana"}
-        currency{"valūta"}
+        calendar{"Kalendārs"}
+        colAlternate{"Kārtošana, ignorējot simbolus"}
+        colBackwards{"Diakritisko zīmju kārtošana apgrieztā secībā"}
+        colCaseFirst{"Lielo/mazo burtu kārtošana"}
+        colCaseLevel{"Reģistrjutīgo rakstzīmju kārtošana"}
+        colHiraganaQuaternary{"Kana rakstzīmju kārtošana"}
+        colNormalization{"Normalizētā kārtošana"}
+        colNumeric{"Kārtošana skaitliskā secībā"}
+        colStrength{"Kārtošanas pakāpe"}
+        collation{"Kārtošanas secība"}
+        currency{"Valūta"}
         numbers{"Cipari"}
+        timezone{"Laika josla"}
+        va{"Lokalizācijas variants"}
+        variableTop{"Kārtot kā simbolus"}
         x{"Personīgai lietošanai"}
     }
     Languages{
@@ -28,6 +39,7 @@ lv{
         af{"afrikandu"}
         afa{"afroaziātu valodas"}
         afh{"afrihili"}
+        agq{"aghemu"}
         ain{"ainu"}
         ak{"akanu"}
         akk{"akadiešu"}
@@ -40,12 +52,14 @@ lv{
         anp{"angika"}
         apa{"apaču valodas"}
         ar{"arābu"}
+        ar_001{"mūsdienu standarta arābu"}
         arc{"aramiešu"}
         arn{"araukāņu"}
         arp{"arapahu"}
         art{"mākslīgās valodas"}
         arw{"aravaku"}
         as{"asamiešu"}
+        asa{"asu"}
         ast{"astūriešu"}
         ath{"atapasku valodas"}
         aus{"austrāliešu valodas"}
@@ -60,16 +74,21 @@ lv{
         ban{"baliešu"}
         bas{"basu"}
         bat{"baltu valodas"}
+        bax{"bamumu"}
+        bbj{"gomalu"}
         be{"baltkrievu"}
         bej{"bedžu"}
         bem{"bembu"}
         ber{"berberu"}
+        bez{"bena"}
+        bfd{"bafutu"}
         bg{"bulgāru"}
         bh{"biharu"}
         bho{"bhodžpūru"}
         bi{"bišlamā"}
         bik{"bikolu"}
         bin{"binu"}
+        bkm{"komu"}
         bla{"siksiku"}
         bm{"bambaru"}
         bn{"bengāļu"}
@@ -77,19 +96,26 @@ lv{
         bo{"tibetiešu"}
         br{"bretoņu"}
         bra{"bradžiešu"}
+        brx{"bodo"}
         bs{"bosniešu"}
+        bss{"nkosi"}
         btk{"bataku"}
         bua{"burjatu"}
         bug{"bugu"}
+        bum{"bulu"}
         byn{"bilinu"}
+        byv{"medumbu"}
         ca{"katalāņu"}
         cad{"kadu"}
         cai{"Centrālamerikas indiāņu valodas"}
         car{"karību"}
         cau{"kaukāziešu valodas"}
+        cay{"kajuga"}
+        cch{"atsamu"}
         ce{"čečenu"}
         ceb{"sebuāņu"}
         cel{"ķeltu valoda"}
+        cgg{"kiga"}
         ch{"čamorru"}
         chb{"čibču"}
         chg{"džagatajs"}
@@ -98,8 +124,9 @@ lv{
         chn{"činuku žargons"}
         cho{"čoktavu"}
         chp{"čipevaianu"}
-        chr{"irokēzu"}
+        chr{"čiroku"}
         chy{"šejenu"}
+        ckb{"kurdu (Sorani)"}
         cmc{"čamiešu valodas"}
         co{"korsikāņu"}
         cop{"koptu"}
@@ -118,6 +145,7 @@ lv{
         da{"dāņu"}
         dak{"dakotu"}
         dar{"dargu"}
+        dav{"taitu"}
         day{"dajaku"}
         de{"vācu"}
         de_AT{"Austrijas vācu"}
@@ -126,14 +154,18 @@ lv{
         den{"sleivu"}
         dgr{"dogribu"}
         din{"dinku"}
+        dje{"zarmu"}
         doi{"dogru"}
         dra{"dravīdu valodas"}
         dsb{"lejassorbu"}
         dua{"dualu"}
         dum{"vidusholandiešu"}
         dv{"maldīviešu"}
+        dyo{"diola-fonjī"}
         dyu{"diūlu"}
         dz{"dzongke"}
+        dzg{"dazu"}
+        ebu{"kjembu"}
         ee{"evu"}
         efi{"efiku"}
         egy{"ēģiptiešu"}
@@ -149,7 +181,8 @@ lv{
         eo{"esperanto"}
         es{"spāņu"}
         es_419{"Latīņamerikas spāņu"}
-        es_ES{"ibēriešu spāņu"}
+        es_ES{"Eiropas spāņu"}
+        es_MX{"Meksikas spāņu"}
         et{"igauņu"}
         eu{"basku"}
         ewo{"evondu"}
@@ -191,6 +224,7 @@ lv{
         grc{"sengrieķu"}
         gsw{"Šveices vācu"}
         gu{"gudžaratu"}
+        guz{"gusii"}
         gv{"meniešu"}
         gwi{"kučinu"}
         ha{"hausu"}
@@ -212,6 +246,7 @@ lv{
         hz{"hereru"}
         ia{"interlingva"}
         iba{"ibanu"}
+        ibb{"ibibio"}
         id{"indonēziešu"}
         ie{"interlingve"}
         ig{"igbo"}
@@ -230,6 +265,8 @@ lv{
         iu{"inuītu"}
         ja{"japāņu"}
         jbo{"ložbans"}
+        jgo{"jgo"}
+        jmc{"mačamu"}
         jpr{"jūdpersiešu"}
         jrb{"jūdarābu"}
         jv{"javiešu"}
@@ -237,19 +274,27 @@ lv{
         kaa{"karakalpaku"}
         kab{"kabilu"}
         kac{"kačinu"}
+        kaj{"kadži"}
         kam{"kambu"}
         kar{"karenu"}
         kaw{"kāvi"}
         kbd{"kabardiešu"}
+        kbl{"kaņembu"}
+        kcg{"katabu"}
+        kde{"makonde"}
+        kea{"kaboverdiešu"}
         kfo{"koru"}
         kg{"kongu"}
         kha{"khasu"}
         khi{"hosjanu valodas"}
         kho{"hotaniešu"}
+        khq{"koiračiinī"}
         ki{"kikuju"}
         kj{"kvaņamu"}
         kk{"kazahu"}
+        kkj{"kako"}
         kl{"grenlandiešu"}
+        kln{"kalendžīnu"}
         km{"khmeru"}
         kmb{"kimbundu"}
         kn{"kannadu"}
@@ -263,6 +308,9 @@ lv{
         kro{"krū"}
         kru{"kuruhu"}
         ks{"kašmiriešu"}
+        ksb{"šambalu"}
+        ksf{"bafiju"}
+        ksh{"Ķelnes vācu"}
         ku{"kurdu"}
         kum{"kumiku"}
         kut{"kutenaju"}
@@ -271,6 +319,7 @@ lv{
         ky{"kirgīzu"}
         la{"latīņu"}
         lad{"ladino"}
+        lag{"langi"}
         lah{"landu"}
         lam{"lambu"}
         lb{"luksemburgiešu"}
@@ -288,19 +337,26 @@ lv{
         lun{"lundu"}
         luo{"luo"}
         lus{"lušeju"}
+        luy{"luhju"}
         lv{"latviešu"}
         mad{"maduriešu"}
+        maf{"mafu"}
         mag{"magahiešu"}
         mai{"maithili"}
         mak{"makasaru"}
         man{"mandingu"}
         map{"austronēziešu valoda"}
         mas{"masaju"}
+        mde{"mabu"}
         mdf{"mokšu"}
         mdr{"mandaru"}
         men{"mendu"}
+        mer{"meru"}
+        mfe{"Maurīcijas kreolu"}
         mg{"malagasu"}
         mga{"vidusīru"}
+        mgh{"makua-meetto"}
+        mgo{"mgo"}
         mh{"māršaliešu"}
         mi{"maoru"}
         mic{"mikmaku"}
@@ -319,18 +375,21 @@ lv{
         mr{"maratu"}
         ms{"malajiešu"}
         mt{"maltiešu"}
+        mua{"mundangu"}
         mul{"vairākas valodas"}
         mun{"mundu valodas"}
         mus{"krīku"}
         mwl{"mirandiešu"}
         mwr{"marvaru"}
         my{"birmiešu"}
+        mye{"mjenu"}
         myn{"maiju valodas"}
         myv{"erzju"}
         na{"nauruiešu"}
         nah{"navatlu"}
         nai{"Ziemeļamerikas indiāņu valodas"}
         nap{"neapoliešu"}
+        naq{"nama"}
         nb{"norvēģu bukmols"}
         nd{"ziemeļndebelu"}
         nds{"lejasvācu"}
@@ -342,7 +401,9 @@ lv{
         niu{"niuāņu"}
         nl{"holandiešu"}
         nl_BE{"flāmu"}
+        nmg{"kvasio"}
         nn{"jaunnorvēģu"}
+        nnh{"ngjembūnu"}
         no{"norvēģu"}
         nog{"nogaju"}
         non{"sennorvēģu"}
@@ -350,6 +411,7 @@ lv{
         nr{"dienvidndebelu"}
         nso{"ziemeļsotu"}
         nub{"nūbiešu valodas"}
+        nus{"nueru"}
         nv{"navahu"}
         nwc{"klasiskā nevaru"}
         ny{"čičeva"}
@@ -383,7 +445,7 @@ lv{
         ps{"puštu"}
         pt{"portugāļu"}
         pt_BR{"Brazīlijas portugāļu"}
-        pt_PT{"ibēriešu portugāļu"}
+        pt_PT{"Eiropas portugāļu"}
         qu{"kečvu"}
         raj{"radžastāņu"}
         rap{"rapanuju"}
@@ -392,31 +454,41 @@ lv{
         rn{"rundu"}
         ro{"rumāņu"}
         roa{"romāņu valoda"}
+        rof{"rombo"}
         rom{"čigānu"}
         root{"sakne"}
         ru{"krievu"}
         rup{"aromūnu"}
         rw{"kiņaruanda"}
+        rwk{"ruanda"}
         sa{"sanskrits"}
         sad{"sandavu"}
         sah{"jakutu"}
         sai{"Dienvidamerikas indiāņu"}
         sal{"sališu valodas"}
         sam{"samārijas aramiešu"}
+        saq{"samburu"}
         sas{"sasaku"}
         sat{"santalu"}
+        sba{"ngambeju"}
+        sbp{"sangu"}
         sc{"sardīniešu"}
         scn{"sicīliešu"}
         sco{"skotu"}
         sd{"sindhu"}
         se{"ziemeļsāmu"}
+        see{"seneku"}
+        seh{"senu"}
         sel{"selkupu"}
         sem{"semītu valodas"}
-        sg{"sangu"}
+        ses{"koiraboro senni"}
+        sg{"sango"}
         sga{"senīru"}
         sgn{"zīmju valodas"}
         sh{"serbu-horvātu"}
+        shi{"šilhu"}
         shn{"šanu"}
+        shu{"Čadas arābu"}
         si{"singāļu"}
         sid{"sidamu"}
         sio{"siū valodas"}
@@ -441,6 +513,7 @@ lv{
         srr{"serēru"}
         ss{"svatu"}
         ssa{"nīlas-sahāras valodas"}
+        ssy{"saho"}
         st{"dienvidsotu"}
         su{"sundaniešu"}
         suk{"sukumu"}
@@ -449,12 +522,14 @@ lv{
         sv{"zviedru"}
         sw{"svahili"}
         swb{"komoru"}
+        swc{"Kongo svahili"}
         syc{"klasiskā sīriešu"}
         syr{"sīriešu"}
         ta{"tamilu"}
         tai{"taju valodas"}
         te{"telugu"}
         tem{"temnu"}
+        teo{"teso"}
         ter{"tereno"}
         tet{"tetumu"}
         tg{"tadžiku"}
@@ -469,10 +544,11 @@ lv{
         tli{"tlinkitu"}
         tmh{"tuaregu"}
         tn{"cvanu"}
-        to{"tongu"}
+        to{"tongiešu"}
         tog{"njasas tongu"}
         tpi{"tokpisins"}
         tr{"turku"}
+        trv{"taroko"}
         ts{"congu"}
         tsi{"cimšiāņu"}
         tt{"tatāru"}
@@ -481,14 +557,16 @@ lv{
         tut{"altajiešu valodas"}
         tvl{"tuvaliešu"}
         tw{"tvī"}
+        twq{"tasavaku"}
         ty{"taitiešu"}
         tyv{"tuviešu"}
+        tzm{"Centrālmarokas tamazīts"}
         udm{"udmurtu"}
         ug{"uiguru"}
         uga{"ugaritiešu"}
         uk{"ukraiņu"}
         umb{"umbundu"}
-        und{"nezināma vai nederīga valoda"}
+        und{"nezināma valoda"}
         ur{"urdu"}
         uz{"uzbeku"}
         vai{"vaju"}
@@ -496,7 +574,9 @@ lv{
         vi{"vjetnamiešu"}
         vo{"volapiks"}
         vot{"votu"}
+        vun{"vundžo"}
         wa{"valoņu"}
+        wae{"Vallisas vācu"}
         wak{"vakašu valodas"}
         wal{"valamu"}
         war{"varaju"}
@@ -505,15 +585,20 @@ lv{
         wo{"volofu"}
         xal{"kalmiku"}
         xh{"khosu"}
+        xog{"sogu"}
         yao{"jao"}
         yap{"japiešu"}
+        yav{"janbaņu"}
+        ybb{"jembu"}
         yi{"jidišs"}
         yo{"jorubu"}
         ypk{"jopiku valodas"}
         yue{"kantoniešu"}
         za{"džuanu"}
         zap{"sapoteku"}
+        zbl{"blissimbolika"}
         zen{"zenagu"}
+        zgh{"standarta marokāņu berberu"}
         zh{"ķīniešu"}
         zh_Hans{"ķīniešu vienkāršotā"}
         zh_Hant{"ķīniešu tradicionālā"}
@@ -521,6 +606,11 @@ lv{
         zu{"zulu"}
         zun{"zunju"}
         zxx{"bez lingvistiska satura"}
+        zza{"zazaki"}
+    }
+    LanguagesShort{
+        az{"azerbaidžāņu"}
+        en_US{"angļu (ASV)"}
     }
     Scripts{
         Arab{"arābu"}
@@ -560,7 +650,7 @@ lv{
         Khmr{"khmeru"}
         Knda{"kannaru"}
         Kore{"korejiešu"}
-        Laoo{"lao"}
+        Laoo{"laosiešu"}
         Latn{"latīņu"}
         Lina{"lineārā A"}
         Linb{"lineārā B"}
@@ -577,7 +667,7 @@ lv{
         Roro{"rongorongo"}
         Runr{"rūnu raksts"}
         Samr{"samariešu"}
-        Sinh{"sinhalas"}
+        Sinh{"singāļu"}
         Sund{"zundu"}
         Syrc{"sīriešu"}
         Syrj{"rietumsīriešu"}
@@ -595,12 +685,12 @@ lv{
         Zmth{"matemātiskais pieraksts"}
         Zsym{"simboli"}
         Zxxx{"bez rakstības"}
-        Zyyy{"vispārējs"}
-        Zzzz{"nezināma vai nederīga rakstība"}
+        Zyyy{"vispārējā"}
+        Zzzz{"nezināma rakstība"}
     }
     Scripts%stand-alone{
-        Hans{"hanu [vienkāršotā]"}
-        Hant{"hanu [tradicionālā]"}
+        Hans{"hanu vienkāršotā"}
+        Hant{"hanu tradicionālā"}
     }
     Types{
         calendar{
@@ -618,15 +708,60 @@ lv{
             persian{"Persiešu kalendārs"}
             roc{"Ķīnas Republikas kalendārs"}
         }
+        colAlternate{
+            non-ignorable{"Kārtot simbolus"}
+            shifted{"Kārtot, ignorējot simbolus"}
+        }
+        colBackwards{
+            no{"Kārtot diakritiskās zīmes parastā secībā"}
+            yes{"Kārtot diakritiskās zīmes apgrieztā secībā"}
+        }
+        colCaseFirst{
+            lower{"Kārtot pēc pirmā mazā burta"}
+            no{"Kārtot burtu reģistra parastā secībā"}
+            upper{"Kārtot pēc pirmā lielā burta"}
+        }
+        colCaseLevel{
+            no{"Kārtot reģistrnejutīgas rakstzīmes"}
+            yes{"Kārtot reģistrjutīgās rakstzīmes"}
+        }
+        colHiraganaQuaternary{
+            no{"Kārtot kana rakstzīmes atsevišķi"}
+            yes{"Kārtot kana rakstzīmes, norādot atšķirības"}
+        }
+        colNormalization{
+            no{"Kārtot bez normalizēšanas"}
+            yes{"Kārtot unikodu normalizējot"}
+        }
+        colNumeric{
+            no{"Kārtot ciparus atsevišķi"}
+            yes{"Kārtot ciparus skaitliskā secībā"}
+        }
+        colStrength{
+            identical{"Kārtot visus"}
+            primary{"Kārtot tikai pamata burtus"}
+            quaternary{
+                "Kārtot diakritiskās zīmes/reģistrjutīgās rakstzīmes/rakstzīmes pēc p"
+                "latuma/Kana rakstzīmes"
+            }
+            secondary{"Kārtot diakritiskās zīmes"}
+            tertiary{
+                "Kārtot diakritiskās zīmes/reģistrjutīgās rakstzīmes/rakstzīmes pēc p"
+                "latuma"
+            }
+        }
         collation{
             big5han{"tradicionālās ķīniešu valodas kārtošanas secība - Big5"}
             dictionary{"Vārdnīcas kārtošanas secība"}
             ducet{"Noklusējuma unikoda kārtošanas secība"}
             gb2312han{"vienkāršotās ķīniešu valodas kārtošanas secība - GB2312"}
             phonebook{"tālruņu grāmatas kārtošanas secība"}
+            phonetic{"Fonētiskā kārtošanas secība"}
             pinyin{"piņjiņa kārtošanas secība"}
             reformed{"Reformētā kārtošanas secība"}
             search{"Vispārīga meklēšana"}
+            searchjl{"Meklēt pēc Hangul sākuma līdzskaņa"}
+            standard{"Standarta kārtošanas secība"}
             stroke{"Stroke kārtošanas secība"}
             traditional{"tradicionālā kārtošanas secība"}
             unihan{"Radikālā kārtošanas secība pēc vilkumu skaita"}
@@ -639,6 +774,7 @@ lv{
             beng{"Bengāļu cipari"}
             deva{"Devanāgarī cipari"}
             ethi{"Etiopiešu cipari"}
+            finance{"Finanšu cipari"}
             fullwide{"Pilna platuma cipari"}
             geor{"Gruzīnu cipari"}
             grek{"Grieķu cipari"}
@@ -660,13 +796,17 @@ lv{
             mlym{"Malajalu cipari"}
             mong{"Mongoļu cipari"}
             mymr{"Birmiešu cipari"}
+            native{"Vietējie cipari"}
             orya{"Oriju cipari"}
             roman{"Romiešu cipari"}
             romanlow{"Mazie romiešu cipari"}
-            taml{"Tamilu cipari"}
+            taml{"Tamilu tradicionālie cipari"}
+            tamldec{"Tamilu cipari"}
             telu{"Telugu cipari"}
             thai{"Tajiešu cipari"}
             tibt{"Tibetiešu cipari"}
+            traditional{"Tradicionālā ciparu sistēma"}
+            vaii{"VAI cipari"}
         }
     }
     Variants{
@@ -690,14 +830,15 @@ lv{
         VALENCIA{"valensiešu"}
         WADEGILE{"Veida-Džailza romanizācija"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     codePatterns{
         language{"Valoda: {0}"}
         script{"Rakstība: {0}"}
         territory{"Reģions: {0}"}
     }
     localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
         pattern{"{0} ({1})"}
-        separator{", "}
+        separator{"{0}, {1}"}
     }
 }

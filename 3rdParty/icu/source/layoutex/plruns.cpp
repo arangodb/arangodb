@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -311,7 +311,6 @@ private:
     inline ULocRuns(const ULocRuns &other);
     inline ULocRuns &operator=(const ULocRuns & /*other*/) { return *this; };
     const char **fLocaleNames;
-    Locale **fLocalesCopy;
 };
 
 inline ULocRuns::ULocRuns()

@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -19,17 +19,18 @@ StateTableProcessor::StateTableProcessor()
 {
 }
 
-StateTableProcessor::StateTableProcessor(const MorphSubtableHeader *morphSubtableHeader)
-  : SubtableProcessor(morphSubtableHeader)
+StateTableProcessor::StateTableProcessor(const LEReferenceTo<MorphSubtableHeader> &morphSubtableHeader, LEErrorCode &success)
+  : SubtableProcessor(morphSubtableHeader, success), stateTableHeader(morphSubtableHeader, success),
+    stHeader(stateTableHeader, success, (const StateTableHeader*)&stateTableHeader->stHeader)
 {
-    stateTableHeader = (const MorphStateTableHeader *) morphSubtableHeader;
-
+  if(LE_FAILURE(success)) return;
     stateSize = SWAPW(stateTableHeader->stHeader.stateSize);
     classTableOffset = SWAPW(stateTableHeader->stHeader.classTableOffset);
     stateArrayOffset = SWAPW(stateTableHeader->stHeader.stateArrayOffset);
     entryTableOffset = SWAPW(stateTableHeader->stHeader.entryTableOffset);
 
-    classTable = (const ClassTable *) ((char *) &stateTableHeader->stHeader + classTableOffset);
+    classTable = LEReferenceTo<ClassTable>(stateTableHeader, success, ((char *) &stateTableHeader->stHeader + classTableOffset));
+  if(LE_FAILURE(success)) return;
     firstGlyph = SWAPW(classTable->firstGlyph);
     lastGlyph  = firstGlyph + SWAPW(classTable->nGlyphs);
 }
@@ -38,8 +39,11 @@ StateTableProcessor::~StateTableProcessor()
 {
 }
 
-void StateTableProcessor::process(LEGlyphStorage &glyphStorage)
+void StateTableProcessor::process(LEGlyphStorage &glyphStorage, LEErrorCode &success)
 {
+    if (LE_FAILURE(success)) return;
+    LE_STATE_PATIENCE_INIT();
+
     // Start at state 0
     // XXX: How do we know when to start at state 1?
     ByteOffset currentState = stateArrayOffset;
@@ -51,6 +55,7 @@ void StateTableProcessor::process(LEGlyphStorage &glyphStorage)
     beginStateTable();
 
     while (currGlyph <= glyphCount) {
+        if(LE_STATE_PATIENCE_DECR()) break; // patience exceeded.
         ClassCode classCode = classCodeOOB;
         if (currGlyph == glyphCount) {
             // XXX: How do we handle EOT vs. EOL?
@@ -65,10 +70,11 @@ void StateTableProcessor::process(LEGlyphStorage &glyphStorage)
             }
         }
 
-        const EntryTableIndex *stateArray = (const EntryTableIndex *) ((char *) &stateTableHeader->stHeader + currentState);
-        EntryTableIndex entryTableIndex = stateArray[(le_uint8)classCode];
-
+        LEReferenceToArrayOf<EntryTableIndex> stateArray(stHeader, success, currentState, LE_UNBOUNDED_ARRAY);
+        EntryTableIndex entryTableIndex = stateArray.getObject((le_uint8)classCode, success);
+        LE_STATE_PATIENCE_CURR(le_int32, currGlyph);
         currentState = processStateEntry(glyphStorage, currGlyph, entryTableIndex);
+        LE_STATE_PATIENCE_INCR(currGlyph);
     }
 
     endStateTable();

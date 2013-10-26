@@ -1,0 +1,37 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nnh.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/nnh.xml
+ */
+nnh{
+    Keys{
+        calendar{"fʉ̀ʼ njÿó"}
+        currency{"nkáb"}
+    }
+    Languages{
+        bas{"Shwóŋò pʉa mbasǎ"}
+        bax{"Shwóŋò pamom"}
+        bbj{"Shwóŋò pʉa nzsekàʼa"}
+        bfd{"Shwóŋò pafut"}
+        bkm{"Shwóŋò pʉ̀a njinikom"}
+        bss{"Shwóŋò pakɔsi"}
+        bum{"Shwóŋò mbulu"}
+        byv{"Shwóŋò ngáŋtʉɔʼ"}
+        de{"nzǎmɔ̂ɔn"}
+        en{"ngilísè"}
+        ewo{"Shwóŋò pʉa Yɔɔnmendi"}
+        ff{"Shwóŋò menkesaŋ"}
+        fr{"felaŋsée"}
+        kkj{"Shwóŋò pʉa shÿó Bɛgtùa"}
+        nnh{"Shwóŋò ngiembɔɔn"}
+        yav{"Shwóŋò pʉa shÿó Mbafìa"}
+        ybb{"Shwóŋò Tsaŋ"}
+    }
+    Version{"2.0.92.97"}
+}

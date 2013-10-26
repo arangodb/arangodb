@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2009, International Business Machines
+*   Copyright (C) 2003-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -31,6 +31,7 @@
 #include "uparse.h"
 #include "sprpimpl.h"
 
+#include "unicode/uclean.h"
 #include "unicode/udata.h"
 #include "unicode/utypes.h"
 #include "unicode/putil.h"
@@ -261,6 +262,8 @@ main(int argc, char* argv[]) {
     }
 
     uprv_free(filename);
+
+    u_cleanup();
 
 #endif
 

@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2005-2011, International Business Machines
+*   Copyright (C) 2005-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -135,12 +135,20 @@ static void freeCurrencyFormat(CURRENCYFMTW *fmt)
     }
 }
 
-// TODO: keep locale too?
 Win32NumberFormat::Win32NumberFormat(const Locale &locale, UBool currency, UErrorCode &status)
   : NumberFormat(), fCurrency(currency), fFractionDigitsSet(FALSE), fFormatInfo(NULL)
 {
     if (!U_FAILURE(status)) {
         fLCID = locale.getLCID();
+
+        // Resolve actual locale to be used later
+        UErrorCode tmpsts = U_ZERO_ERROR;
+        char tmpLocID[ULOC_FULLNAME_CAPACITY];
+        int32_t len = uloc_getLocaleForLCID(fLCID, tmpLocID, sizeof(tmpLocID)/sizeof(tmpLocID[0]) - 1, &tmpsts);
+        if (U_SUCCESS(tmpsts)) {
+            tmpLocID[len] = 0;
+            fLocale = Locale((const char*)tmpLocID);
+        }
 
         fFormatInfo = (FormatInfo*)uprv_malloc(sizeof(FormatInfo));
 
@@ -179,6 +187,7 @@ Win32NumberFormat &Win32NumberFormat::operator=(const Win32NumberFormat &other)
     NumberFormat::operator=(other);
 
     this->fCurrency          = other.fCurrency;
+    this->fLocale            = other.fLocale;
     this->fLCID              = other.fLCID;
     this->fFractionDigitsSet = other.fFractionDigitsSet;
 
@@ -213,12 +222,10 @@ UnicodeString& Win32NumberFormat::format(int64_t number, UnicodeString& appendTo
     return format(getMinimumFractionDigits(), appendTo, L"%I64d", number);
 }
 
-// TODO: cache Locale and NumberFormat? Could keep locale passed to constructor...
 void Win32NumberFormat::parse(const UnicodeString& text, Formattable& result, ParsePosition& parsePosition) const
 {
     UErrorCode status = U_ZERO_ERROR;
-    Locale loc(uprv_convertToPosix(fLCID, &status));
-    NumberFormat *nf = fCurrency? NumberFormat::createCurrencyInstance(loc, status) : NumberFormat::createInstance(loc, status);
+    NumberFormat *nf = fCurrency? NumberFormat::createCurrencyInstance(fLocale, status) : NumberFormat::createInstance(fLocale, status);
 
     nf->parse(text, result, parsePosition);
     delete nf;

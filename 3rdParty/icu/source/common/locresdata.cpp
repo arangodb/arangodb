@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1997-2010, International Business Machines
+*   Copyright (C) 1997-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -201,7 +201,7 @@ _uloc_getOrientationHelper(const char* localeId,
     return result;
 }
 
-U_DRAFT ULayoutType U_EXPORT2
+U_CAPI ULayoutType U_EXPORT2
 uloc_getCharacterOrientation(const char* localeId,
                              UErrorCode *status)
 {
@@ -214,9 +214,8 @@ uloc_getCharacterOrientation(const char* localeId,
  * @param localeID locale name
  * @param status Error status
  * @return an enum indicating the layout orientation for lines.
- * @stable ICU 4.0
  */
-U_DRAFT ULayoutType U_EXPORT2
+U_CAPI ULayoutType U_EXPORT2
 uloc_getLineOrientation(const char* localeId,
                         UErrorCode *status)
 {

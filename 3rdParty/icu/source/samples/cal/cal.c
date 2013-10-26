@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 1998-2009, International Business Machines Corporation
+* Copyright (C) 1998-2012, International Business Machines Corporation
 * and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -110,15 +110,15 @@ main(int argc,
     int printUsage = 0;
     int printVersion = 0;
     UBool useLongNames = 0;
-    int optind = 1;
+    int optInd = 1;
     char *arg;
     int32_t month = -1, year = -1;
     UErrorCode status = U_ZERO_ERROR;
     
     
     /* parse the options */
-    for(optind = 1; optind < argc; ++optind) {
-        arg = argv[optind];
+    for(optInd = 1; optInd < argc; ++optInd) {
+        arg = argv[optInd];
         
         /* version info */
         if(strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0) {
@@ -135,7 +135,7 @@ main(int argc,
         /* POSIX.1 says all arguments after -- are not options */
         else if(strcmp(arg, "--") == 0) {
             /* skip the -- */
-            ++optind;
+            ++optInd;
             break;
         }
         /* unrecognized option */
@@ -150,12 +150,12 @@ main(int argc,
     }
     
     /* Get the month and year to display, if specified */
-    if(optind != argc) {
+    if(optInd != argc) {
         
         /* Month and year specified */
-        if(argc - optind == 2) {
-            sscanf(argv[optind], "%d", (int*)&month);
-            sscanf(argv[optind + 1], "%d", (int*)&year);
+        if(argc - optInd == 2) {
+            sscanf(argv[optInd], "%d", (int*)&month);
+            sscanf(argv[optInd + 1], "%d", (int*)&year);
             
             /* Make sure the month value is legal */
             if(month < 0 || month > 12) {
@@ -170,7 +170,7 @@ main(int argc,
         }
         /* Only year specified */
         else {
-            sscanf(argv[optind], "%d", (int*)&year);
+            sscanf(argv[optInd], "%d", (int*)&year);
         }
     }
     
@@ -436,7 +436,7 @@ print_month(UCalendar *c,
     /* ========== Generate the header containing the month and year */
     
     /* Open a formatter with a month and year only pattern */
-    dfmt = udat_open(UDAT_IGNORE,UDAT_IGNORE,NULL,NULL,0,pat, len,status);
+    dfmt = udat_open(UDAT_PATTERN,UDAT_PATTERN,NULL,NULL,0,pat, len,status);
     
     /* Format the date */
     udat_format(dfmt, ucal_getMillis(c, status), s, BUF_SIZE, 0, status);
@@ -559,7 +559,7 @@ print_year(UCalendar *c,
     /* ========== Generate the header containing the year (only) */
     
     /* Open a formatter with a month and year only pattern */
-    dfmt = udat_open(UDAT_IGNORE,UDAT_IGNORE,NULL,NULL,0,pat, len, status);
+    dfmt = udat_open(UDAT_PATTERN,UDAT_PATTERN,NULL,NULL,0,pat, len, status);
     
     /* Format the date */
     udat_format(dfmt, ucal_getMillis(left_cal, status), s, BUF_SIZE, 0, status);

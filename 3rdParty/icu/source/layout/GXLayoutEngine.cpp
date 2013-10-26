@@ -1,7 +1,7 @@
 
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -16,9 +16,10 @@ U_NAMESPACE_BEGIN
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(GXLayoutEngine)
 
-GXLayoutEngine::GXLayoutEngine(const LEFontInstance *fontInstance, le_int32 scriptCode, le_int32 languageCode, const MorphTableHeader *morphTable, LEErrorCode &success) 
+  GXLayoutEngine::GXLayoutEngine(const LEFontInstance *fontInstance, le_int32 scriptCode, le_int32 languageCode, const LEReferenceTo<MorphTableHeader> &morphTable, LEErrorCode &success) 
     : LayoutEngine(fontInstance, scriptCode, languageCode, 0, success), fMorphTable(morphTable)
 {
+  fMorphTable.orphan();
     // nothing else to do?
 }
 
@@ -45,7 +46,7 @@ le_int32 GXLayoutEngine::computeGlyphs(const LEUnicode chars[], le_int32 offset,
         return 0;
     }
 
-    fMorphTable->process(glyphStorage);
+    fMorphTable->process(fMorphTable, glyphStorage, success);
 
     return count;
 }

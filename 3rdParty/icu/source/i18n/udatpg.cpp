@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009, International Business Machines
+*   Copyright (C) 2009-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -26,7 +26,7 @@
 
 U_NAMESPACE_USE
 
-U_DRAFT UDateTimePatternGenerator * U_EXPORT2
+U_CAPI UDateTimePatternGenerator * U_EXPORT2
 udatpg_open(const char *locale, UErrorCode *pErrorCode) {
     if(locale==NULL) {
         return (UDateTimePatternGenerator *)DateTimePatternGenerator::createInstance(*pErrorCode);
@@ -35,17 +35,17 @@ udatpg_open(const char *locale, UErrorCode *pErrorCode) {
     }
 }
 
-U_DRAFT UDateTimePatternGenerator * U_EXPORT2
+U_CAPI UDateTimePatternGenerator * U_EXPORT2
 udatpg_openEmpty(UErrorCode *pErrorCode) {
     return (UDateTimePatternGenerator *)DateTimePatternGenerator::createEmptyInstance(*pErrorCode);
 }
 
-U_DRAFT void U_EXPORT2
+U_CAPI void U_EXPORT2
 udatpg_close(UDateTimePatternGenerator *dtpg) {
     delete (DateTimePatternGenerator *)dtpg;
 }
 
-U_DRAFT UDateTimePatternGenerator * U_EXPORT2
+U_CAPI UDateTimePatternGenerator * U_EXPORT2
 udatpg_clone(const UDateTimePatternGenerator *dtpg, UErrorCode *pErrorCode) {
     if(U_FAILURE(*pErrorCode)) {
         return NULL;
@@ -53,7 +53,7 @@ udatpg_clone(const UDateTimePatternGenerator *dtpg, UErrorCode *pErrorCode) {
     return (UDateTimePatternGenerator *)(((const DateTimePatternGenerator *)dtpg)->clone());
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 udatpg_getBestPattern(UDateTimePatternGenerator *dtpg,
                       const UChar *skeleton, int32_t length,
                       UChar *bestPattern, int32_t capacity,
@@ -63,7 +63,7 @@ udatpg_getBestPattern(UDateTimePatternGenerator *dtpg,
                                             bestPattern, capacity, pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 udatpg_getBestPatternWithOptions(UDateTimePatternGenerator *dtpg,
                                  const UChar *skeleton, int32_t length,
                                  UDateTimePatternMatchOptions options,
@@ -81,7 +81,7 @@ udatpg_getBestPatternWithOptions(UDateTimePatternGenerator *dtpg,
     return result.extract(bestPattern, capacity, *pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 udatpg_getSkeleton(UDateTimePatternGenerator *dtpg,
                    const UChar *pattern, int32_t length,
                    UChar *skeleton, int32_t capacity,
@@ -98,7 +98,7 @@ udatpg_getSkeleton(UDateTimePatternGenerator *dtpg,
     return result.extract(skeleton, capacity, *pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 udatpg_getBaseSkeleton(UDateTimePatternGenerator *dtpg,
                        const UChar *pattern, int32_t length,
                        UChar *skeleton, int32_t capacity,
@@ -115,7 +115,7 @@ udatpg_getBaseSkeleton(UDateTimePatternGenerator *dtpg,
     return result.extract(skeleton, capacity, *pErrorCode);
 }
 
-U_DRAFT UDateTimePatternConflict U_EXPORT2
+U_CAPI UDateTimePatternConflict U_EXPORT2
 udatpg_addPattern(UDateTimePatternGenerator *dtpg,
                   const UChar *pattern, int32_t patternLength,
                   UBool override,
@@ -139,7 +139,7 @@ udatpg_addPattern(UDateTimePatternGenerator *dtpg,
     return result;
 }
 
-U_DRAFT void U_EXPORT2
+U_CAPI void U_EXPORT2
 udatpg_setAppendItemFormat(UDateTimePatternGenerator *dtpg,
                            UDateTimePatternField field,
                            const UChar *value, int32_t length) {
@@ -147,7 +147,7 @@ udatpg_setAppendItemFormat(UDateTimePatternGenerator *dtpg,
     ((DateTimePatternGenerator *)dtpg)->setAppendItemFormat(field, valueString);
 }
 
-U_DRAFT const UChar * U_EXPORT2
+U_CAPI const UChar * U_EXPORT2
 udatpg_getAppendItemFormat(const UDateTimePatternGenerator *dtpg,
                            UDateTimePatternField field,
                            int32_t *pLength) {
@@ -158,7 +158,7 @@ udatpg_getAppendItemFormat(const UDateTimePatternGenerator *dtpg,
     return result.getBuffer();
 }
 
-U_DRAFT void U_EXPORT2
+U_CAPI void U_EXPORT2
 udatpg_setAppendItemName(UDateTimePatternGenerator *dtpg,
                          UDateTimePatternField field,
                          const UChar *value, int32_t length) {
@@ -166,7 +166,7 @@ udatpg_setAppendItemName(UDateTimePatternGenerator *dtpg,
     ((DateTimePatternGenerator *)dtpg)->setAppendItemName(field, valueString);
 }
 
-U_DRAFT const UChar * U_EXPORT2
+U_CAPI const UChar * U_EXPORT2
 udatpg_getAppendItemName(const UDateTimePatternGenerator *dtpg,
                          UDateTimePatternField field,
                          int32_t *pLength) {
@@ -177,14 +177,14 @@ udatpg_getAppendItemName(const UDateTimePatternGenerator *dtpg,
     return result.getBuffer();
 }
 
-U_DRAFT void U_EXPORT2
+U_CAPI void U_EXPORT2
 udatpg_setDateTimeFormat(const UDateTimePatternGenerator *dtpg,
                          const UChar *dtFormat, int32_t length) {
     UnicodeString dtFormatString((UBool)(length<0), dtFormat, length);
     ((DateTimePatternGenerator *)dtpg)->setDateTimeFormat(dtFormatString);
 }
 
-U_DRAFT const UChar * U_EXPORT2
+U_CAPI const UChar * U_EXPORT2
 udatpg_getDateTimeFormat(const UDateTimePatternGenerator *dtpg,
                          int32_t *pLength) {
     const UnicodeString &result=((const DateTimePatternGenerator *)dtpg)->getDateTimeFormat();
@@ -194,14 +194,14 @@ udatpg_getDateTimeFormat(const UDateTimePatternGenerator *dtpg,
     return result.getBuffer();
 }
 
-U_DRAFT void U_EXPORT2
+U_CAPI void U_EXPORT2
 udatpg_setDecimal(UDateTimePatternGenerator *dtpg,
                   const UChar *decimal, int32_t length) {
     UnicodeString decimalString((UBool)(length<0), decimal, length);
     ((DateTimePatternGenerator *)dtpg)->setDecimal(decimalString);
 }
 
-U_DRAFT const UChar * U_EXPORT2
+U_CAPI const UChar * U_EXPORT2
 udatpg_getDecimal(const UDateTimePatternGenerator *dtpg,
                   int32_t *pLength) {
     const UnicodeString &result=((const DateTimePatternGenerator *)dtpg)->getDecimal();
@@ -211,7 +211,7 @@ udatpg_getDecimal(const UDateTimePatternGenerator *dtpg,
     return result.getBuffer();
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 udatpg_replaceFieldTypes(UDateTimePatternGenerator *dtpg,
                          const UChar *pattern, int32_t patternLength,
                          const UChar *skeleton, int32_t skeletonLength,
@@ -222,7 +222,7 @@ udatpg_replaceFieldTypes(UDateTimePatternGenerator *dtpg,
                                                dest, destCapacity, pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 udatpg_replaceFieldTypesWithOptions(UDateTimePatternGenerator *dtpg,
                                     const UChar *pattern, int32_t patternLength,
                                     const UChar *skeleton, int32_t skeletonLength,
@@ -242,21 +242,21 @@ udatpg_replaceFieldTypesWithOptions(UDateTimePatternGenerator *dtpg,
     return result.extract(dest, destCapacity, *pErrorCode);
 }
 
-U_DRAFT UEnumeration * U_EXPORT2
+U_CAPI UEnumeration * U_EXPORT2
 udatpg_openSkeletons(const UDateTimePatternGenerator *dtpg, UErrorCode *pErrorCode) {
     return uenum_openFromStringEnumeration(
                 ((DateTimePatternGenerator *)dtpg)->getSkeletons(*pErrorCode),
                 pErrorCode);
 }
 
-U_DRAFT UEnumeration * U_EXPORT2
+U_CAPI UEnumeration * U_EXPORT2
 udatpg_openBaseSkeletons(const UDateTimePatternGenerator *dtpg, UErrorCode *pErrorCode) {
     return uenum_openFromStringEnumeration(
                 ((DateTimePatternGenerator *)dtpg)->getBaseSkeletons(*pErrorCode),
                 pErrorCode);
 }
 
-U_DRAFT const UChar * U_EXPORT2
+U_CAPI const UChar * U_EXPORT2
 udatpg_getPatternForSkeleton(const UDateTimePatternGenerator *dtpg,
                              const UChar *skeleton, int32_t skeletonLength,
                              int32_t *pLength) {

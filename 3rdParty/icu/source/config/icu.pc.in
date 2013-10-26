@@ -1,5 +1,11 @@
-# Copyright (C) 2010, International Business Machines Corporation. All Rights Reserved.
+# Copyright (C) 2010-2013, International Business Machines Corporation. All Rights Reserved.
 
+# CFLAGS contains only anything end users should set
+CFLAGS = @UCONFIG_CFLAGS@
+# CXXFLAGS contains only anything end users should set
+CXXFLAGS = @UCONFIG_CXXFLAGS@
+# DEFS only contains those UCONFIG_CPPFLAGS which are not auto-set by platform.h
+DEFS = @UCONFIG_CPPFLAGS@
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 #bindir = @bindir@
@@ -11,9 +17,6 @@ baselibs = @LIBS@
 #sbindir = @sbindir@
 #mandir = @mandir@
 #sysconfdir = @sysconfdir@
-CFLAGS = @CFLAGS@ 
-#CXXFLAGS = @CXXFLAGS@ 
-DEFS = @DEFS@ 
 UNICODE_VERSION=@UNICODE_VERSION@
 ICUPREFIX=icu
 ICULIBSUFFIX=@ICULIBSUFFIX@

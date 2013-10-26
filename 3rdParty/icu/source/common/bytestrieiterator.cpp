@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2011, International Business Machines
+*   Copyright (C) 2010-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  bytestrieiterator.cpp
@@ -22,7 +22,7 @@ U_NAMESPACE_BEGIN
 
 BytesTrie::Iterator::Iterator(const void *trieBytes, int32_t maxStringLength,
                               UErrorCode &errorCode)
-        : bytes_(reinterpret_cast<const uint8_t *>(trieBytes)),
+        : bytes_(static_cast<const uint8_t *>(trieBytes)),
           pos_(bytes_), initialPos_(bytes_),
           remainingMatchLength_(-1), initialRemainingMatchLength_(-1),
           str_(NULL), maxLength_(maxStringLength), value_(0), stack_(NULL) {

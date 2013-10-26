@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2011-2012 International Business Machines
+*   Copyright (C) 2011-2013 International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -71,19 +71,20 @@ U_NAMESPACE_BEGIN
 
 // Forward Declarations
 
+class BucketList;
 class Collator;
 class RuleBasedCollator;
 class StringEnumeration;
 class UnicodeSet;
 class UVector;
 
-
-
 /**
- * class AlphabeticIndex supports the creation of a UI index appropriate for a given language, such as:
- *
+ * AlphabeticIndex supports the creation of a UI index appropriate for a given language.
+ * It can support either direct use, or use with a client that doesn't support localized collation.
+ * The following is an example of what an index might look like in a UI:
+ * 
  * <pre>
- *  <b>... A B C D E F G H I J K L M N O P Q R S T U V W X Y Z \\u00C6 \\u00D8 \\u00C5 ...</b>
+ *  <b>... A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  ...</b>
  *
  *  <b>A</b>
  *     Addison
@@ -107,10 +108,14 @@ class UVector;
  * into an inflow bucket between the other two scripts.
  * <p>
  * The AlphabeticIndex class is not intended for public subclassing.
- * <p>
- * <i>Example</i>
- * <p>
- * The "show..." methods below are just to illustrate usage.
+ *
+ * <p><em>Note:</em> If you expect to have a lot of ASCII or Latin characters
+ * as well as characters from the user's language,
+ * then it is a good idea to call addLabels(Locale::getEnglish(), status).</p>
+ *
+ * <h2>Direct Use</h2>
+ * <p>The following shows an example of building an index directly.
+ *  The "show..." methods below are just to illustrate usage.
  *
  * <pre>
  * // Create a simple index.  "Item" is assumed to be an application
@@ -150,21 +155,142 @@ class UVector;
  * <b>... A-F G-N O-Z ...</b>
  * </pre>
  *
- * <p>
- * <b>Notes:</b>
+ * <h2>Client Support</h2>
+ * <p>Callers can also use the AlphabeticIndex::ImmutableIndex, or the AlphabeticIndex itself,
+ * to support sorting on a client that doesn't support AlphabeticIndex functionality.
+ *
+ * <p>The ImmutableIndex is both immutable and thread-safe.
+ * The corresponding AlphabeticIndex methods are not thread-safe because
+ * they "lazily" build the index buckets.
  * <ul>
- * <li>Additional collation parameters can be passed in as part of the locale name.
- *     For example, German plus numeric
- *     sorting would be "de@kn-true".
+ * <li>ImmutableIndex.getBucket(index) provides random access to all
+ *     buckets and their labels and label types.
+ * <li>The AlphabeticIndex bucket iterator or ImmutableIndex.getBucket(0..getBucketCount-1)
+ *     can be used to get a list of the labels,
+ *     such as "...", "A", "B",..., and send that list to the client.
+ * <li>When the client has a new name, it sends that name to the server.
+ * The server needs to call the following methods,
+ * and communicate the bucketIndex and collationKey back to the client.
+ *
+ * <pre>
+ * int32_t bucketIndex = index.getBucketIndex(name, status);
+ * const UnicodeString &label = immutableIndex.getBucket(bucketIndex)->getLabel();  // optional
+ * int32_t skLength = collator.getSortKey(name, sk, skCapacity);
+ * </pre>
+ *
+ * <li>The client would put the name (and associated information) into its bucket for bucketIndex. The sort key sk is a
+ * sequence of bytes that can be compared with a binary compare, and produce the right localized result.</li>
  * </ul>
  *
  * @stable ICU 4.8
  */
-
-
 class U_I18N_API AlphabeticIndex: public UObject {
+public:
+#ifdef U_HIDE_DRAFT_API
+    class Bucket;
+#else
+     /**
+      * An index "bucket" with a label string and type.
+      * It is referenced by getBucketIndex(),
+      * and returned by ImmutableIndex.getBucket().
+      *
+      * The Bucket class is not intended for public subclassing.
+      * @draft ICU 51
+      */
+     class U_I18N_API Bucket : public UObject {
+     public:
+        /**
+         * Destructor.
+         * @draft ICU 51
+         */
+        virtual ~Bucket();
 
-  public:
+        /**
+         * Returns the label string.
+         *
+         * @return the label string for the bucket
+         * @draft ICU 51
+         */
+        const UnicodeString &getLabel() const { return label_; }
+        /**
+         * Returns whether this bucket is a normal, underflow, overflow, or inflow bucket.
+         *
+         * @return the bucket label type
+         * @draft ICU 51
+         */
+        UAlphabeticIndexLabelType getLabelType() const { return labelType_; }
+
+     private:
+        friend class AlphabeticIndex;
+        friend class BucketList;
+
+        UnicodeString label_;
+        UnicodeString lowerBoundary_;
+        UAlphabeticIndexLabelType labelType_;
+        Bucket *displayBucket_;
+        int32_t displayIndex_;
+        UVector *records_;  // Records are owned by the inputList_ vector.
+
+        Bucket(const UnicodeString &label,   // Parameter strings are copied.
+               const UnicodeString &lowerBoundary,
+               UAlphabeticIndexLabelType type);
+     };
+
+    /**
+     * Immutable, thread-safe version of AlphabeticIndex.
+     * This class provides thread-safe methods for bucketing,
+     * and random access to buckets and their properties,
+     * but does not offer adding records to the index.
+     *
+     * The ImmutableIndex class is not intended for public subclassing.
+     *
+     * @draft ICU 51
+     */
+    class U_I18N_API ImmutableIndex : public UObject {
+    public:
+        /**
+         * Destructor.
+         * @draft ICU 51
+         */
+        virtual ~ImmutableIndex();
+
+        /**
+         * Returns the number of index buckets and labels, including underflow/inflow/overflow.
+         *
+         * @return the number of index buckets
+         * @draft ICU 51
+         */
+        int32_t getBucketCount() const;
+
+        /**
+         * Finds the index bucket for the given name and returns the number of that bucket.
+         * Use getBucket() to get the bucket's properties.
+         *
+         * @param name the string to be sorted into an index bucket
+         * @return the bucket number for the name
+         * @draft ICU 51
+         */
+        int32_t getBucketIndex(const UnicodeString &name, UErrorCode &errorCode) const;
+
+        /**
+         * Returns the index-th bucket. Returns NULL if the index is out of range.
+         *
+         * @param index bucket number
+         * @return the index-th bucket
+         * @draft ICU 51
+         */
+        const Bucket *getBucket(int32_t index) const;
+
+    private:
+        friend class AlphabeticIndex;
+
+        ImmutableIndex(BucketList *bucketList, Collator *collatorPrimaryOnly)
+                : buckets_(bucketList), collatorPrimaryOnly_(collatorPrimaryOnly) {}
+
+        BucketList *buckets_;
+        Collator *collatorPrimaryOnly_;
+    };
+#endif  /* U_HIDE_DRAFT_API */
 
     /**
      * Construct an AlphabeticIndex object for the specified locale.  If the locale's
@@ -180,7 +306,23 @@ class U_I18N_API AlphabeticIndex: public UObject {
      */
      AlphabeticIndex(const Locale &locale, UErrorCode &status);
 
-
+#ifndef U_HIDE_DRAFT_API
+   /** 
+     * Construct an AlphabeticIndex that uses a specific collator.
+     * 
+     * The index will be created with no labels; the addLabels() function must be called
+     * after creation to add the desired labels to the index.
+     * 
+     * The index adopts the collator, and is responsible for deleting it. 
+     * The caller should make no further use of the collator after creating the index.
+     * 
+     * @param collator The collator to use to order the contents of this index.
+     * @param status Error code, will be set with the reason if the 
+     *               operation fails.
+     * @draft ICU 51
+     */
+    AlphabeticIndex(RuleBasedCollator *collator, UErrorCode &status);
+#endif  /* U_HIDE_DRAFT_API */
 
     /**
      * Add Labels to this Index.  The labels are additions to those
@@ -192,7 +334,7 @@ class U_I18N_API AlphabeticIndex: public UObject {
      * @return this, for chaining
      * @stable ICU 4.8
      */
-     virtual AlphabeticIndex &addLabels(const UnicodeSet &additions, UErrorCode &status);
+    virtual AlphabeticIndex &addLabels(const UnicodeSet &additions, UErrorCode &status);
 
     /**
      * Add the index characters from a Locale to the index.  The labels
@@ -207,14 +349,23 @@ class U_I18N_API AlphabeticIndex: public UObject {
      * @return this, for chaining
      * @stable ICU 4.8
      */
-     virtual AlphabeticIndex &addLabels(const Locale &locale, UErrorCode &status);
+    virtual AlphabeticIndex &addLabels(const Locale &locale, UErrorCode &status);
 
      /**
       * Destructor
       * @stable ICU 4.8
       */
-     virtual ~AlphabeticIndex();
+    virtual ~AlphabeticIndex();
 
+#ifndef U_HIDE_DRAFT_API
+    /**
+     * Builds an immutable, thread-safe version of this instance, without data records.
+     *
+     * @return an immutable index instance
+     * @draft ICU 51
+     */
+    ImmutableIndex *buildImmutableIndex(UErrorCode &errorCode);
+#endif  /* U_HIDE_DRAFT_API */
 
     /**
      * Get the Collator that establishes the ordering of the items in this index.
@@ -253,7 +404,6 @@ class U_I18N_API AlphabeticIndex: public UObject {
      * @stable ICU 4.8
      */
     virtual AlphabeticIndex &setInflowLabel(const UnicodeString &inflowLabel, UErrorCode &status);
-
 
 
    /**
@@ -320,22 +470,6 @@ class U_I18N_API AlphabeticIndex: public UObject {
      * @stable ICU 4.8
      */
     virtual AlphabeticIndex &setMaxLabelCount(int32_t maxLabelCount, UErrorCode &status);
-
-
-    /**
-     * Get the Unicode character (or tailored string) that defines an overflow bucket;
-     * that is anything greater than or equal to that string should go in that bucket,
-     * instead of with the last character. Normally that is the first character of the script
-     * after lowerLimit. Thus in X Y Z ... <i>Devanagari-ka</i>, the overflow character for Z
-     * would be the <i>Greek-alpha</i>.
-     *
-     * @param lowerLimit   The character below the overflow (or inflow) bucket
-     * @param status error code
-     * @return string that defines top of the overflow buck for lowerLimit, or an empty string if there is none
-     * @internal
-     */
-    virtual const UnicodeString &getOverflowComparisonString(const UnicodeString &lowerLimit,
-                                                             UErrorCode &status);
 
 
     /**
@@ -511,9 +645,6 @@ class U_I18N_API AlphabeticIndex: public UObject {
     virtual AlphabeticIndex &resetRecordIterator();
 
 private:
-    // No ICU "poor man's RTTI" for this class nor its subclasses.
-    virtual UClassID getDynamicClassID() const;
-
      /**
       * No Copy constructor.
       * @internal
@@ -538,187 +669,90 @@ private:
      virtual UBool operator!=(const AlphabeticIndex& other) const;
 
      // Common initialization, for use from all constructors.
-     void init(UErrorCode &status);
+     void init(const Locale *locale, UErrorCode &status);
 
-     // Initialize & destruct static constants used by this class.
-     static void staticInit(UErrorCode &status);
+    /**
+     * This method is called to get the index exemplars. Normally these come from the locale directly,
+     * but if they aren't available, we have to synthesize them.
+     */
+    void addIndexExemplars(const Locale &locale, UErrorCode &status);
+    /**
+     * Add Chinese index characters from the tailoring.
+     */
+    UBool addChineseIndexCharacters(UErrorCode &errorCode);
 
-     // Pinyin stuff.  If the input name is Chinese, add the Pinyin prefix to the dest string.
-     void hackName(UnicodeString &dest, const UnicodeString &name, const Collator *coll);
-     void initPinyinBounds(const Collator *coll, UErrorCode &status);
+    UVector *firstStringsInScript(UErrorCode &status);
 
-   public:
-#ifndef U_HIDE_INTERNAL_API
-     /**
-      *   Delete all shared (static) data associated with an AlphabeticIndex.
-      *   Internal function, not intended for direct use.
-      *   @internal.
-      */
-     static void staticCleanup();
-#endif  /* U_HIDE_INTERNAL_API */
-   private:
+    static UnicodeString separated(const UnicodeString &item);
 
-     // Add index characters from the specified locale to the dest set.
-     // Does not remove any previous contents from dest.
-     static void getIndexExemplars(UnicodeSet &dest, const Locale &locale, UErrorCode &status);
+    /**
+     * Determine the best labels to use.
+     * This is based on the exemplars, but we also process to make sure that they are unique,
+     * and sort differently, and that the overall list is small enough.
+     */
+    void initLabels(UVector &indexCharacters, UErrorCode &errorCode) const;
+    BucketList *createBucketList(UErrorCode &errorCode) const;
+    void initBuckets(UErrorCode &errorCode);
+    void clearBuckets();
+    void internalResetBucketIterator();
 
-     UVector *firstStringsInScript(UErrorCode &status);
+public:
 
-     static UnicodeString separated(const UnicodeString &item);
-
-     static UnicodeSet *getScriptSet(UnicodeSet &dest, const UnicodeString &codePoint, UErrorCode &status);
-
-     void buildIndex(UErrorCode &status);
-     void buildBucketList(UErrorCode &status);
-     void bucketRecords(UErrorCode &status);
-
-
-  public:
-
-    //  The following internal items are declared public only to allow access from
-    //  implementation code written in plain C.  They are not intended for
-    //  public use.
+    //  The Record is declared public only to allow access from
+    //  implementation code written in plain C.
+    //  It is not intended for public use.
 
 #ifndef U_HIDE_INTERNAL_API
     /**
-     * A record, or item, in the index.
+     * A (name, data) pair, to be sorted by name into one of the index buckets.
+     * The user data is not used by the index implementation.
      * @internal
      */
-     struct Record: public UMemory {
-         AlphabeticIndex     *alphaIndex_;
-         const UnicodeString  name_;
-         UnicodeString        sortingName_;  // Usually the same as name_; different for Pinyin.
-         const void           *data_;
-         int32_t              serialNumber_;  // Defines sorting order for names that compare equal.
-         Record(AlphabeticIndex *alphaIndex, const UnicodeString &name, const void *data);
-         ~Record();
-     };
+    struct Record: public UMemory {
+        const UnicodeString  name_;
+        const void           *data_;
+        Record(const UnicodeString &name, const void *data);
+        ~Record();
+    };
 #endif  /* U_HIDE_INTERNAL_API */
 
-     /**
-       * Holds all user records before they are distributed into buckets.
-       * Type of contents is (Record *)
-       * @internal
-       */
-     UVector  *inputRecords_;
-
-     /**
-      * A Bucket holds an index label and references to everything belonging to that label.
-      * For implementation use only.  Declared public because pure C implementation code needs access.
-      * @internal
-      */
-     struct Bucket: public UMemory {
-         UnicodeString     label_;
-         UnicodeString     lowerBoundary_;
-         UAlphabeticIndexLabelType labelType_;
-         UVector           *records_; // Records are owned by inputRecords_ vector.
-
-         Bucket(const UnicodeString &label,   // Parameter strings are copied.
-                const UnicodeString &lowerBoundary,
-                UAlphabeticIndexLabelType type, UErrorCode &status);
-         ~Bucket();
-     };
-
-  public:
-
-    /** 
-      * Language Types.  For internal ICU use only.
-      * @internal (but not hidden with U_HIDE_INTERNAL_API because it is used in public API)
-      */
-    enum ELangType {
-        /** @internal */
-        kNormal,
-        /** @internal */
-        kSimplified,
-        /** @internal */
-        kTraditional
-    };
+private:
 
     /**
-      * Get the Language Type for this Index.  Based on the locale.
-      * @internal
-      */
-    static ELangType  langTypeFromLocale(const Locale &loc);
+     * Holds all user records before they are distributed into buckets.
+     * Type of contents is (Record *)
+     * @internal
+     */
+    UVector  *inputList_;
 
+    int32_t  labelsIterIndex_;        // Index of next item to return.
+    int32_t  itemsIterIndex_;
+    Bucket   *currentBucket_;         // While an iteration of the index in underway,
+                                      //   point to the bucket for the current label.
+                                      // NULL when no iteration underway.
 
-   private:
+    int32_t    maxLabelCount_;        // Limit on # of labels permitted in the index.
 
-     // Holds the contents of this index, buckets of user items.
-     // UVector elements are of type (Bucket *)
-     UVector *bucketList_;
+    UnicodeSet *initialLabels_;       // Initial (unprocessed) set of Labels.  Union
+                                      //   of those explicitly set by the user plus
+                                      //   those from locales.  Raw values, before
+                                      //   crunching into bucket labels.
 
-     int32_t  labelsIterIndex_;      // Index of next item to return.
-     int32_t  itemsIterIndex_;
-     Bucket   *currentBucket_;       // While an iteration of the index in underway,
-                                     //   point to the bucket for the current label.
-                                     // NULL when no iteration underway.
+    UVector *firstCharsInScripts_;    // The first character from each script,
+                                      //   in collation order.
 
-     UBool    indexBuildRequired_;   //  Caller has made changes to the index that
-                                     //  require rebuilding & bucketing before the
-                                     //  contents can be iterated.
+    RuleBasedCollator *collator_;
+    RuleBasedCollator *collatorPrimaryOnly_;
 
-     int32_t    maxLabelCount_;      // Limit on # of labels permitted in the index.
+    // Lazy evaluated: null means that we have not built yet.
+    BucketList *buckets_;
 
-     UHashtable *alreadyIn_;         // Key=UnicodeString, value=UnicodeSet
+    UnicodeString  inflowLabel_;
+    UnicodeString  overflowLabel_;
+    UnicodeString  underflowLabel_;
+    UnicodeString  overflowComparisonString_;
 
-     UnicodeSet *initialLabels_;     // Initial (unprocessed) set of Labels.  Union
-                                     //   of those explicitly set by the user plus
-                                     //   those from locales.  Raw values, before
-                                     //   crunching into bucket labels.
-
-     UVector    *labels_;            // List of Labels, after processing, sorting.
-                                     //   Contents are (UnicodeString *)
-
-     UnicodeSet *noDistinctSorting_; // As the set of labels is built, strings may 
-                                     // be discarded from the exemplars. This contains 
-                                     // some of the discards, and is
-                                     // intended for debugging.
-
-     UnicodeSet *notAlphabetic_;     // As the set of labels is built, strings may 
-                                     // be discarded from the exemplars. This contains 
-                                     // some of the discards, and is
-                                     // intended for debugging.
-
-
-     UVector    *firstScriptCharacters_;  // The first character from each script,
-                                          //   in collation order.
-
-     Locale    locale_;
-     Collator  *collator_;
-     Collator  *collatorPrimaryOnly_;
-
-     UnicodeString  inflowLabel_;
-     UnicodeString  overflowLabel_;
-     UnicodeString  underflowLabel_;
-     UnicodeString  overflowComparisonString_;
-
-     ELangType      langType_;        // The language type, simplified Chinese, Traditional Chinese,
-                                      //  or not Chinese (Normal).  Part of the Pinyin support
-
-     typedef const UChar PinyinLookup[24][3];
-     static PinyinLookup   HACK_PINYIN_LOOKUP_SHORT;
-     static PinyinLookup   HACK_PINYIN_LOOKUP_LONG;
-     
-     // These will be lazily set to the short or long tables based on which
-     //   Chinese collation has been configured into the ICU library.
-     static PinyinLookup   *HACK_PINYIN_LOOKUP;
-     static const UChar    *PINYIN_LOWER_BOUNDS;
-
-
-
-     int32_t    recordCounter_;         // Counts Records created.  For minting record serial numbers.
-
-// Constants.  Lazily initialized the first time an AlphabeticIndex object is created.
-
-     static UnicodeSet *ALPHABETIC;
-     static UnicodeSet *CORE_LATIN;
-     static UnicodeSet *ETHIOPIC;
-     static UnicodeSet *HANGUL;
-     static UnicodeSet *IGNORE_SCRIPTS;
-     static UnicodeSet *TO_TRY;
-     static UnicodeSet *UNIHAN;
-     static const UnicodeString *EMPTY_STRING;
-
+    UnicodeString emptyString_;
 };
 
 U_NAMESPACE_END

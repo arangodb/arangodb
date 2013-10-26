@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -160,7 +160,7 @@ void Test4056591()
 
     
     u_uastrcpy(pat, "yyMMdd");
-    def = udat_open(UDAT_IGNORE,UDAT_IGNORE,NULL, NULL, 0, pat, u_strlen(pat), &status);
+    def = udat_open(UDAT_PATTERN,UDAT_PATTERN,NULL, NULL, 0, pat, u_strlen(pat), &status);
     if(U_FAILURE(status))
     {
         log_data_err("FAIL: error in creating the dateformat using u_openPattern(): %s - (Are you missing data?)\n", myErrorName(status));
@@ -211,7 +211,7 @@ void Test4059917()
     u_uastrcpy(tzID, "PST");
     u_uastrcpy(pattern, "yyyy/MM/dd");
     log_verbose("%s\n", austrdup(pattern) );
-    def = udat_open(UDAT_IGNORE,UDAT_IGNORE,NULL,tzID,-1,pattern, u_strlen(pattern),&status);
+    def = udat_open(UDAT_PATTERN,UDAT_PATTERN,NULL,tzID,-1,pattern, u_strlen(pattern),&status);
     if(U_FAILURE(status))
     {
         log_data_err("FAIL: error in creating the dateformat using openPattern: %s - (Are you missing data?)\n", myErrorName(status));
@@ -224,7 +224,7 @@ void Test4059917()
     udat_close(def);
     
     u_uastrcpy(pattern, "yyyyMMdd");
-    def = udat_open(UDAT_IGNORE,UDAT_IGNORE,NULL,tzID,-1,pattern, u_strlen(pattern),&status);
+    def = udat_open(UDAT_PATTERN,UDAT_PATTERN,NULL,tzID,-1,pattern, u_strlen(pattern),&status);
     if(U_FAILURE(status))
     {
         log_err("FAIL: error in creating the dateformat using openPattern: %s\n", myErrorName(status));
@@ -285,7 +285,7 @@ void Test4060212()
     status = U_ZERO_ERROR;
     u_uastrcpy(tzID, "PST");
 
-    formatter = udat_open(UDAT_IGNORE,UDAT_IGNORE,"en_US",tzID,-1,pattern, u_strlen(pattern), &status);
+    formatter = udat_open(UDAT_PATTERN,UDAT_PATTERN,"en_US",tzID,-1,pattern, u_strlen(pattern), &status);
     pos=0;
     myDate = udat_parse(formatter, dateString, u_strlen(dateString), &pos, &status);
     
@@ -298,6 +298,7 @@ void Test4060212()
         return;
     }
     myString = myFormatit(fmt, myDate);
+    (void)myString;   /* Suppress set but not used warning. */
     cal=ucal_open(tzID, u_strlen(tzID), "en_US", UCAL_GREGORIAN, &status);
     if(U_FAILURE(status)){
         log_err("FAIL: error in ucal_open caldef : %s\n", myErrorName(status));
@@ -329,7 +330,7 @@ void Test4061287()
     u_uastrcpy(pattern, "dd/mm/yyyy");
     status = U_ZERO_ERROR;
     log_verbose("Testing parsing by changing the attribute lenient\n");
-    df = udat_open(UDAT_IGNORE,UDAT_IGNORE,NULL,NULL,0,pattern, u_strlen(pattern),&status);
+    df = udat_open(UDAT_PATTERN,UDAT_PATTERN,NULL,NULL,0,pattern, u_strlen(pattern),&status);
     if(U_FAILURE(status)){
         log_data_err("ERROR: failure in open pattern of test4061287: %s - (Are you missing data?)\n", myErrorName(status));
         return;
@@ -343,6 +344,7 @@ void Test4061287()
         log_err("setLenient nor working\n");
     ok = FALSE;
     myDate = udat_parse(df, dateString, u_strlen(dateString), &pos, &status);
+    (void)myDate;   /* Suppress set but not used warning. */
     if(U_FAILURE(status))
         ok = TRUE;
     if(ok!=TRUE) 
@@ -448,13 +450,14 @@ void Test4162071()
     u_uastrcpy(format, "EEE', 'dd-MMM-yyyy HH:mm:ss z"); /*  RFC 822/1123 */
     status = U_ZERO_ERROR;
     /* Can't hardcode the result to assume the default locale is "en_US". */
-    df = udat_open(UDAT_IGNORE,UDAT_IGNORE,"en_US",NULL,0,format, u_strlen(format),&status);
+    df = udat_open(UDAT_PATTERN,UDAT_PATTERN,"en_US",NULL,0,format, u_strlen(format),&status);
     if(U_FAILURE(status)){
         log_data_err("ERROR: couldn't create date format: %s\n", myErrorName(status));
         return;
     }
     pos=0;
     x = udat_parse(df, datestr, u_strlen(datestr), &pos, &status);
+    (void)x;   /* Suppress set but not used warning. */
     if(U_FAILURE(status)){
         log_data_err("ERROR : parse format  %s fails : %s\n", austrdup(format), myErrorName(status));
     }
@@ -572,6 +575,7 @@ void Test_GEec(void)
 
             udat_applyPattern(dtfmt, FALSE, patTextPtr->pattern, -1);
             dmyGnTextLen = udat_format(dtfmt, july022008, dmyGnText, DATE_TEXT_MAX_CHARS, NULL, &status);
+            (void)dmyGnTextLen;   /* Suppress set but not used warning. */ 
             if ( U_FAILURE(status) ) {
                 log_err("FAIL: udat_format with %s: %s\n", patTextPtr->label, myErrorName(status) );
                 status = U_ZERO_ERROR;

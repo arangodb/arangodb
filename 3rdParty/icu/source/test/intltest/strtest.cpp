@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*   file name:  strtest.cpp
@@ -94,7 +94,7 @@ U_STRING_DECL(ustringVar, "aZ0 -", 5);
 void
 StringTest::Test_U_STRING() {
     U_STRING_INIT(ustringVar, "aZ0 -", 5);
-    if( sizeof(ustringVar)/sizeof(*ustringVar)!=6 ||
+    if( u_strlen(ustringVar)!=5 ||
         ustringVar[0]!=0x61 ||
         ustringVar[1]!=0x5a ||
         ustringVar[2]!=0x30 ||

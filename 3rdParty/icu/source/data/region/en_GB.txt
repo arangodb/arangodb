@@ -1,0 +1,24 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_GB.xml
+// *
+// ***************************************************************************
+en_GB{
+    %%Parent{"en_001"}
+    Countries{
+        GB{"United Kingdom"}
+        GS{"South Georgia and the South Sandwich Islands"}
+        HM{"Heard Island and McDonald Islands"}
+        UM{"U.S. Minor Outlying Islands"}
+        US{"United States"}
+        VC{"Saint Vincent and the Grenadines"}
+    }
+    CountriesShort{
+        GB{"UK"}
+        US{"US"}
+    }
+    Version{"2.0.92.80"}
+}

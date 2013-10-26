@@ -1,5 +1,5 @@
 ## Makefile.in for ICU tools
-## Copyright (c) 1999-2011, International Business Machines Corporation and
+## Copyright (c) 1999-2012, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -13,9 +13,9 @@ include $(top_builddir)/icudefs.mk
 ## Build directory information
 subdir = tools
 
-SUBDIRS = toolutil ctestfw makeconv genrb genbrk genctd \
+SUBDIRS = toolutil ctestfw makeconv genrb genbrk \
 gencnval gensprep icuinfo genccode gencmn icupkg pkgdata \
-gentest gennorm2 gencfu
+gentest gennorm2 gencfu gendict
 
 ## List of phony targets
 .PHONY : all all-local all-recursive install install-local	\

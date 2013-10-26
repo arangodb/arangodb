@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -159,6 +159,7 @@ CalendarLimitTest::TestLimits(void) {
         {"islamic",         FALSE,      DEFAULT_START, 800000}, // Approx. 2250 years from now, after which some rounding errors occur in Islamic calendar
         {"hebrew",          TRUE,       DEFAULT_START, DEFAULT_END},
         {"chinese",         TRUE,       DEFAULT_START, DEFAULT_END},
+        {"dangi",           TRUE,       DEFAULT_START, DEFAULT_END},
         {"indian",          FALSE,      DEFAULT_START, DEFAULT_END},
         {"coptic",          FALSE,      DEFAULT_START, DEFAULT_END},
         {"ethiopic",        FALSE,      DEFAULT_START, DEFAULT_END},
@@ -338,7 +339,8 @@ CalendarLimitTest::doLimitsTest(Calendar& cal,
             logln((UnicodeString)"(" + i + " days)");
             mark += 5000; // 5 sec
         }
-        cal.setTime(greg.getTime(status), status);
+        UDate testMillis = greg.getTime(status);
+        cal.setTime(testMillis, status);
         cal.setMinimalDaysInFirstWeek(1);
         if (failure(status, "Calendar set/getTime")) {
             return;
@@ -385,12 +387,24 @@ CalendarLimitTest::doLimitsTest(Calendar& cal,
                       ", actual_max=" + maxActual);
             }
             if (v < minActual || v > maxActual) {
-                errln((UnicodeString)"Fail: [" + cal.getType() + "] " +
-                      ymdToString(cal, ymd) +
-                      " " + FIELD_NAME[f] + "(" + f + ")=" + v +
-                      ", actual range=" + minActual + ".." + maxActual +
-                      ", allowed=(" + minLow + ".." + minHigh + ")..(" +
-                      maxLow + ".." + maxHigh + ")");
+                // timebomb per #9967, fix with #9972
+                if ( uprv_strcmp(cal.getType(), "dangi") == 0 &&
+                        testMillis >= 1865635198000.0  &&
+                     logKnownIssue("9972", "as per #9967")) { // Feb 2029 gregorian, end of dangi 4361
+                    logln((UnicodeString)"Fail: [" + cal.getType() + "] " +
+                          ymdToString(cal, ymd) +
+                          " " + FIELD_NAME[f] + "(" + f + ")=" + v +
+                          ", actual=" + minActual + ".." + maxActual +
+                          ", allowed=(" + minLow + ".." + minHigh + ")..(" +
+                          maxLow + ".." + maxHigh + ")");
+                } else {
+                    errln((UnicodeString)"Fail: [" + cal.getType() + "] " +
+                          ymdToString(cal, ymd) +
+                          " " + FIELD_NAME[f] + "(" + f + ")=" + v +
+                          ", actual=" + minActual + ".." + maxActual +
+                          ", allowed=(" + minLow + ".." + minHigh + ")..(" +
+                          maxLow + ".." + maxHigh + ")");
+                }
             }
         }
         greg.add(UCAL_DAY_OF_YEAR, 1, status);
@@ -449,7 +463,11 @@ CalendarLimitTest::ymdToString(const Calendar& cal, UnicodeString& str) {
         + "/" + (cal.get(UCAL_MONTH, status) + 1)
         + (cal.get(UCAL_IS_LEAP_MONTH, status) == 1 ? "(leap)" : "")
         + "/" + cal.get(UCAL_DATE, status)
-        + ", time=" + cal.getTime(status));
+        + " " + cal.get(UCAL_HOUR_OF_DAY, status)
+        + ":" + cal.get(UCAL_MINUTE, status)
+        + " zone(hrs) " + cal.get(UCAL_ZONE_OFFSET, status)/(60.0*60.0*1000.0)
+        + " dst(hrs) " + cal.get(UCAL_DST_OFFSET, status)/(60.0*60.0*1000.0)
+        + ", time(millis)=" + cal.getTime(status));
     return str;
 }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2009-2012, International Business Machines
+// Copyright (C) 2009-2013, International Business Machines
 // Corporation and others. All Rights Reserved.
 //
 // Copyright 2001 and onwards Google Inc.
@@ -183,7 +183,7 @@ class U_COMMON_API StringPiece : public UMemory {
    * Maximum integer, used as a default value for substring methods.
    * @stable ICU 4.2
    */
-  static const int32_t npos = 0x7fffffff;
+  static const int32_t npos; // = 0x7fffffff;
 
   /**
    * Returns a substring of this StringPiece.

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2010, International Business Machines
+*   Copyright (C) 2009-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -144,6 +144,10 @@ public:
         ptr=p;
     }
 protected:
+    /**
+     * Actual pointer.
+     * @internal
+     */
     T *ptr;
 private:
     // No comparison operators with other LocalPointerBases.

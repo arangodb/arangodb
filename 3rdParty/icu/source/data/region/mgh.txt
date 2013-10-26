@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/mgh.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mgh.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/mgh.xml
+ * ICU <specials> source: <path>/common/main/mgh.xml
  */
 mgh{
     Countries{
@@ -25,7 +25,6 @@ mgh{
         CL{"Uchile"}
         CN{"Uchina"}
         CO{"Ukolombia"}
-        CS{"Usiera Leoni"}
         CU{"Ukuba"}
         CY{"Ukuprosi"}
         CZ{"Ucheki"}
@@ -150,5 +149,5 @@ mgh{
         ZM{"Uzambia"}
         ZW{"Uzimbabwe"}
     }
-    Version{"2.0.64.50"}
+    Version{"2.0.90.61"}
 }

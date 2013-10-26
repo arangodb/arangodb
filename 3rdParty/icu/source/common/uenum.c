@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2004, International Business Machines
+*   Copyright (C) 2002-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -160,7 +160,13 @@ uenum_next(UEnumeration* en,
         return NULL;
     }
     if (en->next != NULL) {
-        return en->next(en, resultLength, status);
+        if (resultLength != NULL) {
+            return en->next(en, resultLength, status);
+        }
+        else {
+            int32_t dummyLength=0;
+            return en->next(en, &dummyLength, status);
+        }
     } else {
         *status = U_UNSUPPORTED_ERROR;
         return NULL;

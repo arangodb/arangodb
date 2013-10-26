@@ -1,7 +1,7 @@
 
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -109,11 +109,10 @@ void ThaiLayoutEngine::adjustGlyphPositions(const LEUnicode chars[], le_int32 of
         return;
     }
 
-    if (fTypoFlags & 0x1) { /* kerning enabled */
-      static const le_uint32 kernTableTag = LE_KERN_TABLE_TAG;
-
-      KernTable kt(fFontInstance, getFontTable(kernTableTag));
-      kt.process(glyphStorage);
+    if (fTypoFlags & LE_Kerning_FEATURE_FLAG) { /* kerning enabled */
+      LETableReference kernTable(fFontInstance, LE_KERN_TABLE_TAG, success);
+      KernTable kt(kernTable, success);
+      kt.process(glyphStorage, success);
     }
 
     // default is no adjustments

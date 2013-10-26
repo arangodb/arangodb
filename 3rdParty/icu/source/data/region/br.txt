@@ -1,23 +1,23 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/br.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/br.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/br.xml
+ * ICU <specials> source: <path>/common/main/br.xml
  */
 br{
     Countries{
-        001{"bed"}
+        001{"Bed"}
         002{"Afrika"}
-        003{"Norzh Amerika"}
-        005{"Su Amerika"}
+        003{"Norzhamerika"}
+        005{"Suamerika"}
         009{"Oseania"}
         011{"Afrika ar Cʼhornôg"}
-        013{"Kreiz Amerika"}
+        013{"Kreizamerika"}
         014{"Afrika ar Reter"}
         015{"Afrika an Norzh"}
         017{"Afrika ar Cʼhreiz"}
@@ -29,7 +29,7 @@ br{
         034{"Azia ar Su"}
         035{"Azia ar Gevred"}
         039{"Europa ar Su"}
-        053{"Aostralia ha Zeland-Nevez"}
+        053{"Aostralazia"}
         054{"Melanezia"}
         057{"Rannved Mikronezia"}
         061{"Polinezia"}
@@ -72,6 +72,7 @@ br{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
+        BQ{"Nederlandat Karib"}
         BR{"Brazil"}
         BS{"Bahamas"}
         BT{"Bhoutan"}
@@ -95,6 +96,7 @@ br{
         CR{"Costa Rica"}
         CU{"Kuba"}
         CV{"Kab Glas"}
+        CW{"Curaçao"}
         CX{"Enez Christmas"}
         CY{"Kiprenez"}
         CZ{"Republik Tchek"}
@@ -191,7 +193,7 @@ br{
         MH{"Inizi Marshall"}
         MK{"Makedonia"}
         ML{"Mali"}
-        MM{"Myanmar [Birmania]"}
+        MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
         MO{"Macau RMD Sina"}
         MP{"Inizi Mariana an Norzh"}
@@ -254,8 +256,10 @@ br{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
+        SS{"Su Soudan"}
         ST{"São Tomé ha Príncipe"}
         SV{"Salvador"}
+        SX{"Sint Maarten"}
         SY{"Siria"}
         SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
@@ -297,5 +301,9 @@ br{
         ZW{"Zimbabwe"}
         ZZ{"Rannved dianav"}
     }
-    Version{"2.0.64.44"}
+    CountriesShort{
+        HK{"Hong Kong"}
+        MO{"Macau"}
+    }
+    Version{"2.0.92.75"}
 }

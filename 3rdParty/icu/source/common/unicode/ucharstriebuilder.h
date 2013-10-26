@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2012, International Business Machines
+*   Copyright (C) 2010-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  ucharstriebuilder.h
@@ -19,6 +19,11 @@
 #include "unicode/stringtriebuilder.h"
 #include "unicode/ucharstrie.h"
 #include "unicode/unistr.h"
+
+/**
+ * \file
+ * \brief C++ API: Builder for icu::UCharsTrie
+ */
 
 U_NAMESPACE_BEGIN
 
@@ -65,6 +70,9 @@ public:
      * Builds a UCharsTrie for the add()ed data.
      * Once built, no further data can be add()ed until clear() is called.
      *
+     * A UCharsTrie cannot be empty. At least one (string, value) pair
+     * must have been add()ed.
+     *
      * This method passes ownership of the builder's internal result array to the new trie object.
      * Another call to any build() variant will re-serialize the trie.
      * After clear() has been called, a new array will be used as well.
@@ -81,6 +89,9 @@ public:
     /**
      * Builds a UCharsTrie for the add()ed data and UChar-serializes it.
      * Once built, no further data can be add()ed until clear() is called.
+     *
+     * A UCharsTrie cannot be empty. At least one (string, value) pair
+     * must have been add()ed.
      *
      * Multiple calls to buildUnicodeString() set the UnicodeStrings to the
      * builder's same UChar array, without rebuilding.

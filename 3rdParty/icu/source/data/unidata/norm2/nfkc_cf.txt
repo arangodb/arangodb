@@ -1,5 +1,5 @@
 # Unicode Character Database
-# Copyright (c) 1991-2012 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 #
@@ -12,7 +12,7 @@
 # and reformatted into syntax for the gennorm2 Normalizer2 data generator tool.
 # Use this file as the third gennorm2 input file after nfc.txt and nfkc.txt.
 
-* Unicode 6.1.0
+* Unicode 6.3.0
 
 0041>0061
 0042>0062
@@ -537,6 +537,7 @@
 0555>0585
 0556>0586
 0587>0565 0582
+061C>
 0675>0627 0674
 0676>0648 0674
 0677>06C7 0674
@@ -627,7 +628,7 @@
 10FC>10DC
 115F..1160>
 17B4..17B5>
-180B..180D>
+180B..180E>
 1D2C>0061
 1D2D>00E6
 1D2E>0062

@@ -209,7 +209,7 @@
       <Project>{8b41752b-5a52-41e4-b7e0-07921c0cc6bf}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
-    <ProjectReference Include="..\tools\genctd\genctd.vcxproj">
+    <ProjectReference Include="..\tools\gendict\gendict.vcxproj">
       <Project>{9d4211f7-2c77-439c-82f0-30a4e43ba569}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>

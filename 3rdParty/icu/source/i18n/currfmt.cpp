@@ -8,7 +8,7 @@
 * Since: ICU 3.0
 **********************************************************************
 */
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/utypes.h"
 

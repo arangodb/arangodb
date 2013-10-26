@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  * File TMSGFMT.CPP
@@ -21,6 +21,7 @@
 
 #include "unicode/format.h"
 #include "unicode/decimfmt.h"
+#include "unicode/localpointer.h"
 #include "unicode/locid.h"
 #include "unicode/msgfmt.h"
 #include "unicode/numfmt.h"
@@ -63,7 +64,10 @@ TestMessageFormat::runIndexedTest(int32_t index, UBool exec,
     TESTCASE_AUTO(TestApostropheMode);
     TESTCASE_AUTO(TestCompatibleApostrophe);
     TESTCASE_AUTO(testCoverage);
+    TESTCASE_AUTO(testGetFormatNames);
     TESTCASE_AUTO(TestTrimArgumentName);
+    TESTCASE_AUTO(TestSelectOrdinal);
+    TESTCASE_AUTO(TestDecimals);
     TESTCASE_AUTO_END;
 }
 
@@ -277,7 +281,7 @@ void TestMessageFormat::PatternTest()
         "Quotes ', {, 'a' 1 {0}",
         "Quotes ', {, 'a' 1 {0}",
         "{1,number,'#',##} #34,56",
-        "There are 3,456 files on Disk at 1/12/70 5:46 AM.",
+        "There are 3,456 files on Disk at 1/12/70, 5:46 AM.",
         "On Disk, there are 3,456 files, with $1.00.",
         "{1,number,percent}, 345,600%,",
         "{1,date,full}, Wednesday, December 31, 1969,",
@@ -442,7 +446,7 @@ void TestMessageFormat::TestTurkishCasing()
     }
 
     const UnicodeString expected(
-            "At 12:20:00 on 08.08.1997, there was a disturbance in the Force on planet 7.", "");
+            "At 12:20:00 on 8.08.1997, there was a disturbance in the Force on planet 7.", "");
     if (result != expected) {
         errln("TestTurkishCasing failed on test");
         errln( UnicodeString("     Result: ") + result );
@@ -575,11 +579,11 @@ void TestMessageFormat::testMsgFormatPlural(/* char* par */)
     delete mfNum;
     delete mfAlpha;
 
-    MessageFormat* mfNum2 = new MessageFormat(t3, Locale("ru"), err);
+    MessageFormat* mfNum2 = new MessageFormat(t3, Locale("uk"), err);
     numResult1.remove();
     Formattable testArgs2((int32_t)4);
     mfNum2->format(&testArgs2, 1, numResult1, ignore, err);
-    MessageFormat* mfAlpha2 = new MessageFormat(t4, Locale("ru"), err);
+    MessageFormat* mfAlpha2 = new MessageFormat(t4, Locale("uk"), err);
     argNameResult.remove();
     mfAlpha2->format(argName, &testArgs2, 1, argNameResult, err);
 
@@ -651,7 +655,7 @@ void TestMessageFormat::internalFormat(MessageFormat* msgFmt ,
         //Format with passed arguments
         msgFmt->format( args , numOfArgs , result, ignore, status);
         if (U_FAILURE(status)) {
-            dataerrln( "%serror while formatting with ErrorCode as %s" ,errMsg, u_errorName(status) );
+            dataerrln( "%s error while formatting with ErrorCode as %s" ,errMsg, u_errorName(status) );
         }
         //Compare expected with obtained result
         if ( result!= expected ) {
@@ -667,7 +671,7 @@ MessageFormat* TestMessageFormat::internalCreate(
     //Create the MessageFormat with simple SelectFormat
     MessageFormat* msgFmt = new MessageFormat(pattern, locale, status);
     if (U_FAILURE(status)) {
-        dataerrln( "%serror while constructing with ErrorCode as %s" ,errMsg, u_errorName(status) );
+        dataerrln( "%s error while constructing with ErrorCode as %s" ,errMsg, u_errorName(status) );
         logln(UnicodeString("TestMessageFormat::testMsgFormatSelect #1 with error code ")+(int32_t)status);
         return NULL;
     }
@@ -749,6 +753,7 @@ void TestMessageFormat::testMsgFormatSelect(/* char* par */)
     //Nested patterns with plural, number ,choice ,select format etc.
     //Select Format with embedded number format
     UnicodeString t4("{0} est {1, select, female {{2,number,integer} all\\u00E9e} other {all\\u00E9}} \\u00E0 Paris.");
+    err = U_ZERO_ERROR;
     //Create the MessageFormat with Select Format with embedded number format (nested pattern)
     MessageFormat* msgFmt4 = internalCreate(t4.unescape(), Locale("fr"),err,(char*)"From TestMessageFormat::TestSelectFormat create t4");
     if (!U_FAILURE(err)) {
@@ -768,7 +773,6 @@ void TestMessageFormat::testMsgFormatSelect(/* char* par */)
     }
     delete msgFmt4;
 
-    err = U_ZERO_ERROR;
     //Plural format with embedded select format
     UnicodeString t5("{0} {1, plural, one {est {2, select, female {all\\u00E9e} other {all\\u00E9}}} other {sont {2, select, female {all\\u00E9es} other {all\\u00E9s}}}} \\u00E0 Paris.");
     err = U_ZERO_ERROR;
@@ -1791,6 +1795,51 @@ void TestMessageFormat::testCoverage(void) {
     delete msgfmt;
 }
 
+void TestMessageFormat::testGetFormatNames() {
+    IcuTestErrorCode errorCode(*this, "testGetFormatNames");
+    MessageFormat msgfmt("Hello, {alice,number} {oops,date,full}  {zip,spellout} World.", Locale::getRoot(), errorCode);
+    if(errorCode.logDataIfFailureAndReset("MessageFormat() failed")) {
+        return;
+    }
+    LocalPointer<StringEnumeration> names(msgfmt.getFormatNames(errorCode));
+    if(errorCode.logIfFailureAndReset("msgfmt.getFormatNames() failed")) {
+        return;
+    }
+    const UnicodeString *name;
+    name = names->snext(errorCode);
+    if (name == NULL || errorCode.isFailure()) {
+        errln("msgfmt.getFormatNames()[0] failed: %s", errorCode.errorName());
+        errorCode.reset();
+        return;
+    }
+    if (!assertEquals("msgfmt.getFormatNames()[0]", UNICODE_STRING_SIMPLE("alice"), *name)) {
+        return;
+    }
+    name = names->snext(errorCode);
+    if (name == NULL || errorCode.isFailure()) {
+        errln("msgfmt.getFormatNames()[1] failed: %s", errorCode.errorName());
+        errorCode.reset();
+        return;
+    }
+    if (!assertEquals("msgfmt.getFormatNames()[1]", UNICODE_STRING_SIMPLE("oops"), *name)) {
+        return;
+    }
+    name = names->snext(errorCode);
+    if (name == NULL || errorCode.isFailure()) {
+        errln("msgfmt.getFormatNames()[2] failed: %s", errorCode.errorName());
+        errorCode.reset();
+        return;
+    }
+    if (!assertEquals("msgfmt.getFormatNames()[2]", UNICODE_STRING_SIMPLE("zip"), *name)) {
+        return;
+    }
+    name = names->snext(errorCode);
+    if (name != NULL) {
+        errln(UnicodeString("msgfmt.getFormatNames()[3] should be NULL but is: ") + *name);
+        return;
+    }
+}
+
 void TestMessageFormat::TestTrimArgumentName() {
     // ICU 4.8 allows and ignores white space around argument names and numbers.
     IcuTestErrorCode errorCode(*this, "TestTrimArgumentName");
@@ -1810,6 +1859,109 @@ void TestMessageFormat::TestTrimArgumentName() {
     result.remove();
     assertEquals("trim-named-arg format() failed", "x 3 y",
                   m.format(&argName, args, 1, result, errorCode));
+}
+
+void TestMessageFormat::TestSelectOrdinal() {
+    IcuTestErrorCode errorCode(*this, "TestSelectOrdinal");
+    // Test plural & ordinal together,
+    // to make sure that we get the correct cached PluralSelector for each.
+    MessageFormat m(
+        "{0,plural,one{1 file}other{# files}}, "
+        "{0,selectordinal,one{#st file}two{#nd file}few{#rd file}other{#th file}}",
+        Locale::getEnglish(), errorCode);
+    if (errorCode.logDataIfFailureAndReset("Unable to instantiate MessageFormat")) {
+        return;
+    }
+    Formattable args[1] = { (int32_t)21 };
+    FieldPosition ignore(0);
+    UnicodeString result;
+    assertEquals("plural-and-ordinal format(21) failed", "21 files, 21st file",
+                 m.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0].setLong(2);
+    assertEquals("plural-and-ordinal format(2) failed", "2 files, 2nd file",
+                 m.format(args, 1, result.remove(), ignore, errorCode), TRUE);
+
+    args[0].setLong(1);
+    assertEquals("plural-and-ordinal format(1) failed", "1 file, 1st file",
+                 m.format(args, 1, result.remove(), ignore, errorCode), TRUE);
+
+    args[0].setLong(3);
+    assertEquals("plural-and-ordinal format(3) failed", "3 files, 3rd file",
+                 m.format(args, 1, result.remove(), ignore, errorCode), TRUE);
+
+    errorCode.logDataIfFailureAndReset("");
+}
+
+void TestMessageFormat::TestDecimals() {
+    IcuTestErrorCode errorCode(*this, "TestDecimals");
+    // Simple number replacement.
+    MessageFormat m(
+            "{0,plural,one{one meter}other{# meters}}",
+            Locale::getEnglish(), errorCode);
+    Formattable args[1] = { (int32_t)1 };
+    FieldPosition ignore;
+    UnicodeString result;
+    assertEquals("simple format(1)", "one meter",
+            m.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0] = (double)1.5;
+    result.remove();
+    assertEquals("simple format(1.5)", "1.5 meters",
+            m.format(args, 1, result, ignore, errorCode), TRUE);
+
+    // Simple but explicit.
+    MessageFormat m0(
+            "{0,plural,one{one meter}other{{0} meters}}",
+            Locale::getEnglish(), errorCode);
+    args[0] = (int32_t)1;
+    result.remove();
+    assertEquals("explicit format(1)", "one meter",
+            m0.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0] = (double)1.5;
+    result.remove();
+    assertEquals("explicit format(1.5)", "1.5 meters",
+            m0.format(args, 1, result, ignore, errorCode), TRUE);
+
+    // With offset and specific simple format with optional decimals.
+    MessageFormat m1(
+            "{0,plural,offset:1 one{another meter}other{{0,number,00.#} meters}}",
+            Locale::getEnglish(), errorCode);
+    args[0] = (int32_t)1;
+    result.remove();
+    assertEquals("offset format(1)", "01 meters",
+            m1.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0] = (int32_t)2;
+    result.remove();
+    assertEquals("offset format(1)", "another meter",
+            m1.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0] = (double)2.5;
+    result.remove();
+    assertEquals("offset format(1)", "02.5 meters",
+            m1.format(args, 1, result, ignore, errorCode), TRUE);
+
+    // With offset and specific simple format with forced decimals.
+    MessageFormat m2(
+            "{0,plural,offset:1 one{another meter}other{{0,number,0.0} meters}}",
+            Locale::getEnglish(), errorCode);
+    args[0] = (int32_t)1;
+    result.remove();
+    assertEquals("offset-decimals format(1)", "1.0 meters",
+            m2.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0] = (int32_t)2;
+    result.remove();
+    assertEquals("offset-decimals format(1)", "2.0 meters",
+            m2.format(args, 1, result, ignore, errorCode), TRUE);
+
+    args[0] = (double)2.5;
+    result.remove();
+    assertEquals("offset-decimals format(1)", "2.5 meters",
+            m2.format(args, 1, result, ignore, errorCode), TRUE);
+    errorCode.reset();
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

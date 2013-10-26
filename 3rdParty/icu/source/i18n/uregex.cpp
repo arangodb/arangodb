@@ -1,9 +1,9 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2004-2011, International Business Machines
+*   Copyright (C) 2004-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
-*   file name:  regex.cpp
+*   file name:  uregex.cpp
 */
 
 #include "unicode/utypes.h"
@@ -35,7 +35,7 @@ public:
     ~RegularExpression();
     int32_t           fMagic;
     RegexPattern     *fPat;
-    int32_t          *fPatRefCount;
+    u_atomic_int32_t *fPatRefCount;
     UChar            *fPatString;
     int32_t           fPatStringLen;
     RegexMatcher     *fMatcher;
@@ -65,7 +65,7 @@ RegularExpression::~RegularExpression() {
     if (fPatRefCount!=NULL && umtx_atomic_dec(fPatRefCount)==0) {
         delete fPat;
         uprv_free(fPatString);
-        uprv_free(fPatRefCount);
+        uprv_free((void *)fPatRefCount);
     }
     if (fOwnsText && fText!=NULL) {
         uprv_free((void *)fText);
@@ -122,13 +122,13 @@ uregex_open( const  UChar          *pattern,
         actualPatLen = u_strlen(pattern);
     }
 
-    RegularExpression *re     = new RegularExpression;
-    int32_t            *refC   = (int32_t *)uprv_malloc(sizeof(int32_t));
+    RegularExpression  *re     = new RegularExpression;
+    u_atomic_int32_t   *refC   = (u_atomic_int32_t *)uprv_malloc(sizeof(int32_t));
     UChar              *patBuf = (UChar *)uprv_malloc(sizeof(UChar)*(actualPatLen+1));
     if (re == NULL || refC == NULL || patBuf == NULL) {
         *status = U_MEMORY_ALLOCATION_ERROR;
         delete re;
-        uprv_free(refC);
+        uprv_free((void *)refC);
         uprv_free(patBuf);
         return NULL;
     }
@@ -207,12 +207,12 @@ uregex_openUText(UText          *pattern,
     UErrorCode lengthStatus = U_ZERO_ERROR;
     int32_t pattern16Length = utext_extract(pattern, 0, patternNativeLength, NULL, 0, &lengthStatus);
     
-    int32_t            *refC   = (int32_t *)uprv_malloc(sizeof(int32_t));
+    u_atomic_int32_t   *refC   = (u_atomic_int32_t *)uprv_malloc(sizeof(int32_t));
     UChar              *patBuf = (UChar *)uprv_malloc(sizeof(UChar)*(pattern16Length+1));
     if (re == NULL || refC == NULL || patBuf == NULL) {
         *status = U_MEMORY_ALLOCATION_ERROR;
         delete re;
-        uprv_free(refC);
+        uprv_free((void *)refC);
         uprv_free(patBuf);
         return NULL;
     }
@@ -854,7 +854,7 @@ uregex_setRegion64(URegularExpression   *regexp2,
 //    uregex_setRegionAndStart
 //
 //------------------------------------------------------------------------------
-U_DRAFT void U_EXPORT2 
+U_CAPI void U_EXPORT2 
 uregex_setRegionAndStart(URegularExpression   *regexp2,
                  int64_t               regionStart,
                  int64_t               regionLimit,

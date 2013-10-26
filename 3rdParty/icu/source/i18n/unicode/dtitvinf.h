@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 2008-2011, International Business Machines Corporation and
+ * Copyright (C) 2008-2011,2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  *******************************************************************************
  *
@@ -372,7 +372,6 @@ private:
      * Initialize the DateIntervalInfo from locale
      * @param locale   the given locale.
      * @param status   output param set to success/failure code on exit
-     * @internal ICU 4.0 
      */
     void initializeData(const Locale& locale, UErrorCode& status);
 
@@ -386,7 +385,6 @@ private:
      * @param intervalPattern  the interval pattern on the largest different
      *                         calendar unit.
      * @param status           output param set to success/failure code on exit
-     * @internal ICU 4.0
      */
     void setIntervalPatternInternally(const UnicodeString& skeleton,
                                       UCalendarDateFields lrgDiffCalUnit,
@@ -411,7 +409,6 @@ private:
      *        -1, if there is calendar field difference between
      *            the best match and the input skeleton
      * @return                        best match skeleton
-     * @internal ICU 4.0
      */
     const UnicodeString* getBestSkeleton(const UnicodeString& skeleton,
                                          int8_t& bestMatchDistanceInfo) const;
@@ -423,7 +420,6 @@ private:
      * and adjust pattern field width.
      * @param skeleton            skeleton to be parsed
      * @param skeletonFieldWidth  parsed skeleton field width
-     * @internal ICU 4.0
      */
     static void U_EXPORT2 parseSkeleton(const UnicodeString& skeleton, 
                                         int32_t* skeletonFieldWidth);
@@ -439,7 +435,6 @@ private:
      * @param patternLetter       pattern letter char
      * @return true if one field width is numeric and the other is string,
      *         false otherwise.
-     * @internal ICU 4.0
      */
     static UBool U_EXPORT2 stringNumeric(int32_t fieldWidth,
                                          int32_t anotherFieldWidth,
@@ -458,7 +453,6 @@ private:
      * @param field    calendar field
      * @param status   output param set to success/failure code on exit
      * @return  interval pattern index in hash table
-     * @internal ICU 4.0
      */
     static IntervalPatternIndex U_EXPORT2 calendarFieldToIntervalIndex(
                                                       UCalendarDateFields field,
@@ -469,7 +463,6 @@ private:
      * delete hash table (of type fIntervalPatterns).
      *
      * @param hTable  hash table to be deleted
-     * @internal ICU 4.0
      */
     void deleteHash(Hashtable* hTable);
 
@@ -479,7 +472,6 @@ private:
      *
      * @param status   output param set to success/failure code on exit
      * @return         hash table initialized
-     * @internal ICU 4.0
      */
     Hashtable* initHash(UErrorCode& status);
 
@@ -491,7 +483,6 @@ private:
      * @param source   the source to copy from
      * @param target   the target to copy to
      * @param status   output param set to success/failure code on exit
-     * @internal ICU 4.0
      */
     void copyHash(const Hashtable* source, Hashtable* target, UErrorCode& status);
 

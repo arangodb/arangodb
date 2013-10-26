@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sw.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sw.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sw.xml
+ * ICU <specials> source: <path>/common/main/sw.xml
  */
 sw{
     Currencies{
@@ -40,7 +40,7 @@ sw{
             "Peso ya Ajentina",
         }
         AUD{
-            "AU$",
+            "A$",
             "dola ya Australia",
         }
         AWG{
@@ -277,7 +277,7 @@ sw{
         }
         ISK{
             "ISK",
-            "Króna ya Iceland",
+            "Krona ya Isilandi",
         }
         JMD{
             "JMD",
@@ -413,7 +413,11 @@ sw{
         }
         MZM{
             "MZM",
-            "metikali ya Msumbiji",
+            "metikali ya Msumbiji (1980–2006)",
+        }
+        MZN{
+            "MZN",
+            "Metikali ya Msumbiji",
         }
         NAD{
             "NAD",
@@ -425,7 +429,7 @@ sw{
         }
         NIO{
             "NIO",
-            "Córdoba ya Nikaragua",
+            "Kodoba ya Nikaragua",
         }
         NOK{
             "NOK",
@@ -474,6 +478,10 @@ sw{
         QAR{
             "QAR",
             "Rial ya Katari",
+        }
+        RON{
+            "RON",
+            "Leu ya Romania",
         }
         RSD{
             "RSD",
@@ -530,6 +538,10 @@ sw{
         SRD{
             "SRD",
             "Dola ya Suriname",
+        }
+        SSP{
+            "SSP",
+            "Pauni ya Sudani Kusini",
         }
         STD{
             "STD",
@@ -645,6 +657,10 @@ sw{
         }
         ZMK{
             "ZMK",
+            "kwacha ya Zambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "kwacha ya Zambia",
         }
         ZWD{
@@ -652,5 +668,19 @@ sw{
             "dola ya Zimbabwe",
         }
     }
-    Version{"2.0.65.46"}
+    CurrencyPlurals{
+        BMD{
+            one{"Dola ya Bermuda"}
+            other{"Dola ya Bermuda"}
+        }
+        MZM{
+            one{"metikali ya Msumbiji (1980–2006)"}
+            other{"metikali ya Msumbiji (1980–2006)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
 }

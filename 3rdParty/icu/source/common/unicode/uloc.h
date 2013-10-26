@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -753,7 +753,9 @@ U_STABLE int32_t U_EXPORT2 uloc_countAvailable(void);
 
 /**
  *
- * Gets a list of all available language codes defined in ISO 639.  This is a pointer
+ * Gets a list of all available 2-letter language codes defined in ISO 639,
+ * plus additional 3-letter codes determined to be useful for locale generation as
+ * defined by Unicode CLDR. This is a pointer
  * to an array of pointers to arrays of char.  All of these pointers are owned
  * by ICU-- do not delete them, and do not write through them.  The array is
  * terminated with a null pointer.
@@ -798,12 +800,15 @@ uloc_getParent(const char*    localeID,
 
 
 /**
- * Gets the full name for the specified locale.
+ * Gets the full name for the specified locale, like uloc_getName(),
+ * but without keywords.
+ *
  * Note: This has the effect of 'canonicalizing' the string to
  * a certain extent. Upper and lower case are set as needed,
  * and if the components were in 'POSIX' format they are changed to
  * ICU format.  It does NOT map aliased names in any way.
  * See the top of this header file.
+ *
  * This API strips off the keyword part, so "de_DE\@collation=phonebook" 
  * will become "de_DE". 
  * This API supports preflighting.
@@ -854,13 +859,16 @@ uloc_getKeywordValue(const char* localeID,
 
 
 /**
- * Set the value of the specified keyword.
+ * Sets or removes the value of the specified keyword.
+ *
+ * For removing all keywords, use uloc_getBaseName().
+ *
  * NOTE: Unlike almost every other ICU function which takes a
  * buffer, this function will NOT truncate the output text. If a
  * BUFFER_OVERFLOW_ERROR is received, it means that the original
  * buffer is untouched. This is done to prevent incorrect or possibly
  * even malformed locales from being generated and used.
- * 
+ *
  * @param keywordName name of the keyword to be set. Case insensitive.
  * @param keywordValue value of the keyword to be set. If 0-length or
  *  NULL, will result in the keyword being removed. No error is given if 
@@ -1089,7 +1097,7 @@ uloc_minimizeSubtags(const char*    localeID,
  * @return          the length of the locale ID.
  * @stable ICU 4.2
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uloc_forLanguageTag(const char* langtag,
                     char* localeID,
                     int32_t localeIDCapacity,
@@ -1117,7 +1125,7 @@ uloc_forLanguageTag(const char* langtag,
  * @return          The length of the BCP47 language tag.
  * @stable ICU 4.2
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uloc_toLanguageTag(const char* localeID,
                    char* langtag,
                    int32_t langtagCapacity,

@@ -11,6 +11,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "date", "..\samples\date\date.vcxproj", "{38B5751A-C6F9-4409-950C-F4F9DA17275F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "derb", "..\tools\genrb\derb.vcxproj", "{D3065ADB-8820-4CC7-9B6C-9510833961A3}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C2B04507-2521-4801-BF0D-5FD79D6D518C} = {C2B04507-2521-4801-BF0D-5FD79D6D518C}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "genbrk", "..\tools\genbrk\genbrk.vcxproj", "{C2BE5000-7501-4E87-9724-B8D82494FAE6}"
 EndProject
@@ -52,7 +55,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iotest", "..\test\iotest\io
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "icupkg", "..\tools\icupkg\icupkg.vcxproj", "{62D4B15D-7A90-4ECB-BA19-5E021D6A21BC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "genctd", "..\tools\genctd\genctd.vcxproj", "{9D4211F7-2C77-439C-82F0-30A4E43BA569}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gendict", "..\tools\gendict\gendict.vcxproj", "{9D4211F7-2C77-439C-82F0-30A4E43BA569}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "letest", "..\test\letest\letest.vcxproj", "{67351485-4D18-4245-BE39-A7EF0675ACD2}"
 EndProject

@@ -1,6 +1,6 @@
 /*
  ********************************************************************************
- * Copyright (C) 2003-2009, International Business Machines Corporation
+ * Copyright (C) 2003-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ******************************************************************************
  *
@@ -81,18 +81,21 @@ U_NAMESPACE_BEGIN
  * @author Steven R. Loomis
  * @internal
  */
-class IslamicCalendar : public Calendar {
+class U_I18N_API IslamicCalendar : public Calendar {
  public:
   //-------------------------------------------------------------------------
   // Constants...
   //-------------------------------------------------------------------------
+  
   /**
-   * Calendar type - civil or religious
+   * Calendar type - civil or religious or um alqura
    * @internal 
    */
-  enum ECivil {
+  enum ECalculationType {
     ASTRONOMICAL,
-    CIVIL
+    CIVIL,
+    UMALQURA,
+    TBLA
   };
   
   /**
@@ -176,7 +179,6 @@ class IslamicCalendar : public Calendar {
   }; 
 
 
-
   //-------------------------------------------------------------------------
   // Constructors...
   //-------------------------------------------------------------------------
@@ -188,10 +190,10 @@ class IslamicCalendar : public Calendar {
    * @param aLocale  The given locale.
    * @param success  Indicates the status of IslamicCalendar object construction.
    *                 Returns U_ZERO_ERROR if constructed successfully.
-   * @param beCivil  Whether the calendar should be civil (default-TRUE) or religious (FALSE)
+   * @param type     The Islamic calendar calculation type. The default value is CIVIL.
    * @internal
    */
-  IslamicCalendar(const Locale& aLocale, UErrorCode &success, ECivil beCivil = CIVIL);
+  IslamicCalendar(const Locale& aLocale, UErrorCode &success, ECalculationType type = CIVIL);
 
   /**
    * Copy Constructor
@@ -206,14 +208,13 @@ class IslamicCalendar : public Calendar {
   virtual ~IslamicCalendar();
 
   /**
-   * Determines whether this object uses the fixed-cycle Islamic civil calendar
-   * or an approximation of the religious, astronomical calendar.
+   * Sets Islamic calendar calculation type used by this instance.
    *
-   * @param beCivil   <code>CIVIL</code> to use the civil calendar,
-   *                  <code>ASTRONOMICAL</code> to use the astronomical calendar.
+   * @param type    The calendar calculation type, <code>CIVIL</code> to use the civil
+   *                calendar, <code>ASTRONOMICAL</code> to use the astronomical calendar.
    * @internal
    */
-  void setCivil(ECivil beCivil, UErrorCode &status);
+  void setCalculationType(ECalculationType type, UErrorCode &status);
     
   /**
    * Returns <code>true</code> if this object is using the fixed-cycle civil
@@ -239,7 +240,7 @@ class IslamicCalendar : public Calendar {
    * Return the day # on which the given year starts.  Days are counted
    * from the Hijri epoch, origin 0.
    */
-  int32_t yearStart(int32_t year);
+  int32_t yearStart(int32_t year) const;
 
   /**
    * Return the day # on which the given month starts.  Days are counted
@@ -280,7 +281,7 @@ class IslamicCalendar : public Calendar {
    * and <code>ASTRONOMICAL</code> if it approximates the true religious calendar using
    * astronomical calculations for the time of the new moon.
    */
-  ECivil civil;
+  ECalculationType cType;
 
   //----------------------------------------------------------------------
   // Calendar framework
@@ -363,7 +364,7 @@ class IslamicCalendar : public Calendar {
    * @return   The class ID for all objects of this class.
    * @internal
    */
-  U_I18N_API static UClassID U_EXPORT2 getStaticClassID(void);
+  /*U_I18N_API*/ static UClassID U_EXPORT2 getStaticClassID(void);
 
   /**
    * return the calendar type, "buddhist".
@@ -410,42 +411,7 @@ class IslamicCalendar : public Calendar {
    */
   virtual int32_t defaultCenturyStartYear() const;
 
- private: // default century stuff.
-  /**
-   * The system maintains a static default century start date.  This is initialized
-   * the first time it is used.  Before then, it is set to SYSTEM_DEFAULT_CENTURY to
-   * indicate an uninitialized state.  Once the system default century date and year
-   * are set, they do not change.
-   */
-  static UDate         fgSystemDefaultCenturyStart;
-
-  /**
-   * See documentation for systemDefaultCenturyStart.
-   */
-  static int32_t          fgSystemDefaultCenturyStartYear;
-
-  /**
-   * Default value that indicates the defaultCenturyStartYear is unitialized
-   */
-  static const int32_t    fgSystemDefaultCenturyYear;
-
-  /**
-   * start of default century, as a date
-   */
-  static const UDate        fgSystemDefaultCentury;
-
-  /**
-   * Returns the beginning date of the 100-year window that dates 
-   * with 2-digit years are considered to fall within.
-   */
-  UDate         internalGetDefaultCenturyStart(void) const;
-
-  /**
-   * Returns the first year of the 100-year window that dates with 
-   * 2-digit years are considered to fall within.
-   */
-  int32_t          internalGetDefaultCenturyStartYear(void) const;
-
+ private:
   /**
    * Initializes the 100-year window that dates with 2-digit years
    * are considered to fall within so that its start date is 80 years

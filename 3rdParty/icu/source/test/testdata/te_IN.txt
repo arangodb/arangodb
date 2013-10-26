@@ -1,6 +1,6 @@
-//*******************************************************************************
+﻿//*******************************************************************************
 //*
-//*   Copyright (C) 1998-2005, International Business Machines
+//*   Copyright (C) 1998-2013, International Business Machines
 //*   Corporation and others.  All Rights Reserved.
 //*
 //*******************************************************************************
@@ -13,6 +13,8 @@ te_IN
     Version { 55.0 }
 
     string_only_in_te_IN { TE_IN }
+
+    string_in_te_no_te_IN_fallback { ∅∅∅ }
 
     array_only_in_te_IN { TE_IN0, TE_IN1, TE_IN2, TE_IN3 }
 

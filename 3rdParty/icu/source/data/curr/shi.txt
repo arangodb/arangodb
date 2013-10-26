@@ -1,236 +1,240 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/shi.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/shi.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/shi.xml
+ * ICU <specials> source: <path>/common/main/shi.xml
  */
 shi{
     Currencies{
         AED{
             "AED",
-            "adrim n limarat",
+            "ⴰⴷⵔⵉⵎ ⵏ ⵍⵉⵎⴰⵔⴰⵜ",
         }
         AOA{
             "AOA",
-            "kwanza n angula",
+            "ⴽⵡⴰⵏⵣⴰ ⵏ ⴰⵏⴳⵓⵍⴰ",
         }
         AUD{
-            "AU$",
-            "adular n ustralya",
+            "A$",
+            "ⴰⴷⵓⵍⴰⵔ ⵏ ⵓⵙⵜⵔⴰⵍⵢⴰ",
         }
         BHD{
             "BHD",
-            "adinar n bḥrayn",
+            "ⴰⴷⵉⵏⴰⵔ ⵏ ⴱⵃⵔⴰⵢⵏ",
         }
         BIF{
             "BIF",
-            "frank n burundi",
+            "ⴼⵔⴰⵏⴽ ⵏ ⴱⵓⵔⵓⵏⴷⵉ",
         }
         BWP{
             "BWP",
-            "abula n butswana",
+            "ⴰⴱⵓⵍⴰ ⵏ ⴱⵓⵜⵙⵡⴰⵏⴰ",
         }
         CAD{
             "CA$",
-            "adular n kanada",
+            "ⴰⴷⵓⵍⴰⵔ ⵏ ⴽⴰⵏⴰⴷⴰ",
         }
         CDF{
             "CDF",
-            "frank n kungu",
+            "ⴼⵔⴰⵏⴽ ⵏ ⴽⵓⵏⴳⵓ",
         }
         CHF{
             "CHF",
-            "afrank n swisra",
+            "ⴰⴼⵔⴰⵏⴽ ⵏ ⵙⵡⵉⵙⵔⴰ",
         }
         CNY{
             "CN¥",
-            "ayan n ccinwa",
+            "ⴰⵢⴰⵏ ⵏ ⵛⵛⵉⵏⵡⴰ",
         }
         CVE{
             "CVE",
-            "iskudu n kabbirdi",
+            "ⵉⵙⴽⵓⴷⵓ ⵏ ⴽⴰⴱⴱⵉⵔⴷⵉ",
         }
         DJF{
             "DJF",
-            "frank n djibuti",
+            "ⴼⵔⴰⵏⴽ ⵏ ⴷⵊⵉⴱⵓⵜⵉ",
         }
         DZD{
             "DZD",
-            "adinar n dzayr",
+            "ⴰⴷⵉⵏⴰⵔ ⵏ ⴷⵣⴰⵢⵔ",
         }
         EGP{
             "EGP",
-            "ajnih n miṣṛ",
+            "ⴰⵊⵏⵉⵀ ⵏ ⵎⵉⵚⵕ",
         }
         ERN{
             "ERN",
-            "nafka n iritirya",
+            "ⵏⴰⴼⴽⴰ ⵏ ⵉⵔⵉⵜⵉⵔⵢⴰ",
         }
         ETB{
             "ETB",
-            "bir n ityubya",
+            "ⴱⵉⵔ ⵏ ⵉⵜⵢⵓⴱⵢⴰ",
         }
         EUR{
             "€",
-            "uru",
+            "ⵓⵔⵓ",
         }
         GBP{
             "£",
-            "ajnih astrlini n nngliz",
+            "ⴰⵊⵏⵉⵀ ⴰⵙⵜⵔⵍⵉⵏⵉ ⵏ ⵏⵏⴳⵍⵉⵣ",
         }
         GHC{
             "GHC",
-            "sidi n ɣana",
+            "ⵙⵉⴷⵉ ⵏ ⵖⴰⵏⴰ",
         }
         GMD{
             "GMD",
-            "dalasi n gambya",
+            "ⴷⴰⵍⴰⵙⵉ ⵏ ⴳⴰⵎⴱⵢⴰ",
         }
         GNS{
             "GNS",
-            "frank n ɣinya",
+            "ⴼⵔⴰⵏⴽ ⵏ ⵖⵉⵏⵢⴰ",
         }
         INR{
             "₹",
-            "arubi n lhind",
+            "ⴰⵔⵓⴱⵉ ⵏ ⵍⵀⵉⵏⴷ",
         }
         JPY{
             "JP¥",
-            "ayan n lyaban",
+            "ⴰⵢⴰⵏ ⵏ ⵍⵢⴰⴱⴰⵏ",
         }
         KES{
             "KES",
-            "acilin n kinya",
+            "ⴰⵛⵉⵍⵉⵏ ⵏ ⴽⵉⵏⵢⴰ",
         }
         KMF{
             "KMF",
-            "frank n qumuṛ",
+            "ⴼⵔⴰⵏⴽ ⵏ ⵇⵓⵎⵓⵕ",
         }
         LRD{
             "LRD",
-            "adular n libirya",
+            "ⴰⴷⵓⵍⴰⵔ ⵏ ⵍⵉⴱⵉⵔⵢⴰ",
         }
         LSL{
             "LSL",
-            "luti n liṣuṭu",
+            "ⵍⵓⵜⵉ ⵏ ⵍⵉⵚⵓⵟⵓ",
         }
         LYD{
             "LYD",
-            "adinar n libya",
+            "ⴰⴷⵉⵏⴰⵔ ⵏ ⵍⵉⴱⵢⴰ",
         }
         MAD{
             "MAD",
-            "adrim n lmɣrib",
+            "ⴰⴷⵔⵉⵎ ⵏ ⵍⵎⵖⵔⵉⴱ",
         }
         MGA{
             "MGA",
-            "frank n madaɣacqar",
+            "ⴼⵔⴰⵏⴽ ⵏ ⵎⴰⴷⴰⵖⴰⵛⵇⴰⵔ",
         }
         MRO{
             "MRO",
-            "uqiyya n muṛiṭanya",
+            "ⵓⵇⵉⵢⵢⴰ ⵏ ⵎⵓⵕⵉⵟⴰⵏⵢⴰ",
         }
         MUR{
             "MUR",
-            "arubi n muris",
+            "ⴰⵔⵓⴱⵉ ⵏ ⵎⵓⵔⵉⵙ",
         }
         MWK{
             "MWK",
-            "kwaca n malawi",
+            "ⴽⵡⴰⵛⴰ ⵏ ⵎⴰⵍⴰⵡⵉ",
         }
         MZM{
             "MZM",
-            "amitikl n muznbiq",
+            "ⴰⵎⵉⵜⵉⴽⵍ ⵏ ⵎⵓⵣⵏⴱⵉⵇ",
         }
         NAD{
             "NAD",
-            "adular n namibya",
+            "ⴰⴷⵓⵍⴰⵔ ⵏ ⵏⴰⵎⵉⴱⵢⴰ",
         }
         NGN{
             "NGN",
-            "nayra n nijirya",
+            "ⵏⴰⵢⵔⴰ ⵏ ⵏⵉⵊⵉⵔⵢⴰ",
         }
         RWF{
             "RWF",
-            "afrank n rwanda",
+            "ⴰⴼⵔⴰⵏⴽ ⵏ ⵔⵡⴰⵏⴷⴰ",
         }
         SAR{
             "SAR",
-            "aryal n ssaɛudiya",
+            "ⴰⵔⵢⴰⵍ ⵏ ⵙⵙⴰⵄⵓⴷⵉⵢⴰ",
         }
         SCR{
             "SCR",
-            "arubi n ssicil",
+            "ⴰⵔⵓⴱⵉ ⵏ ⵙⵙⵉⵛⵉⵍ",
         }
         SDG{
             "SDG",
-            "adinar n ssudan",
+            "ⴰⴷⵉⵏⴰⵔ ⵏ ⵙⵙⵓⴷⴰⵏ",
         }
         SDP{
             "SDP",
-            "ajnih n ssudan",
+            "ⴰⵊⵏⵉⵀ ⵏ ⵙⵙⵓⴷⴰⵏ",
         }
         SHP{
             "SHP",
-            "ajnih n santilin",
+            "ⴰⵊⵏⵉⵀ ⵏ ⵙⴰⵏⵜⵉⵍⵉⵏ",
         }
         SLL{
             "SLL",
-            "liyun",
+            "ⵍⵉⵢⵓⵏ",
         }
         SOS{
             "SOS",
-            "acilin n ṣṣumal",
+            "ⴰⵛⵉⵍⵉⵏ ⵏ ⵚⵚⵓⵎⴰⵍ",
         }
         STD{
             "STD",
-            "adubra n sanṭumi",
+            "ⴰⴷⵓⴱⵔⴰ ⵏ ⵙⴰⵏⵟⵓⵎⵉ",
         }
         SZL{
             "SZL",
-            "lilanjini",
+            "ⵍⵉⵍⴰⵏⵊⵉⵏⵉ",
         }
         TND{
             "TND",
-            "adinar n tuns",
+            "ⴰⴷⵉⵏⴰⵔ ⵏ ⵜⵓⵏⵙ",
         }
         TZS{
             "TZS",
-            "acilin n ṭanẓanya",
+            "ⴰⵛⵉⵍⵉⵏ ⵏ ⵟⴰⵏⵥⴰⵏⵢⴰ",
         }
         UGX{
             "UGX",
-            "acilin n uɣanda",
+            "ⴰⵛⵉⵍⵉⵏ ⵏ ⵓⵖⴰⵏⴷⴰ",
         }
         USD{
             "US$",
-            "adular n iwunak imunn",
+            "ⴰⴷⵓⵍⴰⵔ ⵏ ⵉⵡⵓⵏⴰⴽ ⵉⵎⵓⵏⵏ",
         }
         XAF{
             "FCFA",
-            "frank ṣifa",
+            "ⴼⵔⴰⵏⴽ ⵚⵉⴼⴰ",
         }
         XOF{
             "CFA",
-            "frank ṣifa bisaw",
+            "ⴼⵔⴰⵏⴽ ⵚⵉⴼⴰ ⴱⵉⵙⴰⵡ",
         }
         ZAR{
             "ZAR",
-            "arand n afriqya n iffus",
+            "ⴰⵔⴰⵏⴷ ⵏ ⴰⴼⵔⵉⵇⵢⴰ ⵏ ⵉⴼⴼⵓⵙ",
         }
         ZMK{
             "ZMK",
-            "akwaca n zambya",
+            "ⴰⴽⵡⴰⵛⴰ ⵏ ⵣⴰⵎⴱⵢⴰ (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
+            "ⴰⴽⵡⴰⵛⴰ ⵏ ⵣⴰⵎⴱⵢⴰ",
         }
         ZWD{
             "ZWD",
-            "adular n zimbabwi",
+            "ⴰⴷⵓⵍⴰⵔ ⵏ ⵣⵉⵎⴱⴰⴱⵡⵉ",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

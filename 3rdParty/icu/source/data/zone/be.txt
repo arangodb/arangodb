@@ -1,16 +1,16 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/be.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/be.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/be.xml
+ * ICU <specials> source: <path>/common/main/be.xml
  */
 be{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
         "America:Anchorage"{
             ec{"Анкорыдж"}
@@ -76,23 +76,22 @@ be{
         "meta:Europe_Central"{
             ld{"Цэнтральнаэўрапейскі летні час"}
             lg{"Цэнтральнаэўрапейскі час"}
-            ls{"Цэнтральнаэўрапейскі час"}
+            ls{"Цэнтральнаэўрапейскі стандартны час"}
         }
         "meta:Europe_Eastern"{
             ld{"Усходнеэўрапейскі летні час"}
             lg{"Усходнеэўрапейскі час"}
-            ls{"Усходнеэўрапейскі час"}
+            ls{"Усходнеэўрапейскі стандартны час"}
         }
         "meta:Europe_Western"{
             ld{"Заходнеэўрапейскі летні час"}
             lg{"Заходнеэўрапейскі час"}
-            ls{"Заходнеэўрапейскі час"}
+            ls{"Заходнеэўрапейскі стандартны час"}
         }
         "meta:GMT"{
             ls{"Грынвічскі час"}
         }
         fallbackFormat{"{1} ({0})"}
-        fallbackRegionFormat{"Час: {1} ({0})"}
         gmtFormat{"GMT{0}"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"Час: {0}"}

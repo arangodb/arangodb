@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2002-2012, International Business Machines Corporation and
+ * Copyright (c) 2002-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -309,7 +309,7 @@ void RegexTest::assertUTextInvariant(const char *expected, UText *actual, const 
 
 #define INV_BUFSIZ 2048 /* increase this if too small */
 
-static int32_t inv_next=0;
+static int64_t inv_next=0;
 
 #if U_CHARSET_FAMILY!=U_ASCII_FAMILY
 static char inv_buf[INV_BUFSIZ];
@@ -3131,7 +3131,7 @@ void RegexTest::Extended() {
     UnicodeString   matchString;   // The marked up string to be used as input
 
     if (U_FAILURE(status)){
-        dataerrln("Construct RegexMatcher() error.");
+        dataerrln("Construct RegexMatcher() error - %s", u_errorName(status));
         delete [] testData;
         return;
     }
@@ -3581,6 +3581,9 @@ void RegexTest::regex_find(const UnicodeString &pattern,
         }
     }
     matcher->setTrace(FALSE);
+    if (U_FAILURE(status)) {
+        errln("Error at line %d. ICU ErrorCode is %s", u_errorName(status));
+    }
 
     //
     // Match up the groups from the find() with the groups from the tags
@@ -4682,13 +4685,14 @@ void RegexTest::PerlTestsUTF8() {
 //
 //  Bug6149   Verify limits to heap expansion for backtrack stack.
 //             Use this pattern,
-//                 "(a?){1,}"
-//             The zero-length match will repeat forever.
-//                (That this goes into a loop is another bug)
+//                 "(a?){1,8000000}"
+//             Note: was an unbounded upperbounds, but that now has loop-breaking enabled.
+//                   This test is likely to be fragile, as further optimizations stop
+//                   more cases of pointless looping in the match engine.
 //
 //---------------------------------------------------------------
 void RegexTest::Bug6149() {
-    UnicodeString pattern("(a?){1,}");
+    UnicodeString pattern("(a?){1,8000000}");
     UnicodeString s("xyz");
     uint32_t flags = 0;
     UErrorCode status = U_ZERO_ERROR;

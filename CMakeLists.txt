@@ -276,6 +276,10 @@ add_subdirectory(UnitTests)
 
 set(CPACK_SET_DESTDIR ON)
 
+set(CPACK_BUNDLE_NAME "ArangoDB CLI")
+set(CPACK_BUNDLE_PLIST "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
+set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
+
 include(CPack)
 
 ## -----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2006, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -19,26 +19,36 @@
 U_NAMESPACE_BEGIN
 
 CharsetMatch::CharsetMatch()
-  : csr(0), confidence(0)
+  : textIn(NULL), confidence(0), fCharsetName(NULL), fLang(NULL)
 {
     // nothing else to do.
 }
 
-void CharsetMatch::set(InputText *input, CharsetRecognizer *cr, int32_t conf)
+void CharsetMatch::set(InputText *input, const CharsetRecognizer *cr, int32_t conf,
+                       const char *csName, const char *lang)
 {
     textIn = input;
-    csr = cr;
     confidence = conf; 
+    fCharsetName = csName;
+    fLang = lang;
+    if (cr != NULL) {
+        if (fCharsetName == NULL) {
+            fCharsetName = cr->getName();
+        }
+        if (fLang == NULL) {
+            fLang = cr->getLanguage();
+        }
+    }
 }
 
 const char* CharsetMatch::getName()const
 {
-    return csr->getName(); 
+    return fCharsetName; 
 }
 
 const char* CharsetMatch::getLanguage()const
 {
-    return csr->getLanguage(); 
+    return fLang; 
 }
 
 int32_t CharsetMatch::getConfidence()const

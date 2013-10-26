@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2001,2009, International Business Machines Corporation and
+ * Copyright (c) 1997-2001,2009,2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -25,6 +25,7 @@ private:
      **/
     void testAPI(/* char* par */);
     void testOptions(/* char* par */);
+    void testAllFieldPatterns(/* char* par */);
 };
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

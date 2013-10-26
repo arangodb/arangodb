@@ -1,8 +1,8 @@
-# CaseFolding-6.1.0.txt
-# Date: 2011-07-25, 21:21:56 GMT [MD]
+# CaseFolding-6.3.0.txt
+# Date: 2012-12-20, 22:14:35 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 #
@@ -1222,3 +1222,5 @@ FF3A; C; FF5A; # FULLWIDTH LATIN CAPITAL LETTER Z
 10425; C; 1044D; # DESERET CAPITAL LETTER ENG
 10426; C; 1044E; # DESERET CAPITAL LETTER OI
 10427; C; 1044F; # DESERET CAPITAL LETTER EW
+#
+# EOF

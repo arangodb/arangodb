@@ -68,6 +68,8 @@ template class U_I18N_API MaybeStackHeaderAndArray<decNumber, char, DEFAULT_DIGI
 
 enum EStackMode { kOnStack };
 
+enum EFastpathBits { kFastpathOk = 1, kNoDecimal = 2 };
+
 /**
  * Digit List is actually a Decimal Floating Point number.
  * The original implementation has been replaced by a thin wrapper onto a 
@@ -262,8 +264,9 @@ public:
      * Utility routine to set the value of the digit list from a decimal number
      * string.
      * @param source The value to be set.  The string must be nul-terminated.
+     * @param fastpathBits special flags for fast parsing
      */
-    void set(const StringPiece &source, UErrorCode &status);
+    void set(const StringPiece &source, UErrorCode &status, uint32_t fastpathBits = 0);
 
     /**
      * Multiply    this = this * arg
@@ -411,12 +414,19 @@ private:
  public:
 
     using UMemory::operator new;
+    using UMemory::operator delete;
 
     /**
      * Placement new for stack usage
      * @internal
      */
-    static void * U_EXPORT2 operator new(size_t size, void *onStack, EStackMode mode) U_NO_THROW;
+    static inline void * U_EXPORT2 operator new(size_t /*size*/, void * onStack, EStackMode  /*mode*/) U_NO_THROW { return onStack; }
+
+    /**
+     * Placement delete for stack usage
+     * @internal
+     */
+    static inline void U_EXPORT2 operator delete(void * /*ptr*/, void * /*onStack*/, EStackMode /*mode*/)  U_NO_THROW {}
 
  private:
     inline void internalSetDouble(double d) {

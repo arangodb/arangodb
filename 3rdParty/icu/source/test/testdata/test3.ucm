@@ -1,5 +1,5 @@
 # *******************************************************************************
-# * Copyright (C) 2001-2003, International Business Machines
+# * Copyright (C) 2001-2013, International Business Machines
 # * Corporation and others.  All Rights Reserved.
 # *******************************************************************************
 #
@@ -15,7 +15,7 @@
 <subchar>           \xff
 <icu:state>         0, 1:1, 5-9, ff
 <icu:state>         2:2
-<icu:state>         a-f.p
+<icu:state>         4, a-f.p
 
 CHARMAP
 
@@ -56,5 +56,10 @@ CHARMAP
 <U34567>    \x01\x02\x0d |3
 <U000e>     \x01\x02\x0e |3
 #unassigned \x01\x02\x0f
+
+# "good one-way" mappings
+<U0023>         \x01\x02\x04 |4
+<U0023>+<UFE0E> \x01\x02\x04 |4
+<U0023>+<UFE0F> \x01\x02\x04 |0
 
 END CHARMAP

@@ -1,13 +1,13 @@
 /********************************************************************
- * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * COPYRIGHT:
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
- * Copyright (C) 2010 , Yahoo! Inc. 
+ * Copyright (C) 2010 , Yahoo! Inc.
  ********************************************************************/
 
 #include <stdio.h>
 #include <string.h>
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "uobjtest.h"
 #include "cmemory.h" // UAlignedMemory
@@ -324,6 +324,8 @@ void UObjectTest::testIDs()
 {
     ids_count = 0;
     UErrorCode status = U_ZERO_ERROR;
+
+    TESTCLASSID_NONE_CTOR(UObject, ());
 
 #if !UCONFIG_NO_TRANSLITERATION || !UCONFIG_NO_FORMATTING
     UParseError parseError;

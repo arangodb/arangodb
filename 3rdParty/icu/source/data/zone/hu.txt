@@ -1,23 +1,17 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/hu.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/hu.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/hu.xml
+ * ICU <specials> source: <path>/common/main/hu.xml
  */
 hu{
-    Version{"2.0.65.46"}
+    Version{"2.0.93.17"}
     zoneStrings{
-        "Africa:Abidjan"{
-            ec{"Abidjan"}
-        }
-        "Africa:Accra"{
-            ec{"Accra"}
-        }
         "Africa:Addis_Ababa"{
             ec{"Addisz-Abeba"}
         }
@@ -27,38 +21,8 @@ hu{
         "Africa:Asmera"{
             ec{"Asmera"}
         }
-        "Africa:Bangui"{
-            ec{"Bangui"}
-        }
-        "Africa:Banjul"{
-            ec{"Banjul"}
-        }
-        "Africa:Bissau"{
-            ec{"Bissau"}
-        }
-        "Africa:Blantyre"{
-            ec{"Blantyre"}
-        }
-        "Africa:Brazzaville"{
-            ec{"Brazzaville"}
-        }
-        "Africa:Bujumbura"{
-            ec{"Bujumbura"}
-        }
         "Africa:Cairo"{
             ec{"Kairó"}
-        }
-        "Africa:Casablanca"{
-            ec{"Casablanca"}
-        }
-        "Africa:Ceuta"{
-            ec{"Ceuta"}
-        }
-        "Africa:Conakry"{
-            ec{"Conakry"}
-        }
-        "Africa:Dakar"{
-            ec{"Dakar"}
         }
         "Africa:Dar_es_Salaam"{
             ec{"Dar es-Salaam"}
@@ -66,230 +30,56 @@ hu{
         "Africa:Djibouti"{
             ec{"Dzsibuti"}
         }
-        "Africa:Douala"{
-            ec{"Douala"}
-        }
         "Africa:El_Aaiun"{
             ec{"El-Ajún"}
-        }
-        "Africa:Freetown"{
-            ec{"Freetown"}
-        }
-        "Africa:Gaborone"{
-            ec{"Gaborone"}
-        }
-        "Africa:Harare"{
-            ec{"Harare"}
-        }
-        "Africa:Johannesburg"{
-            ec{"Johannesburg"}
-        }
-        "Africa:Kampala"{
-            ec{"Kampala"}
         }
         "Africa:Khartoum"{
             ec{"Kartúm"}
         }
-        "Africa:Kigali"{
-            ec{"Kigali"}
-        }
-        "Africa:Kinshasa"{
-            ec{"Kinshasa"}
-        }
-        "Africa:Lagos"{
-            ec{"Lagos"}
-        }
-        "Africa:Libreville"{
-            ec{"Libreville"}
-        }
-        "Africa:Lome"{
-            ec{"Lome"}
-        }
-        "Africa:Luanda"{
-            ec{"Luanda"}
-        }
-        "Africa:Lubumbashi"{
-            ec{"Lubumbashi"}
-        }
-        "Africa:Lusaka"{
-            ec{"Lusaka"}
-        }
         "Africa:Malabo"{
             ec{"Malabó"}
-        }
-        "Africa:Maputo"{
-            ec{"Maputo"}
-        }
-        "Africa:Maseru"{
-            ec{"Maseru"}
-        }
-        "Africa:Mbabane"{
-            ec{"Mbabane"}
-        }
-        "Africa:Mogadishu"{
-            ec{"Mogadishu"}
-        }
-        "Africa:Monrovia"{
-            ec{"Monrovia"}
-        }
-        "Africa:Nairobi"{
-            ec{"Nairobi"}
-        }
-        "Africa:Ndjamena"{
-            ec{"Ndjamena"}
-        }
-        "Africa:Niamey"{
-            ec{"Niamey"}
-        }
-        "Africa:Nouakchott"{
-            ec{"Nouakchott"}
-        }
-        "Africa:Ouagadougou"{
-            ec{"Ouagadougou"}
-        }
-        "Africa:Porto-Novo"{
-            ec{"Porto-Novo"}
         }
         "Africa:Sao_Tome"{
             ec{"São Tomé"}
         }
-        "Africa:Tripoli"{
-            ec{"Tripoli"}
-        }
         "Africa:Tunis"{
             ec{"Tunisz"}
-        }
-        "Africa:Windhoek"{
-            ec{"Windhoek"}
-        }
-        "America:Adak"{
-            ec{"Adak"}
-        }
-        "America:Anchorage"{
-            ec{"Anchorage"}
-        }
-        "America:Anguilla"{
-            ec{"Anguilla"}
-        }
-        "America:Antigua"{
-            ec{"Antigua"}
         }
         "America:Araguaina"{
             ec{"Araguaína"}
         }
-        "America:Argentina:La_Rioja"{
-            ec{"La Rioja"}
-        }
         "America:Argentina:Rio_Gallegos"{
             ec{"Río Gallegos"}
-        }
-        "America:Argentina:Salta"{
-            ec{"Salta"}
-        }
-        "America:Argentina:San_Juan"{
-            ec{"San Juan"}
-        }
-        "America:Argentina:San_Luis"{
-            ec{"San Luis"}
         }
         "America:Argentina:Tucuman"{
             ec{"Tucumán"}
         }
-        "America:Argentina:Ushuaia"{
-            ec{"Ushuaia"}
-        }
-        "America:Aruba"{
-            ec{"Aruba"}
-        }
         "America:Asuncion"{
             ec{"Asunción"}
-        }
-        "America:Bahia"{
-            ec{"Bahia"}
-        }
-        "America:Barbados"{
-            ec{"Barbadosz"}
         }
         "America:Belem"{
             ec{"Belém"}
         }
-        "America:Belize"{
-            ec{"Beliz"}
-        }
-        "America:Blanc-Sablon"{
-            ec{"Blanc-Sablon"}
-        }
-        "America:Boa_Vista"{
-            ec{"Boa Vista"}
-        }
         "America:Bogota"{
             ec{"Bogotá"}
-        }
-        "America:Boise"{
-            ec{"Boise"}
-        }
-        "America:Buenos_Aires"{
-            ec{"Buenos Aires"}
-        }
-        "America:Cambridge_Bay"{
-            ec{"Cambridge Bay"}
-        }
-        "America:Campo_Grande"{
-            ec{"Campo Grande"}
         }
         "America:Cancun"{
             ec{"Cancún"}
         }
-        "America:Caracas"{
-            ec{"Caracas"}
-        }
-        "America:Catamarca"{
-            ec{"Catamarca"}
-        }
-        "America:Cayenne"{
-            ec{"Cayenne"}
-        }
         "America:Cayman"{
-            ec{"Kajmán"}
+            ec{"Kajmán-szigetek"}
         }
-        "America:Chicago"{
-            ec{"Chicago"}
-        }
-        "America:Chihuahua"{
-            ec{"Chihuahua"}
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
         }
         "America:Cordoba"{
             ec{"Córdoba"}
         }
-        "America:Costa_Rica"{
-            ec{"Costa Rica"}
-        }
         "America:Cuiaba"{
             ec{"Cuiabá"}
         }
-        "America:Curacao"{
-            ec{"Curacao"}
-        }
-        "America:Danmarkshavn"{
-            ec{"Danmarks Havn"}
-        }
-        "America:Dawson"{
-            ec{"Dawson"}
-        }
-        "America:Dawson_Creek"{
-            ec{"Dawson Creek"}
-        }
-        "America:Denver"{
-            ec{"Denver"}
-        }
-        "America:Detroit"{
-            ec{"Detroit"}
-        }
         "America:Dominica"{
             ec{"Dominika"}
-        }
-        "America:Edmonton"{
-            ec{"Edmonton"}
         }
         "America:Eirunepe"{
             ec{"Eirunepé"}
@@ -297,134 +87,50 @@ hu{
         "America:El_Salvador"{
             ec{"Salvador"}
         }
-        "America:Fortaleza"{
-            ec{"Fortaleza"}
-        }
-        "America:Glace_Bay"{
-            ec{"Glace Bay"}
-        }
         "America:Godthab"{
-            ec{"Godthåb"}
-        }
-        "America:Goose_Bay"{
-            ec{"Goose Bay"}
-        }
-        "America:Grand_Turk"{
-            ec{"Grand Turk"}
-        }
-        "America:Grenada"{
-            ec{"Grenada"}
-        }
-        "America:Guadeloupe"{
-            ec{"Guadeloupe"}
-        }
-        "America:Guatemala"{
-            ec{"Guatemala"}
-        }
-        "America:Guyana"{
-            ec{"Guyana"}
-        }
-        "America:Halifax"{
-            ec{"Halifax"}
+            ec{"Nuuk"}
         }
         "America:Havana"{
             ec{"Havanna"}
         }
-        "America:Hermosillo"{
-            ec{"Hermosillo"}
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
         }
-        "America:Indianapolis"{
-            ec{"Indianapolis"}
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
         }
-        "America:Inuvik"{
-            ec{"Inuvik"}
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
         }
-        "America:Iqaluit"{
-            ec{"Iqaluit"}
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
         }
-        "America:Jamaica"{
-            ec{"Jamaika"}
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
         }
-        "America:Jujuy"{
-            ec{"Jujuy"}
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
         }
-        "America:Juneau"{
-            ec{"Juneau"}
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
         }
-        "America:La_Paz"{
-            ec{"La Paz"}
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
         }
-        "America:Lima"{
-            ec{"Lima"}
-        }
-        "America:Los_Angeles"{
-            ec{"Los Angeles"}
-        }
-        "America:Louisville"{
-            ec{"Louisville"}
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
         }
         "America:Maceio"{
             ec{"Maceió"}
         }
-        "America:Managua"{
-            ec{"Managua"}
-        }
-        "America:Manaus"{
-            ec{"Manaus"}
-        }
-        "America:Marigot"{
-            ec{"Marigot"}
-        }
-        "America:Martinique"{
-            ec{"Martinique"}
-        }
         "America:Mazatlan"{
             ec{"Mazatlán"}
-        }
-        "America:Mendoza"{
-            ec{"Mendoza"}
-        }
-        "America:Menominee"{
-            ec{"Menominee"}
         }
         "America:Merida"{
             ec{"Mérida"}
         }
         "America:Mexico_City"{
             ec{"Mexikóváros"}
-        }
-        "America:Miquelon"{
-            ec{"Miquelon"}
-        }
-        "America:Moncton"{
-            ec{"Moncton"}
-        }
-        "America:Monterrey"{
-            ec{"Monterrey"}
-        }
-        "America:Montevideo"{
-            ec{"Montevideo"}
-        }
-        "America:Montreal"{
-            ec{"Montréal"}
-        }
-        "America:Montserrat"{
-            ec{"Montserrat"}
-        }
-        "America:Nassau"{
-            ec{"Nassau"}
-        }
-        "America:New_York"{
-            ec{"New York"}
-        }
-        "America:Nipigon"{
-            ec{"Nipigon"}
-        }
-        "America:Nome"{
-            ec{"Nome"}
-        }
-        "America:Noronha"{
-            ec{"Noronha"}
         }
         "America:North_Dakota:Beulah"{
             ec{"Beulah, Észak-Dakota"}
@@ -435,62 +141,20 @@ hu{
         "America:North_Dakota:New_Salem"{
             ec{"New Salem, Észak-Dakota"}
         }
-        "America:Panama"{
-            ec{"Panama"}
-        }
-        "America:Pangnirtung"{
-            ec{"Pangnirtung"}
-        }
-        "America:Paramaribo"{
-            ec{"Paramaribo"}
-        }
-        "America:Phoenix"{
-            ec{"Phoenix"}
-        }
-        "America:Port-au-Prince"{
-            ec{"Port-au-Prince"}
-        }
-        "America:Port_of_Spain"{
-            ec{"Port of Spain"}
-        }
-        "America:Porto_Velho"{
-            ec{"Porto Velho"}
-        }
-        "America:Puerto_Rico"{
-            ec{"Puerto Rico"}
-        }
-        "America:Rainy_River"{
-            ec{"Rainy River"}
-        }
-        "America:Rankin_Inlet"{
-            ec{"Rankin Inlet"}
-        }
-        "America:Recife"{
-            ec{"Recife"}
-        }
-        "America:Regina"{
-            ec{"Regina"}
-        }
-        "America:Resolute"{
-            ec{"Resolute"}
-        }
         "America:Rio_Branco"{
             ec{"Río Branco"}
-        }
-        "America:Santarem"{
-            ec{"Santarem"}
-        }
-        "America:Santo_Domingo"{
-            ec{"Santo Domingo"}
         }
         "America:Sao_Paulo"{
             ec{"São Paulo"}
         }
         "America:Scoresbysund"{
-            ec{"Scoresby Sound"}
+            ec{"Ittoqqortoormiit"}
         }
-        "America:Shiprock"{
-            ec{"Shiprock"}
+        "America:St_Barthelemy"{
+            ec{"Saint Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
         }
         "America:St_Kitts"{
             ec{"St. Kitts"}
@@ -504,74 +168,14 @@ hu{
         "America:St_Vincent"{
             ec{"St. Vincent"}
         }
-        "America:Swift_Current"{
-            ec{"Swift Current"}
-        }
-        "America:Tegucigalpa"{
-            ec{"Tegucigalpa"}
-        }
-        "America:Thule"{
-            ec{"Thule"}
-        }
-        "America:Thunder_Bay"{
-            ec{"Thunder Bay"}
-        }
-        "America:Tijuana"{
-            ec{"Tijuana"}
-        }
-        "America:Toronto"{
-            ec{"Toronto"}
-        }
-        "America:Tortola"{
-            ec{"Tortola"}
-        }
-        "America:Vancouver"{
-            ec{"Vancouver"}
-        }
-        "America:Whitehorse"{
-            ec{"Whitehorse"}
-        }
-        "America:Winnipeg"{
-            ec{"Winnipeg"}
-        }
-        "America:Yakutat"{
-            ec{"Yakutat"}
-        }
-        "America:Yellowknife"{
-            ec{"Yellowknife"}
-        }
-        "Antarctica:Casey"{
-            ec{"Casey"}
-        }
-        "Antarctica:Davis"{
-            ec{"Davis"}
-        }
         "Antarctica:DumontDUrville"{
             ec{"Dumont d’Urville"}
-        }
-        "Antarctica:Mawson"{
-            ec{"Mawson"}
-        }
-        "Antarctica:McMurdo"{
-            ec{"McMurdo"}
-        }
-        "Antarctica:Palmer"{
-            ec{"Palmer"}
-        }
-        "Antarctica:Rothera"{
-            ec{"Rothera"}
         }
         "Antarctica:South_Pole"{
             ec{"Déli-sark"}
         }
-        "Antarctica:Syowa"{
-            ec{"Syowa"}
-        }
         "Antarctica:Vostok"{
             ec{"Vosztok"}
-        }
-        "Arctic:Longyearbyen"{
-            ec{"Longyearbyen"}
         }
         "Asia:Aden"{
             ec{"Áden"}
@@ -600,20 +204,11 @@ hu{
         "Asia:Bahrain"{
             ec{"Bahrein"}
         }
-        "Asia:Baku"{
-            ec{"Baku"}
-        }
-        "Asia:Bangkok"{
-            ec{"Bangkok"}
-        }
         "Asia:Beirut"{
             ec{"Bejrút"}
         }
         "Asia:Bishkek"{
             ec{"Biskek"}
-        }
-        "Asia:Brunei"{
-            ec{"Brunei"}
         }
         "Asia:Calcutta"{
             ec{"Kalkutta"}
@@ -624,50 +219,23 @@ hu{
         "Asia:Chongqing"{
             ec{"Csungking"}
         }
-        "Asia:Colombo"{
-            ec{"Colombo"}
-        }
         "Asia:Damascus"{
             ec{"Damaszkusz"}
         }
         "Asia:Dhaka"{
             ec{"Dháka"}
         }
-        "Asia:Dili"{
-            ec{"Dili"}
-        }
-        "Asia:Dubai"{
-            ec{"Dubai"}
-        }
-        "Asia:Dushanbe"{
-            ec{"Dushanbe"}
-        }
         "Asia:Gaza"{
             ec{"Gáza"}
-        }
-        "Asia:Harbin"{
-            ec{"Harbin"}
         }
         "Asia:Hong_Kong"{
             ec{"Hongkong"}
         }
-        "Asia:Hovd"{
-            ec{"Hovd"}
-        }
         "Asia:Irkutsk"{
             ec{"Irkutszk"}
         }
-        "Asia:Jakarta"{
-            ec{"Dzsakarta"}
-        }
-        "Asia:Jayapura"{
-            ec{"Jayapura"}
-        }
         "Asia:Jerusalem"{
             ec{"Jeruzsálem"}
-        }
-        "Asia:Kabul"{
-            ec{"Kabul"}
         }
         "Asia:Kamchatka"{
             ec{"Kamcsatka"}
@@ -680,6 +248,9 @@ hu{
         }
         "Asia:Katmandu"{
             ec{"Katmandu"}
+        }
+        "Asia:Khandyga"{
+            ec{"Handiga"}
         }
         "Asia:Krasnoyarsk"{
             ec{"Krasznojarszk"}
@@ -699,29 +270,14 @@ hu{
         "Asia:Makassar"{
             ec{"Makasar"}
         }
-        "Asia:Manila"{
-            ec{"Manila"}
-        }
-        "Asia:Muscat"{
-            ec{"Muscat"}
-        }
-        "Asia:Nicosia"{
-            ec{"Nicosia"}
+        "Asia:Novokuznetsk"{
+            ec{"Novokuznyeck"}
         }
         "Asia:Novosibirsk"{
             ec{"Novoszibirszk"}
         }
         "Asia:Omsk"{
             ec{"Omszk"}
-        }
-        "Asia:Oral"{
-            ec{"Oral"}
-        }
-        "Asia:Phnom_Penh"{
-            ec{"Phnom Penh"}
-        }
-        "Asia:Pontianak"{
-            ec{"Pontianak"}
         }
         "Asia:Pyongyang"{
             ec{"Phenjan"}
@@ -731,9 +287,6 @@ hu{
         }
         "Asia:Qyzylorda"{
             ec{"Kizilorda"}
-        }
-        "Asia:Rangoon"{
-            ec{"Rangoon"}
         }
         "Asia:Riyadh"{
             ec{"Rijád"}
@@ -768,9 +321,6 @@ hu{
         "Asia:Tehran"{
             ec{"Teherán"}
         }
-        "Asia:Thimphu"{
-            ec{"Thimphu"}
-        }
         "Asia:Tokyo"{
             ec{"Tokio"}
         }
@@ -779,6 +329,9 @@ hu{
         }
         "Asia:Urumqi"{
             ec{"Ürümqi"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"Uszty-Nyera"}
         }
         "Asia:Vientiane"{
             ec{"Vientián"}
@@ -798,83 +351,35 @@ hu{
         "Atlantic:Azores"{
             ec{"Azori-szigetek"}
         }
-        "Atlantic:Bermuda"{
-            ec{"Bermuda"}
-        }
         "Atlantic:Canary"{
             ec{"Kanári-szigetek"}
         }
         "Atlantic:Cape_Verde"{
             ec{"Zöld-Foki Szigetek"}
         }
-        "Atlantic:Madeira"{
-            ec{"madeirai idő"}
+        "Atlantic:Faeroe"{
+            ec{"Faroe"}
         }
         "Atlantic:Reykjavik"{
             ec{"Reykjavík"}
         }
         "Atlantic:South_Georgia"{
-            ec{"Dél-Georgia"}
+            ec{"Déli-Georgia"}
         }
         "Atlantic:St_Helena"{
             ec{"Szent Ilona"}
-        }
-        "Atlantic:Stanley"{
-            ec{"Stanley"}
-        }
-        "Australia:Adelaide"{
-            ec{"Adelaide"}
-        }
-        "Australia:Brisbane"{
-            ec{"Brisbane"}
-        }
-        "Australia:Broken_Hill"{
-            ec{"Broken Hill"}
-        }
-        "Australia:Currie"{
-            ec{"Currie"}
-        }
-        "Australia:Darwin"{
-            ec{"Darwin"}
-        }
-        "Australia:Eucla"{
-            ec{"Eucla"}
-        }
-        "Australia:Hobart"{
-            ec{"Hobart"}
-        }
-        "Australia:Lindeman"{
-            ec{"Lindeman"}
-        }
-        "Australia:Lord_Howe"{
-            ec{"Lord Howe"}
-        }
-        "Australia:Melbourne"{
-            ec{"Melbourne"}
-        }
-        "Australia:Perth"{
-            ec{"Perth"}
-        }
-        "Australia:Sydney"{
-            ec{"Sydney"}
         }
         "Etc:Unknown"{
             ec{"Ismeretlen város"}
         }
         "Europe:Amsterdam"{
-            ec{"Amsterdam"}
-        }
-        "Europe:Andorra"{
-            ec{"Andorra"}
+            ec{"Amszterdam"}
         }
         "Europe:Athens"{
             ec{"Athén"}
         }
         "Europe:Belgrade"{
             ec{"Belgrád"}
-        }
-        "Europe:Berlin"{
-            ec{"Berlin"}
         }
         "Europe:Bratislava"{
             ec{"Pozsony"}
@@ -885,35 +390,23 @@ hu{
         "Europe:Bucharest"{
             ec{"Bukarest"}
         }
-        "Europe:Budapest"{
-            ec{"Budapest"}
-        }
-        "Europe:Chisinau"{
-            ec{"Chisinau"}
+        "Europe:Busingen"{
+            ec{"Büsingen"}
         }
         "Europe:Copenhagen"{
             ec{"Koppenhága"}
         }
         "Europe:Dublin"{
-            ec{"Dublin"}
+            ld{"Ír nyári idő"}
         }
         "Europe:Gibraltar"{
             ec{"Gibraltár"}
-        }
-        "Europe:Guernsey"{
-            ec{"Guernsey"}
-        }
-        "Europe:Helsinki"{
-            ec{"Helsinki"}
         }
         "Europe:Isle_of_Man"{
             ec{"Man-sziget"}
         }
         "Europe:Istanbul"{
             ec{"Isztanbul"}
-        }
-        "Europe:Jersey"{
-            ec{"Jersey"}
         }
         "Europe:Kaliningrad"{
             ec{"Kalinyingrád"}
@@ -924,8 +417,8 @@ hu{
         "Europe:Lisbon"{
             ec{"Lisszabon"}
         }
-        "Europe:Ljubljana"{
-            ec{"Ljubljana"}
+        "Europe:London"{
+            ld{"Brit nyári idő"}
         }
         "Europe:Luxembourg"{
             ec{"Luxemburg"}
@@ -933,32 +426,17 @@ hu{
         "Europe:Malta"{
             ec{"Málta"}
         }
-        "Europe:Mariehamn"{
-            ec{"Mariehamn"}
-        }
         "Europe:Minsk"{
             ec{"Minszk"}
-        }
-        "Europe:Monaco"{
-            ec{"Monaco"}
         }
         "Europe:Moscow"{
             ec{"Moszkva"}
         }
-        "Europe:Oslo"{
-            ec{"Oslo"}
-        }
         "Europe:Paris"{
             ec{"Párizs"}
         }
-        "Europe:Podgorica"{
-            ec{"Montenegró"}
-        }
         "Europe:Prague"{
             ec{"Prága"}
-        }
-        "Europe:Riga"{
-            ec{"Riga"}
         }
         "Europe:Rome"{
             ec{"Róma"}
@@ -966,23 +444,14 @@ hu{
         "Europe:Samara"{
             ec{"Szamara"}
         }
-        "Europe:San_Marino"{
-            ec{"San Marino"}
-        }
         "Europe:Sarajevo"{
             ec{"Szarajevó"}
         }
         "Europe:Simferopol"{
             ec{"Szimferopol"}
         }
-        "Europe:Skopje"{
-            ec{"Skopje"}
-        }
         "Europe:Sofia"{
             ec{"Szófia"}
-        }
-        "Europe:Stockholm"{
-            ec{"Stockholm"}
         }
         "Europe:Tallinn"{
             ec{"Tallin"}
@@ -992,9 +461,6 @@ hu{
         }
         "Europe:Uzhgorod"{
             ec{"Ungvár"}
-        }
-        "Europe:Vaduz"{
-            ec{"Vaduz"}
         }
         "Europe:Vatican"{
             ec{"Vatikán"}
@@ -1020,41 +486,20 @@ hu{
         "Europe:Zurich"{
             ec{"Zürich"}
         }
-        "Indian:Antananarivo"{
-            ec{"Antananarivo"}
-        }
-        "Indian:Chagos"{
-            ec{"Chagos"}
-        }
         "Indian:Christmas"{
-            ec{"Karácsony"}
+            ec{"Karácsony-sziget"}
         }
         "Indian:Cocos"{
-            ec{"Kókusz"}
+            ec{"Kókusz-sziget"}
         }
         "Indian:Comoro"{
             ec{"Komoró"}
         }
-        "Indian:Kerguelen"{
-            ec{"Kerguelen"}
-        }
-        "Indian:Mahe"{
-            ec{"Mahe"}
-        }
         "Indian:Maldives"{
             ec{"Maldív-szigetek"}
         }
-        "Indian:Mauritius"{
-            ec{"Mauritius"}
-        }
-        "Indian:Mayotte"{
-            ec{"Mayotte"}
-        }
         "Indian:Reunion"{
             ec{"Réunion"}
-        }
-        "Pacific:Apia"{
-            ec{"Apia"}
         }
         "Pacific:Chatham"{
             ec{"Chatham-szigetek"}
@@ -1062,38 +507,14 @@ hu{
         "Pacific:Easter"{
             ec{"Húsvét-szigetek"}
         }
-        "Pacific:Efate"{
-            ec{"Efate"}
-        }
-        "Pacific:Enderbury"{
-            ec{"Enderbury"}
-        }
-        "Pacific:Fakaofo"{
-            ec{"Fakaofo"}
-        }
         "Pacific:Fiji"{
             ec{"Fidzsi"}
-        }
-        "Pacific:Funafuti"{
-            ec{"Funafuti"}
         }
         "Pacific:Galapagos"{
             ec{"Galapagos-szigetek"}
         }
         "Pacific:Gambier"{
             ec{"Gambier-szigetek"}
-        }
-        "Pacific:Guadalcanal"{
-            ec{"Guadalcanal"}
-        }
-        "Pacific:Guam"{
-            ec{"Guam"}
-        }
-        "Pacific:Honolulu"{
-            ec{"Honolulu"}
-        }
-        "Pacific:Johnston"{
-            ec{"Johnston"}
         }
         "Pacific:Kiritimati"{
             ec{"Kiritimati-sziget"}
@@ -1113,53 +534,17 @@ hu{
         "Pacific:Midway"{
             ec{"Midway-szigetek"}
         }
-        "Pacific:Nauru"{
-            ec{"Nauru"}
-        }
-        "Pacific:Niue"{
-            ec{"Niue"}
-        }
-        "Pacific:Norfolk"{
-            ec{"Norfolk"}
-        }
-        "Pacific:Noumea"{
-            ec{"Noumea"}
-        }
-        "Pacific:Pago_Pago"{
-            ec{"Pago Pago"}
-        }
-        "Pacific:Palau"{
-            ec{"Palau"}
-        }
         "Pacific:Pitcairn"{
             ec{"Pitcairn-szigetek"}
         }
         "Pacific:Ponape"{
             ec{"Ponape-szigetek"}
         }
-        "Pacific:Port_Moresby"{
-            ec{"Port Moresby"}
-        }
-        "Pacific:Rarotonga"{
-            ec{"Rarotonga"}
-        }
-        "Pacific:Saipan"{
-            ec{"Saipan"}
-        }
-        "Pacific:Tarawa"{
-            ec{"Tarawa"}
-        }
-        "Pacific:Tongatapu"{
-            ec{"Tongatapu"}
-        }
         "Pacific:Truk"{
             ec{"Truk-szigetek"}
         }
         "Pacific:Wake"{
             ec{"Wake-sziget"}
-        }
-        "Pacific:Wallis"{
-            ec{"Wallis"}
         }
         "meta:Acre"{
             ld{"Acre nyári idő"}
@@ -1183,20 +568,10 @@ hu{
             lg{"Nyugat-afrikai idő"}
             ls{"Nyugat-afrikai zónaidő"}
         }
-        "meta:Aktyubinsk"{
-            ld{"Aktyubinszki nyári idő"}
-            lg{"Aktyubinszki idő"}
-            ls{"Aktyubinszki zónaidő"}
-        }
         "meta:Alaska"{
             ld{"Alaszkai nyári idő"}
             lg{"Alaszkai idő"}
             ls{"Alaszkai zónaidő"}
-        }
-        "meta:Alaska_Hawaii"{
-            ld{"Alaszkai-hawaii nyári idő"}
-            lg{"Alaszkai-hawaii idő"}
-            ls{"Alaszkai-hawaii zónaidő"}
         }
         "meta:Almaty"{
             ld{"Almati nyári idő"}
@@ -1251,22 +626,17 @@ hu{
         "meta:Argentina"{
             ld{"Argentínai nyári idő"}
             lg{"Argentínai idő"}
-            ls{"Argentína zónaidő"}
+            ls{"Argentínai zónaidő"}
         }
         "meta:Argentina_Western"{
-            ld{"Nyugat-Argentína nyári idő"}
-            lg{"Nyugat-Argentína idő"}
-            ls{"Nyugat-Argentína zónaidő"}
+            ld{"Nyugat-argentínai nyári idő"}
+            lg{"Nyugat-argentínai idő"}
+            ls{"Nyugat-argentínai zónaidő"}
         }
         "meta:Armenia"{
             ld{"Örmény nyári idő"}
             lg{"Örmény idő"}
             ls{"Örmény zónaidő"}
-        }
-        "meta:Ashkhabad"{
-            ld{"Ashabadi nyári idő"}
-            lg{"Ashabadi idő"}
-            ls{"Ashabadi zónaidő"}
         }
         "meta:Atlantic"{
             ld{"Atlanti-óceáni nyári idő"}
@@ -1303,31 +673,16 @@ hu{
             lg{"Azori idő"}
             ls{"Azori zónaidő"}
         }
-        "meta:Baku"{
-            ld{"Bakui nyári idő"}
-            lg{"Bakui idő"}
-            ls{"Bakui zónaidő"}
-        }
         "meta:Bangladesh"{
             ld{"Bangladesi nyári idő"}
             lg{"Bangladesi idő"}
             ls{"Bangladesi zónaidő"}
-        }
-        "meta:Bering"{
-            ld{"Beringi nyári idő"}
-            lg{"Beringi idő"}
-            ls{"Beringi zónaidő"}
         }
         "meta:Bhutan"{
             ls{"Butáni idő"}
         }
         "meta:Bolivia"{
             ls{"Bolíviai idő"}
-        }
-        "meta:Borneo"{
-            ld{"Borneói nyári idő"}
-            lg{"Borneói idő"}
-            ls{"Borneói zónaidő"}
         }
         "meta:Brasilia"{
             ld{"Brazíliai nyári idő"}
@@ -1343,10 +698,7 @@ hu{
             ls{"Zöld-foki-szigeteki zónaidő"}
         }
         "meta:Chamorro"{
-            ls{"Chamorroi idő"}
-        }
-        "meta:Changbai"{
-            ls{"Changbai idő"}
+            ls{"Chamorrói idő"}
         }
         "meta:Chatham"{
             ld{"Chathami nyári idő"}
@@ -1389,22 +741,11 @@ hu{
             lg{"Kubai idő"}
             ls{"Kubai zónaidő"}
         }
-        "meta:Dacca"{
-            ls{"Daccai idő"}
-        }
         "meta:Davis"{
             ls{"Davisi idő"}
         }
         "meta:DumontDUrville"{
             ls{"Dumont-d'Urville-i idő"}
-        }
-        "meta:Dushanbe"{
-            ld{"Dusanbei nyári idő"}
-            lg{"Dusanbei idő"}
-            ls{"Dusanbei zónaidő"}
-        }
-        "meta:Dutch_Guiana"{
-            ls{"Holland-guianai idő"}
         }
         "meta:East_Timor"{
             ls{"Kelet-timori idő"}
@@ -1457,11 +798,6 @@ hu{
         "meta:French_Southern"{
             ls{"Francia déli és antarktikus idő"}
         }
-        "meta:Frunze"{
-            ld{"Frunzei nyári idő"}
-            lg{"Frunzei idő"}
-            ls{"Frunzei zónaidő"}
-        }
         "meta:GMT"{
             ls{"Greenwichi középidő"}
             ss{"GMT"}
@@ -1479,11 +815,6 @@ hu{
         }
         "meta:Gilbert_Islands"{
             ls{"Gilbert-szigeteki idő"}
-        }
-        "meta:Greenland_Central"{
-            ld{"Közép-grönlandi nyári idő"}
-            lg{"Közép-grönlandi idő"}
-            ls{"Közép-grönlandi zónaidő"}
         }
         "meta:Greenland_Eastern"{
             ld{"Kelet-grönlandi nyári idő"}
@@ -1562,22 +893,11 @@ hu{
             lg{"Petropavlovszk-kamcsatkai idő"}
             ls{"Petropavlovszk-kamcsatkai zónaidő"}
         }
-        "meta:Karachi"{
-            ls{"Karacsi idő"}
-        }
-        "meta:Kashgar"{
-            ls{"Kasgár idő"}
-        }
         "meta:Kazakhstan_Eastern"{
             ls{"Kelet-kazahsztáni idő"}
         }
         "meta:Kazakhstan_Western"{
             ls{"Nyugat-kazahsztáni idő"}
-        }
-        "meta:Kizilorda"{
-            ld{"Kizilordai nyári idő"}
-            lg{"Kizilordai idő"}
-            ls{"Kizilordai zónaidő"}
         }
         "meta:Korea"{
             ld{"Koreai nyári idő"}
@@ -1592,14 +912,6 @@ hu{
             lg{"Krasznojarszki idő"}
             ls{"Krasznojarszki zónaidő"}
         }
-        "meta:Kuybyshev"{
-            ld{"Kujbisevi nyári idő"}
-            lg{"Kujbisevi idő"}
-            ls{"Kujbisevi zónaidő"}
-        }
-        "meta:Kwajalein"{
-            ls{"Kwajaleini idő"}
-        }
         "meta:Kyrgystan"{
             ls{"Kirgiz idő"}
         }
@@ -1609,13 +921,10 @@ hu{
         "meta:Line_Islands"{
             ls{"Line-szigeteki idő"}
         }
-        "meta:Long_Shu"{
-            ls{"Long-Shu idő"}
-        }
         "meta:Lord_Howe"{
-            ld{"Lord howei nyári idő"}
-            lg{"Lord howei idő"}
-            ls{"Lord howei zónaidő"}
+            ld{"Lord Howe-i nyári idő"}
+            lg{"Lord Howe-i idő"}
+            ls{"Lord Howe-i zónaidő"}
         }
         "meta:Macau"{
             ld{"Macaui nyári idő"}
@@ -1627,11 +936,8 @@ hu{
         }
         "meta:Magadan"{
             ld{"Magadáni nyári idő"}
-            lg{"Magadani idő"}
+            lg{"Magadáni idő"}
             ls{"Magadáni zónaidő"}
-        }
-        "meta:Malaya"{
-            ls{"Malayai idő"}
         }
         "meta:Malaysia"{
             ls{"Malajziai idő"}
@@ -1664,7 +970,7 @@ hu{
             ls{"Moszkvai zónaidő"}
         }
         "meta:Myanmar"{
-            ls{"Myanmari idő"}
+            ls{"Mianmari idő"}
         }
         "meta:Nauru"{
             ls{"Naurui idő"}
@@ -1704,7 +1010,7 @@ hu{
         "meta:Novosibirsk"{
             ld{"Novoszibirszki nyári idő"}
             lg{"Novoszibirszki idő"}
-            ls{"Novoszibirzski zónaidő"}
+            ls{"Novoszibirszki zónaidő"}
         }
         "meta:Omsk"{
             ld{"Omszki nyári idő"}
@@ -1741,9 +1047,9 @@ hu{
             ls{"Phoenix-szigeteki idő"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"Pierre és Miquelon-i nyári idő"}
-            lg{"Pierre és Miquelon-i idő"}
-            ls{"Pierre és Miquelon-i zónaidő"}
+            ld{"Saint Pierre és Miquelon-i nyári idő"}
+            lg{"Saint Pierre és Miquelon-i idő"}
+            ls{"Saint Pierre és Miquelon-i zónaidő"}
         }
         "meta:Pitcairn"{
             ls{"Pitcairni idő"}
@@ -1763,30 +1069,22 @@ hu{
             ls{"Rotherai idő"}
         }
         "meta:Sakhalin"{
-            ld{"Sakhalini nyári idő"}
+            ld{"Szahalini nyári idő"}
             lg{"Szahalini idő"}
-            ls{"Sakhalini zónaidő"}
+            ls{"Szahalini zónaidő"}
         }
         "meta:Samara"{
             ld{"Szamarai nyári idő"}
             lg{"Szamarai idő"}
             ls{"Szamarai zónaidő"}
         }
-        "meta:Samarkand"{
-            ld{"Szamarkandi nyári idő"}
-            lg{"Szamarkandi idő"}
-            ls{"Szamarkandi zónaidő"}
-        }
         "meta:Samoa"{
+            ld{"Szamoai nyári idő"}
+            lg{"Szamoai idő"}
             ls{"Szamoai zónaidő"}
         }
         "meta:Seychelles"{
             ls{"Seychelle-szigeteki idő"}
-        }
-        "meta:Shevchenko"{
-            ld{"Sevcsenkói nyári idő"}
-            lg{"Sevcsenkói idő"}
-            ls{"Sevcsenkói zónaidő"}
         }
         "meta:Singapore"{
             ls{"Szingapúri zónaidő"}
@@ -1795,15 +1093,10 @@ hu{
             ls{"Salamon-szigeteki idő"}
         }
         "meta:South_Georgia"{
-            ls{"Dél-grúziai idő"}
+            ls{"Dél-georgiai idő"}
         }
         "meta:Suriname"{
             ls{"Szurinámi idő"}
-        }
-        "meta:Sverdlovsk"{
-            ld{"Szverdlovszki nyári idő"}
-            lg{"Szverdlovszki idő"}
-            ls{"Szverdlovszki zónaidő"}
         }
         "meta:Syowa"{
             ls{"Syowai idő"}
@@ -1811,18 +1104,13 @@ hu{
         "meta:Tahiti"{
             ls{"Tahiti idő"}
         }
+        "meta:Taipei"{
+            ld{"Taipei nyári idő"}
+            lg{"Taipei idő"}
+            ls{"Taipei zónaidő"}
+        }
         "meta:Tajikistan"{
-            ls{"Tadzsikisztáni idő"}
-        }
-        "meta:Tashkent"{
-            ld{"Taskenti nyári idő"}
-            lg{"Taskenti idő"}
-            ls{"Taskenti zónaidő"}
-        }
-        "meta:Tbilisi"{
-            ld{"Tbiliszi nyári idő"}
-            lg{"Tbiliszi idő"}
-            ls{"Tbiliszi zónaidő"}
+            ls{"Tádzsikisztáni idő"}
         }
         "meta:Tokelau"{
             ls{"Tokelaui idő"}
@@ -1835,11 +1123,6 @@ hu{
         "meta:Truk"{
             ls{"Truki idő"}
         }
-        "meta:Turkey"{
-            ld{"Törökországi nyári idő"}
-            lg{"Törökországi idő"}
-            ls{"Törökországi zónaidő"}
-        }
         "meta:Turkmenistan"{
             ld{"Türkmenisztáni nyári idő"}
             lg{"Türkmenisztáni idő"}
@@ -1848,18 +1131,10 @@ hu{
         "meta:Tuvalu"{
             ls{"Tuvalui idő"}
         }
-        "meta:Uralsk"{
-            ld{"Uráli nyári idő"}
-            lg{"Uráli idő"}
-            ls{"Uráli zónaidő"}
-        }
         "meta:Uruguay"{
             ld{"Uruguayi nyári idő"}
             lg{"Uruguayi idő"}
             ls{"Uruguayi zónaidő"}
-        }
-        "meta:Urumqi"{
-            ls{"Urumqi idő"}
         }
         "meta:Uzbekistan"{
             ld{"Üzbegisztáni nyári idő"}
@@ -1903,20 +1178,12 @@ hu{
             lg{"Jekatyerinburgi idő"}
             ls{"Jekatyerinburgi zónaidő"}
         }
-        "meta:Yerevan"{
-            ld{"Jereváni nyári idő"}
-            lg{"Jereváni idő"}
-            ls{"Jereváni zónaidő"}
-        }
-        "meta:Yukon"{
-            ld{"Yukoni nyári idő"}
-            lg{"Yukoni idő"}
-            ls{"Yukoni zónaidő"}
-        }
         fallbackFormat{"{1} ({0})"}
-        fallbackRegionFormat{"{1} idő ({0})"}
         gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} idő"}
+        regionFormatDaylight{"{0} nyári idő"}
+        regionFormatStandard{"{0} zónaidő"}
     }
 }

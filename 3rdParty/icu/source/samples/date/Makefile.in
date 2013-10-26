@@ -1,5 +1,5 @@
 ## Makefile.in for ICU - samples/date
-## Copyright (c) 1999-2011, International Business Machines Corporation and
+## Copyright (c) 1999-2012, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -56,7 +56,7 @@ distclean-local: clean-local
 	$(RMV) Makefile
 
 check-local:
-	-$(INVOKE) ./$(TARGET)
+	-$(INVOKE) ./$(TARGET) $(ICUDATE_OPTS)
 
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \

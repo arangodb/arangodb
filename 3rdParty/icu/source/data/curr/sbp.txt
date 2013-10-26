@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sbp.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sbp.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sbp.xml
+ * ICU <specials> source: <path>/common/main/sbp.xml
  */
 sbp{
     Currencies{
@@ -20,7 +20,7 @@ sbp{
             "Ihela ya Angola",
         }
         AUD{
-            "AU$",
+            "A$",
             "Ihela ya Awusitilaliya",
         }
         BHD{
@@ -221,6 +221,10 @@ sbp{
         }
         ZMK{
             "ZMK",
+            "Ihela ya Sambiya (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Ihela ya Sambiya",
         }
         ZWD{
@@ -228,5 +232,5 @@ sbp{
             "Ihela ya Simbabwe",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

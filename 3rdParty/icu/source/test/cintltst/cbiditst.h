@@ -1,6 +1,6 @@
 /********************************************************************
- * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * COPYRIGHT:
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*   file name:  cbiditst.h
@@ -51,6 +51,10 @@ extern "C" {
 #define PDF U_POP_DIRECTIONAL_FORMAT
 #define NSM U_DIR_NON_SPACING_MARK
 #define BN  U_BOUNDARY_NEUTRAL
+#define FSI U_FIRST_STRONG_ISOLATE
+#define LRI U_LEFT_TO_RIGHT_ISOLATE
+#define RLI U_RIGHT_TO_LEFT_ISOLATE
+#define PDI U_POP_DIRECTIONAL_ISOLATE
 
 extern const char * const
 dirPropNames[U_CHAR_DIRECTION_COUNT];

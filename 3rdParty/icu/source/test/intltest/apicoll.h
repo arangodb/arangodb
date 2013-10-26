@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -166,6 +166,8 @@ public:
     void TestNULLCharTailoring();
 
     void TestClone();
+    void TestIterNumeric();
+
 private:
     // If this is too small for the test data, just increase it.
     // Just don't make it too large, otherwise the executable will get too big

@@ -1,31 +1,73 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/fil.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fil.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/fil.xml
+ * ICU <specials> source: <path>/common/main/fil.xml
  */
 fil{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
-        "Africa:Conakry"{
-            ec{"Conakry"}
+        "Africa:Asmera"{
+            ec{"Asmara"}
         }
-        "Africa:Harare"{
-            ec{"Harare"}
+        "America:Asuncion"{
+            ec{"Asunción"}
         }
-        "Africa:Maseru"{
-            ec{"Maseru"}
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
         }
-        "Africa:Porto-Novo"{
-            ec{"Porto-Novo"}
+        "America:Godthab"{
+            ec{"Nuuk"}
         }
-        "America:Port_of_Spain"{
-            ec{"Port of Spain"}
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, North Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, North Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, North Dakota"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Barthelemy"{
+            ec{"Saint Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
         }
         "America:St_Kitts"{
             ec{"St. Kitts"}
@@ -39,215 +81,631 @@ fil{
         "America:St_Vincent"{
             ec{"St. Vincent"}
         }
-        "Asia:Dushanbe"{
-            ec{"Dushanbe"}
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
         }
-        "Asia:Tbilisi"{
-            ec{"Tbilisi"}
+        "Asia:Calcutta"{
+            ec{"Kolkata"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
+        }
+        "Asia:Saigon"{
+            ec{"Ho Chi Minh City"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Faroe"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
         }
         "Etc:Unknown"{
-            ec{"Unknown"}
+            ec{"Di-tiyak na Lungsod"}
         }
-        "Indian:Christmas"{
-            ec{"Christmas"}
+        "Europe:Dublin"{
+            ld{"Irish Summer Time"}
+        }
+        "Europe:London"{
+            ld{"British Summer Time"}
+        }
+        "Indian:Reunion"{
+            ec{"Réunion"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afghanistan Time"}
+        }
+        "meta:Africa_Central"{
+            ls{"Central Africa Time"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"East Africa Time"}
+        }
+        "meta:Africa_Southern"{
+            ls{"South Africa Time"}
+        }
+        "meta:Africa_Western"{
+            ld{"West Africa Summer Time"}
+            lg{"West Africa Time"}
+            ls{"West Africa Standard Time"}
         }
         "meta:Alaska"{
-            ld{"Oras na Alaska Daylight"}
-            lg{"Oras sa Alaska"}
-            ls{"Standard na Oras sa Alaska"}
+            ld{"Alaska Daylight Time"}
+            lg{"Alaska Time"}
+            ls{"Alaska Standard Time"}
         }
         "meta:Amazon"{
-            ld{"Panahon ng Tag-init sa Amazon"}
-            lg{"Oras sa Amazon"}
-            ls{"Standard na Oras sa Amazon"}
+            ld{"Amazon Summer Time"}
+            lg{"Amazon Time"}
+            ls{"Amazon Standard Time"}
         }
         "meta:America_Central"{
-            ld{"Oras na Central Daylight"}
-            lg{"Oras sa Central"}
-            ls{"Standard na Oras sa Central"}
+            ld{"North American Central Daylight Time"}
+            lg{"North American Central Time"}
+            ls{"North American Central Standard Time"}
         }
         "meta:America_Eastern"{
-            ld{"Oras na Eastern Daylight"}
-            lg{"Oras sa Silangan"}
-            ls{"Standard na Oras sa Silangan"}
+            ld{"North American Eastern Daylight Time"}
+            lg{"North American Eastern Time"}
+            ls{"North American Eastern Standard Time"}
         }
         "meta:America_Mountain"{
-            ld{"Oras na Mountain Daylight"}
-            lg{"Oras sa Mountain"}
-            ls{"Standard na Oras sa Mountain"}
+            ld{"North American Mountain Daylight Time"}
+            lg{"North American Mountain Time"}
+            ls{"North American Mountain Standard Time"}
         }
         "meta:America_Pacific"{
-            ld{"Oras sa Pacific Daylight"}
-            lg{"Oras sa Pacific"}
-            ls{"Standard na Oras sa Pacific"}
+            ld{"North American Pacific Daylight Time"}
+            lg{"North American Pacific Time"}
+            ls{"North American Pacific Standard Time"}
         }
         "meta:Anadyr"{
-            ld{"Panahon ng Tag-init sa Anadyr"}
+            ld{"Summer Time sa Anadyr"}
             lg{"Oras sa Anadyr"}
-            ls{"Standard na Oras sa Anadyr"}
+            ls{"Standard Time sa Anadyr"}
+        }
+        "meta:Arabian"{
+            ld{"Arabian Daylight Time"}
+            lg{"Arabian Time"}
+            ls{"Arabian Standard Time"}
         }
         "meta:Argentina"{
-            ld{"Panahon ng Tag-init sa Argentina"}
-            lg{"Oras sa Argentina"}
-            ls{"Standard na Oras sa Argentina"}
+            ld{"Argentina Summer Time"}
+            lg{"Argentina Time"}
+            ls{"Argentina Standard Time"}
         }
         "meta:Argentina_Western"{
-            ld{"Panahon ng Tag-init sa Kanluran ng Argentina"}
-            lg{"Oras sa Kanluran ng Argentina"}
-            ls{"Standard na Oras sa Kanluran ng Argentina"}
+            ld{"Western Argentina Summer Time"}
+            lg{"Western Argentina Time"}
+            ls{"Western Argentina Standard Time"}
+        }
+        "meta:Armenia"{
+            ld{"Armenia Summer Time"}
+            lg{"Armenia Time"}
+            ls{"Armenia Standard Time"}
         }
         "meta:Atlantic"{
-            ld{"Oras na Atlantic Daylight"}
-            lg{"Oras sa Atlantic"}
-            ls{"Standard na Oras sa Atlantic"}
+            ld{"Atlantic Daylight Time"}
+            lg{"Atlantic Time"}
+            ls{"Atlantic Standard Time"}
         }
         "meta:Australia_Central"{
-            ld{"Panahon ng Tag-init sa Central ng Australia"}
-            lg{"Oras sa Central ng Australia"}
-            ls{"Standard na Oras sa Central ng Australia"}
+            ld{"Australian Central Daylight Time"}
+            lg{"Central Australia Time"}
+            ls{"Australian Central Standard Time"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"Oras sa Central sa Kanluran ng Australia Daylight"}
-            lg{"Oras sa Central sa Kanluran ng Australia"}
-            ls{"Standard na Oras sa Central na Kanluran ng Australia"}
+            ld{"Australian Central Western Daylight Time"}
+            lg{"Australian Central Western Time"}
+            ls{"Australian Central Western Standard Time"}
         }
         "meta:Australia_Eastern"{
-            ld{"Oras sa Silangang Australia Daylight"}
-            lg{"Oras sa Silangang Australia"}
-            ls{"Standard na Oras sa Silangan ng Australia"}
+            ld{"Australian Eastern Daylight Time"}
+            lg{"Eastern Australia Time"}
+            ls{"Australian Eastern Standard Time"}
         }
         "meta:Australia_Western"{
-            ld{"Oras sa Kanlurang Australia Daylight"}
-            lg{"Oras sa Kanlurang Australia"}
-            ls{"Standard na Oras sa Kanluran ng Australia"}
+            ld{"Australian Western Daylight Time"}
+            lg{"Western Australia Time"}
+            ls{"Australian Western Standard Time"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Azerbaijan Summer Time"}
+            lg{"Azerbaijan Time"}
+            ls{"Azerbaijan Standard Time"}
+        }
+        "meta:Azores"{
+            ld{"Azores Summer Time"}
+            lg{"Azores Time"}
+            ls{"Azores Standard Time"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bangladesh Summer Time"}
+            lg{"Bangladesh Time"}
+            ls{"Bangladesh Standard Time"}
+        }
+        "meta:Bhutan"{
+            ls{"Bhutan Time"}
+        }
+        "meta:Bolivia"{
+            ls{"Bolivia Time"}
         }
         "meta:Brasilia"{
-            ld{"Panahon ng Tag-init sa Brasilia"}
-            lg{"Oras sa Brasilia"}
-            ls{"Standard na Oras sa Brasilia"}
+            ld{"Brasilia Summer Time"}
+            lg{"Brasilia Time"}
+            ls{"Brasilia Standard Time"}
+        }
+        "meta:Brunei"{
+            ls{"Brunei Darussalam Time"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Cape Verde Summer Time"}
+            lg{"Cape Verde Time"}
+            ls{"Cape Verde Standard Time"}
+        }
+        "meta:Chamorro"{
+            ls{"Chamorro Time"}
+        }
+        "meta:Chatham"{
+            ld{"Chatham Daylight Time"}
+            lg{"Chatham Time"}
+            ls{"Chatham Standard Time"}
+        }
+        "meta:Chile"{
+            ld{"Chile Summer Time"}
+            lg{"Chile Time"}
+            ls{"Chile Standard Time"}
+        }
+        "meta:China"{
+            ld{"China Daylight Time"}
+            lg{"China Time"}
+            ls{"China Standard Time"}
         }
         "meta:Choibalsan"{
-            ld{"Panahon ng Tag-init sa Choibalsan"}
-            lg{"Oras sa Choibalsan"}
-            ls{"Standard na Oras sa Choibalsan"}
+            ld{"Choibalsan Summer Time"}
+            lg{"Choibalsan Time"}
+            ls{"Choibalsan Standard Time"}
+        }
+        "meta:Christmas"{
+            ls{"Christmas Island Time"}
+        }
+        "meta:Cocos"{
+            ls{"Cocos Islands Time"}
+        }
+        "meta:Colombia"{
+            ld{"Colombia Summer Time"}
+            lg{"Colombia Time"}
+            ls{"Colombia Standard Time"}
+        }
+        "meta:Cook"{
+            ld{"Cook Islands Half Summer Time"}
+            lg{"Cook Islands Time"}
+            ls{"Cook Islands Standard Time"}
+        }
+        "meta:Cuba"{
+            ld{"Cuba Daylight Time"}
+            lg{"Cuba Time"}
+            ls{"Cuba Standard Time"}
+        }
+        "meta:Davis"{
+            ls{"Davis Time"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d’Urville Time"}
+        }
+        "meta:East_Timor"{
+            ls{"East Timor Time"}
+        }
+        "meta:Easter"{
+            ld{"Easter Island Summer Time"}
+            lg{"Easter Island Time"}
+            ls{"Easter Island Standard Time"}
+        }
+        "meta:Ecuador"{
+            ls{"Ecuador Time"}
+        }
+        "meta:Europe_Central"{
+            ld{"Central European Summer Time"}
+            lg{"Central European Time"}
+            ls{"Central European Standard Time"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Eastern European Summer Time"}
+            lg{"Eastern European Time"}
+            ls{"Eastern European Standard Time"}
+        }
+        "meta:Europe_Western"{
+            ld{"Western European Summer Time"}
+            lg{"Western European Time"}
+            ls{"Western European Standard Time"}
+        }
+        "meta:Falkland"{
+            ld{"Falkland Islands Summer Time"}
+            lg{"Falkland Islands Time"}
+            ls{"Falkland Islands Standard Time"}
+        }
+        "meta:Fiji"{
+            ld{"Fiji Summer Time"}
+            lg{"Fiji Time"}
+            ls{"Fiji Standard Time"}
+        }
+        "meta:French_Guiana"{
+            ls{"French Guiana Time"}
+        }
+        "meta:French_Southern"{
+            ls{"French Southern and Antarctic Time"}
+        }
+        "meta:GMT"{
+            ls{"Greenwich Mean Time"}
+        }
+        "meta:Galapagos"{
+            ls{"Galapagos Time"}
+        }
+        "meta:Gambier"{
+            ls{"Gambier Time"}
+        }
+        "meta:Georgia"{
+            ld{"Georgia Summer Time"}
+            lg{"Georgia Time"}
+            ls{"Georgia Standard Time"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilbert Islands Time"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"East Greenland Summer Time"}
+            lg{"East Greenland Time"}
+            ls{"East Greenland Standard Time"}
+        }
+        "meta:Greenland_Western"{
+            ld{"West Greenland Summer Time"}
+            lg{"West Greenland Time"}
+            ls{"West Greenland Standard Time"}
+        }
+        "meta:Gulf"{
+            ls{"Gulf Time"}
+        }
+        "meta:Guyana"{
+            ls{"Guyana Time"}
         }
         "meta:Hawaii_Aleutian"{
-            ld{"Oras sa Hawaii Aleutian Daylight"}
-            lg{"Oras sa Hawaii Aleutian"}
-            ls{"Standard na Oras sa Hawaii Aleutian"}
+            ld{"Hawaii-Aleutian Daylight Time"}
+            lg{"Hawaii-Aleutian Time"}
+            ls{"Hawaii-Aleutian Standard Time"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Hong Kong Summer Time"}
+            lg{"Hong Kong Time"}
+            ls{"Hong Kong Standard Time"}
         }
         "meta:Hovd"{
-            ld{"Panahon ng Tag-init sa Hovd"}
-            lg{"Oras sa Hovd"}
-            ls{"Standard na Oras sa Hovd"}
+            ld{"Hovd Summer Time"}
+            lg{"Hovd Time"}
+            ls{"Hovd Standard Time"}
+        }
+        "meta:India"{
+            ls{"India Time"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Indian Ocean Time"}
+        }
+        "meta:Indochina"{
+            ls{"Indochina Time"}
         }
         "meta:Indonesia_Central"{
-            lg{"Oras sa Central ng Indonesia"}
+            ls{"Central Indonesia Time"}
         }
         "meta:Indonesia_Eastern"{
-            lg{"Oras sa Silangan ng Indonesia"}
+            ls{"Eastern Indonesia Time"}
         }
         "meta:Indonesia_Western"{
-            lg{"Oras sa Kanluran ng Indonesia"}
+            ls{"Western Indonesia Time"}
+        }
+        "meta:Iran"{
+            ld{"Iran Daylight Time"}
+            lg{"Iran Time"}
+            ls{"Iran Standard Time"}
         }
         "meta:Irkutsk"{
-            ld{"Panahon ng Tag-init sa Irkutsk"}
-            lg{"Oras sa Irkutsk"}
-            ls{"Standard na Oras sa Irkutsk"}
+            ld{"Irkutsk Summer Time"}
+            lg{"Irkutsk Time"}
+            ls{"Irkutsk Standard Time"}
+        }
+        "meta:Israel"{
+            ld{"Israel Daylight Time"}
+            lg{"Israel Time"}
+            ls{"Israel Standard Time"}
+        }
+        "meta:Japan"{
+            ld{"Japan Daylight Time"}
+            lg{"Japan Time"}
+            ls{"Japan Standard Time"}
         }
         "meta:Kamchatka"{
-            ld{"Panahon ng Tag-init sa Petropavlovsk-Kamchatski"}
+            ld{"Summer Time sa Petropavlovsk-Kamchatski"}
             lg{"Oras sa Petropavlovsk-Kamchatski"}
-            ls{"Standard na Oras sa Petropavlovsk-Kamchatski"}
+            ls{"Standard Time sa Petropavlovsk-Kamchatski"}
         }
         "meta:Kazakhstan_Eastern"{
-            ls{"Oras sa Silangan ng Kazakhstan"}
+            ls{"East Kazakhstan Time"}
         }
         "meta:Kazakhstan_Western"{
-            ls{"Oras sa Kanluran ng Kazakhstan"}
+            ls{"West Kazakhstan Time"}
+        }
+        "meta:Korea"{
+            ld{"Korean Daylight Time"}
+            lg{"Korean Time"}
+            ls{"Korean Standard Time"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosrae Time"}
         }
         "meta:Krasnoyarsk"{
-            ld{"Panahon ng Tag-init sa Krasnoyarsk"}
-            lg{"Oras sa Krasnoyarsk"}
-            ls{"Standard na Oras sa Krasnoyarsk"}
+            ld{"Krasnoyarsk Summer Time"}
+            lg{"Krasnoyarsk Time"}
+            ls{"Krasnoyarsk Standard Time"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Kyrgystan Time"}
+        }
+        "meta:Line_Islands"{
+            ls{"Line Islands Time"}
         }
         "meta:Lord_Howe"{
-            ld{"Oras na Lord Howe Daylight"}
-            lg{"Oras sa Lord Howe"}
-            ls{"Standard na Oras sa Lord Howe"}
+            ld{"Lord Howe Daylight Time"}
+            lg{"Lord Howe Time"}
+            ls{"Lord Howe Standard Time"}
         }
         "meta:Macquarie"{
-            lg{"Oras sa Macquarie"}
+            ls{"Macquarie Island Time"}
         }
         "meta:Magadan"{
-            ld{"Panahon ng Tag-init sa Magadan Summer"}
-            lg{"Oras sa Magadan"}
-            ls{"Standard na Oras sa Magadan"}
+            ld{"Magadan Summer Time"}
+            lg{"Magadan Time"}
+            ls{"Magadan Standard Time"}
+        }
+        "meta:Malaysia"{
+            ls{"Malaysia Time"}
+        }
+        "meta:Maldives"{
+            ls{"Maldives Time"}
+        }
+        "meta:Marquesas"{
+            ls{"Marquesas Time"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Marshall Islands Time"}
+        }
+        "meta:Mauritius"{
+            ld{"Mauritius Summer Time"}
+            lg{"Mauritius Time"}
+            ls{"Mauritius Standard Time"}
+        }
+        "meta:Mawson"{
+            ls{"Mawson Time"}
         }
         "meta:Mongolia"{
-            ld{"Panahon ng Tag-init sa Ulan Bator"}
-            lg{"Oras sa Ulan Bator"}
-            ls{"Standard na Oras sa Ulan Bator"}
+            ld{"Ulan Bator Summer Time"}
+            lg{"Ulan Bator Time"}
+            ls{"Ulan Bator Standard Time"}
         }
         "meta:Moscow"{
-            ld{"Panahon ng Tag-init sa Moscow"}
-            lg{"Oras sa Moscow"}
-            ls{"Standard na Oras sa Moscow"}
+            ld{"Moscow Summer Time"}
+            lg{"Moscow Time"}
+            ls{"Moscow Standard Time"}
+        }
+        "meta:Myanmar"{
+            ls{"Myanmar Time"}
+        }
+        "meta:Nauru"{
+            ls{"Nauru Time"}
+        }
+        "meta:Nepal"{
+            ls{"Nepal Time"}
+        }
+        "meta:New_Caledonia"{
+            ld{"New Caledonia Summer Time"}
+            lg{"New Caledonia Time"}
+            ls{"New Caledonia Standard Time"}
+        }
+        "meta:New_Zealand"{
+            ld{"New Zealand Daylight Time"}
+            lg{"New Zealand Time"}
+            ls{"New Zealand Standard Time"}
         }
         "meta:Newfoundland"{
-            ld{"Oras na Newfoundland Daylight"}
-            lg{"Oras sa Newfoundland"}
-            ls{"Standard na Oras sa Newfoundland"}
+            ld{"Newfoundland Daylight Time"}
+            lg{"Newfoundland Time"}
+            ls{"Newfoundland Standard Time"}
+        }
+        "meta:Niue"{
+            ls{"Niue Time"}
+        }
+        "meta:Norfolk"{
+            ls{"Norfolk Island Time"}
         }
         "meta:Noronha"{
-            ld{"Panahon ng Tag-init sa Fernando de Noronha"}
-            lg{"Oras sa Fernando de Noronha"}
-            ls{"Standard na Oras sa Fernando de Noronha"}
+            ld{"Fernando de Noronha Summer Time"}
+            lg{"Fernando de Noronha Time"}
+            ls{"Fernando de Noronha Standard Time"}
         }
         "meta:Novosibirsk"{
-            ld{"Panahon ng Tag-init sa Novosibirsk"}
-            lg{"Oras sa Novosibirsk"}
-            ls{"Standard na Oras sa Novosibirsk"}
+            ld{"Novosibirsk Summer Time"}
+            lg{"Novosibirsk Time"}
+            ls{"Novosibirsk Standard Time"}
         }
         "meta:Omsk"{
-            ld{"Panahon ng Tag-init sa Omsk"}
-            lg{"Oras sa Omsk"}
-            ls{"Standard na Oras sa Omsk"}
+            ld{"Omsk Summer Time"}
+            lg{"Omsk Time"}
+            ls{"Omsk Standard Time"}
+        }
+        "meta:Pakistan"{
+            ld{"Pakistan Summer Time"}
+            lg{"Pakistan Time"}
+            ls{"Pakistan Standard Time"}
+        }
+        "meta:Palau"{
+            ls{"Palau Time"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papua New Guinea Time"}
+        }
+        "meta:Paraguay"{
+            ld{"Paraguay Summer Time"}
+            lg{"Paraguay Time"}
+            ls{"Paraguay Standard Time"}
+        }
+        "meta:Peru"{
+            ld{"Peru Summer Time"}
+            lg{"Peru Time"}
+            ls{"Peru Standard Time"}
+        }
+        "meta:Philippines"{
+            ld{"Philippine Summer Time"}
+            lg{"Philippine Time"}
+            ls{"Philippine Standard Time"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Phoenix Islands Time"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Saint Pierre and Miquelon Daylight Time"}
+            lg{"Saint Pierre and Miquelon Time"}
+            ls{"Saint Pierre and Miquelon Standard Time"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitcairn Time"}
+        }
+        "meta:Ponape"{
+            ls{"Ponape Time"}
+        }
+        "meta:Reunion"{
+            ls{"Reunion Time"}
+        }
+        "meta:Rothera"{
+            ls{"Rothera Time"}
         }
         "meta:Sakhalin"{
-            ld{"Panahon ng Tag-init sa Sakhalin"}
-            lg{"Oras sa Sakhalin"}
-            ls{"Standard na Oras sa Sakhalin"}
+            ld{"Sakhalin Summer Time"}
+            lg{"Sakhalin Time"}
+            ls{"Sakhalin Standard Time"}
         }
         "meta:Samara"{
-            ld{"Samara Daylight Time"}
+            ld{"Samara Daylight"}
             lg{"Oras sa Samara"}
-            ls{"Standard na Oras sa Samara"}
+            ls{"Standard Time sa Samara"}
+        }
+        "meta:Samoa"{
+            ld{"Samoa Daylight Time"}
+            lg{"Samoa Time"}
+            ls{"Samoa Standard Time"}
+        }
+        "meta:Seychelles"{
+            ls{"Seychelles Time"}
+        }
+        "meta:Singapore"{
+            ls{"Singapore Time"}
+        }
+        "meta:Solomon"{
+            ls{"Solomon Islands Time"}
+        }
+        "meta:South_Georgia"{
+            ls{"South Georgia Time"}
+        }
+        "meta:Suriname"{
+            ls{"Suriname Time"}
+        }
+        "meta:Syowa"{
+            ls{"Syowa Time"}
+        }
+        "meta:Tahiti"{
+            ls{"Tahiti Time"}
+        }
+        "meta:Taipei"{
+            ld{"Taipei Daylight Time"}
+            lg{"Taipei Time"}
+            ls{"Taipei Standard Time"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tajikistan Time"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokelau Time"}
+        }
+        "meta:Tonga"{
+            ld{"Tonga Summer Time"}
+            lg{"Tonga Time"}
+            ls{"Tonga Standard Time"}
+        }
+        "meta:Truk"{
+            ls{"Chuuk Time"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Turkmenistan Summer Time"}
+            lg{"Turkmenistan Time"}
+            ls{"Turkmenistan Standard Time"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvalu Time"}
+        }
+        "meta:Uruguay"{
+            ld{"Uruguay Summer Time"}
+            lg{"Uruguay Time"}
+            ls{"Uruguay Standard Time"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Uzbekistan Summer Time"}
+            lg{"Uzbekistan Time"}
+            ls{"Uzbekistan Standard Time"}
+        }
+        "meta:Vanuatu"{
+            ld{"Vanuatu Summer Time"}
+            lg{"Vanuatu Time"}
+            ls{"Vanuatu Standard Time"}
+        }
+        "meta:Venezuela"{
+            ls{"Venezuela Time"}
         }
         "meta:Vladivostok"{
-            ld{"Panahon ng Tag-init sa Vladivostok"}
-            lg{"Oras sa Vladivostok"}
-            ls{"Standard na Oras sa Vladivostok"}
+            ld{"Vladivostok Summer Time"}
+            lg{"Vladivostok Time"}
+            ls{"Vladivostok Standard Time"}
         }
         "meta:Volgograd"{
-            ld{"Volgograd Daylight Time"}
-            lg{"Oras sa Volgograd"}
-            ls{"Standard na Oras sa Volgograd"}
+            ld{"Volgograd Summer Time"}
+            lg{"Volgograd Time"}
+            ls{"Volgograd Standard Time"}
+        }
+        "meta:Vostok"{
+            ls{"Vostok Time"}
+        }
+        "meta:Wake"{
+            ls{"Wake Island Time"}
+        }
+        "meta:Wallis"{
+            ls{"Wallis and Futuna Time"}
         }
         "meta:Yakutsk"{
-            ld{"Panahon ng Tag-init sa Yakutsk"}
-            lg{"Oras sa Yakutsk"}
-            ls{"Standard na Oras sa Yakutsk"}
+            ld{"Yakutsk Summer Time"}
+            lg{"Yakutsk Time"}
+            ls{"Yakutsk Standard Time"}
         }
         "meta:Yekaterinburg"{
-            ld{"Panahon ng Tag-init sa Yekaterinburg"}
-            lg{"Oras sa Yekaterinburg"}
-            ls{"Standard na Oras sa Yekaterinburg"}
+            ld{"Yekaterinburg Summer Time"}
+            lg{"Yekaterinburg Time"}
+            ls{"Yekaterinburg Standard Time"}
         }
         fallbackFormat{"{1} ({0})"}
-        fallbackRegionFormat{"{1} Oras ({0})"}
         gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
-        regionFormat{"{0} (na) Oras"}
+        regionFormat{"Oras sa {0}"}
+        regionFormatDaylight{"{0} Daylight Time"}
+        regionFormatStandard{"{0} Standard Time"}
     }
 }

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2004-2012, International Business Machines Corporation and
+ * Copyright (c) 2004-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -1619,6 +1619,7 @@ static void TestUTextAPI(void) {
         utext_close(resultText);
         
         result = uregex_getText(re, &textLength, &status); /* flattens UText into buffer */
+        (void)result;    /* Suppress set but not used warning. */
         TEST_ASSERT(textLength == -1 || textLength == 6);
         resultText = uregex_getUText(re, NULL, &status);
         TEST_ASSERT_SUCCESS(status);

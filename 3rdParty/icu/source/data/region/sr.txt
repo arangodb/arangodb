@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sr.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sr.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sr.xml
+ * ICU <specials> source: <path>/common/main/sr.xml
  */
 sr{
     Countries{
@@ -72,6 +72,7 @@ sr{
         BM{"Бермуда"}
         BN{"Брунеј"}
         BO{"Боливија"}
+        BQ{"Карипска Холандија"}
         BR{"Бразил"}
         BS{"Бахами"}
         BT{"Бутан"}
@@ -93,9 +94,9 @@ sr{
         CO{"Колумбија"}
         CP{"Острво Клипертон"}
         CR{"Костарика"}
-        CS{"Србија и Црна Гора"}
         CU{"Куба"}
         CV{"Капе Верде"}
+        CW{"Курасао"}
         CX{"Божићна острва"}
         CY{"Кипар"}
         CZ{"Чешка"}
@@ -192,7 +193,7 @@ sr{
         MH{"Маршалска Острва"}
         MK{"Македонија"}
         ML{"Мали"}
-        MM{"Мијанмар [Бурма]"}
+        MM{"Мијанмар (Бурма)"}
         MN{"Монголија"}
         MO{"Макао С. А. Р. Кина"}
         MP{"Северна Маријанска Острва"}
@@ -255,8 +256,10 @@ sr{
         SN{"Сенегал"}
         SO{"Сомалија"}
         SR{"Суринам"}
+        SS{"Јужни Судан"}
         ST{"Сао Томе и Принципе"}
         SV{"Салвадор"}
+        SX{"Свети Мартин"}
         SY{"Сирија"}
         SZ{"Свазиленд"}
         TA{"Тристан да Куња"}
@@ -291,6 +294,7 @@ sr{
         VU{"Вануату"}
         WF{"Валис и Футуна Острва"}
         WS{"Самоа"}
+        XK{"Косово"}
         YE{"Јемен"}
         YT{"Мајоте"}
         ZA{"Јужноафричка Република"}
@@ -298,5 +302,12 @@ sr{
         ZW{"Зимбабве"}
         ZZ{"Непозната или неважећа област"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"УК"}
+        HK{"Хонг Конг"}
+        MO{"Макао"}
+        PS{"Палестина"}
+        US{"САД"}
+    }
+    Version{"2.0.92.87"}
 }

@@ -31,7 +31,7 @@
 
 U_NAMESPACE_BEGIN
 
-class U_COMMON_API IDNAInfo;
+class IDNAInfo;
 
 /**
  * Abstract base class for IDNA processing.
@@ -254,10 +254,6 @@ public:
     virtual void
     nameToUnicodeUTF8(const StringPiece &name, ByteSink &dest,
                       IDNAInfo &info, UErrorCode &errorCode) const;
-
-private:
-    // No ICU "poor man's RTTI" for this class nor its subclasses.
-    virtual UClassID getDynamicClassID() const;
 };
 
 class UTS46;

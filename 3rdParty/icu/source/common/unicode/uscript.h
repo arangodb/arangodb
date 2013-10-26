@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 1997-2012, International Business Machines
+ *   Copyright (C) 1997-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *
@@ -251,8 +251,10 @@ typedef enum UScriptCode {
       USCRIPT_PHAGS_PA                      = 90, /* Phag */
       /** @stable ICU 3.6 */
       USCRIPT_PHOENICIAN                    = 91, /* Phnx */
+      /** @stable ICU 52 */
+      USCRIPT_MIAO                          = 92, /* Plrd */
       /** @stable ICU 3.6 */
-      USCRIPT_PHONETIC_POLLARD              = 92, /* Plrd */
+      USCRIPT_PHONETIC_POLLARD              = USCRIPT_MIAO,
       /** @stable ICU 3.6 */
       USCRIPT_RONGORONGO                    = 93, /* Roro */
       /** @stable ICU 3.6 */
@@ -396,10 +398,15 @@ typedef enum UScriptCode {
       /** @stable ICU 49 */
       USCRIPT_TIRHUTA                       = 158,/* Tirh */
 
+      /** @stable ICU 52 */
+      USCRIPT_CAUCASIAN_ALBANIAN            = 159,/* Aghb */
+      /** @stable ICU 52 */
+      USCRIPT_MAHAJANI                      = 160,/* Mahj */
+
       /* Private use codes from Qaaa - Qabx are not supported */
 
       /** @stable ICU 2.2 */
-      USCRIPT_CODE_LIMIT    = 159
+      USCRIPT_CODE_LIMIT    = 161
 } UScriptCode;
 
 /**
@@ -456,7 +463,6 @@ uscript_getShortName(UScriptCode scriptCode);
 U_STABLE UScriptCode  U_EXPORT2 
 uscript_getScript(UChar32 codepoint, UErrorCode *err);
 
-#ifndef U_HIDE_DRAFT_API
 /**
  * Do the Script_Extensions of code point c contain script sc?
  * If c does not have explicit Script_Extensions, then this tests whether
@@ -470,9 +476,9 @@ uscript_getScript(UChar32 codepoint, UErrorCode *err);
  * @param c code point
  * @param sc script code
  * @return TRUE if sc is in Script_Extensions(c)
- * @draft ICU 49
+ * @stable ICU 49
  */
-U_DRAFT UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 uscript_hasScript(UChar32 c, UScriptCode sc);
 
 /**
@@ -504,12 +510,118 @@ uscript_hasScript(UChar32 c, UScriptCode sc);
  *                  function chaining. (See User Guide for details.)
  * @return number of script codes in c's Script_Extensions, or 1 for the single Script value,
  *         written to scripts unless U_BUFFER_OVERFLOW_ERROR indicates insufficient capacity
- * @draft ICU 49
+ * @stable ICU 49
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uscript_getScriptExtensions(UChar32 c,
                             UScriptCode *scripts, int32_t capacity,
                             UErrorCode *errorCode);
+
+#ifndef U_HIDE_DRAFT_API
+
+/**
+ * Script usage constants.
+ * See UAX #31 Unicode Identifier and Pattern Syntax.
+ * http://www.unicode.org/reports/tr31/#Table_Candidate_Characters_for_Exclusion_from_Identifiers
+ *
+ * @draft ICU 51
+ */
+typedef enum UScriptUsage {
+    /** Not encoded in Unicode. @draft ICU 51 */
+    USCRIPT_USAGE_NOT_ENCODED,
+    /** Unknown script usage. @draft ICU 51 */
+    USCRIPT_USAGE_UNKNOWN,
+    /** Candidate for Exclusion from Identifiers. @draft ICU 51 */
+    USCRIPT_USAGE_EXCLUDED,
+    /** Limited Use script. @draft ICU 51 */
+    USCRIPT_USAGE_LIMITED_USE,
+    /** Aspirational Use script. @draft ICU 51 */
+    USCRIPT_USAGE_ASPIRATIONAL,
+    /** Recommended script. @draft ICU 51 */
+    USCRIPT_USAGE_RECOMMENDED
+} UScriptUsage;
+
+/**
+ * Writes the script sample character string.
+ * This string normally consists of one code point but might be longer.
+ * The string is empty if the script is not encoded.
+ *
+ * @param script script code
+ * @param dest output string array
+ * @param capacity number of UChars in the dest array
+ * @param pErrorCode standard ICU in/out error code, must pass U_SUCCESS() on input
+ * @return the string length, even if U_BUFFER_OVERFLOW_ERROR
+ * @draft ICU 51
+ */
+U_DRAFT int32_t U_EXPORT2
+uscript_getSampleString(UScriptCode script, UChar *dest, int32_t capacity, UErrorCode *pErrorCode);
+
+#if U_SHOW_CPLUSPLUS_API
+
+U_NAMESPACE_BEGIN
+class UnicodeString;
+U_NAMESPACE_END
+
+/**
+ * Returns the script sample character string.
+ * This string normally consists of one code point but might be longer.
+ * The string is empty if the script is not encoded.
+ *
+ * @param script script code
+ * @return the sample character string
+ * @draft ICU 51
+ */
+U_COMMON_API icu::UnicodeString U_EXPORT2
+uscript_getSampleUnicodeString(UScriptCode script);
+
+#endif
+
+/**
+ * Returns the script usage according to UAX #31 Unicode Identifier and Pattern Syntax.
+ * Returns USCRIPT_USAGE_NOT_ENCODED if the script is not encoded in Unicode.
+ *
+ * @param script script code
+ * @return script usage
+ * @see UScriptUsage
+ * @draft ICU 51
+ */
+U_DRAFT UScriptUsage U_EXPORT2
+uscript_getUsage(UScriptCode script);
+
+/**
+ * Returns TRUE if the script is written right-to-left.
+ * For example, Arab and Hebr.
+ *
+ * @param script script code
+ * @return TRUE if the script is right-to-left
+ * @draft ICU 51
+ */
+U_DRAFT UBool U_EXPORT2
+uscript_isRightToLeft(UScriptCode script);
+
+/**
+ * Returns TRUE if the script allows line breaks between letters (excluding hyphenation).
+ * Such a script typically requires dictionary-based line breaking.
+ * For example, Hani and Thai.
+ *
+ * @param script script code
+ * @return TRUE if the script allows line breaks between letters
+ * @draft ICU 51
+ */
+U_DRAFT UBool U_EXPORT2
+uscript_breaksBetweenLetters(UScriptCode script);
+
+/**
+ * Returns TRUE if in modern (or most recent) usage of the script case distinctions are customary.
+ * For example, Latn and Cyrl.
+ *
+ * @param script script code
+ * @return TRUE if the script is cased
+ * @draft ICU 51
+ */
+U_DRAFT UBool U_EXPORT2
+uscript_isCased(UScriptCode script);
+
 #endif  /* U_HIDE_DRAFT_API */
 
 #endif

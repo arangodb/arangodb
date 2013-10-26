@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1998-2011, International Business Machines Corporation and
+ * Copyright (c) 1998-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*
@@ -26,7 +26,7 @@
 #include <stdio.h>
 
 /* See the comments on U_SIGNED_RIGHT_SHIFT_IS_ARITHMETIC. */
-static void TestSignedRightShiftIsArithmetic() {
+static void TestSignedRightShiftIsArithmetic(void) {
     int32_t x=0xfff5fff3;
     int32_t m=-1;
     int32_t x4=x>>4;

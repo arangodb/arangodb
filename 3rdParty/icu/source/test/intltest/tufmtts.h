@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2008-2010, International Business Machines Corporation
+ * Copyright (c) 2008-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ********************************************************************/
 
@@ -37,7 +37,19 @@ public:
      * to long unit names for a locale where the locale data does not 
      * provide short unit names. As of CLDR 1.9, Greek is one such language.
      **/
-    void testGreek();
+    void testGreekWithFallback();
+
+    /**
+     * Performs tests for Greek
+     * This tests that if the plural count listed in time unit format does not
+     * match those in the plural rules for the locale, those plural count in
+     * time unit format will be ingored and subsequently, fall back will kick in
+     * which is tested above.
+     * Without data sanitization, setNumberFormat() would crash.
+     * As of CLDR shiped in ICU4.8, Greek is one such language.
+     */
+    void testGreekWithSanitization();
+
 };
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

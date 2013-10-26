@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2006 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -16,7 +16,7 @@
 
 U_NAMESPACE_BEGIN
 
-le_uint32 PairPositioningSubtable::process(GlyphIterator *glyphIterator, const LEFontInstance *fontInstance) const
+le_uint32 PairPositioningSubtable::process(const LEReferenceTo<PairPositioningSubtable> &base, GlyphIterator *glyphIterator, const LEFontInstance *fontInstance, LEErrorCode &success) const
 {
     switch(SWAPW(subtableFormat))
     {
@@ -25,27 +25,32 @@ le_uint32 PairPositioningSubtable::process(GlyphIterator *glyphIterator, const L
 
     case 1:
     {
-        const PairPositioningFormat1Subtable *subtable = (const PairPositioningFormat1Subtable *) this;
+      const LEReferenceTo<PairPositioningFormat1Subtable> subtable(base, success, (const PairPositioningFormat1Subtable *) this);
 
-        return subtable->process(glyphIterator, fontInstance);
+      if(LE_SUCCESS(success))
+      return subtable->process(subtable, glyphIterator, fontInstance, success);
+      else
+        return 0;
     }
 
     case 2:
     {
-        const PairPositioningFormat2Subtable *subtable = (const PairPositioningFormat2Subtable *) this;
+      const LEReferenceTo<PairPositioningFormat2Subtable> subtable(base, success, (const PairPositioningFormat2Subtable *) this);
 
-        return subtable->process(glyphIterator, fontInstance);
-    }
-
-    default:
+      if(LE_SUCCESS(success))
+      return subtable->process(subtable, glyphIterator, fontInstance, success);
+      else
         return 0;
+    }
+    default:
+      return 0;
     }
 }
 
-le_uint32 PairPositioningFormat1Subtable::process(GlyphIterator *glyphIterator, const LEFontInstance *fontInstance) const
+le_uint32 PairPositioningFormat1Subtable::process(const LEReferenceTo<PairPositioningFormat1Subtable> &base, GlyphIterator *glyphIterator, const LEFontInstance *fontInstance, LEErrorCode &success) const
 {
     LEGlyphID firstGlyph = glyphIterator->getCurrGlyphID();
-    le_int32 coverageIndex = getGlyphCoverage(firstGlyph);
+    le_int32 coverageIndex = getGlyphCoverage(base, firstGlyph, success);
     GlyphIterator tempIterator(*glyphIterator);
 
     if (coverageIndex >= 0 && glyphIterator->next()) {
@@ -85,10 +90,10 @@ le_uint32 PairPositioningFormat1Subtable::process(GlyphIterator *glyphIterator, 
     return 0;
 }
 
-le_uint32 PairPositioningFormat2Subtable::process(GlyphIterator *glyphIterator, const LEFontInstance *fontInstance) const
+le_uint32 PairPositioningFormat2Subtable::process(const LEReferenceTo<PairPositioningFormat2Subtable> &base, GlyphIterator *glyphIterator, const LEFontInstance *fontInstance, LEErrorCode &success) const
 {
     LEGlyphID firstGlyph = glyphIterator->getCurrGlyphID();
-    le_int32 coverageIndex = getGlyphCoverage(firstGlyph);
+    le_int32 coverageIndex = getGlyphCoverage(base, firstGlyph, success);
     GlyphIterator tempIterator(*glyphIterator);
 
     if (coverageIndex >= 0 && glyphIterator->next()) {

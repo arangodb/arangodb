@@ -110,7 +110,7 @@
       <AdditionalIncludeDirectories>..\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icule49d.dll</OutputFile>
+      <OutputFile>..\..\bin\icule52d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib\iculed.pdb</ProgramDatabaseFile>
@@ -151,7 +151,7 @@
       <AdditionalIncludeDirectories>..\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icule49.dll</OutputFile>
+      <OutputFile>..\..\bin\icule52.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib\icule.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -195,7 +195,7 @@
       <AdditionalIncludeDirectories>..\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icule49d.dll</OutputFile>
+      <OutputFile>..\..\bin64\icule52d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib64\iculed.pdb</ProgramDatabaseFile>
@@ -234,7 +234,7 @@
       <AdditionalIncludeDirectories>..\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icule49.dll</OutputFile>
+      <OutputFile>..\..\bin64\icule52.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib64\icule.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -251,7 +251,9 @@
     <ClCompile Include="CanonData.cpp" />
     <ClCompile Include="CanonShaping.cpp" />
     <ClCompile Include="ClassDefinitionTables.cpp" />
+    <ClCompile Include="ContextualGlyphInsertionProc2.cpp" />
     <ClCompile Include="ContextualGlyphSubstProc.cpp" />
+    <ClCompile Include="ContextualGlyphSubstProc2.cpp" />
     <ClCompile Include="ContextualSubstSubtables.cpp" />
     <ClCompile Include="CoverageTables.cpp" />
     <ClCompile Include="CursiveAttachmentSubtables.cpp" />
@@ -268,11 +270,13 @@
     <ClCompile Include="GlyphSubstitutionTables.cpp" />
     <ClCompile Include="GlyphSubstLookupProc.cpp" />
     <ClCompile Include="GXLayoutEngine.cpp" />
+    <ClCompile Include="GXLayoutEngine2.cpp" />
     <ClCompile Include="HangulLayoutEngine.cpp" />
     <ClCompile Include="HanLayoutEngine.cpp" />
     <ClCompile Include="IndicClassTables.cpp" />
     <ClCompile Include="IndicLayoutEngine.cpp" />
     <ClCompile Include="IndicRearrangementProcessor.cpp" />
+    <ClCompile Include="IndicRearrangementProcessor2.cpp" />
     <ClCompile Include="IndicReordering.cpp" />
     <ClCompile Include="KernTable.cpp" />
     <ClCompile Include="KhmerLayoutEngine.cpp" />
@@ -282,6 +286,7 @@
     <ClCompile Include="LEGlyphStorage.cpp" />
     <ClCompile Include="LEInsertionList.cpp" />
     <ClCompile Include="LigatureSubstProc.cpp" />
+    <ClCompile Include="LigatureSubstProc2.cpp" />
     <ClCompile Include="LigatureSubstSubtables.cpp" />
     <ClCompile Include="loengine.cpp" />
     <ClCompile Include="LookupProcessor.cpp" />
@@ -293,30 +298,39 @@
     <ClCompile Include="MarkToMarkPosnSubtables.cpp" />
     <ClCompile Include="MirroredCharData.cpp" />
     <ClCompile Include="MorphTables.cpp" />
+    <ClCompile Include="MorphTables2.cpp" />
     <ClCompile Include="MPreFixups.cpp" />
     <ClCompile Include="MultipleSubstSubtables.cpp" />
     <ClCompile Include="NonContextualGlyphSubstProc.cpp" />
+    <ClCompile Include="NonContextualGlyphSubstProc2.cpp" />
     <ClCompile Include="OpenTypeLayoutEngine.cpp" />
     <ClCompile Include="OpenTypeUtilities.cpp" />
     <ClCompile Include="PairPositioningSubtables.cpp" />
     <ClCompile Include="ScriptAndLanguage.cpp" />
     <ClCompile Include="ScriptAndLanguageTags.cpp" />
     <ClCompile Include="SegmentArrayProcessor.cpp" />
+    <ClCompile Include="SegmentArrayProcessor2.cpp" />
     <ClCompile Include="SegmentSingleProcessor.cpp" />
+    <ClCompile Include="SegmentSingleProcessor2.cpp" />
     <ClCompile Include="ShapingTypeData.cpp" />
     <ClCompile Include="SimpleArrayProcessor.cpp" />
+    <ClCompile Include="SimpleArrayProcessor2.cpp" />
     <ClCompile Include="SinglePositioningSubtables.cpp" />
     <ClCompile Include="SingleSubstitutionSubtables.cpp" />
     <ClCompile Include="SingleTableProcessor.cpp" />
+    <ClCompile Include="SingleTableProcessor2.cpp" />
     <ClCompile Include="StateTableProcessor.cpp" />
+    <ClCompile Include="StateTableProcessor2.cpp" />
     <ClCompile Include="SubstitutionLookups.cpp" />
     <ClCompile Include="SubtableProcessor.cpp" />
+    <ClCompile Include="SubtableProcessor2.cpp" />
     <ClCompile Include="ThaiLayoutEngine.cpp" />
     <ClCompile Include="ThaiShaping.cpp" />
     <ClCompile Include="ThaiStateTables.cpp" />
     <ClCompile Include="TibetanLayoutEngine.cpp" />
     <ClCompile Include="TibetanReordering.cpp" />
     <ClCompile Include="TrimmedArrayProcessor.cpp" />
+    <ClCompile Include="TrimmedArrayProcessor2.cpp" />
     <ClCompile Include="ValueRecords.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -329,8 +343,10 @@
     <ClInclude Include="CharSubstitutionFilter.h" />
     <ClInclude Include="ClassDefinitionTables.h" />
     <ClInclude Include="ContextualGlyphInsertion.h" />
+    <ClInclude Include="ContextualGlyphInsertionProc2.h" />
     <ClInclude Include="ContextualGlyphSubstitution.h" />
     <ClInclude Include="ContextualGlyphSubstProc.h" />
+    <ClInclude Include="ContextualGlyphSubstProc2.h" />
     <ClInclude Include="ContextualSubstSubtables.h" />
     <ClInclude Include="CoverageTables.h" />
     <ClInclude Include="CursiveAttachmentSubtables.h" />
@@ -347,12 +363,14 @@
     <ClInclude Include="GlyphSubstitutionTables.h" />
     <ClInclude Include="GlyphSubstLookupProc.h" />
     <ClInclude Include="GXLayoutEngine.h" />
+    <ClInclude Include="GXLayoutEngine2.h" />
     <ClInclude Include="HangulLayoutEngine.h" />
     <ClInclude Include="HanLayoutEngine.h" />
     <ClInclude Include="ICUFeatures.h" />
     <ClInclude Include="IndicLayoutEngine.h" />
     <ClInclude Include="IndicRearrangement.h" />
     <ClInclude Include="IndicRearrangementProcessor.h" />
+    <ClInclude Include="IndicRearrangementProcessor2.h" />
     <ClInclude Include="IndicReordering.h" />
     <ClInclude Include="KernTable.h" />
     <ClInclude Include="KhmerLayoutEngine.h" />
@@ -486,6 +504,7 @@
     </CustomBuild>
     <ClInclude Include="LigatureSubstitution.h" />
     <ClInclude Include="LigatureSubstProc.h" />
+    <ClInclude Include="LigatureSubstProc2.h" />
     <ClInclude Include="LigatureSubstSubtables.h" />
     <CustomBuild Include="loengine.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\layout
@@ -514,6 +533,7 @@
     <ClInclude Include="MultipleSubstSubtables.h" />
     <ClInclude Include="NonContextualGlyphSubst.h" />
     <ClInclude Include="NonContextualGlyphSubstProc.h" />
+    <ClInclude Include="NonContextualGlyphSubstProc2.h" />
     <ClInclude Include="OpenTypeLayoutEngine.h" />
     <ClInclude Include="OpenTypeTables.h" />
     <ClInclude Include="OpenTypeUtilities.h" />
@@ -521,20 +541,27 @@
     <ClInclude Include="ScriptAndLanguage.h" />
     <ClInclude Include="ScriptAndLanguageTags.h" />
     <ClInclude Include="SegmentArrayProcessor.h" />
+    <ClInclude Include="SegmentArrayProcessor2.h" />
     <ClInclude Include="SegmentSingleProcessor.h" />
+    <ClInclude Include="SegmentSingleProcessor2.h" />
     <ClInclude Include="SimpleArrayProcessor.h" />
+    <ClInclude Include="SimpleArrayProcessor2.h" />
     <ClInclude Include="SinglePositioningSubtables.h" />
     <ClInclude Include="SingleSubstitutionSubtables.h" />
     <ClInclude Include="SingleTableProcessor.h" />
+    <ClInclude Include="SingleTableProcessor2.h" />
     <ClInclude Include="StateTableProcessor.h" />
+    <ClInclude Include="StateTableProcessor2.h" />
     <ClInclude Include="StateTables.h" />
     <ClInclude Include="SubstitutionLookups.h" />
     <ClInclude Include="SubtableProcessor.h" />
+    <ClInclude Include="SubtableProcessor2.h" />
     <ClInclude Include="ThaiLayoutEngine.h" />
     <ClInclude Include="ThaiShaping.h" />
     <ClInclude Include="TibetanLayoutEngine.h" />
     <ClInclude Include="TibetanReordering.h" />
     <ClInclude Include="TrimmedArrayProcessor.h" />
+    <ClInclude Include="TrimmedArrayProcessor2.h" />
     <ClInclude Include="ValueRecords.h" />
   </ItemGroup>
   <ItemGroup>

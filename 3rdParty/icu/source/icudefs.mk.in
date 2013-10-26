@@ -2,7 +2,7 @@
 #
 # Yves Arrouye.
 #
-# Copyright (C) 2000-2012, International Business Machines Corporation and others.
+# Copyright (C) 2000-2013, International Business Machines Corporation and others.
 # All Rights Reserved.
 
 #
@@ -77,8 +77,6 @@ ICUPKGDATA_DIR = $(ICUDATA_DIR)
 endif
 endif
 endif
-# This is needed so that make -j2 doesn't complain when invoking pkgdata's make
-PKGDATA_INVOKE_OPTS = MAKEFLAGS=
 
 # These are defined here because mh-cygwin-msvc needs to override these values.
 ICUPKGDATA_INSTALL_DIR = $(DESTDIR)$(ICUPKGDATA_DIR)
@@ -174,6 +172,25 @@ LINK.cc=      $(CXX) $(CXXFLAGS) $(LDFLAGS)
 SHLIB.c=      $(CC) $(CFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS)
 SHLIB.cc=     $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS)
 
+# ICU_MSG
+ICU_MSG=@echo "   $(1)	"
+
+# Do not show the large compiling arguments by default.
+# To use:
+# change
+#    $(CC) -o foo
+# to
+#    $(call SILENT_COMPILE,$(CC) -o foo)
+ifndef VERBOSE
+    SILENT_COMPILE=$(call ICU_MSG,$(notdir $(firstword $(1)))) "... " $< && $(1) || \
+			( echo "*** Failed compilation command follows: ----------------------------------------------------------" ; \
+			  echo "$(1)" ; \
+		          echo "--- ( rebuild with \"$(MAKE) VERBOSE=1 $(MAKECMDGOALS)\" to show all parameters ) --------" ; \
+			false )
+else
+    SILENT_COMPILE=$(1)
+endif
+
 # Environment variable to set a runtime search path
 LDLIBRARYPATH_ENVVAR = LD_LIBRARY_PATH
 
@@ -259,8 +276,13 @@ LIBICUIO	= $(LLIBDIR) $(ICULIBS_IO)
 # overridden by icucross.mk
 INVOKE = $(LDLIBRARYPATH_ENVVAR)=$(LIBRARY_PATH_PREFIX)$(LIBDIR):$(top_builddir)/stubdata:$(top_builddir)/tools/ctestfw:$$$(LDLIBRARYPATH_ENVVAR) $(LEAK_CHECKER)
 # prefer stubdata
-PKGDATA_INVOKE = $(LDLIBRARYPATH_ENVVAR)=$(top_builddir)/stubdata:$(top_builddir)/tools/ctestfw:$(LIBRARY_PATH_PREFIX)$(LIBDIR):$$$(LDLIBRARYPATH_ENVVAR) $(LEAK_CHECKER) $(PKGDATA_INVOKE_OPTS)
+PKGDATA_INVOKE = $(LDLIBRARYPATH_ENVVAR)=$(top_builddir)/stubdata:$(top_builddir)/tools/ctestfw:$(LIBRARY_PATH_PREFIX)$(LIBDIR):$$$(LDLIBRARYPATH_ENVVAR) $(LEAK_CHECKER)
 INSTALLED_INVOKE = $(LDLIBRARYPATH_ENVVAR)=$(libdir):$$$(LDLIBRARYPATH_ENVVAR)
+
+# Current full path directory for cross compilation
+ifneq ($(strip $(cross_buildroot)),)
+include $(cross_buildroot)/config/icucross.inc
+endif
 
 # Platform-specific setup
 include @platform_make_fragment@
@@ -282,6 +304,11 @@ ifneq ($(strip $(cross_buildroot)),)
 include $(cross_buildroot)/config/icucross.mk
 else
 cross_buildroot = $(top_builddir)
+endif
+
+# for tests
+ifneq ($(TEST_STATUS_FILE),)
+TEST_OUTPUT_OPTS="-E$(TEST_STATUS_FILE)"
 endif
 
 # optional include at top
