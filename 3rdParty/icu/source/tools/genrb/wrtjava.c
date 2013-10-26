@@ -82,7 +82,7 @@ static int tabCount = 3;
 
 static FileStream* out=NULL;
 static struct SRBRoot* srBundle ;
-static const char* outDir = NULL;
+/*static const char* outDir = NULL;*/
 
 static const char* bName=NULL;
 static const char* pName=NULL;
@@ -621,7 +621,7 @@ bundle_write_java(struct SRBRoot *bundle, const char *outputDir,const char* outp
     char className[256]={'\0'};
     /*char constructor[1000] = { 0 };*/
     /*UBool j1 =FALSE;*/
-    outDir = outputDir;
+    /*outDir = outputDir;*/
 
     start = TRUE;                        /* Reset the start indictor*/
 

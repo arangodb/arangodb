@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/lv.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lv.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/lv.xml
+ * ICU <specials> source: <path>/common/main/lv.xml
  */
 lv{
     Countries{
@@ -21,15 +21,15 @@ lv{
         014{"Austrumāfrika"}
         015{"Ziemeļāfrika"}
         017{"Vidusāfrika"}
-        018{"Āfrikas dienvidi"}
+        018{"Dienvidāfrika"}
         019{"Amerika"}
-        021{"Amerikas ziemeļi"}
+        021{"Amerikas ziemeļu daļa"}
         029{"Karību jūras reģions"}
         030{"Austrumāzija"}
         034{"Dienvidāzija"}
         035{"Centrālaustrumāzija"}
         039{"Dienvideiropa"}
-        053{"Austrālija un Jaunzēlande"}
+        053{"Austrālāzija"}
         054{"Melanēzija"}
         057{"Mikronēzijas reģions"}
         061{"Polinēzija"}
@@ -72,6 +72,7 @@ lv{
         BM{"Bermudu salas"}
         BN{"Bruneja"}
         BO{"Bolīvija"}
+        BQ{"Nīderlandes Karību salas"}
         BR{"Brazīlija"}
         BS{"Bahamu salas"}
         BT{"Butāna"}
@@ -93,9 +94,9 @@ lv{
         CO{"Kolumbija"}
         CP{"Klipertona sala"}
         CR{"Kostarika"}
-        CS{"Serbija un Melnkalne"}
         CU{"Kuba"}
         CV{"Kaboverde"}
+        CW{"Kirasao"}
         CX{"Ziemsvētku sala"}
         CY{"Kipra"}
         CZ{"Čehija"}
@@ -104,9 +105,9 @@ lv{
         DJ{"Džibutija"}
         DK{"Dānija"}
         DM{"Dominika"}
-        DO{"Dominikānas Republika"}
+        DO{"Dominikāna"}
         DZ{"Alžīrija"}
-        EA{"Seūta un Meliļa"}
+        EA{"Seūta un Melilja"}
         EC{"Ekvadora"}
         EE{"Igaunija"}
         EG{"Ēģipte"}
@@ -162,7 +163,7 @@ lv{
         JO{"Jordānija"}
         JP{"Japāna"}
         KE{"Kenija"}
-        KG{"Kirgīzija"}
+        KG{"Kirgizstāna"}
         KH{"Kambodža"}
         KI{"Kiribati"}
         KM{"Komoru salas"}
@@ -192,7 +193,7 @@ lv{
         MH{"Māršala salas"}
         MK{"Maķedonija"}
         ML{"Mali"}
-        MM{"Mjanma [Birma]"}
+        MM{"Mjanma (Birma)"}
         MN{"Mongolija"}
         MO{"Ķīnas īpašās pārvaldes apgabals Makao"}
         MP{"Ziemeļu Marianas salas"}
@@ -246,7 +247,7 @@ lv{
         SD{"Sudāna"}
         SE{"Zviedrija"}
         SG{"Singapūra"}
-        SH{"Sv. Helēnas sala"}
+        SH{"Sv.Helēnas sala"}
         SI{"Slovēnija"}
         SJ{"Svalbāra un Jana Majena sala"}
         SK{"Slovākija"}
@@ -255,14 +256,16 @@ lv{
         SN{"Senegāla"}
         SO{"Somālija"}
         SR{"Surinama"}
+        SS{"Dienvidsudāna"}
         ST{"Santome un Prinsipi"}
         SV{"Salvadora"}
+        SX{"Sintmārtena"}
         SY{"Sīrija"}
         SZ{"Svazilenda"}
         TA{"Tristana da Kuņas salas"}
         TC{"Tērksas un Kaikosas salas"}
         TD{"Čada"}
-        TF{"Franču dienvidu teritorijas"}
+        TF{"Francijas Dienvidjūru Zemes"}
         TG{"Togo"}
         TH{"Taizeme"}
         TJ{"Tadžikistāna"}
@@ -278,7 +281,7 @@ lv{
         TZ{"Tanzānija"}
         UA{"Ukraina"}
         UG{"Uganda"}
-        UM{"ASV Mazās Aizjūras salas"}
+        UM{"ASV Aizjūras salas"}
         US{"Amerikas Savienotās Valstis"}
         UY{"Urugvaja"}
         UZ{"Uzbekistāna"}
@@ -291,12 +294,20 @@ lv{
         VU{"Vanuatu"}
         WF{"Volisa un Futuna"}
         WS{"Samoa"}
+        XK{"Kosova"}
         YE{"Jemena"}
         YT{"Majota"}
         ZA{"Dienvidāfrikas Republika"}
         ZM{"Zambija"}
         ZW{"Zimbabve"}
-        ZZ{"nezināms vai nederīgs reģions"}
+        ZZ{"nezināms reģions"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"Lielbritānija"}
+        HK{"Honkonga"}
+        MO{"Makao"}
+        PS{"Palestīna"}
+        US{"ASV"}
+    }
+    Version{"2.0.92.87"}
 }

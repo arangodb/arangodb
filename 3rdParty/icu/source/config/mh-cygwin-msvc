@@ -1,5 +1,5 @@
 ## Cygwin with Microsoft Visual C++ compiler specific setup
-## Copyright (c) 2001-2011, International Business Machines Corporation and
+## Copyright (c) 2001-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 # We install sbin tools into the same bin directory because
@@ -125,7 +125,7 @@ LDFLAGSICUTOOLUTIL=	/base:"0x4ac00000"# Same as layout. Layout and tools probabl
 
 # The #M# is used to delete lines for icu-config
 # Current full path directory.
-CURR_FULL_DIR=$(subst \,/,$(shell cygpath -da .))#M# -m isn't used because it doesn't work on Win98
+CURR_FULL_DIR?=$(subst \,/,$(shell cygpath -da .))#M# -m isn't used because it doesn't work on Win98
 # Current full path directory for use in source code in a -D compiler option.
 CURR_SRCCODE_FULL_DIR=$(subst \,\\,$(shell cygpath -da .))#M#
 

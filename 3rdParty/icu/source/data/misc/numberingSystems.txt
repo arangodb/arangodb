@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/numberingSystems.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/numberingSystems.xml
 // *
 // ***************************************************************************
 numberingSystems:table(nofallback){
@@ -200,7 +200,7 @@ numberingSystems:table(nofallback){
         }
         nkoo{
             algorithmic:int{0}
-            desc{"߉߈߇߆߅߄߃߂߁߀"}
+            desc{"߀߁߂߃߄߅߆߇߈߉"}
             radix:int{10}
         }
         olck{

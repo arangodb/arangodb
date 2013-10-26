@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ewo.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ewo.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ewo.xml
+ * ICU <specials> source: <path>/common/main/ewo.xml
  */
 ewo{
     Languages{
@@ -15,15 +15,15 @@ ewo{
         am{"Ǹkɔ́bɔ amária"}
         ar{"Ǹkɔ́bɔ arábia"}
         be{"Ǹkɔ́bɔ belarúsian"}
-        bg{"Ǹkɔ́bɔ bulǝgárian"}
+        bg{"Ǹkɔ́bɔ buləgárian"}
         bn{"Ǹkɔ́bɔ bɛngalí"}
         cs{"Ǹkɔ́bɔ tsɛ́g"}
         de{"Ǹkɔ́bɔ ndzáman"}
-        el{"Ǹkɔ́bɔ gǝlɛ́g"}
-        en{"Ǹkɔ́bɔ éngǝlís"}
-        es{"ǹkɔ́bɔ kpǝnyá"}
+        el{"Ǹkɔ́bɔ gəlɛ́g"}
+        en{"Ǹkɔ́bɔ éngəlís"}
+        es{"ǹkɔ́bɔ kpənyá"}
         ewo{"ewondo"}
-        fa{"ǹkɔ́bɔ fɛ́rǝsian"}
+        fa{"ǹkɔ́bɔ fɛ́rəsian"}
         fr{"Ǹkɔ́bɔ fulɛnsí"}
         ha{"Ǹkɔ́bɔ aúsá"}
         hi{"Ǹkɔ́bɔ hindí"}
@@ -33,13 +33,13 @@ ewo{
         it{"Ǹkɔ́bɔ etáliɛn"}
         ja{"Ǹkɔ́bɔ hapɔ́n"}
         jv{"Ǹkɔ́bɔ havanís"}
-        km{"Ǹkɔ́bɔ kǝmɛ́r"}
+        km{"Ǹkɔ́bɔ kəmɛ́r"}
         ko{"Ǹkɔ́bɔ koréan"}
         ms{"Ǹkɔ́bɔ malɛ́sian"}
-        my{"Ǹkɔ́bɔ birǝmán"}
+        my{"Ǹkɔ́bɔ birəmán"}
         ne{"ǹkɔ́bɔ nefálian"}
-        nl{"Ǹkɔ́bɔ nɛrǝlándía"}
-        pa{"ǹkɔ́bɔ funǝhábia"}
+        nl{"Ǹkɔ́bɔ nɛrəlándía"}
+        pa{"ǹkɔ́bɔ funəhábia"}
         pl{"ǹkɔ́bɔ fólis"}
         pt{"ǹkɔ́bɔ fɔtugɛ́s"}
         ro{"ńkɔ́bɔ románía"}
@@ -49,13 +49,13 @@ ewo{
         sv{"ǹkɔ́bɔ suwɛ́d"}
         ta{"ǹkɔ́bɔ tamíl"}
         th{"ǹkɔ́bɔ táilan"}
-        tr{"ǹkɔ́bɔ túrǝki"}
+        tr{"ǹkɔ́bɔ túrəki"}
         uk{"ǹkɔ́bɔ ukelénia"}
         ur{"ǹkɔ́bɔ urudú"}
-        vi{"ǹkɔ́bɔ hiɛdǝnám"}
+        vi{"ǹkɔ́bɔ hiɛdənám"}
         yo{"ǹkɔ́bɔ yorúba"}
         zh{"Ǹkɔ́bɔ tsainís"}
         zu{"ǹkɔ́bɔ zulú"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

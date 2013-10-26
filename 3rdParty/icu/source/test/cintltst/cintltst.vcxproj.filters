@@ -99,9 +99,6 @@
     <ClCompile Include="cmsccoll.c">
       <Filter>collation</Filter>
     </ClCompile>
-    <ClCompile Include="colutil.c">
-      <Filter>collation</Filter>
-    </ClCompile>
     <ClCompile Include="cturtst.c">
       <Filter>collation</Filter>
     </ClCompile>
@@ -186,6 +183,9 @@
     <ClCompile Include="cformtst.c">
       <Filter>formatting</Filter>
     </ClCompile>
+    <ClCompile Include="cgendtst.c">
+      <Filter>formatting</Filter>
+    </ClCompile>
     <ClCompile Include="cmsgtst.c">
       <Filter>formatting</Filter>
     </ClCompile>
@@ -205,6 +205,9 @@
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="utmstest.c">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="uregiontest.c">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="cldrtest.c">

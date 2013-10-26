@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2011, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ********************************************************************/
 /*******************************************************************************
@@ -470,9 +470,9 @@ static void TestCurrencyPreEuro(void)
     };
 
     const char* result[]={
-        "2\\u00A0\\u20A7", "2\\u00A0F",            "IEP1.50",                      "1,50\\u00A0FIM",   "2\\u00A0F",         "ITL\\u00A02",
+        "\\u20A7\\u00A02", "2\\u00A0F",            "IEP1.50",                      "1,50\\u00A0FIM",   "2\\u00A0F",         "ITL\\u00A02",
         "1$50\\u00A0Esc.", "\\u00F6S\\u00A01,50",  "1,50\\u00A0\\u0394\\u03C1\\u03C7", "2\\u00A0\\u20A7", "1,50\\u00A0FB",     "IEP1.50",
-        "1,50\\u00A0BEF",   "1,50\\u00A0DEM",        "1,50\\u00A0BEF",                    "2\\u00A0\\u20A7", "1,50\\u00A0F",      "2\\u00A0\\u20A7",
+        "1,50\\u00A0BEF",   "1,50\\u00A0DEM",        "1,50\\u00A0BEF",                    "\\u20A7\\u00A02", "1,50\\u00A0F",      "2\\u00A0\\u20A7",
         "NLG\\u00A01,50"
     };
 
@@ -880,7 +880,7 @@ static void TestGetKeywordValuesForLocale(void) {
             { "de",                 "EUR", NULL, NULL },
             { "de_DE",              "EUR", NULL, NULL },
             { "ar",                 "EGP", NULL, NULL },
-            { "ar_PS",              "JOD", "ILS", NULL },
+            { "ar_PS",              "ILS", "JOD", NULL },
             { "en@currency=CAD",    "USD", "USN", "USS" },
             { "fr@currency=zzz",    "EUR", NULL, NULL },
             { "de_DE@currency=DEM", "EUR", NULL, NULL },

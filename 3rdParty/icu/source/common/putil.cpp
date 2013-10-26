@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -97,15 +97,16 @@
 #   define ICU_NO_USER_DATA_OVERRIDE 1
 #elif U_PLATFORM == U_PF_OS390
 #   include "unicode/ucnv.h"   /* Needed for UCNV_SWAP_LFNL_OPTION_STRING */
-#elif U_PLATFORM_IS_DARWIN_BASED || U_PLATFORM_IS_LINUX_BASED || U_PLATFORM == U_PF_BSD
+#elif U_PLATFORM_IS_DARWIN_BASED || U_PLATFORM_IS_LINUX_BASED || U_PLATFORM == U_PF_BSD || U_PLATFORM == U_PF_SOLARIS
 #   include <limits.h>
 #   include <unistd.h>
+#   if U_PLATFORM == U_PF_SOLARIS
+#       ifndef _XPG4_2
+#           define _XPG4_2
+#       endif
+#   endif
 #elif U_PLATFORM == U_PF_QNX
 #   include <sys/neutrino.h>
-#elif U_PLATFORM == U_PF_SOLARIS
-#   ifndef _XPG4_2
-#       define _XPG4_2
-#   endif
 #endif
 
 #if (U_PF_MINGW <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN) && defined(__STRICT_ANSI__)
@@ -240,7 +241,7 @@ u_signBit(double d) {
 UDate fakeClock_t0 = 0; /** Time to start the clock from **/
 UDate fakeClock_dt = 0; /** Offset (fake time - real time) **/
 UBool fakeClock_set = FALSE; /** True if fake clock has spun up **/
-static UMTX fakeClockMutex = NULL;
+static UMutex fakeClockMutex = U_MUTEX_INTIALIZER;
 
 static UDate getUTCtime_real() {
     struct timeval posixTime;
@@ -638,20 +639,30 @@ uprv_timezone()
 #else
     time_t t, t1, t2;
     struct tm tmrec;
-    UBool dst_checked;
     int32_t tdiff = 0;
 
     time(&t);
     uprv_memcpy( &tmrec, localtime(&t), sizeof(tmrec) );
-    dst_checked = (tmrec.tm_isdst != 0); /* daylight savings time is checked*/
+#if U_PLATFORM != U_PF_IPHONE
+    UBool dst_checked = (tmrec.tm_isdst != 0); /* daylight savings time is checked*/
+#endif
     t1 = mktime(&tmrec);                 /* local time in seconds*/
     uprv_memcpy( &tmrec, gmtime(&t), sizeof(tmrec) );
     t2 = mktime(&tmrec);                 /* GMT (or UTC) in seconds*/
     tdiff = t2 - t1;
+
+#if U_PLATFORM != U_PF_IPHONE
     /* imitate NT behaviour, which returns same timezone offset to GMT for
-       winter and summer*/
+       winter and summer.
+       This does not work on all platforms. For instance, on glibc on Linux
+       and on Mac OS 10.5, tdiff calculated above remains the same
+       regardless of whether DST is in effect or not. iOS is another
+       platform where this does not work. Linux + glibc and Mac OS 10.5
+       have U_TIMEZONE defined so that this code is not reached.
+    */
     if (dst_checked)
         tdiff += 3600;
+#endif
     return tdiff;
 #endif
 }
@@ -664,12 +675,17 @@ uprv_timezone()
 extern U_IMPORT char *U_TZNAME[];
 #endif
 
-#if !UCONFIG_NO_FILE_IO && (U_PLATFORM_IS_DARWIN_BASED || U_PLATFORM_IS_LINUX_BASED || U_PLATFORM == U_PF_BSD)
+#if !UCONFIG_NO_FILE_IO && ((U_PLATFORM_IS_DARWIN_BASED && (U_PLATFORM != U_PF_IPHONE || defined(U_TIMEZONE))) || U_PLATFORM_IS_LINUX_BASED || U_PLATFORM == U_PF_BSD || U_PLATFORM == U_PF_SOLARIS)
 /* These platforms are likely to use Olson timezone IDs. */
 #define CHECK_LOCALTIME_LINK 1
 #if U_PLATFORM_IS_DARWIN_BASED
 #include <tzfile.h>
 #define TZZONEINFO      (TZDIR "/")
+#elif U_PLATFORM == U_PF_SOLARIS
+#define TZDEFAULT       "/etc/localtime"
+#define TZZONEINFO      "/usr/share/lib/zoneinfo/"
+#define TZZONEINFO2     "../usr/share/lib/zoneinfo/"
+#define TZ_ENV_CHECK    "localtime"
 #else
 #define TZDEFAULT       "/etc/localtime"
 #define TZZONEINFO      "/usr/share/zoneinfo/"
@@ -999,8 +1015,12 @@ uprv_tzname(int n)
 /* This code can be temporarily disabled to test tzname resolution later on. */
 #ifndef DEBUG_TZNAME
     tzid = getenv("TZ");
-    if (tzid != NULL && isValidOlsonID(tzid))
-    {
+    if (tzid != NULL && isValidOlsonID(tzid)
+#if U_PLATFORM == U_PF_SOLARIS
+    /* When TZ equals localtime on Solaris, check the /etc/localtime file. */
+        && uprv_strcmp(tzid, TZ_ENV_CHECK) != 0
+#endif
+    ) {
         /* This might be a good Olson ID. */
         skipZoneIDPrefix(&tzid);
         return tzid;
@@ -1025,6 +1045,17 @@ uprv_tzname(int n)
             {
                 return (gTimeZoneBufferPtr = gTimeZoneBuffer + tzZoneInfoLen);
             }
+#if U_PLATFORM == U_PF_SOLARIS
+            else
+            {
+                tzZoneInfoLen = uprv_strlen(TZZONEINFO2);
+                if (uprv_strncmp(gTimeZoneBuffer, TZZONEINFO2, tzZoneInfoLen) == 0
+                                && isValidOlsonID(gTimeZoneBuffer + tzZoneInfoLen))
+                {
+                    return (gTimeZoneBufferPtr = gTimeZoneBuffer + tzZoneInfoLen);
+                }
+            }
+#endif
         } else {
 #if defined(SEARCH_TZFILE)
             DefaultTZInfo* tzInfo = (DefaultTZInfo*)uprv_malloc(sizeof(DefaultTZInfo));
@@ -1104,7 +1135,7 @@ uprv_tzname(int n)
 /* Get and set the ICU data directory --------------------------------------- */
 
 static char *gDataDirectory = NULL;
-#if U_POSIX_LOCALE
+#if U_POSIX_LOCALE || U_PLATFORM_USES_ONLY_WIN32_API
  static char *gCorrectedPOSIXLocale = NULL; /* Heap allocated */
 #endif
 
@@ -1114,7 +1145,7 @@ static UBool U_CALLCONV putil_cleanup(void)
         uprv_free(gDataDirectory);
     }
     gDataDirectory = NULL;
-#if U_POSIX_LOCALE
+#if U_POSIX_LOCALE || U_PLATFORM_USES_ONLY_WIN32_API
     if (gCorrectedPOSIXLocale) {
         uprv_free(gCorrectedPOSIXLocale);
         gCorrectedPOSIXLocale = NULL;
@@ -1126,7 +1157,6 @@ static UBool U_CALLCONV putil_cleanup(void)
 /*
  * Set the data directory.
  *    Make a copy of the passed string, and set the global data dir to point to it.
- *    TODO:  see bug #2849, regarding thread safety.
  */
 U_CAPI void U_EXPORT2
 u_setDataDirectory(const char *directory) {
@@ -1159,13 +1189,11 @@ u_setDataDirectory(const char *directory) {
 #endif
     }
 
-    umtx_lock(NULL);
     if (gDataDirectory && *gDataDirectory) {
         uprv_free(gDataDirectory);
     }
     gDataDirectory = newDataDir;
     ucln_common_registerCleanup(UCLN_COMMON_PUTIL, putil_cleanup);
-    umtx_unlock(NULL);
 }
 
 U_CAPI UBool U_EXPORT2
@@ -1212,10 +1240,8 @@ u_getDataDirectory(void) {
 #endif
 
     /* if we have the directory, then return it immediately */
-    UMTX_CHECK(NULL, gDataDirectory, path);
-
-    if(path) {
-        return path;
+    if(gDataDirectory) {
+        return gDataDirectory;
     }
 
     /*
@@ -1444,6 +1470,7 @@ static const char *uprv_getPOSIXIDForDefaultLocale(void)
     return posixID;
 }
 
+#if !U_CHARSET_IS_UTF8
 /* Return just the POSIX id for the default codepage, whatever happens to be in
  * it. It gets the value from LC_CTYPE and indirectly from LC_ALL and LANG.
  */
@@ -1455,6 +1482,7 @@ static const char *uprv_getPOSIXIDForDefaultCodepage(void)
     }
     return posixID;
 }
+#endif
 #endif
 
 /* NOTE: The caller should handle thread safety */
@@ -1502,7 +1530,7 @@ The leftmost codepage (.xxx) wins.
 
     if ((p = uprv_strchr(posixID, '.')) != NULL) {
         /* assume new locale can't be larger than old one? */
-        correctedPOSIXLocale = reinterpret_cast<char *>(uprv_malloc(uprv_strlen(posixID)+1));
+        correctedPOSIXLocale = static_cast<char *>(uprv_malloc(uprv_strlen(posixID)+1));
         /* Exit on memory allocation error. */
         if (correctedPOSIXLocale == NULL) {
             return NULL;
@@ -1519,7 +1547,7 @@ The leftmost codepage (.xxx) wins.
     /* Note that we scan the *uncorrected* ID. */
     if ((p = uprv_strrchr(posixID, '@')) != NULL) {
         if (correctedPOSIXLocale == NULL) {
-            correctedPOSIXLocale = reinterpret_cast<char *>(uprv_malloc(uprv_strlen(posixID)+1));
+            correctedPOSIXLocale = static_cast<char *>(uprv_malloc(uprv_strlen(posixID)+1));
             /* Exit on memory allocation error. */
             if (correctedPOSIXLocale == NULL) {
                 return NULL;
@@ -1587,14 +1615,31 @@ The leftmost codepage (.xxx) wins.
     return posixID;
 
 #elif U_PLATFORM_USES_ONLY_WIN32_API
+#define POSIX_LOCALE_CAPACITY 64
     UErrorCode status = U_ZERO_ERROR;
-    LCID id = GetThreadLocale();
-    const char* locID = uprv_convertToPosix(id, &status);
+    char *correctedPOSIXLocale = 0;
 
-    if (U_FAILURE(status)) {
-        locID = "en_US";
+    if (gCorrectedPOSIXLocale != NULL) {
+        return gCorrectedPOSIXLocale;
     }
-    return locID;
+
+    LCID id = GetThreadLocale();
+    correctedPOSIXLocale = static_cast<char *>(uprv_malloc(POSIX_LOCALE_CAPACITY + 1));
+    if (correctedPOSIXLocale) {
+        int32_t posixLen = uprv_convertToPosix(id, correctedPOSIXLocale, POSIX_LOCALE_CAPACITY, &status);
+        if (U_SUCCESS(status)) {
+            *(correctedPOSIXLocale + posixLen) = 0;
+            gCorrectedPOSIXLocale = correctedPOSIXLocale;
+            ucln_common_registerCleanup(UCLN_COMMON_PUTIL, putil_cleanup);
+        } else {
+            uprv_free(correctedPOSIXLocale);
+        }
+    }
+
+    if (gCorrectedPOSIXLocale == NULL) {
+        return "en_US";
+    }
+    return gCorrectedPOSIXLocale;
 
 #elif U_PLATFORM == U_PF_CLASSIC_MACOS
     int32_t script = MAC_LC_INIT_NUMBER;
@@ -2100,7 +2145,7 @@ u_getVersion(UVersionInfo versionArray) {
 
 #if U_ENABLE_DYLOAD
  
-#if HAVE_DLOPEN && !U_PLATFORM_HAS_WIN32_API
+#if HAVE_DLOPEN && !U_PLATFORM_USES_ONLY_WIN32_API
 
 #if HAVE_DLFCN_H
 
@@ -2181,7 +2226,7 @@ uprv_dlsym_func(void *lib, const char* sym, UErrorCode *status) {
 
 #endif
 
-#elif U_PLATFORM_HAS_WIN32_API
+#elif U_PLATFORM_USES_ONLY_WIN32_API
 
 U_INTERNAL void * U_EXPORT2
 uprv_dl_open(const char *libName, UErrorCode *status) {

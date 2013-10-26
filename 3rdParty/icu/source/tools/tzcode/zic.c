@@ -2209,41 +2209,77 @@ wp = ecpyalloc(_("no POSIX environment variable for zone"));
 			for (j=0; j<zp->z_nrules; ++j) {
 				rp = &zp->z_rules[j];
 				if (rp->r_hiyear == INT_MAX) {
+					if (rp->r_loyear > finalRuleYear) {
+						finalRuleYear = rp->r_loyear;
+					}
 					if (finalRule1 == NULL) {
 						finalRule1 = rp;
-						finalRuleYear = rp->r_loyear;
-			    	} else if (finalRule2 == NULL) {
+					} else if (finalRule2 == NULL) {
 						finalRule2 = rp;
-						if (rp->r_loyear > finalRuleYear) {
-							finalRuleYear = rp->r_loyear;
-						}
 					} else {
 						error("more than two max rules found (ICU)");
 						exit(EXIT_FAILURE);
 					}
+				} else if (rp->r_hiyear >= finalRuleYear) {
+					/* There might be an overriding non-max rule
+					 * to be applied to a specific year after one of
+					 * max rule's start year. For example,
+					 *
+					 * Rule Foo 2010 max ...
+					 * Rule Foo 2015 only ...
+					 *
+					 * In this case, we need to change the start year of
+					 * the final (max) rules to the next year. */
+					finalRuleYear = rp->r_hiyear + 1;
+
+					/* When above adjustment is done, max_year might need
+					 * to be adjusted, so the final rule will be properly
+					 * evaluated and emitted by the later code block.
+					 *
+					 * Note: This may push the start year of the final
+					 * rules ahead by 1 year unnecessarily. For example,
+					 * If there are two rules, non-max rule and max rule
+					 * starting in the same year, such as
+					 *
+					 * Rule Foo 2010 only ....
+					 * Rule Foo 2010 max ....
+					 *
+					 * In this case, the final (max) rule actually starts
+					 * in 2010, instead of 2010. We could make this tool
+					 * more intelligent to detect such situation. But pushing
+					 * final rule start year to 1 year ahead (in the worst case)
+					 * will just populate a few extra transitions, and it still
+					 * works fine. So for now, we're not trying to put additional
+					 * logic to optimize the case.
+					 */
+					if (max_year < finalRuleYear) {
+						max_year = finalRuleYear;
+					}
 				}
 			}
-			if (finalRule1 != NULL && finalRule2 == NULL) {
-				error("only one max rule found (ICU)");
-				exit(EXIT_FAILURE);
-			}
 			if (finalRule1 != NULL) {
-				if (finalRule1->r_stdoff == finalRule2->r_stdoff) {
-					/* America/Resolute in 2009a uses a pair of rules
-					 * which does not change the offset.  ICU ignores
-					 * such rules without actual time transitions. */
+				if (finalRule2 == NULL) {
+					warning("only one max rule found (ICU)");
 					finalRuleYear = finalRuleIndex = -1;
-					finalRule1 = finalRule2 = NULL; 
+					finalRule1 = NULL;
 				} else {
-					/* Swap if necessary so finalRule1 occurs before
-					 * finalRule2 */
-					if (finalRule1->r_month > finalRule2->r_month) {
-						const struct rule* t = finalRule1;
-						finalRule1 = finalRule2;
-						finalRule2 = t;
+					if (finalRule1->r_stdoff == finalRule2->r_stdoff) {
+						/* America/Resolute in 2009a uses a pair of rules
+						 * which does not change the offset.  ICU ignores
+						 * such rules without actual time transitions. */
+						finalRuleYear = finalRuleIndex = -1;
+						finalRule1 = finalRule2 = NULL; 
+					} else {
+						/* Swap if necessary so finalRule1 occurs before
+						 * finalRule2 */
+						if (finalRule1->r_month > finalRule2->r_month) {
+							const struct rule* t = finalRule1;
+							finalRule1 = finalRule2;
+							finalRule2 = t;
+						}
+						/* Add final rule to our list */
+						finalRuleIndex = add_icu_final_rules(finalRule1, finalRule2);
 					}
-					/* Add final rule to our list */
-					finalRuleIndex = add_icu_final_rules(finalRule1, finalRule2);
 				}
 			}
 		}
@@ -2363,16 +2399,12 @@ wp = ecpyalloc(_("no POSIX environment variable for zone"));
 					 * transition defined by the final rule.  Otherwise
 					 * we may see unexpected offset shift at the
 					 * begining of the year when the final rule takes
-					 * effect. */
-
-					/* ICU currently can support signed int32 transition
-					 * times.  Thus, the transitions in year 2038 may be
-					 * truncated.  At this moment (tzdata2008g), only
-					 * Rule Brazil is impacted by this limitation, because
-					 * the final set of rules are starting in 2038.  Although
-					 * this code put the first couple of transitions populated
-					 * by the final rules, they might be dropped off when
-					 * collecting transition times by tz2icu. */
+					 * effect.
+					 *
+					 * Note: This may results some 64bit second transitions
+					 * at the very end (year 2038). ICU 4.2 or older releases
+					 * cannot handle 64bit second transitions and they are
+					 * dropped from zoneinfo.txt. */
 					emit_icu_zone(icuFile,
 							zpfirst->z_name, zp->z_gmtoff,
 							rp, finalRuleIndex, year + 1);

@@ -1,5 +1,5 @@
 ## Makefile.in for ICU - test/letest
-## Copyright (c) 2001-2011, International Business Machines Corporation and
+## Copyright (c) 2001-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -89,6 +89,9 @@ $(GENTARGET) : $(COMMONOBJECTS) $(GENOBJECTS)
 
 invoke:
 	ICU_DATA=$${ICU_DATA:-$(top_builddir)/data/} TZ=PST8PDT $(INVOKE) $(INVOCATION)
+
+gen-data: $(GENTARGET)
+	ICU_DATA=$${ICU_DATA:-$(top_builddir)/data/} TZ=PST8PDT $(INVOKE) ./$(GENTARGET) $(top_srcdir)/test/testdata/letest.xml $(srcdir)/gendata.xml
 
 ifeq (,$(MAKECMDGOALS))
 -include $(DEPS)

@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ak.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ak.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ak.xml
+ * ICU <specials> source: <path>/common/main/ak.xml
  */
 ak{
     Currencies{
@@ -20,7 +20,7 @@ ak{
             "Angola Kwanza",
         }
         AUD{
-            "AU$",
+            "A$",
             "Ɔstrelia Dɔla",
         }
         BHD{
@@ -42,10 +42,6 @@ ak{
         CDF{
             "CDF",
             "Kongo Frank",
-        }
-        CHF{
-            "CHF",
-            "Sweden Frank",
         }
         CNY{
             "CN¥",
@@ -85,6 +81,10 @@ ak{
         }
         GHC{
             "GHC",
+            "Ghana Sidi (1979–2007)",
+        }
+        GHS{
+            "GH₵",
             "Ghana Sidi",
         }
         GMD{
@@ -221,6 +221,10 @@ ak{
         }
         ZMK{
             "ZMK",
+            "Zambia Kwacha (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Zambia Kwacha",
         }
         ZWD{
@@ -228,5 +232,5 @@ ak{
             "Zimbabwe Dɔla",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

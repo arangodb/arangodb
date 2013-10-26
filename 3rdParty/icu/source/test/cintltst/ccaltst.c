@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2012, International Business Machines
+ * Copyright (c) 1997-2013, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************
  *
@@ -32,6 +32,11 @@
 
 void TestGregorianChange(void);
 void TestFieldDifference(void);
+void TestAddRollEra0AndEraBounds(void);
+void TestGetTZTransition(void);
+
+void TestGetWindowsTimeZoneID(void);
+void TestGetTimeZoneIDByWindowsID(void);
 
 void addCalTest(TestNode** root);
 
@@ -50,6 +55,10 @@ void addCalTest(TestNode** root)
     addTest(root, &TestWeekend, "tsformat/ccaltst/TestWeekend");
     addTest(root, &TestFieldDifference, "tsformat/ccaltst/TestFieldDifference");
     addTest(root, &TestAmbiguousWallTime, "tsformat/ccaltst/TestAmbiguousWallTime");
+    addTest(root, &TestAddRollEra0AndEraBounds, "tsformat/ccaltst/TestAddRollEra0AndEraBounds");
+    addTest(root, &TestGetTZTransition, "tsformat/ccaltst/TestGetTZTransition");
+    addTest(root, &TestGetWindowsTimeZoneID, "tsformat/ccaltst/TestGetWindowsTimeZoneID");
+    addTest(root, &TestGetTimeZoneIDByWindowsID, "tsformat/ccaltst/TestGetTimeZoneIDByWindowsID");
 }
 
 /* "GMT" */
@@ -453,7 +462,7 @@ static void TestCalendar()
         if ( U_SUCCESS(status) ) {
             const char * calType = ucal_getType(caldef, &status);
             if ( U_SUCCESS(status) && calType != NULL ) {
-                if ( strcmp( calType, ucalGetTypeTestPtr->expectedResult ) != 0 ) {
+                if ( uprv_strcmp( calType, ucalGetTypeTestPtr->expectedResult ) != 0 ) {
                     log_err("FAIL: ucal_open %s type %d does not return %s calendar\n", localeToDisplay,
                                                 ucalGetTypeTestPtr->calType, ucalGetTypeTestPtr->expectedResult);
                 }
@@ -477,7 +486,7 @@ static void TestCalendar()
 
 static void TestGetSetDateAPI()
 {
-    UCalendar *caldef = 0, *caldef2 = 0;
+    UCalendar *caldef = 0, *caldef2 = 0, *caldef3 = 0;
     UChar tzID[4];
     UDate d1;
     int32_t hour;
@@ -486,12 +495,17 @@ static void TestGetSetDateAPI()
     UErrorCode status=U_ZERO_ERROR;
     UDate d2= 837039928046.0;
     UChar temp[30];
+	double testMillis;
+	int32_t dateBit;
+    UChar id[4];
+    int32_t idLen;
 
     log_verbose("\nOpening the calendars()\n");
     u_strcpy(tzID, fgGMTID);
     /*open the calendars used */
     caldef=ucal_open(tzID, u_strlen(tzID), "en_US", UCAL_TRADITIONAL, &status);
     caldef2=ucal_open(tzID, u_strlen(tzID), "en_US", UCAL_TRADITIONAL, &status);
+    caldef3=ucal_open(tzID, u_strlen(tzID), "en_US", UCAL_TRADITIONAL, &status);
     /*open the dateformat */
     /* this is supposed to open default date format, but later on it treats it like it is "en_US" 
        - very bad if you try to run the tests on machine where default locale is NOT "en_US" */
@@ -502,7 +516,6 @@ static void TestGetSetDateAPI()
         log_data_err("error in creating the dateformat : %s (Are you missing data?)\n", u_errorName(status));
         return;
     }
-    
 
     /*Testing getMillis and setMillis */
     log_verbose("\nTesting the date and time fetched in millis for a calendar using getMillis\n");
@@ -524,15 +537,72 @@ static void TestGetSetDateAPI()
         log_err("error in setMillis or getMillis\n");
     /*-------------------*/
     
+    /*testing large negative millis*/
+	/*test a previously failed millis and beyond the lower bounds - ICU trac #9403 */
+	// -184303902611600000.0         - just beyond lower bounds (#9403 sets U_ILLEGAL_ARGUMENT_ERROR in strict mode)
+	// -46447814188001000.0	         - fixed by #9403
+
+    log_verbose("\nTesting very large valid millis & invalid setMillis values (in both strict & lienent modes) detected\n");
+
+	testMillis = -46447814188001000.0;	// point where floorDivide in handleComputeFields failed as per #9403
+	log_verbose("using value[%lf]\n", testMillis);
+    ucal_setAttribute(caldef3, UCAL_LENIENT, 0);
+    ucal_setMillis(caldef3, testMillis, &status);
+   	if(U_FAILURE(status)){
+   		log_err("Fail: setMillis incorrectly detected invalid value : for millis : %e : returned  : %s\n", testMillis, u_errorName(status));
+		status = U_ZERO_ERROR;
+	}
+
+    log_verbose("\nTesting invalid setMillis values detected\n");
+	testMillis = -184303902611600000.0;
+	log_verbose("using value[%lf]\n", testMillis);
+    ucal_setAttribute(caldef3, UCAL_LENIENT, 1);
+   	ucal_setMillis(caldef3, testMillis, &status);
+   	if(U_FAILURE(status)){
+   		log_err("Fail: setMillis incorrectly detected invalid value : for millis : %e : returned  : %s\n", testMillis, u_errorName(status));
+		status = U_ZERO_ERROR;
+   	} else {
+        dateBit = ucal_get(caldef2, UCAL_MILLISECOND, &status);
+        if(testMillis == dateBit)
+        {
+		    log_err("Fail: error in setMillis, allowed invalid value %e : returns millisecond : %d", testMillis, dateBit);
+        } else {
+            log_verbose("Pass: setMillis correctly pinned min, returned : %d", dateBit);
+        }
+	}
+
+    log_verbose("\nTesting invalid setMillis values detected\n");
+	testMillis = -184303902611600000.0;
+	log_verbose("using value[%lf]\n", testMillis);
+    ucal_setAttribute(caldef3, UCAL_LENIENT, 0);
+   	ucal_setMillis(caldef3, testMillis, &status);
+   	if(U_FAILURE(status)){
+   		log_verbose("Pass: Illegal argument error as expected : for millis : %e : returned  : %s\n", testMillis, u_errorName(status));
+		status = U_ZERO_ERROR;
+   	} else {
+		dateBit = ucal_get(caldef3, UCAL_DAY_OF_MONTH, &status);
+		log_err("Fail: error in setMillis, allowed invalid value %e : returns DayOfMonth : %d", testMillis, dateBit);
+	}
+	/*-------------------*/
     
     
     ctest_setTimeZone(NULL, &status);
 
-    /*testing ucal_setTimeZone() function*/
-    log_verbose("\nTesting if the function ucal_setTimeZone() works fine\n");
+    /*testing ucal_setTimeZone() and ucal_getTimeZoneID function*/
+    log_verbose("\nTesting if the function ucal_setTimeZone() and ucal_getTimeZoneID work fine\n");
+    idLen = ucal_getTimeZoneID(caldef2, id, sizeof(id)/sizeof(id[0]), &status);
+    (void)idLen;    /* Suppress set but not used warning. */
+    if (U_FAILURE(status)) {
+        log_err("Error in getTimeZoneID : %s\n", u_errorName(status));
+    } else if (u_strcmp(id, fgGMTID) != 0) {
+        log_err("FAIL: getTimeZoneID returns a wrong ID: actual=%d, expected=%s\n", austrdup(id), austrdup(fgGMTID));
+    } else {
+        log_verbose("PASS: getTimeZoneID works fine\n");
+    }
+
     ucal_setMillis(caldef2, d2, &status); 
     if(U_FAILURE(status)){
-        log_err("Error in getMillis : %s\n", u_errorName(status));;
+        log_err("Error in getMillis : %s\n", u_errorName(status));
     }
     hour=ucal_get(caldef2, UCAL_HOUR_OF_DAY, &status);
         
@@ -543,6 +613,16 @@ static void TestGetSetDateAPI()
     }
     else
         log_verbose("ucal_setTimeZone worked fine\n");
+
+    idLen = ucal_getTimeZoneID(caldef2, id, sizeof(id)/sizeof(id[0]), &status);
+    if (U_FAILURE(status)) {
+        log_err("Error in getTimeZoneID : %s\n", u_errorName(status));
+    } else if (u_strcmp(id, tzID) != 0) {
+        log_err("FAIL: getTimeZoneID returns a wrong ID: actual=%d, expected=%s\n", austrdup(id), austrdup(tzID));
+    } else {
+        log_verbose("PASS: getTimeZoneID works fine\n");
+    }
+
     if(hour == ucal_get(caldef2, UCAL_HOUR_OF_DAY, &status))
         log_err("FAIL: Error setting the time zone doesn't change the represented time\n");
     else if((hour-8 + 1) != ucal_get(caldef2, UCAL_HOUR_OF_DAY, &status)) /*because it is not in daylight savings time */
@@ -595,7 +675,7 @@ static void TestGetSetDateAPI()
 
     /*Testing  if setDate works fine  */
     log_verbose("\nTesting the ucal_setDate() function \n");
-    u_uastrcpy(temp, "Dec 17, 1971 11:05:28 PM");
+    u_uastrcpy(temp, "Dec 17, 1971, 11:05:28 PM");
     ucal_setDate(caldef,1971, UCAL_DECEMBER, 17, &status);
     if(U_FAILURE(status)){
         log_err("error in setting the calendar date : %s\n", u_errorName(status));
@@ -626,7 +706,7 @@ static void TestGetSetDateAPI()
 
     /*Testing if setDateTime works fine */
     log_verbose("\nTesting the ucal_setDateTime() function \n");
-    u_uastrcpy(temp, "May 3, 1972 4:30:42 PM");
+    u_uastrcpy(temp, "May 3, 1972, 4:30:42 PM");
     ucal_setDateTime(caldef,1972, UCAL_MAY, 3, 16, 30, 42, &status);
     if(U_FAILURE(status)){
         log_err("error in setting the calendar date : %s\n", u_errorName(status));
@@ -660,6 +740,7 @@ static void TestGetSetDateAPI()
     /*close caldef and datdef*/
     ucal_close(caldef);
     ucal_close(caldef2);
+    ucal_close(caldef3);
     udat_close(datdef);
 }
 
@@ -672,8 +753,9 @@ static void TestFieldGetSet()
     UCalendar *cal = 0;
     UChar tzID[4];
     UDateFormat *datdef = 0;
-    UDate d1;
+    UDate d1 = 0;
     UErrorCode status=U_ZERO_ERROR;
+    (void)d1;   /* Suppress set but not used warning. */
     log_verbose("\nFetching pointer to UCalendar using the ucal_open()\n");
     u_strcpy(tzID, fgGMTID);
     /*open the calendar used */
@@ -1465,25 +1547,25 @@ void TestGregorianChange() {
 
 static void TestGetKeywordValuesForLocale() {
 #define PREFERRED_SIZE 15
-#define MAX_NUMBER_OF_KEYWORDS 4
+#define MAX_NUMBER_OF_KEYWORDS 5
     const char *PREFERRED[PREFERRED_SIZE][MAX_NUMBER_OF_KEYWORDS+1] = {
-            { "root",        "gregorian", NULL, NULL, NULL },
-            { "und",         "gregorian", NULL, NULL, NULL },
-            { "en_US",       "gregorian", NULL, NULL, NULL },
-            { "en_029",      "gregorian", NULL, NULL, NULL },
-            { "th_TH",       "buddhist", "gregorian", NULL, NULL },
-            { "und_TH",      "buddhist", "gregorian", NULL, NULL },
-            { "en_TH",       "buddhist", "gregorian", NULL, NULL },
-            { "he_IL",       "gregorian", "hebrew", "islamic", "islamic-civil" },
-            { "ar_EG",       "gregorian", "coptic", "islamic", "islamic-civil" },
-            { "ja",          "gregorian", "japanese", NULL, NULL },
-            { "ps_Guru_IN",  "gregorian", "indian", NULL, NULL },
-            { "th@calendar=gregorian", "buddhist", "gregorian", NULL, NULL },
-            { "en@calendar=islamic",   "gregorian", NULL, NULL, NULL },
-            { "zh_TW",       "gregorian", "roc", "chinese", NULL },
-            { "ar_IR",       "gregorian", "persian", "islamic", "islamic-civil" },
+            { "root",        "gregorian", NULL, NULL, NULL, NULL },
+            { "und",         "gregorian", NULL, NULL, NULL, NULL },
+            { "en_US",       "gregorian", NULL, NULL, NULL, NULL },
+            { "en_029",      "gregorian", NULL, NULL, NULL, NULL },
+            { "th_TH",       "buddhist", "gregorian", NULL, NULL, NULL },
+            { "und_TH",      "buddhist", "gregorian", NULL, NULL, NULL },
+            { "en_TH",       "buddhist", "gregorian", NULL, NULL, NULL },
+            { "he_IL",       "gregorian", "hebrew", "islamic", "islamic-civil", "islamic-tbla" },
+            { "ar_EG",       "gregorian", "coptic", "islamic", "islamic-civil", "islamic-tbla" },
+            { "ja",          "gregorian", "japanese", NULL, NULL, NULL },
+            { "ps_Guru_IN",  "gregorian", "indian", NULL, NULL, NULL },
+            { "th@calendar=gregorian", "buddhist", "gregorian", NULL, NULL, NULL },
+            { "en@calendar=islamic",   "gregorian", NULL, NULL, NULL, NULL },
+            { "zh_TW",       "gregorian", "roc", "chinese", NULL, NULL },
+            { "ar_IR",       "persian", "gregorian", "islamic", "islamic-civil", "islamic-tbla" },
     };
-    const int32_t EXPECTED_SIZE[PREFERRED_SIZE] = { 1, 1, 1, 1, 2, 2, 2, 4, 4, 2, 2, 2, 1, 3, 4 };
+    const int32_t EXPECTED_SIZE[PREFERRED_SIZE] = { 1, 1, 1, 1, 2, 2, 2, 5, 5, 2, 2, 2, 1, 3, 5 };
     UErrorCode status = U_ZERO_ERROR;
     int32_t i, size, j;
     UEnumeration *all, *pref;
@@ -1594,7 +1676,7 @@ static const TestWeekendDates weekendDates_en_US[] = {
     { 2000, UCAL_MARCH, 20,  0,  0, 0 }, /* Mon 00:00        */
     { 2000, UCAL_MARCH, 20,  8,  0, 0 }, /* Mon 08:00        */
 };
-static const TestWeekendDates weekendDates_ar_YE[] = {
+static const TestWeekendDates weekendDates_ar_OM[] = {
     { 2000, UCAL_MARCH, 15, 23,  0, 0 }, /* Wed 23:00        */
     { 2000, UCAL_MARCH, 16,  0, -1, 0 }, /* Wed 23:59:59.999 */
     { 2000, UCAL_MARCH, 16,  0,  0, 1 }, /* Thu 00:00        */
@@ -1606,7 +1688,7 @@ static const TestWeekendDates weekendDates_ar_YE[] = {
 };
 static const TestWeekendDatesList testDates[] = {
     { "en_US", weekendDates_en_US, sizeof(weekendDates_en_US)/sizeof(weekendDates_en_US[0]) },
-    { "ar_YE", weekendDates_ar_YE, sizeof(weekendDates_ar_YE)/sizeof(weekendDates_ar_YE[0]) },
+    { "ar_OM", weekendDates_ar_OM, sizeof(weekendDates_ar_OM)/sizeof(weekendDates_ar_OM[0]) },
 };
 
 typedef struct {
@@ -1624,17 +1706,24 @@ static const TestDaysOfWeek daysOfWeek_en_US[] = {
     { UCAL_MONDAY,   UCAL_WEEKDAY,       0        },
     { UCAL_FRIDAY,   UCAL_WEEKDAY,       0        },
     { UCAL_SATURDAY, UCAL_WEEKEND,       0        },
-    { UCAL_SUNDAY,   UCAL_WEEKEND_CEASE, 86400000 },
+    { UCAL_SUNDAY,   UCAL_WEEKEND,       0        },
 };
-static const TestDaysOfWeek daysOfWeek_ar_YE[] = { /* Thursday:Friday */
+static const TestDaysOfWeek daysOfWeek_ar_OM[] = { /* Thursday:Friday */
     { UCAL_WEDNESDAY,UCAL_WEEKDAY,       0        },
     { UCAL_SATURDAY, UCAL_WEEKDAY,       0        },
     { UCAL_THURSDAY, UCAL_WEEKEND,       0        },
-    { UCAL_FRIDAY,   UCAL_WEEKEND_CEASE, 86400000 },
+    { UCAL_FRIDAY,   UCAL_WEEKEND,       0        },
+};
+static const TestDaysOfWeek daysOfWeek_hi_IN[] = { /* Sunday only */
+    { UCAL_MONDAY,   UCAL_WEEKDAY,       0        },
+    { UCAL_FRIDAY,   UCAL_WEEKDAY,       0        },
+    { UCAL_SATURDAY, UCAL_WEEKDAY,       0        },
+    { UCAL_SUNDAY,   UCAL_WEEKEND,       0        },
 };
 static const TestDaysOfWeekList testDays[] = {
     { "en_US", daysOfWeek_en_US, sizeof(daysOfWeek_en_US)/sizeof(daysOfWeek_en_US[0]) },
-    { "ar_YE", daysOfWeek_ar_YE, sizeof(daysOfWeek_ar_YE)/sizeof(daysOfWeek_ar_YE[0]) },
+    { "ar_OM", daysOfWeek_ar_OM, sizeof(daysOfWeek_ar_OM)/sizeof(daysOfWeek_ar_OM[0]) },
+    { "hi_IN", daysOfWeek_hi_IN, sizeof(daysOfWeek_hi_IN)/sizeof(daysOfWeek_hi_IN[0]) },
 };
 
 static const UChar logDateFormat[] = { 0x0045,0x0045,0x0045,0x0020,0x004D,0x004D,0x004D,0x0020,0x0064,0x0064,0x0020,0x0079,
@@ -1655,46 +1744,46 @@ static void TestWeekend() {
         log_data_err("Unable to create UDateFormat - %s\n", u_errorName(fmtStatus));
         return;
     }
-	for (count = sizeof(testDates)/sizeof(testDates[0]); count-- > 0; ++testDatesPtr) {
+    for (count = sizeof(testDates)/sizeof(testDates[0]); count-- > 0; ++testDatesPtr) {
         UErrorCode status = U_ZERO_ERROR;
-		UCalendar * cal = ucal_open(NULL, 0, testDatesPtr->locale, UCAL_GREGORIAN, &status);
-		log_verbose("locale: %s\n", testDatesPtr->locale);
-		if (U_SUCCESS(status)) {
-			const TestWeekendDates * weekendDatesPtr = testDatesPtr->dates;
-			for (subCount = testDatesPtr->numDates; subCount--; ++weekendDatesPtr) {
-				UDate dateToTest;
-				UBool isWeekend;
-				char  fmtDateBytes[kFormattedDateMax] = "<could not format test date>"; /* initialize for failure */
+        UCalendar * cal = ucal_open(NULL, 0, testDatesPtr->locale, UCAL_GREGORIAN, &status);
+        log_verbose("locale: %s\n", testDatesPtr->locale);
+        if (U_SUCCESS(status)) {
+            const TestWeekendDates * weekendDatesPtr = testDatesPtr->dates;
+            for (subCount = testDatesPtr->numDates; subCount--; ++weekendDatesPtr) {
+                UDate dateToTest;
+                UBool isWeekend;
+                char  fmtDateBytes[kFormattedDateMax] = "<could not format test date>"; /* initialize for failure */
 
-				ucal_clear(cal);
-				ucal_setDateTime(cal, weekendDatesPtr->year, weekendDatesPtr->month, weekendDatesPtr->day,
-								 weekendDatesPtr->hour, 0, 0, &status);
-				dateToTest = ucal_getMillis(cal, &status) + weekendDatesPtr->millisecOffset;
-				isWeekend = ucal_isWeekend(cal, dateToTest, &status);
-				if (U_SUCCESS(fmtStatus)) {
-				    UChar fmtDate[kFormattedDateMax];
-				    (void)udat_format(fmt, dateToTest, fmtDate, kFormattedDateMax, NULL, &fmtStatus);
-				    if (U_SUCCESS(fmtStatus)) {
-						u_austrncpy(fmtDateBytes, fmtDate, kFormattedDateMax);
-						fmtDateBytes[kFormattedDateMax-1] = 0;
-				    } else {
-				    	fmtStatus = U_ZERO_ERROR;
-				    }
-				}
-				if ( U_FAILURE(status) ) {
-					log_err("FAIL: locale %s date %s isWeekend() status %s\n", testDatesPtr->locale, fmtDateBytes, u_errorName(status) );
-					status = U_ZERO_ERROR;
-				} else if ( (isWeekend!=0) != (weekendDatesPtr->isWeekend!=0) ) {
-					log_err("FAIL: locale %s date %s isWeekend %d, expected the opposite\n", testDatesPtr->locale, fmtDateBytes, isWeekend );
-				} else {
-					log_verbose("OK:   locale %s date %s isWeekend %d\n", testDatesPtr->locale, fmtDateBytes, isWeekend );
-				}
-			}
-			ucal_close(cal);
-		} else {
-			log_data_err("FAIL: ucal_open for locale %s failed: %s - (Are you missing data?)\n", testDatesPtr->locale, u_errorName(status) );
-		}
-	}
+                ucal_clear(cal);
+                ucal_setDateTime(cal, weekendDatesPtr->year, weekendDatesPtr->month, weekendDatesPtr->day,
+                                 weekendDatesPtr->hour, 0, 0, &status);
+                dateToTest = ucal_getMillis(cal, &status) + weekendDatesPtr->millisecOffset;
+                isWeekend = ucal_isWeekend(cal, dateToTest, &status);
+                if (U_SUCCESS(fmtStatus)) {
+                    UChar fmtDate[kFormattedDateMax];
+                    (void)udat_format(fmt, dateToTest, fmtDate, kFormattedDateMax, NULL, &fmtStatus);
+                    if (U_SUCCESS(fmtStatus)) {
+                        u_austrncpy(fmtDateBytes, fmtDate, kFormattedDateMax);
+                        fmtDateBytes[kFormattedDateMax-1] = 0;
+                    } else {
+                        fmtStatus = U_ZERO_ERROR;
+                    }
+                }
+                if ( U_FAILURE(status) ) {
+                    log_err("FAIL: locale %s date %s isWeekend() status %s\n", testDatesPtr->locale, fmtDateBytes, u_errorName(status) );
+                    status = U_ZERO_ERROR;
+                } else if ( (isWeekend!=0) != (weekendDatesPtr->isWeekend!=0) ) {
+                    log_err("FAIL: locale %s date %s isWeekend %d, expected the opposite\n", testDatesPtr->locale, fmtDateBytes, isWeekend );
+                } else {
+                    log_verbose("OK:   locale %s date %s isWeekend %d\n", testDatesPtr->locale, fmtDateBytes, isWeekend );
+                }
+            }
+            ucal_close(cal);
+        } else {
+            log_data_err("FAIL: ucal_open for locale %s failed: %s - (Are you missing data?)\n", testDatesPtr->locale, u_errorName(status) );
+        }
+    }
     if (U_SUCCESS(fmtStatus)) {
         udat_close(fmt);
     }
@@ -1712,12 +1801,12 @@ static void TestWeekend() {
                     transition = ucal_getWeekendTransition(cal, daysOfWeekPtr->dayOfWeek, &status); 
                 }
                 if ( U_FAILURE(status) ) {
-					log_err("FAIL: locale %s DOW %d getDayOfWeekType() status %s\n", testDaysPtr->locale, daysOfWeekPtr->dayOfWeek, u_errorName(status) );
-					status = U_ZERO_ERROR;
+                    log_err("FAIL: locale %s DOW %d getDayOfWeekType() status %s\n", testDaysPtr->locale, daysOfWeekPtr->dayOfWeek, u_errorName(status) );
+                    status = U_ZERO_ERROR;
                 } else if ( dayType != daysOfWeekPtr->dayType || transition != daysOfWeekPtr->transition ) {
-					log_err("FAIL: locale %s DOW %d type %d, expected %d\n", testDaysPtr->locale, daysOfWeekPtr->dayOfWeek, dayType, daysOfWeekPtr->dayType );
+                    log_err("FAIL: locale %s DOW %d type %d, expected %d\n", testDaysPtr->locale, daysOfWeekPtr->dayOfWeek, dayType, daysOfWeekPtr->dayType );
                 } else {
-					log_verbose("OK:   locale %s DOW %d type %d\n", testDaysPtr->locale, daysOfWeekPtr->dayOfWeek, dayType );
+                    log_verbose("OK:   locale %s DOW %d type %d\n", testDaysPtr->locale, daysOfWeekPtr->dayOfWeek, dayType );
                 }
             }
             ucal_close(cal);
@@ -1736,20 +1825,50 @@ typedef struct {
     const char *  locale;
     UDate         start;
     UDate         target;
+    UBool         progressive; /* TRUE to compute progressive difference for each field, FALSE to reset calendar after each call */
     int32_t       yDiff;
     int32_t       MDiff;
     int32_t       dDiff;
     int32_t       HDiff;
     int32_t       mDiff;
+    int32_t       sDiff; /* 0x7FFFFFFF indicates overflow error expected */
 } TFDItem;
 
 static const UChar tzUSPacific[] = { 0x55,0x53,0x2F,0x50,0x61,0x63,0x69,0x66,0x69,0x63,0 }; /* "US/Pacific" */
+static const UChar tzGMT[] = { 0x47,0x4D,0x54,0 }; /* "GMT" */
 
 static const TFDItem tfdItems[] = {
-    /* timezone    locale   start            target             yDf MDf dDf HDf mDf  */
-    { tzUSPacific, "en_US", 1267459800000.0, 1277772600000.0,    0,  3, 27,  9, 40 }, /* 2010-Mar-01 08:10 -> 2010-Jun-28 17:50 */
-    { tzUSPacific, "en_US", 1267459800000.0, 1299089280000.0,    1,  0,  1,  1, 58 }, /* 2010-Mar-01 08:10 -> 2011-Mar-02 10:08 */
-    { NULL,        NULL,    0.0,             0.0,                0,  0,  0,  0,  0 }  /* terminator */
+    /* timezone    locale          start              target           progres  yDf  MDf    dDf     HDf       mDf         sDf */
+    /* For these we compute the progressive difference for each field - not resetting the calendar after each call */
+    { tzUSPacific, "en_US",        1267459800000.0,   1277772600000.0,  TRUE,     0,   3,    27,      9,       40,          0 }, /* 2010-Mar-01 08:10 -> 2010-Jun-28 17:50 */
+    { tzUSPacific, "en_US",        1267459800000.0,   1299089280000.0,  TRUE,     1,   0,     1,      1,       58,          0 }, /* 2010-Mar-01 08:10 -> 2011-Mar-02 10:08 */
+    /* For these we compute the total difference for each field - resetting the calendar after each call */
+    { tzGMT,       "en_US",        0.0,               1073692800000.0,  FALSE,   34, 408, 12427, 298248, 17894880, 1073692800 }, /* 1970-Jan-01 00:00 -> 2004-Jan-10 00:00 */
+    { tzGMT,       "en_US",        0.0,               1073779200000.0,  FALSE,   34, 408, 12428, 298272, 17896320, 1073779200 }, /* 1970-Jan-01 00:00 -> 2004-Jan-11 00:00 */
+    { tzGMT,       "en_US",        0.0,               2147472000000.0,  FALSE,   68, 816, 24855, 596520, 35791200, 2147472000 }, /* 1970-Jan-01 00:00 -> 2038-Jan-19 00:00 */
+    { tzGMT,       "en_US",        0.0,               2147558400000.0,  FALSE,   68, 816, 24856, 596544, 35792640, 0x7FFFFFFF }, /* 1970-Jan-01 00:00 -> 2038-Jan-20 00:00, seconds diff overflow */
+    { tzGMT,       "en_US",        0.0,              -1073692800000.0,  FALSE,  -34,-408,-12427,-298248,-17894880,-1073692800 }, /* 1970-Jan-01 00:00 -> 1935-Dec-24 00:00 */
+    { tzGMT,       "en_US",        0.0,              -1073779200000.0,  FALSE,  -34,-408,-12428,-298272,-17896320,-1073779200 }, /* 1970-Jan-01 00:00 -> 1935-Dec-23 00:00 */
+    /* check fwd/backward on either side of era boundary and across era boundary */
+    { tzGMT,       "en_US",       -61978089600000.0,-61820409600000.0,  FALSE,    4,  59,  1825,  43800,  2628000,  157680000 }, /* CE   5-Dec-31 00:00 -> CE  10-Dec-30 00:00 */
+    { tzGMT,       "en_US",       -61820409600000.0,-61978089600000.0,  FALSE,   -4, -59, -1825, -43800, -2628000, -157680000 }, /* CE  10-Dec-30 00:00 -> CE   5-Dec-31 00:00 */
+    { tzGMT,       "en_US",       -62451129600000.0,-62293449600000.0,  FALSE,    4,  59,  1825,  43800,  2628000,  157680000 }, /* BCE 10-Jan-04 00:00 -> BCE  5-Jan-03 00:00 */
+    { tzGMT,       "en_US",       -62293449600000.0,-62451129600000.0,  FALSE,   -4, -59, -1825, -43800, -2628000, -157680000 }, /* BCE  5-Jan-03 00:00 -> BCE 10-Jan-04 00:00 */
+    { tzGMT,       "en_US",       -62293449600000.0,-61978089600000.0,  FALSE,    9, 119,  3650,  87600,  5256000,  315360000 }, /* BCE  5-Jan-03 00:00 -> CE   5-Dec-31 00:00 */
+    { tzGMT,       "en_US",       -61978089600000.0,-62293449600000.0,  FALSE,   -9,-119, -3650, -87600, -5256000, -315360000 }, /* CE   5-Dec-31 00:00 -> BCE  5-Jan-03 00:00 */
+    { tzGMT, "en@calendar=roc",    -1672704000000.0, -1515024000000.0,  FALSE,    4,  59,  1825,  43800,  2628000,  157680000 }, /* MG   5-Dec-30 00:00 -> MG  10-Dec-29 00:00 */
+    { tzGMT, "en@calendar=roc",    -1515024000000.0, -1672704000000.0,  FALSE,   -4, -59, -1825, -43800, -2628000, -157680000 }, /* MG  10-Dec-29 00:00 -> MG   5-Dec-30 00:00 */
+    { tzGMT, "en@calendar=roc",    -2145744000000.0, -1988064000000.0,  FALSE,    4,  59,  1825,  43800,  2628000,  157680000 }, /* BMG 10-Jan-03 00:00 -> BMG  5-Jan-02 00:00 */
+    { tzGMT, "en@calendar=roc",    -1988064000000.0, -2145744000000.0,  FALSE,   -4, -59, -1825, -43800, -2628000, -157680000 }, /* BMG  5-Jan-02 00:00 -> BMG 10-Jan-03 00:00 */
+    { tzGMT, "en@calendar=roc",    -1988064000000.0, -1672704000000.0,  FALSE,    9, 119,  3650,  87600,  5256000,  315360000 }, /* BMG  5-Jan-02 00:00 -> MG   5-Dec-30 00:00 */
+    { tzGMT, "en@calendar=roc",    -1672704000000.0, -1988064000000.0,  FALSE,   -9,-119, -3650, -87600, -5256000, -315360000 }, /* MG   5-Dec-30 00:00 -> BMG  5-Jan-02 00:00 */
+    { tzGMT, "en@calendar=coptic",-53026531200000.0,-52868851200000.0,  FALSE,    4,  64,  1825,  43800,  2628000,  157680000 }, /* Er1  5-Nas-05 00:00 -> Er1 10-Nas-04 00:00 */
+    { tzGMT, "en@calendar=coptic",-52868851200000.0,-53026531200000.0,  FALSE,   -4, -64, -1825, -43800, -2628000, -157680000 }, /* Er1 10-Nas-04 00:00 -> Er1  5-Nas-05 00:00 */
+    { tzGMT, "en@calendar=coptic",-53499571200000.0,-53341891200000.0,  FALSE,    4,  64,  1825,  43800,  2628000,  157680000 }, /* Er0 10-Tou-04 00:00 -> Er0  5-Tou-02 00:00 */
+    { tzGMT, "en@calendar=coptic",-53341891200000.0,-53499571200000.0,  FALSE,   -4, -64, -1825, -43800, -2628000, -157680000 }, /* Er0  5-Tou-02 00:00 -> Er0 10-Tou-04 00:00 */
+    { tzGMT, "en@calendar=coptic",-53341891200000.0,-53026531200000.0,  FALSE,    9, 129,  3650,  87600,  5256000,  315360000 }, /* Er0  5-Tou-02 00:00 -> Er1  5-Nas-05 00:00 */
+    { tzGMT, "en@calendar=coptic",-53026531200000.0,-53341891200000.0,  FALSE,   -9,-129, -3650, -87600, -5256000, -315360000 }, /* Er1  5-Nas-05 00:00 -> Er0  5-Tou-02 00:00 */
+    { NULL,        NULL,           0.0,               0.0,              FALSE,    0,   0,     0,      0,        0,          0 }  /* terminator */
 };
 
 void TestFieldDifference() {
@@ -1760,24 +1879,67 @@ void TestFieldDifference() {
         if (U_FAILURE(status)) {
             log_err("FAIL: for locale \"%s\", ucal_open had status %s\n", tfdItemPtr->locale, u_errorName(status) );
         } else {
-            int32_t yDf, MDf, dDf, HDf, mDf; 
-            ucal_setMillis(ucal, tfdItemPtr->start, &status);
-            yDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_YEAR, &status);
-            MDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_MONTH, &status);
-            dDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_DATE, &status);
-            HDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_HOUR, &status);
-            mDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_MINUTE, &status);
-            if (U_FAILURE(status)) {
-                log_err("FAIL: for locale \"%s\", start %.1f, target %.1f, ucal_setMillis or ucal_getFieldDifference had status %s\n",
-                        tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target, u_errorName(status) );
-            } else if ( yDf !=  tfdItemPtr->yDiff ||
-                        MDf !=  tfdItemPtr->MDiff ||
-                        dDf !=  tfdItemPtr->dDiff ||
-                        HDf !=  tfdItemPtr->HDiff ||
-                        mDf !=  tfdItemPtr->mDiff ) {
-                log_data_err("FAIL: for locale \"%s\", start %.1f, target %.1f, expected y-M-d-H-m diffs %d-%d-%d-%d-%d, got %d-%d-%d-%d-%d\n",
-                        tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target,
-                        tfdItemPtr->yDiff, tfdItemPtr->MDiff, tfdItemPtr->dDiff, tfdItemPtr->HDiff, tfdItemPtr->mDiff, yDf, MDf, dDf, HDf, mDf);
+            int32_t yDf, MDf, dDf, HDf, mDf, sDf;
+            if (tfdItemPtr->progressive) {
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                yDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_YEAR, &status);
+                MDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_MONTH, &status);
+                dDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_DATE, &status);
+                HDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_HOUR, &status);
+                mDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_MINUTE, &status);
+                sDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_SECOND, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: for locale \"%s\", start %.1f, target %.1f, ucal_setMillis or ucal_getFieldDifference had status %s\n",
+                            tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target, u_errorName(status) );
+                } else if ( yDf !=  tfdItemPtr->yDiff ||
+                            MDf !=  tfdItemPtr->MDiff ||
+                            dDf !=  tfdItemPtr->dDiff ||
+                            HDf !=  tfdItemPtr->HDiff ||
+                            mDf !=  tfdItemPtr->mDiff ||
+                            sDf !=  tfdItemPtr->sDiff ) {
+                    log_data_err("FAIL: for locale \"%s\", start %.1f, target %.1f, expected y-M-d-H-m-s progressive diffs %d-%d-%d-%d-%d-%d, got %d-%d-%d-%d-%d-%d\n",
+                            tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target,
+                            tfdItemPtr->yDiff, tfdItemPtr->MDiff, tfdItemPtr->dDiff, tfdItemPtr->HDiff, tfdItemPtr->mDiff, tfdItemPtr->sDiff,
+                            yDf, MDf, dDf, HDf, mDf, sDf);
+                }
+            } else {
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                yDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_YEAR, &status);
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                MDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_MONTH, &status);
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                dDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_DATE, &status);
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                HDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_HOUR, &status);
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                mDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_MINUTE, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: for locale \"%s\", start %.1f, target %.1f, ucal_setMillis or ucal_getFieldDifference (y-M-d-H-m) had status %s\n",
+                            tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target, u_errorName(status) );
+                } else if ( yDf !=  tfdItemPtr->yDiff ||
+                            MDf !=  tfdItemPtr->MDiff ||
+                            dDf !=  tfdItemPtr->dDiff ||
+                            HDf !=  tfdItemPtr->HDiff ||
+                            mDf !=  tfdItemPtr->mDiff ) {
+                    log_data_err("FAIL: for locale \"%s\", start %.1f, target %.1f, expected y-M-d-H-m total diffs %d-%d-%d-%d-%d, got %d-%d-%d-%d-%d\n",
+                            tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target,
+                            tfdItemPtr->yDiff, tfdItemPtr->MDiff, tfdItemPtr->dDiff, tfdItemPtr->HDiff, tfdItemPtr->mDiff,
+                            yDf, MDf, dDf, HDf, mDf);
+                }
+                ucal_setMillis(ucal, tfdItemPtr->start, &status);
+                sDf = ucal_getFieldDifference(ucal, tfdItemPtr->target, UCAL_SECOND, &status);
+                if (tfdItemPtr->sDiff != 0x7FFFFFFF) {
+                    if (U_FAILURE(status)) {
+                        log_err("FAIL: for locale \"%s\", start %.1f, target %.1f, ucal_setMillis or ucal_getFieldDifference (seconds) had status %s\n",
+                                tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target, u_errorName(status) );
+                    } else if (sDf !=  tfdItemPtr->sDiff) {
+                        log_data_err("FAIL: for locale \"%s\", start %.1f, target %.1f, expected seconds progressive diff %d, got %d\n",
+                                tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target, tfdItemPtr->sDiff, sDf);
+                    }
+                } else if (!U_FAILURE(status)) {
+                    log_err("FAIL: for locale \"%s\", start %.1f, target %.1f, for ucal_getFieldDifference (seconds) expected overflow error, got none\n",
+                            tfdItemPtr->locale, tfdItemPtr->start, tfdItemPtr->target );
+                }
             }
             ucal_close(ucal);
         }
@@ -1883,5 +2045,403 @@ void TestAmbiguousWallTime() {
 
     ucal_close(ucal);
 }
+
+/**
+ * TestAddRollEra0AndEraBounds, for #9226
+ */
+ 
+ typedef struct {
+     const char * locale;
+     UBool era0YearsGoBackwards; /* until we have API to get this, per #9393 */
+ } EraTestItem;
+
+static const EraTestItem eraTestItems[] = {
+    /* calendars with non-modern era 0 that goes backwards, max era == 1 */
+    { "en@calendar=gregorian", TRUE },
+    { "en@calendar=roc", TRUE },
+    { "en@calendar=coptic", TRUE },
+    /* calendars with non-modern era 0 that goes forwards, max era > 1 */
+    { "en@calendar=japanese", FALSE },
+    { "en@calendar=chinese", FALSE },
+    /* calendars with non-modern era 0 that goes forwards, max era == 1 */
+    { "en@calendar=ethiopic", FALSE },
+    /* calendars with only one era  = 0, forwards */
+    { "en@calendar=buddhist", FALSE },
+    { "en@calendar=hebrew", FALSE },
+    { "en@calendar=islamic", FALSE },
+    { "en@calendar=indian", FALSE },
+    { "en@calendar=persian", FALSE },
+    { "en@calendar=ethiopic-amete-alem", FALSE },
+    { NULL, FALSE }
+};
+
+static const UChar zoneGMT[] = { 0x47,0x4D,0x54,0 };
+
+void TestAddRollEra0AndEraBounds() {
+    const EraTestItem * eraTestItemPtr;
+    for (eraTestItemPtr = eraTestItems; eraTestItemPtr->locale != NULL; eraTestItemPtr++) {
+        UErrorCode status = U_ZERO_ERROR;
+        UCalendar *ucalTest = ucal_open(zoneGMT, -1, eraTestItemPtr->locale, UCAL_DEFAULT, &status);
+        if ( U_SUCCESS(status) ) {
+            int32_t yrBefore, yrAfter, yrMax, eraAfter, eraMax, eraNow;
+
+            status = U_ZERO_ERROR;
+            ucal_clear(ucalTest);
+            ucal_set(ucalTest, UCAL_YEAR, 2);
+            ucal_set(ucalTest, UCAL_ERA, 0);
+            yrBefore = ucal_get(ucalTest, UCAL_YEAR, &status);
+            ucal_add(ucalTest, UCAL_YEAR, 1, &status);
+            yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+            if (U_FAILURE(status)) {
+                log_err("FAIL: set era 0 year 2 then add 1 year and get year for %s, error %s\n",
+                        eraTestItemPtr->locale, u_errorName(status));
+            } else if ( (eraTestItemPtr->era0YearsGoBackwards && yrAfter>yrBefore) ||
+                        (!eraTestItemPtr->era0YearsGoBackwards && yrAfter<yrBefore) ) {
+                log_err("FAIL: era 0 add 1 year does not move forward in time for %s\n", eraTestItemPtr->locale);
+            }
+            
+            status = U_ZERO_ERROR;
+            ucal_clear(ucalTest);
+            ucal_set(ucalTest, UCAL_YEAR, 2);
+            ucal_set(ucalTest, UCAL_ERA, 0);
+            yrBefore = ucal_get(ucalTest, UCAL_YEAR, &status);
+            ucal_roll(ucalTest, UCAL_YEAR, 1, &status);
+            yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+            if (U_FAILURE(status)) {
+                log_err("FAIL: set era 0 year 2 then roll 1 year and get year for %s, error %s\n",
+                        eraTestItemPtr->locale, u_errorName(status));
+            } else if ( (eraTestItemPtr->era0YearsGoBackwards && yrAfter>yrBefore) ||
+                        (!eraTestItemPtr->era0YearsGoBackwards && yrAfter<yrBefore) ) {
+                log_err("FAIL: era 0 roll 1 year does not move forward in time for %s\n", eraTestItemPtr->locale);
+            }
+            
+            status = U_ZERO_ERROR;
+            ucal_clear(ucalTest);
+            ucal_set(ucalTest, UCAL_YEAR, 1);
+            ucal_set(ucalTest, UCAL_ERA, 0);
+            if (eraTestItemPtr->era0YearsGoBackwards) {
+                ucal_roll(ucalTest, UCAL_YEAR, 1, &status); /* roll forward in time to era 0 boundary */
+                yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                eraAfter = ucal_get(ucalTest, UCAL_ERA, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: set era 0 year 1 then roll 1 year and get year,era for %s, error %s\n",
+                            eraTestItemPtr->locale, u_errorName(status));
+                /* all calendars with era0YearsGoBackwards have "unbounded" era0 year values, so we should pin at yr 1 */
+                } else if (eraAfter != 0 || yrAfter != 1) {
+                    log_err("FAIL: era 0 roll 1 year from year 1 does not stay within era or pin to year 1 for %s (get era %d year %d)\n",
+                            eraTestItemPtr->locale, eraAfter, yrAfter);
+                }
+            } else {
+                /* roll backward in time to where era 0 years go negative, except for the Chinese
+                   calendar, which uses negative eras instead of having years outside the range 1-60 */
+                const char * calType = ucal_getType(ucalTest, &status);
+                ucal_roll(ucalTest, UCAL_YEAR, -2, &status);
+                yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                eraAfter = ucal_get(ucalTest, UCAL_ERA, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: set era 0 year 1 then roll -2 years and get year,era for %s, error %s\n",
+                            eraTestItemPtr->locale, u_errorName(status));
+                } else if ( uprv_strcmp(calType,"chinese")!=0 && (eraAfter != 0 || yrAfter != -1) ) {
+                    log_err("FAIL: era 0 roll -2 years from year 1 does not stay within era or produce year -1 for %s (get era %d year %d)\n",
+                            eraTestItemPtr->locale, eraAfter, yrAfter);
+                }
+            }
+            
+            status = U_ZERO_ERROR;
+            ucal_clear(ucalTest);
+            {
+                int32_t eraMin = ucal_getLimit(ucalTest, UCAL_ERA, UCAL_MINIMUM, &status);
+                const char * calType = ucal_getType(ucalTest, &status);
+                if (eraMin != 0 && uprv_strcmp(calType, "chinese") != 0) {
+                    log_err("FAIL: ucal_getLimit returns minimum era %d (should be 0) for calType %s, error %s\n", eraMin, calType, u_errorName(status));
+                }
+            }
+
+            status = U_ZERO_ERROR;
+            ucal_clear(ucalTest);
+            ucal_set(ucalTest, UCAL_YEAR, 1);
+            ucal_set(ucalTest, UCAL_ERA, 0);
+            eraMax = ucal_getLimit(ucalTest, UCAL_ERA, UCAL_MAXIMUM, &status);
+            if ( U_SUCCESS(status) && eraMax > 0 ) {
+                /* try similar tests for era 1 (if calendar has it), in which years always go forward */
+                status = U_ZERO_ERROR;
+                ucal_clear(ucalTest);
+                ucal_set(ucalTest, UCAL_YEAR, 2);
+                ucal_set(ucalTest, UCAL_ERA, 1);
+                yrBefore = ucal_get(ucalTest, UCAL_YEAR, &status);
+                ucal_add(ucalTest, UCAL_YEAR, 1, &status);
+                yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: set era 1 year 2 then add 1 year and get year for %s, error %s\n",
+                            eraTestItemPtr->locale, u_errorName(status));
+                } else if ( yrAfter<yrBefore ) {
+                    log_err("FAIL: era 1 add 1 year does not move forward in time for %s\n", eraTestItemPtr->locale);
+                }
+                
+                status = U_ZERO_ERROR;
+                ucal_clear(ucalTest);
+                ucal_set(ucalTest, UCAL_YEAR, 2);
+                ucal_set(ucalTest, UCAL_ERA, 1);
+                yrBefore = ucal_get(ucalTest, UCAL_YEAR, &status);
+                ucal_roll(ucalTest, UCAL_YEAR, 1, &status);
+                yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: set era 1 year 2 then roll 1 year and get year for %s, error %s\n",
+                            eraTestItemPtr->locale, u_errorName(status));
+                } else if ( yrAfter<yrBefore ) {
+                    log_err("FAIL: era 1 roll 1 year does not move forward in time for %s\n", eraTestItemPtr->locale);
+                }
+                
+                status = U_ZERO_ERROR;
+                ucal_clear(ucalTest);
+                ucal_set(ucalTest, UCAL_YEAR, 1);
+                ucal_set(ucalTest, UCAL_ERA, 1);
+                yrMax = ucal_getLimit(ucalTest, UCAL_YEAR, UCAL_ACTUAL_MAXIMUM, &status); /* max year value for era 1 */
+                ucal_roll(ucalTest, UCAL_YEAR, -1, &status); /* roll down which should pin or wrap to end */
+                yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                eraAfter = ucal_get(ucalTest, UCAL_ERA, &status);
+                if (U_FAILURE(status)) {
+                    log_err("FAIL: set era 1 year 1 then roll -1 year and get year,era for %s, error %s\n",
+                            eraTestItemPtr->locale, u_errorName(status));
+                /* if yrMax is reasonable we should wrap to that, else we should pin at yr 1 */
+                } else if (yrMax >= 32768) {
+                    if (eraAfter != 1 || yrAfter != 1) {
+                        log_err("FAIL: era 1 roll -1 year from year 1 does not stay within era or pin to year 1 for %s (get era %d year %d)\n",
+                                eraTestItemPtr->locale, eraAfter, yrAfter);
+                    }
+                } else if (eraAfter != 1 || yrAfter != yrMax) {
+                    log_err("FAIL: era 1 roll -1 year from year 1 does not stay within era or wrap to year %d for %s (get era %d year %d)\n",
+                            yrMax, eraTestItemPtr->locale, eraAfter, yrAfter);
+                } else {
+                    /* now roll up which should wrap to beginning */
+                    ucal_roll(ucalTest, UCAL_YEAR, 1, &status); /* now roll up which should wrap to beginning */
+                    yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                    eraAfter = ucal_get(ucalTest, UCAL_ERA, &status);
+                    if (U_FAILURE(status)) {
+                        log_err("FAIL: era 1 roll 1 year from end and get year,era for %s, error %s\n",
+                                eraTestItemPtr->locale, u_errorName(status));
+                    } else if (eraAfter != 1 || yrAfter != 1) {
+                        log_err("FAIL: era 1 roll 1 year from year %d does not stay within era or wrap to year 1 for %s (get era %d year %d)\n",
+                                yrMax, eraTestItemPtr->locale, eraAfter, yrAfter);
+                    }
+                }
+
+                /* if current era  > 1, try the same roll tests for current era */
+                ucal_setMillis(ucalTest, ucal_getNow(), &status);
+                eraNow = ucal_get(ucalTest, UCAL_ERA, &status);
+                if ( U_SUCCESS(status) && eraNow > 1 ) {
+                    status = U_ZERO_ERROR;
+                    ucal_clear(ucalTest);
+                    ucal_set(ucalTest, UCAL_YEAR, 1);
+                    ucal_set(ucalTest, UCAL_ERA, eraNow);
+                    yrMax = ucal_getLimit(ucalTest, UCAL_YEAR, UCAL_ACTUAL_MAXIMUM, &status); /* max year value for this era */
+                    ucal_roll(ucalTest, UCAL_YEAR, -1, &status);
+                    yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                    eraAfter = ucal_get(ucalTest, UCAL_ERA, &status);
+                    if (U_FAILURE(status)) {
+                        log_err("FAIL: set era %d year 1 then roll -1 year and get year,era for %s, error %s\n",
+                                eraNow, eraTestItemPtr->locale, u_errorName(status));
+                    /* if yrMax is reasonable we should wrap to that, else we should pin at yr 1 */
+                    } else if (yrMax >= 32768) {
+                        if (eraAfter != eraNow || yrAfter != 1) {
+                            log_err("FAIL: era %d roll -1 year from year 1 does not stay within era or pin to year 1 for %s (get era %d year %d)\n",
+                                    eraNow, eraTestItemPtr->locale, eraAfter, yrAfter);
+                        }
+                    } else if (eraAfter != eraNow || yrAfter != yrMax) {
+                        log_err("FAIL: era %d roll -1 year from year 1 does not stay within era or wrap to year %d for %s (get era %d year %d)\n",
+                                eraNow, yrMax, eraTestItemPtr->locale, eraAfter, yrAfter);
+                    } else {
+                        /* now roll up which should wrap to beginning */
+                        ucal_roll(ucalTest, UCAL_YEAR, 1, &status); /* now roll up which should wrap to beginning */
+                        yrAfter = ucal_get(ucalTest, UCAL_YEAR, &status);
+                        eraAfter = ucal_get(ucalTest, UCAL_ERA, &status);
+                        if (U_FAILURE(status)) {
+                            log_err("FAIL: era %d roll 1 year from end and get year,era for %s, error %s\n",
+                                    eraNow, eraTestItemPtr->locale, u_errorName(status));
+                        } else if (eraAfter != eraNow || yrAfter != 1) {
+                            log_err("FAIL: era %d roll 1 year from year %d does not stay within era or wrap to year 1 for %s (get era %d year %d)\n",
+                                    eraNow, yrMax, eraTestItemPtr->locale, eraAfter, yrAfter);
+                        }
+                    }
+                }
+            }
+
+            ucal_close(ucalTest);
+        } else {
+            log_data_err("FAIL: ucal_open fails for zone GMT, locale %s, UCAL_DEFAULT\n", eraTestItemPtr->locale);
+        }
+    }
+}
+
+/**
+ * TestGetTZTransition, for #9606
+ */
+ 
+typedef struct {
+    const char *descrip;    /* test description */
+    const UChar * zoneName; /* pointer to zero-terminated zone name */
+    int32_t year;           /* starting point for test is gregorian calendar noon on day specified by y,M,d here */
+    int32_t month;
+    int32_t day;
+    UBool hasPrev;          /* does it have a previous transition from starting point? If so we test inclusive from that */
+    UBool hasNext;          /* does it have a next transition from starting point? If so we test inclusive from that */
+} TZTransitionItem;
+
+/* have zoneGMT above */
+static const UChar zoneUSPacific[] = { 0x55,0x53,0x2F,0x50,0x61,0x63,0x69,0x66,0x69,0x63,0 }; /* "US/Pacific" */
+static const UChar zoneCairo[]     = { 0x41,0x66,0x72,0x69,0x63,0x61,0x2F,0x43,0x61,0x69,0x72,0x6F,0 }; /* "Africa/Cairo", DST cancelled since 2011 */
+static const UChar zoneIceland[]   = { 0x41,0x74,0x6C,0x61,0x6E,0x74,0x69,0x63,0x2F,0x52,0x65,0x79,0x6B,0x6A,0x61,0x76,0x69,0x6B,0 }; /* "Atlantic/Reykjavik", always on DST (since when?) */
+
+static const TZTransitionItem tzTransitionItems[] = {
+    { "USPacific mid 2012", zoneUSPacific, 2012, UCAL_JULY, 1, TRUE , TRUE  },
+    { "USPacific mid  100", zoneUSPacific,  100, UCAL_JULY, 1, FALSE, TRUE  }, /* no transitions before 100 CE... */
+    { "Cairo     mid 2012", zoneCairo,     2012, UCAL_JULY, 1, TRUE , FALSE }, /* DST cancelled since 2011 */
+    { "Iceland   mid 2012", zoneIceland,   2012, UCAL_JULY, 1, TRUE , FALSE }, /* always on DST */
+    { NULL,                 NULL,             0,         0, 0, FALSE, FALSE } /* terminator */
+};
+
+void TestGetTZTransition() {
+    UErrorCode status = U_ZERO_ERROR;
+    UCalendar * ucal = ucal_open(zoneGMT, -1, "en", UCAL_GREGORIAN, &status);
+    if ( U_SUCCESS(status) ) {
+        const TZTransitionItem * itemPtr;
+        for (itemPtr = tzTransitionItems; itemPtr->descrip != NULL; itemPtr++) {
+            UDate curMillis;
+            ucal_setTimeZone(ucal, itemPtr->zoneName, -1, &status);
+            ucal_setDateTime(ucal, itemPtr->year, itemPtr->month, itemPtr->day, 12, 0, 0, &status);
+            curMillis = ucal_getMillis(ucal, &status);
+            (void)curMillis;    /* Suppress set but not used warning. */
+            if ( U_SUCCESS(status) ) {
+                UDate transition1, transition2;
+                UBool result;
+                
+                result = ucal_getTimeZoneTransitionDate(ucal, UCAL_TZ_TRANSITION_PREVIOUS, &transition1, &status);
+                if (U_FAILURE(status) || result != itemPtr->hasPrev) {
+                    log_data_err("FAIL: %s ucal_getTimeZoneTransitionDate prev status %s, expected result %d but got %d\n",
+                            itemPtr->descrip, u_errorName(status), itemPtr->hasPrev, result);
+                } else if (result) {
+                    ucal_setMillis(ucal, transition1, &status);
+                    result = ucal_getTimeZoneTransitionDate(ucal, UCAL_TZ_TRANSITION_PREVIOUS_INCLUSIVE, &transition2, &status);
+                    if (U_FAILURE(status) || !result || transition2 != transition1) {
+                        log_err("FAIL: %s ucal_getTimeZoneTransitionDate prev_inc status %s, result %d, expected date %.1f but got %.1f\n",
+                                itemPtr->descrip, u_errorName(status), result, transition1, transition2);
+                    }
+                }
+                status = U_ZERO_ERROR;
+
+                result = ucal_getTimeZoneTransitionDate(ucal, UCAL_TZ_TRANSITION_NEXT, &transition1, &status);
+                if (U_FAILURE(status) || result != itemPtr->hasNext) {
+                    log_data_err("FAIL: %s ucal_getTimeZoneTransitionDate next status %s, expected result %d but got %d\n",
+                            itemPtr->descrip, u_errorName(status), itemPtr->hasNext, result);
+                } else if (result) {
+                    ucal_setMillis(ucal, transition1, &status);
+                    result = ucal_getTimeZoneTransitionDate(ucal, UCAL_TZ_TRANSITION_NEXT_INCLUSIVE, &transition2, &status);
+                    if (U_FAILURE(status) || !result || transition2 != transition1) {
+                        log_err("FAIL: %s ucal_getTimeZoneTransitionDate next_inc status %s, result %d, expected date %.1f but got %.1f\n",
+                                itemPtr->descrip, u_errorName(status), result, transition1, transition2);
+                    }
+                }
+                status = U_ZERO_ERROR;
+            } else {
+                log_data_err("FAIL setup: can't setup calendar for %s, status %s\n",
+                            itemPtr->descrip, u_errorName(status));
+                status = U_ZERO_ERROR;
+            }
+        }
+        ucal_close(ucal);
+    } else {
+        log_data_err("FAIL setup: ucal_open status %s\n", u_errorName(status));
+    }
+}
+
+static const UChar winEastern[] = /* Eastern Standard Time */
+    {0x45,0x61,0x73,0x74,0x65,0x72,0x6E,0x20,0x53,0x74,0x61,0x6E,0x64,0x61,0x72,0x64,0x20,0x54,0x69,0x6D,0x65,0x00};
+
+static const UChar tzNewYork[] = /* America/New_York */
+    {0x41,0x6D,0x65,0x72,0x69,0x63,0x61,0x2F,0x4E,0x65,0x77,0x5F,0x59,0x6F,0x72,0x6B,0x00};
+static const UChar tzTronto[] = /* America/Toronto */
+    {0x41,0x6D,0x65,0x72,0x69,0x63,0x61,0x2F,0x54,0x6F,0x72,0x6F,0x6E,0x74,0x6F,0x00};
+
+static const UChar sBogus[] = /* Bogus */
+    {0x42,0x6F,0x67,0x75,0x73,0x00};
+
+void TestGetWindowsTimeZoneID() {
+    UErrorCode status;
+    UChar winID[64];
+    int32_t len;
+
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getWindowsTimeZoneID(tzNewYork, u_strlen(tzNewYork), winID, sizeof(winID)/sizeof(winID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: Windows ID for America/New_York, status %s\n", u_errorName(status)); 
+        } else if (len != u_strlen(winEastern) || u_strncmp(winID, winEastern, len) != 0) {
+            log_data_err("FAIL: Windows ID for America/New_York\n");
+        }
+    }
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getWindowsTimeZoneID(tzTronto, u_strlen(tzTronto), winID, sizeof(winID)/sizeof(winID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: Windows ID for America/Toronto, status %s\n", u_errorName(status)); 
+        } else if (len != u_strlen(winEastern) || u_strncmp(winID, winEastern, len) != 0) {
+            log_data_err("FAIL: Windows ID for America/Toronto\n");
+        }
+    }
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getWindowsTimeZoneID(sBogus, u_strlen(sBogus), winID, sizeof(winID)/sizeof(winID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: Windows ID for Bogus, status %s\n", u_errorName(status)); 
+        } else if (len != 0) {
+            log_data_err("FAIL: Windows ID for Bogus\n");
+        }
+    }
+}
+
+void TestGetTimeZoneIDByWindowsID() {
+    UErrorCode status;
+    UChar tzID[64];
+    int32_t len;
+
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getTimeZoneIDForWindowsID(winEastern, -1, NULL, tzID, sizeof(tzID)/sizeof(tzID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: TZ ID for Eastern Standard Time, status %s\n", u_errorName(status)); 
+        } else if (len != u_strlen(tzNewYork) || u_strncmp(tzID, tzNewYork, len) != 0) {
+            log_err("FAIL: TZ ID for Eastern Standard Time\n");
+        }
+    }
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getTimeZoneIDForWindowsID(winEastern, u_strlen(winEastern), "US", tzID, sizeof(tzID)/sizeof(tzID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: TZ ID for Eastern Standard Time - US, status %s\n", u_errorName(status)); 
+        } else if (len != u_strlen(tzNewYork) || u_strncmp(tzID, tzNewYork, len) != 0) {
+            log_err("FAIL: TZ ID for Eastern Standard Time - US\n");
+        }
+    }
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getTimeZoneIDForWindowsID(winEastern, u_strlen(winEastern), "CA", tzID, sizeof(tzID)/sizeof(tzID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: TZ ID for Eastern Standard Time - CA, status %s\n", u_errorName(status)); 
+        } else if (len != u_strlen(tzTronto) || u_strncmp(tzID, tzTronto, len) != 0) {
+            log_err("FAIL: TZ ID for Eastern Standard Time - CA\n");
+        }
+    }
+
+    {
+        status = U_ZERO_ERROR;
+        len = ucal_getTimeZoneIDForWindowsID(sBogus, -1, NULL, tzID, sizeof(tzID)/sizeof(tzID[0]), &status);
+        if (U_FAILURE(status)) {
+            log_data_err("FAIL: TZ ID for Bogus, status %s\n", u_errorName(status)); 
+        } else if (len != 0) {
+            log_err("FAIL: TZ ID for Bogus\n");
+        }
+    }
+}
+
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

@@ -1,4 +1,4 @@
-# Some Portions Copyright (c) 2006-2010 IBM and others. All Rights Reserved.
+# Some Portions Copyright (c) 2006-2012 IBM and others. All Rights Reserved.
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
@@ -127,7 +127,7 @@ $(ICUZDUMPTARG):	$(srcdir)/icuzdump.cpp
 $(TDATA): tdatamarker
 
 tdatamarker: $(TZDATA)
-	gunzip -d < $(TZDATA) | tar xf -
+	gunzip -d < $(TZDATA) | tar xf - --exclude=Makefile
 	touch $@
 
 yearistype:	yearistype.sh
@@ -149,7 +149,7 @@ clean:
 		-rm -rf $(TZDIR)
 		-$(RMV) $(ICUZDUMPTARG) tzorig ./zdumpout/ ./icuzdumpout/
 ifneq ($(TZDATA),)
-		-rm -rf `gunzip -d < $(TZDATA) | tar tf - | grep -o '[^ ]*$$' | tr '\n' ' '`
+		-rm -rf `gunzip -d < $(TZDATA) | tar tf - --exclude=Makefile | grep -o '[^ ]*$$' | tr '\n' ' '`
 		-rm tdatamarker
 endif
 

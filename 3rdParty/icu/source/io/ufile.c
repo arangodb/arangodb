@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -19,10 +19,11 @@
 */
 
 /*
- * Defines _XOPEN_SOURCE for access to POSIX functions.
- * Must be before any other #includes.
+ * fileno is not declared when building with GCC in strict mode.
  */
-#include "uposixdefs.h"
+#if defined(__GNUC__) && defined(__STRICT_ANSI__)
+#undef __STRICT_ANSI__
+#endif
 
 #include "locmap.h"
 #include "unicode/ustdio.h"
@@ -304,4 +305,10 @@ u_fgetConverter(UFILE *file)
 {
     return file->fConverter;
 }
+#if !UCONFIG_NO_FORMATTING
+U_CAPI const UNumberFormat* U_EXPORT2 u_fgetNumberFormat(UFILE *file)
+{
+    return u_locbund_getNumberFormat(&file->str.fBundle, UNUM_DECIMAL);
+}
+#endif
 

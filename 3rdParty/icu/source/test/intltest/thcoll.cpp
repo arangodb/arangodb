@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1999-2009, International Business Machines
+*   Copyright (C) 1999-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -15,6 +15,7 @@
 #include "thcoll.h"
 #include "unicode/utypes.h"
 #include "unicode/coll.h"
+#include "unicode/localpointer.h"
 #include "unicode/sortkey.h"
 #include "unicode/ustring.h"
 #include "cstring.h"
@@ -150,11 +151,9 @@ void CollationThaiTest::TestDictionary(void) {
         }
 
         if (lastWord.length() > 0) {
-            // line enabled for j2720 
-            doTest(coll, lastWord, word, Collator::LESS);
             int32_t result = coll->compare(lastWord, word);
 
-            if (result >= 0) {
+            if (result > 0) {
                 failed++;
                 if (MAX_FAILURES_TO_SHOW < 0 || failed <= MAX_FAILURES_TO_SHOW) {
                     UnicodeString str;
@@ -216,11 +215,11 @@ void CollationThaiTest::TestCornerCases(void) {
         "\\u0e01\\u0e32\\u0e01\\u0e49\\u0e32",   "<",    "\\u0e01\\u0e48\\u0e32\\u0e01\\u0e49\\u0e32",
 
         // Hyphens and other punctuation follow whitespace but come before letters
-        "\\u0e01\\u0e32",                        "<",    "\\u0e01\\u0e32-",
+        "\\u0e01\\u0e32",                        "=",    "\\u0e01\\u0e32-",
         "\\u0e01\\u0e32-",                       "<",    "\\u0e01\\u0e32\\u0e01\\u0e32",
 
         // Doubler follows an indentical word without the doubler
-        "\\u0e01\\u0e32",                        "<",    "\\u0e01\\u0e32\\u0e46",
+        "\\u0e01\\u0e32",                        "=",    "\\u0e01\\u0e32\\u0e46",
         "\\u0e01\\u0e32\\u0e46",                 "<",    "\\u0e01\\u0e32\\u0e01\\u0e32",
 
 
@@ -405,50 +404,63 @@ void CollationThaiTest::TestInvalidThai(void) {
 }
 
 void CollationThaiTest::TestReordering(void) {
-  const char *tests[] = { 
-                          "\\u0E41c\\u0301",       "=", "\\u0E41\\u0107", // composition
-                          "\\u0E41\\uD835\\uDFCE", "<", "\\u0E41\\uD835\\uDFCF", // supplementaries
-                          "\\u0E41\\uD834\\uDD5F", "=", "\\u0E41\\uD834\\uDD58\\uD834\\uDD65", // supplementary composition decomps to supplementary
-                          "\\u0E41\\uD87E\\uDC02", "=", "\\u0E41\\u4E41", // supplementary composition decomps to BMP
-                          "\\u0E41\\u0301",        "=", "\\u0E41\\u0301", // unsafe (just checking backwards iteration)
-                          "\\u0E41\\u0301\\u0316", "=", "\\u0E41\\u0316\\u0301",
-                          // after UCA 4.1, the two lines below are not equal anymore do not have equal sign
-                          "\\u0e24\\u0e41",        "<", "\\u0e41\\u0e24", // exiting contraction bug
-                          "\\u0e3f\\u0e3f\\u0e24\\u0e41", "<", "\\u0e3f\\u0e3f\\u0e41\\u0e24",
+  // Until UCA 4.1, the collation code swapped Thai/Lao prevowels with the following consonants,
+  // resulting in consonant+prevowel == prevowel+consonant.
+  // From UCA 5.0 on, there are order-reversing contractions for prevowel+consonant.
+  // From UCA 5.0 until UCA 6.1, there was a tertiary difference between
+  // consonant+prevowel and prevowel+consonant.
+  // In UCA 6.2, they compare equal again.
+  // The test was modified to using a collator with strength=secondary,
+  // ignoring possible tertiary differences.
+  const char *tests[] = {
+    "\\u0E41c\\u0301",       "=", "\\u0E41\\u0107", // composition
+    "\\u0E41\\U0001D7CE",    "<", "\\u0E41\\U0001D7CF", // supplementaries
+    "\\u0E41\\U0001D15F",    "=", "\\u0E41\\U0001D158\\U0001D165", // supplementary composition decomps to supplementary
+    "\\u0E41\\U0002F802",    "=", "\\u0E41\\u4E41", // supplementary composition decomps to BMP
+    "\\u0E41\\u0301",        "=", "\\u0E41\\u0301", // unsafe (just checking backwards iteration)
+    "\\u0E41\\u0301\\u0316", "=", "\\u0E41\\u0316\\u0301",
 
-                          "abc\\u0E41c\\u0301",       "=", "abc\\u0E41\\u0107", // composition
-                          "abc\\u0E41\\uD834\\uDC00", "<", "abc\\u0E41\\uD834\\uDC01", // supplementaries
-                          "abc\\u0E41\\uD834\\uDD5F", "=", "abc\\u0E41\\uD834\\uDD58\\uD834\\uDD65", // supplementary composition decomps to supplementary
-                          "abc\\u0E41\\uD87E\\uDC02", "=", "abc\\u0E41\\u4E41", // supplementary composition decomps to BMP
-                          "abc\\u0E41\\u0301",        "=", "abc\\u0E41\\u0301", // unsafe (just checking backwards iteration)
-                          "abc\\u0E41\\u0301\\u0316", "=", "abc\\u0E41\\u0316\\u0301",
+    "\\u0e24\\u0e41",        "=", "\\u0e41\\u0e24", // exiting contraction bug
+    "\\u0e3f\\u0e3f\\u0e24\\u0e41", "=", "\\u0e3f\\u0e3f\\u0e41\\u0e24",
 
-                          "\\u0E41c\\u0301abc",       "=", "\\u0E41\\u0107abc", // composition
-                          "\\u0E41\\uD834\\uDC00abc", "<", "\\u0E41\\uD834\\uDC01abc", // supplementaries
-                          "\\u0E41\\uD834\\uDD5Fabc", "=", "\\u0E41\\uD834\\uDD58\\uD834\\uDD65abc", // supplementary composition decomps to supplementary
-                          "\\u0E41\\uD87E\\uDC02abc", "=", "\\u0E41\\u4E41abc", // supplementary composition decomps to BMP
-                          "\\u0E41\\u0301abc",        "=", "\\u0E41\\u0301abc", // unsafe (just checking backwards iteration)
-                          "\\u0E41\\u0301\\u0316abc", "=", "\\u0E41\\u0316\\u0301abc",
+    "abc\\u0E41c\\u0301",       "=", "abc\\u0E41\\u0107", // composition
+    "abc\\u0E41\\U0001D000",    "<", "abc\\u0E41\\U0001D001", // supplementaries
+    "abc\\u0E41\\U0001D15F",    "=", "abc\\u0E41\\U0001D158\\U0001D165", // supplementary composition decomps to supplementary
+    "abc\\u0E41\\U0002F802",    "=", "abc\\u0E41\\u4E41", // supplementary composition decomps to BMP
+    "abc\\u0E41\\u0301",        "=", "abc\\u0E41\\u0301", // unsafe (just checking backwards iteration)
+    "abc\\u0E41\\u0301\\u0316", "=", "abc\\u0E41\\u0316\\u0301",
 
-                          "abc\\u0E41c\\u0301abc",       "=", "abc\\u0E41\\u0107abc", // composition
-                          "abc\\u0E41\\uD834\\uDC00abc", "<", "abc\\u0E41\\uD834\\uDC01abc", // supplementaries
-                          "abc\\u0E41\\uD834\\uDD5Fabc", "=", "abc\\u0E41\\uD834\\uDD58\\uD834\\uDD65abc", // supplementary composition decomps to supplementary
-                          "abc\\u0E41\\uD87E\\uDC02abc", "=", "abc\\u0E41\\u4E41abc", // supplementary composition decomps to BMP
-                          "abc\\u0E41\\u0301abc",        "=", "abc\\u0E41\\u0301abc", // unsafe (just checking backwards iteration)
-                          "abc\\u0E41\\u0301\\u0316abc", "=", "abc\\u0E41\\u0316\\u0301abc",
-                        };
+    "\\u0E41c\\u0301abc",       "=", "\\u0E41\\u0107abc", // composition
+    "\\u0E41\\U0001D000abc",    "<", "\\u0E41\\U0001D001abc", // supplementaries
+    "\\u0E41\\U0001D15Fabc",    "=", "\\u0E41\\U0001D158\\U0001D165abc", // supplementary composition decomps to supplementary
+    "\\u0E41\\U0002F802abc",    "=", "\\u0E41\\u4E41abc", // supplementary composition decomps to BMP
+    "\\u0E41\\u0301abc",        "=", "\\u0E41\\u0301abc", // unsafe (just checking backwards iteration)
+    "\\u0E41\\u0301\\u0316abc", "=", "\\u0E41\\u0316\\u0301abc",
 
-  compareArray(*coll, tests, sizeof(tests)/sizeof(tests[0]));
+    "abc\\u0E41c\\u0301abc",       "=", "abc\\u0E41\\u0107abc", // composition
+    "abc\\u0E41\\U0001D000abc",    "<", "abc\\u0E41\\U0001D001abc", // supplementaries
+    "abc\\u0E41\\U0001D15Fabc",    "=", "abc\\u0E41\\U0001D158\\U0001D165abc", // supplementary composition decomps to supplementary
+    "abc\\u0E41\\U0002F802abc",    "=", "abc\\u0E41\\u4E41abc", // supplementary composition decomps to BMP
+    "abc\\u0E41\\u0301abc",        "=", "abc\\u0E41\\u0301abc", // unsafe (just checking backwards iteration)
+    "abc\\u0E41\\u0301\\u0316abc", "=", "abc\\u0E41\\u0316\\u0301abc",
+  };
+
+  LocalPointer<Collator> coll2(coll->clone());
+  UErrorCode status = U_ZERO_ERROR;
+  coll2->setAttribute(UCOL_STRENGTH, UCOL_SECONDARY, status);
+  if(U_FAILURE(status)) {
+    errln("Unable to set the Thai collator clone to secondary strength");
+    return;
+  }
+  compareArray(*coll2, tests, sizeof(tests)/sizeof(tests[0]));
  
   const char *rule = "& c < ab";
   const char *testcontraction[] = { "\\u0E41ab", ">", "\\u0E41c"}; // After UCA 4.1 Thai are normal so won't break a contraction
   UnicodeString rules;
-  UErrorCode status = U_ZERO_ERROR;
   parseChars(rules, rule);
-  RuleBasedCollator *rcoll = new RuleBasedCollator(rules, status);
+  LocalPointer<RuleBasedCollator> rcoll(new RuleBasedCollator(rules, status));
   if(U_SUCCESS(status)) {
     compareArray(*rcoll, testcontraction, 3);
-    delete rcoll;
   } else {
     errln("Couldn't instantiate collator from rules");
   }

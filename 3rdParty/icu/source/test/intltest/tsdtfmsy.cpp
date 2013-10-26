@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2011, International Business Machines
+ * Copyright (c) 1997-2013, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************/
 
@@ -26,6 +26,7 @@ void IntlTestDateFormatSymbols::runIndexedTest( int32_t index, UBool exec, const
         TESTCASE(2,TestGetMonths2);
         TESTCASE(3,TestGetWeekdays2);
         TESTCASE(4,TestGetEraNames);
+        TESTCASE(5,TestGetSetSpecificItems);
         default: name = ""; break;
     }
 }
@@ -121,6 +122,41 @@ void IntlTestDateFormatSymbols::TestGetEraNames()
     for (int32_t i=0; i<cnt; ++i)
     {
         logln(name[i]);
+    }
+
+    delete symbol;
+}
+
+UBool IntlTestDateFormatSymbols::UnicodeStringsArePrefixes(int32_t count, int32_t prefixLen, const UnicodeString *prefixArray, const UnicodeString *baseArray)
+{
+    int32_t i;
+    for (i = 0; i < count; i++) {
+        if (baseArray[i].compare(0, prefixLen, prefixArray[i]) != 0) {
+            errln("ERROR: Mismatch example: expect prefix \"" + prefixArray[i] + "\" of base \"" + baseArray[i] + "\".");
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+void IntlTestDateFormatSymbols::TestGetSetSpecificItems()
+{
+    UErrorCode  status = U_ZERO_ERROR;
+    DateFormatSymbols *symbol=new DateFormatSymbols(Locale::getEnglish(), status);
+    if(U_FAILURE(status)) {
+        dataerrln("ERROR: Couldn't create English DateFormatSymbols " + (UnicodeString)u_errorName(status));
+        return;
+    }
+    int32_t cntFmtAbbrev, cntFmtShort, cntStdAloneShort;
+    const UnicodeString * wdFmtAbbrev     = symbol->getWeekdays(cntFmtAbbrev,DateFormatSymbols::FORMAT,DateFormatSymbols::ABBREVIATED);
+    const UnicodeString * wdFmtShort      = symbol->getWeekdays(cntFmtShort,DateFormatSymbols::FORMAT,DateFormatSymbols::SHORT);
+    const UnicodeString * wdStdAloneShort = symbol->getWeekdays(cntStdAloneShort,DateFormatSymbols::STANDALONE,DateFormatSymbols::SHORT);
+    // Expect that English short names are prefixes of abbreviated names
+    if (cntFmtShort != cntFmtAbbrev || !UnicodeStringsArePrefixes(cntFmtAbbrev, 2, wdFmtShort, wdFmtAbbrev)) {
+        errln("ERROR: English format short weekday names don't match prefixes of format abbreviated names");
+    }
+    if (cntStdAloneShort != cntFmtAbbrev || !UnicodeStringsArePrefixes(cntFmtAbbrev, 2, wdStdAloneShort, wdFmtAbbrev)) {
+        errln("ERROR: English standalone short weekday names don't match prefixes of format abbreviated names");
     }
 
     delete symbol;

@@ -1,16 +1,16 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/gsw.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/gsw.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/gsw.xml
+ * ICU <specials> source: <path>/common/main/gsw.xml
  */
 gsw{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
         "Africa:Accra"{
             ec{"Akkra"}
@@ -38,9 +38,6 @@ gsw{
         }
         "Africa:Mogadishu"{
             ec{"Mogadischu"}
-        }
-        "Africa:Niamey"{
-            ec{"Niger"}
         }
         "Africa:Ouagadougou"{
             ec{"Wagadugu"}
@@ -295,20 +292,10 @@ gsw{
             lg{"Weschtafrikanischi Ziit"}
             ls{"Weschtafrikanischi Schtandardziit"}
         }
-        "meta:Aktyubinsk"{
-            ld{"Aktyubinsk-Summerziit"}
-            lg{"Aktyubinsk-Ziit"}
-            ls{"Aktyubinsk-Schtandardziit"}
-        }
         "meta:Alaska"{
             ld{"Alaska-Summerziit"}
             lg{"Alaska-Ziit"}
             ls{"Alaska-Schtandardziit"}
-        }
-        "meta:Alaska_Hawaii"{
-            ld{"Alaska-Hawaii-Summerziit"}
-            lg{"Alaska-Hawaii-Ziit"}
-            ls{"Alaska-Hawaii-Schtandardziit"}
         }
         "meta:Almaty"{
             ld{"Almaty-Summerziit"}

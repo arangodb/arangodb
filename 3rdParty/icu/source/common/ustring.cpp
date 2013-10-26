@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -1112,12 +1112,18 @@ u_strHasMoreChar32Than(const UChar *s, int32_t length, int32_t number) {
 
 U_CAPI UChar * U_EXPORT2
 u_memcpy(UChar *dest, const UChar *src, int32_t count) {
-    return (UChar *)uprv_memcpy(dest, src, count*U_SIZEOF_UCHAR);
+    if(count > 0) {
+        uprv_memcpy(dest, src, count*U_SIZEOF_UCHAR);
+    }
+    return dest;
 }
 
 U_CAPI UChar * U_EXPORT2
 u_memmove(UChar *dest, const UChar *src, int32_t count) {
-    return (UChar *)uprv_memmove(dest, src, count*U_SIZEOF_UCHAR);
+    if(count > 0) {
+        uprv_memmove(dest, src, count*U_SIZEOF_UCHAR);
+    }
+    return dest;
 }
 
 U_CAPI UChar * U_EXPORT2

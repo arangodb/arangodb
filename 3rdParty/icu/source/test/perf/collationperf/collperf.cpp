@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (C) 2001-2011 IBM, Inc.   All Rights Reserved.
+ * Copyright (C) 2001-2012 IBM, Inc.   All Rights Reserved.
  *
  ********************************************************************/
 /********************************************************************************
@@ -1340,7 +1340,7 @@ UChar UCharFile::get() {
             // Convert the bytes from the temp array to a Unicode char.
             i = 0;
             uint32_t  cp;
-            UTF8_NEXT_CHAR_UNSAFE(bytes, i, cp);
+            U8_NEXT_UNSAFE(bytes, i, cp);
             c = (UChar)cp;
             
             if (cp >= 0x10000) {

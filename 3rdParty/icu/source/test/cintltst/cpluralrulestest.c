@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 2011, International Business Machines Corporation
+ * Copyright (c) 2011-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ********************************************************************/
 /* C API TEST FOR PLURAL RULES */
@@ -14,6 +14,7 @@
 #include "cmemory.h"
 
 static void TestPluralRules(void);
+static void TestOrdinalRules(void);
 
 void addPluralRulesTest(TestNode** root);
 
@@ -22,6 +23,7 @@ void addPluralRulesTest(TestNode** root);
 void addPluralRulesTest(TestNode** root)
 {
     TESTCASE(TestPluralRules);
+    TESTCASE(TestOrdinalRules);
 }
 
 typedef struct {
@@ -46,7 +48,7 @@ static const PluralRulesTestItem testItems[] = {
     { "ru", 0.5, "other" },
     { "ru",   1, "one" },
     { "ru", 1.5, "other" },
-    { "ru",   2, "few" },
+    { "ru",   2, "other" },
     { "ru",   5, "many" },
     { "ru",  10, "many" },
     { "ru",  11, "many" },
@@ -87,6 +89,24 @@ static void TestPluralRules()
             log_err("FAIL: uplrules_open for locale %s: %s\n", testItemPtr->locale, myErrorName(status) );
         }
     }
+}
+
+static void TestOrdinalRules() {
+    U_STRING_DECL(two, "two", 3);
+    UChar keyword[8];
+    int32_t length;
+    UErrorCode errorCode = U_ZERO_ERROR;
+    UPluralRules* upr = uplrules_openForType("en", UPLURAL_TYPE_ORDINAL, &errorCode);
+    if (U_FAILURE(errorCode)) {
+        log_err("uplrules_openForType(en, ordinal) failed - %s\n", u_errorName(errorCode));
+        return;
+    }
+    U_STRING_INIT(two, "two", 3);
+    length = uplrules_select(upr, 2., keyword, 8, &errorCode);
+    if (U_FAILURE(errorCode) || u_strCompare(keyword, length, two, 3, FALSE) != 0) {
+        log_data_err("uplrules_select(en-ordinal, 2) failed - %s\n", u_errorName(errorCode));
+    }
+    uplrules_close(upr);
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

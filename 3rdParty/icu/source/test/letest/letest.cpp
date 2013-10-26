@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 1999-2008, International Business Machines
+ *   Copyright (C) 1999-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -413,7 +413,7 @@ static void checkFontVersion(PortableFontInstance *fontInstance, const char *tes
 const char *getSourceTestData() {
     const char *srcDataDir = NULL;
 #ifdef U_TOPSRCDIR
-    srcDataDir = U_TOPSRCDIR U_FILE_SEP_STRING"test"U_FILE_SEP_STRING"testdata"U_FILE_SEP_STRING;
+    srcDataDir = U_TOPSRCDIR U_FILE_SEP_STRING "test" U_FILE_SEP_STRING "testdata" U_FILE_SEP_STRING;
 #else
     srcDataDir = ".."U_FILE_SEP_STRING".."U_FILE_SEP_STRING"test"U_FILE_SEP_STRING"testdata"U_FILE_SEP_STRING;
     FILE *f = fopen(".."U_FILE_SEP_STRING".."U_FILE_SEP_STRING"test"U_FILE_SEP_STRING"testdata"U_FILE_SEP_STRING"rbbitst.txt", "r");
@@ -712,6 +712,7 @@ static void U_CALLCONV DataDrivenTest(void)
 
             delete engine;
 
+            log_verbose("OK - %4d glyphs: %s\n", actual.glyphCount, id);
 free_expected:
             DELETE_ARRAY(expected.positions);
             DELETE_ARRAY(expected.indices);
@@ -991,7 +992,7 @@ static const char *ctest_dataOutDir()
     */
 #if defined (U_TOPBUILDDIR)
     {
-        dataOutDir = U_TOPBUILDDIR "data"U_FILE_SEP_STRING"out"U_FILE_SEP_STRING;
+        dataOutDir = U_TOPBUILDDIR "data" U_FILE_SEP_STRING "out" U_FILE_SEP_STRING;
     }
 #else
 

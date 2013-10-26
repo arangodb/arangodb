@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2005 - All Rights Reserved 
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved 
  *
  * Developed at DIT - Government of Bhutan
  *
@@ -14,7 +14,7 @@
  */
 
 #ifndef __TIBETANREORDERING_H
-#define __TIBETANORDERING_H
+#define __TIBETANREORDERING_H
 
 /**
  * \file

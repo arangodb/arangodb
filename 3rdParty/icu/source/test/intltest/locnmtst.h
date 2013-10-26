@@ -32,5 +32,6 @@ public:
     void TestKeywords(void);
     void TestUntranslatedKeywords(void);
     void TestPrivateUse(void);
+    void TestUldnDisplayContext(void);
 #endif
 };

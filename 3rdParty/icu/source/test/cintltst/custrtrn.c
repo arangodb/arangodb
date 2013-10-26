@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2001-2011, International Business Machines Corporation and
+ * Copyright (c) 2001-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -846,6 +846,19 @@ static void Test_UChar_UTF8_API(void){
             log_err("error: u_strToUTF8WithSub(no subchar) failed\n");
         }
     }
+    {
+        /*
+         * Test with an illegal lead byte that would be followed by more than 3 trail bytes.
+         * See ticket #10371.
+         */
+        static const char src[1]={ 0xf8 };
+        UChar out16[10];
+        err=U_ZERO_ERROR;
+        u_strFromUTF8(out16, LENGTHOF(out16), NULL, src, 1, &err);
+        if(err!=U_INVALID_CHAR_FOUND) {
+            log_err("error: u_strFromUTF8(5-byte lead byte) failed\n");
+        }
+    }
 }
 
 /* compare if two strings are equal, but match 0xfffd in the second string with anything in the first */
@@ -1404,6 +1417,7 @@ static void Test_widestrs()
         err = U_ZERO_ERROR;
         wl = (int32_t)uprv_wcslen(wcs);
         cp = u_strFromWCS(rts, rtcap, &rtl, wcs, wl, &err);
+        (void)cp;    /* Suppress set but not used warning. */
         if (U_FAILURE(err)) {
                 errname = u_errorName(err);
                 fprintf(stderr, "test_widestrs: ucnv_wcstombs error: %s!\n",errname);

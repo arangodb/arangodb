@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2010-2012, International Business Machines Corporation and
+* Copyright (C) 2010-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -208,15 +208,15 @@ NumberingSystem::createInstanceByName(const char *name, UErrorCode& status) {
 NumberingSystem::~NumberingSystem() {
 }
 
-int32_t NumberingSystem::getRadix() {
+int32_t NumberingSystem::getRadix() const {
     return radix;
 }
 
-UnicodeString NumberingSystem::getDescription() {
+UnicodeString NumberingSystem::getDescription() const {
     return desc;
 }
 
-const char * NumberingSystem::getName() {
+const char * NumberingSystem::getName() const {
     return name;
 }
 

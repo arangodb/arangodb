@@ -1,7 +1,7 @@
 /*
  *************************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1996-2011, International Business Machines Corporation and
+ * Copyright (c) 1996-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  *************************************************************************
  */
@@ -64,8 +64,6 @@ Normalizer::Normalizer(const Normalizer &copy) :
 {
     init();
 }
-
-static const UChar _NUL=0;
 
 void
 Normalizer::init() {

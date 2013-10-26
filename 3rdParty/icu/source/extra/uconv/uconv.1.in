@@ -2,7 +2,7 @@
 .\"
 .\" uconv.1: manual page for the uconv utility.
 .\"
-.\" Copyright (C) 2000-2010 IBM, Inc. and others.
+.\" Copyright (C) 2000-2013 IBM, Inc. and others.
 .\"
 .\" Manual page by Yves Arrouye <yves@realnames.com>.
 .\"
@@ -341,7 +341,7 @@ is the hexadecimal value of the Unicode codepoint.
 .TP
 .B escape-xml-dec
 Replace the missing characters with a string of the format
-.BR &#x\fInnnn\fP; ,
+.BR &#\fInnnn\fP; ,
 where
 .I nnnn
 is the decimal value of the Unicode codepoint.

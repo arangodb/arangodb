@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 2011-2012, International Business Machines Corporation and    *
+ * Copyright (C) 2011-2013, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  */
@@ -184,10 +184,11 @@ public:
 
     TimeZoneNames::MatchInfoCollection* find(const UnicodeString& text, int32_t start, uint32_t types, UErrorCode& status) const;
 
+    static UnicodeString& getDefaultExemplarLocationName(const UnicodeString& tzID, UnicodeString& name);
+
 private:
 
     Locale fLocale;
-    UMTX fLock;
 
     UResourceBundle* fZoneStrings;
 

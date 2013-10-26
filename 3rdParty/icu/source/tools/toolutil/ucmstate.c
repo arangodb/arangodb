@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2011, International Business Machines
+*   Copyright (C) 2003-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -1028,7 +1028,7 @@ ucm_countChars(UCMStates *states,
     }
 
     if(offset!=0) {
-        fprintf(stderr, "ucm error: byte sequence too short, ends in non-final state %hu\n", state);
+        fprintf(stderr, "ucm error: byte sequence too short, ends in non-final state %u\n", state);
         return -1;
     }
 

@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2012, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
  
@@ -335,7 +335,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
             for(loop = 0; loop < DEPTH; ++loop) {
                 if (loop > 0)  {
                     d[loop] = fmt->parse(s[loop-1], status);
-                    failure(status, "fmt->parse", s[loop-1]+" in locale: " + origLocale.getName());
+                    failure(status, "fmt->parse", s[loop-1]+" in locale: " + origLocale.getName() + " with pattern: " + pat);
                     status = U_ZERO_ERROR; /* any error would have been reported */
                 }
 

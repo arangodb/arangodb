@@ -54,8 +54,8 @@
 #include "sprpimpl.h"
 #include "propname.h"
 #include "rbbidata.h"
-#include "triedict.h"
 #include "utrie2.h"
+#include "dictionarydata.h"
 
 /* swapping implementations in i18n */
 
@@ -84,7 +84,7 @@ upname_swap(const UDataSwapper *ds,
     /* check data format and format version */
     const UDataInfo *pInfo=
         reinterpret_cast<const UDataInfo *>(
-            reinterpret_cast<const char *>(inData)+4);
+            static_cast<const char *>(inData)+4);
     if(!(
         pInfo->dataFormat[0]==0x70 &&   /* dataFormat="pnam" */
         pInfo->dataFormat[1]==0x6e &&
@@ -100,8 +100,8 @@ upname_swap(const UDataSwapper *ds,
         return 0;
     }
 
-    const uint8_t *inBytes=reinterpret_cast<const uint8_t *>(inData)+headerSize;
-    uint8_t *outBytes=reinterpret_cast<uint8_t *>(outData)+headerSize;
+    const uint8_t *inBytes=static_cast<const uint8_t *>(inData)+headerSize;
+    uint8_t *outBytes=static_cast<uint8_t *>(outData)+headerSize;
 
     if(length>=0) {
         length-=headerSize;
@@ -653,7 +653,7 @@ test_swap(const UDataSwapper *ds,
     /* udata_swapDataHeader checks the arguments */
     headerSize=udata_swapDataHeader(ds, inData, length, outData, pErrorCode);
     if(pErrorCode==NULL || U_FAILURE(*pErrorCode)) {
-        udata_printError(ds, "test_swap(): data header swap failed %s\n", u_errorName(*pErrorCode));
+        udata_printError(ds, "test_swap(): data header swap failed %s\n", pErrorCode != NULL ? u_errorName(*pErrorCode) : "pErrorCode is NULL");
         return 0;
     }
 
@@ -734,7 +734,7 @@ static const struct {
 #endif
 #if !UCONFIG_NO_BREAK_ITERATION
     { { 0x42, 0x72, 0x6b, 0x20 }, ubrk_swap },          /* dataFormat="Brk " */
-    { { 0x54, 0x72, 0x44, 0x63 }, triedict_swap },      /* dataFormat="TrDc " */
+    { { 0x44, 0x69, 0x63, 0x74 }, udict_swap },         /* dataFormat="Dict" */
 #endif
     { { 0x70, 0x6e, 0x61, 0x6d }, upname_swap },        /* dataFormat="pnam" */
     { { 0x75, 0x6e, 0x61, 0x6d }, uchar_swapNames },    /* dataFormat="unam" */

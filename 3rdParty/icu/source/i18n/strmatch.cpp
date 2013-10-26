@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (c) 2001-2011, International Business Machines Corporation
+*   Copyright (c) 2001-2012, International Business Machines Corporation
 *   and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -65,7 +65,10 @@ UnicodeFunctor* StringMatcher::clone() const {
  * and return the pointer.
  */
 UnicodeMatcher* StringMatcher::toMatcher() const {
-    return (UnicodeMatcher*) this;
+  StringMatcher  *nonconst_this = const_cast<StringMatcher *>(this);
+  UnicodeMatcher *nonconst_base = static_cast<UnicodeMatcher *>(nonconst_this);
+  
+  return nonconst_base;
 }
 
 /**
@@ -73,7 +76,10 @@ UnicodeMatcher* StringMatcher::toMatcher() const {
  * and return the pointer.
  */
 UnicodeReplacer* StringMatcher::toReplacer() const {
-    return (UnicodeReplacer*) this;
+  StringMatcher  *nonconst_this = const_cast<StringMatcher *>(this);
+  UnicodeReplacer *nonconst_base = static_cast<UnicodeReplacer *>(nonconst_this);
+  
+  return nonconst_base;
 }
 
 /**

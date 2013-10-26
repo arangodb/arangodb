@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2001-2008, International Business Machines
+*   Copyright (C) 2001-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -54,7 +54,10 @@ UnicodeFunctor* Quantifier::clone() const {
  * and return the pointer.
  */
 UnicodeMatcher* Quantifier::toMatcher() const {
-    return (UnicodeMatcher*) this;
+  Quantifier  *nonconst_this = const_cast<Quantifier *>(this);
+  UnicodeMatcher *nonconst_base = static_cast<UnicodeMatcher *>(nonconst_this);
+  
+  return nonconst_base;
 }
 
 UMatchDegree Quantifier::matches(const Replaceable& text,

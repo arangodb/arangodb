@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/gsw.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/gsw.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/gsw.xml
+ * ICU <specials> source: <path>/common/main/gsw.xml
  */
 gsw{
     Countries{
@@ -42,7 +42,7 @@ gsw{
         155{"Weschteuroopa"}
         419{"Latiinameerika"}
         AD{"Andorra"}
-        AE{"Veräinigti Arabischi Emiräät"}
+        AE{"Veräinigti Arabischi Emirate"}
         AF{"Afganischtan"}
         AG{"Antigua und Barbuda"}
         AI{"Anguilla"}
@@ -91,11 +91,10 @@ gsw{
         CN{"Chiina"}
         CO{"Kolumbie"}
         CR{"Coschta Rica"}
-        CS{"Särbie und Monteneegro"}
         CU{"Kuba"}
         CV{"Kap Verde"}
         CX{"Wienachts-Insle"}
-        CY{"Tsüpere"}
+        CY{"Zypere"}
         CZ{"Tschechischi Republik"}
         DE{"Tüütschland"}
         DJ{"Tschibuuti"}
@@ -109,7 +108,7 @@ gsw{
         EH{"Weschtsahara"}
         ER{"Äritreea"}
         ES{"Schpanie"}
-        ET{"Äzioopie"}
+        ET{"Äthiopie"}
         EU{"Europääischi Unioon"}
         FI{"Finnland"}
         FJ{"Fitschi"}
@@ -169,7 +168,7 @@ gsw{
         KZ{"Kasachschtan"}
         LA{"Laaos"}
         LB{"Libanon"}
-        LC{"Sankta Lutschiia"}
+        LC{"St. Lutschiia"}
         LI{"Liächteschtäi"}
         LK{"Schri Lanka"}
         LR{"Libeeria"}
@@ -187,7 +186,7 @@ gsw{
         MH{"Marshallinsle"}
         MK{"Mazedoonie"}
         ML{"Maali"}
-        MM{"Müanmar"}
+        MM{"Myanmar (Burma)"}
         MN{"Mongolei"}
         MO{"Sonderverwaltigszone Macao"}
         MP{"Nördlichi Mariaane"}
@@ -199,7 +198,7 @@ gsw{
         MV{"Malediiwe"}
         MW{"Malaawi"}
         MX{"Mexiko"}
-        MY{"Malaisia"}
+        MY{"Maläisia"}
         MZ{"Mosambik"}
         NA{"Namiibia"}
         NC{"Nöikaledoonie"}
@@ -207,7 +206,7 @@ gsw{
         NF{"Norfolk-Insle"}
         NG{"Nigeeria"}
         NI{"Nicaraagua"}
-        NL{"Niderland"}
+        NL{"Holland"}
         NO{"Norweege"}
         NP{"Neepal"}
         NR{"Nauru"}
@@ -233,7 +232,7 @@ gsw{
         RE{"Reünioon"}
         RO{"Rumäänie"}
         RS{"Särbie"}
-        RU{"Russischi Föderazioon"}
+        RU{"Russland"}
         RW{"Ruanda"}
         SA{"Saudi-Araabie"}
         SB{"Salomoone"}
@@ -248,7 +247,7 @@ gsw{
         SL{"Sierra Leoone"}
         SM{"San Mariino"}
         SN{"Senegal"}
-        SO{"Somaalia"}
+        SO{"Somaalie"}
         SR{"Surinam"}
         ST{"Sao Tome und Prinssipe"}
         SV{"El Salvador"}
@@ -277,7 +276,7 @@ gsw{
         UY{"Uruguay"}
         UZ{"Uschbeekischtan"}
         VA{"Vatikanstadt"}
-        VC{"Sankt Wässä und d’Grönadiine"}
+        VC{"St. Vincent und d’Grönadiine"}
         VE{"Venezueela"}
         VG{"Britischi Jungfere-Insle"}
         VI{"Amerikaanischi Jungfere-Insle"}
@@ -292,5 +291,9 @@ gsw{
         ZW{"Simbabwe"}
         ZZ{"Unbekannti oder ungültigi Regioon"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        HK{"Hongkong"}
+        MO{"Macao"}
+    }
+    Version{"2.0.92.87"}
 }

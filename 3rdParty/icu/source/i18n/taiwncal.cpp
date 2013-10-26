@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
- * Copyright (C) 2003-2008, International Business Machines Corporation and    *
- * others. All Rights Reserved.                                                *
+ * Copyright (C) 2003-2013, International Business Machines Corporation and
+ * others. All Rights Reserved.
  *******************************************************************************
  *
  * File TAIWNCAL.CPP
@@ -131,65 +131,21 @@ void TaiwanCalendar::timeToFields(UDate theTime, UBool quick, UErrorCode& status
 }
 #endif
 
-// default century
-const UDate     TaiwanCalendar::fgSystemDefaultCentury        = DBL_MIN;
-const int32_t   TaiwanCalendar::fgSystemDefaultCenturyYear    = -1;
-
-UDate           TaiwanCalendar::fgSystemDefaultCenturyStart       = DBL_MIN;
-int32_t         TaiwanCalendar::fgSystemDefaultCenturyStartYear   = -1;
-
+/**
+ * The system maintains a static default century start date and Year.  They are
+ * initialized the first time they are used.  Once the system default century date 
+ * and year are set, they do not change.
+ */
+static UDate           gSystemDefaultCenturyStart       = DBL_MIN;
+static int32_t         gSystemDefaultCenturyStartYear   = -1;
+static icu::UInitOnce  gSystemDefaultCenturyInit        = U_INITONCE_INITIALIZER;
 
 UBool TaiwanCalendar::haveDefaultCentury() const
 {
     return TRUE;
 }
 
-UDate TaiwanCalendar::defaultCenturyStart() const
-{
-    return internalGetDefaultCenturyStart();
-}
-
-int32_t TaiwanCalendar::defaultCenturyStartYear() const
-{
-    return internalGetDefaultCenturyStartYear();
-}
-
-UDate
-TaiwanCalendar::internalGetDefaultCenturyStart() const
-{
-    // lazy-evaluate systemDefaultCenturyStart
-    UBool needsUpdate;
-    UMTX_CHECK(NULL, (fgSystemDefaultCenturyStart == fgSystemDefaultCentury), needsUpdate);
-
-    if (needsUpdate) {
-        initializeSystemDefaultCentury();
-    }
-
-    // use defaultCenturyStart unless it's the flag value;
-    // then use systemDefaultCenturyStart
-
-    return fgSystemDefaultCenturyStart;
-}
-
-int32_t
-TaiwanCalendar::internalGetDefaultCenturyStartYear() const
-{
-    // lazy-evaluate systemDefaultCenturyStartYear
-    UBool needsUpdate;
-    UMTX_CHECK(NULL, (fgSystemDefaultCenturyStart == fgSystemDefaultCentury), needsUpdate);
-
-    if (needsUpdate) {
-        initializeSystemDefaultCentury();
-    }
-
-    // use defaultCenturyStart unless it's the flag value;
-    // then use systemDefaultCenturyStartYear
-
-    return    fgSystemDefaultCenturyStartYear;
-}
-
-void
-TaiwanCalendar::initializeSystemDefaultCentury()
+static void U_CALLCONV initializeSystemDefaultCentury()
 {
     // initialize systemDefaultCentury and systemDefaultCenturyYear based
     // on the current time.  They'll be set to 80 years before
@@ -200,20 +156,25 @@ TaiwanCalendar::initializeSystemDefaultCentury()
     {
         calendar.setTime(Calendar::getNow(), status);
         calendar.add(UCAL_YEAR, -80, status);
-        UDate    newStart =  calendar.getTime(status);
-        int32_t  newYear  =  calendar.get(UCAL_YEAR, status);
-        umtx_lock(NULL);
-        if (fgSystemDefaultCenturyStart == fgSystemDefaultCentury)
-        {
-            fgSystemDefaultCenturyStartYear = newYear;
-            fgSystemDefaultCenturyStart = newStart;
-        }
-        umtx_unlock(NULL);
+
+        gSystemDefaultCenturyStart = calendar.getTime(status);
+        gSystemDefaultCenturyStartYear = calendar.get(UCAL_YEAR, status);
     }
     // We have no recourse upon failure unless we want to propagate the failure
     // out.
 }
 
+UDate TaiwanCalendar::defaultCenturyStart() const {
+    // lazy-evaluate systemDefaultCenturyStart
+    umtx_initOnce(gSystemDefaultCenturyInit, &initializeSystemDefaultCentury);
+    return gSystemDefaultCenturyStart;
+}
+
+int32_t TaiwanCalendar::defaultCenturyStartYear() const {
+    // lazy-evaluate systemDefaultCenturyStartYear
+    umtx_initOnce(gSystemDefaultCenturyInit, &initializeSystemDefaultCentury);
+    return gSystemDefaultCenturyStartYear;
+}
 
 U_NAMESPACE_END
 

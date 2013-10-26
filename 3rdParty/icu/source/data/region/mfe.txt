@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/mfe.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mfe.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/mfe.xml
+ * ICU <specials> source: <path>/common/main/mfe.xml
  */
 mfe{
     Countries{
@@ -56,7 +56,6 @@ mfe{
         CN{"Lasinn"}
         CO{"Kolonbi"}
         CR{"Costa Rica"}
-        CS{"Serbi-ek-Montenegro"}
         CU{"Cuba"}
         CV{"Kap-Ver"}
         CY{"Cyprus"}
@@ -238,5 +237,5 @@ mfe{
         ZM{"Zambi"}
         ZW{"Zimbabwe"}
     }
-    Version{"2.0.64.50"}
+    Version{"2.0.92.75"}
 }

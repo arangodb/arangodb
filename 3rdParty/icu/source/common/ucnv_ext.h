@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2003-2007, International Business Machines
+*   Copyright (C) 2003-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -29,10 +29,12 @@
 /*
  * See icuhtml/design/conversion/conversion_extensions.html
  *
- * Conversion extensions serve two purposes:
+ * Conversion extensions serve three purposes:
  * 1. They support m:n mappings.
  * 2. They support extension-only conversion files that are used together
  *    with the regular conversion data in base files.
+ * 3. They support mappings with more complicated meta data,
+ *    for example "good one-way" mappings (|4).
  *
  * A base file may contain an extension table (explicitly requested or
  * implicitly generated for m:n mappings), but its extension table is not
@@ -229,11 +231,13 @@
  *         return no mapping, but request for <subchar1>;
  *       }
  *       if(bit 31 set) {
- *         roundtrip;
+ *         roundtrip (|0);
+ *       } else if(bit 30 set) {
+ *         "good one-way" mapping (|4); -- new in ICU4C 51, _MBCSHeader.version 5.4/4.4
  *       } else {
- *         fallback;
+ *         normal fallback (|1);
  *       }
- *       // bits 30..29 reserved, 0
+ *       // bit 29 reserved, 0
  *       length=(value>>24)&0x1f; (bits 28..24)
  *       if(length==1..3) {
  *         bits 23..0 contain 1..3 bytes, padded with 00s on the left;
@@ -444,7 +448,9 @@ ucnv_extGetUnicodeSet(const UConverterSharedData *sharedData,
 
 #define UCNV_EXT_FROM_U_LENGTH_SHIFT 24
 #define UCNV_EXT_FROM_U_ROUNDTRIP_FLAG ((uint32_t)1<<31)
-#define UCNV_EXT_FROM_U_RESERVED_MASK 0x60000000
+#define UCNV_EXT_FROM_U_GOOD_ONE_WAY_FLAG 0x40000000
+#define UCNV_EXT_FROM_U_STATUS_MASK 0xc0000000
+#define UCNV_EXT_FROM_U_RESERVED_MASK 0x20000000
 #define UCNV_EXT_FROM_U_DATA_MASK 0xffffff
 
 /* special value for "no mapping" to <subchar1> (impossible roundtrip to 0 bytes, value 01) */

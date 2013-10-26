@@ -33,6 +33,8 @@
 #include "ustr.h"
 #include "prscmnts.h"
 #include "unicode/unistr.h"
+#include "unicode/utf8.h"
+#include "unicode/utf16.h"
 #include <time.h>
 
 U_NAMESPACE_USE
@@ -251,7 +253,7 @@ static char* convertAndEscape(char** pDest, int32_t destCap, int32_t* destLength
             return NULL;
         }
 
-        if((destLen+UTF8_CHAR_LENGTH(c)) < destCap){
+        if((destLen+U8_LENGTH(c)) < destCap){
 
             /* ASCII Range */
             if(c <=0x007F){

@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ln.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ln.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ln.xml
+ * ICU <specials> source: <path>/common/main/ln.xml
  */
 ln{
     Countries{
@@ -20,6 +20,7 @@ ln{
         AM{"Amɛni"}
         AN{"Antiyɛ ya Olandɛ"}
         AO{"Angóla"}
+        AQ{"Antarctique"}
         AR{"Arizantinɛ"}
         AS{"Samoa ya Ameriki"}
         AT{"Otilisi"}
@@ -56,7 +57,6 @@ ln{
         CN{"Sinɛ"}
         CO{"Kolombi"}
         CR{"Kositarika"}
-        CS{"Serebi mpé Monténegro"}
         CU{"Kiba"}
         CV{"Bisanga bya Kapevɛrɛ"}
         CY{"Sípɛlɛ"}
@@ -83,6 +83,7 @@ ln{
         GD{"Gelenadɛ"}
         GE{"Zorzi"}
         GF{"Giyanɛ ya Falánsɛ"}
+        GG{"Guernesey"}
         GH{"Gana"}
         GI{"Zibatalɛ"}
         GL{"Gowelande"}
@@ -91,10 +92,12 @@ ln{
         GP{"Gwadɛlupɛ"}
         GQ{"Ginɛ́kwatɛ́lɛ"}
         GR{"Geleki"}
+        GS{"Îles de Géorgie du Sud et Sandwich du Sud"}
         GT{"Gwatémala"}
         GU{"Gwamɛ"}
         GW{"Ginɛbisau"}
         GY{"Giyane"}
+        HM{"Ile Heard et Iles McDonald"}
         HN{"Ondurasɛ"}
         HR{"Krowasi"}
         HT{"Ayiti"}
@@ -136,10 +139,12 @@ ln{
         MA{"Marokɛ"}
         MC{"Monako"}
         MD{"Molidavi"}
+        ME{"Monténégro"}
         MG{"Madagasikari"}
         MH{"Bisanga bya Marishalɛ"}
         MK{"Masedwanɛ"}
         ML{"Malí"}
+        MM{"Birmanie"}
         MN{"Mongolí"}
         MP{"Bisanga bya Marianɛ ya nɔ́rdi"}
         MQ{"Martiniki"}
@@ -182,6 +187,7 @@ ln{
         QA{"Katari"}
         RE{"Lenyo"}
         RO{"Romani"}
+        RS{"Serbie"}
         RU{"Risí"}
         RW{"Rwanda"}
         SA{"Alabi Sawuditɛ"}
@@ -204,6 +210,7 @@ ln{
         SZ{"Swazilandi"}
         TC{"Bisanga bya Turki mpé Kaiko"}
         TD{"Tsádi"}
+        TF{"Terres australes et antarctiques françaises"}
         TG{"Togo"}
         TH{"Tailandɛ"}
         TJ{"Tazikisitá"}
@@ -237,5 +244,5 @@ ln{
         ZM{"Zambi"}
         ZW{"Zimbabwe"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

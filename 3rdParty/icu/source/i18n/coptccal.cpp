@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
-* Copyright (C) 2003 - 2009, International Business Machines Corporation and  *
-* others. All Rights Reserved.                                                *
+* Copyright (C) 2003 - 2013, International Business Machines Corporation and
+* others. All Rights Reserved.
 *******************************************************************************
 */
 
@@ -94,61 +94,45 @@ CopticCalendar::handleComputeFields(int32_t julianDay, UErrorCode &/*status*/)
     internalSet(UCAL_DAY_OF_YEAR, (30 * month) + day);
 }
 
-const UDate     CopticCalendar::fgSystemDefaultCentury        = DBL_MIN;
-const int32_t   CopticCalendar::fgSystemDefaultCenturyYear    = -1;
+/**
+ * The system maintains a static default century start date and Year.  They are
+ * initialized the first time they are used.  Once the system default century date 
+ * and year are set, they do not change.
+ */
+static UDate           gSystemDefaultCenturyStart       = DBL_MIN;
+static int32_t         gSystemDefaultCenturyStartYear   = -1;
+static icu::UInitOnce  gSystemDefaultCenturyInit        = U_INITONCE_INITIALIZER;
 
-UDate           CopticCalendar::fgSystemDefaultCenturyStart       = DBL_MIN;
-int32_t         CopticCalendar::fgSystemDefaultCenturyStartYear   = -1;
+
+static void U_CALLCONV initializeSystemDefaultCentury() {
+    UErrorCode status = U_ZERO_ERROR;
+    CopticCalendar calendar(Locale("@calendar=coptic"), status);
+    if (U_SUCCESS(status)) {
+        calendar.setTime(Calendar::getNow(), status);
+        calendar.add(UCAL_YEAR, -80, status);
+        gSystemDefaultCenturyStart = calendar.getTime(status);
+        gSystemDefaultCenturyStartYear = calendar.get(UCAL_YEAR, status);
+    }
+    // We have no recourse upon failure unless we want to propagate the failure
+    // out.
+}
 
 UDate
 CopticCalendar::defaultCenturyStart() const
 {
-    initializeSystemDefaultCentury();
-
-    // use defaultCenturyStart unless it's the flag value;
-    // then use systemDefaultCenturyStart
-    return fgSystemDefaultCenturyStart;
+    // lazy-evaluate systemDefaultCenturyStart
+    umtx_initOnce(gSystemDefaultCenturyInit, &initializeSystemDefaultCentury);
+    return gSystemDefaultCenturyStart;
 }
 
 int32_t
 CopticCalendar::defaultCenturyStartYear() const
 {
-    initializeSystemDefaultCentury();
-
-    // use defaultCenturyStart unless it's the flag value;
-    // then use systemDefaultCenturyStart
-    return fgSystemDefaultCenturyStartYear;
-}
-
-void
-CopticCalendar::initializeSystemDefaultCentury()
-{
     // lazy-evaluate systemDefaultCenturyStart
-    UBool needsUpdate;
-    UMTX_CHECK(NULL, (fgSystemDefaultCenturyStart == fgSystemDefaultCentury), needsUpdate);
-
-    if (!needsUpdate) {
-        return;
-    }
-
-    UErrorCode status = U_ZERO_ERROR;
-
-    CopticCalendar calendar(Locale("@calendar=coptic"), status);
-    if (U_SUCCESS(status)) {
-        calendar.setTime(Calendar::getNow(), status);
-        calendar.add(UCAL_YEAR, -80, status);
-        UDate    newStart = calendar.getTime(status);
-        int32_t  newYear  = calendar.get(UCAL_YEAR, status);
-        {
-            umtx_lock(NULL);
-            fgSystemDefaultCenturyStartYear = newYear;
-            fgSystemDefaultCenturyStart = newStart;
-            umtx_unlock(NULL);
-        }
-    }
-    // We have no recourse upon failure unless we want to propagate the failure
-    // out.
+    umtx_initOnce(gSystemDefaultCenturyInit, &initializeSystemDefaultCentury);
+    return gSystemDefaultCenturyStartYear;
 }
+
 
 int32_t
 CopticCalendar::getJDEpochOffset() const

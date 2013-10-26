@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- *   Copyright (C) 1999-2011, International Business Machines
+ *   Copyright (C) 1999-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *******************************************************************************
  *   file name:  gennames.c
@@ -30,7 +30,7 @@
 #include <time.h>
 #endif
 
-#if U_PLATFORM_IS_LINUX_BASED
+#if U_PLATFORM_IS_LINUX_BASED && U_HAVE_ELF_H
 #   define U_ELF
 #endif
 

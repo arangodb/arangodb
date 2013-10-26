@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2009, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -34,6 +34,8 @@ void addConvert(TestNode** root)
     addBOCU1Tests(root);
     addTestConvertErrorCallBack(root);
     addTestEuroRegression(root);
+#if !UCONFIG_NO_LEGACY_CONVERSION
     addTestConverterFallBack(root);
+#endif
     addExtraTests(root);
 }

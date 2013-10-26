@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -31,6 +31,19 @@
         target[0] = U16_LEAD(c);                                \
         target[1] = U16_TRAIL(c);                               \
         len=2;                                                  \
+        target +=2;                                             \
+    }                                                           \
+}
+
+#define U_APPEND_CHAR32_ONLY(c,target) {                             \
+    if (c <= 0xffff)                                            \
+    {                                                           \
+        *(target)++ = (UChar) c;                                \
+    }                                                           \
+    else                                                        \
+    {                                                           \
+        target[0] = U16_LEAD(c);                                \
+        target[1] = U16_TRAIL(c);                               \
         target +=2;                                             \
     }                                                           \
 }

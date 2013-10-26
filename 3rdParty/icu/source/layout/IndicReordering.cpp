@@ -1,6 +1,6 @@
 /*
 / *
- * (C) Copyright IBM Corp. 1998-2012 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -632,6 +632,11 @@ le_int32 IndicReordering::reorder(const LEUnicode *chars, le_int32 charCount, le
 
     MPreFixups *mpreFixups = NULL;
     const IndicClassTable *classTable = IndicClassTable::getScriptClassTable(scriptCode);
+
+    if(classTable==NULL) {
+      success = LE_MEMORY_ALLOCATION_ERROR;
+      return 0;
+    }
 
     if (classTable->scriptFlags & SF_MPRE_FIXUP) {
         mpreFixups = new MPreFixups(charCount);

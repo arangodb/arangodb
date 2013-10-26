@@ -1,0 +1,41 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/jgo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/jgo.xml
+ */
+jgo{
+    Keys{
+        currency{"Ŋkáp"}
+        numbers{"Pɛnɔ́mba"}
+    }
+    Languages{
+        ar{"Alâbɛ"}
+        de{"Njáman"}
+        el{"Ŋgɛlɛ̂k"}
+        en{"Aŋgɛlúshi"}
+        fr{"Fɛlánci"}
+        jgo{"Ndaꞌa"}
+        und{"cú-pʉɔ yi pɛ́ ká kɛ́ jí"}
+        zh{"Shinwâ"}
+    }
+    Scripts{
+        Latn{"mík -ŋwa’nɛ yi ɛ́ líŋɛ́nɛ Latɛ̂ŋ"}
+        Zxxx{"ntúu yi pɛ́ ká ŋwa’nε"}
+        Zzzz{"ntɛ-ŋwa’nɛ yí pɛ́ ká kɛ́ jí"}
+    }
+    Types{
+        calendar{
+            gregorian{"mɛlɛ́’-mɛkát"}
+        }
+        numbers{
+            latn{"pɛnɔ́mba"}
+        }
+    }
+    Version{"2.0.92.87"}
+}

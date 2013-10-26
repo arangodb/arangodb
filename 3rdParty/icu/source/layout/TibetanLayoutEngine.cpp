@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved 
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved 
  *
  * Developed at DIT - Government of Bhutan
  *
@@ -24,7 +24,7 @@ U_NAMESPACE_BEGIN
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(TibetanOpenTypeLayoutEngine)
 
 TibetanOpenTypeLayoutEngine::TibetanOpenTypeLayoutEngine(const LEFontInstance *fontInstance, le_int32 scriptCode, le_int32 languageCode,
-                    le_int32 typoFlags, const GlyphSubstitutionTableHeader *gsubTable, LEErrorCode &success)
+                                                         le_int32 typoFlags, const LEReferenceTo<GlyphSubstitutionTableHeader> &gsubTable, LEErrorCode &success)
     : OpenTypeLayoutEngine(fontInstance, scriptCode, languageCode, typoFlags, gsubTable, success)
 {
     fFeatureMap   = TibetanReordering::getFeatureMap(fFeatureMapCount);

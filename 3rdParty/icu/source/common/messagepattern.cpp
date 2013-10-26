@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2011, International Business Machines
+*   Copyright (C) 2011-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  messagepattern.cpp
@@ -41,10 +41,12 @@ static const UChar u_lessThan=0x3C;
 static const UChar u_equal=0x3D;
 static const UChar u_A=0x41;
 static const UChar u_C=0x43;
+static const UChar u_D=0x44;
 static const UChar u_E=0x45;
 static const UChar u_H=0x48;
 static const UChar u_I=0x49;
 static const UChar u_L=0x4C;
+static const UChar u_N=0x4E;
 static const UChar u_O=0x4F;
 static const UChar u_P=0x50;
 static const UChar u_R=0x52;
@@ -54,11 +56,13 @@ static const UChar u_U=0x55;
 static const UChar u_Z=0x5A;
 static const UChar u_a=0x61;
 static const UChar u_c=0x63;
+static const UChar u_d=0x64;
 static const UChar u_e=0x65;
 static const UChar u_f=0x66;
 static const UChar u_h=0x68;
 static const UChar u_i=0x69;
 static const UChar u_l=0x6C;
+static const UChar u_n=0x6E;
 static const UChar u_o=0x6F;
 static const UChar u_p=0x70;
 static const UChar u_r=0x72;
@@ -89,8 +93,11 @@ public:
                   int32_t length,
                   UErrorCode &errorCode);
     UBool ensureCapacityForOneMore(int32_t oldLength, UErrorCode &errorCode);
-    UBool memEquals(const MessagePatternList<T, stackCapacity> &other, int32_t length) const {
-        return 0==uprv_memcmp(a.getAlias(), other.a.getAlias(), length*sizeof(T));
+    UBool equals(const MessagePatternList<T, stackCapacity> &other, int32_t length) const {
+        for(int32_t i=0; i<length; ++i) {
+            if(a[i]!=other.a[i]) { return FALSE; }
+        }
+        return TRUE;
     }
 
     MaybeStackArray<T, stackCapacity> a;
@@ -175,7 +182,7 @@ MessagePattern::init(UErrorCode &errorCode) {
 }
 
 MessagePattern::MessagePattern(const MessagePattern &other)
-        : aposMode(other.aposMode), msg(other.msg),
+        : UObject(other), aposMode(other.aposMode), msg(other.msg),
           partsList(NULL), parts(NULL), partsLength(0),
           numericValuesList(NULL), numericValues(NULL), numericValuesLength(0),
           hasArgNames(other.hasArgNames), hasArgNumbers(other.hasArgNumbers),
@@ -310,7 +317,7 @@ MessagePattern::operator==(const MessagePattern &other) const {
         msg==other.msg &&
         // parts.equals(o.parts)
         partsLength==other.partsLength &&
-        (partsLength==0 || partsList->memEquals(*other.partsList, partsLength));
+        (partsLength==0 || partsList->equals(*other.partsList, partsLength));
     // No need to compare numericValues if msg and parts are the same.
 }
 
@@ -459,7 +466,7 @@ MessagePattern::parseMessage(int32_t index, int32_t msgStartLength,
                     aposMode==UMSGPAT_APOS_DOUBLE_REQUIRED ||
                     c==u_leftCurlyBrace || c==u_rightCurlyBrace ||
                     (parentType==UMSGPAT_ARG_TYPE_CHOICE && c==u_pipe) ||
-                    (parentType==UMSGPAT_ARG_TYPE_PLURAL && c==u_pound)
+                    (UMSGPAT_ARG_TYPE_HAS_PLURAL_STYLE(parentType) && c==u_pound)
                 ) {
                     // skip the quote-starting apostrophe
                     addPart(UMSGPAT_PART_TYPE_SKIP_SYNTAX, index-1, 1, 0, errorCode);
@@ -494,7 +501,7 @@ MessagePattern::parseMessage(int32_t index, int32_t msgStartLength,
                     needsAutoQuoting=TRUE;
                 }
             }
-        } else if(parentType==UMSGPAT_ARG_TYPE_PLURAL && c==u_pound) {
+        } else if(UMSGPAT_ARG_TYPE_HAS_PLURAL_STYLE(parentType) && c==u_pound) {
             // The unquoted # in a plural message fragment will be replaced
             // with the (number-offset).
             addPart(UMSGPAT_PART_TYPE_REPLACE_NUMBER, index-1, 1, 0, errorCode);
@@ -612,6 +619,10 @@ MessagePattern::parseArg(int32_t index, int32_t argStartLength, int32_t nestingL
                 argType=UMSGPAT_ARG_TYPE_PLURAL;
             } else if(isSelect(typeIndex)) {
                 argType=UMSGPAT_ARG_TYPE_SELECT;
+            }
+        } else if(length==13) {
+            if(isSelect(typeIndex) && isOrdinal(typeIndex+6)) {
+                argType=UMSGPAT_ARG_TYPE_SELECTORDINAL;
             }
         }
         // change the ARG_START type from NONE to argType
@@ -783,7 +794,7 @@ MessagePattern::parsePluralOrSelectStyle(UMessagePatternArgType argType,
             return index;
         }
         int32_t selectorIndex=index;
-        if(argType==UMSGPAT_ARG_TYPE_PLURAL && msg.charAt(selectorIndex)==u_equal) {
+        if(UMSGPAT_ARG_TYPE_HAS_PLURAL_STYLE(argType) && msg.charAt(selectorIndex)==u_equal) {
             // explicit-value plural selector: =double
             index=skipDouble(index+1);
             int32_t length=index-selectorIndex;
@@ -809,7 +820,7 @@ MessagePattern::parsePluralOrSelectStyle(UMessagePatternArgType argType,
                 return 0;
             }
             // Note: The ':' in "offset:" is just beyond the skipIdentifier() range.
-            if( argType==UMSGPAT_ARG_TYPE_PLURAL && length==6 && index<msg.length() &&
+            if( UMSGPAT_ARG_TYPE_HAS_PLURAL_STYLE(argType) && length==6 && index<msg.length() &&
                 0==msg.compare(selectorIndex, 7, kOffsetColon, 0, 7)
             ) {
                 // plural offset, not a selector
@@ -1061,6 +1072,19 @@ MessagePattern::isSelect(int32_t index) {
 }
 
 UBool
+MessagePattern::isOrdinal(int32_t index) {
+    UChar c;
+    return
+        ((c=msg.charAt(index++))==u_o || c==u_O) &&
+        ((c=msg.charAt(index++))==u_r || c==u_R) &&
+        ((c=msg.charAt(index++))==u_d || c==u_D) &&
+        ((c=msg.charAt(index++))==u_i || c==u_I) &&
+        ((c=msg.charAt(index++))==u_n || c==u_N) &&
+        ((c=msg.charAt(index++))==u_a || c==u_A) &&
+        ((c=msg.charAt(index))==u_l || c==u_L);
+}
+
+UBool
 MessagePattern::inMessageFormatPattern(int32_t nestingLevel) {
     return nestingLevel>0 || partsList->a[0].type==UMSGPAT_PART_TYPE_MSG_START;
 }
@@ -1149,8 +1173,6 @@ MessagePattern::setParseError(UParseError *parseError, int32_t index) {
     msg.extract(index, length, parseError->postContext);
     parseError->postContext[length]=0;
 }
-
-UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(MessagePattern)
 
 // MessageImpl ------------------------------------------------------------- ***
 

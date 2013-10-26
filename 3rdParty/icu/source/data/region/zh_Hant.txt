@@ -1,15 +1,16 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zh_Hant.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hant.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/zh_Hant.xml
+ * ICU <specials> source: <path>/common/main/zh_Hant.xml
  */
 zh_Hant{
+    %%Parent{"root"}
     Countries{
         001{"世界"}
         002{"非洲"}
@@ -57,7 +58,7 @@ zh_Hant{
         AT{"奧地利"}
         AU{"澳洲"}
         AW{"阿路巴"}
-        AX{"亞蘭群島"}
+        AX{"奧蘭群島"}
         AZ{"亞塞拜然"}
         BA{"波士尼亞與赫塞格維納"}
         BB{"巴貝多"}
@@ -67,11 +68,12 @@ zh_Hant{
         BG{"保加利亞"}
         BH{"巴林"}
         BI{"蒲隆地"}
-        BJ{"貝南"}
+        BJ{"貝寧"}
         BL{"聖巴瑟米"}
         BM{"百慕達"}
         BN{"汶萊"}
         BO{"玻利維亞"}
+        BQ{"荷蘭加勒比區"}
         BR{"巴西"}
         BS{"巴哈馬"}
         BT{"不丹"}
@@ -93,9 +95,9 @@ zh_Hant{
         CO{"哥倫比亞"}
         CP{"克里派頓島"}
         CR{"哥斯大黎加"}
-        CS{"塞爾維亞和蒙特尼哥羅"}
         CU{"古巴"}
         CV{"維德角"}
+        CW{"庫拉索"}
         CX{"聖誕島"}
         CY{"賽普勒斯"}
         CZ{"捷克共和國"}
@@ -103,7 +105,7 @@ zh_Hant{
         DG{"迪亞哥加西亞島"}
         DJ{"吉布地"}
         DK{"丹麥"}
-        DM{"多明尼加"}
+        DM{"多米尼克"}
         DO{"多明尼加共和國"}
         DZ{"阿爾及利亞"}
         EA{"休達與梅利利亞"}
@@ -123,7 +125,7 @@ zh_Hant{
         FR{"法國"}
         GA{"加彭"}
         GB{"英國"}
-        GD{"格瑞納達"}
+        GD{"格瑞那達"}
         GE{"喬治亞共和國"}
         GF{"法屬圭亞那"}
         GG{"根西島"}
@@ -132,13 +134,13 @@ zh_Hant{
         GL{"格陵蘭"}
         GM{"甘比亞"}
         GN{"幾內亞"}
-        GP{"哥德普洛"}
+        GP{"瓜地洛普"}
         GQ{"赤道幾內亞"}
         GR{"希臘"}
         GS{"南喬治亞與南三明治群島"}
         GT{"瓜地馬拉"}
         GU{"關島"}
-        GW{"幾內亞比索"}
+        GW{"幾內亞比紹"}
         GY{"蓋亞納"}
         HK{"中華人民共和國香港特別行政區"}
         HM{"赫德與麥克當諾群島"}
@@ -175,7 +177,7 @@ zh_Hant{
         LA{"寮國"}
         LB{"黎巴嫩"}
         LC{"聖露西亞"}
-        LI{"列支敦斯登"}
+        LI{"列支敦士登"}
         LK{"斯里蘭卡"}
         LR{"賴比瑞亞"}
         LS{"賴索扥"}
@@ -187,7 +189,7 @@ zh_Hant{
         MC{"摩納哥"}
         MD{"摩爾多瓦"}
         ME{"蒙特內哥羅"}
-        MF{"聖馬丁"}
+        MF{"法屬聖馬丁"}
         MG{"馬達加斯加"}
         MH{"馬紹爾群島"}
         MK{"馬其頓"}
@@ -198,7 +200,7 @@ zh_Hant{
         MP{"北馬里亞納群島"}
         MQ{"馬丁尼克島"}
         MR{"茅利塔尼亞"}
-        MS{"蒙特色拉特島"}
+        MS{"蒙塞拉特島"}
         MT{"馬爾他"}
         MU{"模里西斯"}
         MV{"馬爾地夫"}
@@ -226,10 +228,10 @@ zh_Hant{
         PH{"菲律賓"}
         PK{"巴基斯坦"}
         PL{"波蘭"}
-        PM{"聖彼德與密啟崙"}
-        PN{"皮特康"}
+        PM{"聖皮埃爾和密克隆群島"}
+        PN{"皮特肯群島"}
         PR{"波多黎各"}
-        PS{"巴勒斯坦"}
+        PS{"巴勒斯坦自治區"}
         PT{"葡萄牙"}
         PW{"帛琉"}
         PY{"巴拉圭"}
@@ -255,8 +257,10 @@ zh_Hant{
         SN{"塞內加爾"}
         SO{"索馬利亞"}
         SR{"蘇利南"}
+        SS{"南蘇丹"}
         ST{"聖多美及普林西比"}
         SV{"薩爾瓦多"}
+        SX{"荷屬聖馬丁"}
         SY{"敘利亞"}
         SZ{"史瓦濟蘭"}
         TA{"特里斯坦達庫尼亞群島"}
@@ -278,7 +282,7 @@ zh_Hant{
         TZ{"坦尚尼亞"}
         UA{"烏克蘭"}
         UG{"烏干達"}
-        UM{"美屬邊疆群島"}
+        UM{"美國本土外小島嶼"}
         US{"美國"}
         UY{"烏拉圭"}
         UZ{"烏茲別克"}
@@ -289,14 +293,22 @@ zh_Hant{
         VI{"美屬維京群島"}
         VN{"越南"}
         VU{"萬那杜"}
-        WF{"瓦利斯和福杜納群島"}
+        WF{"瓦利斯和富圖納群島"}
         WS{"薩摩亞群島"}
+        XK{"科索沃"}
         YE{"葉門"}
         YT{"馬約特"}
         ZA{"南非"}
         ZM{"尚比亞"}
         ZW{"辛巴威"}
-        ZZ{"未確定的區域"}
+        ZZ{"未知區域"}
     }
-    Version{"2.0.66.10"}
+    CountriesShort{
+        GB{"英國"}
+        HK{"香港"}
+        MO{"澳門"}
+        PS{"巴勒斯坦"}
+        US{"美國"}
+    }
+    Version{"2.0.93.8"}
 }

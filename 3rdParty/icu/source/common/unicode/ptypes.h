@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -16,6 +16,11 @@
 *   09/18/08    srl         Moved basic types back to ptypes.h from platform.h
 ******************************************************************************
 */
+
+/**
+ * \file
+ * \brief C API: Definitions of integer types of various widths
+ */
 
 #ifndef _PTYPES_H
 #define _PTYPES_H

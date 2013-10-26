@@ -1,15 +1,16 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/vai_Latn.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/vai_Latn.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/vai_Latn.xml
+ * ICU <specials> source: <path>/common/main/vai_Latn.xml
  */
 vai_Latn{
+    %%Parent{"root"}
     Currencies{
         AED{
             "AED",
@@ -20,7 +21,7 @@ vai_Latn{
             "Angola Kuwaŋza",
         }
         AUD{
-            "AU$",
+            "A$",
             "Ɔ́situwa Dala",
         }
         BHD{
@@ -217,6 +218,10 @@ vai_Latn{
         }
         ZMK{
             "ZMK",
+            "Zambiya Kuwacha (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Zambiya Kuwacha",
         }
         ZWD{
@@ -224,5 +229,5 @@ vai_Latn{
             "Zimbhabhuwe Dala",
         }
     }
-    Version{"2.0.67.8"}
+    Version{"2.0.92.87"}
 }

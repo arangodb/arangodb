@@ -1,5 +1,5 @@
 ## Makefile.in for ICU - test/testmap
-## Copyright (c) 2003-2011, International Business Machines Corporation and
+## Copyright (c) 2003-2012, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -20,7 +20,7 @@ CLEANFILES = *~ $(DEPS)
 TARGET = testmap$(EXEEXT)
 
 #DEFS = @DEFS@
-CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n 
+CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n  $(SHAREDLIBCPPFLAGS) $(SHAREDLIBCFLAGS)
 #CFLAGS += @CFLAGS@
 #CXXFLAGS = @CXXFLAGS@
 
@@ -66,7 +66,7 @@ Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	 && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 $(TARGET) : $(OBJECTS)
-	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS)
+	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS) $(CFLAGS) $(SHAREDLIBCFLAGS)
 	$(POST_BUILD_STEP)
 
 ifeq (,$(MAKECMDGOALS))

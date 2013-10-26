@@ -1,6 +1,6 @@
 /*
 ***************************************************************************
-* Copyright (C) 2008-2011, International Business Machines Corporation
+* Copyright (C) 2008-2013, International Business Machines Corporation
 * and others. All Rights Reserved.
 ***************************************************************************
 *
@@ -15,10 +15,10 @@
 
 #include "unicode/utypes.h"
 #include "unicode/uspoof.h"
-#include "utrie2.h"
 #include "unicode/uscript.h"
 #include "unicode/udata.h"
 
+#include "utrie2.h"
 
 #if !UCONFIG_NO_NORMALIZATION
 
@@ -37,10 +37,11 @@ U_NAMESPACE_BEGIN
 // Magic number for sanity checking spoof data.
 #define USPOOF_MAGIC 0x3845fdef
 
+class IdentifierInfo;
+class ScriptSet;
 class SpoofData;
 struct SpoofDataHeader;
 struct SpoofStringLengthsElement;
-class ScriptSet;
 
 /**
   *  Class SpoofImpl corresponds directly to the plain C API opaque type
@@ -65,7 +66,7 @@ public:
      *                       One of USPOOF_SL_TABLE_FLAG, USPOOF_MA_TABLE_FLAG, etc.
      *  @return   The length in UTF-16 code units of the substition string.
      */  
-    int32_t confusableLookup(UChar32 inChar, int32_t tableMask, UChar *destBuf) const;
+    int32_t confusableLookup(UChar32 inChar, int32_t tableMask, UnicodeString &destBuf) const;
 
     /** Set and Get AllowedLocales, implementations of the corresponding API */
     void setAllowedLocales(const char *localesList, UErrorCode &status);
@@ -83,22 +84,17 @@ public:
     // Return the test bit flag to be ORed into the eventual user return value
     //    if a Spoof opportunity is detected.
     void wholeScriptCheck(
-        const UChar *text, int32_t length, ScriptSet *result, UErrorCode &status) const;
+        const UnicodeString &text, ScriptSet *result, UErrorCode &status) const;
 	    
-    /** Scan a string to determine how many scripts it includes.
-     * Ignore characters with script=Common and scirpt=Inherited.
-     * @param    text     The UChar text to be scanned
-     * @param    length   The length of the input text, -1 for nul termintated.
-     * @param    pos      An out parameter, set to the first input postion at which
-     *                    a second script was encountered, ignoring Common and Inherited.
-     * @param    status   For errors.
-     * @return            the number of (non-common,inherited) scripts encountered,
-     *                    clipped to a max of two.
-     */
-    int32_t scriptScan(const UChar *text, int32_t length, int32_t &pos, UErrorCode &status) const;
-
     static UClassID U_EXPORT2 getStaticClassID(void);
     virtual UClassID getDynamicClassID(void) const;
+
+    // IdentifierInfo Cache. IdentifierInfo objects are somewhat expensive to create.
+    //                       Maintain a one-element cache, which is sufficient to avoid repeatedly
+    //                       creating new ones unless we get multi-thread concurrency in spoof
+    //                       check operations, which should be statistically uncommon.
+    IdentifierInfo *getIdentifierInfo(UErrorCode &status) const; 
+    void releaseIdentifierInfo(IdentifierInfo *idInfo) const;
 
     //
     // Data Members
@@ -113,6 +109,9 @@ public:
                                           //   for this Spoof Checker.  Defaults to all chars. 
 
     const char       *fAllowedLocales;    // The list of allowed locales.
+    URestrictionLevel fRestrictionLevel;  // The maximum restriction level for an acceptable identifier.
+
+    IdentifierInfo    *fCachedIdentifierInfo;    // Do not use directly. See getIdentifierInfo().:w
 };
 
 
@@ -179,67 +178,6 @@ struct SpoofStringLengthsElement {
 };
 
 
-//-------------------------------------------------------------------------------
-//
-//  ScriptSet - Wrapper class for the Script code bit sets that are part of the
-//              whole script confusable data.
-//
-//              This class is used both at data build and at run time.
-//              The constructor is only used at build time.
-//              At run time, just point at the prebuilt data and go.
-//  
-//-------------------------------------------------------------------------------
-class ScriptSet: public UMemory {
-  public:
-    ScriptSet();
-    ~ScriptSet();
-
-    UBool operator == (const ScriptSet &other);
-    ScriptSet & operator = (const ScriptSet &other);
-
-    void Union(const ScriptSet &other);
-    void Union(UScriptCode script);
-    void intersect(const ScriptSet &other);
-    void intersect(UScriptCode script);
-    void setAll();
-    void resetAll();
-    int32_t countMembers();
-
-  private:
-    uint32_t  bits[6];
-};
-
-
-
-
-//-------------------------------------------------------------------------------
-//
-//  NFDBuffer   A little class to handle the NFD normalization that is
-//               needed on incoming identifiers to be checked.
-//               Takes care of buffer handling and normalization
-//
-//               Instances of this class are intended to be stack-allocated.
-//
-//               TODO:  how to map position offsets back to user values?
-//
-//--------------------------------------------------------------------------------
-class NFDBuffer: public UMemory {
-public:
-    NFDBuffer(const UChar *text, int32_t length, UErrorCode &status);
-    ~NFDBuffer();
-    const UChar *getBuffer();
-    int32_t getLength();
-
-  private:
-    const UChar *fOriginalText;
-    UChar       *fNormalizedText;
-    int32_t      fNormalizedTextLength;
-    UChar        fSmallBuf[USPOOF_STACK_BUFFER_SIZE];
-};
-
-
-
-
 
 //-------------------------------------------------------------------------------------
 //
@@ -304,7 +242,7 @@ class SpoofData: public UMemory {
                                                     //   we are done.
 
     uint32_t                    fMemLimit;          // Limit of available raw data space
-    int32_t                     fRefCount;
+    u_atomic_int32_t            fRefCount;
 
     // Confusable data
     int32_t                     *fCFUKeys;

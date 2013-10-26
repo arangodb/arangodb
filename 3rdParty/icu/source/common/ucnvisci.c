@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2000-2011, International Business Machines
+*   Copyright (C) 2000-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  ucnvisci.c
@@ -1140,7 +1140,7 @@ static const uint16_t lookupTable[][2]={
     targetUniChar = toUnicodeTable[(sourceChar)] ;                                       \
     /* is the code point valid in current script? */                                     \
     if(sourceChar> ASCII_END &&                                                          \
-            (validityTable[(uint8_t)targetUniChar] & data->currentMaskToUnicode)==0){    \
+            (validityTable[(targetUniChar & 0x7F)] & data->currentMaskToUnicode)==0){    \
         /* Vocallic RR is assigne in ISCII Telugu and Unicode */                         \
         if(data->currentDeltaToUnicode!=(TELUGU_DELTA) ||                                \
                     targetUniChar!=VOCALLIC_RR){                                         \

@@ -90,7 +90,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <PrecompiledHeaderOutputFile>.\x86\Release/common.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>.\x86\Release/</AssemblerListingLocation>
@@ -104,7 +104,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icuuc49.dll</OutputFile>
+      <OutputFile>..\..\bin\icuuc52.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib\icuuc.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -129,7 +129,7 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
-      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <PrecompiledHeaderOutputFile>.\x86\Debug/common.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
@@ -145,7 +145,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icuuc49d.dll</OutputFile>
+      <OutputFile>..\..\bin\icuuc52d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib\icuucd.pdb</ProgramDatabaseFile>
@@ -169,7 +169,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <PrecompiledHeaderOutputFile>.\x64\Release/common.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>.\x64\Release/</AssemblerListingLocation>
@@ -183,7 +183,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icuuc49.dll</OutputFile>
+      <OutputFile>..\..\bin64\icuuc52.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib64\icuuc.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -206,7 +206,7 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
-      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <PrecompiledHeaderOutputFile>.\x64\Debug/common.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
@@ -222,7 +222,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icuuc49d.dll</OutputFile>
+      <OutputFile>..\..\bin64\icuuc52d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib64\icuucd.pdb</ProgramDatabaseFile>
@@ -237,18 +237,25 @@
     <ClCompile Include="ubidiln.c" />
     <ClCompile Include="ubidiwrt.c" />
     <ClCompile Include="ushape.cpp" />
-    <ClCompile Include="brkeng.cpp" />
-    <ClCompile Include="brkiter.cpp" />
+    <ClCompile Include="brkeng.cpp">
+    </ClCompile>
+    <ClCompile Include="brkiter.cpp">
+    </ClCompile>
     <ClCompile Include="dictbe.cpp" />
-    <ClCompile Include="rbbi.cpp" />
-    <ClCompile Include="rbbidata.cpp" />
+    <ClCompile Include="rbbi.cpp">
+    </ClCompile>
+    <ClCompile Include="rbbidata.cpp">
+    </ClCompile>
     <ClCompile Include="rbbinode.cpp" />
-    <ClCompile Include="rbbirb.cpp" />
+    <ClCompile Include="rbbirb.cpp">
+    </ClCompile>
     <ClCompile Include="rbbiscan.cpp" />
     <ClCompile Include="rbbisetb.cpp" />
-    <ClCompile Include="rbbistbl.cpp" />
-    <ClCompile Include="rbbitblb.cpp" />
-    <ClCompile Include="triedict.cpp" />
+    <ClCompile Include="rbbistbl.cpp">
+    </ClCompile>
+    <ClCompile Include="rbbitblb.cpp">
+    </ClCompile>
+    <ClCompile Include="dictionarydata.cpp" />
     <ClCompile Include="ubrk.cpp" />
     <ClCompile Include="ucol_swp.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\i18n;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -278,7 +285,6 @@
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DisableLanguageExtensions>
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DisableLanguageExtensions>
     </ClCompile>
-    <ClCompile Include="mutex.cpp" />
     <ClCompile Include="putil.cpp">
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableLanguageExtensions>
@@ -286,7 +292,7 @@
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DisableLanguageExtensions>
     </ClCompile>
     <ClCompile Include="umath.c" />
-    <ClCompile Include="umutex.c">
+    <ClCompile Include="umutex.cpp">
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableLanguageExtensions>
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DisableLanguageExtensions>
@@ -302,13 +308,15 @@
     </ClCompile>
     <ClCompile Include="ucnv.c" />
     <ClCompile Include="ucnv2022.cpp" />
-    <ClCompile Include="ucnv_bld.cpp" />
+    <ClCompile Include="ucnv_bld.cpp">
+    </ClCompile>
     <ClCompile Include="ucnv_cb.c" />
     <ClCompile Include="ucnv_cnv.c" />
     <ClCompile Include="ucnv_ct.c" />
     <ClCompile Include="ucnv_err.c" />
     <ClCompile Include="ucnv_ext.cpp" />
-    <ClCompile Include="ucnv_io.cpp" />
+    <ClCompile Include="ucnv_io.cpp">
+    </ClCompile>
     <ClCompile Include="ucnv_lmb.c" />
     <ClCompile Include="ucnv_set.c" />
     <ClCompile Include="ucnv_u16.c" />
@@ -322,7 +330,8 @@
     <ClCompile Include="ucnvlat1.c" />
     <ClCompile Include="ucnvmbcs.c" />
     <ClCompile Include="ucnvscsu.c" />
-    <ClCompile Include="ucnvsel.cpp" />
+    <ClCompile Include="ucnvsel.cpp">
+    </ClCompile>
     <ClCompile Include="cmemory.c" />
     <ClCompile Include="ucln_cmn.c">
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
@@ -334,7 +343,9 @@
     <ClCompile Include="udata.cpp" />
     <ClCompile Include="udatamem.c" />
     <ClCompile Include="udataswp.c" />
-    <ClCompile Include="uinit.c" />
+    <ClCompile Include="uinit.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="umapfile.c">
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableLanguageExtensions>
@@ -350,14 +361,18 @@
     <ClCompile Include="punycode.cpp" />
     <ClCompile Include="uidna.cpp" />
     <ClCompile Include="uts46.cpp" />
-    <ClCompile Include="locavailable.cpp" />
+    <ClCompile Include="locavailable.cpp">
+    </ClCompile>
     <ClCompile Include="locbased.cpp" />
     <ClCompile Include="locdispnames.cpp" />
-    <ClCompile Include="locid.cpp" />
+    <ClCompile Include="locid.cpp">
+    </ClCompile>
     <ClCompile Include="loclikely.cpp" />
     <ClCompile Include="locresdata.cpp" />
-    <ClCompile Include="locutil.cpp" />
-    <ClCompile Include="resbund.cpp" />
+    <ClCompile Include="locutil.cpp">
+    </ClCompile>
+    <ClCompile Include="resbund.cpp">
+    </ClCompile>
     <ClCompile Include="resbund_cnv.cpp" />
     <ClCompile Include="ucat.c" />
     <ClCompile Include="uloc.cpp" />
@@ -365,19 +380,25 @@
     <ClCompile Include="ures_cnv.c" />
     <ClCompile Include="uresbund.cpp" />
     <ClCompile Include="uresdata.c" />
-    <ClCompile Include="caniter.cpp" />
+    <ClCompile Include="caniter.cpp">
+    </ClCompile>
     <ClCompile Include="filterednormalizer2.cpp" />
-    <ClCompile Include="normalizer2.cpp" />
-    <ClCompile Include="normalizer2impl.cpp" />
-    <ClCompile Include="normlzr.cpp" />
+    <ClCompile Include="normalizer2.cpp">
+    </ClCompile>
+    <ClCompile Include="normalizer2impl.cpp">
+    </ClCompile>
+    <ClCompile Include="normlzr.cpp">
+    </ClCompile>
     <ClCompile Include="unorm.cpp" />
     <ClCompile Include="unorm_it.c" />
     <ClCompile Include="unormcmp.cpp" />
     <ClCompile Include="bmpset.cpp" />
     <ClCompile Include="patternprops.cpp" />
-    <ClCompile Include="propname.cpp" />
+    <ClCompile Include="propname.cpp">
+    </ClCompile>
     <ClCompile Include="ruleiter.cpp" />
-    <ClCompile Include="ucase.cpp" />
+    <ClCompile Include="ucase.cpp">
+    </ClCompile>
     <ClCompile Include="uchar.c" />
     <ClCompile Include="unames.cpp" />
     <ClCompile Include="unifilt.cpp" />
@@ -389,17 +410,25 @@
     <ClCompile Include="uprops.cpp" />
     <ClCompile Include="usc_impl.c" />
     <ClCompile Include="uscript.c" />
+    <ClCompile Include="uscript_props.cpp" />
     <ClCompile Include="uset.cpp" />
     <ClCompile Include="uset_props.cpp" />
     <ClCompile Include="usetiter.cpp" />
     <ClCompile Include="icuplug.c" />
-    <ClCompile Include="serv.cpp" />
-    <ClCompile Include="servlk.cpp" />
-    <ClCompile Include="servlkf.cpp" />
-    <ClCompile Include="servls.cpp" />
-    <ClCompile Include="servnotf.cpp" />
-    <ClCompile Include="servrbf.cpp" />
-    <ClCompile Include="servslkf.cpp" />
+    <ClCompile Include="serv.cpp">
+    </ClCompile>
+    <ClCompile Include="servlk.cpp">
+    </ClCompile>
+    <ClCompile Include="servlkf.cpp">
+    </ClCompile>
+    <ClCompile Include="servls.cpp">
+    </ClCompile>
+    <ClCompile Include="servnotf.cpp">
+    </ClCompile>
+    <ClCompile Include="servrbf.cpp">
+    </ClCompile>
+    <ClCompile Include="servslkf.cpp">
+    </ClCompile>
     <ClCompile Include="usprep.cpp" />
     <ClCompile Include="appendable.cpp" />
     <ClCompile Include="bytestream.cpp" />
@@ -437,6 +466,8 @@
     <ClCompile Include="ustrtrns.cpp" />
     <ClCompile Include="utext.cpp" />
     <ClCompile Include="utf_impl.c" />
+    <ClCompile Include="listformatter.cpp">
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="unicode\ubidi.h">
@@ -453,6 +484,9 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="localsvc.h" />
+    <ClInclude Include="msvcres.h" />
+    <ClInclude Include="propname_data.h" />
     <ClInclude Include="ubidi_props.h" />
     <ClInclude Include="ubidiimp.h" />
     <CustomBuild Include="unicode\ushape.h">
@@ -520,7 +554,7 @@
     <ClInclude Include="rbbiscan.h" />
     <ClInclude Include="rbbisetb.h" />
     <ClInclude Include="rbbitblb.h" />
-    <ClInclude Include="triedict.h" />
+    <ClInclude Include="dictionarydata.h" />
     <CustomBuild Include="unicode\ubrk.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -535,7 +569,10 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="ubidi_props_data.h" />
     <ClInclude Include="ubrkimpl.h" />
+    <ClInclude Include="ucase_props_data.h" />
+    <ClInclude Include="uchar_props_data.h" />
     <ClInclude Include="ucol_data.h" />
     <ClInclude Include="ucol_swp.h" />
     <ClInclude Include="hash.h" />
@@ -573,10 +610,25 @@
     <ClInclude Include="uenumimp.h" />
     <ClInclude Include="uhash.h" />
     <ClInclude Include="ulist.h" />
+    <CustomBuild Include="unicode\enumset.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+    </CustomBuild>
     <ClInclude Include="ustrenum.h" />
     <ClInclude Include="utrie.h" />
     <ClInclude Include="utrie2.h" />
     <ClInclude Include="utrie2_impl.h" />
+    <ClInclude Include="utypeinfo.h" />
     <ClInclude Include="uvector.h" />
     <ClInclude Include="uvectr32.h" />
     <ClInclude Include="uvectr64.h" />
@@ -1659,6 +1711,20 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
     <CustomBuild Include="unicode\utf_old.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="unicode\listformatter.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>

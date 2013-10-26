@@ -181,6 +181,9 @@
     <ClCompile Include="caltztst.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
+    <ClCompile Include="compactdecimalformattest.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
     <ClCompile Include="dadrcal.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
@@ -212,6 +215,9 @@
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="fldset.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="genderinfotest.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="incaltst.cpp">
@@ -443,6 +449,13 @@
     <ClCompile Include="ucharstrietest.cpp" />
     <ClCompile Include="alphaindextst.cpp">
       <Filter>collation</Filter>
+    </ClCompile>
+    <ClCompile Include="listformattertest.cpp" />
+    <ClCompile Include="colldata.cpp">
+      <Filter>collation</Filter>
+    </ClCompile>
+    <ClCompile Include="regiontst.cpp">
+      <Filter>formatting</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -811,6 +824,13 @@
     </ClInclude>
     <ClInclude Include="alphaindextst.h">
       <Filter>collation</Filter>
+    </ClInclude>
+    <ClInclude Include="listformattertest.h" />
+    <ClInclude Include="colldata.h">
+      <Filter>collation</Filter>
+    </ClInclude>
+    <ClInclude Include="regiontst.h">
+      <Filter>formatting</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

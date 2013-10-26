@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2005-2010, International Business Machines
+*   Copyright (C) 2005-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -59,6 +59,7 @@ printUsage(const char *pname, UBool isHelp) {
             "%csage: %s [-h|-?|--help ] [-tl|-tb|-te] [-c] [-C comment]\n"
             "\t[-a list] [-r list] [-x list] [-l [-o outputListFileName]]\n"
             "\t[-s path] [-d path] [-w] [-m mode]\n"
+            "\t[--auto_toc_prefix] [--auto_toc_prefix_with_type] [--toc_prefix]\n"
             "\tinfilename [outfilename]\n",
             isHelp ? 'U' : 'u', pname);
     if(isHelp) {
@@ -118,6 +119,31 @@ printUsage(const char *pname, UBool isHelp) {
             "\t-m mode or --matchmode mode  set the matching mode for item names with\n"
             "\t                             wildcards\n"
             "\t        noslash: the '*' wildcard does not match the '/' tree separator\n");
+        fprintf(where,
+            "\n"
+            "\tIn the .dat package, the Table of Contents (ToC) contains an entry\n"
+            "\tfor each item of the form prefix/tree/itemname .\n"
+            "\tThe prefix normally matches the package basename, and icupkg checks that,\n"
+            "\tbut this is not necessary when ICU need not find and load the package by filename.\n"
+            "\tICU package names end with the platform type letter, and thus differ\n"
+            "\tbetween platform types. This is not required for user data packages.\n");
+        fprintf(where,
+            "\n"
+            "\t--auto_toc_prefix            automatic ToC entries prefix\n"
+            "\t                             Uses the prefix of the first entry of the\n"
+            "\t                             input package, rather than its basename.\n"
+            "\t                             Requires a non-empty input package.\n"
+            "\t--auto_toc_prefix_with_type  auto_toc_prefix + adjust platform type\n"
+            "\t                             Same as auto_toc_prefix but also checks that\n"
+            "\t                             the prefix ends with the input platform\n"
+            "\t                             type letter, and modifies it to the output\n"
+            "\t                             platform type letter.\n"
+            "\t                At most one of the auto_toc_prefix options\n"
+            "\t                can be used at a time.\n"
+            "\t--toc_prefix prefix          ToC prefix to be used in the output package\n"
+            "\t                             Overrides the package basename\n"
+            "\t                             and --auto_toc_prefix.\n"
+            "\t                             Cannot be combined with --auto_toc_prefix_with_type.\n");
         /*
          * Usage text columns, starting after the initial TAB.
          *      1         2         3         4         5         6         7         8
@@ -150,8 +176,10 @@ printUsage(const char *pname, UBool isHelp) {
             "\t-s path or --sourcedir path  directory for the --add items\n"
             "\t-d path or --destdir path    directory for the --extract items\n"
             "\n"
-            "\t-l or --list                 list the package items to stdout or to output list file\n"
-            "\t                             (after modifying the package)\n");
+            "\t-l or --list                 list the package items\n"
+            "\t                             (after modifying the package)\n"
+            "\t                             to stdout or to output list file\n"
+            "\t-o path or --outlist path    path/filename for the --list output\n");
     }
 }
 
@@ -175,8 +203,11 @@ static UOption options[]={
     UOPTION_DEF("extract", 'x', UOPT_REQUIRES_ARG),
 
     UOPTION_DEF("list", 'l', UOPT_NO_ARG),
-    
-    UOPTION_DEF("outlist", 'o', UOPT_REQUIRES_ARG)
+    UOPTION_DEF("outlist", 'o', UOPT_REQUIRES_ARG),
+
+    UOPTION_DEF("auto_toc_prefix", '\1', UOPT_NO_ARG),
+    UOPTION_DEF("auto_toc_prefix_with_type", '\1', UOPT_NO_ARG),
+    UOPTION_DEF("toc_prefix", '\1', UOPT_REQUIRES_ARG)
 };
 
 enum {
@@ -199,8 +230,11 @@ enum {
     OPT_EXTRACT_LIST,
 
     OPT_LIST_ITEMS,
-    
     OPT_LIST_FILE,
+
+    OPT_AUTO_TOC_PREFIX,
+    OPT_AUTO_TOC_PREFIX_WITH_TYPE,
+    OPT_TOC_PREFIX,
 
     OPT_COUNT
 };
@@ -238,10 +272,6 @@ main(int argc, char *argv[]) {
         printUsage(pname, TRUE);
         return U_ZERO_ERROR;
     }
-    if(argc<2 || 3<argc) {
-        printUsage(pname, FALSE);
-        return U_ILLEGAL_ARGUMENT_ERROR;
-    }
 
     pkg=new Package;
     if(pkg==NULL) {
@@ -249,6 +279,25 @@ main(int argc, char *argv[]) {
         return U_MEMORY_ALLOCATION_ERROR;
     }
     isModified=FALSE;
+
+    int autoPrefix=0;
+    if(options[OPT_AUTO_TOC_PREFIX].doesOccur) {
+        pkg->setAutoPrefix();
+        ++autoPrefix;
+    }
+    if(options[OPT_AUTO_TOC_PREFIX_WITH_TYPE].doesOccur) {
+        if(options[OPT_TOC_PREFIX].doesOccur) {
+            fprintf(stderr, "icupkg: --auto_toc_prefix_with_type and also --toc_prefix\n");
+            printUsage(pname, FALSE);
+            return U_ILLEGAL_ARGUMENT_ERROR;
+        }
+        pkg->setAutoPrefixWithType();
+        ++autoPrefix;
+    }
+    if(argc<2 || 3<argc || autoPrefix>1) {
+        printUsage(pname, FALSE);
+        return U_ILLEGAL_ARGUMENT_ERROR;
+    }
 
     if(options[OPT_SOURCEDIR].doesOccur) {
         sourcePath=options[OPT_SOURCEDIR].value;
@@ -264,6 +313,11 @@ main(int argc, char *argv[]) {
     }
 
     if(0==strcmp(argv[1], "new")) {
+        if(autoPrefix) {
+            fprintf(stderr, "icupkg: --auto_toc_prefix[_with_type] but no input package\n");
+            printUsage(pname, FALSE);
+            return U_ILLEGAL_ARGUMENT_ERROR;
+        }
         inFilename=NULL;
         isPackage=TRUE;
     } else {
@@ -371,8 +425,12 @@ main(int argc, char *argv[]) {
 
     /* remove items */
     if(options[OPT_REMOVE_LIST].doesOccur) {
-        listPkg=readList(NULL, options[OPT_REMOVE_LIST].value, FALSE);
-        if(listPkg!=NULL) {
+        listPkg=new Package();
+        if(listPkg==NULL) {
+            fprintf(stderr, "icupkg: not enough memory\n");
+            exit(U_MEMORY_ALLOCATION_ERROR);
+        }
+        if(readList(NULL, options[OPT_REMOVE_LIST].value, FALSE, listPkg)) {
             pkg->removeItems(*listPkg);
             delete listPkg;
             isModified=TRUE;
@@ -389,8 +447,12 @@ main(int argc, char *argv[]) {
      */
     addListPkg=NULL;
     if(options[OPT_ADD_LIST].doesOccur) {
-        addListPkg=readList(sourcePath, options[OPT_ADD_LIST].value, TRUE);
-        if(addListPkg!=NULL) {
+        addListPkg=new Package();
+        if(addListPkg==NULL) {
+            fprintf(stderr, "icupkg: not enough memory\n");
+            exit(U_MEMORY_ALLOCATION_ERROR);
+        }
+        if(readList(sourcePath, options[OPT_ADD_LIST].value, TRUE, addListPkg)) {
             pkg->addItems(*addListPkg);
             // delete addListPkg; deferred until after writePackage()
             isModified=TRUE;
@@ -402,8 +464,12 @@ main(int argc, char *argv[]) {
 
     /* extract items */
     if(options[OPT_EXTRACT_LIST].doesOccur) {
-        listPkg=readList(NULL, options[OPT_EXTRACT_LIST].value, FALSE);
-        if(listPkg!=NULL) {
+        listPkg=new Package();
+        if(listPkg==NULL) {
+            fprintf(stderr, "icupkg: not enough memory\n");
+            exit(U_MEMORY_ALLOCATION_ERROR);
+        }
+        if(readList(NULL, options[OPT_EXTRACT_LIST].value, FALSE, listPkg)) {
             pkg->extractItems(destPath, *listPkg, outType);
             delete listPkg;
         } else {
@@ -466,6 +532,9 @@ main(int argc, char *argv[]) {
                 *(s-5)=outType;
             }
             outFilename=outFilenameBuffer;
+        }
+        if(options[OPT_TOC_PREFIX].doesOccur) {
+            pkg->setPrefix(options[OPT_TOC_PREFIX].value);
         }
         result = writePackageDatFile(outFilename, outComment, NULL, NULL, pkg, outType);
     }

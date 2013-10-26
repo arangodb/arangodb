@@ -1,7 +1,7 @@
 #!/usr/bin/perl 
 #*
 #*******************************************************************************
-#*   Copyright (C) 2001-2011, International Business Machines
+#*   Copyright (C) 2001-2012, International Business Machines
 #*   Corporation and others.  All Rights Reserved.
 #*******************************************************************************
 #*
@@ -82,7 +82,7 @@ print HEADER <<"EndOfHeaderComment";
 *   tab size:   8 (not used)
 *   indentation:4
 *
-*   Created by: Perl script written by Vladimir Weinstein
+*   Created by: Perl script tools/genren.pl written by Vladimir Weinstein
 *
 *  Contains data for renaming ICU exports.
 *  Gets included by umachine.h
@@ -94,9 +94,13 @@ print HEADER <<"EndOfHeaderComment";
 #ifndef $HEADERDEF
 #define $HEADERDEF
 
-/* Uncomment the following line to disable renaming on platforms
-   that do not use Autoconf. */
-/* #define U_DISABLE_RENAMING 1 */
+/* U_DISABLE_RENAMING can be defined in the following ways:
+ *   - when running configure, e.g.
+ *        runConfigureICU Linux --disable-renaming
+ *   - by changing the default setting of U_DISABLE_RENAMING in uconfig.h
+ */
+
+#include "unicode/uconfig.h"
 
 #if !U_DISABLE_RENAMING
 
@@ -104,9 +108,6 @@ print HEADER <<"EndOfHeaderComment";
    the platform a chance to define it first.
    Normally (if utypes.h or umachine.h was included first) this will not be necessary as it will already be defined.
  */
-#ifndef U_ICU_ENTRY_POINT_RENAME
-#include "unicode/uconfig.h"
-#endif
 
 #ifndef U_ICU_ENTRY_POINT_RENAME
 #include "unicode/umachine.h"
@@ -147,8 +148,9 @@ for(;@ARGV; shift(@ARGV)) {
             ($_, $address, $type) = split(/\|/);
             chop $qtype;
         } elsif ($mode =~ /Mach-O/) {
-            if(/^(?:[0-9a-fA-F]){8} ([A-Z]) (?:_)?(.*)$/) {
-                ($_, $type) = ($2, $1);
+            ($address, $type, $_) = split(/ /);
+            if(/^_(.*)$/) {
+                $_ = $1;
             } else {
                 next;
             }

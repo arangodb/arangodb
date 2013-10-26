@@ -23,4 +23,7 @@
 #
 
 MISC_SOURCE = \
-zoneinfo64.txt supplementalData.txt likelySubtags.txt plurals.txt numberingSystems.txt icuver.txt icustd.txt metadata.txt metaZones.txt windowsZones.txt keyTypeData.txt timezoneTypes.txt currencyNumericCodes.txt
+zoneinfo64.txt supplementalData.txt likelySubtags.txt plurals.txt \
+numberingSystems.txt icuver.txt icustd.txt metadata.txt metaZones.txt \
+windowsZones.txt keyTypeData.txt timezoneTypes.txt currencyNumericCodes.txt \
+genderList.txt postalCodeData.txt dayPeriods.txt

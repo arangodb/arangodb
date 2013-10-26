@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2004-2012, International Business Machines
+*   Copyright (C) 2004-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  uregex.h
@@ -51,7 +51,7 @@ typedef enum URegexpFlag{
     Not implemented yet, just a placeholder, hence draft. 
     @draft ICU 2.4 */
     UREGEX_CANON_EQ         = 128,
-#endif
+#endif /* U_HIDE_DRAFT_API */
     /**  Enable case insensitive matching.  @stable ICU 2.4 */
     UREGEX_CASE_INSENSITIVE = 2,
 
@@ -159,7 +159,7 @@ uregex_open( const  UChar          *pattern,
   *
   * @stable ICU 4.6
   */
-U_DRAFT URegularExpression *  U_EXPORT2
+U_STABLE URegularExpression *  U_EXPORT2
 uregex_openUText(UText          *pattern,
                  uint32_t        flags,
                  UParseError    *pe,
@@ -281,7 +281,7 @@ uregex_pattern(const URegularExpression *regexp,
  *
  * @stable ICU 4.6
  */
-U_DRAFT UText * U_EXPORT2 
+U_STABLE UText * U_EXPORT2 
 uregex_patternUText(const URegularExpression *regexp,
                           UErrorCode         *status);
 
@@ -341,7 +341,7 @@ uregex_setText(URegularExpression *regexp,
   *
   * @stable ICU 4.6
   */
-U_DRAFT void U_EXPORT2 
+U_STABLE void U_EXPORT2 
 uregex_setUText(URegularExpression *regexp,
                 UText              *text,
                 UErrorCode         *status);
@@ -387,7 +387,7 @@ uregex_getText(URegularExpression *regexp,
   *
   * @stable ICU 4.6
   */
-U_DRAFT UText * U_EXPORT2 
+U_STABLE UText * U_EXPORT2 
 uregex_getUText(URegularExpression *regexp,
                 UText              *dest,
                 UErrorCode         *status);
@@ -415,9 +415,9 @@ uregex_getUText(URegularExpression *regexp,
   * @param text       The new (moved) text string.
   * @param status     Receives errors detected by this function.
   *
-  * @stable ICU 4.8 
+  * @stable ICU 4.8
   */
-U_DRAFT void U_EXPORT2 
+U_STABLE void U_EXPORT2 
 uregex_refreshUText(URegularExpression *regexp,
                     UText              *text,
                     UErrorCode         *status);
@@ -468,7 +468,7 @@ uregex_matches(URegularExpression *regexp,
   *    @return             TRUE if there is a match
   *   @stable ICU 4.6
   */
-U_DRAFT UBool U_EXPORT2 
+U_STABLE UBool U_EXPORT2 
 uregex_matches64(URegularExpression *regexp,
                  int64_t            startIndex,
                  UErrorCode        *status);
@@ -525,7 +525,7 @@ uregex_lookingAt(URegularExpression *regexp,
   *    @return  TRUE if there is a match.
   *    @stable ICU 4.6
   */
-U_DRAFT UBool U_EXPORT2 
+U_STABLE UBool U_EXPORT2 
 uregex_lookingAt64(URegularExpression *regexp,
                    int64_t             startIndex,
                    UErrorCode         *status);
@@ -574,7 +574,7 @@ uregex_find(URegularExpression *regexp,
   *   @return              TRUE if a match is found.
   *   @stable ICU 4.6
   */
-U_DRAFT UBool U_EXPORT2 
+U_STABLE UBool U_EXPORT2 
 uregex_find64(URegularExpression *regexp,
               int64_t             startIndex, 
               UErrorCode         *status);
@@ -652,7 +652,7 @@ uregex_group(URegularExpression *regexp,
   *
   *   @stable ICU 4.6
   */
-U_DRAFT UText * U_EXPORT2 
+U_STABLE UText * U_EXPORT2 
 uregex_groupUText(URegularExpression *regexp,
                   int32_t             groupNum,
                   UText              *dest,
@@ -718,7 +718,7 @@ uregex_start(URegularExpression *regexp,
   *                         by the specified group.
   *   @stable ICU 4.6
   */
-U_DRAFT int64_t U_EXPORT2 
+U_STABLE int64_t U_EXPORT2 
 uregex_start64(URegularExpression *regexp,
                int32_t             groupNum,
                UErrorCode          *status);
@@ -755,7 +755,7 @@ uregex_end(URegularExpression   *regexp,
   *    @return              the (native) index of the position following the last matched character.
   *   @stable ICU 4.6
   */
-U_DRAFT int64_t U_EXPORT2 
+U_STABLE int64_t U_EXPORT2 
 uregex_end64(URegularExpression *regexp,
              int32_t               groupNum,
              UErrorCode           *status);
@@ -792,7 +792,7 @@ uregex_reset(URegularExpression    *regexp,
   *    @param   status      A reference to a UErrorCode to receive any errors.
   *    @stable ICU 4.6
   */
-U_DRAFT void U_EXPORT2 
+U_STABLE void U_EXPORT2 
 uregex_reset64(URegularExpression  *regexp,
                int64_t               index,
                UErrorCode            *status);
@@ -844,7 +844,7 @@ uregex_setRegion(URegularExpression   *regexp,
   * @param status A pointer to a UErrorCode to receive any errors.
   * @stable ICU 4.6
   */
-U_DRAFT void U_EXPORT2 
+U_STABLE void U_EXPORT2 
 uregex_setRegion64(URegularExpression *regexp,
                  int64_t               regionStart,
                  int64_t               regionLimit,
@@ -864,7 +864,7 @@ uregex_setRegion64(URegularExpression *regexp,
   * @param status A pointer to a UErrorCode to receive any errors.
   * @stable ICU 4.6
   */
-U_DRAFT void U_EXPORT2 
+U_STABLE void U_EXPORT2 
 uregex_setRegionAndStart(URegularExpression *regexp,
                  int64_t               regionStart,
                  int64_t               regionLimit,
@@ -894,7 +894,7 @@ uregex_regionStart(const  URegularExpression   *regexp,
   * @return The starting (native) index of this matcher's region.
   * @stable ICU 4.6
   */
-U_DRAFT int64_t U_EXPORT2 
+U_STABLE int64_t U_EXPORT2 
 uregex_regionStart64(const  URegularExpression   *regexp,
                             UErrorCode           *status);
 
@@ -923,7 +923,7 @@ uregex_regionEnd(const  URegularExpression   *regexp,
   * @return The ending point (native) of this matcher's region.
   * @stable ICU 4.6
   */
-U_DRAFT int64_t U_EXPORT2 
+U_STABLE int64_t U_EXPORT2 
 uregex_regionEnd64(const  URegularExpression   *regexp,
                           UErrorCode           *status);
 
@@ -1085,7 +1085,7 @@ uregex_replaceAll(URegularExpression    *regexp,
   *
   *    @stable ICU 4.6
   */
-U_DRAFT UText * U_EXPORT2 
+U_STABLE UText * U_EXPORT2 
 uregex_replaceAllUText(URegularExpression *regexp,
                        UText              *replacement,
                        UText              *dest,
@@ -1144,7 +1144,7 @@ uregex_replaceFirst(URegularExpression  *regexp,
   *
   *    @stable ICU 4.6
   */
-U_DRAFT UText * U_EXPORT2 
+U_STABLE UText * U_EXPORT2 
 uregex_replaceFirstUText(URegularExpression *regexp,
                          UText              *replacement,
                          UText              *dest,
@@ -1226,7 +1226,7 @@ uregex_appendReplacement(URegularExpression    *regexp,
   *
   *   @stable ICU 4.6
   */
-U_DRAFT void U_EXPORT2 
+U_STABLE void U_EXPORT2 
 uregex_appendReplacementUText(URegularExpression    *regexp,
                               UText                 *replacementText,
                               UText                 *dest,
@@ -1280,7 +1280,7 @@ uregex_appendTail(URegularExpression    *regexp,
   *
   *   @stable ICU 4.6
   */
-U_DRAFT UText * U_EXPORT2 
+U_STABLE UText * U_EXPORT2 
 uregex_appendTailUText(URegularExpression    *regexp,
                        UText                 *dest,
                        UErrorCode            *status);
@@ -1371,7 +1371,7 @@ uregex_split(   URegularExpression      *regexp,
    *
    * @stable ICU 4.6
    */
-U_DRAFT int32_t U_EXPORT2 
+U_STABLE int32_t U_EXPORT2 
 uregex_splitUText(URegularExpression    *regexp,
                   UText                 *destFields[],
                   int32_t                destFieldsCapacity,
@@ -1431,8 +1431,8 @@ uregex_getTimeLimit(const URegularExpression      *regexp,
  * <p>
  * @param   regexp      The compiled regular expression.
  * @param   limit       The maximum size, in bytes, of the matching backtrack stack.
- *                      A value of -1 means no limit.
- *                      The limit must be greater than zero, or -1.
+ *                      A value of zero means no limit.
+ *                      The limit must be greater than or equal to zero.
  * @param   status      A reference to a UErrorCode to receive any errors.
  *
  * @stable ICU 4.0
@@ -1564,7 +1564,7 @@ U_CDECL_END
  * @param   status      A reference to a UErrorCode to receive any errors.
  * @stable ICU 4.6
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 uregex_setFindProgressCallback(URegularExpression              *regexp,
                                 URegexFindProgressCallback      *callback,
                                 const void                      *context,
@@ -1581,7 +1581,7 @@ uregex_setFindProgressCallback(URegularExpression              *regexp,
  * @param   status      A reference to a UErrorCode to receive any errors.
  * @stable ICU 4.6
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 uregex_getFindProgressCallback(const URegularExpression          *regexp,
                                 URegexFindProgressCallback        **callback,
                                 const void                        **context,

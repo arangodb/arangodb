@@ -1,7 +1,7 @@
 
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -229,7 +229,7 @@ void IntlTestSimpleDateFormatAPI::testAPI(/*char *par*/)
     status = U_ZERO_ERROR;
     pat.applyLocalizedPattern(p1, status);
     if(U_FAILURE(status)) {
-        errln("ERROR: applyPattern() failed with " + (int32_t) status);
+        errln("ERROR: applyPattern() failed with %s", u_errorName(status));
     }
     UnicodeString s3;
     status = U_ZERO_ERROR;

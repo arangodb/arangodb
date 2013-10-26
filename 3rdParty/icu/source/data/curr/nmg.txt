@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/nmg.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nmg.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/nmg.xml
+ * ICU <specials> source: <path>/common/main/nmg.xml
  */
 nmg{
     Currencies{
@@ -20,7 +20,7 @@ nmg{
             "Mɔn Angola",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dɔ́llɔ Ɔstralia",
         }
         BHD{
@@ -173,7 +173,7 @@ nmg{
         }
         SDP{
             "SDP",
-            "Mɔn Sudan (1957-1998)",
+            "Mɔn Sudan (1957–1998)",
         }
         SHP{
             "SHP",
@@ -225,12 +225,16 @@ nmg{
         }
         ZMK{
             "ZMK",
+            "Mɔn Zambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Mɔn Zambia",
         }
         ZWD{
             "ZWD",
-            "Dɔ́llɔ Zimbabwǝ (1980-2008)",
+            "Dɔ́llɔ Zimbabwǝ (1980–2008)",
         }
     }
-    Version{"2.0.66.10"}
+    Version{"2.0.92.87"}
 }
