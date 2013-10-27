@@ -67,9 +67,12 @@ A Chef recipe is available from jbianquetti at
 Mac OS X {#InstallingMacOSX}
 ============================
 
-You can find the Mac OS X packages here:
+The preferred method for installing ArangoDB under Mac OS X is
+homebrew. However, in case you are not using homebrew, we provide a command-line
+app which contains all the executables.
 
-    http://www.arangodb.org/repositories/MacOSX
+There is also a version available in the AppStore which comes with a nice
+graphically interface to start und stop the server.
 
 Homebrew {#InstallingMacOSXHomebrew}
 ------------------------------------
@@ -89,7 +92,7 @@ The ArangoDB shell will be install as
 
     /usr/local/bin/arangosh
 
-If you want to install the latest version use:
+If you want to install the latest (unstable) version use:
 
     brew install --HEAD arangodb
 
@@ -110,9 +113,43 @@ Then remove the LaunchAgent
 Apple's App Store {#InstallingMacOSXAppStore}
 ---------------------------------------------
 
-ArangoDB is available in Apple's App-Store. Please note, that it
-sometimes take a few days or weeks until the latest versions will be
-available.
+ArangoDB is available in Apple's App-Store. Please note, that it sometimes take
+a days or weeks until the latest versions will be available.
+
+Command-Line App {#InstallingMacOSXBundle}
+------------------------------------------
+
+In case you are not using homebrew, we also provide an command-line app. You can
+download it from
+
+    http://www.arangodb.org/download
+
+Choose `Mac OS X` and go to `Grab binary packages directly`. This allows you to
+install the application `ArangoDB-CLI` in you application folder.
+
+Starting the application will start the server and open a terminal window
+showing you the log-file.
+
+    ArangoDB server has been started
+
+    The database directory is located at
+       '/Applications/ArangoDB-CLI.app/Contents/MacOS/opt/arangodb/var/lib/arangodb'
+
+    The log file is located at
+       '/Applications/ArangoDB-CLI.app/Contents/MacOS/opt/arangodb/var/log/arangodb/arangod.log'
+
+    You can access the server using a browser at 'http://127.0.0.1:8529/'
+    or start the ArangoDB shell
+       '/Applications/ArangoDB-CLI.app/Contents/MacOS/arangosh'
+
+    Switching to log-file now, killing this windows will NOT stop the server.
+
+
+    2013-10-27T19:42:04Z [23840] INFO ArangoDB (version 1.4.devel [darwin]) is ready for business. Have fun!
+
+Note that it is possible to install the homebrew version and the command-line
+app. You should, however, edit the configuration files of one version and change
+the port used.
 
 Windows {#InstallingWindows}
 ============================

@@ -4,7 +4,7 @@ ARANGODB_ROOT="`echo $0 | sed -e 's/\/Contents\/MacOS\/ArangoDB-CLI//'`/"
 
 # create start script
 
-SCRIPTS="`( cd $ARANGODB_ROOT/Contents/MacOS/opt/arangodb && ls -1 {bin,sbin}/* )`"
+SCRIPTS="`( cd ${ARANGODB_ROOT}Contents/MacOS/opt/arangodb && ls -1 {bin,sbin}/* )`"
 
 for script in $SCRIPTS; do
   base="`basename $script`"
@@ -12,12 +12,12 @@ for script in $SCRIPTS; do
   (
     echo "#!/bin/bash"
     echo
-    echo "export ARANGODB_ROOT=\"${ARANGODB_ROOT}Contents/MacOS//opt/arangodb\""
-    echo "export DATABASEDIR=\"${ARANGODB_ROOT}Contents/MacOS//opt/arangodb/var/lib/arangodb\""
-    echo "export LOGDIR=\"${ARANGODB_ROOT}Contents/MacOS//opt/arangodb/var/log/arangodb\""
-    echo "export PKGDATADIR=\"${ARANGODB_ROOT}Contents/MacOS//opt/arangodb/share/arangodb\""
+    echo "export ARANGODB_ROOT=\"${ARANGODB_ROOT}Contents/MacOS/\""
+    echo "export DATABASEDIR=\"${ARANGODB_ROOT}opt/arangodb/var/lib/arangodb\""
+    echo "export LOGDIR=\"${ARANGODB_ROOT}opt/arangodb/var/log/arangodb\""
+    echo "export PKGDATADIR=\"${ARANGODB_ROOT}opt/arangodb/share/arangodb\""
     echo
-    echo "exec \"${ARANGODB_ROOT}Contents/MacOS/opt/arangodb/$script\" -c \"${ARANGODB_ROOT}Contents/MacOS/opt/arangodb/etc/arangodb/${base}-relative.conf\" \$*"
+    echo "exec \"${ARANGODB_ROOT}opt/arangodb/$script\" -c \"${ARANGODB_ROOT}opt/arangodb/etc/arangodb/${base}-relative.conf\" \$*"
   ) > ${ARANGODB_ROOT}Contents/MacOS/$base.$$
 
   chmod 755 ${ARANGODB_ROOT}Contents/MacOS/$base.$$
