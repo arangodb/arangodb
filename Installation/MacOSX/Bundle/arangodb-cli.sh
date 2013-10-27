@@ -13,11 +13,17 @@ for script in $SCRIPTS; do
     echo "#!/bin/bash"
     echo
     echo "export ARANGODB_ROOT=\"${ARANGODB_ROOT}Contents/MacOS/\""
-    echo "export DATABASEDIR=\"${ARANGODB_ROOT}opt/arangodb/var/lib/arangodb\""
-    echo "export LOGDIR=\"${ARANGODB_ROOT}opt/arangodb/var/log/arangodb\""
-    echo "export PKGDATADIR=\"${ARANGODB_ROOT}opt/arangodb/share/arangodb\""
+    echo "export DATABASEDIR=\"\${ARANGODB_ROOT}opt/arangodb/var/lib/arangodb\""
+    echo "export LOGDIR=\"\${ARANGODB_ROOT}opt/arangodb/var/log/arangodb\""
+    echo "export PKGDATADIR=\"\${ARANGODB_ROOT}opt/arangodb/share/arangodb\""
     echo
-    echo "exec \"${ARANGODB_ROOT}opt/arangodb/$script\" -c \"${ARANGODB_ROOT}opt/arangodb/etc/arangodb/${base}-relative.conf\" \$*"
+    if [ "$base" == "arango-dfdb" ];  then
+      echo "exec \"\${ARANGODB_ROOT}opt/arangodb/$script\" \$*"
+    elif [ "$base" == "foxx-manager" ];  then
+      echo "exec \"\${ARANGODB_ROOT}opt/arangodb/$script\" -c \"\${ARANGODB_ROOT}opt/arangodb/etc/arangodb/arangosh-relative.conf\" \$*"
+    else
+      echo "exec \"\${ARANGODB_ROOT}opt/arangodb/$script\" -c \"\${ARANGODB_ROOT}opt/arangodb/etc/arangodb/${base}-relative.conf\" \$*"
+    fi
   ) > ${ARANGODB_ROOT}Contents/MacOS/$base.$$
 
   chmod 755 ${ARANGODB_ROOT}Contents/MacOS/$base.$$
