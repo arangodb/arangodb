@@ -147,15 +147,18 @@ typedef struct po_visit_functions_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 static char * FillVariables (const char* value) {
+  TRI_string_buffer_t buffer;
+
+  const char* p;
+  const char* e;
+  const char* q;
+
   if (value == NULL) {
     return NULL;
   }
 
-  TRI_string_buffer_t buffer;
-
-  const char* p = value;
-  const char* e = p + strlen(value);
-  const char* q;
+  p = value;
+  e = p + strlen(value);
 
   TRI_InitSizedStringBuffer(&buffer, TRI_CORE_MEM_ZONE, strlen(value) + 1);
 
@@ -1453,7 +1456,10 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
     t = FillVariables(optarg);
     item->parse(t, item->_desc);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, t);
+
+    if (t != NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, t);
+    }
   }
 
   TRI_AnnihilateStringBuffer(&buffer);
