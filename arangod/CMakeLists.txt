@@ -149,6 +149,13 @@ install(
   TARGETS ${BIN_ARANGOD}
   RUNTIME DESTINATION sbin)
 
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangod-relative.conf)
+endif ()
+
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
   DESTINATION ${ARANGODB_CONF_DIR})

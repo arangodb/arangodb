@@ -81,16 +81,22 @@ if (USE_MRUBY)
 endif ()
 
 ################################################################################
+### @brief RAW_CONFIG
+################################################################################
+
+option(USE_RAW_CONFIG "Do you want to install configuration files with variables" OFF)
+
+################################################################################
 ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
 ################################################################################
 
-set(SYSCONFDIR "${CMAKE_INSTALL_PREFIX}/etc" CACHE path "System configuration directory")
+set(SYSCONFDIR "etc" CACHE path "System configuration directory")
 set(ARANGODB_CONF_DIR ${SYSCONFDIR}/arangodb)
 
 file(TO_NATIVE_PATH "${SYSCONFDIR}" SYSCONFDIR)
-file(TO_NATIVE_PATH "${ARANGODB_CONF_DIR}" ARANGODB_CONF_DIR)
+file(TO_NATIVE_PATH "${CMAKE_INSTALL_PREFIX}/${ARANGODB_CONF_DIR}" ETCDIR)
 
-add_definitions("-D_SYSCONFDIR_=\"${ARANGODB_CONF_DIR}\"")
+add_definitions("-D_SYSCONFDIR_=\"${ETCDIR}\"")
 
 set(TRI_BINDIR      "${CMAKE_INSTALL_PREFIX}/bin")
 set(TRI_DATABASEDIR "${CMAKE_INSTALL_PREFIX}/var/lib/arangodb")
@@ -118,7 +124,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/include CACHE path "ICU include path")
 set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/libs CACHE path "ICU library path")
 set(ICU_LIBS icui18n;icuuc;icudata;pthread;m CACHE path "ICU libraries")
-set(ICU_VERSION "49.1.2" CACHE string "ICU version")
+set(ICU_VERSION "52.1" CACHE string "ICU version")
 
 if (ICU_INCLUDE)
   include_directories(${ICU_INCLUDE})
@@ -279,9 +285,13 @@ add_subdirectory(UnitTests)
 
 set(CPACK_SET_DESTDIR ON)
 
-set(CPACK_BUNDLE_NAME "ArangoDB CLI")
-set(CPACK_BUNDLE_PLIST "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
-set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
+set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
+set(CPACK_PACKAGE_VENDOR "triAGENS GmbH")
+
+set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
+set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
+set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
+set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
 
 include(CPack)
 

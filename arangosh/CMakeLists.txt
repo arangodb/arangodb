@@ -43,6 +43,13 @@ install(
   TARGETS ${BIN_ARANGOB}
   RUNTIME DESTINATION bin)
 
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangob-relative.conf)
+endif ()
+
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf
   DESTINATION ${ARANGODB_CONF_DIR})
@@ -80,6 +87,13 @@ target_link_libraries(
 install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION bin)
+
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangodump-relative.conf)
+endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf
@@ -121,6 +135,13 @@ install(
   TARGETS ${BIN_ARANGOIMP}
   RUNTIME DESTINATION bin)
 
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangoimp-relative.conf)
+endif ()
+
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf
   DESTINATION ${ARANGODB_CONF_DIR})
@@ -158,6 +179,13 @@ target_link_libraries(
 install(
   TARGETS ${BIN_ARANGORESTORE}
   RUNTIME DESTINATION bin)
+
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangorestore-relative.conf)
+endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf
@@ -198,6 +226,13 @@ target_link_libraries(
 install(
   TARGETS ${BIN_ARANGOSH}
   RUNTIME DESTINATION bin)
+
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangosh-relative.conf)
+endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf
