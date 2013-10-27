@@ -1470,6 +1470,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
   char* option;
   char* section;
   char* value;
+  char* raw;
   char* tmpSection;
   int res;
   regex_t re1;
@@ -1552,7 +1553,9 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
     if (res == 0) {
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-      value = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+      raw = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+      value = FillVariables(raw);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
 
       TRI_SystemFree(buffer);
       buffer = NULL;
@@ -1614,7 +1617,9 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     if (res == 0) {
       tmpSection = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
-      value = TRI_DuplicateString2(buffer + matches[3].rm_so, matches[3].rm_eo - matches[3].rm_so);
+      raw = TRI_DuplicateString2(buffer + matches[3].rm_so, matches[3].rm_eo - matches[3].rm_so);
+      value = FillVariables(raw);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
 
       TRI_SystemFree(buffer);
       buffer = NULL;
