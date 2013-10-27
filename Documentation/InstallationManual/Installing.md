@@ -24,7 +24,7 @@ We provide packages for
 Using a Package Manager to install ArangoDB {#InstallingLinuxPackageManager}
 ----------------------------------------------------------------------------
 
-Follow the instructions on the download page to use your favorite package manager
+Follow the instructions on the @EXTREF_S{http://www.arangodb.org/download,Downloads} page to use your favorite package manager
 for the major distributions. After setting up the ArangoDB repository you can then
 easily install ArangoDB using yum, aptitude, urpmi, or zypper.
 
@@ -71,8 +71,8 @@ The preferred method for installing ArangoDB under Mac OS X is
 homebrew. However, in case you are not using homebrew, we provide a command-line
 app which contains all the executables.
 
-There is also a version available in the AppStore which comes with a nice
-graphically interface to start und stop the server.
+There is also a version available in the AppStore, which comes with a nice
+graphical user interface to start und stop the server.
 
 Homebrew {#InstallingMacOSXHomebrew}
 ------------------------------------
@@ -113,19 +113,19 @@ Then remove the LaunchAgent
 Apple's App Store {#InstallingMacOSXAppStore}
 ---------------------------------------------
 
-ArangoDB is available in Apple's App-Store. Please note, that it sometimes take
-a days or weeks until the latest versions will be available.
+ArangoDB is available in Apple's App-Store. Please note, that it sometimes takes 
+days or weeks until the latest versions are available.
 
 Command-Line App {#InstallingMacOSXBundle}
 ------------------------------------------
 
-In case you are not using homebrew, we also provide an command-line app. You can
+In case you are not using homebrew, we also provide a command-line app. You can
 download it from
 
     http://www.arangodb.org/download
 
 Choose `Mac OS X` and go to `Grab binary packages directly`. This allows you to
-install the application `ArangoDB-CLI` in you application folder.
+install the application `ArangoDB-CLI` in your application folder.
 
 Starting the application will start the server and open a terminal window
 showing you the log-file.
