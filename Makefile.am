@@ -506,6 +506,9 @@ pack-dmg:
 
 	./configure \
 		--prefix=/opt/arangodb \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
 		--enable-mruby
 
 	cd Build && cmake \
