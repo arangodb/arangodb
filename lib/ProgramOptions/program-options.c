@@ -147,6 +147,10 @@ typedef struct po_visit_functions_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 static char * FillVariables (const char* value) {
+  if (value == NULL) {
+    return NULL;
+  }
+
   TRI_string_buffer_t buffer;
 
   const char* p = value;
