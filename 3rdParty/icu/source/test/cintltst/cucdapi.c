@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2012, International Business Machines
+ * Copyright (c) 1997-2013, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************/
 
@@ -324,6 +324,8 @@ void TestUScriptCodeAPI(){
             "Afak", "Jurc", "Mroo", "Nshu", "Sharada", "Sora_Sompeng", "Takri", "Tang", "Wole",
             /* new in ICU 49 */
             "Hluw", "Khoj", "Tirh",
+            /* new in ICU 52 */
+            "Aghb", "Mahj"
         };
         static const char* expectedShort[] = {
             "Bali", "Batk", "Blis", "Brah", "Cham", "Cirt", "Cyrs", "Egyd", "Egyh", "Egyp", 
@@ -346,6 +348,8 @@ void TestUScriptCodeAPI(){
             "Afak", "Jurc", "Mroo", "Nshu", "Shrd", "Sora", "Takr", "Tang", "Wole",
             /* new in ICU 49 */
             "Hluw", "Khoj", "Tirh",
+            /* new in ICU 52 */
+            "Aghb", "Mahj"
         };
         int32_t j = 0;
         if(LENGTHOF(expectedLong)!=(USCRIPT_CODE_LIMIT-USCRIPT_BALINESE)) {
@@ -524,6 +528,68 @@ void TestGetScriptExtensions() {
     if(U_FAILURE(errorCode) || length!=6 || scripts[0]!=USCRIPT_BOPOMOFO || scripts[5]!=USCRIPT_YI) {
         log_err("uscript_getScriptExtensions(U+FF65)=%d failed - %s\n",
               (int)length, u_errorName(errorCode));
+    }
+}
+
+void TestScriptMetadataAPI() {
+    /* API & code coverage. More testing in intltest/ucdtest.cpp. */
+    UErrorCode errorCode=U_ZERO_ERROR;
+    UChar sample[8];
+
+    if(uscript_getSampleString(USCRIPT_LATIN, sample, LENGTHOF(sample), &errorCode)!=1 ||
+            U_FAILURE(errorCode) ||
+            uscript_getScript(sample[0], &errorCode)!=USCRIPT_LATIN ||
+            sample[1]!=0) {
+        log_err("uscript_getSampleString(Latn) failed - %s\n", u_errorName(errorCode));
+    }
+    sample[0]=0xfffe;
+    if(uscript_getSampleString(USCRIPT_LATIN, sample, 0, &errorCode)!=1 ||
+            errorCode!=U_BUFFER_OVERFLOW_ERROR ||
+            sample[0]!=0xfffe) {
+        log_err("uscript_getSampleString(Latn, capacity=0) failed - %s\n", u_errorName(errorCode));
+    }
+    errorCode=U_ZERO_ERROR;
+    if(uscript_getSampleString(USCRIPT_INVALID_CODE, sample, LENGTHOF(sample), &errorCode)!=0 ||
+            U_FAILURE(errorCode) ||
+            sample[0]!=0) {
+        log_err("uscript_getSampleString(invalid) failed - %s\n", u_errorName(errorCode));
+    }
+    sample[0]=0xfffe;
+    if(uscript_getSampleString(USCRIPT_CODE_LIMIT, sample, 0, &errorCode)!=0 ||
+            errorCode!=U_STRING_NOT_TERMINATED_WARNING ||
+            sample[0]!=0xfffe) {
+        log_err("uscript_getSampleString(limit, capacity=0) failed - %s\n", u_errorName(errorCode));
+    }
+
+    if(uscript_getUsage(USCRIPT_LATIN)!=USCRIPT_USAGE_RECOMMENDED ||
+            uscript_getUsage(USCRIPT_YI)!=USCRIPT_USAGE_ASPIRATIONAL ||
+            uscript_getUsage(USCRIPT_CHEROKEE)!=USCRIPT_USAGE_LIMITED_USE ||
+            uscript_getUsage(USCRIPT_COPTIC)!=USCRIPT_USAGE_EXCLUDED ||
+            uscript_getUsage(USCRIPT_CIRTH)!=USCRIPT_USAGE_NOT_ENCODED ||
+            uscript_getUsage(USCRIPT_INVALID_CODE)!=USCRIPT_USAGE_NOT_ENCODED ||
+            uscript_getUsage(USCRIPT_CODE_LIMIT)!=USCRIPT_USAGE_NOT_ENCODED) {
+        log_err("uscript_getUsage() failed\n");
+    }
+
+    if(uscript_isRightToLeft(USCRIPT_LATIN) ||
+            uscript_isRightToLeft(USCRIPT_CIRTH) ||
+            !uscript_isRightToLeft(USCRIPT_ARABIC) ||
+            !uscript_isRightToLeft(USCRIPT_HEBREW)) {
+        log_err("uscript_isRightToLeft() failed\n");
+    }
+
+    if(uscript_breaksBetweenLetters(USCRIPT_LATIN) ||
+            uscript_breaksBetweenLetters(USCRIPT_CIRTH) ||
+            !uscript_breaksBetweenLetters(USCRIPT_HAN) ||
+            !uscript_breaksBetweenLetters(USCRIPT_THAI)) {
+        log_err("uscript_breaksBetweenLetters() failed\n");
+    }
+
+    if(uscript_isCased(USCRIPT_CIRTH) ||
+            uscript_isCased(USCRIPT_HAN) ||
+            !uscript_isCased(USCRIPT_LATIN) ||
+            !uscript_isCased(USCRIPT_GREEK)) {
+        log_err("uscript_isCased() failed\n");
     }
 }
 

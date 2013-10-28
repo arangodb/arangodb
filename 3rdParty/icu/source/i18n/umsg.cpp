@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -457,11 +457,12 @@ umsg_vformat(   const UMessageFormat *fmt,
             break;
 
         case Formattable::kObject:
+            // Unused argument number. Read and ignore a pointer argument.
+            va_arg(ap, void*);
+            break;
+
         default:
-            // This will never happen because MessageFormat doesn't
-            // support kObject.  When MessageFormat is changed to
-            // understand MeasureFormats, modify this code to do the
-            // right thing. [alan]
+            // Unknown/unsupported argument type.
             U_ASSERT(FALSE);
             *status=U_ILLEGAL_ARGUMENT_ERROR;
             break;

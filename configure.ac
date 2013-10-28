@@ -214,7 +214,7 @@ dnl ============================================================================
 BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
-AC_CONFIG_FILES([Makefile Documentation/arango.template])
+AC_CONFIG_FILES([Makefile Documentation/arango.template Installation/MacOSX/Bundle/Info.plist])
 AC_CONFIG_HEADER([config/config.h lib/BasicsC/local-configuration.h])
 AC_OUTPUT
 

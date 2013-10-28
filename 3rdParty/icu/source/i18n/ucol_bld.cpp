@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -29,6 +29,7 @@
 #include "unicode/ustring.h"
 #include "unicode/utf16.h"
 #include "normalizer2impl.h"
+#include "uassert.h"
 #include "ucol_bld.h"
 #include "ucol_elm.h"
 #include "ucol_cnt.h"
@@ -37,8 +38,11 @@
 #include "cmemory.h"
 #include "cstring.h"
 
+#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+
 static const InverseUCATableHeader* _staticInvUCA = NULL;
 static UDataMemory* invUCA_DATA_MEM = NULL;
+static icu::UInitOnce gStaticInvUCAInitOnce = U_INITONCE_INITIALIZER;
 
 U_CDECL_BEGIN
 static UBool U_CALLCONV
@@ -61,13 +65,9 @@ isAcceptableInvUCA(void * /*context*/,
         //pInfo->formatVersion[3]==INVUCA_FORMAT_VERSION_3 &&
         )
     {
-        UVersionInfo UCDVersion;
-        u_getUnicodeVersion(UCDVersion);
-        return (pInfo->dataVersion[0]==UCDVersion[0] &&
-            pInfo->dataVersion[1]==UCDVersion[1]);
-            //pInfo->dataVersion[1]==invUcaDataInfo.dataVersion[1] &&
-            //pInfo->dataVersion[2]==invUcaDataInfo.dataVersion[2] &&
-            //pInfo->dataVersion[3]==invUcaDataInfo.dataVersion[3]) {
+        // TODO: Check that the invuca data version (pInfo->dataVersion)
+        // matches the ucadata version.
+        return TRUE;
     } else {
         return FALSE;
     }
@@ -743,6 +743,11 @@ U_CFUNC void ucol_initBuffers(UColTokenParser *src, UColTokListHeader *lh, UErro
 
     uprv_memset(t, 0, UCOL_STRENGTH_LIMIT*sizeof(uint32_t));
 
+    /* must initialize ranges to avoid memory check warnings */
+    for (int i = 0; i < UCOL_CE_STRENGTH_LIMIT; i++) {
+        uprv_memset(Gens[i].ranges, 0, sizeof(Gens[i].ranges));
+    }
+
     tok->toInsert = 1;
     t[tok->strength] = 1;
 
@@ -1327,74 +1332,60 @@ ucol_bld_cleanup(void)
     udata_close(invUCA_DATA_MEM);
     invUCA_DATA_MEM = NULL;
     _staticInvUCA = NULL;
+    gStaticInvUCAInitOnce.reset();
     return TRUE;
 }
 U_CDECL_END
 
+static void U_CALLCONV initInverseUCA(UErrorCode &status) {
+    U_ASSERT(invUCA_DATA_MEM == NULL);
+    U_ASSERT(_staticInvUCA == NULL);
+    ucln_i18n_registerCleanup(UCLN_I18N_UCOL_BLD, ucol_bld_cleanup);
+    InverseUCATableHeader *newInvUCA = NULL;
+    UDataMemory *result = udata_openChoice(U_ICUDATA_COLL, INVC_DATA_TYPE, INVC_DATA_NAME, isAcceptableInvUCA, NULL, &status);
+
+    if(U_FAILURE(status)) {
+        if (result) {
+            udata_close(result);
+        }
+        // This is not needed, as we are talking about
+        // memory we got from UData
+        //uprv_free(newInvUCA);
+        return;
+    }
+
+    if(result != NULL) { /* It looks like sometimes we can fail to find the data file */
+        newInvUCA = (InverseUCATableHeader *)udata_getMemory(result);
+        UCollator *UCA = ucol_initUCA(&status);
+        // UCA versions of UCA and inverse UCA should match
+        if(uprv_memcmp(newInvUCA->UCAVersion, UCA->image->UCAVersion, sizeof(UVersionInfo)) != 0) {
+            status = U_INVALID_FORMAT_ERROR;
+            udata_close(result);
+            return;
+        }
+
+        invUCA_DATA_MEM = result;
+        _staticInvUCA = newInvUCA;
+    }
+}
+
+
 U_CAPI const InverseUCATableHeader * U_EXPORT2
 ucol_initInverseUCA(UErrorCode *status)
 {
-    if(U_FAILURE(*status)) return NULL;
-
-    UBool needsInit;
-    UMTX_CHECK(NULL, (_staticInvUCA == NULL), needsInit);
-
-    if(needsInit) {
-        InverseUCATableHeader *newInvUCA = NULL;
-        UDataMemory *result = udata_openChoice(U_ICUDATA_COLL, INVC_DATA_TYPE, INVC_DATA_NAME, isAcceptableInvUCA, NULL, status);
-
-        if(U_FAILURE(*status)) {
-            if (result) {
-                udata_close(result);
-            }
-            // This is not needed, as we are talking about
-            // memory we got from UData
-            //uprv_free(newInvUCA);
-        }
-
-        if(result != NULL) { /* It looks like sometimes we can fail to find the data file */
-            newInvUCA = (InverseUCATableHeader *)udata_getMemory(result);
-            UCollator *UCA = ucol_initUCA(status);
-            // UCA versions of UCA and inverse UCA should match
-            if(uprv_memcmp(newInvUCA->UCAVersion, UCA->image->UCAVersion, sizeof(UVersionInfo)) != 0) {
-                *status = U_INVALID_FORMAT_ERROR;
-                udata_close(result);
-                return NULL;
-            }
-
-            umtx_lock(NULL);
-            if(_staticInvUCA == NULL) {
-                invUCA_DATA_MEM = result;
-                _staticInvUCA = newInvUCA;
-                result = NULL;
-                newInvUCA = NULL;
-            }
-            umtx_unlock(NULL);
-
-            if(newInvUCA != NULL) {
-                udata_close(result);
-                // This is not needed, as we are talking about
-                // memory we got from UData
-                //uprv_free(newInvUCA);
-            }
-            else {
-                ucln_i18n_registerCleanup(UCLN_I18N_UCOL_BLD, ucol_bld_cleanup);
-            }
-        }
-    }
+    umtx_initOnce(gStaticInvUCAInitOnce, &initInverseUCA, *status);
     return _staticInvUCA;
 }
 
 /* This is the data that is used for non-script reordering codes. These _must_ be kept
  * in order that they are to be applied as defaults and in synch with the UColReorderCode enum.
  */
-static const char* ReorderingTokenNames[] = {
+static const char * const ReorderingTokenNames[] = {
     "SPACE",
     "PUNCT",
     "SYMBOL",
     "CURRENCY",
-    "DIGIT",
-    NULL
+    "DIGIT"
 };
 
 static void toUpper(const char* src, char* dst, uint32_t length) {
@@ -1408,7 +1399,7 @@ U_INTERNAL int32_t U_EXPORT2
 ucol_findReorderingEntry(const char* name) {
     char buffer[32];
     toUpper(name, buffer, 32);
-    for (uint32_t entry = 0; ReorderingTokenNames[entry] != NULL; entry++) {
+    for (uint32_t entry = 0; entry < LENGTHOF(ReorderingTokenNames); entry++) {
         if (uprv_strcmp(buffer, ReorderingTokenNames[entry]) == 0) {
             return entry + UCOL_REORDER_CODE_FIRST;
         }

@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 1997-2012, International Business Machines Corporation and    *
+* Copyright (C) 1997-2013, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 *
@@ -22,6 +22,7 @@
 #include "unicode/ustring.h"
 #include "unicode/measure.h"
 #include "unicode/curramt.h"
+#include "unicode/uformattable.h"
 #include "charstr.h"
 #include "cmemory.h"
 #include "cstring.h"
@@ -36,13 +37,7 @@ U_NAMESPACE_BEGIN
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(Formattable)
 
-struct FmtStackData {
-  DigitList stackDecimalNum;   // 128
-  //CharString stackDecimalStr;  // 64
-  //                         -----
-  //                         192 total
-};
-
+#include "fmtableimp.h"
 
 //-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 
@@ -360,16 +355,12 @@ void Formattable::dispose()
     delete fDecimalStr;
     fDecimalStr = NULL;
     
-#if UCONFIG_INTERNAL_DIGITLIST
     FmtStackData *stackData = (FmtStackData*)fStackData;
     if(fDecimalNum != &(stackData->stackDecimalNum)) {
       delete fDecimalNum;
     } else {
       fDecimalNum->~DigitList(); // destruct, don't deallocate
     }
-#else
-    delete fDecimalNum;
-#endif
     fDecimalNum = NULL;
 }
 
@@ -410,7 +401,7 @@ Formattable::getLong(UErrorCode& status) const
     switch (fType) {
     case Formattable::kLong: 
         return (int32_t)fValue.fInt64;
-    case Formattable::kInt64: 
+    case Formattable::kInt64:
         if (fValue.fInt64 > INT32_MAX) {
             status = U_INVALID_FORMAT_ERROR;
             return INT32_MAX;
@@ -705,50 +696,59 @@ StringPiece Formattable::getDecimalNumber(UErrorCode &status) {
         return "";
     }
     if (fDecimalStr != NULL) {
-        return fDecimalStr->toStringPiece();
+      return fDecimalStr->toStringPiece();
     }
 
-    if (fDecimalNum == NULL) {
+    CharString *decimalStr = internalGetCharString(status);
+    if(decimalStr == NULL) {
+      return ""; // getDecimalNumber returns "" for error cases
+    } else {
+      return decimalStr->toStringPiece();
+    }
+}
+
+CharString *Formattable::internalGetCharString(UErrorCode &status) {
+    if(fDecimalStr == NULL) {
+      if (fDecimalNum == NULL) {
         // No decimal number for the formattable yet.  Which means the value was
         // set directly by the user as an int, int64 or double.  If the value came
         // from parsing, or from the user setting a decimal number, fDecimalNum
         // would already be set.
         //
-      fDecimalNum = new DigitList; // TODO: use internal digit list
+        fDecimalNum = new DigitList; // TODO: use internal digit list
         if (fDecimalNum == NULL) {
-            status = U_MEMORY_ALLOCATION_ERROR;
-            return "";
+          status = U_MEMORY_ALLOCATION_ERROR;
+          return NULL;
         }
 
         switch (fType) {
         case kDouble:
-            fDecimalNum->set(this->getDouble());
-            break;
+          fDecimalNum->set(this->getDouble());
+          break;
         case kLong:
-            fDecimalNum->set(this->getLong());
-            break;
+          fDecimalNum->set(this->getLong());
+          break;
         case kInt64:
-            fDecimalNum->set(this->getInt64());
-            break;
+          fDecimalNum->set(this->getInt64());
+          break;
         default:
-            // The formattable's value is not a numeric type.
-            status = U_INVALID_STATE_ERROR;
-            return "";
+          // The formattable's value is not a numeric type.
+          status = U_INVALID_STATE_ERROR;
+          return NULL;
         }
-    }
+      }
 
-    fDecimalStr = new CharString;
-    if (fDecimalStr == NULL) {
+      fDecimalStr = new CharString;
+      if (fDecimalStr == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
-        return "";
+        return NULL;
+      }
+      fDecimalNum->getDecimal(*fDecimalStr, status);
     }
-    fDecimalNum->getDecimal(*fDecimalStr, status);
-
-    return fDecimalStr->toStringPiece();
+    return fDecimalStr;
 }
 
 
-#if UCONFIG_INTERNAL_DIGITLIST
 DigitList *
 Formattable::getInternalDigitList() {
   FmtStackData *stackData = (FmtStackData*)fStackData;
@@ -760,7 +760,6 @@ Formattable::getInternalDigitList() {
   }
   return fDecimalNum;
 }
-#endif
 
 // ---------------------------------------
 void
@@ -895,6 +894,152 @@ FormattableStreamer::streamOut(ostream& stream, const Formattable& obj)
 #endif
 
 U_NAMESPACE_END
+
+/* ---- UFormattable implementation ---- */
+
+U_NAMESPACE_USE
+
+U_DRAFT UFormattable* U_EXPORT2
+ufmt_open(UErrorCode *status) {
+  if( U_FAILURE(*status) ) {
+    return NULL;
+  }
+  UFormattable *fmt = (new Formattable())->toUFormattable();
+
+  if( fmt == NULL ) {
+    *status = U_MEMORY_ALLOCATION_ERROR;
+  }
+  return fmt;
+}
+
+U_DRAFT void U_EXPORT2
+ufmt_close(UFormattable *fmt) {
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  delete obj;
+}
+
+U_INTERNAL UFormattableType U_EXPORT2
+ufmt_getType(const UFormattable *fmt, UErrorCode *status) {
+  if(U_FAILURE(*status)) {
+    return (UFormattableType)UFMT_COUNT;
+  }
+  const Formattable *obj = Formattable::fromUFormattable(fmt);
+  return (UFormattableType)obj->getType();
+}
+
+
+U_INTERNAL UBool U_EXPORT2
+ufmt_isNumeric(const UFormattable *fmt) {
+  const Formattable *obj = Formattable::fromUFormattable(fmt);
+  return obj->isNumeric();
+}
+
+U_DRAFT UDate U_EXPORT2
+ufmt_getDate(const UFormattable *fmt, UErrorCode *status) {
+  const Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  return obj->getDate(*status);
+}
+
+U_DRAFT double U_EXPORT2
+ufmt_getDouble(UFormattable *fmt, UErrorCode *status) {
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  return obj->getDouble(*status);
+}
+
+U_DRAFT int32_t U_EXPORT2
+ufmt_getLong(UFormattable *fmt, UErrorCode *status) {
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  return obj->getLong(*status);
+}
+
+
+U_DRAFT const void *U_EXPORT2
+ufmt_getObject(const UFormattable *fmt, UErrorCode *status) {
+  const Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  const void *ret = obj->getObject();
+  if( ret==NULL &&
+      (obj->getType() != Formattable::kObject) &&
+      U_SUCCESS( *status )) {
+    *status = U_INVALID_FORMAT_ERROR;
+  }
+  return ret;
+}
+
+U_DRAFT const UChar* U_EXPORT2
+ufmt_getUChars(UFormattable *fmt, int32_t *len, UErrorCode *status) {
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  // avoid bogosity by checking the type first.
+  if( obj->getType() != Formattable::kString ) {
+    if( U_SUCCESS(*status) ){
+      *status = U_INVALID_FORMAT_ERROR;
+    }
+    return NULL;
+  }
+
+  // This should return a valid string
+  UnicodeString &str = obj->getString(*status);
+  if( U_SUCCESS(*status) && len != NULL ) {
+    *len = str.length();
+  }
+  return str.getTerminatedBuffer();
+}
+
+U_DRAFT int32_t U_EXPORT2
+ufmt_getArrayLength(const UFormattable* fmt, UErrorCode *status) {
+  const Formattable *obj = Formattable::fromUFormattable(fmt);
+
+  int32_t count;
+  (void)obj->getArray(count, *status);
+  return count;
+}
+
+U_DRAFT UFormattable * U_EXPORT2
+ufmt_getArrayItemByIndex(UFormattable* fmt, int32_t n, UErrorCode *status) {
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+  int32_t count;
+  (void)obj->getArray(count, *status);
+  if(U_FAILURE(*status)) {
+    return NULL;
+  } else if(n<0 || n>=count) {
+    setError(*status, U_INDEX_OUTOFBOUNDS_ERROR);
+    return NULL;
+  } else {
+    return (*obj)[n].toUFormattable(); // returns non-const Formattable
+  }
+}
+
+U_DRAFT const char * U_EXPORT2
+ufmt_getDecNumChars(UFormattable *fmt, int32_t *len, UErrorCode *status) {
+  if(U_FAILURE(*status)) {
+    return "";
+  }
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+  CharString *charString = obj->internalGetCharString(*status);
+  if(U_FAILURE(*status)) {
+    return "";
+  }
+  if(charString == NULL) {
+    *status = U_MEMORY_ALLOCATION_ERROR;
+    return "";
+  } else {
+    if(len!=NULL) {
+      *len = charString->length();
+    }
+    return charString->data();
+  }
+}
+
+U_DRAFT int64_t U_EXPORT2
+ufmt_getInt64(UFormattable *fmt, UErrorCode *status) {
+  Formattable *obj = Formattable::fromUFormattable(fmt);
+  return obj->getInt64(*status);
+}
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
 

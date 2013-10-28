@@ -1,6 +1,6 @@
 /*
 **************************************************************************
-* Copyright (C) 1999-2005, International Business Machines Corporation and
+* Copyright (C) 1999-2012, International Business Machines Corporation and
 * others. All Rights Reserved.
 **************************************************************************
 *   Date        Name        Description
@@ -205,7 +205,7 @@ protected:
      * Default constructor.
      * @stable ICU 2.4
      */
-    Replaceable();
+    inline Replaceable();
 
     /*
      * Assignment operator not declared. The compiler will provide one
@@ -236,6 +236,8 @@ protected:
      */
     virtual UChar32 getChar32At(int32_t offset) const = 0;
 };
+
+inline Replaceable::Replaceable() {}
 
 inline int32_t
 Replaceable::length() const {

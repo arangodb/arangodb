@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sg.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sg.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sg.xml
+ * ICU <specials> source: <path>/common/main/sg.xml
  */
 sg{
     Countries{
@@ -56,7 +56,6 @@ sg{
         CN{"Shîna"}
         CO{"Kolombïi"}
         CR{"Kôsta Rîka"}
-        CS{"Serbïi na Möntënegröo"}
         CU{"Kubäa"}
         CV{"Azûâ tî Kâpo-Vêre"}
         CY{"Sîpri"}
@@ -238,5 +237,5 @@ sg{
         ZM{"Zambïi"}
         ZW{"Zimbäbwe"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

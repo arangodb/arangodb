@@ -149,22 +149,51 @@ install(
   TARGETS ${BIN_ARANGOD}
   RUNTIME DESTINATION sbin)
 
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangod-relative.conf)
+endif ()
+
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
   DESTINATION ${ARANGODB_CONF_DIR})
 
 install(
+  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
+  DESTINATION ${ARANGODB_CONF_DIR})
+
+install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
   REGEX "^.*/server/tests$" EXCLUDE)
 
 install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/npm
+  DESTINATION share/arangodb/js
+  REGEX ".travis.yml" EXCLUDE
+  REGEX ".npmignore" EXCLUDE)
+
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/apps
+  DESTINATION share/arangodb/js)
+
+install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
+  DESTINATION var/log)
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
+  DESTINATION var/lib)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

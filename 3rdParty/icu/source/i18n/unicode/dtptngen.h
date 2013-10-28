@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2011, International Business Machines Corporation and
+* Copyright (C) 2007-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -150,6 +150,11 @@ public:
      * @return conflicting status.  The value could be UDATPG_NO_CONFLICT, 
      *                             UDATPG_BASE_CONFLICT or UDATPG_CONFLICT.
      * @stable ICU 3.8
+	 * <p>
+	 * <h4>Sample code</h4>
+	 * \snippet samples/dtptngsample/dtptngsample.cpp getBestPatternExample1
+	 * \snippet samples/dtptngsample/dtptngsample.cpp addPatternExample
+	 * <p>
      */
     UDateTimePatternConflict addPattern(const UnicodeString& pattern, 
                                         UBool override, 
@@ -249,6 +254,11 @@ public:
      * @return bestPattern
      *            The best pattern found from the given skeleton.
      * @stable ICU 3.8
+	 * <p>
+	 * <h4>Sample code</h4>
+	 * \snippet samples/dtptngsample/dtptngsample.cpp getBestPatternExample1
+	 * \snippet samples/dtptngsample/dtptngsample.cpp getBestPatternExample
+	 * <p>
      */
      UnicodeString getBestPattern(const UnicodeString& skeleton, UErrorCode& status);
 
@@ -292,6 +302,11 @@ public:
      *               which must not indicate a failure before the function call.
      * @return pattern adjusted to match the skeleton fields widths and subtypes.
      * @stable ICU 3.8
+	 * <p>
+	 * <h4>Sample code</h4>
+	 * \snippet samples/dtptngsample/dtptngsample.cpp getBestPatternExample1
+	 * \snippet samples/dtptngsample/dtptngsample.cpp replaceFieldTypesExample
+	 * <p>
      */
      UnicodeString replaceFieldTypes(const UnicodeString& pattern, 
                                      const UnicodeString& skeleton, 
@@ -447,6 +462,13 @@ private:
     UnicodeString hackPattern;
     UnicodeString emptyString;
     UChar fDefaultHourFormatChar;
+    
+    /* internal flags masks for adjustFieldTypes etc. */
+    enum {
+        kDTPGNoFlags = 0,
+        kDTPGFixFractionalSeconds = 1,
+        kDTPGSkeletonUsesCapJ = 2
+    };
 
     void initData(const Locale &locale, UErrorCode &status);
     void addCanonicalItems();
@@ -462,8 +484,8 @@ private:
     void getAppendName(UDateTimePatternField field, UnicodeString& value);
     int32_t getCanonicalIndex(const UnicodeString& field);
     const UnicodeString* getBestRaw(DateTimeMatcher& source, int32_t includeMask, DistanceInfo* missingFields, const PtnSkeleton** specifiedSkeletonPtr = 0);
-    UnicodeString adjustFieldTypes(const UnicodeString& pattern, const PtnSkeleton* specifiedSkeleton, UBool fixFractionalSeconds, UDateTimePatternMatchOptions options = UDATPG_MATCH_NO_OPTIONS);
-    UnicodeString getBestAppending(int32_t missingFields, UDateTimePatternMatchOptions options = UDATPG_MATCH_NO_OPTIONS);
+    UnicodeString adjustFieldTypes(const UnicodeString& pattern, const PtnSkeleton* specifiedSkeleton, int32_t flags, UDateTimePatternMatchOptions options = UDATPG_MATCH_NO_OPTIONS);
+    UnicodeString getBestAppending(int32_t missingFields, int32_t flags, UDateTimePatternMatchOptions options = UDATPG_MATCH_NO_OPTIONS);
     int32_t getTopBitNumber(int32_t foundMask);
     void setAvailableFormat(const UnicodeString &key, UErrorCode& status);
     UBool isAvailableFormatSet(const UnicodeString &key) const;

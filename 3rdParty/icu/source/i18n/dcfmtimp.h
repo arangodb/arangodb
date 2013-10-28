@@ -24,12 +24,15 @@ enum EDecimalFormatFastpathStatus {
  * Must be smaller than DecimalFormat::fReserved
  */
 struct DecimalFormatInternal {
-  uint8_t    fFastpathStatus;
+  uint8_t    fFastFormatStatus;
+  uint8_t    fFastParseStatus;
   
 #ifdef FMT_DEBUG
   void dump() const {
-    printf("DecimalFormatInternal: fFastpathStatus=%c\n",
-           "NY?"[(int)fFastpathStatus&3]);
+    printf("DecimalFormatInternal: fFastFormatStatus=%c, fFastParseStatus=%c\n",
+           "NY?"[(int)fFastFormatStatus&3],
+           "NY?"[(int)fFastParseStatus&3]
+           );
   }
 #endif  
 };

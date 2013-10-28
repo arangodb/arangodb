@@ -1,8 +1,8 @@
-# NormalizationTest-6.1.0.txt
-# Date: 2011-11-27, 05:10:33 GMT [MD]
+# NormalizationTest-6.3.0.txt
+# Date: 2012-12-20, 22:18:30 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 #
@@ -18428,4 +18428,4 @@ D750 0334 11B5;D750 0334 11B5;1112 1173 0334 11B5;D750 0334 11B5;1112 1173 0334 
 11131 0334 11127;11131 0334 11127;11131 0334 11127;11131 0334 11127;11131 0334 11127;
 11132 0334 11127;11132 0334 11127;11132 0334 11127;11132 0334 11127;11132 0334 11127;
 #
-# END OF FILE
+# EOF

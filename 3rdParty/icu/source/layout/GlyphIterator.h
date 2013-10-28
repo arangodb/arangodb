@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -24,7 +24,7 @@ class GlyphPositionAdjustments;
 class GlyphIterator : public UMemory {
 public:
     GlyphIterator(LEGlyphStorage &theGlyphStorage, GlyphPositionAdjustments *theGlyphPositionAdjustments, le_bool rightToLeft, le_uint16 theLookupFlags,
-        FeatureMask theFeatureMask, const GlyphDefinitionTableHeader *theGlyphDefinitionTableHeader);
+                  FeatureMask theFeatureMask, const LEReferenceTo<GlyphDefinitionTableHeader> &theGlyphDefinitionTableHeader);
 
     GlyphIterator(GlyphIterator &that);
 
@@ -73,7 +73,7 @@ public:
     le_int32 applyInsertions();
 
 private:
-    le_bool filterGlyph(le_uint32 index) const;
+    le_bool filterGlyph(le_uint32 index);
     le_bool hasFeatureTag(le_bool matchGroup) const;
     le_bool nextInternal(le_uint32 delta = 1);
     le_bool prevInternal(le_uint32 delta = 1);
@@ -92,10 +92,18 @@ private:
     FeatureMask featureMask;
     le_int32    glyphGroup;
 
-    const GlyphClassDefinitionTable *glyphClassDefinitionTable;
-    const MarkAttachClassDefinitionTable *markAttachClassDefinitionTable;
+    LEReferenceTo<GlyphClassDefinitionTable> glyphClassDefinitionTable;
+    LEReferenceTo<MarkAttachClassDefinitionTable> markAttachClassDefinitionTable;
 
     GlyphIterator &operator=(const GlyphIterator &other); // forbid copying of this class
+
+    struct {
+      LEGlyphID   id;
+      le_bool     result;
+    } filterCache;
+    le_bool   filterCacheValid;
+
+    void filterResetCache(void);
 };
 
 U_NAMESPACE_END

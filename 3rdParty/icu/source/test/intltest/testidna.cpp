@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2011, International Business Machines
+ *   Copyright (C) 2003-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -1524,6 +1524,15 @@ void TestIDNA::TestCompareReferenceImpl(){
     UChar src [2] = {0,0};
     int32_t srcLen = 0;
 
+    // data even OK?
+    {
+      UErrorCode dataStatus = U_ZERO_ERROR;
+      loadTestData(dataStatus);
+      if(U_FAILURE(dataStatus)) {
+        dataerrln("Couldn't load test data: %s\n", u_errorName(dataStatus)); // save us from thousands and thousands of errors
+        return;
+      }
+    }
 
     for (int32_t i = 0; i <= 0x10FFFF; i++){
         if (quick == TRUE && i > 0x0FFF){

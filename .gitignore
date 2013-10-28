@@ -92,6 +92,7 @@ cppcheck.log
 cppcheck.tmp
 
 Installation/epm/arangodb.sublist
+Installation/MacOSX/Bundle/Info.plist
 nbproject/
 
 test.cpp.txt

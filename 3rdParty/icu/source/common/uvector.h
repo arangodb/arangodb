@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -243,9 +243,9 @@ public:
     void sort(UElementComparator *compare, UErrorCode &ec);
 
     /**
-     * Sort the contents of this vector using a caller-supplied function
+     * Stable sort the contents of this vector using a caller-supplied function
      * of type UComparator to do the comparison.  Provides more flexibility
-     * than uvector::sort() because an additional user-parameter can be passed to
+     * than UVector::sort() because an additional user parameter can be passed to
      * the comparison function.
      */
     void sortWithUComparator(UComparator *compare, const void *context, UErrorCode &ec);

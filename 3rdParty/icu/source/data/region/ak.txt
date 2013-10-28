@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ak.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ak.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ak.xml
+ * ICU <specials> source: <path>/common/main/ak.xml
  */
 ak{
     Countries{
@@ -56,7 +56,6 @@ ak{
         CN{"Kyaena"}
         CO{"Kolombia"}
         CR{"Kɔsta Rika"}
-        CS{"Sɛɛbea ne Mɔntenɛgro"}
         CU{"Kuba"}
         CV{"Kepvɛdfo Islands"}
         CY{"Saeprɔs"}
@@ -238,5 +237,5 @@ ak{
         ZM{"Zambia"}
         ZW{"Zembabwe"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

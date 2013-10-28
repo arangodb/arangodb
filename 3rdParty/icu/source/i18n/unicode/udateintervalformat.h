@@ -103,7 +103,7 @@ typedef struct UDateIntervalFormat UDateIntervalFormat;  /**< C typedef for stru
  *            or NULL if an error occurred.
  * @stable ICU 4.8
  */
-U_DRAFT UDateIntervalFormat* U_EXPORT2
+U_STABLE UDateIntervalFormat* U_EXPORT2
 udtitvfmt_open(const char*  locale,
               const UChar* skeleton,
               int32_t      skeletonLength,
@@ -117,7 +117,7 @@ udtitvfmt_open(const char*  locale,
  *            The UDateIntervalFormat object to close.
  * @stable ICU 4.8
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 udtitvfmt_close(UDateIntervalFormat *formatter);
 
 
@@ -167,7 +167,7 @@ U_NAMESPACE_END
  *            output was truncated.
  * @stable ICU 4.8
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 udtitvfmt_format(const UDateIntervalFormat* formatter,
                 UDate           fromDate,
                 UDate           toDate,

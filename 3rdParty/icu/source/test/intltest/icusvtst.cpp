@@ -1,11 +1,11 @@
 /**
  *******************************************************************************
- * Copyright (C) 2001-2011, International Business Machines Corporation and
+ * Copyright (C) 2001-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  *******************************************************************************
  */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/utypes.h"
 
@@ -950,11 +950,10 @@ ICUServiceTest::testRBF()
 
 class SimpleListener : public ServiceListener {
     ICUServiceTest* _test;
-    int32_t _n;
     UnicodeString _name;
 
     public:
-    SimpleListener(ICUServiceTest* test, const UnicodeString& name) : _test(test), _n(0), _name(name) {}
+    SimpleListener(ICUServiceTest* test, const UnicodeString& name) : _test(test), _name(name) {}
 
     virtual void serviceChanged(const ICUService& service) const {
         UnicodeString serviceName = "listener ";

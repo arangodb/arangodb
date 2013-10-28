@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zh_Hant_HK.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hant_HK.xml
 // *
 // ***************************************************************************
 zh_Hant_HK{
@@ -12,15 +12,20 @@ zh_Hant_HK{
     }
     Languages{
         de_CH{"瑞士德語"}
+        eo{"世界語"}
+        fr_CA{"法文 (加拿大)"}
+        gsw{"德文 (瑞士)"}
         it{"意大利文"}
         lol{"蒙古語"}
         pt_BR{"巴西葡萄牙語"}
+        zgh{"摩洛哥標準塔馬齊格特文"}
     }
     LanguagesShort{
         az{"阿澤里"}
     }
     Scripts{
         Cyrl{"西里爾語字母"}
+        Deva{"梵文"}
         Hang{"韓文字母"}
     }
     Scripts%stand-alone{
@@ -83,5 +88,5 @@ zh_Hant_HK{
         REVISED{"已修訂拼字法"}
         SCOTLAND{"蘇格蘭標準英語"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

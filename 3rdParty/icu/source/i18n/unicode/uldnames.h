@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010, International Business Machines Corporation and       * 
+*   Copyright (C) 2010-2012, International Business Machines Corporation and       * 
 *   others.  All Rights Reserved.                                             *
 *******************************************************************************
 */
@@ -10,12 +10,13 @@
 
 /**
  * \file
- * \brief C++ API: Provides display names of Locale ids and their components.
+ * \brief C API: Provides display names of Locale ids and their components.
  */
 
 #include "unicode/utypes.h"
 #include "unicode/localpointer.h"
 #include "unicode/uscript.h"
+#include "unicode/udisplaycontext.h"
 
 /**
  * Enum used in LocaleDisplayNames::createInstance.
@@ -265,6 +266,40 @@ uldn_keyValueDisplayName(const ULocaleDisplayNames *ldn,
                          int32_t maxResultSize,
                          UErrorCode *pErrorCode);
 
+#ifndef U_HIDE_DRAFT_API
+/**
+* Returns an instance of LocaleDisplayNames that returns names formatted
+* for the provided locale, using the provided UDisplayContext settings.
+*
+* @param locale The display locale 
+* @param contexts List of one or more context settings (e.g. for dialect
+*               handling, capitalization, etc.
+* @param length Number of items in the contexts list
+* @param pErrorCode Pointer to UErrorCode input/output status. If at entry this indicates
+*               a failure status, the function will do nothing; otherwise this will be
+*               updated with any new status from the function. 
+* @return a ULocaleDisplayNames instance 
+* @draft ICU 51
+*/
+U_DRAFT ULocaleDisplayNames * U_EXPORT2
+uldn_openForContext(const char * locale, UDisplayContext *contexts,
+                    int32_t length, UErrorCode *pErrorCode);
+
+/**
+* Returns the UDisplayContext value for the specified UDisplayContextType.
+* @param ldn the ULocaleDisplayNames instance
+* @param type the UDisplayContextType whose value to return
+* @param pErrorCode Pointer to UErrorCode input/output status. If at entry this indicates
+*               a failure status, the function will do nothing; otherwise this will be
+*               updated with any new status from the function. 
+* @return the UDisplayContextValue for the specified type.
+* @draft ICU 51
+*/
+U_DRAFT UDisplayContext U_EXPORT2
+uldn_getContext(const ULocaleDisplayNames *ldn, UDisplayContextType type,
+                UErrorCode *pErrorCode);
+
+#endif  /* U_HIDE_DRAFT_API */
 
 #endif  /* !UCONFIG_NO_FORMATTING */
 #endif  /* __ULDNAMES_H__ */

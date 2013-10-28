@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1998-2012, International Business Machines
+#   Copyright (C) 1998-2013, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -52,6 +52,10 @@ DYNAMICCFLAGS = $(SHAREDLIBCFLAGS)
 DYNAMICCXXFLAGS = $(SHAREDLIBCXXFLAGS)
 CFLAGS += $(LIBCFLAGS)
 CXXFLAGS += $(LIBCXXFLAGS)
+ifeq ($(OS390BATCH),1)
+CFLAGS += -WI
+CXXFLAGS += -WI
+endif
 
 CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common $(LIBCPPFLAGS) $(CPPFLAGSICUI18N)
 DEFS += -DU_I18N_IMPLEMENTATION
@@ -62,10 +66,10 @@ OBJECTS = ucln_in.o \
 fmtable.o format.o msgfmt.o umsg.o numfmt.o unum.o decimfmt.o dcfmtsym.o \
 ucurr.o digitlst.o fmtable_cnv.o \
 choicfmt.o datefmt.o smpdtfmt.o reldtfmt.o dtfmtsym.o udat.o dtptngen.o udatpg.o \
-nfrs.o nfrule.o nfsubs.o rbnf.o numsys.o ucsdet.o \
+nfrs.o nfrule.o nfsubs.o rbnf.o numsys.o unumsys.o ucsdet.o \
 ucal.o calendar.o gregocal.o timezone.o simpletz.o olsontz.o \
 astro.o taiwncal.o buddhcal.o persncal.o islamcal.o japancal.o gregoimp.o hebrwcal.o \
-indiancal.o chnsecal.o cecal.o coptccal.o ethpccal.o \
+indiancal.o chnsecal.o cecal.o coptccal.o dangical.o ethpccal.o \
 coleitr.o coll.o tblcoll.o sortkey.o bocsu.o ucoleitr.o \
 ucol.o ucol_res.o ucol_bld.o ucol_sit.o ucol_tok.o ucol_wgt.o ucol_cnt.o ucol_elm.o \
 strmatch.o usearch.o search.o stsearch.o \
@@ -78,11 +82,12 @@ ulocdata.o measfmt.o currfmt.o curramt.o currunit.o measure.o utmscale.o \
 csdetect.o csmatch.o csr2022.o csrecog.o csrmbcs.o csrsbcs.o csrucode.o csrutf8.o inputext.o \
 wintzimpl.o windtfmt.o winnmfmt.o basictz.o dtrule.o rbtz.o tzrule.o tztrans.o vtzone.o zonemeta.o \
 upluralrules.o plurrule.o plurfmt.o selfmt.o dtitvfmt.o dtitvinf.o udateintervalformat.o \
-tmunit.o tmutamt.o tmutfmt.o colldata.o bmsearch.o bms.o currpinf.o \
+tmunit.o tmutamt.o tmutfmt.o currpinf.o \
 uspoof.o uspoof_impl.o uspoof_build.o uspoof_conf.o uspoof_wsconf.o decfmtst.o smpdtfst.o \
 ztrans.o zrule.o vzone.o fphdlimp.o fpositer.o locdspnm.o \
 decNumber.o decContext.o alphaindex.o tznames.o tznames_impl.o tzgnames.o \
-tzfmt.o
+tzfmt.o compactdecimalformat.o gender.o region.o scriptset.o identifier_info.o \
+uregion.o
 
 ## Header files to install
 HEADERS = $(srcdir)/unicode/*.h
@@ -189,4 +194,3 @@ ifneq ($(patsubst %clean,,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 endif
-

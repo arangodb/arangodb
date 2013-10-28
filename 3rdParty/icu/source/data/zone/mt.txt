@@ -1,19 +1,19 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/mt.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mt.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/mt.xml
+ * ICU <specials> source: <path>/common/main/mt.xml
  */
 mt{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
         "Etc:Unknown"{
-            ec{"Mhux Magħruf"}
+            ec{"Belt Mhux Magħruf"}
         }
         "Europe:London"{
             ec{"Londra"}
@@ -24,12 +24,24 @@ mt{
         "meta:Europe_Central"{
             ld{"Ħin Ċentrali Ewropew tas-Sajf"}
             lg{"Ħin Ċentrali Ewropew"}
-            ls{"Ħin Ċentrali Ewropew istandard"}
+            ls{"Ħin Ċentrali Ewropew Standard"}
             sd{"CEST"}
             sg{"CET"}
             ss{"CET"}
         }
-        fallbackRegionFormat{"Ħin ta’ {1} ({0})"}
+        "meta:Europe_Eastern"{
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            sd{"WEST"}
+            sg{"WET"}
+            ss{"WET"}
+        }
+        "meta:GMT"{
+            ss{"GMT"}
+        }
         gmtFormat{"GMT{0}"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"Ħin ta’ {0}"}

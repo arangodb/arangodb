@@ -1,7 +1,7 @@
 
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2005, International Business Machines Corporation
+ * Copyright (c) 1997-2012, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -308,7 +308,7 @@ void test_Formattable( void )
     for(i = 0; i < ft_cnt; ++i) {
         pf = ftarray[i].clone();
         if(pf == (ftarray + i) || *pf != ftarray[i]) {
-            it_errln("Formattable.clone() failed for item %d" + i);
+            it_errln(UnicodeString("Formattable.clone() failed for item ") + i);
         }
         delete pf;
     }

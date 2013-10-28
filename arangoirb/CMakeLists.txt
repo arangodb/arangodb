@@ -46,13 +46,20 @@ install(
   TARGETS ${BIN_ARANGOIRB}
   RUNTIME DESTINATION bin)
 
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf.in
+    DESTINATION ${ARANGODB_CONF_DIR}
+    RENAME arangoirb-relative.conf)
+endif ()
+
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf
   DESTINATION ${ARANGODB_CONF_DIR})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/client
-  DESTINATION share/arangodb
+  DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 
 ## -----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -32,6 +32,7 @@
 extern IntlTest *createBytesTrieTest();
 static IntlTest *createLocalPointerTest();
 extern IntlTest *createUCharsTrieTest();
+static IntlTest *createEnumSetTest();
 
 #define CASE(id, test) case id:                               \
                           name = #test;                       \
@@ -83,6 +84,14 @@ void IntlTestUtilities::runIndexedTest( int32_t index, UBool exec, const char* &
             if (exec) {
                 logln("TestSuite UCharsTrieTest---"); logln();
                 LocalPointer<IntlTest> test(createUCharsTrieTest());
+                callTest(*test, par);
+            }
+            break;
+        case 19:
+            name = "EnumSetTest";
+            if (exec) {
+                logln("TestSuite EnumSetTest---"); logln();
+                LocalPointer<IntlTest> test(createEnumSetTest());
                 callTest(*test, par);
             }
             break;
@@ -465,4 +474,85 @@ void LocalPointerTest::TestLocalXyzPointerNull() {
     }
 #endif /* !UCONFIG_NO_TRANSLITERATION */
 
+}
+
+/** EnumSet test **/
+#include "unicode/enumset.h"
+
+class EnumSetTest : public IntlTest {
+public:
+  EnumSetTest() {}
+  virtual void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=NULL);
+  void TestEnumSet();
+};
+
+static IntlTest *createEnumSetTest() {
+    return new EnumSetTest();
+}
+
+void EnumSetTest::runIndexedTest(int32_t index, UBool exec, const char *&name, char * /*par*/) {
+  TESTCASE_AUTO_BEGIN;
+  TESTCASE_AUTO(TestEnumSet);
+  TESTCASE_AUTO_END;
+}
+enum myEnum {
+    MAX_NONBOOLEAN=-1,
+    THING1,
+    THING2,
+    THING3,
+    LIMIT_BOOLEAN
+};
+
+void EnumSetTest::TestEnumSet() {
+    EnumSet<myEnum,
+            MAX_NONBOOLEAN+1,
+            LIMIT_BOOLEAN>
+                            flags;
+
+    logln("Enum is from [%d..%d]\n", MAX_NONBOOLEAN+1,
+          LIMIT_BOOLEAN);
+
+    TEST_ASSERT_TRUE(flags.get(THING1) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == FALSE);
+
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+    logln("Value now: %d\n", flags.getAll());
+    flags.clear();
+    logln("clear -Value now: %d\n", flags.getAll());
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+    TEST_ASSERT_TRUE(flags.get(THING1) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == FALSE);
+    flags.add(THING1);
+    logln("set THING1 -Value now: %d\n", flags.getAll());
+    TEST_ASSERT_TRUE(flags.get(THING1) == TRUE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == FALSE);
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+    flags.add(THING3);
+    logln("set THING3 -Value now: %d\n", flags.getAll());
+    TEST_ASSERT_TRUE(flags.get(THING1) == TRUE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == TRUE);
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+    flags.remove(THING2);
+    TEST_ASSERT_TRUE(flags.get(THING1) == TRUE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == TRUE);
+    logln("remove THING2 -Value now: %d\n", flags.getAll());
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+    flags.remove(THING1);
+    TEST_ASSERT_TRUE(flags.get(THING1) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == TRUE);
+    logln("remove THING1 -Value now: %d\n", flags.getAll());
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+
+    flags.clear();
+    logln("clear -Value now: %d\n", flags.getAll());
+    logln("get(thing1)=%d, get(thing2)=%d, get(thing3)=%d\n",          flags.get(THING1),          flags.get(THING2),          flags.get(THING3));
+    TEST_ASSERT_TRUE(flags.get(THING1) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING2) == FALSE);
+    TEST_ASSERT_TRUE(flags.get(THING3) == FALSE);
 }

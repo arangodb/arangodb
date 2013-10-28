@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1999-2006, International Business Machines Corporation and
+ * Copyright (c) 1999-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 #include "unicode/utypes.h"
@@ -163,6 +163,7 @@ UBool isEuroAware(UConverter* myConv)
             target,
             targetSize,
             &err);
+    (void)euroBackSize;    /* Suppress set but not used warning. */
     if (U_FAILURE(err))
     {
         log_err("Failure Occured in ucnv_toUChars euro roundtrip test\n");

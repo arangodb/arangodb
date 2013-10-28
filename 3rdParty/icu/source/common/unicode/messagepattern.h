@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2011-2012, International Business Machines
+*   Copyright (C) 2011-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  messagepattern.h
@@ -233,7 +233,7 @@ enum UMessagePatternArgType {
      */
     UMSGPAT_ARG_TYPE_CHOICE,
     /**
-     * The argument is a PluralFormat with an optional ARG_INT or ARG_DOUBLE offset
+     * The argument is a cardinal-number PluralFormat with an optional ARG_INT or ARG_DOUBLE offset
      * (e.g., offset:1)
      * and one or more (ARG_SELECTOR [explicit-value] message) tuples.
      * If the selector has an explicit value (e.g., =2), then
@@ -246,12 +246,27 @@ enum UMessagePatternArgType {
      * The argument is a SelectFormat with one or more (ARG_SELECTOR, message) pairs.
      * @stable ICU 4.8
      */
-    UMSGPAT_ARG_TYPE_SELECT
+    UMSGPAT_ARG_TYPE_SELECT,
+    /**
+     * The argument is an ordinal-number PluralFormat
+     * with the same style parts sequence and semantics as UMSGPAT_ARG_TYPE_PLURAL.
+     * @stable ICU 50
+     */
+    UMSGPAT_ARG_TYPE_SELECTORDINAL
 };
 /**
  * @stable ICU 4.8
  */
 typedef enum UMessagePatternArgType UMessagePatternArgType;
+
+/**
+ * \def UMSGPAT_ARG_TYPE_HAS_PLURAL_STYLE
+ * Returns TRUE if the argument type has a plural style part sequence and semantics,
+ * for example UMSGPAT_ARG_TYPE_PLURAL and UMSGPAT_ARG_TYPE_SELECTORDINAL.
+ * @stable ICU 50
+ */
+#define UMSGPAT_ARG_TYPE_HAS_PLURAL_STYLE(argType) \
+    ((argType)==UMSGPAT_ARG_TYPE_PLURAL || (argType)==UMSGPAT_ARG_TYPE_SELECTORDINAL)
 
 enum {
     /**
@@ -878,6 +893,8 @@ private:
 
     UBool isSelect(int32_t index);
 
+    UBool isOrdinal(int32_t index);
+
     /**
      * @return TRUE if we are inside a MessageFormat (sub-)pattern,
      *         as opposed to inside a top-level choice/plural/select pattern.
@@ -900,9 +917,6 @@ private:
     void addArgDoublePart(double numericValue, int32_t start, int32_t length, UErrorCode &errorCode);
 
     void setParseError(UParseError *parseError, int32_t index);
-
-    // No ICU "poor man's RTTI" for this class nor its subclasses.
-    virtual UClassID getDynamicClassID() const;
 
     UBool init(UErrorCode &errorCode);
     UBool copyStorage(const MessagePattern &other, UErrorCode &errorCode);

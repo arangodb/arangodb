@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sv.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sv.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sv.xml
+ * ICU <specials> source: <path>/common/main/sv.xml
  */
 sv{
     Countries{
@@ -26,10 +26,10 @@ sv{
         021{"norra Amerika"}
         029{"Karibien"}
         030{"Östasien"}
-        034{"södra Asien"}
+        034{"Sydasien"}
         035{"Sydostasien"}
         039{"Sydeuropa"}
-        053{"Australien och Nya Zeeland"}
+        053{"Australasien"}
         054{"Melanesien"}
         057{"Mikronesiska öarna"}
         061{"Polynesien"}
@@ -72,6 +72,7 @@ sv{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
+        BQ{"Karibiska Nederländerna"}
         BR{"Brasilien"}
         BS{"Bahamas"}
         BT{"Bhutan"}
@@ -93,9 +94,9 @@ sv{
         CO{"Colombia"}
         CP{"Clippertonön"}
         CR{"Costa Rica"}
-        CS{"Serbien och Montenegro"}
         CU{"Kuba"}
         CV{"Kap Verde"}
+        CW{"Curaçao"}
         CX{"Julön"}
         CY{"Cypern"}
         CZ{"Tjeckien"}
@@ -141,7 +142,7 @@ sv{
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
         HK{"Hongkong (S.A.R. Kina)"}
-        HM{"Heard- och McDonaldöarna"}
+        HM{"Heardön och McDonaldöarna"}
         HN{"Honduras"}
         HR{"Kroatien"}
         HT{"Haiti"}
@@ -152,7 +153,7 @@ sv{
         IL{"Israel"}
         IM{"Isle of Man"}
         IN{"Indien"}
-        IO{"Brittiska Indiska oceanöarna"}
+        IO{"Brittiska territoriet i Indiska oceanen"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Island"}
@@ -192,7 +193,7 @@ sv{
         MH{"Marshallöarna"}
         MK{"Makedonien"}
         ML{"Mali"}
-        MM{"Myanmar"}
+        MM{"Myanmar (Burma)"}
         MN{"Mongoliet"}
         MO{"Macao (S.A.R. Kina)"}
         MP{"Nordmarianerna"}
@@ -227,14 +228,14 @@ sv{
         PK{"Pakistan"}
         PL{"Polen"}
         PM{"S:t Pierre och Miquelon"}
-        PN{"Pitcairn"}
+        PN{"Pitcairnöarna"}
         PR{"Puerto Rico"}
-        PS{"Palestinska territoriet"}
+        PS{"Palestinska territorierna"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
         QA{"Qatar"}
-        QO{"Yttre öar i Oceanien"}
+        QO{"yttre öar i Oceanien"}
         RE{"Réunion"}
         RO{"Rumänien"}
         RS{"Serbien"}
@@ -255,14 +256,16 @@ sv{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
+        SS{"Sydsudan"}
         ST{"São Tomé och Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Syrien"}
         SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Turks- och Caicosöarna"}
         TD{"Tchad"}
-        TF{"Franska Sydterritorierna"}
+        TF{"Franska sydterritorierna"}
         TG{"Togo"}
         TH{"Thailand"}
         TJ{"Tadzjikistan"}
@@ -291,12 +294,20 @@ sv{
         VU{"Vanuatu"}
         WF{"Wallis- och Futunaöarna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
         ZA{"Sydafrika"}
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
-        ZZ{"okänd eller ogiltig regionkod"}
+        ZZ{"okänd region"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"Storbritannien"}
+        HK{"Hongkong"}
+        MO{"Macao"}
+        PS{"Palestina"}
+        US{"USA"}
+    }
+    Version{"2.0.92.87"}
 }

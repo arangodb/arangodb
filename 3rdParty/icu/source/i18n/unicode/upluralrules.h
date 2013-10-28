@@ -1,6 +1,6 @@
 /*
 *****************************************************************************************
-* Copyright (C) 2010-2012, International Business Machines
+* Copyright (C) 2010-2013, International Business Machines
 * Corporation and others. All Rights Reserved.
 *****************************************************************************************
 */
@@ -38,6 +38,32 @@
  */
 
 /**
+ * Type of plurals and PluralRules.
+ * @stable ICU 50
+ */
+enum UPluralType {
+    /**
+     * Plural rules for cardinal numbers: 1 file vs. 2 files.
+     * @stable ICU 50
+     */
+    UPLURAL_TYPE_CARDINAL,
+    /**
+     * Plural rules for ordinal numbers: 1st file, 2nd file, 3rd file, 4th file, etc.
+     * @stable ICU 50
+     */
+    UPLURAL_TYPE_ORDINAL,
+    /**
+     * Number of Plural rules types.
+     * @stable ICU 50
+     */
+    UPLURAL_TYPE_COUNT
+};
+/**
+ * @stable ICU 50
+ */
+typedef enum UPluralType UPluralType;
+
+/**
  * Opaque UPluralRules object for use in C programs.
  * @stable ICU 4.8
  */
@@ -45,23 +71,35 @@ struct UPluralRules;
 typedef struct UPluralRules UPluralRules;  /**< C typedef for struct UPluralRules. @stable ICU 4.8 */
 
 /**
- * Open a new UPluralRules object using the predefined plural rules for a
+ * Opens a new UPluralRules object using the predefined cardinal-number plural rules for a
  * given locale.
+ * Same as uplrules_openForType(locale, UPLURAL_TYPE_CARDINAL, status).
  * @param locale The locale for which the rules are desired.
  * @param status A pointer to a UErrorCode to receive any errors.
- * @return A UPluralRules for the specified locale, or 0 if an error occurred.
+ * @return A UPluralRules for the specified locale, or NULL if an error occurred.
  * @stable ICU 4.8
  */
-U_DRAFT UPluralRules* U_EXPORT2
-uplrules_open(const char *locale,
-             UErrorCode *status);
+U_STABLE UPluralRules* U_EXPORT2
+uplrules_open(const char *locale, UErrorCode *status);
 
 /**
- * Close a UPluralRules object. Once closed it may no longer be used.
+ * Opens a new UPluralRules object using the predefined plural rules for a
+ * given locale and the plural type.
+ * @param locale The locale for which the rules are desired.
+ * @param type The plural type (e.g., cardinal or ordinal).
+ * @param status A pointer to a UErrorCode to receive any errors.
+ * @return A UPluralRules for the specified locale, or NULL if an error occurred.
+ * @stable ICU 50
+ */
+U_DRAFT UPluralRules* U_EXPORT2
+uplrules_openForType(const char *locale, UPluralType type, UErrorCode *status);
+
+/**
+ * Closes a UPluralRules object. Once closed it may no longer be used.
  * @param uplrules The UPluralRules object to close.
  * @stable ICU 4.8
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 uplrules_close(UPluralRules *uplrules);
 
 
@@ -96,7 +134,7 @@ U_NAMESPACE_END
  * @return The length of keyword.
  * @stable ICU 4.8
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uplrules_select(const UPluralRules *uplrules,
                double number,
                UChar *keyword, int32_t capacity,

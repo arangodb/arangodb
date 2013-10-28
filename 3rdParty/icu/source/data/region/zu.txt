@@ -1,45 +1,45 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zu.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zu.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/zu.xml
+ * ICU <specials> source: <path>/common/main/zu.xml
  */
 zu{
     Countries{
         001{"Umhlaba"}
         002{"i-Africa"}
-        003{"e-North America"}
+        003{"i-North America"}
         005{"i-South America"}
         009{"i-Oceania"}
-        011{"e-Western Africa"}
+        011{"i-Western Africa"}
         013{"i-Central America"}
-        014{"e-Eastern Africa"}
-        015{"e-Northern Africa"}
-        017{"e-Middle Africa"}
-        018{"e-Southern Africa"}
+        014{"i-Eastern Africa"}
+        015{"i-Northern Africa"}
+        017{"i-Middle Africa"}
+        018{"i-Southern Africa"}
         019{"Americas"}
-        021{"e-Northern America"}
+        021{"i-Northern America"}
         029{"i-Caribbean"}
-        030{"e-Eastern Asia"}
-        034{"e-Southern Asia"}
-        035{"e-South-Eastern Asia"}
-        039{"e-Southern Europe"}
-        053{"i-Australia ne-New Zealand"}
+        030{"i-Eastern Asia"}
+        034{"i-Southern Asia"}
+        035{"i-South-Eastern Asia"}
+        039{"i-Southern Europe"}
+        053{"i-Australasia"}
         054{"i-Melanesia"}
-        057{"e-Micronesian Region"}
+        057{"i-Micronesian Region"}
         061{"i-Polynesia"}
         142{"i-Asia"}
         143{"i-Central Asia"}
-        145{"e-Western Asia"}
+        145{"i-Western Asia"}
         150{"i-Europe"}
-        151{"e-Eastern Europe"}
-        154{"e-Northern Europe"}
-        155{"e-Western Europe"}
+        151{"i-Eastern Europe"}
+        154{"i-Northern Europe"}
+        155{"i-Western Europe"}
         419{"i-Latin America"}
         AC{"i-Ascension Island"}
         AD{"i-Andorra"}
@@ -72,6 +72,7 @@ zu{
         BM{"i-Bermuda"}
         BN{"i-Brunei"}
         BO{"i-Bolivia"}
+        BQ{"i-Caribbean Netherlands"}
         BR{"i-Brazil"}
         BS{"i-Bahamas"}
         BT{"i-Bhutan"}
@@ -81,9 +82,9 @@ zu{
         BZ{"i-Belize"}
         CA{"i-Canada"}
         CC{"i-Cocos (Keeling) Islands"}
-        CD{"e-Congo - Kinshasa"}
+        CD{"i-Congo - Kinshasa"}
         CF{"i-Central African Republic"}
-        CG{"e-Congo - Brazzaville"}
+        CG{"i-Congo - Brazzaville"}
         CH{"i-Switzerland"}
         CI{"i-Côte d’Ivoire"}
         CK{"i-Cook Islands"}
@@ -95,11 +96,12 @@ zu{
         CR{"i-Costa Rica"}
         CU{"i-Cuba"}
         CV{"i-Cape Verde"}
+        CW{"i-Curaçao"}
         CX{"i-Christmas Island"}
         CY{"i-Cyprus"}
         CZ{"i-Czech Republic"}
         DE{"i-Germany"}
-        DG{"e-Diego Garcia"}
+        DG{"i-Diego Garcia"}
         DJ{"i-Djibouti"}
         DK{"i-Denmark"}
         DM{"i-Dominica"}
@@ -125,7 +127,7 @@ zu{
         GD{"i-Grenada"}
         GE{"i-Georgia"}
         GF{"isi-French Guiana"}
-        GG{"I-Guernsey"}
+        GG{"i-Guernsey"}
         GH{"i-Ghana"}
         GI{"i-Gibraltar"}
         GL{"i-Greenland"}
@@ -139,7 +141,7 @@ zu{
         GU{"i-Guam"}
         GW{"i-Guinea-Bissau"}
         GY{"i-Guyana"}
-        HK{"e-Hong Kong SAR China"}
+        HK{"i-Hong Kong SAR China"}
         HM{"i-Heard Island ne-McDonald Islands"}
         HN{"i-Honduras"}
         HR{"i-Croatia"}
@@ -156,7 +158,7 @@ zu{
         IR{"i-Iran"}
         IS{"i-Iceland"}
         IT{"i-Italy"}
-        JE{"isi-Jersey"}
+        JE{"i-Jersey"}
         JM{"i-Jamaica"}
         JO{"i-Jordan"}
         JP{"i-Japan"}
@@ -189,9 +191,9 @@ zu{
         MF{"i-Saint Martin"}
         MG{"i-Madagascar"}
         MH{"i-Marshall Islands"}
-        MK{"I-Macedonia"}
+        MK{"i-Macedonia"}
         ML{"i-Mali"}
-        MM{"e-Myanmar [Burma]"}
+        MM{"i-Myanmar (Burma)"}
         MN{"i-Mongolia"}
         MO{"i-Macau SAR China"}
         MP{"i-Northern Mariana Islands"}
@@ -247,21 +249,23 @@ zu{
         SG{"i-Singapore"}
         SH{"i-Saint Helena"}
         SI{"i-Slovenia"}
-        SJ{"I-Svalbard ne-Jan Mayen"}
+        SJ{"i-Svalbard ne-Jan Mayen"}
         SK{"i-Slovakia"}
         SL{"i-Sierra Leone"}
         SM{"i-San Marino"}
         SN{"i-Senegal"}
         SO{"i-Somalia"}
         SR{"i-Suriname"}
+        SS{"iNingizimu Sudan"}
         ST{"i-São Tomé kanye ne-Príncipe"}
         SV{"i-El Salvador"}
+        SX{"I-Sint Maarten"}
         SY{"i-Syria"}
         SZ{"i-Swaziland"}
         TA{"i-Tristan da Cunha"}
         TC{"i-Turks and Caicos Islands"}
         TD{"i-Chad"}
-        TF{"e-French Southern Territories"}
+        TF{"i-French Southern Territories"}
         TG{"i-Togo"}
         TH{"i-Thailand"}
         TJ{"i-Tajikistan"}
@@ -277,7 +281,7 @@ zu{
         TZ{"i-Tanzania"}
         UA{"i-Ukraine"}
         UG{"i-Uganda"}
-        UM{"e-U.S. Minor Outlying Islands"}
+        UM{"i-U.S. Minor Outlying Islands"}
         US{"i-United States"}
         UY{"i-Uruguay"}
         UZ{"i-Uzbekistan"}
@@ -290,12 +294,18 @@ zu{
         VU{"i-Vanuatu"}
         WF{"i-Wallis ne-Futuna"}
         WS{"i-Samoa"}
+        XK{"i-Kosovo"}
         YE{"i-Yemen"}
         YT{"i-Mayotte"}
-        ZA{"iNingizimu Afrika"}
+        ZA{"i-South Africa"}
         ZM{"i-Zambia"}
         ZW{"i-Zimbabwe"}
-        ZZ{"Isifunda esingaziwa"}
+        ZZ{"iSifunda esingaziwa"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        HK{"i-Hong Kong"}
+        MO{"i-Macau"}
+        PS{"i-Phalestine"}
+    }
+    Version{"2.0.92.87"}
 }

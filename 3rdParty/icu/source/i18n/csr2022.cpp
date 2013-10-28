@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2011, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -12,6 +12,7 @@
 #include "cstring.h"
 
 #include "csr2022.h"
+#include "csmatch.h"
 
 U_NAMESPACE_BEGIN
 
@@ -19,7 +20,7 @@ U_NAMESPACE_BEGIN
 
 /**
  * Matching function shared among the 2022 detectors JP, CN and KR
- * Counts up the number of legal an unrecognized escape sequences in
+ * Counts up the number of legal and unrecognized escape sequences in
  * the sample of text, and computes a score based on the total number &
  * the proportion that fit the encoding.
  * 
@@ -29,7 +30,7 @@ U_NAMESPACE_BEGIN
  * @param escapeSequences the byte escape sequences to test for.
  * @return match quality, in the range of 0-100.
  */
-int32_t CharsetRecog_2022::match_2022(const uint8_t *text, int32_t textLen, const uint8_t escapeSequences[][5], int32_t escapeSequences_length)
+int32_t CharsetRecog_2022::match_2022(const uint8_t *text, int32_t textLen, const uint8_t escapeSequences[][5], int32_t escapeSequences_length) const
 {
     int32_t i, j;
     int32_t escN;
@@ -138,42 +139,50 @@ static const uint8_t escapeSequences_2022CN[][5] = {
 
 CharsetRecog_2022JP::~CharsetRecog_2022JP() {}
 
-const char *CharsetRecog_2022JP::getName() const
-{
+const char *CharsetRecog_2022JP::getName() const {
     return "ISO-2022-JP";
 }
 
-int32_t CharsetRecog_2022JP::match(InputText *textIn)
-{
-    return match_2022(textIn->fInputBytes, textIn->fInputLen, escapeSequences_2022JP, ARRAY_SIZE(escapeSequences_2022JP));
+UBool CharsetRecog_2022JP::match(InputText *textIn, CharsetMatch *results) const {
+    int32_t confidence = match_2022(textIn->fInputBytes, 
+                                    textIn->fInputLen, 
+                                    escapeSequences_2022JP, 
+                                    ARRAY_SIZE(escapeSequences_2022JP));
+    results->set(textIn, this, confidence);
+    return (confidence > 0);
 }
 
 CharsetRecog_2022KR::~CharsetRecog_2022KR() {}
 
-const char *CharsetRecog_2022KR::getName() const
-{
+const char *CharsetRecog_2022KR::getName() const {
     return "ISO-2022-KR";
 }
 
-int32_t CharsetRecog_2022KR::match(InputText *textIn)
-{
-    return match_2022(textIn->fInputBytes, textIn->fInputLen, escapeSequences_2022KR, ARRAY_SIZE(escapeSequences_2022KR));
+UBool CharsetRecog_2022KR::match(InputText *textIn, CharsetMatch *results) const {
+    int32_t confidence = match_2022(textIn->fInputBytes, 
+                                    textIn->fInputLen, 
+                                    escapeSequences_2022KR, 
+                                    ARRAY_SIZE(escapeSequences_2022KR));
+    results->set(textIn, this, confidence);
+    return (confidence > 0);
 }
 
 CharsetRecog_2022CN::~CharsetRecog_2022CN() {}
 
-const char *CharsetRecog_2022CN::getName() const
-{
+const char *CharsetRecog_2022CN::getName() const {
     return "ISO-2022-CN";
 }
 
-int32_t CharsetRecog_2022CN::match(InputText *textIn)
-{
-    return match_2022(textIn->fInputBytes, textIn->fInputLen, escapeSequences_2022CN, ARRAY_SIZE(escapeSequences_2022CN));
+UBool CharsetRecog_2022CN::match(InputText *textIn, CharsetMatch *results) const {
+    int32_t confidence = match_2022(textIn->fInputBytes,
+                                    textIn->fInputLen,
+                                    escapeSequences_2022CN,
+                                    ARRAY_SIZE(escapeSequences_2022CN));
+    results->set(textIn, this, confidence);
+    return (confidence > 0);
 }
 
-CharsetRecog_2022::~CharsetRecog_2022()
-{
+CharsetRecog_2022::~CharsetRecog_2022() {
     // nothing to do
 }
 

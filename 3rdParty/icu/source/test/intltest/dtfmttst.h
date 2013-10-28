@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2012, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -22,6 +22,11 @@ class DateFormatTest: public CalendarTimeZoneTest {
     // IntlTest override
     void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 public:
+    /**
+     * Verify that patterns have the correct values and could produce
+     * the DateFormat instances that contain the correct localized patterns.
+     */
+    void TestPatterns();
     /**
      *  "Test written by Wally Wedel and emailed to me."
      *  Test handling of timezone offsets
@@ -179,6 +184,8 @@ public: // package
 
     void TestContext(void);
 
+    void TestNonGregoFmtParse(void);
+
 public:
     /**
      * Test host-specific formatting.
@@ -187,11 +194,13 @@ public:
 
 public:
     /**
-     * Test patterns added in CLDR 1.4
+     * Test patterns added in CLDR 1.4, CLDR 23
      */
     void TestEras(void);
 
     void TestNarrowNames(void);
+
+    void TestShortDays(void);
 
     void TestStandAloneDays(void);
 
@@ -217,6 +226,13 @@ public:
 /*   void TestRelativeError(void);
      void TestRelativeOther(void);
 */
+
+    void TestDotAndAtLeniency();
+
+    void TestDateFormatLeniency();
+
+private:
+    UBool showParse(DateFormat &format, const UnicodeString &formattedString);
 
 public:
     /**

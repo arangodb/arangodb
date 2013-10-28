@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1998-2012, International Business Machines Corporation and
+ * Copyright (c) 1998-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*
@@ -27,18 +27,9 @@
 #include "udatamem.h"
 #include "cintltst.h"
 #include "ubrkimpl.h"
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include "toolutil.h" /* for uprv_fileExists() */
 #include <stdlib.h>
 #include <stdio.h>
-
-#if U_PLATFORM_USES_ONLY_WIN32_API
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
 
 /* includes for TestSwapData() */
 #include "udataswp.h"
@@ -66,16 +57,18 @@ unorm2_swap(const UDataSwapper *ds,
 
 #define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
+#if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
 static void TestUDataOpen(void);
 static void TestUDataOpenChoiceDemo1(void);
 static void TestUDataOpenChoiceDemo2(void);
 static void TestUDataGetInfo(void);
 static void TestUDataGetMemory(void);
-static void TestUDataSetAppData(void);
 static void TestErrorConditions(void);
 static void TestAppData(void);
-static void TestICUDataName(void);
 static void TestSwapData(void);
+#endif
+static void TestUDataSetAppData(void);
+static void TestICUDataName(void);
 static void PointerTableOfContents(void);
 static void SetBadCommonData(void);
 static void TestUDataFileAccess(void);
@@ -116,6 +109,7 @@ static void lots_of_mallocs()
 }
 #endif
 
+#if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
 static void TestUDataOpen(){
     UDataMemory *result;
     UErrorCode status=U_ZERO_ERROR;
@@ -133,10 +127,9 @@ static void TestUDataOpen(){
 
     char* path=(char*)malloc(sizeof(char) * (strlen(ctest_dataOutDir())
                                            + strlen(U_ICUDATA_NAME)
-                                           + strlen("/build")+1 ) );
+                                           + strlen("/build/tmp/..")+1 ) );
 
     char        *icuDataFilePath = 0;
-    struct stat stat_buf;
     
     const char* testPath=loadTestData(&status);
     if(U_FAILURE(status)) {
@@ -146,10 +139,7 @@ static void TestUDataOpen(){
     }
 
     /* lots_of_mallocs(); */
-
-    strcat(strcpy(path, ctest_dataOutDir()), U_ICUDATA_NAME);
-
-    log_verbose("Testing udata_open()\n");
+    log_verbose("Testing udata_open(%s)\n", testPath);
     result=udata_open(testPath, type, name, &status);
     if(U_FAILURE(status)){
         log_data_err("FAIL: udata_open() failed for path = %s, name=%s, type=%s, \n errorcode=%s\n", testPath, name, type, myErrorName(status));
@@ -158,20 +148,23 @@ static void TestUDataOpen(){
         udata_close(result);
     }
 
-    /* If the ICU system common data file is present in this confiugration,   
-     *   verify that udata_open can explicitly fetch items from it.
-     *   If packaging mode == dll, the file may not exist.  So, if the file is 
-     *   missing, skip this test without error.
-     */
-    icuDataFilePath = (char *)malloc(strlen(path) + 10);
-    strcpy(icuDataFilePath, path);
-    strcat(icuDataFilePath, ".dat");
-    /* lots_of_mallocs(); */
-    if (stat(icuDataFilePath, &stat_buf) == 0)
     {
-        int i;
-        log_verbose("Testing udata_open() on %s\n", icuDataFilePath);
-        for(i=0; i<sizeof(memMap)/sizeof(memMap[0]); i++){
+      strcat(strcpy(path, ctest_dataOutDir()), U_ICUDATA_NAME);
+
+      /* If the ICU system common data file is present in this confiugration,   
+       *   verify that udata_open can explicitly fetch items from it.
+       *   If packaging mode == dll, the file may not exist.  So, if the file is 
+       *   missing, skip this test without error.
+       */
+      icuDataFilePath = (char *)uprv_malloc(strlen(path) + 10);
+      strcpy(icuDataFilePath, path);
+      strcat(icuDataFilePath, ".dat");
+      /* lots_of_mallocs(); */
+      if (uprv_fileExists(icuDataFilePath))
+      {
+          int i;
+          log_verbose("Testing udata_open() on %s\n", icuDataFilePath);
+          for(i=0; i<sizeof(memMap)/sizeof(memMap[0]); i++){
             /* lots_of_mallocs(); */
             status=U_ZERO_ERROR;
             result=udata_open(path, memMap[i][1], memMap[i][0], &status);
@@ -181,14 +174,56 @@ static void TestUDataOpen(){
                 log_verbose("PASS: udata_open worked for path = %s, name=%s, type=%s\n",  path, memMap[i][0], memMap[i][1]);
                 udata_close(result);
             }
-        }
+          }
+      }
+      else
+      {
+          /* lots_of_mallocs(); */
+          log_verbose("Skipping tests of udata_open() on %s.  File not present in this configuration.\n",
+                  icuDataFilePath);
+      }
+      uprv_free(icuDataFilePath);
     }
-    else
+    /* try again, adding /tmp */
     {
-    /* lots_of_mallocs(); */
-         log_verbose("Skipping tests of udata_open() on %s.  File not present in this configuration.\n",
-             icuDataFilePath);
+      strcpy(path, ctest_dataOutDir());
+      strcat(path, "tmp");
+      strcat(path, dirSepString);
+      strcat(path, U_ICUDATA_NAME);
+
+      /* If the ICU system common data file is present in this confiugration,   
+       *   verify that udata_open can explicitly fetch items from it.
+       *   If packaging mode == dll, the file may not exist.  So, if the file is 
+       *   missing, skip this test without error.
+       */
+      icuDataFilePath = (char *)malloc(strlen(path) + 10);
+      strcpy(icuDataFilePath, path);
+      strcat(icuDataFilePath, ".dat");
+      /* lots_of_mallocs(); */
+      if (uprv_fileExists(icuDataFilePath))
+	{
+	  int i;
+	  log_verbose("Testing udata_open() on %s\n", icuDataFilePath);
+	  for(i=0; i<sizeof(memMap)/sizeof(memMap[0]); i++){
+            /* lots_of_mallocs(); */
+            status=U_ZERO_ERROR;
+            result=udata_open(path, memMap[i][1], memMap[i][0], &status);
+            if(U_FAILURE(status)) {
+	      log_data_err("FAIL: udata_open() failed for path = %s, name=%s, type=%s, \n errorcode=%s\n", path, memMap[i][0], memMap[i][1], myErrorName(status));
+            } else {
+	      log_verbose("PASS: udata_open worked for path = %s, name=%s, type=%s\n",  path, memMap[i][0], memMap[i][1]);
+	      udata_close(result);
+            }
+	  }
+	}
+      else
+	{
+	  /* lots_of_mallocs(); */
+	  log_verbose("Skipping tests of udata_open() on %s.  File not present in this configuration.\n",
+		      icuDataFilePath);
+	}
     }
+
     free(icuDataFilePath);
     icuDataFilePath = NULL;
     /* lots_of_mallocs(); */
@@ -207,11 +242,11 @@ static void TestUDataOpen(){
     strcat(icuDataFilePath, "build");
     strcat(icuDataFilePath, dirSepString);
     strcat(icuDataFilePath, U_ICUDATA_NAME);
-    strcat(icuDataFilePath, "_");
+    strcat(icuDataFilePath, dirSepString);
     strcat(icuDataFilePath, "cnvalias.icu");
 
     /* lots_of_mallocs(); */
-    if (stat(icuDataFilePath, &stat_buf) == 0)
+    if (uprv_fileExists(icuDataFilePath))
     {
         int i;
         log_verbose("%s exists, so..\n", icuDataFilePath);
@@ -349,6 +384,7 @@ static void TestUDataOpen(){
 
     free(path);
 }
+#endif
 
 typedef struct {
     uint16_t headerSize;
@@ -597,6 +633,7 @@ isAcceptable3(void *context,
 
 }
 
+#if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
 static void TestUDataOpenChoiceDemo1() {
     UDataMemory *result;
     UErrorCode status=U_ZERO_ERROR;
@@ -743,7 +780,6 @@ static void TestUDataOpenChoiceDemo2() {
         }
     }
 }
-
 
 static void TestUDataGetInfo() {
 
@@ -1073,6 +1109,7 @@ static void TestAppData()
     ures_close(icu);
     ures_close(app);
 }
+#endif
 
 static void TestICUDataName()
 {
@@ -1091,7 +1128,7 @@ static void TestICUDataName()
     switch(U_CHARSET_FAMILY)
     {
     case U_ASCII_FAMILY:
-          switch(U_IS_BIG_ENDIAN)
+          switch((int)U_IS_BIG_ENDIAN)
           {
           case 1:
                 typeChar = 'b';
@@ -1236,11 +1273,9 @@ static const struct {
     }
 };
 
-/* Unfortunately, trie dictionaries are in a C++ header */
-int32_t
-triedict_swap(const UDataSwapper *ds,
-            const void *inData, int32_t length, void *outData,
-            UErrorCode *pErrorCode);
+/* Unfortunately, dictionaries are in a C++ header */
+U_CAPI int32_t U_EXPORT2
+udict_swap(const UDataSwapper *ds, const void *inData, int32_t length, void *outData, UErrorCode *pErrorCode);
 
 /* test cases for maximum data swapping code coverage */
 static const struct {
@@ -1305,7 +1340,7 @@ static const struct {
 
 #if !UCONFIG_NO_BREAK_ITERATION
     {"char",                     "brk", ubrk_swap},
-    {"thaidict",                 "ctd", triedict_swap},
+    {"thaidict",                 "dict",udict_swap},
 #endif
 
 #if 0
@@ -1576,6 +1611,7 @@ printErrorToString(void *context, const char *fmt, va_list args) {
     vsprintf((char *)context, fmt, args);
 }
 
+#if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
 static void
 TestSwapData() {
     char name[100];
@@ -1658,7 +1694,7 @@ TestSwapData() {
             nm=swapCases[i].name+1;
             uprv_strcpy(name, "testdata");
         } else if (uprv_strcmp(swapCases[i].type, "brk")==0
-            || uprv_strcmp(swapCases[i].type, "ctd")==0) {
+            || uprv_strcmp(swapCases[i].type, "dict")==0) {
             pkg=U_ICUDATA_BRKITR;
             nm=swapCases[i].name;
             uprv_strcpy(name, U_ICUDATA_BRKITR);
@@ -1690,7 +1726,7 @@ TestSwapData() {
 
     free(buffer);
 }
-
+#endif
 
 static void PointerTableOfContents() {
     UDataMemory      *dataItem;

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2012, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ********************************************************************/
  
@@ -87,6 +87,7 @@ CalendarRegressionTest::runIndexedTest( int32_t index, UBool exec, const char* &
         CASE(47,TestT8057);
         CASE(48,TestT8596);
         CASE(49,Test9019);
+        CASE(50,TestT9452);
     default: name = ""; break;
     }
 }
@@ -325,6 +326,7 @@ void CalendarRegressionTest::test4040996()
     }
     UErrorCode status = U_ZERO_ERROR;    
     count = ids->count(status);
+    (void)count;    // Suppress set but not used warning.
     SimpleTimeZone *pdt = new SimpleTimeZone(-8 * 60 * 60 * 1000, *ids->snext(status));
     pdt->setStartRule(UCAL_APRIL, 1, UCAL_SUNDAY, 2 * 60 * 60 * 1000, status);
     pdt->setEndRule(UCAL_OCTOBER, -1, UCAL_SUNDAY, 2 * 60 * 60 * 1000, status);
@@ -589,7 +591,7 @@ void CalendarRegressionTest::dowTest(UBool lenient)
     if (dow < min || dow > max) 
         errln("FAIL: Day of week %d out of range [%d,%d]\n", dow, min, max);
     if (dow != UCAL_SUNDAY) 
-        errln("FAIL: Day of week should be SUNDAY Got " + dow);
+        errln(UnicodeString("FAIL: Day of week should be SUNDAY Got ") + dow);
 
     if(U_FAILURE(status)) {
       errln("Error checking Calendar: %s", u_errorName(status));
@@ -843,7 +845,7 @@ void CalendarRegressionTest::test4095407()
     }
     int32_t dow = a->get(UCAL_DAY_OF_WEEK, status);
     if (dow != UCAL_THURSDAY)
-        errln("Fail: Want THURSDAY Got " + dow);
+        errln(UnicodeString("Fail: Want THURSDAY Got ") + dow);
 
     delete a;
 }
@@ -1721,7 +1723,7 @@ CalendarRegressionTest::Test4149677()
             UnicodeString temp;
             errln("test failed with zone " + zones[i]->getID(temp));
             errln(" cutover date is Date(Long.MAX_VALUE)");
-            errln(" isLeapYear(100) returns: " + is100Leap);
+            errln(UnicodeString(" isLeapYear(100) returns: ") + is100Leap);
         }
         delete calendar;
     }
@@ -2896,6 +2898,50 @@ void CalendarRegressionTest::TestT8596(void) {
     }
 
     delete gc;
+}
+
+// Test case for ticket 9452
+// Calendar addition fall onto the missing date - 2011-12-30 in Samoa
+void CalendarRegressionTest::TestT9452(void) {
+    UErrorCode status = U_ZERO_ERROR;
+    GregorianCalendar cal(TimeZone::createTimeZone("Pacific/Apia"), status);
+    failure(status, "initializing GregorianCalendar");
+
+    SimpleDateFormat sdf(UnicodeString("y-MM-dd'T'HH:mm:ssZZZZZ"), status);
+    failure(status, "initializing SimpleDateFormat");
+    sdf.setCalendar(cal);
+
+    UnicodeString dstr;
+
+    // Set date to 2011-12-29 00:00
+    cal.clear();
+    cal.set(2011, UCAL_DECEMBER, 29, 0, 0, 0);
+
+    UDate d = cal.getTime(status);
+    if (!failure(status, "getTime for initial date")) {
+        sdf.format(d, dstr);
+        logln(UnicodeString("Initial date: ") + dstr);
+
+        // Add 1 day
+        cal.add(UCAL_DATE, 1, status);
+        failure(status, "add 1 day");
+        d = cal.getTime(status);
+        failure(status, "getTime after +1 day");
+        dstr.remove();
+        sdf.format(d, dstr);
+        logln(UnicodeString("+1 day: ") + dstr);
+        assertEquals("Add 1 day", UnicodeString("2011-12-31T00:00:00+14:00"), dstr);
+
+        // Subtract 1 day
+        cal.add(UCAL_DATE, -1, status);
+        failure(status, "subtract 1 day");
+        d = cal.getTime(status);
+        failure(status, "getTime after -1 day");
+        dstr.remove();
+        sdf.format(d, dstr);
+        logln(UnicodeString("-1 day: ") + dstr);
+        assertEquals("Subtract 1 day", UnicodeString("2011-12-29T00:00:00-10:00"), dstr);
+    }
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

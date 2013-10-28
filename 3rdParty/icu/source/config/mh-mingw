@@ -1,9 +1,12 @@
 ## -*-makefile-*-
 ## Cygwin/MinGW specific setup
-## Copyright (c) 2001-2012, International Business Machines Corporation and
+## Copyright (c) 2001-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 # TODO: Finish the rest of this port. This platform port is incomplete.
+
+# This file is similar to mh-mingw64
+# Any changes made here may also need to be made in mh-mingw64
 
 # We install sbin tools into the same bin directory because
 # pkgdata needs some of the tools in sbin, and we can't always depend on
@@ -41,8 +44,8 @@ LINK.c=       $(CXX) $(CXXFLAGS) $(LDFLAGS)
 LD_SOOPTIONS= -Wl,-Bsymbolic
 
 ## Commands to make a shared library
-SHLIB.c=	$(CC) $(CFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)lib$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
-SHLIB.cc=	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)lib$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
+SHLIB.c=	$(CC) $(CFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
+SHLIB.cc=	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
 
 ## Compiler switch to embed a runtime search path
 LD_RPATH=	
@@ -63,13 +66,13 @@ SO_TARGET_VERSION_SUFFIX =
 endif
 
 # Static library prefix and file extension
-LIBSICU = $(LIBPREFIX)$(STATIC_PREFIX)$(ICUPREFIX)
+LIBSICU = lib$(LIBPREFIX)$(STATIC_PREFIX)$(ICUPREFIX)
 A = a
 
 ## An import library is needed for z/OS and MSVC
-IMPORT_LIB_EXT = .lib
+IMPORT_LIB_EXT = .dll.a
 
-#LIBPREFIX=
+LIBPREFIX=
 
 # Change the stubnames so that poorly working FAT disks and installation programs can work.
 # This is also for backwards compatibility.
@@ -80,7 +83,7 @@ LIBICU = $(STATIC_PREFIX_WHEN_USED)$(ICUPREFIX)
 # The #M# is used to delete lines for icu-config
 # Current full path directory.
 #CURR_FULL_DIR=$(shell pwd -W)#M# for MSYS
-CURR_FULL_DIR=$(subst \,/,$(shell cmd /c cd))#M# for Cygwin shell
+CURR_FULL_DIR?=$(subst \,/,$(shell cmd /c cd))#M# for Cygwin shell
 # Current full path directory for use in source code in a -D compiler option.
 #CURR_SRCCODE_FULL_DIR=$(subst /,\\\\,$(shell pwd -W))#M# for MSYS
 CURR_SRCCODE_FULL_DIR=$(subst \,/,$(shell cmd /c cd))#M# for Cygwin shell
@@ -115,7 +118,7 @@ CURR_SRCCODE_FULL_DIR=$(subst \,/,$(shell cmd /c cd))#M# for Cygwin shell
 FINAL_SO_TARGET=$(basename $(SO_TARGET))$(SO_TARGET_VERSION_MAJOR).$(SO)
 MIDDLE_SO_TARGET=$(FINAL_SO_TARGET)
 
-FINAL_IMPORT_LIB = $(dir $(SO_TARGET))lib$(notdir $(basename $(SO_TARGET)))$(IMPORT_LIB_EXT)#M#
+FINAL_IMPORT_LIB = $(dir $(SO_TARGET))$(notdir $(basename $(SO_TARGET)))$(IMPORT_LIB_EXT)#M#
 IMPORT_LIB = $(FINAL_IMPORT_LIB)#M#
 MIDDLE_IMPORT_LIB = $(FINAL_IMPORT_LIB)#M#
 

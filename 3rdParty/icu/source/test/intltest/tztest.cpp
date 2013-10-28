@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2012, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -14,6 +14,7 @@
 #include "unicode/gregocal.h"
 #include "unicode/resbund.h"
 #include "unicode/strenum.h"
+#include "unicode/uversion.h"
 #include "tztest.h"
 #include "cmemory.h"
 #include "putilimp.h"
@@ -34,10 +35,14 @@
 // class TimeZoneTest
 // *****************************************************************************
 
-// TODO: We should probably read following data at runtime, so we can update
-// these values every release with necessary data changes.
-const int32_t TimeZoneTest::REFERENCE_YEAR = 2009;
-const char * TimeZoneTest::REFERENCE_DATA_VERSION = "2009d";
+// Some test case data is current date/tzdata version sensitive and producing errors
+// when year/rule are changed. Although we want to keep our eyes on test failures
+// caused by tzdata changes while development, keep maintaining test data in maintenance
+// stream is a little bit hassle. ICU 49 or later versions are using minor version field
+// to indicate a development build (0) or official release build (others). For development
+// builds, a test failure triggers an error, while release builds only report them in
+// verbose mode with logln.
+static UBool isDevelopmentBuild = (U_ICU_VERSION_MINOR_NUM == 0);
 
 void TimeZoneTest::runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par*/ )
 {
@@ -66,6 +71,8 @@ void TimeZoneTest::runIndexedTest( int32_t index, UBool exec, const char* &name,
     TESTCASE_AUTO(TestGetRegion);
     TESTCASE_AUTO(TestGetAvailableIDsNew);
     TESTCASE_AUTO(TestGetUnknown);
+    TESTCASE_AUTO(TestGetWindowsID);
+    TESTCASE_AUTO(TestGetIDForWindowsID);
     TESTCASE_AUTO_END;
 }
 
@@ -831,37 +838,6 @@ TimeZoneTest::checkContainsAll(StringEnumeration *s1, const char *name1,
  */
 void TimeZoneTest::TestShortZoneIDs()
 {
-    UErrorCode status = U_ZERO_ERROR;
-
-    // This test case is tzdata version sensitive.
-    UBool isNonReferenceTzdataVersion = FALSE;
-    const char *tzdataVer = TimeZone::getTZDataVersion(status);
-    if (failure(status, "getTZDataVersion")) return;
-    if (uprv_strcmp(tzdataVer, TimeZoneTest::REFERENCE_DATA_VERSION) != 0) {
-        // Note: We want to display a warning message here if
-        // REFERENCE_DATA_VERSION is out of date - so we
-        // do not forget to update the value before GA.
-        isNonReferenceTzdataVersion = TRUE;
-        logln(UnicodeString("Warning: Active tzdata version (") + tzdataVer +
-            ") does not match the reference tzdata version ("
-            + REFERENCE_DATA_VERSION + ") for this test case data.");
-    }
-
-    // Note: useDaylightTime returns true if DST is observed
-    // in the time zone in the current calendar year.  The test
-    // data is valid for the date after the reference year below.
-    // If system clock is before the year, some test cases may
-    // fail.
-    GregorianCalendar cal(*TimeZone::getGMT(), status);
-    if (failure(status, "GregorianCalendar")) return;
-    cal.set(TimeZoneTest::REFERENCE_YEAR, UCAL_JANUARY, 2); // day 2 in GMT
-
-    UBool isDateBeforeReferenceYear = ucal_getNow() < cal.getTime(status);
-    if (failure(status, "Calendar::getTime")) return;
-    if (isDateBeforeReferenceYear) {
-        logln("Warning: Past time is set to the system clock.  Some test cases may not return expected results.");
-    }
-
     int32_t i;
     // Create a small struct to hold the array
     struct
@@ -872,41 +848,40 @@ void TimeZoneTest::TestShortZoneIDs()
     }
     kReferenceList [] =
     {
-        {"MIT", -660, FALSE},
-        {"HST", -600, FALSE},
-        {"AST", -540, TRUE},
-        {"PST", -480, TRUE},
-        {"PNT", -420, FALSE},
+        {"HST", -600, FALSE}, // Olson northamerica -10:00
+        {"AST", -540, TRUE},  // ICU Link - America/Anchorage
+        {"PST", -480, TRUE},  // ICU Link - America/Los_Angeles
+        {"PNT", -420, FALSE}, // ICU Link - America/Phoenix
         {"MST", -420, FALSE}, // updated Aug 2003 aliu
-        {"CST", -360, TRUE},
-        {"IET", -300, TRUE},  // updated Jan 2006 srl
-        {"EST", -300, FALSE}, // updated Aug 2003 aliu
-        {"PRT", -240, FALSE},
-        {"CNT", -210, TRUE},
-        {"AGT", -180, TRUE}, // updated by tzdata2007k
-        {"BET", -180, TRUE},
-        {"GMT", 0, FALSE},
-        {"UTC", 0, FALSE}, // ** srl: seems broken in C++
-        {"ECT", 60, TRUE},
-        {"MET", 60, TRUE}, // updated 12/3/99 aliu
-        {"ART", 120, TRUE},
-        {"EET", 120, TRUE},
-        {"CAT", 120, FALSE}, // Africa/Harare
-        {"EAT", 180, FALSE},
-        {"NET", 240, TRUE}, // updated 12/3/99 aliu
-        {"PLT", 300, FALSE}, // updated by 2008c - no DST after 2008
-        {"IST", 330, FALSE},
-        {"BST", 360, FALSE},
-        {"VST", 420, FALSE},
-        {"CTT", 480, FALSE}, // updated Aug 2003 aliu
-        {"JST", 540, FALSE},
-        {"ACT", 570, FALSE}, // updated Aug 2003 aliu
-        {"AET", 600, TRUE},
-        {"SST", 660, FALSE},
-        {"NST", 720, TRUE}, // Pacific/Auckland
+        {"CST", -360, TRUE},  // Olson northamerica -7:00
+        {"IET", -300, TRUE},  // ICU Link - America/Indiana/Indianapolis
+        {"EST", -300, FALSE}, // Olson northamerica -5:00
+        {"PRT", -240, FALSE}, // ICU Link - America/Puerto_Rico
+        {"CNT", -210, TRUE},  // ICU Link - America/St_Johns
+        {"AGT", -180, FALSE}, // ICU Link - America/Argentina/Buenos_Aires
+        {"BET", -180, TRUE},  // ICU Link - America/Sao_Paulo
+        {"GMT", 0, FALSE},    // Olson etcetera Link - Etc/GMT
+        {"UTC", 0, FALSE},    // Olson etcetera 0
+        {"ECT", 60, TRUE},    // ICU Link - Europe/Paris
+        {"MET", 60, TRUE},    // Olson europe 1:00 C-Eur
+        {"CAT", 120, FALSE},  // ICU Link - Africa/Harare
+        {"ART", 120, FALSE},  // ICU Link - Africa/Cairo
+        {"EET", 120, TRUE},   // Olson europe 2:00 EU
+        {"EAT", 180, FALSE},  // ICU Link - Africa/Addis_Ababa
+        {"NET", 240, FALSE},  // ICU Link - Asia/Yerevan
+        {"PLT", 300, FALSE},  // ICU Link - Asia/Karachi
+        {"IST", 330, FALSE},  // ICU Link - Asia/Kolkata
+        {"BST", 360, FALSE},  // ICU Link - Asia/Dhaka
+        {"VST", 420, FALSE},  // ICU Link - Asia/Ho_Chi_Minh
+        {"CTT", 480, FALSE},  // ICU Link - Asia/Shanghai
+        {"JST", 540, FALSE},  // ICU Link - Asia/Tokyo
+        {"ACT", 570, FALSE},  // ICU Link - Australia/Darwin
+        {"AET", 600, TRUE},   // ICU Link - Australia/Sydney
+        {"SST", 660, FALSE},  // ICU Link - Pacific/Guadalcanal
+        {"NST", 720, TRUE},   // ICU Link - Pacific/Auckland
+        {"MIT", 780, TRUE},   // ICU Link - Pacific/Apia
 
-        // From icuzones:
-        {"Etc/Unknown", 0, FALSE},
+        {"Etc/Unknown", 0, FALSE},  // CLDR
 
         {"SystemV/AST4ADT", -240, TRUE},
         {"SystemV/EST5EDT", -300, TRUE},
@@ -938,13 +913,13 @@ void TimeZoneTest::TestShortZoneIDs()
         // Check daylight usage.
         UBool usesDaylight = tz->useDaylightTime();
         if (usesDaylight != kReferenceList[i].daylight) {
-            if (isNonReferenceTzdataVersion || isDateBeforeReferenceYear) {
+            if (!isDevelopmentBuild) {
                 logln("Warning: Time Zone " + itsID + " use daylight is " +
                       (usesDaylight?"TRUE":"FALSE") +
                       " but it should be " +
                       ((kReferenceList[i].daylight)?"TRUE":"FALSE"));
             } else {
-                errln("FAIL: Time Zone " + itsID + " use daylight is " +
+                dataerrln("FAIL: Time Zone " + itsID + " use daylight is " +
                       (usesDaylight?"TRUE":"FALSE") +
                       " but it should be " +
                       ((kReferenceList[i].daylight)?"TRUE":"FALSE"));
@@ -955,12 +930,12 @@ void TimeZoneTest::TestShortZoneIDs()
         // Check offset
         int32_t offsetInMinutes = tz->getRawOffset()/60000;
         if (offsetInMinutes != kReferenceList[i].offset) {
-            if (isNonReferenceTzdataVersion || isDateBeforeReferenceYear) {
+            if (!isDevelopmentBuild) {
                 logln("FAIL: Time Zone " + itsID + " raw offset is " +
                       offsetInMinutes +
                       " but it should be " + kReferenceList[i].offset);
             } else {
-                errln("FAIL: Time Zone " + itsID + " raw offset is " +
+                dataerrln("FAIL: Time Zone " + itsID + " raw offset is " +
                       offsetInMinutes +
                       " but it should be " + kReferenceList[i].offset);
             }
@@ -1445,8 +1420,8 @@ TimeZoneTest::TestDisplayName()
 
         {FALSE, TimeZone::SHORT_COMMONLY_USED, "PST"},
         {TRUE,  TimeZone::SHORT_COMMONLY_USED, "PDT"},
-        {FALSE, TimeZone::GENERIC_LOCATION,  "United States Time (Los Angeles)"},
-        {TRUE,  TimeZone::GENERIC_LOCATION,  "United States Time (Los Angeles)"},
+        {FALSE, TimeZone::GENERIC_LOCATION,  "Los Angeles Time"},
+        {TRUE,  TimeZone::GENERIC_LOCATION,  "Los Angeles Time"},
 
         {FALSE, TimeZone::LONG, ""}
     };
@@ -1981,14 +1956,28 @@ void TimeZoneTest::TestCanonicalID() {
         const char *alias;
         const char *zone;
     } excluded1[] = {
+        {"Africa/Khartoum", "Africa/Juba"},
         {"America/Shiprock", "America/Denver"}, // America/Shiprock is defined as a Link to America/Denver in tzdata
-        {"America/Marigot", "America/Guadeloupe"}, 
-        {"America/St_Barthelemy", "America/Guadeloupe"},
-        {"America/Lower_Princes", "America/Curacao"},
-        {"America/Kralendijk", "America/Curacao"},
+        {"America/Dominica", "America/Anguilla"},
+        {"America/Grenada", "America/Anguilla"},
+        {"America/Guadeloupe", "America/Anguilla"},
+        {"America/Marigot", "America/Anguilla"},
+        {"America/Montserrat", "America/Anguilla"},
+        {"America/Port_of_Spain", "America/Anguilla"},
+        {"America/St_Barthelemy", "America/Anguilla"},
+        {"America/St_Kitts", "America/Anguilla"},
+        {"America/St_Lucia", "America/Anguilla"},
+        {"America/St_Thomas", "America/Anguilla"},
+        {"America/St_Vincent", "America/Anguilla"},
+        {"America/Tortola", "America/Anguilla"},
+        {"America/Virgin", "America/Anguilla"},
+        {"America/Curacao", "America/Aruba"},
+        {"America/Kralendijk", "America/Aruba"},
+        {"America/Lower_Princes", "America/Aruba"},
         {"Antarctica/South_Pole", "Antarctica/McMurdo"},
         {"Atlantic/Jan_Mayen", "Europe/Oslo"},
         {"Arctic/Longyearbyen", "Europe/Oslo"},
+        {"Europe/Busingen", "Europe/Zurich"},
         {"Europe/Guernsey", "Europe/London"},
         {"Europe/Isle_of_Man", "Europe/London"},
         {"Europe/Jersey", "Europe/London"},
@@ -2001,6 +1990,9 @@ void TimeZoneTest::TestCanonicalID() {
         {"Europe/Mariehamn", "Europe/Helsinki"},
         {"Europe/San_Marino", "Europe/Rome"},
         {"Europe/Vatican", "Europe/Rome"},
+        {"Europe/Vaduz", "Europe/Zurich"},
+        {"Pacific/Auckland", "Antarctica/McMurdo"},
+        {"Pacific/Johnston", "Pacific/Honolulu"},
         {0, 0}
     };
 
@@ -2140,7 +2132,7 @@ static struct   {
      //  zone id         locale   summer   format          expected display name
       {"Europe/London",     "en", FALSE, TimeZone::SHORT, "GMT"},
       {"Europe/London",     "en", FALSE, TimeZone::LONG,  "Greenwich Mean Time"},
-      {"Europe/London",     "en", TRUE,  TimeZone::SHORT, "GMT+01:00" /*"BST"*/},
+      {"Europe/London",     "en", TRUE,  TimeZone::SHORT, "GMT+1" /*"BST"*/},
       {"Europe/London",     "en", TRUE,  TimeZone::LONG,  "British Summer Time"},
       
       {"America/Anchorage", "en", FALSE, TimeZone::SHORT, "AKST"},
@@ -2149,27 +2141,36 @@ static struct   {
       {"America/Anchorage", "en", TRUE,  TimeZone::LONG,  "Alaska Daylight Time"},
       
       // Southern Hemisphere, all data from meta:Australia_Western
-      {"Australia/Perth",   "en", FALSE, TimeZone::SHORT, "GMT+08:00"/*"AWST"*/},
+      {"Australia/Perth",   "en", FALSE, TimeZone::SHORT, "GMT+8"/*"AWST"*/},
       {"Australia/Perth",   "en", FALSE, TimeZone::LONG,  "Australian Western Standard Time"},
-      {"Australia/Perth",   "en", TRUE,  TimeZone::SHORT, "GMT+09:00"/*"AWDT"*/},
+      // Note: Perth does not observe DST currently. When display name is missing,
+      // the localized GMT format with the current offset is used even daylight name was
+      // requested. See #9350.
+      {"Australia/Perth",   "en", TRUE,  TimeZone::SHORT, "GMT+8"/*"AWDT"*/},
       {"Australia/Perth",   "en", TRUE,  TimeZone::LONG,  "Australian Western Daylight Time"},
        
-      {"America/Sao_Paulo",  "en", FALSE, TimeZone::SHORT, "GMT-03:00"/*"BRT"*/},
-      {"America/Sao_Paulo",  "en", FALSE, TimeZone::LONG,  "Brasilia Time"},
-      {"America/Sao_Paulo",  "en", TRUE,  TimeZone::SHORT, "GMT-02:00"/*"BRST"*/},
+      {"America/Sao_Paulo",  "en", FALSE, TimeZone::SHORT, "GMT-3"/*"BRT"*/},
+      {"America/Sao_Paulo",  "en", FALSE, TimeZone::LONG,  "Brasilia Standard Time"},
+      {"America/Sao_Paulo",  "en", TRUE,  TimeZone::SHORT, "GMT-2"/*"BRST"*/},
       {"America/Sao_Paulo",  "en", TRUE,  TimeZone::LONG,  "Brasilia Summer Time"},
        
       // No Summer Time, but had it before 1983.
       {"Pacific/Honolulu",   "en", FALSE, TimeZone::SHORT, "HST"},
       {"Pacific/Honolulu",   "en", FALSE, TimeZone::LONG,  "Hawaii-Aleutian Standard Time"},
-      {"Pacific/Honolulu",   "en", TRUE,  TimeZone::SHORT, "HST"},
-      {"Pacific/Honolulu",   "en", TRUE,  TimeZone::LONG,  "Hawaii-Aleutian Standard Time"},
+      {"Pacific/Honolulu",   "en", TRUE,  TimeZone::SHORT, "HDT"},
+      {"Pacific/Honolulu",   "en", TRUE,  TimeZone::LONG,  "Hawaii-Aleutian Daylight Time"},
        
       // Northern, has Summer, not commonly used.
-      {"Europe/Helsinki",    "en", FALSE, TimeZone::SHORT, "GMT+02:00"/*"EET"*/},
-      {"Europe/Helsinki",    "en", FALSE, TimeZone::LONG,  "Eastern European Time"},
-      {"Europe/Helsinki",    "en", TRUE,  TimeZone::SHORT, "GMT+03:00"/*"EEST"*/},
-      {"Europe/Helsinki",    "en", true,  TimeZone::LONG,  "Eastern European Summer Time"},
+      {"Europe/Helsinki",    "en", FALSE, TimeZone::SHORT, "GMT+2"/*"EET"*/},
+      {"Europe/Helsinki",    "en", FALSE, TimeZone::LONG,  "Eastern European Standard Time"},
+      {"Europe/Helsinki",    "en", TRUE,  TimeZone::SHORT, "GMT+3"/*"EEST"*/},
+      {"Europe/Helsinki",    "en", TRUE,  TimeZone::LONG,  "Eastern European Summer Time"},
+
+      // Repeating the test data for DST.  The test data below trigger the problem reported
+      // by Ticket#6644
+      {"Europe/London",       "en", TRUE, TimeZone::SHORT, "GMT+1" /*"BST"*/},
+      {"Europe/London",       "en", TRUE, TimeZone::LONG,  "British Summer Time"},
+
       {NULL, NULL, FALSE, TimeZone::SHORT, NULL}   // NULL values terminate list
     };
 
@@ -2177,11 +2178,6 @@ void TimeZoneTest::TestDisplayNamesMeta() {
     UErrorCode status = U_ZERO_ERROR;
     GregorianCalendar cal(*TimeZone::getGMT(), status);
     if (failure(status, "GregorianCalendar", TRUE)) return;
-
-    UBool isReferenceYear = TRUE;
-    if (cal.get(UCAL_YEAR, status) != TimeZoneTest::REFERENCE_YEAR) {
-        isReferenceYear = FALSE;
-    }
 
     UBool sawAnError = FALSE;
     for (int testNum   = 0; zoneDisplayTestData[testNum].zoneName != NULL; testNum++) {
@@ -2196,7 +2192,7 @@ void TimeZoneTest::TestDisplayNamesMeta() {
             char  name[100];
             UErrorCode status = U_ZERO_ERROR;
             displayName.extract(name, 100, NULL, status);
-            if (isReferenceYear) {
+            if (isDevelopmentBuild) {
                 sawAnError = TRUE;
                 dataerrln("Incorrect time zone display name.  zone = \"%s\",\n"
                       "   locale = \"%s\",   style = %s,  Summertime = %d\n"
@@ -2321,6 +2317,64 @@ void TimeZoneTest::TestGetUnknown() {
     assertEquals("getUnknown() wrong ID", expectedID, unknown.getID(id));
     assertTrue("getUnknown() wrong offset", 0 == unknown.getRawOffset());
     assertFalse("getUnknown() uses DST", unknown.useDaylightTime());
+}
+
+void TimeZoneTest::TestGetWindowsID(void) {
+    static const struct {
+        const char *id;
+        const char *winid;
+    } TESTDATA[] = {
+        {"America/New_York",        "Eastern Standard Time"},
+        {"America/Montreal",        "Eastern Standard Time"},
+        {"America/Los_Angeles",     "Pacific Standard Time"},
+        {"America/Vancouver",       "Pacific Standard Time"},
+        {"Asia/Shanghai",           "China Standard Time"},
+        {"Asia/Chongqing",          "China Standard Time"},
+        {"America/Indianapolis",    "US Eastern Standard Time"},            // CLDR canonical name
+        {"America/Indiana/Indianapolis",    "US Eastern Standard Time"},    // tzdb canonical name
+        {"Asia/Khandyga",           "Yakutsk Standard Time"},
+        {"Australia/Eucla",         ""}, // No Windows ID mapping
+        {"Bogus",                   ""},
+        {0,                         0},
+    };
+
+    for (int32_t i = 0; TESTDATA[i].id != 0; i++) {
+        UErrorCode sts = U_ZERO_ERROR;
+        UnicodeString windowsID;
+
+        TimeZone::getWindowsID(UnicodeString(TESTDATA[i].id), windowsID, sts);
+        assertSuccess(TESTDATA[i].id, sts);
+        assertEquals(TESTDATA[i].id, UnicodeString(TESTDATA[i].winid), windowsID, TRUE);
+    }
+}
+
+void TimeZoneTest::TestGetIDForWindowsID(void) {
+    static const struct {
+        const char *winid;
+        const char *region;
+        const char *id;
+    } TESTDATA[] = {
+        {"Eastern Standard Time",   0,      "America/New_York"},
+        {"Eastern Standard Time",   "US",   "America/New_York"},
+        {"Eastern Standard Time",   "CA",   "America/Toronto"},
+        {"Eastern Standard Time",   "CN",   "America/New_York"},
+        {"China Standard Time",     0,      "Asia/Shanghai"},
+        {"China Standard Time",     "CN",   "Asia/Shanghai"},
+        {"China Standard Time",     "HK",   "Asia/Hong_Kong"},
+        {"Mid-Atlantic Standard Time",  0,  ""}, // No tz database mapping
+        {"Bogus",                   0,      ""},
+        {0,                         0,      0},
+    };
+
+    for (int32_t i = 0; TESTDATA[i].winid != 0; i++) {
+        UErrorCode sts = U_ZERO_ERROR;
+        UnicodeString id;
+
+        TimeZone::getIDForWindowsID(UnicodeString(TESTDATA[i].winid), TESTDATA[i].region,
+                                    id, sts);
+        assertSuccess(UnicodeString(TESTDATA[i].winid) + "/" + TESTDATA[i].region, sts);
+        assertEquals(UnicodeString(TESTDATA[i].winid) + "/" + TESTDATA[i].region, TESTDATA[i].id, id, TRUE);
+    }
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -32,9 +32,9 @@
  * These functions deal with the aspects of potentially mixed-directional
  * text in a single paragraph or in a line of a single paragraph
  * which has already been processed according to
- * the Unicode 3.0 BiDi algorithm as defined in
- * http://www.unicode.org/unicode/reports/tr9/ , version 13,
- * also described in The Unicode Standard, Version 4.0.1 .
+ * the Unicode 6.3 BiDi algorithm as defined in
+ * http://www.unicode.org/unicode/reports/tr9/ , version 28,
+ * also described in The Unicode Standard, Version 6.3.0 .
  *
  * This means that there is a UBiDi object with a levels
  * and a dirProps array.
@@ -105,12 +105,12 @@ setTrailingWSStart(UBiDi *pBiDi) {
        level of B chars from 0 to paraLevel in ubidi_getLevels when
        orderParagraphsLTR==TRUE.
      */
-    if(NO_CONTEXT_RTL(dirProps[start-1])==B) {
+    if(dirProps[start-1]==B) {
         pBiDi->trailingWSStart=start;   /* currently == pBiDi->length */
         return;
     }
     /* go backwards across all WS, BN, explicit codes */
-    while(start>0 && DIRPROP_FLAG_NC(dirProps[start-1])&MASK_WS) {
+    while(start>0 && DIRPROP_FLAG(PURE_DIRPROP(dirProps[start-1]))&MASK_WS) {
         --start;
     }
 

@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/tr.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/tr.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/tr.xml
+ * ICU <specials> source: <path>/common/main/tr.xml
  */
 tr{
     Countries{
@@ -27,9 +27,9 @@ tr{
         029{"Karayipler"}
         030{"Doğu Asya"}
         034{"Güney Asya"}
-        035{"Güney Doğu Asya"}
+        035{"Güneydoğu Asya"}
         039{"Güney Avrupa"}
-        053{"Avustralya ve Yeni Zelanda"}
+        053{"Avustralasya"}
         054{"Melanezya"}
         057{"Mikronezya"}
         061{"Polinezya"}
@@ -57,7 +57,7 @@ tr{
         AT{"Avusturya"}
         AU{"Avustralya"}
         AW{"Aruba"}
-        AX{"Aland Adaları"}
+        AX{"Åland Adaları"}
         AZ{"Azerbaycan"}
         BA{"Bosna Hersek"}
         BB{"Barbados"}
@@ -72,6 +72,7 @@ tr{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivya"}
+        BQ{"Karayip Hollanda"}
         BR{"Brezilya"}
         BS{"Bahamalar"}
         BT{"Butan"}
@@ -80,7 +81,7 @@ tr{
         BY{"Beyaz Rusya"}
         BZ{"Belize"}
         CA{"Kanada"}
-        CC{"Cocos Adaları"}
+        CC{"Cocos (Keeling) Adaları"}
         CD{"Kongo - Kinşasa"}
         CF{"Orta Afrika Cumhuriyeti"}
         CG{"Kongo - Brazavil"}
@@ -93,9 +94,9 @@ tr{
         CO{"Kolombiya"}
         CP{"Clipperton Adası"}
         CR{"Kosta Rika"}
-        CS{"Sırbistan-Karadağ"}
         CU{"Küba"}
         CV{"Cape Verde"}
+        CW{"Curaçao"}
         CX{"Christmas Adası"}
         CY{"Güney Kıbrıs Rum Kesimi"}
         CZ{"Çek Cumhuriyeti"}
@@ -140,7 +141,7 @@ tr{
         GU{"Guam"}
         GW{"Gine-Bissau"}
         GY{"Guyana"}
-        HK{"Hong Kong SAR - Çin"}
+        HK{"Çin Hong Kong ÖYB"}
         HM{"Heard Adası ve McDonald Adaları"}
         HN{"Honduras"}
         HR{"Hırvatistan"}
@@ -192,9 +193,9 @@ tr{
         MH{"Marshall Adaları"}
         MK{"Makedonya"}
         ML{"Mali"}
-        MM{"Myanmar"}
+        MM{"Myanmar (Burma)"}
         MN{"Moğolistan"}
-        MO{"Makao SAR - Çin"}
+        MO{"Çin Makao ÖYB"}
         MP{"Kuzey Mariana Adaları"}
         MQ{"Martinik"}
         MR{"Moritanya"}
@@ -227,15 +228,15 @@ tr{
         PK{"Pakistan"}
         PL{"Polonya"}
         PM{"Saint Pierre ve Miquelon"}
-        PN{"Pitcairn"}
+        PN{"Pitcairn Adaları"}
         PR{"Porto Riko"}
-        PS{"Filistin Bölgesi"}
+        PS{"Filistin Bölgeleri"}
         PT{"Portekiz"}
         PW{"Palau"}
         PY{"Paraguay"}
         QA{"Katar"}
         QO{"Uzak Okyanusya"}
-        RE{"Reunion"}
+        RE{"Réunion"}
         RO{"Romanya"}
         RS{"Sırbistan"}
         RU{"Rusya"}
@@ -255,8 +256,10 @@ tr{
         SN{"Senegal"}
         SO{"Somali"}
         SR{"Surinam"}
-        ST{"Sao Tome ve Principe"}
+        SS{"Güney Sudan"}
+        ST{"São Tomé ve Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Suriye"}
         SZ{"Svaziland"}
         TA{"Tristan da Cunha"}
@@ -278,19 +281,20 @@ tr{
         TZ{"Tanzanya"}
         UA{"Ukrayna"}
         UG{"Uganda"}
-        UM{"Amerika Birleşik Devletleri Küçük Dış Adaları"}
-        US{"Amerika Birleşik Devletleri"}
+        UM{"ABD Dış Adaları"}
+        US{"ABD"}
         UY{"Uruguay"}
         UZ{"Özbekistan"}
         VA{"Vatikan"}
         VC{"Saint Vincent ve Grenadinler"}
         VE{"Venezuela"}
-        VG{"İngiliz Virgin Adaları"}
-        VI{"ABD Virgin Adaları"}
+        VG{"Britanya Virjin Adaları"}
+        VI{"ABD Virjin Adaları"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Wallis ve Futuna Adaları"}
         WS{"Samoa"}
+        XK{"Kosova"}
         YE{"Yemen"}
         YT{"Mayotte"}
         ZA{"Güney Afrika"}
@@ -298,5 +302,12 @@ tr{
         ZW{"Zimbabve"}
         ZZ{"Bilinmeyen Bölge"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"BK"}
+        HK{"Hong Kong"}
+        MO{"Makao"}
+        PS{"Filistin"}
+        US{"ABD"}
+    }
+    Version{"2.0.92.87"}
 }

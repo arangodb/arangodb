@@ -2,6 +2,7 @@ TOC {#CommandLineTOC}
 =====================
 
 - @ref CommandLine
+  - @ref CommandLineGeneral
   - @ref CommandLineGeneralOptions
     - @ref CommandLineHelp "help"
     - @ref CommandLineVersion "version"

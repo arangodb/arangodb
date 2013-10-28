@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zh_Hant_HK.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hant_HK.xml
 // *
 // ***************************************************************************
 zh_Hant_HK{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比贊"}
@@ -18,17 +18,20 @@ zh_Hant_HK{
         "Africa:Asmera"{
             ec{"阿斯馬拉"}
         }
-        "Africa:Brazzaville"{
-            ec{"布拉柴維爾"}
-        }
         "Africa:Dar_es_Salaam"{
             ec{"達累斯薩拉姆"}
         }
         "Africa:Khartoum"{
             ec{"喀土木"}
         }
+        "Africa:Lagos"{
+            ec{"拉各斯"}
+        }
         "Africa:Libreville"{
             ec{"利布維"}
+        }
+        "Africa:Luanda"{
+            ec{"盧安達"}
         }
         "Africa:Lusaka"{
             ec{"盧薩卡"}
@@ -36,23 +39,32 @@ zh_Hant_HK{
         "Africa:Malabo"{
             ec{"馬拉波"}
         }
-        "Africa:Maputo"{
-            ec{"馬普托"}
-        }
         "Africa:Maseru"{
             ec{"馬塞魯"}
         }
-        "Africa:Ndjamena"{
-            ec{"恩賈梅納"}
-        }
-        "Africa:Niamey"{
-            ec{"尼亞美"}
+        "Africa:Mogadishu"{
+            ec{"摩加迪沙"}
         }
         "Africa:Windhoek"{
             ec{"溫特和克"}
         }
+        "America:Cayenne"{
+            ec{"法屬蓋亞那"}
+        }
+        "America:Costa_Rica"{
+            ec{"哥斯達黎加"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"印第安那州彼得堡"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"印第安那州威納馬克"}
+        }
         "America:North_Dakota:Beulah"{
             ec{"比尤拉，北達科他州"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"北達科他州申特城"}
         }
         "America:St_Barthelemy"{
             ec{"聖巴夫林米"}
@@ -68,6 +80,9 @@ zh_Hant_HK{
         }
         "Asia:Karachi"{
             ec{"卡拉奇"}
+        }
+        "Asia:Muscat"{
+            ec{"馬斯喀特"}
         }
         "Asia:Nicosia"{
             ec{"尼科西亞"}
@@ -86,9 +101,6 @@ zh_Hant_HK{
         }
         "Europe:Chisinau"{
             ec{"基希訥烏"}
-        }
-        "Europe:Guernsey"{
-            ec{"德國"}
         }
         "Europe:Jersey"{
             ec{"澤西"}
@@ -120,20 +132,35 @@ zh_Hant_HK{
         "Indian:Mahe"{
             ec{"馬希"}
         }
-        "Pacific:Apia"{
-            ec{"阿皮亞"}
-        }
         "Pacific:Guadalcanal"{
             ec{"瓜達爾卡納爾"}
         }
         "Pacific:Port_Moresby"{
             ec{"莫爾斯比港"}
         }
-        "Pacific:Rarotonga"{
-            ec{"拉羅湯加"}
-        }
         "Pacific:Tongatapu"{
             ec{"湯加塔布"}
+        }
+        "meta:Azerbaijan"{
+            ld{"亞塞拜疆夏令時間"}
+            lg{"亞塞拜疆時間"}
+            ls{"亞塞拜疆標準時間"}
+        }
+        "meta:Georgia"{
+            ld{"格魯吉亞夏令時間"}
+            lg{"格魯吉亞時間"}
+            ls{"格魯吉亞標準時間"}
+        }
+        "meta:Maldives"{
+            ls{"馬爾代夫時間"}
+        }
+        "meta:Mauritius"{
+            ld{"毛里求斯夏令時間"}
+            lg{"毛里求斯時間"}
+            ls{"毛里求斯標準時間"}
+        }
+        "meta:Solomon"{
+            ls{"所羅門群島時間"}
         }
     }
 }

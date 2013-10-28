@@ -1,52 +1,200 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/eu.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/eu.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/eu.xml
+ * ICU <specials> source: <path>/common/main/eu.xml
  */
 eu{
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     zoneStrings{
-        "Africa:Djibouti"{
-            ec{"Djibuti"}
+        "Africa:Addis_Ababa"{
+            ec{"Addis Abeba"}
+        }
+        "Africa:Algiers"{
+            ec{"Aljer"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "Africa:Cairo"{
+            ec{"Kairo"}
+        }
+        "Africa:Johannesburg"{
+            ec{"Johannesburgo"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"São Tomé"}
+        }
+        "America:Asuncion"{
+            ec{"Asunción"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
+        "America:Curacao"{
+            ec{"Curaçao"}
         }
         "America:Dominica"{
             ec{"Dominika"}
         }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
         "America:Guadeloupe"{
             ec{"Guadalupe"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
         }
         "America:Jamaica"{
             ec{"Jamaika"}
         }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
+        }
         "America:Martinique"{
             ec{"Martinika"}
         }
-        "America:North_Dakota:Center"{
-            ec{"Ameriketako Estatu Batuak (Erdialdea, Ipar Dakota)"}
+        "America:Mexico_City"{
+            ec{"Mexico Hiria"}
         }
-        "Asia:Bahrain"{
-            ec{"Bahrain"}
+        "America:Miquelon"{
+            ec{"Mikelune"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, Ipar Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Erdialdea, Ipar Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, Ipar Dakota"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Barthelemy"{
+            ec{"Saint Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John's"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kolkata"}
+        }
+        "Asia:Damascus"{
+            ec{"Damasko"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangun"}
+        }
+        "Asia:Saigon"{
+            ec{"Ho Chi Minh"}
+        }
+        "Asia:Seoul"{
+            ec{"Seul"}
         }
         "Asia:Singapore"{
             ec{"Singapur"}
         }
-        "Atlantic:Bermuda"{
-            ec{"Bermuda"}
+        "Asia:Tokyo"{
+            ec{"Tokio"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulan Bator"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azoreak"}
         }
         "Atlantic:Canary"{
-            ec{"Espainia (Kanariak)"}
+            ec{"Kanariak"}
         }
         "Atlantic:Cape_Verde"{
             ec{"Cabo Verde"}
         }
+        "Atlantic:Faeroe"{
+            ec{"Faroe"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
+        }
+        "Australia:Adelaide"{
+            ec{"Adelaida"}
+        }
         "Etc:Unknown"{
-            ec{"Ezezaguna"}
+            ec{"Hiri ezezaguna"}
+        }
+        "Europe:Athens"{
+            ec{"Atenas"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrado"}
+        }
+        "Europe:Brussels"{
+            ec{"Brusela"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukarest"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhage"}
+        }
+        "Europe:Dublin"{
+            ld{"Dublingo udako ordua"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Man uhartea"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisboa"}
+        }
+        "Europe:London"{
+            ec{"Londres"}
+            ld{"Londresko udako ordua"}
         }
         "Europe:Luxembourg"{
             ec{"Luxenburgo"}
@@ -57,46 +205,98 @@ eu{
         "Europe:Monaco"{
             ec{"Monako"}
         }
+        "Europe:Moscow"{
+            ec{"Mosku"}
+        }
+        "Europe:Prague"{
+            ec{"Praga"}
+        }
+        "Europe:Rome"{
+            ec{"Erroma"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirana"}
+        }
+        "Europe:Vatican"{
+            ec{"Vaticano Hiria"}
+        }
+        "Europe:Vienna"{
+            ec{"Viena"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varsovia"}
+        }
         "Indian:Maldives"{
             ec{"Maldivak"}
         }
         "Indian:Mauritius"{
             ec{"Maurizio"}
         }
+        "Pacific:Galapagos"{
+            ec{"Galapagoak"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afganistango ordua"}
+        }
+        "meta:Africa_Central"{
+            ls{"Afrika erdialdeko ordua"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Afrika ekialdeko ordua"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Afrika hegoaldeko ordua"}
+        }
+        "meta:Africa_Western"{
+            ld{"Afrika mendebaldeko udako ordua"}
+            lg{"Afrika mendebaldeko ordua"}
+            ls{"Afrika mendebaldeko ordu estandarra"}
+        }
         "meta:Alaska"{
-            ld{"Alaskako urte-sasoiko ordua"}
+            ld{"Alaskako udako ordua"}
             lg{"Alaskako ordua"}
             ls{"Alaskako ordu estandarra"}
         }
         "meta:Amazon"{
-            ld{"Amazoniako urte-sasoiko ordua"}
+            ld{"Amazoniako udako ordua"}
             lg{"Amazoniako ordua"}
             ls{"Amazoniako ordu estandarra"}
         }
         "meta:America_Central"{
-            ld{"Erdialdeko urte-sasoiko ordua"}
-            lg{"Erdialdeko ordua"}
-            ls{"Erdialdeko ordu estandarra"}
+            ld{"Ipar Amerikako erdialdeko udako ordua"}
+            lg{"Ipar Amerikako erdialdeko ordua"}
+            ls{"Ipar Amerikako erdialdeko ordu estandarra"}
         }
         "meta:America_Eastern"{
-            ld{"Ekialdeko urte-sasoiko ordua"}
-            lg{"Ekialdeko ordua"}
-            ls{"Ekialdeko ordu estandarra"}
+            ld{"Ipar Amerikako ekialdeko udako ordua"}
+            lg{"Ipar Amerikako ekialdeko ordua"}
+            ls{"Ipar Amerikako ekialdeko ordu estandarra"}
         }
         "meta:America_Mountain"{
-            ld{"Mendi Harritsuetako urte-sasoiko ordua"}
-            lg{"Mendiko ordua"}
-            ls{"Mendi Harritsuetako ordu estandarra"}
+            ld{"Ipar Amerikako mendialdeko udako ordua"}
+            lg{"Ipar Amerikako mendialdeko ordua"}
+            ls{"Ipar Amerikako mendialdeko ordu estandarra"}
         }
         "meta:America_Pacific"{
-            ld{"Pazifikoko urte-sasoiko ordua"}
-            lg{"Pazifikoko ordua"}
-            ls{"Pazifikoko ordu estandarra"}
+            ld{"Ipar Amerikako Pazifikoko udako ordua"}
+            lg{"Ipar Amerikako Pazifikoko ordua"}
+            ls{"Ipar Amerikako Pazifikoko ordu estandarra"}
         }
         "meta:Anadyr"{
             ld{"Anadyrreko udako ordua"}
             lg{"Anadyrreko ordua"}
             ls{"Anadyrreko ordu estandarra"}
+        }
+        "meta:Arabian"{
+            ld{"Arabiako udako ordua"}
+            lg{"Arabiako ordua"}
+            ls{"Arabiako ordu estandarra"}
         }
         "meta:Argentina"{
             ld{"Argentinako udako ordua"}
@@ -108,68 +308,219 @@ eu{
             lg{"Argentina mendebaldeko ordua"}
             ls{"Argentina mendebaldeko ordu estandarra"}
         }
+        "meta:Armenia"{
+            ld{"Armeniako udako ordua"}
+            lg{"Armeniako ordua"}
+            ls{"Armeniako ordu estandarra"}
+        }
         "meta:Atlantic"{
-            ld{"Atlantikoko urte-sasoiko ordua"}
+            ld{"Atlantikoko udako ordua"}
             lg{"Atlantikoko ordua"}
             ls{"Atlantikoko ordu estandarra"}
         }
         "meta:Australia_Central"{
-            ld{"Australia erdialdeko urte-sasoiko ordua"}
+            ld{"Australia erdialdeko udako ordua"}
             lg{"Australia erdialdeko ordua"}
             ls{"Australia erdialdeko ordu estandarra"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"Australia erdialdeko mendebaldeko urte-sasoiko ordua"}
-            lg{"Australia erdialdeko mendebaldeko ordua"}
-            ls{"Australia erdialdeko mendebaldeko ordu estandarra"}
+            ld{"Australia erdi-mendebaldeko udako ordua"}
+            lg{"Australia erdi-mendebaldeko ordua"}
+            ls{"Australia erdi-mendebaldeko ordu estandarra"}
         }
         "meta:Australia_Eastern"{
-            ld{"Australia ekialdeko urte-sasoiko ordua"}
+            ld{"Australia ekialdeko udako ordua"}
             lg{"Australia ekialdeko ordua"}
             ls{"Australia ekialdeko ordu estandarra"}
         }
         "meta:Australia_Western"{
-            ld{"Australia mendebaldeko urte-sasoiko ordua"}
+            ld{"Australia mendebaldeko udako ordua"}
             lg{"Australia mendebaldeko ordua"}
             ls{"Australia mendebaldeko ordu estandarra"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Azerbaijango udako ordua"}
+            lg{"Azerbaijango ordua"}
+            ls{"Azerbaijango ordu estandarra"}
+        }
+        "meta:Azores"{
+            ld{"Azoreetako udako ordua"}
+            lg{"Azoreetako ordua"}
+            ls{"Azoreetako ordu estandarra"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bangladesheko udako ordua"}
+            lg{"Bangladesheko ordua"}
+            ls{"Bangladesheko ordu estandarra"}
+        }
+        "meta:Bhutan"{
+            ls{"Bhutango ordua"}
+        }
+        "meta:Bolivia"{
+            ls{"Boliviako ordua"}
         }
         "meta:Brasilia"{
             ld{"Brasiliako udako ordua"}
             lg{"Brasiliako ordua"}
             ls{"Brasiliako ordu estandarra"}
         }
+        "meta:Brunei"{
+            ls{"Brunei Darussalamgo ordua"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Cabo Verdeko udako ordua"}
+            lg{"Cabo Verdeko ordua"}
+            ls{"Cabo Verdeko ordu estandarra"}
+        }
+        "meta:Chamorro"{
+            ls{"Chamorroko ordu estandarra"}
+        }
+        "meta:Chatham"{
+            ld{"Chathamgo udako ordua"}
+            lg{"Chathamgo ordua"}
+            ls{"Chathamgo ordu estandarra"}
+        }
+        "meta:Chile"{
+            ld{"Txileko udako ordua"}
+            lg{"Txileko ordua"}
+            ls{"Txileko ordu estandarra"}
+        }
+        "meta:China"{
+            ld{"Txinako udako ordua"}
+            lg{"Txinako ordua"}
+            ls{"Txinako ordu estandarra"}
+        }
         "meta:Choibalsan"{
             ld{"Choibalsango udako ordua"}
             lg{"Choibalsango ordua"}
             ls{"Choibalsango ordu estandarra"}
         }
+        "meta:Christmas"{
+            ls{"Christmas uharteko ordua"}
+        }
+        "meta:Cocos"{
+            ls{"Cocos uharteetako ordua"}
+        }
+        "meta:Colombia"{
+            ld{"Kolonbiako udako ordua"}
+            lg{"Kolonbiako ordua"}
+            ls{"Kolonbiako ordu estandarra"}
+        }
+        "meta:Cook"{
+            ld{"Cook uharteetako uda erdialdeko ordua"}
+            lg{"Cook uharteetako ordua"}
+            ls{"Cook uharteetako ordu estandarra"}
+        }
+        "meta:Cuba"{
+            ld{"Kubako udako ordua"}
+            lg{"Kubako ordua"}
+            ls{"Kubako ordu estandarra"}
+        }
+        "meta:Davis"{
+            ls{"Daviseko ordua"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d'Urvilleko ordua"}
+        }
+        "meta:East_Timor"{
+            ls{"Ekialdeko Timorreko ordua"}
+        }
+        "meta:Easter"{
+            ld{"Pazko uharteko udako ordua"}
+            lg{"Pazko uharteko ordua"}
+            ls{"Pazko uharteko ordu estandarra"}
+        }
+        "meta:Ecuador"{
+            ls{"Ekuadorreko ordua"}
+        }
         "meta:Europe_Central"{
-            sd{"CEST"}
-            sg{"CET"}
-            ss{"CET"}
+            ld{"Europa erdialdeko udako ordua"}
+            lg{"Europa erdialdeko ordua"}
+            ls{"Europa erdialdeko ordu estandarra"}
         }
         "meta:Europe_Eastern"{
-            sd{"EEST"}
-            sg{"EET"}
-            ss{"EET"}
+            ld{"Europa ekialdeko udako ordua"}
+            lg{"Europa ekialdeko ordua"}
+            ls{"Europa ekialdeko ordu estandarra"}
         }
         "meta:Europe_Western"{
-            sd{"WEST"}
-            sg{"WET"}
-            ss{"WET"}
+            ld{"Europa mendebaldeko udako ordua"}
+            lg{"Europa mendebaldeko ordua"}
+            ls{"Europa mendebaldeko ordu estandarra"}
+        }
+        "meta:Falkland"{
+            ld{"Falkland uharteetako udako ordua"}
+            lg{"Falkland uharteetako ordua"}
+            ls{"Falkland uharteetako ordu estandarra"}
+        }
+        "meta:Fiji"{
+            ld{"Fijiko udako ordua"}
+            lg{"Fijiko ordua"}
+            ls{"Fijiko ordu estandarra"}
+        }
+        "meta:French_Guiana"{
+            ls{"Guyana Frantseseko ordua"}
+        }
+        "meta:French_Southern"{
+            ls{"Frantziaren lurralde austral eta antartikoetako ordua"}
         }
         "meta:GMT"{
+            ls{"Greenwich meridianoko ordua"}
             ss{"GMT"}
         }
+        "meta:Galapagos"{
+            ls{"Galapagoetako ordua"}
+        }
+        "meta:Gambier"{
+            ls{"Gambierreko ordua"}
+        }
+        "meta:Georgia"{
+            ld{"Georgiako udako ordua"}
+            lg{"Georgiako ordua"}
+            ls{"Georgiako ordu estandarra"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilbert uharteetako ordua"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Groenlandia ekialdeko udako ordua"}
+            lg{"Groenlandia ekialdeko ordua"}
+            ls{"Groenlandia ekialdeko ordu estandarra"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Groenlandia mendebaldeko udako ordua"}
+            lg{"Groenlandia mendebaldeko ordua"}
+            ls{"Groenlandia mendebaldeko ordu estandarra"}
+        }
+        "meta:Gulf"{
+            ls{"Golkoko ordu estandarra"}
+        }
+        "meta:Guyana"{
+            ls{"Guyanako ordua"}
+        }
         "meta:Hawaii_Aleutian"{
-            ld{"Hawaii Aleuteko urte-sasoiko ordua"}
-            lg{"Hawaii Aleuteko ordua"}
-            ls{"Hawaii Aleuteko ordu estandarra"}
+            ld{"Hawaii-Aleutiar uharteetako udako ordua"}
+            lg{"Hawaii-Aleutiar uharteetako ordua"}
+            ls{"Hawaii-Aleutiar uharteetako ordu estandarra"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Hong Kongo udako ordua"}
+            lg{"Hong Kongo ordua"}
+            ls{"Hong Kongo ordu estandarra"}
         }
         "meta:Hovd"{
             ld{"Hovdeko udako ordua"}
             lg{"Hovdeko ordua"}
             ls{"Hovdeko ordu estandarra"}
+        }
+        "meta:India"{
+            ls{"Indiako ordua"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Ozeano Indikoko ordua"}
+        }
+        "meta:Indochina"{
+            ls{"Indotxinako ordua"}
         }
         "meta:Indonesia_Central"{
             ls{"Indonesia erdialdeko ordua"}
@@ -180,10 +531,25 @@ eu{
         "meta:Indonesia_Western"{
             ls{"Indonesia mendebaldeko ordua"}
         }
+        "meta:Iran"{
+            ld{"Irango udako ordua"}
+            lg{"Irango ordua"}
+            ls{"Irango ordu estandarra"}
+        }
         "meta:Irkutsk"{
             ld{"Irkutskeko udako ordua"}
             lg{"Irkutskeko ordua"}
             ls{"Irkutskeko ordu estandarra"}
+        }
+        "meta:Israel"{
+            ld{"Israelgo udako ordua"}
+            lg{"Israelgo ordua"}
+            ls{"Israelgo ordu estandarra"}
+        }
+        "meta:Japan"{
+            ld{"Japoniako udako ordua"}
+            lg{"Japoniako ordua"}
+            ls{"Japoniako ordu estandarra"}
         }
         "meta:Kamchatka"{
             ld{"Petropavlovsk-Kamchatskiko udako ordua"}
@@ -196,38 +562,97 @@ eu{
         "meta:Kazakhstan_Western"{
             ls{"Kazakhstan mendebaldeko ordua"}
         }
+        "meta:Korea"{
+            ld{"Koreako udako ordua"}
+            lg{"Koreako ordua"}
+            ls{"Koreako ordu estandarra"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosraeko ordua"}
+        }
         "meta:Krasnoyarsk"{
             ld{"Krasnoyarskeko udako ordua"}
             lg{"Krasnoyarskeko ordua"}
             ls{"Krasnoyarskeko ordu estandarra"}
         }
+        "meta:Kyrgystan"{
+            ls{"Kirgizistango ordua"}
+        }
+        "meta:Line_Islands"{
+            ls{"Line uharteetako ordua"}
+        }
         "meta:Lord_Howe"{
-            ld{"Lord Howeko urte-sasoiko ordua"}
+            ld{"Lord Howeko udako ordua"}
             lg{"Lord Howeko ordua"}
             ls{"Lord Howeko ordu estandarra"}
         }
         "meta:Macquarie"{
-            ls{"Macquarieko ordua"}
+            ls{"Macquarie uharteko ordua"}
         }
         "meta:Magadan"{
             ld{"Magadango udako ordua"}
             lg{"Magadako ordua"}
-            ls{"Magadako ordu estandarra"}
+            ls{"Magadango ordu estandarra"}
+        }
+        "meta:Malaysia"{
+            ls{"Malaysiako ordua"}
+        }
+        "meta:Maldives"{
+            ls{"Maldivetako ordua"}
+        }
+        "meta:Marquesas"{
+            ls{"Markesetako ordua"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Marshall uharteetako ordua"}
+        }
+        "meta:Mauritius"{
+            ld{"Maurizioko udako ordua"}
+            lg{"Maurizioko ordua"}
+            ls{"Maurizioko ordu estandarra"}
+        }
+        "meta:Mawson"{
+            ls{"Mawsoneko ordua"}
         }
         "meta:Mongolia"{
-            ld{"Ulan Batorgo udako ordua"}
-            lg{"Ulan Batorgo ordua"}
-            ls{"Ulan Batorgo ordu estandarra"}
+            ld{"Ulan Batorreko udako ordua"}
+            lg{"Ulan Batorreko ordua"}
+            ls{"Ulan Batorreko ordu estandarra"}
         }
         "meta:Moscow"{
             ld{"Moskuko udako ordua"}
             lg{"Moskuko ordua"}
             ls{"Moskuko ordu estandarra"}
         }
+        "meta:Myanmar"{
+            ls{"Myanmarreko ordua"}
+        }
+        "meta:Nauru"{
+            ls{"Nauruko ordua"}
+        }
+        "meta:Nepal"{
+            ls{"Nepalgo ordua"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Kaledonia Berriko udako ordua"}
+            lg{"Kaledonia Berriako ordua"}
+            ls{"Kaledonia Berriko ordu estandarra"}
+        }
+        "meta:New_Zealand"{
+            ld{"Zeelanda Berriko udako ordua"}
+            lg{"Zeelanda Berriko ordua"}
+            ls{"Zeelanda Berriko ordu estandarra"}
+        }
         "meta:Newfoundland"{
-            ld{"Ternuako urte-sasoiko ordua"}
+            ld{"Ternuako udako ordua"}
             lg{"Ternuako ordua"}
             ls{"Ternuako ordu estandarra"}
+        }
+        "meta:Niue"{
+            ls{"Niueko ordua"}
+        }
+        "meta:Norfolk"{
+            ls{"Norfolk uharteetako ordua"}
         }
         "meta:Noronha"{
             ld{"Fernando de Noronhako udako ordua"}
@@ -244,6 +669,52 @@ eu{
             lg{"Omskeko ordua"}
             ls{"Omskeko ordu estandarra"}
         }
+        "meta:Pakistan"{
+            ld{"Pakistango udako ordua"}
+            lg{"Pakistango ordua"}
+            ls{"Pakistango ordu estandarra"}
+        }
+        "meta:Palau"{
+            ls{"Palauko ordua"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papua Ginea Berriko ordua"}
+        }
+        "meta:Paraguay"{
+            ld{"Paraguayko udako ordua"}
+            lg{"Paraguayko ordua"}
+            ls{"Paraguayko ordu estandarra"}
+        }
+        "meta:Peru"{
+            ld{"Peruko udako ordua"}
+            lg{"Peruko ordua"}
+            ls{"Peruko ordu estandarra"}
+        }
+        "meta:Philippines"{
+            ld{"Filipinetako udako ordua"}
+            lg{"Filipinetako ordua"}
+            ls{"Filipinetako ordu estandarra"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Phoenix uharteetako ordua"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Saint-Pierre eta Mikeluneko udako ordua"}
+            lg{"Saint-Pierre eta Mikeluneko ordua"}
+            ls{"Saint-Pierre eta Mikeluneko ordu estandarra"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitcairneko ordua"}
+        }
+        "meta:Ponape"{
+            ls{"Ponapeko ordua"}
+        }
+        "meta:Reunion"{
+            ls{"Reunion uharteetako ordua"}
+        }
+        "meta:Rothera"{
+            ls{"Rotherako ordua"}
+        }
         "meta:Sakhalin"{
             ld{"Sakhalingo udako ordua"}
             lg{"Sakhalingo ordua"}
@@ -254,15 +725,95 @@ eu{
             lg{"Samarako ordua"}
             ls{"Samarako ordu estandarra"}
         }
+        "meta:Samoa"{
+            ld{"Samoako udako ordua"}
+            lg{"Samoako ordua"}
+            ls{"Samoako ordu estandarra"}
+        }
+        "meta:Seychelles"{
+            ls{"Seychelle uharteetako ordua"}
+        }
+        "meta:Singapore"{
+            ls{"Singapurreko ordu estandarra"}
+        }
+        "meta:Solomon"{
+            ls{"Salomon uharteetako ordua"}
+        }
+        "meta:South_Georgia"{
+            ls{"Hego Georgiako ordua"}
+        }
+        "meta:Suriname"{
+            ls{"Surinamgo ordua"}
+        }
+        "meta:Syowa"{
+            ls{"Syowako ordua"}
+        }
+        "meta:Tahiti"{
+            ls{"Tahitiko ordua"}
+        }
+        "meta:Taipei"{
+            ld{"Taipeiko udako ordua"}
+            lg{"Taipeiko ordua"}
+            ls{"Taipeiko ordu estandarra"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tadjikistango ordua"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokelauko ordua"}
+        }
+        "meta:Tonga"{
+            ld{"Tongako udako ordua"}
+            lg{"Tongako ordua"}
+            ls{"Tongako ordu estandarra"}
+        }
+        "meta:Truk"{
+            ls{"Chuukeko ordua"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Turkmenistango udako ordua"}
+            lg{"Turkmenistango ordua"}
+            ls{"Turkmenistango ordu estandarra"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvaluko ordua"}
+        }
+        "meta:Uruguay"{
+            ld{"Uruguayko udako ordua"}
+            lg{"Uruguayko ordua"}
+            ls{"Uruguayko ordu estandarra"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Uzbekistango udako ordua"}
+            lg{"Uzbekistango ordua"}
+            ls{"Uzbekistango ordu estandarra"}
+        }
+        "meta:Vanuatu"{
+            ld{"Vanuatuko udako ordua"}
+            lg{"Vanuatuko ordua"}
+            ls{"Vanuatuko ordu estandarra"}
+        }
+        "meta:Venezuela"{
+            ls{"Venezuelako ordua"}
+        }
         "meta:Vladivostok"{
             ld{"Vladivostokeko udako ordua"}
             lg{"Vladivostokeko ordua"}
             ls{"Vladivostokeko ordu estandarra"}
         }
         "meta:Volgograd"{
-            ld{"Belgradeko udako ordua"}
-            lg{"Belgradeko ordua"}
-            ls{"Belgradeko ordu estandarra"}
+            ld{"Volgogradeko udako ordua"}
+            lg{"Volgogradeko ordua"}
+            ls{"Volgogradeko ordu estandarra"}
+        }
+        "meta:Vostok"{
+            ls{"Vostokeko ordua"}
+        }
+        "meta:Wake"{
+            ls{"Wake uharteko ordua"}
+        }
+        "meta:Wallis"{
+            ls{"Wallis eta Futunako ordua"}
         }
         "meta:Yakutsk"{
             ld{"Yakutskeko udako ordua"}
@@ -272,12 +823,14 @@ eu{
         "meta:Yekaterinburg"{
             ld{"Yekaterinburgeko udako ordua"}
             lg{"Yekaterinburgeko ordua"}
-            ls{"Yekaterinburgeko ordu estandarra"}
+            ls{"Jekaterinburgeko ordu estandarra"}
         }
         fallbackFormat{"{1} ({0})"}
-        fallbackRegionFormat{"{1}-(e)ko ordua ({0})"}
         gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
-        regionFormat{"{0}-(e)ko ordua"}
+        regionFormat{"{0}"}
+        regionFormatDaylight{"{0} (udako ordua)"}
+        regionFormatStandard{"{0} (ordu estandarra)"}
     }
 }

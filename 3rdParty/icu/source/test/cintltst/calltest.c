@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1996-2010, International Business Machines Corporation and
+ * Copyright (c) 1996-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -39,6 +39,9 @@ void addUTextTest(TestNode** root);
 void addUCsdetTest(TestNode** root);
 void addCnvSelTest(TestNode** root);
 void addUSpoofTest(TestNode** root);
+#if !UCONFIG_NO_FORMATTING
+void addGendInfoForTest(TestNode** root);
+#endif
 
 void addAllTests(TestNode** root)
 {
@@ -79,5 +82,7 @@ void addAllTests(TestNode** root)
     addUSpoofTest(root);
 #endif
     addPUtilTest(root);
+#if !UCONFIG_NO_FORMATTING
+    addGendInfoForTest(root);
+#endif
 }
-

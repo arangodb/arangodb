@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -35,12 +35,14 @@ struct AttachmentListTable
     le_uint16  glyphCount;
     Offset  attachPointTableOffsetArray[ANY_NUMBER];
 };
+LE_VAR_ARRAY(AttachmentListTable, attachPointTableOffsetArray)
 
 struct AttachPointTable
 {
     le_uint16  pointCount;
     le_uint16  pointIndexArray[ANY_NUMBER];
 };
+LE_VAR_ARRAY(AttachPointTable, pointIndexArray)
 
 struct LigatureCaretListTable
 {
@@ -48,12 +50,14 @@ struct LigatureCaretListTable
     le_uint16  ligGlyphCount;
     Offset  ligGlyphTableOffsetArray[ANY_NUMBER];
 };
+LE_VAR_ARRAY(LigatureCaretListTable, ligGlyphTableOffsetArray)
 
 struct LigatureGlyphTable
 {
     le_uint16  caretCount;
     Offset  caretValueTableOffsetArray[ANY_NUMBER];
 };
+LE_VAR_ARRAY(LigatureGlyphTable, caretValueTableOffsetArray)
 
 struct CaretValueTable
 {
@@ -86,10 +90,18 @@ struct GlyphDefinitionTableHeader
     Offset  ligCaretListOffset;
     Offset  MarkAttachClassDefOffset;
 
-    const GlyphClassDefinitionTable *getGlyphClassDefinitionTable() const;
-    const AttachmentListTable *getAttachmentListTable()const ;
-    const LigatureCaretListTable *getLigatureCaretListTable() const;
-    const MarkAttachClassDefinitionTable *getMarkAttachClassDefinitionTable() const;
+    const LEReferenceTo<GlyphClassDefinitionTable> 
+    getGlyphClassDefinitionTable(const LEReferenceTo<GlyphDefinitionTableHeader>& base,
+                                 LEErrorCode &success) const;
+    const LEReferenceTo<AttachmentListTable> 
+    getAttachmentListTable(const LEReferenceTo<GlyphDefinitionTableHeader>& base,
+                           LEErrorCode &success)const ;
+    const LEReferenceTo<LigatureCaretListTable> 
+    getLigatureCaretListTable(const LEReferenceTo<GlyphDefinitionTableHeader>& base,
+                              LEErrorCode &success) const;
+    const LEReferenceTo<MarkAttachClassDefinitionTable>
+    getMarkAttachClassDefinitionTable(const LEReferenceTo<GlyphDefinitionTableHeader>& base,
+                                      LEErrorCode &success) const;
 };
 
 U_NAMESPACE_END

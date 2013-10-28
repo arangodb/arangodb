@@ -1,5 +1,5 @@
 /***********************************************************************
- * Copyright (c) 1997-2012, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
  
@@ -29,10 +29,10 @@ public:
   
     virtual UnicodeString& format(    double            number, 
                     UnicodeString&        toAppendTo, 
-                    FieldPosition&        pos,
+                    FieldPositionIterator* posIter,
                     UErrorCode& status) const
     {
-        return NumberFormat::format(number, toAppendTo, pos, status);
+        return NumberFormat::format(number, toAppendTo, posIter, status);
     }
 
     /* Just keep this here to make some of the compilers happy */
@@ -170,6 +170,9 @@ NumberFormatRegressionTest::runIndexedTest( int32_t index, UBool exec, const cha
         CASE(60,TestJ691);
         CASE(61,Test8199);
         CASE(62,Test9109);
+        CASE(63,Test9780);
+        CASE(64,Test9677);
+        CASE(65,Test10361);
 
         default: name = ""; break;
     }
@@ -289,13 +292,13 @@ void NumberFormatRegressionTest::Test4088161 (void)
         UnicodeString sBuf1;
         FieldPosition fp1(0);
         logln(UnicodeString("d = ") + d);
-        logln("maxFractionDigits = " + df->getMaximumFractionDigits());
-        
+        logln(UnicodeString("maxFractionDigits = ") + df->getMaximumFractionDigits());
+
         logln(" format(d) = '" + df->format(d, sBuf1, fp1) + "'");
         df->setMaximumFractionDigits(17);
         UnicodeString sBuf2;
         FieldPosition fp2(0);
-        logln("maxFractionDigits = " + df->getMaximumFractionDigits());
+        logln(UnicodeString("maxFractionDigits = ") + df->getMaximumFractionDigits());
         sBuf2 = df->format(d, sBuf2, fp2);
         if(sBuf2 != "100")
             errln(" format(d) = '" + sBuf2 + "'");
@@ -904,6 +907,7 @@ void NumberFormatRegressionTest::Test4070798 (void)
     UErrorCode status = U_ZERO_ERROR;
     char loc[256]={0};
     int len = uloc_canonicalize("fr_FR_PREEURO", loc, 256, &status);
+    (void)len;  // Suppress set but not used warning.
     formatter = NumberFormat::createInstance(Locale(loc), status);
     if(U_FAILURE(status)) {
       dataerrln("Error creating DecimalFormat: %s", u_errorName(status));
@@ -1306,7 +1310,7 @@ void NumberFormatRegressionTest::Test4101481(void)
     }
     failure(status, "new DecimalFormat");
     if (sdf->getMinimumIntegerDigits() != 1)
-        errln("Minimum integer digits : " + sdf->getMinimumIntegerDigits());
+        errln(UnicodeString("Minimum integer digits : ") + sdf->getMinimumIntegerDigits());
     delete sdf;
 }
 /* @bug 4052223 (API addition request A27)
@@ -1618,7 +1622,7 @@ void NumberFormatRegressionTest::Test4110936(void)
     nf->setMaximumIntegerDigits(MAX_INT_DIGITS);
     logln("setMaximumIntegerDigits(MAX_INT_DIGITS)");
     if (nf->getMaximumIntegerDigits() != MAX_INT_DIGITS)
-        errln("getMaximumIntegerDigits() returns " +
+        errln(UnicodeString("getMaximumIntegerDigits() returns ") +
             nf->getMaximumIntegerDigits());
 
     delete nf;
@@ -2693,11 +2697,14 @@ void NumberFormatRegressionTest::TestJ691(void) {
 //   Error Checking / Reporting macros
 //
 //---------------------------------------------------------------------------
-#define TEST_CHECK_STATUS(status) \
-    if (U_FAILURE(status)) {\
-        errln("File %s, Line %d.  status=%s\n", __FILE__, __LINE__, u_errorName(status));\
-        return;\
-    }
+#define TEST_CHECK_STATUS(status) { \
+    if (U_FAILURE(status)) { \
+        if (status == U_MISSING_RESOURCE_ERROR) { \
+            dataerrln("File %s, Line %d: status=%s", __FILE__, __LINE__, u_errorName(status)); \
+        } else { \
+            errln("File %s, Line %d: status=%s", __FILE__, __LINE__, u_errorName(status)); \
+        } return; \
+    }}
 
 #define TEST_ASSERT(expr) \
     if ((expr)==FALSE) {\
@@ -2850,6 +2857,171 @@ void NumberFormatRegressionTest::Test9109(void) {
     } else if (pos.getIndex() != 3) {
         errln(UnicodeString("Incorrect parse position: ") + pos.getIndex() + " expected: " + expos);
     }
+}
+
+
+void NumberFormatRegressionTest::Test9780(void) {
+    UErrorCode status = U_ZERO_ERROR;
+    NumberFormat *nf = NumberFormat::createInstance(Locale::getUS(), status);
+    if (failure(status, "NumberFormat::createInstance", TRUE)){
+        delete nf;
+        return;
+    };
+    DecimalFormat *df = dynamic_cast<DecimalFormat *>(nf);
+    if(df == NULL) {
+        errln("DecimalFormat needed to continue");
+        return;
+    }
+    df->setParseIntegerOnly(TRUE);
+
+    {
+      Formattable n;
+      ParsePosition pos(0);
+      UnicodeString toParse("1,234","");
+      df->parse(toParse, n, pos);
+      if (n.getType() != Formattable::kLong
+          || n.getLong() != 1234) {
+        errln(UnicodeString("FAIL: parse(\"") + toParse + UnicodeString("\") returns ") + toString(n));
+      }
+    }
+    // should still work in lenient mode, just won't get fastpath
+    df->setLenient(TRUE);
+    {
+      Formattable n;
+      ParsePosition pos(0);
+      UnicodeString toParse("1,234","");
+      df->parse(toParse, n, pos);
+      if (n.getType() != Formattable::kLong
+          || n.getLong() != 1234) {
+        errln(UnicodeString("FAIL: parse(\"") + toParse + UnicodeString("\") returns ") + toString(n));
+      }
+    }
+    delete nf;
+}
+
+
+void NumberFormatRegressionTest::Test9677(void) {
+  static const UChar pattern[] = { 0x23,0x23,0x23,0x23,0x2E,0x23,0x23,0x23,0x23,0 }; // "####.####"
+  static const UChar positivePrefix[] = { 0x40,0 }; // "@"
+  static const UChar negativePrefix[] = { 0x6E,0 }; // "n"
+  static const UChar text[] = { 0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0 }; // 123456789
+  static const UChar text2[] = { 0x6E, 0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0 }; // n123456789
+  
+  UErrorCode status = U_ZERO_ERROR;
+  LocalUNumberFormatPointer f(unum_open(UNUM_DEFAULT, NULL, 0, "en_US", NULL, &status));
+  if (U_FAILURE(status)) {
+      dataerrln("Failure opening unum_open");
+      return;
+  }
+
+  if (U_SUCCESS(status)) {
+    unum_applyPattern(f.getAlias(), FALSE, pattern, -1, NULL, &status);
+    unum_setTextAttribute(f.getAlias(), UNUM_POSITIVE_PREFIX, positivePrefix, -1, &status);
+    assertSuccess("setting attributes", status);
+  }
+
+  if(U_SUCCESS(status)) {
+    int32_t n = unum_parse(f.getAlias(), text, -1, NULL, &status);
+    logln("unum_parse status %s, result %d\n", u_errorName(status), n);
+
+    if(U_FAILURE(status)) {
+        logln("Got expected parse error %s\n", u_errorName(status));
+        status = U_ZERO_ERROR;
+    } else {
+        errln("FAIL: unum_parse status %s, result %d - expected failure\n", u_errorName(status), n);
+    }
+  }
+
+  if (U_SUCCESS(status)) {
+    unum_setTextAttribute(f.getAlias(), UNUM_POSITIVE_PREFIX, NULL, 0, &status);
+    assertSuccess("setting attributes", status);
+    logln("removed positive prefix");
+  }
+
+  if(U_SUCCESS(status)) {
+    int32_t n = unum_parse(f.getAlias(), text, -1, NULL, &status);
+    logln("unum_parse status %s, result %d\n", u_errorName(status), n);
+
+    if(U_FAILURE(status)) {
+        errln("FAIL: with pos prefix removed, parse error %s\n", u_errorName(status));
+        status = U_ZERO_ERROR;
+    } else {
+        if(n!=123456789) {
+          errln("FAIL: with pos prefix removed , unum_parse status %s, result %d expected 123456789\n", u_errorName(status), n);
+        } else {
+          logln("PASS: with pos prefix removed , unum_parse status %s, result %d expected 123456789\n", u_errorName(status),n);
+        }
+    }
+  }
+
+  if(U_SUCCESS(status)) {
+    int32_t n = unum_parse(f.getAlias(), text2, -1, NULL, &status);
+    logln("unum_parse status %s, result %d\n", u_errorName(status), n);
+
+    if(U_FAILURE(status)) {
+        logln("text2: Got expected parse error %s\n", u_errorName(status));
+        status = U_ZERO_ERROR;
+    } else {
+        errln("FAIL: text2: unum_parse status %s, result %d - expected failure\n", u_errorName(status), n);
+    }
+  }
+
+  if (U_SUCCESS(status)) {
+    unum_setTextAttribute(f.getAlias(), UNUM_NEGATIVE_PREFIX, negativePrefix, -1, &status);
+    assertSuccess("setting attributes", status);
+    logln("Set a different neg prefix prefix");
+  }
+
+  if(U_SUCCESS(status)) {
+    int32_t n = unum_parse(f.getAlias(), text2, -1, NULL, &status);
+    logln("unum_parse status %s, result %d\n", u_errorName(status), n);
+
+    if(U_FAILURE(status)) {
+        errln("FAIL: with different neg prefix , parse error %s\n", u_errorName(status));
+        status = U_ZERO_ERROR;
+    } else {
+;
+        if(n!=-123456789) {
+          errln("FAIL: with different neg prefix , unum_parse status %s, result %d expected -123456789\n", u_errorName(status), n);
+        } else {
+          logln("PASS: with different neg prefix , unum_parse status %s, result %d expected -123456789\n", u_errorName(status), n);
+        }
+    }
+  }
+}
+
+void NumberFormatRegressionTest::Test10361(void) {
+    // DecimalFormat/NumberFormat were artificially limiting the number of digits,
+    //    preventing formatting of big decimals.
+    UErrorCode status = U_ZERO_ERROR;
+    DecimalFormatSymbols symbols(Locale::getEnglish(), status);
+    LocalPointer<DecimalFormat> df(new DecimalFormat("###.##", symbols, status));
+    TEST_CHECK_STATUS(status);
+
+    // Create a decimal number with a million digits.
+    const int32_t NUMSIZE=1000000;
+    char *num = new char[NUMSIZE];
+    for (int32_t i=0; i<NUMSIZE; i++) {
+        num[i] = '0' + (i+1) % 10;
+    }
+    num[NUMSIZE-3] = '.';
+    num[NUMSIZE-1] = 0;
+
+    UnicodeString    s;
+    Formattable      fmtable;
+    fmtable.setDecimalNumber(num, status);
+    TEST_CHECK_STATUS(status);
+
+    FieldPosition pos(UNUM_DECIMAL_SEPARATOR_FIELD);
+    df->format(fmtable, s, pos, status);
+    TEST_CHECK_STATUS(status);
+    TEST_ASSERT(999999 == s.length());
+    TEST_ASSERT(999997 == pos.getBeginIndex());
+    TEST_ASSERT(999998 == pos.getEndIndex());
+
+    UnicodeString expected(num, -1, US_INV);
+    TEST_ASSERT(expected == s);
+    delete [] num;
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

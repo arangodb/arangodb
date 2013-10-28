@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -31,6 +31,8 @@ private:
     void pluralFormatLocaleTest(/* char* par */);
     void pluralFormatExtendedTest();
     void pluralFormatExtendedParseTest();
+    void ordinalFormatTest();
+    void TestDecimals();
     void numberFormatTest(PluralFormat* plFmt, 
                           NumberFormat *numFmt, 
                           int32_t start, 
@@ -39,7 +41,7 @@ private:
                           UnicodeString* numEvenAppendStr, 
                           UBool overwrite, // overwrite the numberFormat.format result
                           UnicodeString *message);
-    void helperTestRusults(const char** localeArray, 
+    void helperTestResults(const char** localeArray, 
                            int32_t capacityOfArray, 
                            UnicodeString& testPattern, 
                            int8_t *expectingResults);

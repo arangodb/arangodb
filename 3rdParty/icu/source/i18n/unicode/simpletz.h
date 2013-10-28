@@ -1,6 +1,6 @@
 /*
  ********************************************************************************
- * Copyright (C) 1997-2011, International Business Machines                     *
+ * Copyright (C) 1997-2013, International Business Machines                     *
  * Corporation and others. All Rights Reserved.                                 *
  ********************************************************************************
  *
@@ -621,7 +621,7 @@ public:
      * @internal
      */
     virtual void getOffsetFromLocal(UDate date, int32_t nonExistingTimeOpt, int32_t duplicatedTimeOpt,
-        int32_t& rawOffset, int32_t& dstOffset, UErrorCode& status) /*const*/;
+        int32_t& rawOffset, int32_t& dstOffset, UErrorCode& status) const;
 
     /**
      * Returns the TimeZone's raw GMT offset (i.e., the number of milliseconds to add
@@ -709,7 +709,7 @@ public:
      * @return  TRUE if the transition is found.
      * @stable ICU 3.8
      */
-    virtual UBool getNextTransition(UDate base, UBool inclusive, TimeZoneTransition& result) /*const*/;
+    virtual UBool getNextTransition(UDate base, UBool inclusive, TimeZoneTransition& result) const;
 
     /**
      * Gets the most recent time zone transition before the base time.
@@ -719,7 +719,7 @@ public:
      * @return  TRUE if the transition is found.
      * @stable ICU 3.8
      */
-    virtual UBool getPreviousTransition(UDate base, UBool inclusive, TimeZoneTransition& result) /*const*/;
+    virtual UBool getPreviousTransition(UDate base, UBool inclusive, TimeZoneTransition& result) const;
 
     /**
      * Returns the number of <code>TimeZoneRule</code>s which represents time transitions,
@@ -729,7 +729,7 @@ public:
      * @return The number of <code>TimeZoneRule</code>s representing time transitions.
      * @stable ICU 3.8
      */
-    virtual int32_t countTransitionRules(UErrorCode& status) /*const*/;
+    virtual int32_t countTransitionRules(UErrorCode& status) const;
 
     /**
      * Gets the <code>InitialTimeZoneRule</code> and the set of <code>TimeZoneRule</code>
@@ -748,7 +748,7 @@ public:
      * @stable ICU 3.8
      */
     virtual void getTimeZoneRules(const InitialTimeZoneRule*& initial,
-        const TimeZoneRule* trsrules[], int32_t& trscount, UErrorCode& status) /*const*/;
+        const TimeZoneRule* trsrules[], int32_t& trscount, UErrorCode& status) const;
 
 
 public:
@@ -870,6 +870,7 @@ private:
     int32_t dstSavings;
 
     /* Private for BasicTimeZone implementation */
+    void checkTransitionRules(UErrorCode& status) const;
     void initTransitionRules(UErrorCode& status);
     void clearTransitionRules(void);
     void deleteTransitionRules(void);

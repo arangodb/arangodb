@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2002-2012, International Business Machines
+* Copyright (c) 2002-2013, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -23,11 +23,16 @@
 #include "ucln_in.h"
 #include "uenumimp.h"
 #include "uhash.h"
+#include "hash.h"
 #include "uresimp.h"
 #include "ulist.h"
 #include "ureslocs.h"
 
-// #define UCURR_DEBUG 1
+//#define UCURR_DEBUG_EQUIV 1
+#ifdef UCURR_DEBUG_EQUIV
+#include "stdio.h"
+#endif
+//#define UCURR_DEBUG 1
 #ifdef UCURR_DEBUG
 #include "stdio.h"
 #endif
@@ -45,13 +50,21 @@ typedef struct IsoCodeEntry {
 // defaults encoded in the meta data resource bundle.  If there is a
 // configuration/build error and these are not available, we use these
 // hard-coded defaults (which should be identical).
-static const int32_t LAST_RESORT_DATA[] = { 2, 0 };
+static const int32_t LAST_RESORT_DATA[] = { 2, 0, 2, 0 };
 
 // POW10[i] = 10^i, i=0..MAX_POW10
 static const int32_t POW10[] = { 1, 10, 100, 1000, 10000, 100000,
                                  1000000, 10000000, 100000000, 1000000000 };
 
 static const int32_t MAX_POW10 = (sizeof(POW10)/sizeof(POW10[0])) - 1;
+
+// Defines equivalent currency symbols.
+static const char *EQUIV_CURRENCY_SYMBOLS[][2] = {
+    {"\\u00a5", "\\uffe5"},
+    {"$", "\\ufe69"},
+    {"$", "\\uff04"},
+    {"\\u20a8", "\\u20b9"},
+    {"\\u00a3", "\\u20a4"}};
 
 #define ISO_CURRENCY_CODE_LENGTH 3
 
@@ -99,10 +112,129 @@ static const UChar CHOICE_FORMAT_MARK = 0x003D; // Equals sign
 static const UChar EUR_STR[] = {0x0045,0x0055,0x0052,0};
 
 // ISO codes mapping table
-static UHashtable* gIsoCodes = NULL;
-static UBool gIsoCodesInitialized = FALSE;
+static const UHashtable* gIsoCodes = NULL;
+static icu::UInitOnce gIsoCodesInitOnce = U_INITONCE_INITIALIZER;
 
-static UMTX gIsoCodesLock = NULL;
+// Currency symbol equivalances
+static const icu::Hashtable* gCurrSymbolsEquiv = NULL;
+static icu::UInitOnce gCurrSymbolsEquivInitOnce = U_INITONCE_INITIALIZER;
+
+// EquivIterator iterates over all strings that are equivalent to a given
+// string, s. Note that EquivIterator will never yield s itself.
+class EquivIterator : icu::UMemory {
+public:
+    // Constructor. hash stores the equivalence relationships; s is the string
+    // for which we find equivalent strings.
+    inline EquivIterator(const icu::Hashtable& hash, const icu::UnicodeString& s)
+        : _hash(hash) { 
+        _start = _current = &s;
+    }
+    inline ~EquivIterator() { }
+
+    // next returns the next equivalent string or NULL if there are no more.
+    // If s has no equivalent strings, next returns NULL on the first call.
+    const icu::UnicodeString *next();
+private:
+    const icu::Hashtable& _hash;
+    const icu::UnicodeString* _start;
+    const icu::UnicodeString* _current;
+};
+
+const icu::UnicodeString *
+EquivIterator::next() {
+    const icu::UnicodeString* _next = (const icu::UnicodeString*) _hash.get(*_current);
+    if (_next == NULL) {
+        U_ASSERT(_current == _start);
+        return NULL;
+    }
+    if (*_next == *_start) {
+        return NULL;
+    }
+    _current = _next;
+    return _next;
+}
+
+// makeEquivalent makes lhs and rhs equivalent by updating the equivalence
+// relations in hash accordingly.
+static void makeEquivalent(
+    const icu::UnicodeString &lhs,
+    const icu::UnicodeString &rhs,
+    icu::Hashtable* hash, UErrorCode &status) {
+    if (U_FAILURE(status)) {
+        return;
+    }
+    if (lhs == rhs) {
+        // already equivalent
+        return;
+    }
+    EquivIterator leftIter(*hash, lhs);
+    EquivIterator rightIter(*hash, rhs);
+    const icu::UnicodeString *firstLeft = leftIter.next();
+    const icu::UnicodeString *firstRight = rightIter.next();
+    const icu::UnicodeString *nextLeft = firstLeft;
+    const icu::UnicodeString *nextRight = firstRight;
+    while (nextLeft != NULL && nextRight != NULL) {
+        if (*nextLeft == rhs || *nextRight == lhs) {
+            // Already equivalent
+            return;
+        }
+        nextLeft = leftIter.next();
+        nextRight = rightIter.next();
+    }
+    // Not equivalent. Must join.
+    icu::UnicodeString *newFirstLeft;
+    icu::UnicodeString *newFirstRight;
+    if (firstRight == NULL && firstLeft == NULL) {
+        // Neither lhs or rhs belong to an equivalence circle, so we form
+        // a new equivalnce circle of just lhs and rhs.
+        newFirstLeft = new icu::UnicodeString(rhs);
+        newFirstRight = new icu::UnicodeString(lhs);
+    } else if (firstRight == NULL) {
+        // lhs belongs to an equivalence circle, but rhs does not, so we link
+        // rhs into lhs' circle.
+        newFirstLeft = new icu::UnicodeString(rhs);
+        newFirstRight = new icu::UnicodeString(*firstLeft);
+    } else if (firstLeft == NULL) {
+        // rhs belongs to an equivlance circle, but lhs does not, so we link
+        // lhs into rhs' circle.
+        newFirstLeft = new icu::UnicodeString(*firstRight);
+        newFirstRight = new icu::UnicodeString(lhs);
+    } else {
+        // Both lhs and rhs belong to different equivalnce circles. We link
+        // them together to form one single, larger equivalnce circle.
+        newFirstLeft = new icu::UnicodeString(*firstRight);
+        newFirstRight = new icu::UnicodeString(*firstLeft);
+    }
+    if (newFirstLeft == NULL || newFirstRight == NULL) {
+        delete newFirstLeft;
+        delete newFirstRight;
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return;
+    }
+    hash->put(lhs, (void *) newFirstLeft, status);
+    hash->put(rhs, (void *) newFirstRight, status);
+}
+
+// countEquivalent counts how many strings are equivalent to s.
+// hash stores all the equivalnce relations.
+// countEquivalent does not include s itself in the count.
+static int32_t countEquivalent(const icu::Hashtable &hash, const icu::UnicodeString &s) {
+    int32_t result = 0;
+    EquivIterator iter(hash, s);
+    while (iter.next() != NULL) {
+        ++result;
+    }
+#ifdef UCURR_DEBUG_EQUIV
+ {
+   char tmp[200];
+   s.extract(0,s.length(),tmp, "UTF-8");
+   printf("CountEquivalent('%s') = %d\n", tmp, result);
+ }
+#endif
+    return result;
+}
+
+static const icu::Hashtable* getCurrSymbolsEquiv();
 
 //------------------------------------------------------------
 // Code
@@ -113,16 +245,23 @@ static UMTX gIsoCodesLock = NULL;
 static UBool U_CALLCONV 
 isoCodes_cleanup(void)
 {
-    if (gIsoCodesLock != NULL) {
-        umtx_destroy(&gIsoCodesLock);
-    }
-
     if (gIsoCodes != NULL) {
-        uhash_close(gIsoCodes);
+        uhash_close(const_cast<UHashtable *>(gIsoCodes));
         gIsoCodes = NULL;
     }
-    gIsoCodesInitialized = FALSE;
+    gIsoCodesInitOnce.reset();
+    return TRUE;
+}
 
+/**
+ * Cleanup callback func
+ */
+static UBool U_CALLCONV 
+currSymbolsEquiv_cleanup(void)
+{
+    delete const_cast<icu::Hashtable *>(gCurrSymbolsEquiv);
+    gCurrSymbolsEquiv = NULL;
+    gCurrSymbolsEquivInitOnce.reset();
     return TRUE;
 }
 
@@ -133,6 +272,15 @@ static void U_CALLCONV
 deleteIsoCodeEntry(void *obj) {
     IsoCodeEntry *entry = (IsoCodeEntry*)obj;
     uprv_free(entry);
+}
+
+/**
+ * Deleter for gCurrSymbolsEquiv.
+ */
+static void U_CALLCONV
+deleteUnicode(void *obj) {
+    icu::UnicodeString *entry = (icu::UnicodeString*)obj;
+    delete entry;
 }
 
 /**
@@ -148,9 +296,11 @@ myUCharsToChars(char* resultOfLen4, const UChar* currency) {
 
 /**
  * Internal function to look up currency data.  Result is an array of
- * two integers.  The first is the fraction digits.  The second is the
+ * four integers.  The first is the fraction digits.  The second is the
  * rounding increment, or 0 if none.  The rounding increment is in
- * units of 10^(-fraction_digits).
+ * units of 10^(-fraction_digits).  The third and fourth are the same
+ * except that they are those used in cash transations ( cashDigits
+ * and cashRounding ).
  */
 static const int32_t*
 _findMetaData(const UChar* currency, UErrorCode& ec) {
@@ -191,7 +341,7 @@ _findMetaData(const UChar* currency, UErrorCode& ec) {
 
     int32_t len;
     const int32_t *data = ures_getIntVector(rb, &len, &ec);
-    if (U_FAILURE(ec) || len != 2) {
+    if (U_FAILURE(ec) || len != 4) {
         // Config/build error; return hard-coded defaults
         if (U_SUCCESS(ec)) {
             ec = U_INVALID_FORMAT_ERROR;
@@ -223,8 +373,8 @@ idForLocale(const char* locale, char* countryAndVariant, int capacity, UErrorCod
     uloc_getCountry(locale, countryAndVariant, capacity, ec);
     uloc_getVariant(locale, variant, sizeof(variant), ec);
     if (variant[0] != 0) {
-        variantType = (0 == uprv_strcmp(variant, VAR_EURO))
-                   | ((0 == uprv_strcmp(variant, VAR_PRE_EURO)) << 1);
+        variantType = (uint32_t)(0 == uprv_strcmp(variant, VAR_EURO))
+                   | ((uint32_t)(0 == uprv_strcmp(variant, VAR_PRE_EURO)) << 1);
         if (variantType)
         {
             uprv_strcat(countryAndVariant, VAR_DELIM_STR);
@@ -249,7 +399,7 @@ U_CDECL_END
 #if !UCONFIG_NO_SERVICE
 struct CReg;
 
-static UMTX gCRegLock = 0;
+static UMutex gCRegLock = U_MUTEX_INITIALIZER;
 static CReg* gCRegHead = 0;
 
 struct CReg : public icu::UMemory {
@@ -334,7 +484,6 @@ struct CReg : public icu::UMemory {
             gCRegHead = gCRegHead->next;
             delete n;
         }
-        umtx_destroy(&gCRegLock);
     }
 };
 
@@ -384,6 +533,7 @@ static UBool U_CALLCONV currency_cleanup(void) {
      */
     currency_cache_cleanup();
     isoCodes_cleanup();
+    currSymbolsEquiv_cleanup();
 
     return TRUE;
 }
@@ -750,6 +900,7 @@ getCurrencyNameCount(const char* loc, int32_t* total_currency_name_count, int32_
     const UChar* s = NULL;
     char locale[ULOC_FULLNAME_CAPACITY];
     uprv_strcpy(locale, loc);
+    const icu::Hashtable *currencySymbolsEquiv = getCurrSymbolsEquiv();
     for (;;) {
         UErrorCode ec2 = U_ZERO_ERROR;
         // TODO: ures_openDirect?
@@ -775,6 +926,9 @@ getCurrencyNameCount(const char* loc, int32_t* total_currency_name_count, int32_
                 *total_currency_symbol_count += fmt_count;
             } else {
                 ++(*total_currency_symbol_count);  // currency symbol
+                if (currencySymbolsEquiv != NULL) {
+                    *total_currency_symbol_count += countEquivalent(*currencySymbolsEquiv, UnicodeString(TRUE, s, len));
+                }
             }
 
             ++(*total_currency_symbol_count); // iso code
@@ -831,6 +985,7 @@ collectCurrencyNames(const char* locale,
                      int32_t* total_currency_symbol_count, 
                      UErrorCode& ec) {
     U_NAMESPACE_USE
+    const icu::Hashtable *currencySymbolsEquiv = getCurrSymbolsEquiv();
     // Look up the Currencies resource for the given locale.
     UErrorCode ec2 = U_ZERO_ERROR;
 
@@ -910,6 +1065,17 @@ collectCurrencyNames(const char* locale,
                 (*currencySymbols)[*total_currency_symbol_count].currencyName = (UChar*)s;
                 (*currencySymbols)[*total_currency_symbol_count].flag = 0;
                 (*currencySymbols)[(*total_currency_symbol_count)++].currencyNameLen = len;
+                // Add equivalent symbols
+                if (currencySymbolsEquiv != NULL) {
+                    EquivIterator iter(*currencySymbolsEquiv, UnicodeString(TRUE, s, len));
+                    const UnicodeString *symbol;
+                    while ((symbol = iter.next()) != NULL) {
+                        (*currencySymbols)[*total_currency_symbol_count].IsoCode = iso;
+                        (*currencySymbols)[*total_currency_symbol_count].currencyName = (UChar*) symbol->getBuffer();
+                        (*currencySymbols)[*total_currency_symbol_count].flag = 0;
+                        (*currencySymbols)[(*total_currency_symbol_count)++].currencyNameLen = symbol->length();
+                    }
+                }
             }
 
             // Add currency long name.
@@ -987,22 +1153,20 @@ collectCurrencyNames(const char* locale,
     for (int32_t index = 0; index < *total_currency_name_count; ++index) {
         printf("index: %d\n", index);
         printf("iso: %s\n", (*currencyNames)[index].IsoCode);
-        printf("currencyName:");
-        for (int32_t i = 0; i < (*currencyNames)[index].currencyNameLen; ++i) {
-            printf("%c", (unsigned char)(*currencyNames)[index].currencyName[i]);
-        }
-        printf("\n");
+        char curNameBuf[1024];
+        memset(curNameBuf, 0, 1024);
+        u_austrncpy(curNameBuf, (*currencyNames)[index].currencyName, (*currencyNames)[index].currencyNameLen);
+        printf("currencyName: %s\n", curNameBuf);
         printf("len: %d\n", (*currencyNames)[index].currencyNameLen);
     }
     printf("currency symbol count: %d\n", *total_currency_symbol_count);
     for (int32_t index = 0; index < *total_currency_symbol_count; ++index) {
         printf("index: %d\n", index);
         printf("iso: %s\n", (*currencySymbols)[index].IsoCode);
-        printf("currencySymbol:");
-        for (int32_t i = 0; i < (*currencySymbols)[index].currencyNameLen; ++i) {
-            printf("%c", (unsigned char)(*currencySymbols)[index].currencyName[i]);
-        }
-        printf("\n");
+        char curNameBuf[1024];
+        memset(curNameBuf, 0, 1024);
+        u_austrncpy(curNameBuf, (*currencySymbols)[index].currencyName, (*currencySymbols)[index].currencyNameLen);
+        printf("currencySymbol: %s\n", curNameBuf);
         printf("len: %d\n", (*currencySymbols)[index].currencyNameLen);
     }
 #endif
@@ -1232,6 +1396,8 @@ static CurrencyNameCacheEntry* currCache[CURRENCY_NAME_CACHE_NUM] = {NULL};
 // It is a simple round-robin replacement strategy.
 static int8_t currentCacheEntryIndex = 0;
 
+static UMutex gCurrencyCacheMutex = U_MUTEX_INITIALIZER;
+
 // Cache deletion
 static void
 deleteCurrencyNames(CurrencyNameStruct* currencyNames, int32_t count) {
@@ -1285,9 +1451,9 @@ uprv_parseCurrency(const char* locale,
     CurrencyNameStruct* currencySymbols = NULL;
     CurrencyNameCacheEntry* cacheEntry = NULL;
 
-    umtx_lock(NULL);
+    umtx_lock(&gCurrencyCacheMutex);
     // in order to handle racing correctly,
-    // not putting 'search' in a separate function and using UMTX.
+    // not putting 'search' in a separate function.
     int8_t  found = -1;
     for (int8_t i = 0; i < CURRENCY_NAME_CACHE_NUM; ++i) {
         if (currCache[i]!= NULL &&
@@ -1304,13 +1470,13 @@ uprv_parseCurrency(const char* locale,
         total_currency_symbol_count = cacheEntry->totalCurrencySymbolCount;
         ++(cacheEntry->refCount);
     }
-    umtx_unlock(NULL);
+    umtx_unlock(&gCurrencyCacheMutex);
     if (found == -1) {
         collectCurrencyNames(locale, &currencyNames, &total_currency_name_count, &currencySymbols, &total_currency_symbol_count, ec);
         if (U_FAILURE(ec)) {
             return;
         }
-        umtx_lock(NULL);
+        umtx_lock(&gCurrencyCacheMutex);
         // check again.
         int8_t  found = -1;
         for (int8_t i = 0; i < CURRENCY_NAME_CACHE_NUM; ++i) {
@@ -1355,7 +1521,7 @@ uprv_parseCurrency(const char* locale,
             total_currency_symbol_count = cacheEntry->totalCurrencySymbolCount;
             ++(cacheEntry->refCount);
         }
-        umtx_unlock(NULL);
+        umtx_unlock(&gCurrencyCacheMutex);
     }
 
     int32_t start = pos.getIndex();
@@ -1388,6 +1554,9 @@ uprv_parseCurrency(const char* locale,
 
 #ifdef UCURR_DEBUG
     printf("search in symbols, maxInSymbol = %d, matchIndexInSymbol = %d\n", maxInSymbol, matchIndexInSymbol);
+    if(matchIndexInSymbol != -1) {
+      printf("== ISO=%s\n", currencySymbols[matchIndexInSymbol].IsoCode);
+    }
 #endif
 
     if (max >= maxInSymbol && matchIndex != -1) {
@@ -1399,12 +1568,12 @@ uprv_parseCurrency(const char* locale,
     } 
 
     // decrease reference count
-    umtx_lock(NULL);
+    umtx_lock(&gCurrencyCacheMutex);
     --(cacheEntry->refCount);
     if (cacheEntry->refCount == 0) {  // remove 
         deleteCacheEntry(cacheEntry);
     }
-    umtx_unlock(NULL);
+    umtx_unlock(&gCurrencyCacheMutex);
 }
 
 
@@ -1717,6 +1886,7 @@ static const struct CurrencyList {
     {"SOS", UCURR_COMMON|UCURR_NON_DEPRECATED},
     {"SRD", UCURR_COMMON|UCURR_NON_DEPRECATED},
     {"SRG", UCURR_COMMON|UCURR_DEPRECATED},
+    {"SSP", UCURR_COMMON|UCURR_NON_DEPRECATED},
     {"STD", UCURR_COMMON|UCURR_NON_DEPRECATED},
     {"SUR", UCURR_COMMON|UCURR_DEPRECATED},
     {"SVC", UCURR_COMMON|UCURR_NON_DEPRECATED},
@@ -1769,7 +1939,9 @@ static const struct CurrencyList {
     {"XPF", UCURR_COMMON|UCURR_NON_DEPRECATED},
     {"XPT", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
     {"XRE", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
+    {"XSU", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
     {"XTS", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
+    {"XUA", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
     {"XXX", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
     {"YDD", UCURR_COMMON|UCURR_DEPRECATED},
     {"YER", UCURR_COMMON|UCURR_NON_DEPRECATED},
@@ -1779,10 +1951,11 @@ static const struct CurrencyList {
     {"YUR", UCURR_COMMON|UCURR_DEPRECATED},
     {"ZAL", UCURR_UNCOMMON|UCURR_NON_DEPRECATED},
     {"ZAR", UCURR_COMMON|UCURR_NON_DEPRECATED},
-    {"ZMK", UCURR_COMMON|UCURR_NON_DEPRECATED},
+    {"ZMK", UCURR_COMMON|UCURR_DEPRECATED},
+    {"ZMW", UCURR_COMMON|UCURR_NON_DEPRECATED},
     {"ZRN", UCURR_COMMON|UCURR_DEPRECATED},
     {"ZRZ", UCURR_COMMON|UCURR_DEPRECATED},
-    {"ZWL", UCURR_COMMON|UCURR_NON_DEPRECATED},
+    {"ZWL", UCURR_COMMON|UCURR_DEPRECATED},
     {"ZWR", UCURR_COMMON|UCURR_DEPRECATED},
     {"ZWD", UCURR_COMMON|UCURR_DEPRECATED},
     { NULL, 0 } // Leave here to denote the end of the list.
@@ -1843,7 +2016,7 @@ ucurr_closeCurrencyList(UEnumeration *enumerator) {
 }
 
 static void U_CALLCONV
-ucurr_createCurrencyList(UErrorCode* status){
+ucurr_createCurrencyList(UHashtable *isoCodes, UErrorCode* status){
     UErrorCode localStatus = U_ZERO_ERROR;
 
     // Look up the CurrencyMap element in the root bundle.
@@ -1874,28 +2047,33 @@ ucurr_createCurrencyList(UErrorCode* status){
                     }
                     const UChar *isoCode = ures_getString(idRes, &isoLength, &localStatus);
 
-                    // get the from date
-                    int32_t fromLength = 0;
+                    // get from date
+                    UDate fromDate = U_DATE_MIN;
                     UResourceBundle *fromRes = ures_getByKey(currencyRes, "from", NULL, &localStatus);
-                    const int32_t *fromArray = ures_getIntVector(fromRes, &fromLength, &localStatus);
-                    int64_t currDate64 = (int64_t)fromArray[0] << 32;
-                    currDate64 |= ((int64_t)fromArray[1] & (int64_t)INT64_C(0x00000000FFFFFFFF));
-                    UDate fromDate = (UDate)currDate64;
+
+                    if (U_SUCCESS(localStatus)) {
+                        int32_t fromLength = 0;
+                        const int32_t *fromArray = ures_getIntVector(fromRes, &fromLength, &localStatus);
+                        int64_t currDate64 = (int64_t)fromArray[0] << 32;
+                        currDate64 |= ((int64_t)fromArray[1] & (int64_t)INT64_C(0x00000000FFFFFFFF));
+                        fromDate = (UDate)currDate64;
+                    }
+                    ures_close(fromRes);
+
+                    // get to date
                     UDate toDate = U_DATE_MAX;
+                    localStatus = U_ZERO_ERROR;
+                    UResourceBundle *toRes = ures_getByKey(currencyRes, "to", NULL, &localStatus);
 
-                    if (ures_getSize(currencyRes)> 2) {
+                    if (U_SUCCESS(localStatus)) {
                         int32_t toLength = 0;
-                        UResourceBundle *toRes = ures_getByKey(currencyRes, "to", NULL, &localStatus);
                         const int32_t *toArray = ures_getIntVector(toRes, &toLength, &localStatus);
-
-                        currDate64 = (int64_t)toArray[0] << 32;
+                        int64_t currDate64 = (int64_t)toArray[0] << 32;
                         currDate64 |= ((int64_t)toArray[1] & (int64_t)INT64_C(0x00000000FFFFFFFF));
                         toDate = (UDate)currDate64;
+                    }
+                    ures_close(toRes);
 
-                        ures_close(toRes);
-                    } 
-
-                    ures_close(fromRes);  
                     ures_close(idRes);
                     ures_close(currencyRes);
 
@@ -1903,7 +2081,8 @@ ucurr_createCurrencyList(UErrorCode* status){
                     entry->from = fromDate;
                     entry->to = toDate;
 
-                    uhash_put(gIsoCodes, (UChar *)isoCode, entry, &localStatus);
+                    localStatus = U_ZERO_ERROR;
+                    uhash_put(isoCodes, (UChar *)isoCode, entry, &localStatus);
                 }
             } else {
                 *status = localStatus;
@@ -1928,37 +2107,70 @@ static const UEnumeration gEnumCurrencyList = {
 };
 U_CDECL_END
 
+
+static void U_CALLCONV initIsoCodes(UErrorCode &status) {
+    U_ASSERT(gIsoCodes == NULL);
+    ucln_i18n_registerCleanup(UCLN_I18N_CURRENCY, currency_cleanup);
+
+    UHashtable *isoCodes = uhash_open(uhash_hashUChars, uhash_compareUChars, NULL, &status);
+    if (U_FAILURE(status)) {
+        return;
+    }
+    uhash_setValueDeleter(isoCodes, deleteIsoCodeEntry);
+
+    ucurr_createCurrencyList(isoCodes, &status);
+    if (U_FAILURE(status)) {
+        uhash_close(isoCodes);
+        return;
+    }
+    gIsoCodes = isoCodes;  // Note: gIsoCodes is const. Once set up here it is never altered,
+                           //       and read only access is safe without synchronization.
+}
+
+static void populateCurrSymbolsEquiv(icu::Hashtable *hash, UErrorCode &status) {
+    if (U_FAILURE(status)) {
+        return;
+    }
+    int32_t length = sizeof(EQUIV_CURRENCY_SYMBOLS) / sizeof(EQUIV_CURRENCY_SYMBOLS[0]);
+    for (int32_t i = 0; i < length; ++i) {
+        icu::UnicodeString lhs(EQUIV_CURRENCY_SYMBOLS[i][0], -1, US_INV);
+        icu::UnicodeString rhs(EQUIV_CURRENCY_SYMBOLS[i][1], -1, US_INV);
+        makeEquivalent(lhs.unescape(), rhs.unescape(), hash, status);
+        if (U_FAILURE(status)) {
+            return;
+        }
+    }
+}
+
+static void U_CALLCONV initCurrSymbolsEquiv() {
+    U_ASSERT(gCurrSymbolsEquiv == NULL);
+    UErrorCode status = U_ZERO_ERROR;
+    ucln_i18n_registerCleanup(UCLN_I18N_CURRENCY, currency_cleanup);
+    icu::Hashtable *temp = new icu::Hashtable(status);
+    if (temp == NULL) {
+        return;
+    }
+    if (U_FAILURE(status)) {
+        delete temp;
+        return;
+    }
+    temp->setValueDeleter(deleteUnicode);
+    populateCurrSymbolsEquiv(temp, status);
+    if (U_FAILURE(status)) {
+        delete temp;
+        return;
+    }
+    gCurrSymbolsEquiv = temp;
+}
+
 U_CAPI UBool U_EXPORT2
 ucurr_isAvailable(const UChar* isoCode, UDate from, UDate to, UErrorCode* eErrorCode) {
-    UErrorCode status = U_ZERO_ERROR;
-    UBool initialized;
-    UMTX_CHECK(&gIsoCodesLock, gIsoCodesInitialized, initialized);
-
-    if (!initialized) {
-        umtx_lock(&gIsoCodesLock);
-        gIsoCodes = uhash_open(uhash_hashUChars, uhash_compareUChars, NULL, &status);
-        if (U_FAILURE(status)) {
-            umtx_unlock(&gIsoCodesLock);
-            return FALSE;
-        }
-        uhash_setValueDeleter(gIsoCodes, deleteIsoCodeEntry);
-
-        ucln_i18n_registerCleanup(UCLN_I18N_CURRENCY, currency_cleanup);
-
-        ucurr_createCurrencyList(&status);
-        if (U_FAILURE(status)) {
-            umtx_unlock(&gIsoCodesLock);
-            return FALSE;
-        }
-
-        gIsoCodesInitialized = TRUE;
-        umtx_unlock(&gIsoCodesLock);
+    umtx_initOnce(gIsoCodesInitOnce, &initIsoCodes, *eErrorCode);
+    if (U_FAILURE(*eErrorCode)) {
+        return FALSE;
     }
 
-    umtx_lock(&gIsoCodesLock);
     IsoCodeEntry* result = (IsoCodeEntry *) uhash_get(gIsoCodes, isoCode);
-    umtx_unlock(&gIsoCodesLock);
-
     if (result == NULL) {
         return FALSE;
     } else if (from > to) {
@@ -1967,8 +2179,12 @@ ucurr_isAvailable(const UChar* isoCode, UDate from, UDate to, UErrorCode* eError
     } else if  ((from > result->to) || (to < result->from)) {
         return FALSE;
     }
-
     return TRUE;
+}
+
+static const icu::Hashtable* getCurrSymbolsEquiv() {
+    umtx_initOnce(gCurrSymbolsEquivInitOnce, &initCurrSymbolsEquiv);
+    return gCurrSymbolsEquiv;
 }
 
 U_CAPI UEnumeration * U_EXPORT2

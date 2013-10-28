@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -25,6 +25,7 @@ struct LigatureSetTable
     le_uint16 ligatureCount;
     Offset    ligatureTableOffsetArray[ANY_NUMBER];
 };
+LE_VAR_ARRAY(LigatureSetTable, ligatureTableOffsetArray)
 
 struct LigatureTable
 {
@@ -32,14 +33,16 @@ struct LigatureTable
     le_uint16 compCount;
     TTGlyphID componentArray[ANY_NUMBER];
 };
+LE_VAR_ARRAY(LigatureTable, componentArray)
 
 struct LigatureSubstitutionSubtable : GlyphSubstitutionSubtable
 {
     le_uint16 ligSetCount;
     Offset    ligSetTableOffsetArray[ANY_NUMBER];
 
-    le_uint32  process(GlyphIterator *glyphIterator, const LEGlyphFilter *filter = NULL) const;
+    le_uint32  process(const LETableReference &base, GlyphIterator *glyphIterator, LEErrorCode &success, const LEGlyphFilter *filter = NULL) const;
 };
+LE_VAR_ARRAY(LigatureSubstitutionSubtable, ligSetTableOffsetArray)
 
 U_NAMESPACE_END
 #endif

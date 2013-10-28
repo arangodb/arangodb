@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/supplementalMetadata.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/supplementalMetadata.xml
 // *
 // ***************************************************************************
 metadata:table(nofallback){
@@ -19,7 +19,7 @@ metadata:table(nofallback){
         ara{"ar"}
         arb{"ar"}
         arg{"an"}
-        art-lojban{"jbo"}
+        art_lojban{"jbo"}
         asm{"as"}
         ava{"av"}
         ave{"ae"}
@@ -104,16 +104,16 @@ metadata:table(nofallback){
         hrv{"hr"}
         hun{"hu"}
         hye{"hy"}
-        i-ami{"ami"}
-        i-bnn{"bnn"}
-        i-hak{"hak"}
-        i-klingon{"tlh"}
-        i-lux{"lb"}
-        i-navajo{"nv"}
-        i-pwn{"pwn"}
-        i-tao{"tao"}
-        i-tay{"tay"}
-        i-tsu{"tsu"}
+        i_ami{"ami"}
+        i_bnn{"bnn"}
+        i_hak{"hak"}
+        i_klingon{"tlh"}
+        i_lux{"lb"}
+        i_navajo{"nv"}
+        i_pwn{"pwn"}
+        i_tao{"tao"}
+        i_tay{"tay"}
+        i_tsu{"tsu"}
         ibo{"ig"}
         ido{"io"}
         iii{"ii"}
@@ -170,6 +170,7 @@ metadata:table(nofallback){
         mkd{"mk"}
         mlg{"mg"}
         mlt{"mt"}
+        mnk{"man"}
         mo{"ro"}
         mol{"ro"}
         mon{"mn"}
@@ -186,18 +187,20 @@ metadata:table(nofallback){
         nld{"nl"}
         nno{"nn"}
         no{"nb"}
-        no-bok{"nb"}
-        no-nyn{"nn"}
         no_BOKMAL{"nb"}
         no_NYNORSK{"nn"}
+        no_bok{"nb"}
+        no_nyn{"nn"}
         nob{"nb"}
         nor{"nb"}
+        npi{"ne"}
         nya{"ny"}
         oci{"oc"}
         ojg{"oj"}
         oji{"oj"}
         ori{"or"}
         orm{"om"}
+        ory{"or"}
         oss{"os"}
         pan{"pa"}
         pbu{"ps"}
@@ -217,9 +220,9 @@ metadata:table(nofallback){
         rus{"ru"}
         sag{"sg"}
         san{"sa"}
-        sgn-BE-FR{"sfb"}
-        sgn-BE-NL{"vgt"}
-        sgn-CH-DE{"sgg"}
+        sgn_BE_FR{"sfb"}
+        sgn_BE_NL{"vgt"}
+        sgn_CH_DE{"sgg"}
         sh{"sr_Latn"}
         sin{"si"}
         slk{"sk"}
@@ -276,10 +279,10 @@ metadata:table(nofallback){
         yid{"yi"}
         yor{"yo"}
         zai{"zap"}
-        zh-guoyu{"zh"}
-        zh-hakka{"hak"}
-        zh-min-nan{"nan"}
-        zh-xiang{"hsn"}
+        zh_guoyu{"zh"}
+        zh_hakka{"hak"}
+        zh_min_nan{"nan"}
+        zh_xiang{"hsn"}
         zha{"za"}
         zho{"zh"}
         zsm{"ms"}
@@ -325,7 +328,6 @@ metadata:table(nofallback){
         "AI",
         "AL",
         "AM",
-        "AN",
         "AO",
         "AQ",
         "AR",
@@ -352,7 +354,6 @@ metadata:table(nofallback){
         "BR",
         "BS",
         "BT",
-        "BU",
         "BV",
         "BW",
         "BY",
@@ -371,14 +372,12 @@ metadata:table(nofallback){
         "CO",
         "CP",
         "CR",
-        "CS",
         "CU",
         "CV",
         "CW",
         "CX",
         "CY",
         "CZ",
-        "DD",
         "DE",
         "DG",
         "DJ",
@@ -401,7 +400,6 @@ metadata:table(nofallback){
         "FM",
         "FO",
         "FR",
-        "FX",
         "GA",
         "GB",
         "GD",
@@ -497,7 +495,6 @@ metadata:table(nofallback){
         "NO",
         "NP",
         "NR",
-        "NT",
         "NU",
         "NZ",
         "OM",
@@ -517,7 +514,6 @@ metadata:table(nofallback){
         "PY",
         "QA",
         "QO",
-        "QU",
         "RE",
         "RO",
         "RS",
@@ -540,7 +536,6 @@ metadata:table(nofallback){
         "SR",
         "SS",
         "ST",
-        "SU",
         "SV",
         "SX",
         "SY",
@@ -557,7 +552,6 @@ metadata:table(nofallback){
         "TM",
         "TN",
         "TO",
-        "TP",
         "TR",
         "TT",
         "TV",
@@ -578,13 +572,11 @@ metadata:table(nofallback){
         "VU",
         "WF",
         "WS",
-        "YD",
+        "XK",
         "YE",
         "YT",
-        "YU",
         "ZA",
         "ZM",
-        "ZR",
         "ZW",
         "ZZ",
     }
@@ -750,8 +742,12 @@ metadata:table(nofallback){
         520{"NR"}
         524{"NP"}
         528{"NL"}
+        530{"CW SX BQ"}
+        531{"CW"}
         532{"CW SX BQ"}
         533{"AW"}
+        534{"SX"}
+        535{"BQ"}
         536{"SA IQ"}
         540{"NC"}
         548{"VU"}
@@ -855,7 +851,48 @@ metadata:table(nofallback){
         890{"RS ME SI HR MK BA"}
         891{"RS ME"}
         894{"ZM"}
+        958{"AA"}
+        959{"QM"}
+        960{"QN"}
+        962{"QP"}
+        963{"QQ"}
+        964{"QR"}
+        965{"QS"}
+        966{"QT"}
+        967{"EU"}
+        968{"QV"}
+        969{"QW"}
+        970{"QX"}
+        971{"QY"}
+        972{"QZ"}
+        973{"XA"}
+        974{"XB"}
+        975{"XC"}
+        976{"XD"}
+        977{"XE"}
+        978{"XF"}
+        979{"XG"}
+        980{"XH"}
+        981{"XI"}
+        982{"XJ"}
+        983{"XK"}
+        984{"XL"}
+        985{"XM"}
+        986{"XN"}
+        987{"XO"}
+        988{"XP"}
+        989{"XQ"}
+        990{"XR"}
+        991{"XS"}
+        992{"XT"}
+        993{"XU"}
+        994{"XV"}
+        995{"XW"}
+        996{"XX"}
+        997{"XY"}
+        998{"XZ"}
         999{"ZZ"}
+        AAA{"AA"}
         ABW{"AW"}
         AFG{"AF"}
         AGO{"AO"}
@@ -864,6 +901,7 @@ metadata:table(nofallback){
         ALB{"AL"}
         AN{"CW SX BQ"}
         AND{"AD"}
+        ANT{"CW SX BQ"}
         ARE{"AE"}
         ARG{"AR"}
         ARM{"AM"}
@@ -878,6 +916,7 @@ metadata:table(nofallback){
         BDI{"BI"}
         BEL{"BE"}
         BEN{"BJ"}
+        BES{"BQ"}
         BFA{"BF"}
         BGD{"BD"}
         BGR{"BG"}
@@ -916,6 +955,7 @@ metadata:table(nofallback){
         CS{"RS ME"}
         CT{"KI"}
         CUB{"CU"}
+        CUW{"CW"}
         CXR{"CX"}
         CYM{"KY"}
         CYP{"CY"}
@@ -1065,7 +1105,20 @@ metadata:table(nofallback){
         PYF{"PF"}
         PZ{"PA"}
         QAT{"QA"}
+        QMM{"QM"}
+        QNN{"QN"}
+        QPP{"QP"}
+        QQQ{"QQ"}
+        QRR{"QR"}
+        QSS{"QS"}
+        QTT{"QT"}
         QU{"EU"}
+        QUU{"EU"}
+        QVV{"QV"}
+        QWW{"QW"}
+        QXX{"QX"}
+        QYY{"QY"}
+        QZZ{"QZ"}
         REU{"RE"}
         RH{"ZW"}
         ROU{"RO"}
@@ -1086,6 +1139,7 @@ metadata:table(nofallback){
         SOM{"SO"}
         SPM{"PM"}
         SRB{"RS"}
+        SSD{"SS"}
         STP{"ST"}
         SU{"RU AM AZ BY EE GE KZ KG LV LT MD TJ TM UA UZ"}
         SUN{"RU AM AZ BY EE GE KZ KG LV LT MD TJ TM UA UZ"}
@@ -1094,6 +1148,7 @@ metadata:table(nofallback){
         SVN{"SI"}
         SWE{"SE"}
         SWZ{"SZ"}
+        SXM{"SX"}
         SYC{"SC"}
         SYR{"SY"}
         TAA{"TA"}
@@ -1132,6 +1187,32 @@ metadata:table(nofallback){
         WK{"UM"}
         WLF{"WF"}
         WSM{"WS"}
+        XAA{"XA"}
+        XBB{"XB"}
+        XCC{"XC"}
+        XDD{"XD"}
+        XEE{"XE"}
+        XFF{"XF"}
+        XGG{"XG"}
+        XHH{"XH"}
+        XII{"XI"}
+        XJJ{"XJ"}
+        XKK{"XK"}
+        XLL{"XL"}
+        XMM{"XM"}
+        XNN{"XN"}
+        XOO{"XO"}
+        XPP{"XP"}
+        XQQ{"XQ"}
+        XRR{"XR"}
+        XSS{"XS"}
+        XTT{"XT"}
+        XUU{"XU"}
+        XVV{"XV"}
+        XWW{"XW"}
+        XXX{"XX"}
+        XYY{"XY"}
+        XZZ{"XZ"}
         YD{"YE"}
         YEM{"YE"}
         YMD{"YE"}
@@ -1146,7 +1227,7 @@ metadata:table(nofallback){
     }
     variantAlias{
         AALAND{"AX"}
-        HEPLOC{"alalc97"}
+        HEPLOC{"ALALC97"}
         POLYTONI{"POLYTON"}
     }
 }

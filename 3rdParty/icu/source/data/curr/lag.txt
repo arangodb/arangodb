@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/lag.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lag.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/lag.xml
+ * ICU <specials> source: <path>/common/main/lag.xml
  */
 lag{
     Currencies{
@@ -20,7 +20,7 @@ lag{
             "Kwáanza ya Angóola",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dóola ya Ausitereelía",
         }
         BHD{
@@ -221,6 +221,10 @@ lag{
         }
         ZMK{
             "ZMK",
+            "Kwácha ya Sámbia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Kwácha ya Sámbia",
         }
         ZWD{
@@ -228,5 +232,5 @@ lag{
             "Dóola ya Simbáabwe",
         }
     }
-    Version{"2.0.64.50"}
+    Version{"2.0.92.75"}
 }

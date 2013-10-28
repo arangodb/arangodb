@@ -1,6 +1,6 @@
 /*
 **************************************************************************
-*   Copyright (C) 2002-2012 International Business Machines Corporation  *
+*   Copyright (C) 2002-2013 International Business Machines Corporation  *
 *   and others. All rights reserved.                                     *
 **************************************************************************
 */
@@ -2827,7 +2827,7 @@ void RegexMatcher::MatchAt(int64_t startIdx, UBool toEnd, UErrorCode &status) {
         #ifdef REGEX_RUN_DEBUG
         if (fTraceDebug) {
             UTEXT_SETNATIVEINDEX(fInputText, fp->fInputIdx);
-            printf("inputIdx=%d   inputChar=%x   sp=%3d   activeLimit=%d  ", fp->fInputIdx,
+            printf("inputIdx=%ld   inputChar=%x   sp=%3ld   activeLimit=%ld  ", fp->fInputIdx,
                 UTEXT_CURRENT32(fInputText), (int64_t *)fp-fStack->getBuffer(), fActiveLimit);
             fPattern->dumpOp(fp->fPatIdx);
         }
@@ -3099,7 +3099,7 @@ void RegexMatcher::MatchAt(int64_t startIdx, UBool toEnd, UErrorCode &status) {
         case URX_BACKSLASH_B:          // Test for word boundaries
             {
                 UBool success = isWordBoundary(fp->fInputIdx);
-                success ^= (opValue != 0);     // flip sense for \B
+                success ^= (UBool)(opValue != 0);     // flip sense for \B
                 if (!success) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
@@ -3110,7 +3110,7 @@ void RegexMatcher::MatchAt(int64_t startIdx, UBool toEnd, UErrorCode &status) {
         case URX_BACKSLASH_BU:          // Test for word boundaries, Unicode-style
             {
                 UBool success = isUWordBoundary(fp->fInputIdx);
-                success ^= (opValue != 0);     // flip sense for \B
+                success ^= (UBool)(opValue != 0);     // flip sense for \B
                 if (!success) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
@@ -3131,7 +3131,7 @@ void RegexMatcher::MatchAt(int64_t startIdx, UBool toEnd, UErrorCode &status) {
                 UChar32 c = UTEXT_NEXT32(fInputText);
                 int8_t ctype = u_charType(c);     // TODO:  make a unicode set for this.  Will be faster.
                 UBool success = (ctype == U_DECIMAL_DIGIT_NUMBER);
-                success ^= (opValue != 0);        // flip sense for \D
+                success ^= (UBool)(opValue != 0);        // flip sense for \D
                 if (success) {
                     fp->fInputIdx = UTEXT_GETNATIVEINDEX(fInputText);
                 } else {
@@ -3481,7 +3481,7 @@ GC_Done:
         case URX_CTR_INIT:
             {
                 U_ASSERT(opValue >= 0 && opValue < fFrameSize-2);
-                fp->fExtra[opValue] = 0;       //  Set the loop counter variable to zero
+                fp->fExtra[opValue] = 0;                 //  Set the loop counter variable to zero
 
                 // Pick up the three extra operands that CTR_INIT has, and
                 //    skip the pattern location counter past 
@@ -3492,12 +3492,14 @@ GC_Done:
                 int32_t maxCount = (int32_t)pat[instrOperandLoc+2];
                 U_ASSERT(minCount>=0);
                 U_ASSERT(maxCount>=minCount || maxCount==-1);
-                U_ASSERT(loopLoc>fp->fPatIdx);
+                U_ASSERT(loopLoc>=fp->fPatIdx);
 
                 if (minCount == 0) {
                     fp = StateSave(fp, loopLoc+1, status);
                 }
-                if (maxCount == 0) {
+                if (maxCount == -1) {
+                    fp->fExtra[opValue+1] = fp->fInputIdx;   //  For loop breaking.
+                } else if (maxCount == 0) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
             }
@@ -3511,18 +3513,22 @@ GC_Done:
                 int64_t *pCounter = &fp->fExtra[URX_VAL(initOp)];
                 int32_t minCount  = (int32_t)pat[opValue+2];
                 int32_t maxCount  = (int32_t)pat[opValue+3];
-                // Increment the counter.  Note: we DIDN'T worry about counter
-                //   overflow, since the data comes from UnicodeStrings, which
-                //   stores its length in an int32_t. Do we have to think about
-                //   this now that we're using UText? Probably not, since the length
-                //   in UChar32s is still an int32_t.
                 (*pCounter)++;
-                U_ASSERT(*pCounter > 0);
-                if ((uint64_t)*pCounter >= (uint32_t)maxCount) {
-                    U_ASSERT(*pCounter == maxCount || maxCount == -1);
+                if ((uint64_t)*pCounter >= (uint32_t)maxCount && maxCount != -1) {
+                    U_ASSERT(*pCounter == maxCount);
                     break;
                 }
                 if (*pCounter >= minCount) {
+                    if (maxCount == -1) {
+                        // Loop has no hard upper bound.
+                        // Check that it is progressing through the input, break if it is not.
+                        int64_t *pLastInputIdx =  &fp->fExtra[URX_VAL(initOp) + 1];
+                        if (fp->fInputIdx == *pLastInputIdx) {
+                            break;
+                        } else {
+                            *pLastInputIdx = fp->fInputIdx;
+                        }
+                    }
                     fp = StateSave(fp, fp->fPatIdx, status);
                 }
                 fp->fPatIdx = opValue + 4;    // Loop back.
@@ -3533,9 +3539,9 @@ GC_Done:
             {
                 // Initialize a non-greedy loop
                 U_ASSERT(opValue >= 0 && opValue < fFrameSize-2);
-                fp->fExtra[opValue] = 0;       //  Set the loop counter variable to zero
+                fp->fExtra[opValue] = 0;                 //  Set the loop counter variable to zero
 
-                // Pick up the three extra operands that CTR_INIT has, and
+                // Pick up the three extra operands that CTR_INIT_NG has, and
                 //    skip the pattern location counter past 
                 int32_t instrOperandLoc = (int32_t)fp->fPatIdx;
                 fp->fPatIdx += 3;
@@ -3545,6 +3551,9 @@ GC_Done:
                 U_ASSERT(minCount>=0);
                 U_ASSERT(maxCount>=minCount || maxCount==-1);
                 U_ASSERT(loopLoc>fp->fPatIdx);
+                if (maxCount == -1) {
+                    fp->fExtra[opValue+1] = fp->fInputIdx;   //  Save initial input index for loop breaking.
+                }
 
                 if (minCount == 0) {
                     if (maxCount != 0) {
@@ -3564,19 +3573,13 @@ GC_Done:
                 int64_t *pCounter = &fp->fExtra[URX_VAL(initOp)];
                 int32_t minCount  = (int32_t)pat[opValue+2];
                 int32_t maxCount  = (int32_t)pat[opValue+3];
-                // Increment the counter.  Note: we DIDN'T worry about counter
-                //   overflow, since the data comes from UnicodeStrings, which
-                //   stores its length in an int32_t. Do we have to think about
-                //   this now that we're using UText? Probably not, since the length
-                //   in UChar32s is still an int32_t.
-                (*pCounter)++;
-                U_ASSERT(*pCounter > 0);
 
-                if ((uint64_t)*pCounter >= (uint32_t)maxCount) {
+                (*pCounter)++;
+                if ((uint64_t)*pCounter >= (uint32_t)maxCount && maxCount != -1) {
                     // The loop has matched the maximum permitted number of times.
                     //   Break out of here with no action.  Matching will
                     //   continue with the following pattern.
-                    U_ASSERT(*pCounter == maxCount || maxCount == -1);
+                    U_ASSERT(*pCounter == maxCount);
                     break;
                 }
 
@@ -3586,8 +3589,20 @@ GC_Done:
                     fp->fPatIdx = opValue + 4;    // Loop back.
                 } else {
                     // We do have the minimum number of matches.
-                    //   Fall into the following pattern, but first do
-                    //   a state save to the top of the loop, so that a failure
+
+                    // If there is no upper bound on the loop iterations, check that the input index
+                    // is progressing, and stop the loop if it is not.
+                    if (maxCount == -1) {
+                        int64_t *pLastInputIdx =  &fp->fExtra[URX_VAL(initOp) + 1];
+                        if (fp->fInputIdx == *pLastInputIdx) {
+                            break;
+                        }
+                        *pLastInputIdx = fp->fInputIdx;
+                    }
+
+                    // Loop Continuation: we will fall into the pattern following the loop
+                    //   (non-greedy, don't execute loop body first), but first do
+                    //   a state save to the top of the loop, so that a match failure
                     //   in the following pattern will try another iteration of the loop.
                     fp = StateSave(fp, opValue + 4, status);
                 }
@@ -4211,7 +4226,7 @@ breakFromLoop:
         fMatchStart   = startIdx;
         fMatchEnd     = fp->fInputIdx;
         if (fTraceDebug) {
-            REGEX_RUN_DEBUG_PRINTF(("Match.  start=%d   end=%d\n\n", fMatchStart, fMatchEnd));
+            REGEX_RUN_DEBUG_PRINTF(("Match.  start=%ld   end=%ld\n\n", fMatchStart, fMatchEnd));
         }
     }
     else
@@ -4252,7 +4267,7 @@ void RegexMatcher::MatchChunkAt(int32_t startIdx, UBool toEnd, UErrorCode &statu
 #ifdef REGEX_RUN_DEBUG
     if (fTraceDebug)
     {
-        printf("MatchAt(startIdx=%ld)\n", startIdx);
+        printf("MatchAt(startIdx=%d)\n", startIdx);
         printf("Original Pattern: ");
         UChar32 c = utext_next32From(fPattern->fPattern, 0);
         while (c != U_SENTINEL) {
@@ -4321,7 +4336,7 @@ void RegexMatcher::MatchChunkAt(int32_t startIdx, UBool toEnd, UErrorCode &statu
 #ifdef REGEX_RUN_DEBUG
         if (fTraceDebug) {
             UTEXT_SETNATIVEINDEX(fInputText, fp->fInputIdx);
-            printf("inputIdx=%d   inputChar=%x   sp=%3d   activeLimit=%d  ", fp->fInputIdx,
+            printf("inputIdx=%ld   inputChar=%x   sp=%3ld   activeLimit=%ld  ", fp->fInputIdx,
                    UTEXT_CURRENT32(fInputText), (int64_t *)fp-fStack->getBuffer(), fActiveLimit);
             fPattern->dumpOp(fp->fPatIdx);
         }
@@ -4588,7 +4603,7 @@ void RegexMatcher::MatchChunkAt(int32_t startIdx, UBool toEnd, UErrorCode &statu
         case URX_BACKSLASH_B:          // Test for word boundaries
             {
                 UBool success = isChunkWordBoundary((int32_t)fp->fInputIdx);
-                success ^= (opValue != 0);     // flip sense for \B
+                success ^= (UBool)(opValue != 0);     // flip sense for \B
                 if (!success) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
@@ -4599,7 +4614,7 @@ void RegexMatcher::MatchChunkAt(int32_t startIdx, UBool toEnd, UErrorCode &statu
         case URX_BACKSLASH_BU:          // Test for word boundaries, Unicode-style
             {
                 UBool success = isUWordBoundary(fp->fInputIdx);
-                success ^= (opValue != 0);     // flip sense for \B
+                success ^= (UBool)(opValue != 0);     // flip sense for \B
                 if (!success) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
@@ -4619,7 +4634,7 @@ void RegexMatcher::MatchChunkAt(int32_t startIdx, UBool toEnd, UErrorCode &statu
                 U16_NEXT(inputBuf, fp->fInputIdx, fActiveLimit, c);
                 int8_t ctype = u_charType(c);     // TODO:  make a unicode set for this.  Will be faster.
                 UBool success = (ctype == U_DECIMAL_DIGIT_NUMBER);
-                success ^= (opValue != 0);        // flip sense for \D
+                success ^= (UBool)(opValue != 0);        // flip sense for \D
                 if (!success) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
@@ -4940,7 +4955,7 @@ GC_Done:
         case URX_CTR_INIT:
             {
                 U_ASSERT(opValue >= 0 && opValue < fFrameSize-2);
-                fp->fExtra[opValue] = 0;       //  Set the loop counter variable to zero
+                fp->fExtra[opValue] = 0;                 //  Set the loop counter variable to zero
                 
                 // Pick up the three extra operands that CTR_INIT has, and
                 //    skip the pattern location counter past 
@@ -4951,12 +4966,14 @@ GC_Done:
                 int32_t maxCount = (int32_t)pat[instrOperandLoc+2];
                 U_ASSERT(minCount>=0);
                 U_ASSERT(maxCount>=minCount || maxCount==-1);
-                U_ASSERT(loopLoc>fp->fPatIdx);
+                U_ASSERT(loopLoc>=fp->fPatIdx);
                 
                 if (minCount == 0) {
                     fp = StateSave(fp, loopLoc+1, status);
                 }
-                if (maxCount == 0) {
+                if (maxCount == -1) {
+                    fp->fExtra[opValue+1] = fp->fInputIdx;   //  For loop breaking.
+                } else if (maxCount == 0) {
                     fp = (REStackFrame *)fStack->popFrame(fFrameSize);
                 }
             }
@@ -4970,18 +4987,22 @@ GC_Done:
                 int64_t *pCounter = &fp->fExtra[URX_VAL(initOp)];
                 int32_t minCount  = (int32_t)pat[opValue+2];
                 int32_t maxCount  = (int32_t)pat[opValue+3];
-                // Increment the counter.  Note: we DIDN'T worry about counter
-                //   overflow, since the data comes from UnicodeStrings, which
-                //   stores its length in an int32_t. Do we have to think about
-                //   this now that we're using UText? Probably not, since the length
-                //   in UChar32s is still an int32_t.
                 (*pCounter)++;
-                U_ASSERT(*pCounter > 0);
-                if ((uint64_t)*pCounter >= (uint32_t)maxCount) {
-                    U_ASSERT(*pCounter == maxCount || maxCount == -1);
+                if ((uint64_t)*pCounter >= (uint32_t)maxCount && maxCount != -1) {
+                    U_ASSERT(*pCounter == maxCount);
                     break;
                 }
                 if (*pCounter >= minCount) {
+                    if (maxCount == -1) {
+                        // Loop has no hard upper bound.
+                        // Check that it is progressing through the input, break if it is not.
+                        int64_t *pLastInputIdx =  &fp->fExtra[URX_VAL(initOp) + 1];
+                        if (fp->fInputIdx == *pLastInputIdx) {
+                            break;
+                        } else {
+                            *pLastInputIdx = fp->fInputIdx;
+                        }
+                    }
                     fp = StateSave(fp, fp->fPatIdx, status);
                 }
                 fp->fPatIdx = opValue + 4;    // Loop back.
@@ -4992,9 +5013,9 @@ GC_Done:
             {
                 // Initialize a non-greedy loop
                 U_ASSERT(opValue >= 0 && opValue < fFrameSize-2);
-                fp->fExtra[opValue] = 0;       //  Set the loop counter variable to zero
+                fp->fExtra[opValue] = 0;                 //  Set the loop counter variable to zero
                 
-                // Pick up the three extra operands that CTR_INIT has, and
+                // Pick up the three extra operands that CTR_INIT_NG has, and
                 //    skip the pattern location counter past 
                 int32_t instrOperandLoc = (int32_t)fp->fPatIdx;
                 fp->fPatIdx += 3;
@@ -5004,6 +5025,9 @@ GC_Done:
                 U_ASSERT(minCount>=0);
                 U_ASSERT(maxCount>=minCount || maxCount==-1);
                 U_ASSERT(loopLoc>fp->fPatIdx);
+                if (maxCount == -1) {
+                    fp->fExtra[opValue+1] = fp->fInputIdx;   //  Save initial input index for loop breaking.
+                }
                 
                 if (minCount == 0) {
                     if (maxCount != 0) {
@@ -5023,19 +5047,13 @@ GC_Done:
                 int64_t *pCounter = &fp->fExtra[URX_VAL(initOp)];
                 int32_t minCount  = (int32_t)pat[opValue+2];
                 int32_t maxCount  = (int32_t)pat[opValue+3];
-                // Increment the counter.  Note: we DIDN'T worry about counter
-                //   overflow, since the data comes from UnicodeStrings, which
-                //   stores its length in an int32_t. Do we have to think about
-                //   this now that we're using UText? Probably not, since the length
-                //   in UChar32s is still an int32_t.
+
                 (*pCounter)++;
-                U_ASSERT(*pCounter > 0);
-                
-                if ((uint64_t)*pCounter >= (uint32_t)maxCount) {
+                if ((uint64_t)*pCounter >= (uint32_t)maxCount && maxCount != -1) {
                     // The loop has matched the maximum permitted number of times.
                     //   Break out of here with no action.  Matching will
                     //   continue with the following pattern.
-                    U_ASSERT(*pCounter == maxCount || maxCount == -1);
+                    U_ASSERT(*pCounter == maxCount);
                     break;
                 }
                 
@@ -5045,8 +5063,20 @@ GC_Done:
                     fp->fPatIdx = opValue + 4;    // Loop back.
                 } else {
                     // We do have the minimum number of matches.
-                    //   Fall into the following pattern, but first do
-                    //   a state save to the top of the loop, so that a failure
+
+                    // If there is no upper bound on the loop iterations, check that the input index
+                    // is progressing, and stop the loop if it is not.
+                    if (maxCount == -1) {
+                        int64_t *pLastInputIdx =  &fp->fExtra[URX_VAL(initOp) + 1];
+                        if (fp->fInputIdx == *pLastInputIdx) {
+                            break;
+                        }
+                        *pLastInputIdx = fp->fInputIdx;
+                    }
+
+                    // Loop Continuation: we will fall into the pattern following the loop
+                    //   (non-greedy, don't execute loop body first), but first do
+                    //   a state save to the top of the loop, so that a match failure
                     //   in the following pattern will try another iteration of the loop.
                     fp = StateSave(fp, opValue + 4, status);
                 }
@@ -5635,7 +5665,7 @@ breakFromLoop:
         fMatchStart   = startIdx;
         fMatchEnd     = fp->fInputIdx;
         if (fTraceDebug) {
-            REGEX_RUN_DEBUG_PRINTF(("Match.  start=%d   end=%d\n\n", fMatchStart, fMatchEnd));
+            REGEX_RUN_DEBUG_PRINTF(("Match.  start=%ld   end=%ld\n\n", fMatchStart, fMatchEnd));
         }
     }
     else

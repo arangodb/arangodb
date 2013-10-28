@@ -89,7 +89,7 @@
  *  This is used for GCC specific attributes
  * @internal
  */
-#if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 2))
+#if U_GCC_MAJOR_MINOR >= 302
 #    define U_ATTRIBUTE_DEPRECATED __attribute__ ((deprecated))
 /**
  * \def U_ATTRIBUTE_DEPRECATED
@@ -256,7 +256,7 @@ typedef int8_t UBool;
 
 /**
  * \var UChar
- * Define UChar to be char16_t, if available,
+ * Define UChar to be UCHAR_TYPE, if that is #defined (for example, to char16_t),
  * or wchar_t if that is 16 bits wide; always assumed to be unsigned.
  * If neither is available, then define UChar to be uint16_t.
  *
@@ -266,10 +266,10 @@ typedef int8_t UBool;
  *
  * @stable ICU 4.4
  */
-
-/* Define UChar to be compatible with char16_t or wchar_t if possible. */
-#if U_HAVE_CHAR16_T
-    typedef char16_t UChar;
+#if defined(UCHAR_TYPE)
+    typedef UCHAR_TYPE UChar;
+/* Not #elif U_HAVE_CHAR16_T -- because that is type-incompatible with pre-C++11 callers
+    typedef char16_t UChar;  */
 #elif U_SIZEOF_WCHAR_T==2
     typedef wchar_t UChar;
 #elif defined(__CHAR16_TYPE__)

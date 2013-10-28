@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2004-2006, International Business Machines Corporation and
+* Copyright (C) 2004-2012, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 */
@@ -60,7 +60,7 @@ utmscale_fromInt64(int64_t otherTime, UDateTimeScale timeScale, UErrorCode *stat
         return 0;
     }
 
-    if (timeScale < 0 || timeScale >= UDTS_MAX_SCALE) {
+    if ((int32_t)timeScale < 0 || timeScale >= UDTS_MAX_SCALE) {
         *status = U_ILLEGAL_ARGUMENT_ERROR;
         return 0;
     }
@@ -84,7 +84,7 @@ utmscale_toInt64(int64_t universalTime, UDateTimeScale timeScale, UErrorCode *st
         return 0;
     }
 
-    if (timeScale < 0 || timeScale >= UDTS_MAX_SCALE) {
+    if ((int32_t)timeScale < 0 || timeScale >= UDTS_MAX_SCALE) {
         *status = U_ILLEGAL_ARGUMENT_ERROR;
         return 0;
     }

@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2008-2012, International Business Machines Corporation and
+* Copyright (C) 2008-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -26,6 +26,7 @@
 #if !UCONFIG_NO_FORMATTING
 
 #include "unicode/format.h"
+#include "unicode/upluralrules.h"
 
 /**
  * Value returned by PluralRules::getUniqueKeywordValue() when there is no
@@ -37,9 +38,11 @@
 U_NAMESPACE_BEGIN
 
 class Hashtable;
+class FixedDecimal;
 class RuleChain;
-class RuleParser;
+class PluralRuleParser;
 class PluralKeywordEnumeration;
+class AndConstraint;
 
 /**
  * Defines rules for mapping non-negative numeric values onto a small set of
@@ -88,19 +91,80 @@ class PluralKeywordEnumeration;
  * is_relation   = expr 'is' ('not')? value
  * in_relation   = expr ('not')? 'in' range_list
  * within_relation = expr ('not')? 'within' range
- * expr          = 'n' ('mod' value)?
+ * expr          = ('n' | 'i' | 'f' | 'v' | 'j') ('mod' value)?
  * range_list    = (range | value) (',' range_list)*
- * value         = digit+
+ * value         = digit+  ('.' digit+)?
  * digit         = 0|1|2|3|4|5|6|7|8|9
  * range         = value'..'value
  * \endcode
  * </pre></p>
  * <p>
+ * <p>
+ * The i, f, and v values are defined as follows:
+ * </p>
+ * <ul>
+ * <li>i to be the integer digits.</li>
+ * <li>f to be the visible fractional digits, as an integer.</li>
+ * <li>v to be the number of visible fraction digits.</li>
+ * <li>j is defined to only match integers. That is j is 3 fails if v != 0 (eg for 3.1 or 3.0).</li>
+ * </ul>
+ * <p>
+ * Examples are in the following table:
+ * </p>
+ * <table border='1' style="border-collapse:collapse">
+ * <tbody>
+ * <tr>
+ * <th>n</th>
+ * <th>i</th>
+ * <th>f</th>
+ * <th>v</th>
+ * </tr>
+ * <tr>
+ * <td>1.0</td>
+ * <td>1</td>
+ * <td align="right">0</td>
+ * <td>1</td>
+ * </tr>
+ * <tr>
+ * <td>1.00</td>
+ * <td>1</td>
+ * <td align="right">0</td>
+ * <td>2</td>
+ * </tr>
+ * <tr>
+ * <td>1.3</td>
+ * <td>1</td>
+ * <td align="right">3</td>
+ * <td>1</td>
+ * </tr>
+ * <tr>
+ * <td>1.03</td>
+ * <td>1</td>
+ * <td align="right">3</td>
+ * <td>2</td>
+ * </tr>
+ * <tr>
+ * <td>1.23</td>
+ * <td>1</td>
+ * <td align="right">23</td>
+ * <td>2</td>
+ * </tr>
+ * </tbody>
+ * </table>
+ * <p>
+ * The difference between 'in' and 'within' is that 'in' only includes integers in the specified range, while 'within'
+ * includes all values. Using 'within' with a range_list consisting entirely of values is the same as using 'in' (it's
+ * not an error).
+ * </p>
+
  * An "identifier" is a sequence of characters that do not have the
  * Unicode Pattern_Syntax or Pattern_White_Space properties.
  * <p>
  * The difference between 'in' and 'within' is that 'in' only includes
- * integers in the specified range, while 'within' includes all values.</p>
+ * integers in the specified range, while 'within' includes all values.
+ * Using 'within' with a range_list consisting entirely of values is the 
+ * same as using 'in' (it's not an error).
+ *</p>
  * <p>
  * Keywords
  * could be defined by users or from ICU locale data. There are 6
@@ -183,8 +247,9 @@ public:
     static PluralRules* U_EXPORT2 createDefaultRules(UErrorCode& status);
 
     /**
-     * Provides access to the predefined <code>PluralRules</code> for a given
+     * Provides access to the predefined cardinal-number <code>PluralRules</code> for a given
      * locale.
+     * Same as forLocale(locale, UPLURAL_TYPE_CARDINAL, status).
      *
      * @param locale  The locale for which a <code>PluralRules</code> object is
      *                returned.
@@ -198,6 +263,41 @@ public:
      * @stable ICU 4.0
      */
     static PluralRules* U_EXPORT2 forLocale(const Locale& locale, UErrorCode& status);
+
+    /**
+     * Provides access to the predefined <code>PluralRules</code> for a given
+     * locale and the plural type.
+     *
+     * @param locale  The locale for which a <code>PluralRules</code> object is
+     *                returned.
+     * @param type    The plural type (e.g., cardinal or ordinal).
+     * @param status  Output param set to success/failure code on exit, which
+     *                must not indicate a failure before the function call.
+     * @return        The predefined <code>PluralRules</code> object pointer for
+     *                this locale. If there's no predefined rules for this locale,
+     *                the rules for the closest parent in the locale hierarchy
+     *                that has one will  be returned.  The final fallback always
+     *                returns the default 'other' rules.
+     * @stable ICU 50
+     */
+    static PluralRules* U_EXPORT2 forLocale(const Locale& locale, UPluralType type, UErrorCode& status);
+
+#ifndef U_HIDE_INTERNAL_API
+    /**
+     * Return a StringEnumeration over the locales for which there is plurals data.
+     * @return a StringEnumeration over the locales available.
+     * @internal
+     */
+    static StringEnumeration* U_EXPORT2 getAvailableLocales(UErrorCode &status);
+
+    /**
+     * Returns whether or not there are overrides.
+     * @param locale       the locale to check.
+     * @return
+     * @internal
+     */
+    static UBool hasOverride(const Locale &locale);
+#endif  /* U_HIDE_INTERNAL_API */
 
     /**
      * Given a number, returns the keyword of the first rule that applies to
@@ -220,6 +320,13 @@ public:
      * @stable ICU 4.0
      */
     UnicodeString select(double number) const;
+
+#ifndef U_HIDE_INTERNAL_API
+    /**
+      * @internal
+      */
+    UnicodeString select(const FixedDecimal &number) const;
+#endif  /* U_HIDE_INTERNAL_API */
 
     /**
      * Returns a list of all rule keywords used in this <code>PluralRules</code>
@@ -309,6 +416,14 @@ public:
      */
     UnicodeString getKeywordOther() const;
 
+#ifndef U_HIDE_INTERNAL_API
+    /**
+     *
+     * @internal
+     */
+     UnicodeString getRules() const;
+#endif  /* U_HIDE_INTERNAL_API */
+
     /**
      * Compares the equality of two PluralRules objects.
      *
@@ -348,28 +463,14 @@ public:
 
 private:
     RuleChain  *mRules;
-    RuleParser *mParser;
-    double     *mSamples;
-    int32_t    *mSampleInfo;
-    int32_t    mSampleInfoCount;
 
     PluralRules();   // default constructor not implemented
-    int32_t getRepeatLimit() const;
-    void parseDescription(UnicodeString& ruleData, RuleChain& rules, UErrorCode &status);
-    void getNextLocale(const UnicodeString& localeData, int32_t* curIndex, UnicodeString& localeName);
-    void addRules(RuleChain& rules);
-    int32_t getNumberValue(const UnicodeString& token) const;
-    UnicodeString getRuleFromResource(const Locale& locale, UErrorCode& status);
+    void            parseDescription(const UnicodeString& ruleData, UErrorCode &status);
+    int32_t         getNumberValue(const UnicodeString& token) const;
+    UnicodeString   getRuleFromResource(const Locale& locale, UPluralType type, UErrorCode& status);
+    RuleChain      *rulesForKeyword(const UnicodeString &keyword) const;
 
-    static const int32_t MAX_SAMPLES = 3;
-
-    int32_t getSamplesInternal(const UnicodeString &keyword, double *dest,
-                               int32_t destCapacity, UBool includeUnlimited,
-                               UErrorCode& status);
-    int32_t getKeywordIndex(const UnicodeString& keyword,
-                            UErrorCode& status) const;
-    void initSamples(UErrorCode& status);
-
+    friend class PluralRuleParser;
 };
 
 U_NAMESPACE_END

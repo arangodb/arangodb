@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* Decimal Context module                                             */
 /* ------------------------------------------------------------------ */
-/* Copyright (c) IBM Corporation, 2000-2011.  All rights reserved.    */
+/* Copyright (c) IBM Corporation, 2000-2012.  All rights reserved.    */
 /*                                                                    */
 /* This software is made available under the terms of the             */
 /* ICU License -- ICU 1.8.1 and later.                                */
@@ -31,17 +31,6 @@ static  const  Int mfcone=1;                 /* constant 1  */
 static  const  Flag *mfctop=(Flag *)&mfcone; /* -> top byte  */
 #define LITEND *mfctop             /* named flag; 1=little-endian  */
 #endif
-
-/* ------------------------------------------------------------------ */
-/* round-for-reround digits                                           */
-/* ------------------------------------------------------------------ */
-const uByte DECSTICKYTAB[10]={1,1,2,3,4,6,6,7,8,9}; /* used if sticky */
-
-/* ------------------------------------------------------------------ */
-/* Powers of ten (powers[n]==10**n, 0<=n<=9)                          */
-/* ------------------------------------------------------------------ */
-const uInt DECPOWERS[10]={1, 10, 100, 1000, 10000, 100000, 1000000,
-                          10000000, 100000000, 1000000000};
 
 /* ------------------------------------------------------------------ */
 /* decContextClearStatus -- clear bits in current status              */

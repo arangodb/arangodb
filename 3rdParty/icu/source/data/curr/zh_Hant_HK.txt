@@ -1,16 +1,24 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zh_Hant_HK.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hant_HK.xml
 // *
 // ***************************************************************************
 zh_Hant_HK{
     Currencies{
+        AED{
+            "AED",
+            "阿拉伯聯合酋長國迪爾汗",
+        }
         AUD{
             "AU$",
             "澳元",
+        }
+        AZN{
+            "AZN",
+            "亞塞拜疆馬納特",
         }
         BAD{
             "BAD",
@@ -24,6 +32,18 @@ zh_Hant_HK{
             "CA$",
             "加元",
         }
+        CRC{
+            "CRC",
+            "哥斯達黎加科郎",
+        }
+        ETB{
+            "ETB",
+            "埃塞俄比亞比爾",
+        }
+        GEL{
+            "GEL",
+            "格魯吉亞拉里",
+        }
         HKD{
             "$",
             "港元",
@@ -32,6 +52,22 @@ zh_Hant_HK{
             "ITL",
             "意大利里拉",
         }
+        LRD{
+            "LRD",
+            "利比利亞元",
+        }
+        MUR{
+            "MUR",
+            "毛里求斯盧布",
+        }
+        MZN{
+            "MZN",
+            "莫桑比克美提卡",
+        }
+        NGN{
+            "NGN",
+            "尼日利亞奈拉",
+        }
         NZD{
             "NZ$",
             "紐西蘭元",
@@ -39,6 +75,10 @@ zh_Hant_HK{
         RSD{
             "RSD",
             "塞爾維亞第納爾",
+        }
+        RWF{
+            "RWF",
+            "盧旺達法郎",
         }
         SGD{
             "SGD",
@@ -65,5 +105,37 @@ zh_Hant_HK{
             "太平洋法郎",
         }
     }
-    Version{"2.0.65.46"}
+    CurrencyPlurals{
+        AED{
+            other{"阿拉伯聯合酋長國迪爾汗"}
+        }
+        AZN{
+            other{"亞塞拜疆馬納特"}
+        }
+        CRC{
+            other{"哥斯達黎加科郎"}
+        }
+        ETB{
+            other{"埃塞俄比亞比爾"}
+        }
+        GEL{
+            other{"格魯吉亞拉里"}
+        }
+        LRD{
+            other{"利比利亞元"}
+        }
+        MUR{
+            other{"毛里求斯盧布"}
+        }
+        MZN{
+            other{"莫桑比克美提卡"}
+        }
+        NGN{
+            other{"尼日利亞奈拉"}
+        }
+        RWF{
+            other{"盧旺達法郎"}
+        }
+    }
+    Version{"2.0.92.87"}
 }

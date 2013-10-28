@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 2011, International Business Machines Corporation 
+* Copyright (C) 2011-2013, International Business Machines Corporation 
 * and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -13,11 +13,18 @@
 #if !UCONFIG_NO_REGULAR_EXPRESSIONS && !UCONFIG_NO_NORMALIZATION && !UCONFIG_NO_FILE_IO
 
 #include "itspoof.h"
-#include "unicode/uspoof.h"
-#include "unicode/unistr.h"
-#include "unicode/regex.h"
+
 #include "unicode/normlzr.h"
+#include "unicode/regex.h"
+#include "unicode/unistr.h"
+#include "unicode/uscript.h"
+#include "unicode/uspoof.h"
+
 #include "cstring.h"
+#include "identifier_info.h"
+#include "scriptset.h"
+#include "uhash.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -25,15 +32,20 @@
     errcheckln(status, "Failure at file %s, line %d, error = %s", __FILE__, __LINE__, u_errorName(status));}}
 
 #define TEST_ASSERT(expr) {if ((expr)==FALSE) { \
-    errln("Test Failure at file %s, line %d: \"%s\" is false.\n", __FILE__, __LINE__, #expr);};}
+    errln("Test Failure at file %s, line %d: \"%s\" is false.", __FILE__, __LINE__, #expr);};}
+
+#define TEST_ASSERT_MSG(expr, msg) {if ((expr)==FALSE) { \
+    dataerrln("Test Failure at file %s, line %d, %s: \"%s\" is false.", __FILE__, __LINE__, msg, #expr);};}
 
 #define TEST_ASSERT_EQ(a, b) { if ((a) != (b)) { \
-    errln("Test Failure at file %s, line %d: \"%s\" (%d) != \"%s\" (%d) \n", \
+    errln("Test Failure at file %s, line %d: \"%s\" (%d) != \"%s\" (%d)", \
              __FILE__, __LINE__, #a, (a), #b, (b)); }}
 
 #define TEST_ASSERT_NE(a, b) { if ((a) == (b)) { \
-    errln("Test Failure at file %s, line %d: \"%s\" (%d) == \"%s\" (%d) \n", \
+    errln("Test Failure at file %s, line %d: \"%s\" (%d) == \"%s\" (%d)", \
              __FILE__, __LINE__, #a, (a), #b, (b)); }}
+
+#define LENGTHOF(array) ((int32_t)(sizeof(array)/sizeof((array)[0])))
 
 /*
  *   TEST_SETUP and TEST_TEARDOWN
@@ -67,37 +79,63 @@ void IntlTestSpoof::runIndexedTest( int32_t index, UBool exec, const char* &name
                 testSpoofAPI();
             }
             break;
-         case 1:
+        case 1:
             name = "TestSkeleton"; 
             if (exec) {
                 testSkeleton();
             }
             break;
-         case 2:
+        case 2:
             name = "TestAreConfusable";
             if (exec) {
                 testAreConfusable();
             }
             break;
-          case 3:
+        case 3:
             name = "TestInvisible";
             if (exec) {
                 testInvisible();
             }
             break;
-          case 4:
+        case 4:
             name = "testConfData";
             if (exec) {
                 testConfData();
             }
             break;
-          case 5:
+        case 5:
             name = "testBug8654";
             if (exec) {
                 testBug8654();
             }
             break;
-         default: name=""; break;
+        case 6:
+            name = "testIdentifierInfo";
+            if (exec) {
+                testIdentifierInfo();
+            }
+            break;
+        case 7:
+            name = "testScriptSet";
+            if (exec) {
+                testScriptSet();
+            }
+            break;
+        case 8:
+            name = "testRestrictionLevel";
+            if (exec) {
+                testRestrictionLevel();
+            }
+            break;
+       case 9:
+            name = "testMixedNumbers";
+            if (exec) {
+                testMixedNumbers();
+            }
+            break;
+
+
+        default: name=""; break;
     }
 }
 
@@ -110,7 +148,7 @@ void IntlTestSpoof::testSpoofAPI() {
         int32_t checkResults = uspoof_checkUnicodeString(sc, s, &position, &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_EQ(0, checkResults);
-        TEST_ASSERT_EQ(666, position);
+        TEST_ASSERT_EQ(0, position);
     TEST_TEARDOWN;
     
     TEST_SETUP
@@ -250,12 +288,12 @@ void IntlTestSpoof::testInvisible() {
         int32_t position = -42;
         TEST_ASSERT_EQ(0, uspoof_checkUnicodeString(sc, s, &position, &status));
         TEST_ASSERT_SUCCESS(status);
-        TEST_ASSERT(position == -42);
+        TEST_ASSERT(0 == position);
 
         UnicodeString  s2 = UnicodeString("abcd\\u0301\\u0302\\u0301ef").unescape();
         TEST_ASSERT_EQ(USPOOF_INVISIBLE, uspoof_checkUnicodeString(sc, s2, &position, &status));
         TEST_ASSERT_SUCCESS(status);
-        TEST_ASSERT_EQ(7, position);
+        TEST_ASSERT_EQ(0, position);
 
         // Two acute accents, one from the composed a with acute accent, \u00e1,
         // and one separate.
@@ -263,7 +301,7 @@ void IntlTestSpoof::testInvisible() {
         UnicodeString  s3 = UnicodeString("abcd\\u00e1\\u0301xyz").unescape();
         TEST_ASSERT_EQ(USPOOF_INVISIBLE, uspoof_checkUnicodeString(sc, s3, &position, &status));
         TEST_ASSERT_SUCCESS(status);
-        TEST_ASSERT_EQ(7, position);
+        TEST_ASSERT_EQ(0, position);
     TEST_TEARDOWN;
 }
 
@@ -273,7 +311,7 @@ void IntlTestSpoof::testBug8654() {
         int32_t position = -42;
         TEST_ASSERT_EQ(USPOOF_INVISIBLE, uspoof_checkUnicodeString(sc, s, &position, &status) & USPOOF_INVISIBLE );
         TEST_ASSERT_SUCCESS(status);
-        TEST_ASSERT_EQ(3, position);
+        TEST_ASSERT_EQ(0, position);
     TEST_TEARDOWN;
 }
 
@@ -412,5 +450,308 @@ void IntlTestSpoof::testConfData() {
         }
     }
 }
-#endif // UCONFIG_NO_REGULAR_EXPRESSIONS
 
+// testIdentifierInfo. Note that IdentifierInfo is not public ICU API at this time
+void IntlTestSpoof::testIdentifierInfo() {
+    UErrorCode status = U_ZERO_ERROR;
+    ScriptSet bitset12; bitset12.set(USCRIPT_LATIN, status).set(USCRIPT_HANGUL, status);
+    ScriptSet bitset2;  bitset2.set(USCRIPT_HANGUL, status);
+    TEST_ASSERT(bitset12.contains(bitset2));
+    TEST_ASSERT(bitset12.contains(bitset12));
+    TEST_ASSERT(!bitset2.contains(bitset12));
+
+    ScriptSet arabSet;  arabSet.set(USCRIPT_ARABIC, status);
+    ScriptSet latinSet; latinSet.set(USCRIPT_LATIN, status);
+    UElement arabEl;  arabEl.pointer = &arabSet;
+    UElement latinEl; latinEl.pointer = &latinSet;
+    TEST_ASSERT(uhash_compareScriptSet(arabEl, latinEl) < 0);
+    TEST_ASSERT(uhash_compareScriptSet(latinEl, arabEl) > 0);
+
+    UnicodeString scriptString;
+    bitset12.displayScripts(scriptString);
+    TEST_ASSERT(UNICODE_STRING_SIMPLE("Hang Latn") == scriptString);
+
+    status = U_ZERO_ERROR;
+    UHashtable *alternates = uhash_open(uhash_hashScriptSet ,uhash_compareScriptSet, NULL, &status);
+    uhash_puti(alternates, &bitset12, 1, &status);
+    uhash_puti(alternates, &bitset2, 1, &status);
+    UnicodeString alternatesString;
+    IdentifierInfo::displayAlternates(alternatesString, alternates, status);
+    TEST_ASSERT(UNICODE_STRING_SIMPLE("Hang; Hang Latn") == alternatesString);
+    TEST_ASSERT_SUCCESS(status);
+
+    status = U_ZERO_ERROR;
+    ScriptSet tScriptSet;
+    tScriptSet.parseScripts(scriptString, status);
+    TEST_ASSERT_SUCCESS(status);
+    TEST_ASSERT(bitset12 == tScriptSet);
+    UnicodeString ss;
+    ss.remove();
+    uhash_close(alternates);
+
+    struct Test {
+        const char         *fTestString;
+        URestrictionLevel   fRestrictionLevel;
+        const char         *fNumerics;
+        const char         *fScripts;
+        const char         *fAlternates;
+        const char         *fCommonAlternates;
+    } tests[] = {
+            {"\\u0061\\u2665",                USPOOF_UNRESTRICTIVE,      "[]", "Latn", "", ""},
+            {"\\u0061\\u3006",                USPOOF_HIGHLY_RESTRICTIVE, "[]", "Latn", "Hani Hira Kana", "Hani Hira Kana"},
+            {"\\u0061\\u30FC\\u3006",         USPOOF_HIGHLY_RESTRICTIVE, "[]", "Latn", "Hira Kana", "Hira Kana"},
+            {"\\u0061\\u30FC\\u3006\\u30A2",  USPOOF_HIGHLY_RESTRICTIVE, "[]", "Latn Kana", "", ""},
+            {"\\u30A2\\u0061\\u30FC\\u3006",  USPOOF_HIGHLY_RESTRICTIVE, "[]", "Latn Kana", "", ""},
+            {"\\u0061\\u0031\\u0661",         USPOOF_UNRESTRICTIVE,      "[\\u0030\\u0660]", "Latn", "Arab Thaa", "Arab Thaa"},
+            {"\\u0061\\u0031\\u0661\\u06F1",  USPOOF_UNRESTRICTIVE,      "[\\u0030\\u0660\\u06F0]", "Latn Arab", "", ""},
+            {"\\u0661\\u30FC\\u3006\\u0061\\u30A2\\u0031\\u0967\\u06F1",  USPOOF_UNRESTRICTIVE, 
+                  "[\\u0030\\u0660\\u06F0\\u0966]", "Latn Kana Arab", "Deva Kthi", "Deva Kthi"},
+            {"\\u0061\\u30A2\\u30FC\\u3006\\u0031\\u0967\\u0661\\u06F1",  USPOOF_UNRESTRICTIVE, 
+                  "[\\u0030\\u0660\\u06F0\\u0966]", "Latn Kana Arab", "Deva Kthi", "Deva Kthi"}
+    };
+
+    int testNum;
+    for (testNum = 0; testNum < LENGTHOF(tests); testNum++) {
+        char testNumStr[40];
+        sprintf(testNumStr, "testNum = %d", testNum);
+        Test &test = tests[testNum];
+        status = U_ZERO_ERROR;
+        UnicodeString testString(test.fTestString);  // Note: may do charset conversion.
+        testString = testString.unescape();
+        IdentifierInfo idInfo(status);
+        TEST_ASSERT_SUCCESS(status);
+        idInfo.setIdentifierProfile(*uspoof_getRecommendedUnicodeSet(&status));
+        idInfo.setIdentifier(testString, status);
+        TEST_ASSERT_MSG(*idInfo.getIdentifier() == testString, testNumStr);
+
+        URestrictionLevel restrictionLevel = test.fRestrictionLevel;
+        TEST_ASSERT_MSG(restrictionLevel == idInfo.getRestrictionLevel(status), testNumStr);
+        
+        status = U_ZERO_ERROR;
+        UnicodeSet numerics(UnicodeString(test.fNumerics).unescape(), status);
+        TEST_ASSERT_SUCCESS(status);
+        TEST_ASSERT_MSG(numerics == *idInfo.getNumerics(), testNumStr);
+
+        ScriptSet scripts;
+        scripts.parseScripts(UnicodeString(test.fScripts), status);
+        TEST_ASSERT_MSG(scripts == *idInfo.getScripts(), testNumStr);
+
+        UnicodeString alternatesStr;
+        IdentifierInfo::displayAlternates(alternatesStr, idInfo.getAlternates(), status);
+        TEST_ASSERT_MSG(UnicodeString(test.fAlternates) == alternatesStr, testNumStr);
+
+        ScriptSet commonAlternates;
+        commonAlternates.parseScripts(UnicodeString(test.fCommonAlternates), status);
+        TEST_ASSERT_MSG(commonAlternates == *idInfo.getCommonAmongAlternates(), testNumStr);
+    }
+
+    // Test of getScriptCount()
+    //   Script and or Script Extension for chars used in the tests
+    //     \\u3013  ; Bopo Hang Hani Hira Kana # So       GETA MARK
+    //     \\uA838  ; Deva Gujr Guru Kthi Takr # Sc       NORTH INDIC RUPEE MARK
+    //     \\u0951  ; Deva Latn                # Mn       DEVANAGARI STRESS SIGN UDATTA
+    //
+    //     \\u0370  ; Greek                    # L        GREEK CAPITAL LETTER HETA
+    //     \\u0481  ; Cyrillic                 # L&       CYRILLIC SMALL LETTER KOPPA
+    //     \\u0904  ; Devanagari               # Lo       DEVANAGARI LETTER SHORT A
+    //     \\u3041  ; Hiragana                 # Lo       HIRAGANA LETTER SMALL A
+    //     1234     ; Common                   #          ascii digits
+    //     \\u0300  ; Inherited                # Mn       COMBINING GRAVE ACCENT
+    
+    struct ScriptTest {
+        const char *fTestString;
+        int32_t     fScriptCount;
+    } scriptTests[] = {
+        {"Hello", 1},
+        {"Hello\\u0370", 2},
+        {"1234", 0},
+        {"Hello1234\\u0300", 1},   // Common and Inherited are ignored.
+        {"\\u0030", 0},
+        {"abc\\u0951", 1},
+        {"abc\\u3013", 2},
+        {"\\uA838\\u0951", 1},     // Triggers commonAmongAlternates path.
+        {"\\u3013\\uA838", 2}
+    };
+
+    status = U_ZERO_ERROR;
+    IdentifierInfo identifierInfo(status);
+    for (testNum=0; testNum<LENGTHOF(scriptTests); testNum++) {
+        ScriptTest &test = scriptTests[testNum];
+        char msgBuf[100];
+        sprintf(msgBuf, "testNum = %d ", testNum);
+        UnicodeString testString = UnicodeString(test.fTestString).unescape();
+        
+        status = U_ZERO_ERROR;
+        identifierInfo.setIdentifier(testString, status);
+        int32_t scriptCount = identifierInfo.getScriptCount();
+        TEST_ASSERT_MSG(test.fScriptCount == scriptCount, msgBuf);
+    }
+}
+
+void IntlTestSpoof::testScriptSet() {
+    ScriptSet s1;
+    ScriptSet s2;
+    UErrorCode status = U_ZERO_ERROR;
+
+    TEST_ASSERT(s1 == s2);
+    s1.set(USCRIPT_ARABIC,status);
+    TEST_ASSERT_SUCCESS(status);
+    TEST_ASSERT(!(s1 == s2));
+    TEST_ASSERT(s1.test(USCRIPT_ARABIC, status));
+    TEST_ASSERT(s1.test(USCRIPT_GREEK, status) == FALSE);
+
+    status = U_ZERO_ERROR;
+    s1.reset(USCRIPT_ARABIC, status);
+    TEST_ASSERT(s1 == s2);
+
+    status = U_ZERO_ERROR;
+    s1.setAll();
+    TEST_ASSERT(s1.test(USCRIPT_COMMON, status));
+    TEST_ASSERT(s1.test(USCRIPT_ETHIOPIC, status));
+    TEST_ASSERT(s1.test(USCRIPT_CODE_LIMIT, status));
+    s1.resetAll();
+    TEST_ASSERT(!s1.test(USCRIPT_COMMON, status));
+    TEST_ASSERT(!s1.test(USCRIPT_ETHIOPIC, status));
+    TEST_ASSERT(!s1.test(USCRIPT_CODE_LIMIT, status));
+
+    status = U_ZERO_ERROR;
+    s1.set(USCRIPT_TAKRI, status);
+    s1.set(USCRIPT_BLISSYMBOLS, status);
+    s2.setAll();
+    TEST_ASSERT(s2.contains(s1));
+    TEST_ASSERT(!s1.contains(s2));
+    TEST_ASSERT(s2.intersects(s1));
+    TEST_ASSERT(s1.intersects(s2));
+    s2.reset(USCRIPT_TAKRI, status);
+    TEST_ASSERT(!s2.contains(s1));
+    TEST_ASSERT(!s1.contains(s2));
+    TEST_ASSERT(s1.intersects(s2));
+    TEST_ASSERT(s2.intersects(s1));
+    TEST_ASSERT_SUCCESS(status);
+
+    status = U_ZERO_ERROR;
+    s1.resetAll();
+    s1.set(USCRIPT_NKO, status);
+    s1.set(USCRIPT_COMMON, status);
+    s2 = s1;
+    TEST_ASSERT(s2 == s1);
+    TEST_ASSERT_EQ(2, s2.countMembers());
+    s2.intersect(s1);
+    TEST_ASSERT(s2 == s1);
+    s2.setAll();
+    TEST_ASSERT(!(s2 == s1));
+    TEST_ASSERT(s2.countMembers() >= USCRIPT_CODE_LIMIT);
+    s2.intersect(s1);
+    TEST_ASSERT(s2 == s1);
+    
+    s2.setAll();
+    s2.reset(USCRIPT_COMMON, status);
+    s2.intersect(s1);
+    TEST_ASSERT(s2.countMembers() == 1);
+
+    s1.resetAll();
+    s1.set(USCRIPT_AFAKA, status);
+    s1.set(USCRIPT_VAI, status);
+    s1.set(USCRIPT_INHERITED, status);
+    int32_t n = -1;
+    for (int32_t i=0; i<4; i++) {
+        n = s1.nextSetBit(n+1);
+        switch (i) {
+          case 0: TEST_ASSERT_EQ(USCRIPT_INHERITED, n); break;
+          case 1: TEST_ASSERT_EQ(USCRIPT_VAI, n); break;
+          case 2: TEST_ASSERT_EQ(USCRIPT_AFAKA, n); break;
+          case 3: TEST_ASSERT_EQ(-1, (int32_t)n); break;
+          default: TEST_ASSERT(FALSE);
+        }
+    }
+    TEST_ASSERT_SUCCESS(status);
+}
+
+
+void IntlTestSpoof::testRestrictionLevel() {
+    struct Test {
+        const char         *fId;
+        URestrictionLevel   fExpectedRestrictionLevel;
+    } tests[] = {
+        {"\\u0061\\u03B3\\u2665", USPOOF_UNRESTRICTIVE},
+        {"a",                     USPOOF_ASCII},
+        {"\\u03B3",               USPOOF_HIGHLY_RESTRICTIVE},
+        {"\\u0061\\u30A2\\u30FC", USPOOF_HIGHLY_RESTRICTIVE},
+        {"\\u0061\\u0904",        USPOOF_MODERATELY_RESTRICTIVE},
+        {"\\u0061\\u03B3",        USPOOF_MINIMALLY_RESTRICTIVE}
+    };
+    char msgBuffer[100];
+
+    URestrictionLevel restrictionLevels[] = { USPOOF_ASCII, USPOOF_HIGHLY_RESTRICTIVE, 
+         USPOOF_MODERATELY_RESTRICTIVE, USPOOF_MINIMALLY_RESTRICTIVE, USPOOF_UNRESTRICTIVE};
+    
+    UErrorCode status = U_ZERO_ERROR;
+    IdentifierInfo idInfo(status);
+    TEST_ASSERT_SUCCESS(status);
+    idInfo.setIdentifierProfile(*uspoof_getRecommendedUnicodeSet(&status));
+    TEST_ASSERT_SUCCESS(status);
+    for (int32_t testNum=0; testNum < LENGTHOF(tests); testNum++) {
+        status = U_ZERO_ERROR;
+        const Test &test = tests[testNum];
+        UnicodeString testString = UnicodeString(test.fId).unescape();
+        URestrictionLevel expectedLevel = test.fExpectedRestrictionLevel;
+        idInfo.setIdentifier(testString, status);
+        sprintf(msgBuffer, "testNum = %d ", testNum);
+        TEST_ASSERT_SUCCESS(status);
+        TEST_ASSERT_MSG(expectedLevel == idInfo.getRestrictionLevel(status), msgBuffer);
+        for (int levelIndex=0; levelIndex<LENGTHOF(restrictionLevels); levelIndex++) {
+            status = U_ZERO_ERROR;
+            URestrictionLevel levelSetInSpoofChecker = restrictionLevels[levelIndex];
+            USpoofChecker *sc = uspoof_open(&status);
+            uspoof_setChecks(sc, USPOOF_RESTRICTION_LEVEL, &status);
+            uspoof_setAllowedChars(sc, uspoof_getRecommendedSet(&status), &status);
+            uspoof_setRestrictionLevel(sc, levelSetInSpoofChecker);
+            UBool actualValue = uspoof_checkUnicodeString(sc, testString, NULL, &status) != 0;
+
+            // we want to fail if the text is (say) MODERATE and the testLevel is ASCII
+            UBool expectedFailure = expectedLevel > levelSetInSpoofChecker ||
+                                    !uspoof_getRecommendedUnicodeSet(&status)->containsAll(testString);
+            sprintf(msgBuffer, "testNum = %d, levelIndex = %d", testNum, levelIndex);
+            TEST_ASSERT_MSG(expectedFailure == actualValue, msgBuffer);
+            TEST_ASSERT_SUCCESS(status);
+            uspoof_close(sc);
+        }
+    }
+}
+
+
+void IntlTestSpoof::testMixedNumbers() {
+    struct Test {
+        const char *fTestString;
+        const char *fExpectedSet;
+    } tests[] = {
+        {"1",              "[0]"},
+        {"\\u0967",        "[\\u0966]"},
+        {"1\\u0967",       "[0\\u0966]"},
+        {"\\u0661\\u06F1", "[\\u0660\\u06F0]"}
+    };
+    UErrorCode status = U_ZERO_ERROR;
+    IdentifierInfo idInfo(status);
+    for (int32_t testNum=0; testNum < LENGTHOF(tests); testNum++) {
+        char msgBuf[100];
+        sprintf(msgBuf, "testNum = %d ", testNum);
+        Test &test = tests[testNum];
+
+        status = U_ZERO_ERROR;
+        UnicodeString testString = UnicodeString(test.fTestString).unescape();
+        UnicodeSet expectedSet(UnicodeString(test.fExpectedSet).unescape(), status);
+        idInfo.setIdentifier(testString, status);
+        TEST_ASSERT_SUCCESS(status);
+        TEST_ASSERT_MSG(expectedSet == *idInfo.getNumerics(), msgBuf);
+
+        status = U_ZERO_ERROR;
+        USpoofChecker *sc = uspoof_open(&status);
+        uspoof_setChecks(sc, USPOOF_MIXED_NUMBERS, &status); // only check this
+        int32_t result = uspoof_checkUnicodeString(sc, testString, NULL, &status);
+        UBool mixedNumberFailure = ((result & USPOOF_MIXED_NUMBERS) != 0);
+        TEST_ASSERT_MSG((expectedSet.size() > 1) == mixedNumberFailure, msgBuf);
+        uspoof_close(sc);
+    }
+}
+
+#endif /* !UCONFIG_NO_REGULAR_EXPRESSIONS && !UCONFIG_NO_NORMALIZATION && !UCONFIG_NO_FILE_IO */

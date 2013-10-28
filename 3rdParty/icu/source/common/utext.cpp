@@ -1217,14 +1217,10 @@ fillForward:
                 int32_t  cIx      = srcIx;
                 int32_t  dIx      = destIx;
                 int32_t  dIxSaved = destIx;
-                U8_NEXT(s8, srcIx, strLen, c);
+                U8_NEXT_OR_FFFD(s8, srcIx, strLen, c);
                 if (c==0 && nulTerminated) {
                     srcIx--;
                     break;
-                }
-                if (c<0) {
-                    // Illegal UTF-8.  Replace with sub character.
-                    c = 0x0fffd;
                 }
 
                 U16_APPEND_UNSAFE(buf, destIx, c);
@@ -1334,15 +1330,11 @@ fillReverse:
                 int32_t  sIx      = srcIx;  // ix of last byte of multi-byte u8 char
 
                 // Get the full character from the UTF8 string.
-                //   use code derived from tbe macros in utf.8
+                //   use code derived from tbe macros in utf8.h
                 //   Leaves srcIx pointing at the first byte of the UTF-8 char.
                 //
-                if (c<=0xbf) {
-                    c=utf8_prevCharSafeBody(s8, 0, &srcIx, c, -1);
-                    // leaves srcIx at first byte of the multi-byte char.
-                } else {
-                    c=0x0fffd;
-                }
+                c=utf8_prevCharSafeBody(s8, 0, &srcIx, c, -3);
+                // leaves srcIx at first byte of the multi-byte char.
 
                 // Store the character in UTF-16 buffer.
                 if (c<0x10000) {
@@ -1415,10 +1407,7 @@ utext_strFromUTF8(UChar *dest,
         if(ch <=0x7f){
             *pDest++=(UChar)ch;
         }else{
-            ch=utf8_nextCharSafeBody(pSrc, &index, srcLength, ch, -1);
-            if(ch<0){
-                ch = 0xfffd;
-            }
+            ch=utf8_nextCharSafeBody(pSrc, &index, srcLength, ch, -3);
             if(U_IS_BMP(ch)){
                 *(pDest++)=(UChar)ch;
             }else{
@@ -1438,10 +1427,7 @@ utext_strFromUTF8(UChar *dest,
         if(ch <= 0x7f){
             reqLength++;
         }else{
-            ch=utf8_nextCharSafeBody(pSrc, &index, srcLength, ch, -1);
-            if(ch<0){
-                ch = 0xfffd;
-            }
+            ch=utf8_nextCharSafeBody(pSrc, &index, srcLength, ch, -3);
             reqLength+=U16_LENGTH(ch);
         }
     }
