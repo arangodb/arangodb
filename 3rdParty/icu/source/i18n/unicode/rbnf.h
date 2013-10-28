@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 1997-2012, International Business Machines Corporation and others.
+* Copyright (C) 1997-2013, International Business Machines Corporation and others.
 * All Rights Reserved.
 *******************************************************************************
 */
@@ -808,50 +808,7 @@ public:
                                 FieldPosition& pos,
                                 UErrorCode& status) const;
 
-  /**
-   * Formats the specified number using the default ruleset.
-   * @param obj The number to format.
-   * @param toAppendTo the string that will hold the (appended) result
-   * @param pos the fieldposition
-   * @param status the status
-   * @return A textual representation of the number.
-   * @stable ICU 2.0
-   */
-  virtual UnicodeString& format(const Formattable& obj,
-                                UnicodeString& toAppendTo,
-                                FieldPosition& pos,
-                                UErrorCode& status) const;
-  /**
-   * Redeclared Format method.
-   * @param obj    the object to be formatted.
-   * @param result Output param which will receive the formatted string.
-   * @param status Output param set to success/failure code
-   * @return       A reference to 'result'.
-   * @stable ICU 2.0
-   */
-  UnicodeString& format(const Formattable& obj,
-                        UnicodeString& result,
-                        UErrorCode& status) const;
-
-  /**
-   * Redeclared NumberFormat method.
-   * @param number    the double value to be formatted.
-   * @param output    Output param which will receive the formatted string.
-   * @return          A reference to 'output'.
-   * @stable ICU 2.0
-   */
-   UnicodeString& format(double number,
-                         UnicodeString& output) const;
-
-  /**
-   * Redeclared NumberFormat method.
-   * @param number    the long value to be formatted.
-   * @param output    Output param which will receive the formatted string.
-   * @return          A reference to 'output'.
-   * @stable ICU 2.0
-   */
-   UnicodeString& format(int32_t number,
-                         UnicodeString& output) const;
+  using NumberFormat::parse;
 
   /**
    * Parses the specfied string, beginning at the specified position, according
@@ -870,18 +827,6 @@ public:
   virtual void parse(const UnicodeString& text,
                      Formattable& result,
                      ParsePosition& parsePosition) const;
-
-
-  /**
-   * Redeclared Format method.
-   * @param text   The string to parse
-   * @param result the result of the parse, either a double or a long.
-   * @param status Output param set to failure code when a problem occurs.
-   * @stable ICU 2.0
-   */
-  virtual inline void parse(const UnicodeString& text,
-                      Formattable& result,
-                      UErrorCode& status) const;
 
 #if !UCONFIG_NO_COLLATION
 
@@ -970,7 +915,7 @@ public:
      * symbolsToAdopt; the client must not delete it.
      *
      * @param symbolsToAdopt DecimalFormatSymbols to be adopted.
-     * @draft ICU 49
+     * @stable ICU 49
      */
     virtual void adoptDecimalFormatSymbols(DecimalFormatSymbols* symbolsToAdopt);
 
@@ -981,7 +926,7 @@ public:
      * deleting it.
      *
      * @param symbols DecimalFormatSymbols.
-     * @draft ICU 49
+     * @stable ICU 49
      */
     virtual void setDecimalFormatSymbols(const DecimalFormatSymbols& symbols);
 
@@ -1023,37 +968,6 @@ private:
 };
 
 // ---------------
-
-inline UnicodeString&
-RuleBasedNumberFormat::format(const Formattable& obj,
-                              UnicodeString& result,
-                              UErrorCode& status) const
-{
-    // Don't use Format:: - use immediate base class only,
-    // in case immediate base modifies behavior later.
-    // dlf - the above comment is bogus, if there were a reason to modify
-    // it, it would be virtual, and there's no reason because it is
-    // a one-line macro in NumberFormat anyway, just like this one.
-    return NumberFormat::format(obj, result, status);
-}
-
-inline UnicodeString&
-RuleBasedNumberFormat::format(double number, UnicodeString& output) const {
-    FieldPosition pos(0);
-    return format(number, output, pos);
-}
-
-inline UnicodeString&
-RuleBasedNumberFormat::format(int32_t number, UnicodeString& output) const {
-    FieldPosition pos(0);
-    return format(number, output, pos);
-}
-
-inline void
-RuleBasedNumberFormat::parse(const UnicodeString& text, Formattable& result, UErrorCode& status) const
-{
-    NumberFormat::parse(text, result, status);
-}
 
 #if !UCONFIG_NO_COLLATION
 

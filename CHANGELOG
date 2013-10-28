@@ -1,3 +1,49 @@
+v1.4.0 (2013-10-28)
+-------------------
+
+* issue #643: Some minor corrections and a link to "Downloads" by @frankmayer
+
+* fixed issue #639: compiling v1.4 on maverick produces warnings on 
+  -Wstrict-null-sentinel 
+
+* added function to manage indexes (web interface)
+
+* improved server shutdown time by signalling shutdown to applicationserver,
+  logging, cleanup and compactor threads
+
+* added foxx-manager `replace` command
+
+* added foxx-manager `installed` command (a more intuitive alias for `list`) 
+
+* fixed issue #617: Swagger API is missing '/_api/version'
+
+* fixed issue #615: Swagger API: Some commands have no parameter entry forms
+
+* fixed issue #614: API : Typo in : Request URL /_api/database/current
+
+* fixed issue #609: Graph viz tool - different background color 
+
+* fixed issue #608: arangosh config files - eventually missing in the manual
+
+* fixed issue #607: Admin interface: no core documentation
+
+* fixed issue #603: Aardvark Foxx App Manager 
+
+* fixed a bug in type-mapping between AQL user functions and the AQL layer
+
+  The bug caused errors like the following when working with collection documents
+  in an AQL user function:
+
+      TypeError: Cannot assign to read only property '_id' of #<ShapedJson>
+
+* create less system collections when creating a new database
+
+  This is achieved by deferring collection creation until the collections are actually
+  needed by ArangoDB. The following collections are affected by the change:
+  - `_fishbowl`
+  - `_structures`
+
+
 v1.4.0-beta2 (2013-10-14)
 -------------------------
 

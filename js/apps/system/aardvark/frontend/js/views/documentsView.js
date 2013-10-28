@@ -27,6 +27,7 @@ var documentsView = Backbone.View.extend({
     "click #collectionPrev"      : "prevCollection",
     "click #collectionNext"      : "nextCollection",
     "click #filterCollection"    : "filterCollection",
+    "click #indexCollection"     : "indexCollection",
     "click #importCollection"    : "importCollection",
     "click #filterSend"          : "sendFilter",
     "click #addFilterItem"       : "addFilterItem",
@@ -46,7 +47,14 @@ var documentsView = Backbone.View.extend({
     "keydown .filterValue"       : "filterValueKeydown",
     "click #importModal"         : "showImportModal",
     "click #resetView"           : "resetView",
-    "click #confirmDocImport"    : "startUpload"
+    "click #confirmDocImport"    : "startUpload",
+    "change #newIndexType"       : "selectIndexType",
+    "click #createIndex"         : "createIndex",
+    "click .deleteIndex"         : "prepDeleteIndex",
+    "click #confirmDeleteIndexBtn"    : "deleteIndex",
+    "click #documentsToolbar ul"      : "resetIndexForms",
+    "click #indexHeader #addIndex"    :    "toggleNewIndexView",
+    "click #indexHeader #cancelIndex" :    "toggleNewIndexView"
   },
 
   showSpinner: function() {
@@ -72,7 +80,11 @@ var documentsView = Backbone.View.extend({
       }
     }
   },
-
+  toggleNewIndexView: function () {
+    $('#indexEditView').toggle("fast");
+    $('#newIndexView').toggle("fast");
+    this.resetIndexForms();
+  },
   nop: function(event) {
     event.stopPropagation();
   },
@@ -130,11 +142,11 @@ var documentsView = Backbone.View.extend({
 
               if (data.errors === 0) {
                 arangoHelper.arangoError("Upload successful. " + 
-                                                data.created + " document(s) imported.");
+                                         data.created + " document(s) imported.");
               }
               else if (data.errors !== 0) {
                 arangoHelper.arangoError("Upload failed." + 
-                                                data.errors + "error(s).");
+                                         data.errors + "error(s).");
               }
               self.hideSpinner();
               self.hideImportModal();
@@ -197,6 +209,7 @@ var documentsView = Backbone.View.extend({
   filterCollection : function () {
     $('#filterHeader').slideToggle(200);
     $('#importHeader').hide();
+    $('#indexHeader').hide();
 
     var i;
     for (i in this.filters) {
@@ -210,6 +223,16 @@ var documentsView = Backbone.View.extend({
   importCollection: function () {
     $('#importHeader').slideToggle(200);
     $('#filterHeader').hide();
+    $('#indexHeader').hide();
+  },
+
+  indexCollection: function () {
+    $('#newIndexView').hide();
+    $('#indexEditView').show();
+    $('#indexHeader').slideToggle(200);
+    $('#importHeader').hide();
+    $('#filterHeader').hide();
+
   },
 
   getFilterContent: function () {
@@ -257,20 +280,22 @@ var documentsView = Backbone.View.extend({
 
     var num = ++this.filterId;
     $('#filterHeader').append(' <div class="queryline querylineAdd">'+
-       '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
-       '<select name="operator" id="operator' + num + '">'+
-       '    <option value="==">==</option>'+
-       '    <option value="!=">!=</option>'+
-       '    <option value="&lt;">&lt;</option>'+
-       '    <option value="&lt;=">&lt;=</option>'+
-       '    <option value="&gt;=">&gt;=</option>'+
-       '    <option value="&gt;">&gt;</option>'+
-       '</select>'+
-       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" ' + 
-       'class="filterValue">'+
-       ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-       '<i class="icon icon-minus icon-white"></i></a>'+
-       ' <span>AND</span></div>');
+                              '<input id="attribute_name' + num + 
+                              '" type="text" placeholder="Attribute name">'+
+                              '<select name="operator" id="operator' + num + '">'+
+                              '    <option value="==">==</option>'+
+                              '    <option value="!=">!=</option>'+
+                              '    <option value="&lt;">&lt;</option>'+
+                              '    <option value="&lt;=">&lt;=</option>'+
+                              '    <option value="&gt;=">&gt;=</option>'+
+                              '    <option value="&gt;">&gt;</option>'+
+                              '</select>'+
+                              '<input id="attribute_value' + num + 
+                              '" type="text" placeholder="Attribute value" ' + 
+                              'class="filterValue">'+
+                              ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
+                              '<i class="icon icon-minus icon-white"></i></a>'+
+                              ' <span>AND</span></div>');
     this.filters[num] = true;
   },
 
@@ -473,15 +498,15 @@ var documentsView = Backbone.View.extend({
     var self = this;
 
     /*
-    if (this.addDocumentSwitch === true) {
-      $(self.table).dataTable().fnAddData(
-        [
-          '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-          '',
-          '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
-        ]
-      );
-    }*/
+       if (this.addDocumentSwitch === true) {
+       $(self.table).dataTable().fnAddData(
+       [
+       '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+       '',
+       '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
+       ]
+       );
+       }*/
 
     if (window.arangoDocumentsStore.models.length === 0) {
       $('.dataTables_empty').text('No documents');
@@ -541,6 +566,7 @@ var documentsView = Backbone.View.extend({
     this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
     $(this.el).html(this.template.text);
+    this.getIndex();
     this.initTable();
     this.breadcrumb();
     if (this.collectionContext.prev === null) {
@@ -596,7 +622,7 @@ var documentsView = Backbone.View.extend({
 
           window.documentsView.clearTable();
           window.arangoDocumentsStore.getFilteredDocuments(self.colid, i, filters, bindValues);
-        
+
           //Hide first/last pagination
           $('#documents_last').css("visibility", "hidden");
           $('#documents_first').css("visibility", "hidden");
@@ -624,12 +650,12 @@ var documentsView = Backbone.View.extend({
         }
   },
   breadcrumb: function () {
-    var name = window.location.hash.split("/")[1];
+    this.collectionName = window.location.hash.split("/")[1];
     $('#transparentHeader').append(
       '<div class="breadcrumb">'+
-      '<a class="activeBread" href="#">Collections</a>'+
+      '<a class="activeBread" href="#collections">Collections</a>'+
       '  &gt;  '+
-      '<a class="disabledBread">'+name+'</a>'+
+      '<a class="disabledBread">'+this.collectionName+'</a>'+
       '</div>'
     );
   },
@@ -642,6 +668,168 @@ var documentsView = Backbone.View.extend({
   escaped: function (value) {
     return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
+  },
+  resetIndexForms: function () {
+    $('#indexHeader input').val('').prop("checked", false);
+    $('#newIndexType').val('Cap').prop('selected',true);
+  },
+  stringToArray: function (fieldString) {
+    var fields = [];
+    fieldString.split(',').forEach(function(field){
+      field = field.replace(/(^\s+|\s+$)/g,'');
+      if (field !== '') {
+        fields.push(field);
+      }
+    });
+    return fields;
+  },
+  createIndex: function (e) {
+    //e.preventDefault();
+    var self = this;
+    var collection = this.collectionName;
+    var indexType = $('#newIndexType').val();
+    var result;
+    var postParameter = {};
+    var fields;
+    var unique;
 
+    switch(indexType) {
+      case 'Cap':
+        var size = parseInt($('#newCapSize').val(), 10) || 0;
+        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
+        postParameter = {
+          type: 'cap',
+          size: size,
+          byteSize: byteSize
+        };
+        break;
+      case 'Geo':
+        //HANDLE ARRAY building
+        fields = $('#newGeoFields').val();
+        var geoJson = self.checkboxToValue('#newGeoJson');
+        var constraint = self.checkboxToValue('#newGeoConstraint');
+        var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
+        postParameter = {
+          type: 'geo',
+          fields: self.stringToArray(fields),
+          geoJson: geoJson,
+          constraint: constraint,
+          ignoreNull: ignoreNull
+        };
+        break;
+      case 'Hash':
+        fields = $('#newHashFields').val();
+        unique = self.checkboxToValue('#newHashUnique');
+        postParameter = {
+          type: 'hash',
+          fields: self.stringToArray(fields),
+          unique: unique
+        };
+        break;
+      case 'Fulltext':
+        fields = ($('#newFulltextFields').val());
+        var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
+        postParameter = {
+          type: 'fulltext',
+          fields: self.stringToArray(fields),
+          minLength: minLength
+        };
+        break;
+      case 'Skiplist':
+        fields = $('#newSkiplistFields').val();
+        unique = self.checkboxToValue('#newSkiplistUnique');
+        postParameter = {
+          type: 'skiplist',
+          fields: self.stringToArray(fields),
+          unique: unique
+        };
+        break;
+    }
+    result = window.arangoCollectionsStore.createIndex(collection, postParameter);
+    if (result === true) {
+      $('#collectionEditIndexTable tr').remove();
+      self.getIndex();
+      self.toggleNewIndexView();
+      self.resetIndexForms();
+    }
+    else {
+      if (result.responseText) {
+        var message = JSON.parse(result.responseText);
+        arangoHelper.arangoNotification(message.errorMessage);
+      }
+      else {
+        arangoHelper.arangoNotification("Could not create index.");
+      }
+    }
+  },
+
+  prepDeleteIndex: function (e) {
+    this.lastTarget = e;
+    this.lastId = $(this.lastTarget.currentTarget).
+                  parent().
+                  parent().
+                  first().
+                  children().
+                  first().
+                  text();
+    $("#indexDeleteModal").modal('show');
+  },
+  deleteIndex: function () {
+    var result = window.arangoCollectionsStore.deleteIndex(this.collectionName, this.lastId);
+    if (result === true) {
+      $(this.lastTarget.currentTarget).parent().parent().remove();
+    }
+    else {
+      arangoHelper.arangoError("Could not delete index");
+    }
+    $("#indexDeleteModal").modal('hide');
+  },
+  selectIndexType: function () {
+    $('.newIndexClass').hide();
+    var type = $('#newIndexType').val();
+    $('#newIndexType'+type).show();
+  },
+  checkboxToValue: function (id) {
+    var checked = $(id).is('checked');
+    return checked;
+  },
+  getIndex: function () {
+    this.index = window.arangoCollectionsStore.getIndex(this.collectionID, true);
+    var cssClass = 'collectionInfoTh modal-text';
+    if (this.index) {
+      var fieldString = '';
+      var indexId = '';
+      var actionString = '';
+
+      $.each(this.index.indexes, function(k,v) {
+
+        if (v.type === 'primary' || v.type === 'edge') {
+          actionString = '<span class="glyphicon glyphicon-ban-circle" ' +
+            'data-original-title="No action"></span>';
+        }
+        else {
+          actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" ' +
+            'data-original-title="Delete index"></span>';
+        }
+
+        if (v.fields !== undefined) {
+          fieldString = v.fields.join(", ");
+        }
+
+        //cut index id
+        var position = v.id.indexOf('/');
+        var indexId = v.id.substr(position+1, v.id.length);
+
+        $('#collectionEditIndexTable').append(
+          '<tr>'+
+          '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>'+
+          '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>'+
+          '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>'+
+          '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>'+
+          '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>'+
+          '</tr>'
+        );
+      });
+    }
+  }
 });

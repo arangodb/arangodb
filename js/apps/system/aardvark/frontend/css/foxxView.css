@@ -10,16 +10,16 @@
   cursor: pointer;
 }
 
-.foxxElement .glyphicon-edit {
+.foxxElement .glyphicon-info-sign {
   font-size: 18px;
   margin-right: 3px;
   position: absolute;
-  top: 27px;
+  top: 32px;
   right: 1px;
   opacity: 0.7;
 }
 
-.foxxElement .glyphicon-edit:hover {
+.foxxElement .glyphicon-info-sign:hover {
   opacity: 1;
 }
 

@@ -1,9 +1,9 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
-/*   file name:  cbiditst.cpp
+/*   file name:  cbiditst.c
 *   encoding:   US-ASCII
 *   tab size:   8 (not used)
 *   indentation:4
@@ -66,7 +66,13 @@ static void doLOGICALArabicDeShapingTest(void);
 
 static void doArabicShapingTestForBug5421(void);
 
+static void doArabicShapingTestForBug8703(void);
+
+static void doArabicShapingTestForBug9024(void);
+
 static void testReorder(void);
+
+static void testReorderArabicMathSymbols(void);
 
 static void testFailureRecovery(void);
 
@@ -131,6 +137,9 @@ addComplexTest(TestNode** root) {
     addTest(root, doLOGICALArabicDeShapingTest, "complex/arabic-shaping/unshaping");
     addTest(root, doArabicShapingTestForBug5421, "complex/arabic-shaping/bug-5421");
     addTest(root, doTailTest, "complex/arabic-shaping/tailtest");
+    addTest(root, doArabicShapingTestForBug8703, "complex/arabic-shaping/bug-8703");
+    addTest(root, testReorderArabicMathSymbols, "complex/bidi/bug-9024");
+    addTest(root, doArabicShapingTestForBug9024, "complex/arabic-shaping/bug-9024");
 }
 
 static void
@@ -641,8 +650,8 @@ testReorder(void) {
     static const char* const visualOrder[]={
             "del(CK)add(&.C.K)",
             "del(TVDQ) add(LDVB)",
-            "del(QP)add(&.U(T(.S.R",
-            "del(VL)add(&.V.L (.V.L",
+            "del(QP)add(S.R.)&.U(T",            /* updated for Unicode 6.3 matching brackets */
+            "del(VL)add(V.L.) &.V.L",           /* updated for Unicode 6.3 matching brackets */
             "day  0  RVRHDPD  R dayabbr",
             "day  1  ADHDPHPD  H dayabbr",
             "day  2   ADNELBPD  L dayabbr",
@@ -655,8 +664,8 @@ testReorder(void) {
     static const char* const visualOrder1[]={
             ")K.C.&(dda)KC(led",
             ")BVDL(dda )QDVT(led",
-            "R.S.(T(U.&(dda)PQ(led",
-            "L.V.( L.V.&(dda)LV(led",
+            "T(U.&).R.S(dda)PQ(led",            /* updated for Unicode 6.3 matching brackets */
+            "L.V.& ).L.V(dda)LV(led",           /* updated for Unicode 6.3 matching brackets */
             "rbbayad R  DPDHRVR  0  yad",
             "rbbayad H  DPHPDHDA  1  yad",
             "rbbayad L  DPBLENDA   2  yad",
@@ -883,6 +892,134 @@ testReorder(void) {
     ubidi_close(bidi);
 
     log_verbose("\nExiting TestReorder\n\n");
+}
+
+static void
+testReorderArabicMathSymbols(void) {
+    static const UChar logicalOrder[][MAXLEN]={
+        /* Arabic mathematical Symbols 0x1EE00 - 0x1EE1B */
+        {0xD83B, 0xDE00, 0xD83B, 0xDE01, 0xD83B, 0xDE02, 0xD83B, 0xDE03, 0x20,
+        0xD83B, 0xDE24, 0xD83B, 0xDE05, 0xD83B, 0xDE06, 0x20,
+        0xD83B, 0xDE07, 0xD83B, 0xDE08, 0xD83B, 0xDE09, 0x20,
+        0xD83B, 0xDE0A, 0xD83B, 0xDE0B, 0xD83B, 0xDE0C, 0xD83B, 0xDE0D, 0x20,
+        0xD83B, 0xDE0E, 0xD83B, 0xDE0F, 0xD83B, 0xDE10, 0xD83B, 0xDE11, 0x20,
+        0xD83B, 0xDE12, 0xD83B, 0xDE13, 0xD83B, 0xDE14, 0xD83B, 0xDE15, 0x20,
+        0xD83B, 0xDE16, 0xD83B, 0xDE17, 0xD83B, 0xDE18, 0x20,
+        0xD83B, 0xDE19, 0xD83B, 0xDE1A, 0xD83B, 0xDE1B},
+        /* Arabic mathematical Symbols - Looped Symbols, 0x1EE80 - 0x1EE9B */
+        {0xD83B, 0xDE80, 0xD83B, 0xDE81, 0xD83B, 0xDE82, 0xD83B, 0xDE83, 0x20,
+        0xD83B, 0xDE84, 0xD83B, 0xDE85, 0xD83B, 0xDE86, 0x20,
+        0xD83B, 0xDE87, 0xD83B, 0xDE88, 0xD83B, 0xDE89, 0x20,
+        0xD83B, 0xDE8B, 0xD83B, 0xDE8C, 0xD83B, 0xDE8D, 0x20,
+        0xD83B, 0xDE8E, 0xD83B, 0xDE8F, 0xD83B, 0xDE90, 0xD83B, 0xDE91, 0x20,
+        0xD83B, 0xDE92, 0xD83B, 0xDE93, 0xD83B, 0xDE94, 0xD83B, 0xDE95, 0x20,
+        0xD83B, 0xDE96, 0xD83B, 0xDE97, 0xD83B, 0xDE98, 0x20,
+        0xD83B, 0xDE99, 0xD83B, 0xDE9A, 0xD83B, 0xDE9B},
+        /* Arabic mathematical Symbols - Double-struck Symbols, 0x1EEA1 - 0x1EEBB */
+        {0xD83B, 0xDEA1, 0xD83B, 0xDEA2, 0xD83B, 0xDEA3, 0x20,
+        0xD83B, 0xDEA5, 0xD83B, 0xDEA6, 0x20,
+        0xD83B, 0xDEA7, 0xD83B, 0xDEA8, 0xD83B, 0xDEA9, 0x20,
+        0xD83B, 0xDEAB, 0xD83B, 0xDEAC, 0xD83B, 0xDEAD, 0x20,
+        0xD83B, 0xDEAE, 0xD83B, 0xDEAF, 0xD83B, 0xDEB0, 0xD83B, 0xDEB1, 0x20,
+        0xD83B, 0xDEB2, 0xD83B, 0xDEB3, 0xD83B, 0xDEB4, 0xD83B, 0xDEB5, 0x20,
+        0xD83B, 0xDEB6, 0xD83B, 0xDEB7, 0xD83B, 0xDEB8, 0x20,
+        0xD83B, 0xDEB9, 0xD83B, 0xDEBA, 0xD83B, 0xDEBB},
+        /* Arabic mathematical Symbols - Initial Symbols, 0x1EE21 - 0x1EE3B */
+        {0xD83B, 0xDE21, 0xD83B, 0xDE22, 0x20,
+        0xD83B, 0xDE27, 0xD83B, 0xDE29, 0x20,
+        0xD83B, 0xDE2A, 0xD83B, 0xDE2B, 0xD83B, 0xDE2C, 0xD83B, 0xDE2D, 0x20,
+        0xD83B, 0xDE2E, 0xD83B, 0xDE2F, 0xD83B, 0xDE30, 0xD83B, 0xDE31, 0x20,
+        0xD83B, 0xDE32, 0xD83B, 0xDE34, 0xD83B, 0xDE35, 0x20,
+        0xD83B, 0xDE36, 0xD83B, 0xDE37, 0x20,
+        0xD83B, 0xDE39, 0xD83B, 0xDE3B},
+        /* Arabic mathematical Symbols - Tailed Symbols */
+        {0xD83B, 0xDE42, 0xD83B, 0xDE47, 0xD83B, 0xDE49, 0xD83B, 0xDE4B, 0x20,
+        0xD83B, 0xDE4D, 0xD83B, 0xDE4E, 0xD83B, 0xDE4F, 0x20,
+        0xD83B, 0xDE51, 0xD83B, 0xDE52, 0xD83B, 0xDE54, 0xD83B, 0xDE57, 0x20,
+        0xD83B, 0xDE59, 0xD83B, 0xDE5B, 0xD83B, 0xDE5D, 0xD83B, 0xDE5F}
+    };
+    static const UChar visualOrder[][MAXLEN]={
+        /* Arabic mathematical Symbols 0x1EE00 - 0x1EE1B */
+        {0xD83B, 0xDE1B, 0xD83B, 0xDE1A, 0xD83B, 0xDE19, 0x20,
+        0xD83B, 0xDE18, 0xD83B, 0xDE17, 0xD83B, 0xDE16, 0x20,
+        0xD83B, 0xDE15, 0xD83B, 0xDE14, 0xD83B, 0xDE13, 0xD83B, 0xDE12, 0x20,
+        0xD83B, 0xDE11, 0xD83B, 0xDE10, 0xD83B, 0xDE0F, 0xD83B, 0xDE0E, 0x20,
+        0xD83B, 0xDE0D, 0xD83B, 0xDE0C, 0xD83B, 0xDE0B, 0xD83B, 0xDE0A, 0x20,
+        0xD83B, 0xDE09, 0xD83B, 0xDE08, 0xD83B, 0xDE07, 0x20,
+        0xD83B, 0xDE06, 0xD83B, 0xDE05, 0xD83B, 0xDE24, 0x20,
+        0xD83B, 0xDE03, 0xD83B, 0xDE02, 0xD83B, 0xDE01, 0xD83B, 0xDE00},
+        /* Arabic mathematical Symbols - Looped Symbols, 0x1EE80 - 0x1EE9B */
+        {0xD83B, 0xDE9B, 0xD83B, 0xDE9A, 0xD83B, 0xDE99, 0x20,
+        0xD83B, 0xDE98, 0xD83B, 0xDE97, 0xD83B, 0xDE96, 0x20,
+        0xD83B, 0xDE95, 0xD83B, 0xDE94, 0xD83B, 0xDE93, 0xD83B, 0xDE92, 0x20,
+        0xD83B, 0xDE91, 0xD83B, 0xDE90, 0xD83B, 0xDE8F, 0xD83B, 0xDE8E, 0x20,
+        0xD83B, 0xDE8D, 0xD83B, 0xDE8C, 0xD83B, 0xDE8B, 0x20,
+        0xD83B, 0xDE89, 0xD83B, 0xDE88, 0xD83B, 0xDE87, 0x20,
+        0xD83B, 0xDE86, 0xD83B, 0xDE85, 0xD83B, 0xDE84, 0x20,
+        0xD83B, 0xDE83, 0xD83B, 0xDE82, 0xD83B, 0xDE81, 0xD83B, 0xDE80},
+        /* Arabic mathematical Symbols - Double-struck Symbols, 0x1EEA1 - 0x1EEBB */
+        {0xD83B, 0xDEBB, 0xD83B, 0xDEBA, 0xD83B, 0xDEB9, 0x20,
+        0xD83B, 0xDEB8, 0xD83B, 0xDEB7, 0xD83B, 0xDEB6, 0x20,
+        0xD83B, 0xDEB5, 0xD83B, 0xDEB4, 0xD83B, 0xDEB3, 0xD83B, 0xDEB2, 0x20,
+        0xD83B, 0xDEB1, 0xD83B, 0xDEB0, 0xD83B, 0xDEAF, 0xD83B, 0xDEAE, 0x20,
+        0xD83B, 0xDEAD, 0xD83B, 0xDEAC, 0xD83B, 0xDEAB, 0x20,
+        0xD83B, 0xDEA9, 0xD83B, 0xDEA8, 0xD83B, 0xDEA7, 0x20,
+        0xD83B, 0xDEA6, 0xD83B, 0xDEA5, 0x20,
+        0xD83B, 0xDEA3, 0xD83B, 0xDEA2, 0xD83B, 0xDEA1},
+        /* Arabic mathematical Symbols - Initial Symbols, 0x1EE21 - 0x1EE3B */
+        {0xD83B, 0xDE3B, 0xD83B, 0xDE39, 0x20,
+        0xD83B, 0xDE37, 0xD83B, 0xDE36, 0x20,
+        0xD83B, 0xDE35, 0xD83B, 0xDE34, 0xD83B, 0xDE32, 0x20,
+        0xD83B, 0xDE31, 0xD83B, 0xDE30, 0xD83B, 0xDE2F, 0xD83B, 0xDE2E, 0x20,
+        0xD83B, 0xDE2D, 0xD83B, 0xDE2C, 0xD83B, 0xDE2B, 0xD83B, 0xDE2A, 0x20,
+        0xD83B, 0xDE29, 0xD83B, 0xDE27, 0x20,
+        0xD83B, 0xDE22, 0xD83B, 0xDE21},
+        /* Arabic mathematical Symbols - Tailed Symbols */
+        {0xD83B, 0xDE5F, 0xD83B, 0xDE5D, 0xD83B, 0xDE5B, 0xD83B, 0xDE59, 0x20,
+        0xD83B, 0xDE57, 0xD83B, 0xDE54, 0xD83B, 0xDE52, 0xD83B, 0xDE51, 0x20,
+        0xD83B, 0xDE4F, 0xD83B, 0xDE4E, 0xD83B, 0xDE4D, 0x20,
+        0xD83B, 0xDE4B, 0xD83B, 0xDE49, 0xD83B, 0xDE47, 0xD83B, 0xDE42}
+    };
+    char formatChars[MAXLEN];
+    UErrorCode ec = U_ZERO_ERROR;
+    UBiDi* bidi = ubidi_open();
+    int i;
+
+    log_verbose("\nEntering TestReorderArabicMathSymbols\n\n");
+
+    for(i=0;i<LENGTHOF(logicalOrder);i++){
+        int32_t srcSize = u_strlen(logicalOrder[i]);
+        int32_t destSize = srcSize*2;
+        UChar dest[MAXLEN];
+        log_verbose("Testing L2V #1 for case %d\n", i);
+        ec = U_ZERO_ERROR;
+        ubidi_setPara(bidi,logicalOrder[i],srcSize,UBIDI_DEFAULT_LTR ,NULL,&ec);
+        if(U_FAILURE(ec)){
+            log_err("ubidi_setPara(tests[%d], paraLevel %d) failed with errorCode %s\n",
+                    i, UBIDI_DEFAULT_LTR, u_errorName(ec));
+        }
+        /* try pre-flighting */
+        destSize = ubidi_writeReordered(bidi,dest,0,UBIDI_DO_MIRRORING,&ec);
+        if(ec!=U_BUFFER_OVERFLOW_ERROR){
+            log_err("Pre-flighting did not give expected error: Expected: U_BUFFER_OVERFLOW_ERROR. Got: %s \n",u_errorName(ec));
+        }else if(destSize!=srcSize){
+            log_err("Pre-flighting did not give expected size: Expected: %d. Got: %d \n",srcSize,destSize);
+        }else{
+            ec= U_ZERO_ERROR;
+        }
+        destSize=ubidi_writeReordered(bidi,dest,destSize+1,UBIDI_DO_MIRRORING,&ec);
+        if(destSize!=srcSize){
+            log_err("ubidi_writeReordered() destSize and srcSize do not match\n");
+        }else if(memcmp(dest, visualOrder[i], destSize*U_SIZEOF_UCHAR)!=0){
+            log_err("ubidi_writeReordered() did not give expected results for UBIDI_DO_MIRRORING.\n"
+                    "Input   : %s\nExpected: %s\nGot     : %s\nLevels  : %s\nAt Index: %d\n",
+                    logicalOrder[i],visualOrder[i],dest,formatLevels(bidi, formatChars),i);
+        }
+    }
+
+    ubidi_close(bidi);
+
+    log_verbose("\nExiting TestReorderArabicMathSymbols\n\n");
 }
 
 static void
@@ -1529,8 +1666,8 @@ static void doMisc(void) {
     srcLen = u_unescape("A\\u202a\\u05d0\\u202aC\\u202c\\u05d1\\u202cE", src, MAXLEN);
     ubidi_setPara(bidi, src, srcLen, UBIDI_MAX_EXPLICIT_LEVEL - 1, NULL, &errorCode);
     level = ubidi_getLevelAt(bidi, 2);
-    if (level != 61) {
-        log_err("\nWrong level at index 2\n, should be 61, got %d\n", level);
+    if (level != UBIDI_MAX_EXPLICIT_LEVEL) {
+        log_err("\nWrong level at index 2\n, should be %d, got %d\n", UBIDI_MAX_EXPLICIT_LEVEL, level);
     }
     RETURN_IF_BAD_ERRCODE("#24#");
 
@@ -2773,7 +2910,7 @@ doTailTest(void) {
   UChar dst[3] = { 0x0000, 0x0000,0 };
   int32_t length;
   UErrorCode status;
-  
+
   log_verbose("SRC: U+%04X U+%04X\n", src[0],src[1]);
 
   log_verbose("Trying old tail\n");
@@ -2781,7 +2918,7 @@ doTailTest(void) {
   length = u_shapeArabic(src, -1, dst, LENGTHOF(dst),
                          U_SHAPE_LETTERS_SHAPE|U_SHAPE_SEEN_TWOCELL_NEAR, &status);
   if(U_FAILURE(status)) {
-    log_err("Fail: status %s\n", u_errorName(status)); 
+    log_err("Fail: status %s\n", u_errorName(status));
   } else if(length!=2) {
     log_err("Fail: len %d expected 3\n", length);
   } else if(u_strncmp(dst,dst_old,LENGTHOF(dst))) {
@@ -2798,7 +2935,7 @@ doTailTest(void) {
   length = u_shapeArabic(src, -1, dst, LENGTHOF(dst),
                          U_SHAPE_LETTERS_SHAPE|U_SHAPE_SEEN_TWOCELL_NEAR|U_SHAPE_TAIL_NEW_UNICODE, &status);
   if(U_FAILURE(status)) {
-    log_err("Fail: status %s\n", u_errorName(status)); 
+    log_err("Fail: status %s\n", u_errorName(status));
   } else if(length!=2) {
     log_err("Fail: len %d expected 3\n", length);
   } else if(u_strncmp(dst,dst_new,LENGTHOF(dst))) {
@@ -2883,6 +3020,297 @@ doArabicShapingTestForBug5421(void) {
     if(U_FAILURE(errorCode) || length!=LENGTHOF(untouched_presentation_r) || memcmp(dest, untouched_presentation_r, length*U_SIZEOF_UCHAR)!=0) {
         log_err("failure in u_shapeArabic(untouched_presentation_r)\n");
     }
+}
+
+static void
+doArabicShapingTestForBug8703(void) {
+    static const UChar
+    letters_source1[]={
+        0x0634,0x0651,0x0645,0x0652,0x0633
+    }, letters_source2[]={
+        0x0634,0x0651,0x0645,0x0652,0x0633
+    }, letters_source3[]={
+       0x0634,0x0651,0x0645,0x0652,0x0633
+    }, letters_source4[]={
+        0x0634,0x0651,0x0645,0x0652,0x0633
+    }, letters_source5[]={
+        0x0633,0x0652,0x0645,0x0651,0x0634
+    }, letters_source6[]={
+        0x0633,0x0652,0x0645,0x0651,0x0634
+    }, letters_source7[]={
+        0x0633,0x0652,0x0645,0x0651,0x0634
+    }, letters_source8[]={
+        0x0633,0x0652,0x0645,0x0651,0x0634
+    }, letters_dest1[]={
+        0x0020,0xFEB7,0xFE7D,0xFEE4,0xFEB2
+    }, letters_dest2[]={
+        0xFEB7,0xFE7D,0xFEE4,0xFEB2,0x0020
+    }, letters_dest3[]={
+        0xFEB7,0xFE7D,0xFEE4,0xFEB2
+    }, letters_dest4[]={
+        0xFEB7,0xFE7D,0xFEE4,0x0640,0xFEB2
+    }, letters_dest5[]={
+        0x0020,0xFEB2,0xFEE4,0xFE7D,0xFEB7
+    }, letters_dest6[]={
+        0xFEB2,0xFEE4,0xFE7D,0xFEB7,0x0020
+    }, letters_dest7[]={
+        0xFEB2,0xFEE4,0xFE7D,0xFEB7
+    }, letters_dest8[]={
+        0xFEB2,0x0640,0xFEE4,0xFE7D,0xFEB7
+    };
+
+    UChar dest[20];
+    UErrorCode errorCode;
+    int32_t length;
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source1, LENGTHOF(letters_source1),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_BEGIN | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest1) || memcmp(dest, letters_dest1, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source1)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source2, LENGTHOF(letters_source2),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_END | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest2) || memcmp(dest, letters_dest2, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source2)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source3, LENGTHOF(letters_source3),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_RESIZE | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest3) || memcmp(dest, letters_dest3, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source3)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source4, LENGTHOF(letters_source4),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_REPLACE_BY_TATWEEL | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest4) || memcmp(dest, letters_dest4, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source4)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source5, LENGTHOF(letters_source5),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_LTR | U_SHAPE_TASHKEEL_BEGIN | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest5) || memcmp(dest, letters_dest5, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source5)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source6, LENGTHOF(letters_source6),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_LTR | U_SHAPE_TASHKEEL_END | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest6) || memcmp(dest, letters_dest6, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source6)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source7, LENGTHOF(letters_source7),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_LTR | U_SHAPE_TASHKEEL_RESIZE | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest7) || memcmp(dest, letters_dest7, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source7)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source8, LENGTHOF(letters_source8),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_LTR | U_SHAPE_TASHKEEL_REPLACE_BY_TATWEEL | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest8) || memcmp(dest, letters_dest8, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source8)\n");
+    }
+}
+
+static void
+doArabicShapingTestForBug9024(void) {
+    static const UChar
+    letters_source1[]={  /* Arabic mathematical Symbols 0x1EE00 - 0x1EE1B */
+        0xD83B, 0xDE00, 0xD83B, 0xDE01, 0xD83B, 0xDE02, 0xD83B, 0xDE03, 0x20,
+        0xD83B, 0xDE24, 0xD83B, 0xDE05, 0xD83B, 0xDE06, 0x20,
+        0xD83B, 0xDE07, 0xD83B, 0xDE08, 0xD83B, 0xDE09, 0x20,
+        0xD83B, 0xDE0A, 0xD83B, 0xDE0B, 0xD83B, 0xDE0C, 0xD83B, 0xDE0D, 0x20,
+        0xD83B, 0xDE0E, 0xD83B, 0xDE0F, 0xD83B, 0xDE10, 0xD83B, 0xDE11, 0x20,
+        0xD83B, 0xDE12, 0xD83B, 0xDE13, 0xD83B, 0xDE14, 0xD83B, 0xDE15, 0x20,
+        0xD83B, 0xDE16, 0xD83B, 0xDE17, 0xD83B, 0xDE18, 0x20,
+        0xD83B, 0xDE19, 0xD83B, 0xDE1A, 0xD83B, 0xDE1B
+    }, letters_source2[]={/* Arabic mathematical Symbols - Looped Symbols, 0x1EE80 - 0x1EE9B */
+        0xD83B, 0xDE80, 0xD83B, 0xDE81, 0xD83B, 0xDE82, 0xD83B, 0xDE83, 0x20,
+        0xD83B, 0xDE84, 0xD83B, 0xDE85, 0xD83B, 0xDE86, 0x20,
+        0xD83B, 0xDE87, 0xD83B, 0xDE88, 0xD83B, 0xDE89, 0x20,
+        0xD83B, 0xDE8B, 0xD83B, 0xDE8C, 0xD83B, 0xDE8D, 0x20,
+        0xD83B, 0xDE8E, 0xD83B, 0xDE8F, 0xD83B, 0xDE90, 0xD83B, 0xDE91, 0x20,
+        0xD83B, 0xDE92, 0xD83B, 0xDE93, 0xD83B, 0xDE94, 0xD83B, 0xDE95, 0x20,
+        0xD83B, 0xDE96, 0xD83B, 0xDE97, 0xD83B, 0xDE98, 0x20,
+        0xD83B, 0xDE99, 0xD83B, 0xDE9A, 0xD83B, 0xDE9B
+    }, letters_source3[]={/* Arabic mathematical Symbols - Double-struck Symbols, 0x1EEA1 - 0x1EEBB */
+        0xD83B, 0xDEA1, 0xD83B, 0xDEA2, 0xD83B, 0xDEA3, 0x20,
+        0xD83B, 0xDEA5, 0xD83B, 0xDEA6, 0x20,
+        0xD83B, 0xDEA7, 0xD83B, 0xDEA8, 0xD83B, 0xDEA9, 0x20,
+        0xD83B, 0xDEAB, 0xD83B, 0xDEAC, 0xD83B, 0xDEAD, 0x20,
+        0xD83B, 0xDEAE, 0xD83B, 0xDEAF, 0xD83B, 0xDEB0, 0xD83B, 0xDEB1, 0x20,
+        0xD83B, 0xDEB2, 0xD83B, 0xDEB3, 0xD83B, 0xDEB4, 0xD83B, 0xDEB5, 0x20,
+        0xD83B, 0xDEB6, 0xD83B, 0xDEB7, 0xD83B, 0xDEB8, 0x20,
+        0xD83B, 0xDEB9, 0xD83B, 0xDEBA, 0xD83B, 0xDEBB
+    }, letters_source4[]={/* Arabic mathematical Symbols - Initial Symbols, 0x1EE21 - 0x1EE3B */
+        0xD83B, 0xDE21, 0xD83B, 0xDE22, 0x20,
+        0xD83B, 0xDE27, 0xD83B, 0xDE29, 0x20,
+        0xD83B, 0xDE2A, 0xD83B, 0xDE2B, 0xD83B, 0xDE2C, 0xD83B, 0xDE2D, 0x20,
+        0xD83B, 0xDE2E, 0xD83B, 0xDE2F, 0xD83B, 0xDE30, 0xD83B, 0xDE31, 0x20,
+        0xD83B, 0xDE32, 0xD83B, 0xDE34, 0xD83B, 0xDE35, 0x20,
+        0xD83B, 0xDE36, 0xD83B, 0xDE37, 0x20,
+        0xD83B, 0xDE39, 0xD83B, 0xDE3B
+    }, letters_source5[]={/* Arabic mathematical Symbols - Tailed Symbols */
+        0xD83B, 0xDE42, 0xD83B, 0xDE47, 0xD83B, 0xDE49, 0xD83B, 0xDE4B, 0x20,
+        0xD83B, 0xDE4D, 0xD83B, 0xDE4E, 0xD83B, 0xDE4F, 0x20,
+        0xD83B, 0xDE51, 0xD83B, 0xDE52, 0xD83B, 0xDE54, 0xD83B, 0xDE57, 0x20,
+        0xD83B, 0xDE59, 0xD83B, 0xDE5B, 0xD83B, 0xDE5D, 0xD83B, 0xDE5F
+    }, letters_source6[]={/* Arabic mathematical Symbols - Stretched Symbols with 06 range */
+        0xD83B, 0xDE21, 0x0633, 0xD83B, 0xDE62, 0x0647
+    }, letters_dest1[]={
+        0xD83B, 0xDE00, 0xD83B, 0xDE01, 0xD83B, 0xDE02, 0xD83B, 0xDE03, 0x20,
+        0xD83B, 0xDE24, 0xD83B, 0xDE05, 0xD83B, 0xDE06, 0x20,
+        0xD83B, 0xDE07, 0xD83B, 0xDE08, 0xD83B, 0xDE09, 0x20,
+        0xD83B, 0xDE0A, 0xD83B, 0xDE0B, 0xD83B, 0xDE0C, 0xD83B, 0xDE0D, 0x20,
+        0xD83B, 0xDE0E, 0xD83B, 0xDE0F, 0xD83B, 0xDE10, 0xD83B, 0xDE11, 0x20,
+        0xD83B, 0xDE12, 0xD83B, 0xDE13, 0xD83B, 0xDE14, 0xD83B, 0xDE15, 0x20,
+        0xD83B, 0xDE16, 0xD83B, 0xDE17, 0xD83B, 0xDE18, 0x20,
+        0xD83B, 0xDE19, 0xD83B, 0xDE1A, 0xD83B, 0xDE1B
+    }, letters_dest2[]={
+        0xD83B, 0xDE80, 0xD83B, 0xDE81, 0xD83B, 0xDE82, 0xD83B, 0xDE83, 0x20,
+        0xD83B, 0xDE84, 0xD83B, 0xDE85, 0xD83B, 0xDE86, 0x20,
+        0xD83B, 0xDE87, 0xD83B, 0xDE88, 0xD83B, 0xDE89, 0x20,
+        0xD83B, 0xDE8B, 0xD83B, 0xDE8C, 0xD83B, 0xDE8D, 0x20,
+        0xD83B, 0xDE8E, 0xD83B, 0xDE8F, 0xD83B, 0xDE90, 0xD83B, 0xDE91, 0x20,
+        0xD83B, 0xDE92, 0xD83B, 0xDE93, 0xD83B, 0xDE94, 0xD83B, 0xDE95, 0x20,
+        0xD83B, 0xDE96, 0xD83B, 0xDE97, 0xD83B, 0xDE98, 0x20,
+        0xD83B, 0xDE99, 0xD83B, 0xDE9A, 0xD83B, 0xDE9B
+    }, letters_dest3[]={
+        0xD83B, 0xDEA1, 0xD83B, 0xDEA2, 0xD83B, 0xDEA3, 0x20,
+        0xD83B, 0xDEA5, 0xD83B, 0xDEA6, 0x20,
+        0xD83B, 0xDEA7, 0xD83B, 0xDEA8, 0xD83B, 0xDEA9, 0x20,
+        0xD83B, 0xDEAB, 0xD83B, 0xDEAC, 0xD83B, 0xDEAD, 0x20,
+        0xD83B, 0xDEAE, 0xD83B, 0xDEAF, 0xD83B, 0xDEB0, 0xD83B, 0xDEB1, 0x20,
+        0xD83B, 0xDEB2, 0xD83B, 0xDEB3, 0xD83B, 0xDEB4, 0xD83B, 0xDEB5, 0x20,
+        0xD83B, 0xDEB6, 0xD83B, 0xDEB7, 0xD83B, 0xDEB8, 0x20,
+        0xD83B, 0xDEB9, 0xD83B, 0xDEBA, 0xD83B, 0xDEBB
+    }, letters_dest4[]={
+        0xD83B, 0xDE21, 0xD83B, 0xDE22, 0x20,
+        0xD83B, 0xDE27, 0xD83B, 0xDE29, 0x20,
+        0xD83B, 0xDE2A, 0xD83B, 0xDE2B, 0xD83B, 0xDE2C, 0xD83B, 0xDE2D, 0x20,
+        0xD83B, 0xDE2E, 0xD83B, 0xDE2F, 0xD83B, 0xDE30, 0xD83B, 0xDE31, 0x20,
+        0xD83B, 0xDE32, 0xD83B, 0xDE34, 0xD83B, 0xDE35, 0x20,
+        0xD83B, 0xDE36, 0xD83B, 0xDE37, 0x20,
+        0xD83B, 0xDE39, 0xD83B, 0xDE3B
+    }, letters_dest5[]={
+        0xD83B, 0xDE42, 0xD83B, 0xDE47, 0xD83B, 0xDE49, 0xD83B, 0xDE4B, 0x20,
+        0xD83B, 0xDE4D, 0xD83B, 0xDE4E, 0xD83B, 0xDE4F, 0x20,
+        0xD83B, 0xDE51, 0xD83B, 0xDE52, 0xD83B, 0xDE54, 0xD83B, 0xDE57, 0x20,
+        0xD83B, 0xDE59, 0xD83B, 0xDE5B, 0xD83B, 0xDE5D, 0xD83B, 0xDE5F
+    }, letters_dest6[]={
+        0xD83B, 0xDE21, 0xFEB1, 0xD83B, 0xDE62, 0xFEE9
+    };
+
+    UChar dest[MAXLEN];
+    UErrorCode errorCode;
+    int32_t length;
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source1, LENGTHOF(letters_source1),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_BEGIN | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest1) || memcmp(dest, letters_dest1, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source1)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source2, LENGTHOF(letters_source2),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_END | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest2) || memcmp(dest, letters_dest2, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source2)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source3, LENGTHOF(letters_source3),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_RESIZE | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest3) || memcmp(dest, letters_dest3, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source3)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source4, LENGTHOF(letters_source4),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_RTL | U_SHAPE_TASHKEEL_REPLACE_BY_TATWEEL | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest4) || memcmp(dest, letters_dest4, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source4)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source5, LENGTHOF(letters_source5),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_LTR | U_SHAPE_TASHKEEL_BEGIN | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest5) || memcmp(dest, letters_dest5, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source5)\n");
+    }
+
+    errorCode=U_ZERO_ERROR;
+
+    length=u_shapeArabic(letters_source6, LENGTHOF(letters_source6),
+                         dest, LENGTHOF(dest),
+                         U_SHAPE_TEXT_DIRECTION_VISUAL_LTR | U_SHAPE_TASHKEEL_END | U_SHAPE_LETTERS_SHAPE,
+                         &errorCode);
+
+    if(U_FAILURE(errorCode) || length!=LENGTHOF(letters_dest6) || memcmp(dest, letters_dest6, length*U_SIZEOF_UCHAR)!=0) {
+        log_err("failure in u_shapeArabic(letters_source6)\n");
+    }
+
 }
 
 /* helpers ------------------------------------------------------------------ */
@@ -3593,7 +4021,7 @@ testReorderingMode(void) {
     int tc, mode, option, level;
     uint32_t optionValue, optionBack;
     UBiDiReorderingMode modeValue, modeBack;
-    int32_t srcLen, destLen, index;
+    int32_t srcLen, destLen, idx;
     const char *expectedChars;
     UBool testOK = TRUE;
 
@@ -3651,13 +4079,13 @@ testReorderingMode(void) {
                     }
 
                     if (modes[mode].value == UBIDI_REORDER_INVERSE_NUMBERS_AS_L) {
-                        index = -1;
+                        idx = -1;
                         expectedChars = inverseBasic(pBiDi2, srcChars, srcLen,
                                 options[option].value, paraLevels[level], destChars);
                     }
                     else {
-                        index = outIndices[tc][mode][option][level];
-                        expectedChars = textOut[index];
+                        idx = outIndices[tc][mode][option][level];
+                        expectedChars = textOut[idx];
                     }
                     if (!assertStringsEqual(expectedChars, destChars, srcChars,
                                 modes[mode].description,
@@ -3666,7 +4094,7 @@ testReorderingMode(void) {
                         testOK = FALSE;
                     }
                     if (options[option].value == UBIDI_OPTION_INSERT_MARKS &&
-                             !assertRoundTrip(pBiDi3, tc, index, srcChars,
+                             !assertRoundTrip(pBiDi3, tc, idx, srcChars,
                                               destChars, dest, destLen,
                                               mode, option, paraLevels[level])) {
                         testOK = FALSE;
@@ -3677,7 +4105,7 @@ testReorderingMode(void) {
                                 paraLevels[level])) {
                         testOK = FALSE;
                     }
-                    else if (index > -1 && !checkMaps(pBiDi, index, srcChars,
+                    else if (idx > -1 && !checkMaps(pBiDi, idx, srcChars,
                             destChars, modes[mode].description,
                             options[option].description, paraLevels[level],
                             TRUE)) {
@@ -3741,20 +4169,20 @@ testStreaming(void) {
             "\\u000D"
             "02468\\u000D"
             "ghi",
-            6, { 6, 6 }, {{ 6, 4, 6, 1, 6, 3}, { 4, 6, 6, 1, 6, 3 }},
-            {"6, 4, 6, 1, 6, 3", "4, 6, 6, 1, 6, 3"}
+            6, { 6, 6 }, {{ 4, 6, 6, 1, 6, 3}, { 4, 6, 6, 1, 6, 3 }},
+            {"4, 6, 6, 1, 6, 3", "4, 6, 6, 1, 6, 3"}
         },
         {   "abcd\\u000Afgh\\u000D12345\\u000A456",
-            6, { 4, 4 }, {{ 6, 3, 6, 3 }, { 5, 4, 6, 3 }},
-            {"6, 3, 6, 3", "5, 4, 6, 3"}
+            6, { 4, 4 }, {{ 5, 4, 6, 3 }, { 5, 4, 6, 3 }},
+            {"5, 4, 6, 3", "5, 4, 6, 3"}
         },
         {   "abcd\\u000Afgh\\u000D12345\\u000A45\\u000D",
-            6, { 4, 4 }, {{ 6, 3, 6, 3 }, { 5, 4, 6, 3 }},
-            {"6, 3, 6, 3", "5, 4, 6, 3"}
+            6, { 4, 4 }, {{ 5, 4, 6, 3 }, { 5, 4, 6, 3 }},
+            {"5, 4, 6, 3", "5, 4, 6, 3"}
         },
         {   "abcde\\u000Afghi",
-            10, { 1, 2 }, {{ 10 }, { 6, 4 }},
-            {"10", "6, 4"}
+            10, { 2, 2 }, {{ 6, 4 }, { 6, 4 }},
+            {"6, 4", "6, 4"}
         }
     };
     UChar src[MAXLEN];
@@ -3766,7 +4194,7 @@ testStreaming(void) {
     UBiDiLevel level;
     int nTests = LENGTHOF(testData), nLevels = LENGTHOF(paraLevels);
     UBool mismatch, testOK = TRUE;
-    char processedLenStr[MAXPORTIONS * 5];
+   char processedLenStr[MAXPORTIONS * 5];
 
     log_verbose("\nEntering TestStreaming\n\n");
 
@@ -3780,7 +4208,7 @@ testStreaming(void) {
             chunk = testData[i].chunk;
             nPortions = testData[i].nPortions[levelIndex];
             level = paraLevels[levelIndex];
-            *processedLenStr = NULL_CHAR;
+            processedLenStr[0] = NULL_CHAR;
             log_verbose("Testing level %d, case %d\n", level, i);
 
             mismatch = FALSE;
@@ -3802,7 +4230,7 @@ testStreaming(void) {
                 }
                 ubidi_setReorderingOptions(pBiDi, UBIDI_OPTION_STREAMING);
 
-                mismatch = (UBool)(j >= nPortions ||
+                mismatch |= (UBool)(j >= nPortions ||
                            processedLen != testData[i].portionLens[levelIndex][j]);
 
                 sprintf(processedLenStr + j * 4, "%4d", processedLen);
@@ -3967,7 +4395,7 @@ checkMaps(UBiDi *pBiDi, int32_t stringIndex, const char *src, const char *dest,
     int32_t actualLogicalMap[MAX_MAP_LENGTH];
     int32_t actualVisualMap[MAX_MAP_LENGTH];
     int32_t getIndexMap[MAX_MAP_LENGTH];
-    int32_t i, srcLen, resLen, index;
+    int32_t i, srcLen, resLen, idx;
     const int32_t *expectedLogicalMap, *expectedVisualMap;
     UErrorCode rc = U_ZERO_ERROR;
     UBool testOK = TRUE;
@@ -4037,9 +4465,9 @@ checkMaps(UBiDi *pBiDi, int32_t stringIndex, const char *src, const char *dest,
         testOK = FALSE;
     }
     for (i = 0; i < srcLen; i++) {
-        index = ubidi_getVisualIndex(pBiDi, i, &rc);
+        idx = ubidi_getVisualIndex(pBiDi, i, &rc);
         assertSuccessful("ubidi_getVisualIndex", &rc);
-        getIndexMap[i] = index;
+        getIndexMap[i] = idx;
     }
     if (memcmp(actualLogicalMap, getIndexMap, srcLen * sizeof(int32_t))) {
         char actChars[MAX_MAP_LENGTH];
@@ -4066,9 +4494,9 @@ checkMaps(UBiDi *pBiDi, int32_t stringIndex, const char *src, const char *dest,
         testOK = FALSE;
     }
     for (i = 0; i < resLen; i++) {
-        index = ubidi_getLogicalIndex(pBiDi, i, &rc);
+        idx = ubidi_getLogicalIndex(pBiDi, i, &rc);
         assertSuccessful("ubidi_getLogicalIndex", &rc);
-        getIndexMap[i] = index;
+        getIndexMap[i] = idx;
     }
     if (memcmp(actualVisualMap, getIndexMap, resLen * sizeof(int32_t))) {
         char actChars[MAX_MAP_LENGTH];

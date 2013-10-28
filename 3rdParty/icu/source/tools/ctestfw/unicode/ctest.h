@@ -1,7 +1,7 @@
 /*
  ********************************************************************************
  *
- *   Copyright (C) 1996-2010, International Business Machines
+ *   Copyright (C) 1996-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  ********************************************************************************
@@ -223,6 +223,16 @@ log_verbose(const char* pattern, ...);
  */
 T_CTEST_API void T_CTEST_EXPORT2
 log_data_err(const char *pattern, ...);
+
+/**
+ * Log a known issue.
+ * @param ticket ticket number such as "12345" for ICU tickets or "cldrbug:6636" for CLDR tickets.
+ * @param fmt ...  sprintf-style format, optional message. can be NULL.
+ * @return TRUE if known issue test should be skipped, FALSE if it should be run
+ */
+T_CTEST_API UBool
+T_CTEST_EXPORT2
+log_knownIssue(const char *ticket, const char *fmt, ...);
 
 /**
  * Initialize the variables above. This allows the test to set up accordingly

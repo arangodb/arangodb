@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #  ********************************************************************
 #  * COPYRIGHT:
-#  * Copyright (c) 2002-2008, International Business Machines Corporation and
+#  * Copyright (c) 2002-2013, International Business Machines Corporation and
 #  * others. All Rights Reserved.
 #  ********************************************************************
 
@@ -11,10 +11,10 @@ use lib '../perldriver';
 
 my $p;
 if ($OnWindows) {
-    $p = $ICUPathLatest . "/collationperf/$WindowsPlatform/Release/collationperf.exe";
+    $p = "cd ".$ICULatest."/bin && ".$ICUPathLatest . "/collationperf/$WindowsPlatform/Release/collationperf.exe";
 }
 else {
-    $p = $ICUPathLatest . "/collationperf/collperf";
+    $p = "LD_LIBRARY_PATH=".$ICULatest."/source/lib:".$ICULatest."/source/tools/ctestfw ".$ICUPathLatest . "/collationperf/collperf";
 }
 
 my @locale = (

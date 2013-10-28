@@ -196,8 +196,9 @@ v8::Handle<v8::Array> TRI_V8PathList (std::string const&);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Utils (v8::Handle<v8::Context>,
-                      std::string const& modules,
-                      std::string const& nodes);
+                      std::string const&,
+                      std::string const&,
+                      std::string const&);
 
 #endif
 

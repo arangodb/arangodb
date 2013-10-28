@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1999-2011 International Business Machines Corporation and
+ * Copyright (c) 1999-2013 International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /************************************************************************
@@ -92,7 +92,7 @@ public:
      *Internal subroutines
      **/
     /* Internal subroutine used by TestIsBoundary() */ 
-    void doBoundaryTest(RuleBasedBreakIterator& bi, UnicodeString& text, int32_t *boundaries);
+    void doBoundaryTest(BreakIterator& bi, UnicodeString& text, int32_t *boundaries);
 
     /*Internal subroutine used for comparision of expected and acquired results */
     void doTest(UnicodeString& testString, int32_t start, int32_t gotoffset, int32_t expectedOffset, const char* expected);

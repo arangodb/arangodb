@@ -1,0 +1,28 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "details",
+                            "description": "If set to <em>true</em>, the response will contain a <em>details</em> attribute with additional information about included components and their versions. The attribute names and internals of the <em>details</em> object may vary depending on  platform and ArangoDB version. "
+                        }
+                    ],
+                    "notes": "Returns the server name and version number. The response is a JSON object with the following attributes: <br><br>- <em>server</em>: will always contain <em>arango</em><br><br>- <em>version</em>: the server version string. The string has the format   \"<em>major</em>.`minor<em>.`sub</em>\". <em>major</em> and <em>minor</em> will be numeric, and <em>sub</em>   may contain a number or a textual version.  <br><br>- <em>details</em>: an optional JSON object with additional details. This is  returned only if the <em>details</em> URL parameter is set to <em>true</em> in the    request. <br><br>",
+                    "summary": "returns the server version",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "returnsTheServerVersion"
+                }
+            ],
+            "path": "/_api/version"
+        }
+    ]
+}

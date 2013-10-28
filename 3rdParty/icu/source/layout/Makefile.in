@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1999-2011, International Business Machines
+#   Copyright (C) 1999-2013, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -130,7 +130,21 @@ TibetanLayoutEngine.o \
 TibetanReordering.o \
 HangulLayoutEngine.o \
 KernTable.o \
-loengine.o
+loengine.o \
+ContextualGlyphInsertionProc2.o \
+ContextualGlyphSubstProc2.o \
+GXLayoutEngine2.o \
+IndicRearrangementProcessor2.o \
+LigatureSubstProc2.o \
+MorphTables2.o \
+NonContextualGlyphSubstProc2.o \
+SegmentArrayProcessor2.o \
+SegmentSingleProcessor2.o \
+SimpleArrayProcessor2.o \
+SingleTableProcessor2.o \
+StateTableProcessor2.o \
+SubtableProcessor2.o \
+TrimmedArrayProcessor2.o
 
 ## Header files to install
 HEADERS= $(srcdir)/LayoutEngine.h $(srcdir)/LE*.h $(srcdir)/loengine.h
@@ -237,4 +251,3 @@ ifneq ($(patsubst %clean,,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 endif
-

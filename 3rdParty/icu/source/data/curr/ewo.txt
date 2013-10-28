@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ewo.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ewo.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ewo.xml
+ * ICU <specials> source: <path>/common/main/ewo.xml
  */
 ewo{
     Currencies{
@@ -17,19 +17,19 @@ ewo{
         }
         AOA{
             "AOA",
-            "Kwánǝza yá Angolá",
+            "Kwánəza yá Angolá",
         }
         AUD{
-            "AU$",
-            "Dolár yá Osǝtǝralí",
+            "A$",
+            "Dolár yá Osətəralí",
         }
         BHD{
             "BHD",
-            "Dinár yá Bahǝrɛ́n",
+            "Dinár yá Bahərɛ́n",
         }
         BIF{
             "BIF",
-            "Fǝláŋ yá Burundí",
+            "Fəláŋ yá Burundí",
         }
         BWP{
             "BWP",
@@ -41,23 +41,23 @@ ewo{
         }
         CDF{
             "CDF",
-            "Fǝláŋ yá Kongo",
+            "Fəláŋ yá Kongo",
         }
         CHF{
             "CHF",
-            "Fǝláŋ yá Suís",
+            "Fəláŋ yá Suís",
         }
         CNY{
             "CN¥",
-            "Yuán Renǝminǝbí yá Tsainís",
+            "Yuán Renəminəbí yá Tsainís",
         }
         CVE{
             "CVE",
-            "Esǝkúdo yá Kápǝ́vɛ́rǝ",
+            "Esəkúdo yá Kápə́vɛ́rə",
         }
         DJF{
             "DJF",
-            "Fǝláŋ yá dzibutí",
+            "Fəláŋ yá dzibutí",
         }
         DZD{
             "DZD",
@@ -65,11 +65,11 @@ ewo{
         }
         EGP{
             "EGP",
-            "Lívǝ́lǝ yá Ehíbǝtía",
+            "Lívə́lə yá Ehíbətía",
         }
         ERN{
             "ERN",
-            "Náfǝka yá Eritelé",
+            "Náfəka yá Eritelé",
         }
         ETB{
             "ETB",
@@ -77,11 +77,11 @@ ewo{
         }
         EUR{
             "€",
-            "ǝró",
+            "əró",
         }
         GBP{
             "£",
-            "Lívǝ́lǝ Sǝtǝrǝlíŋ",
+            "Lívə́lə Sətərəlíŋ",
         }
         GHC{
             "GHC",
@@ -109,7 +109,7 @@ ewo{
         }
         KMF{
             "KMF",
-            "Fǝláŋ yá Komória",
+            "Fəláŋ yá Komória",
         }
         LRD{
             "LRD",
@@ -129,7 +129,7 @@ ewo{
         }
         MGA{
             "MGA",
-            "Ariari yá Malǝgás",
+            "Ariari yá Maləgás",
         }
         MRO{
             "MRO",
@@ -157,7 +157,7 @@ ewo{
         }
         RWF{
             "RWF",
-            "Fǝláŋ yá Ruwandá",
+            "Fəláŋ yá Ruwandá",
         }
         SAR{
             "SAR",
@@ -169,19 +169,19 @@ ewo{
         }
         SDG{
             "SDG",
-            "Lívǝlǝ yá Sudán",
+            "Lívələ yá Sudán",
         }
         SDP{
             "SDP",
-            "Lívǝlǝ yá Sudán (1956–2007)",
+            "Lívələ yá Sudán (1956–2007)",
         }
         SHP{
             "SHP",
-            "Lívǝlǝ yá Ǹfúfúb Elɛ́n",
+            "Lívələ yá Ǹfúfúb Elɛ́n",
         }
         SLL{
             "SLL",
-            "Leóne yá Sierá-leónǝ",
+            "Leóne yá Sierá-leónə",
         }
         SOS{
             "SOS",
@@ -189,7 +189,7 @@ ewo{
         }
         STD{
             "STD",
-            "Dóbǝ́ra yá Saó Tomé ai Pǝlinǝsípe",
+            "Dóbə́ra yá Saó Tomé ai Pəlinəsípe",
         }
         SZL{
             "SZL",
@@ -205,26 +205,30 @@ ewo{
         }
         UGX{
             "UGX",
-            "Silíŋ yá Ugandá (1966-1987)",
+            "Silíŋ yá Ugandá (1966–1987)",
         }
         USD{
             "US$",
-            "Dolár yá amɛ́rǝkǝ",
+            "Dolár yá amɛ́rəkə",
         }
         XAF{
             "FCFA",
-            "Fǝláŋ CFA (BEAC)",
+            "Fəláŋ CFA (BEAC)",
         }
         XOF{
             "CFA",
-            "Fǝláŋ CFA (BCEAO)",
+            "Fəláŋ CFA (BCEAO)",
         }
         ZAR{
             "ZAR",
-            "Ránǝdǝ yá Afiríka",
+            "Ránədə yá Afiríka",
         }
         ZMK{
             "ZMK",
+            "Kwatsa yá Zambí (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Kwatsa yá Zambí",
         }
         ZWD{
@@ -232,5 +236,5 @@ ewo{
             "Dolár yá Zimbabwé",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

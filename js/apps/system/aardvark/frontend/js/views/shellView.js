@@ -6,8 +6,7 @@ var shellView = Backbone.View.extend({
 
   el: '#content',
   events: {
-    'click #editor-run'     : 'submitEditor',
-    'mouseleave .vsplitbar' : 'renderEditor'
+    'click #editor-run'     : 'submitEditor'
   },
 
   template: new EJS({url: 'js/templates/shellView.ejs'}),
@@ -16,16 +15,9 @@ var shellView = Backbone.View.extend({
     $(this.el).html(this.template.text);
 
     this.replShell();
-    this.editor();
 
-    $("#shell_workspace").splitter({
-      dock: true
-    });
     $("#shell_workspace").trigger("resize", [ 150 ]);
 
-    $('.vsplitbar').append('<div id="editor-run">'+
-      '<button id="submitQueryButton" class="btn btn-success">Submit</button>'+
-    '</div>');
     this.resize();
     $.gritter.removeAll();
 
@@ -41,21 +33,11 @@ var shellView = Backbone.View.extend({
   resize: function () {
     // prevent endless recursion
     if (! this.resizing) {
-      var editorWidth = $('#editor').width();
       this.resizing = true;
       var windowHeight = $(window).height() - 250;
       $('#shell_workspace').height(windowHeight);
-      $("#shell_workspace").trigger("resize", [ editorWidth ]);
       this.resizing = false;
     }
-  },
-  renderEditor: function () {
-    var editor = ace.edit("editor");
-    editor.resize();
-  },
-  editor: function () {
-    var editor = ace.edit("editor");
-    editor.getSession().setMode("ace/mode/javascript");
   },
   executeJs: function (data) {
     try {
@@ -72,12 +54,6 @@ var shellView = Backbone.View.extend({
     } catch (e) {
       jqconsole.Write('ReferenceError: ' + e.message + '\n', 'jserror');
     }
-  },
-  submitEditor: function () {
-    var editor = ace.edit("editor");
-    var data = editor.getValue();
-    this.executeJs(data);
-    jqconsole.Focus();
   },
   replShell: function () {
     // Creating the console.

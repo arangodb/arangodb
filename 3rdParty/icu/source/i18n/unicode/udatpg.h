@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2007-2011, International Business Machines
+*   Copyright (C) 2007-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -23,7 +23,7 @@
 
 /**
  * \file
- * \brief C API: Wrapper for DateTimePatternGenerator (unicode/dtptngen.h).
+ * \brief C API: Wrapper for icu::DateTimePatternGenerator (unicode/dtptngen.h).
  *
  * UDateTimePatternGenerator provides flexible generation of date format patterns, 
  * like "yy-MM-dd". The user can build up the generator by adding successive 

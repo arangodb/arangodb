@@ -1,4 +1,4 @@
-# Copyright (C) 1999-2012, International Business Machines
+# Copyright (C) 1999-2013, International Business Machines
 # Corporation and others.  All Rights Reserved.
 #
 # file name: nfkc.txt
@@ -11,7 +11,7 @@
 # to NFKC one-way mappings.
 # Use this file as the second gennorm2 input file after nfc.txt.
 
-* Unicode 6.1.0
+* Unicode 6.3.0
 
 00A0>0020
 00A8>0020 0308

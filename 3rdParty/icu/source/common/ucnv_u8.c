@@ -821,7 +821,7 @@ ucnv_UTF8FromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
             if(U8_IS_TRAIL(b)) {
                 ++i;
             } else {
-                if(i<utf8_countTrailBytes[b]) {
+                if(i<U8_COUNT_TRAIL_BYTES(b)) {
                     /* stop converting before the lead byte if there are not enough trail bytes for it */
                     count-=i+1;
                 }
@@ -887,7 +887,7 @@ ucnv_UTF8FromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
             /* handle "complicated" and error cases, and continuing partial characters */
             oldToULength=0;
             toULength=1;
-            toULimit=utf8_countTrailBytes[b]+1;
+            toULimit=U8_COUNT_TRAIL_BYTES(b)+1;
             c=b;
 moreBytes:
             while(toULength<toULimit) {
@@ -960,7 +960,7 @@ moreBytes:
             *pErrorCode=U_BUFFER_OVERFLOW_ERROR;
         } else {
             b=*source;
-            toULimit=utf8_countTrailBytes[b]+1;
+            toULimit=U8_COUNT_TRAIL_BYTES(b)+1;
             if(toULimit>(sourceLimit-source)) {
                 /* collect a truncated byte sequence */
                 toULength=0;

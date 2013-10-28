@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* decNumber package local type, tuning, and macro definitions        */
 /* ------------------------------------------------------------------ */
-/* Copyright (c) IBM Corporation, 2000-2010.   All rights reserved.   */
+/* Copyright (c) IBM Corporation, 2000-2012.   All rights reserved.   */
 /*                                                                    */
 /* This software is made available under the terms of the             */
 /* ICU License -- ICU 1.8.1 and later.                                */
@@ -87,18 +87,6 @@
     #define int     ?         /* enable to ensure that plain C 'int'  */
     #define long    ??        /* .. or 'long' types are not used      */
   #endif
-
-  /* Shared lookup tables                                             */
-  extern const uByte  DECSTICKYTAB[10]; /* re-round digits if sticky  */
-  extern const uInt   DECPOWERS[10];    /* powers of ten table        */
-  /* The following are included from decDPD.h                         */
-  extern const uShort DPD2BIN[1024];    /* DPD -> 0-999               */
-  extern const uShort BIN2DPD[1000];    /* 0-999 -> DPD               */
-  extern const uInt   DPD2BINK[1024];   /* DPD -> 0-999000            */
-  extern const uInt   DPD2BINM[1024];   /* DPD -> 0-999000000         */
-  extern const uByte  DPD2BCD8[4096];   /* DPD -> ddd + len           */
-  extern const uByte  BIN2BCD8[4000];   /* 0-999 -> ddd + len         */
-  extern const uShort BCD2DPD[2458];    /* 0-0x999 -> DPD (0x999=2457)*/
 
   /* LONGMUL32HI -- set w=(u*v)>>32, where w, u, and v are uInts      */
   /* (that is, sets w to be the high-order word of the 64-bit result; */
@@ -228,7 +216,7 @@
   /* ----- Shared data (in decNumber.c) ----- */
   /* Public lookup table used by the D2U macro (see below)            */
   #define DECMAXD2U 49
-  extern const uByte d2utable[DECMAXD2U+1];
+  /*extern const uByte d2utable[DECMAXD2U+1];*/
 
   /* ----- Macros ----- */
   /* ISZERO -- return true if decNumber dn is a zero                  */

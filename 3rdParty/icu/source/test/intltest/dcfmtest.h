@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2010, International Business Machines Corporation and
+ * Copyright (c) 2010-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -41,11 +41,19 @@ public:
                               const UnicodeString &expectedDecimal,
                               UErrorCode &status);
 
+private:
+    enum EFormatInputType {
+        kFormattable,
+        kStringPiece
+    };
+
+public:
     virtual void execFormatTest(int32_t lineNum,
                                const UnicodeString &pattern,
                                const UnicodeString &round, 
                                const UnicodeString &input,
                                const UnicodeString &expected,
+                               EFormatInputType inType,
                                UErrorCode &status);
 };
 

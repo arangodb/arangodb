@@ -1,11 +1,11 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2011, International Business Machines Corporation and
+* Copyright (C) 2007-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/utypes.h"
 
@@ -16,6 +16,7 @@
 #include "uvector.h"
 #include "gregoimp.h"
 #include "cmemory.h"
+#include "umutex.h"
 
 U_NAMESPACE_BEGIN
 
@@ -141,6 +142,21 @@ RuleBasedTimeZone::addTransitionRule(TimeZoneRule* rule, UErrorCode& status) {
     }
     // Mark dirty, so transitions are recalculated at next complete() call
     fUpToDate = FALSE;
+}
+
+static UMutex gLock = U_MUTEX_INITIALIZER;
+
+void
+RuleBasedTimeZone::completeConst(UErrorCode& status) const {
+    if (U_FAILURE(status)) {
+        return;
+    }
+    umtx_lock(&gLock);
+    if (!fUpToDate) {
+        RuleBasedTimeZone *ncThis = const_cast<RuleBasedTimeZone*>(this);
+        ncThis->complete(status);
+    }
+    umtx_unlock(&gLock);
 }
 
 void
@@ -387,7 +403,7 @@ RuleBasedTimeZone::getOffset(UDate date, UBool local, int32_t& rawOffset,
 
 void
 RuleBasedTimeZone::getOffsetFromLocal(UDate date, int32_t nonExistingTimeOpt, int32_t duplicatedTimeOpt,
-                                      int32_t& rawOffset, int32_t& dstOffset, UErrorCode& status) /*const*/ {
+                                      int32_t& rawOffset, int32_t& dstOffset, UErrorCode& status) const {
     getOffsetInternal(date, TRUE, nonExistingTimeOpt, duplicatedTimeOpt, rawOffset, dstOffset, status);
 }
 
@@ -525,9 +541,9 @@ RuleBasedTimeZone::hasSameRules(const TimeZone& other) const {
 }
 
 UBool
-RuleBasedTimeZone::getNextTransition(UDate base, UBool inclusive, TimeZoneTransition& result) /*const*/ {
+RuleBasedTimeZone::getNextTransition(UDate base, UBool inclusive, TimeZoneTransition& result) const {
     UErrorCode status = U_ZERO_ERROR;
-    complete(status);
+    completeConst(status);
     if (U_FAILURE(status)) {
         return FALSE;
     }
@@ -544,9 +560,9 @@ RuleBasedTimeZone::getNextTransition(UDate base, UBool inclusive, TimeZoneTransi
 }
 
 UBool
-RuleBasedTimeZone::getPreviousTransition(UDate base, UBool inclusive, TimeZoneTransition& result) /*const*/ {
+RuleBasedTimeZone::getPreviousTransition(UDate base, UBool inclusive, TimeZoneTransition& result) const {
     UErrorCode status = U_ZERO_ERROR;
-    complete(status);
+    completeConst(status);
     if (U_FAILURE(status)) {
         return FALSE;
     }
@@ -563,7 +579,7 @@ RuleBasedTimeZone::getPreviousTransition(UDate base, UBool inclusive, TimeZoneTr
 }
 
 int32_t
-RuleBasedTimeZone::countTransitionRules(UErrorCode& /*status*/) /*const*/ {
+RuleBasedTimeZone::countTransitionRules(UErrorCode& /*status*/) const {
     int32_t count = 0;
     if (fHistoricRules != NULL) {
         count += fHistoricRules->size();
@@ -578,7 +594,7 @@ void
 RuleBasedTimeZone::getTimeZoneRules(const InitialTimeZoneRule*& initial,
                                     const TimeZoneRule* trsrules[],
                                     int32_t& trscount,
-                                    UErrorCode& status) /*const*/ {
+                                    UErrorCode& status) const {
     if (U_FAILURE(status)) {
         return;
     }

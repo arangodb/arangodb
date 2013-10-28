@@ -1,9 +1,9 @@
 ﻿//---------------------------------------------------------
-// Copyright (C) 2012, International Business Machines
+// Copyright (C) 2013, International Business Machines
 // Corporation and others.  All Rights Reserved.
 //---------------------------------------------------------
 // Build tool: com.ibm.icu.dev.tool.currency.NumericCodeData
-// Build date: 2012-01-20T21:51:47Z
+// Build date: 2013-02-14T23:20:42Z
 //---------------------------------------------------------
 // >> !!! >>   THIS IS A MACHINE-GENERATED FILE   << !!! <<
 // >> !!! >>>            DO NOT EDIT             <<< !!! <<
@@ -264,6 +264,7 @@ currencyNumericCodes:table(nofallback){
         ZAL:int{991}
         ZAR:int{710}
         ZMK:int{894}
+        ZMW:int{967}
         ZRN:int{180}
         ZRZ:int{180}
         ZWD:int{716}

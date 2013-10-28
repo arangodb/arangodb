@@ -8,6 +8,9 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
+VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
+VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
+VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FILES
@@ -243,7 +246,10 @@ nobase_pkgdata_DATA = \
 if ENABLE_MRUBY
 
 nobase_pkgdata_DATA += \
-	$(shell find @srcdir@/mr/actions -name "*.rb" -print) 
+	$(shell find @srcdir@/mr/actions -name "*.rb" -print) \
+	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
+	$(shell find @srcdir@/mr/common -name "*.rb" -print) \
+	$(shell find @srcdir@/mr/server -name "*.rb" -print)
 
 endif
 
@@ -486,6 +492,37 @@ endif
 if ENABLE_ALL_IN_ONE_ICU
 include 3rdParty/Makefile.all-in-one-icu
 endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                     CMAKE & CPACK
+## -----------------------------------------------------------------------------
+
+.PHONY: pack-dmg
+
+DMG_NAME := ArangoDB-CLI.app
+
+pack-dmg:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--prefix=/opt/arangodb \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--enable-mruby
+
+	cd Build && cmake \
+		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "USE_MRUBY=ON" \
+		-D "USE_RAW_CONFIG=ON" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		..
+
+	cd Build && cpack \
+		-G Bundle \
+		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

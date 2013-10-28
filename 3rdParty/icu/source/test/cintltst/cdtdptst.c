@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -57,7 +57,7 @@ void TestTwoDigitYearDSTParse()
 
     pattern=(UChar*)malloc(sizeof(UChar) * (strlen("EEE MMM dd HH:mm:ss.SSS zzz yyyy G")+1 ));
     u_uastrcpy(pattern, "EEE MMM dd HH:mm:ss.SSS zzz yyyy G");
-    fullFmt= udat_open(UDAT_IGNORE, UDAT_IGNORE,"en_US",NULL,0,pattern, u_strlen(pattern),&status);
+    fullFmt= udat_open(UDAT_PATTERN, UDAT_PATTERN,"en_US",NULL,0,pattern, u_strlen(pattern),&status);
     if(U_FAILURE(status))    {
         log_data_err("FAIL: Error in creating a date format using udat_openPattern %s - (Are you missing data?)\n", 
             myErrorName(status) );
@@ -66,7 +66,7 @@ void TestTwoDigitYearDSTParse()
         log_verbose("PASS: creating dateformat using udat_openPattern() succesful\n");
     
         u_uastrcpy(pattern, "dd-MMM-yy h:mm:ss 'o''clock' a z");
-        fmt= udat_open(UDAT_IGNORE,UDAT_IGNORE,"en_US", NULL, 0,pattern, u_strlen(pattern), &status);
+        fmt= udat_open(UDAT_PATTERN,UDAT_PATTERN,"en_US", NULL, 0,pattern, u_strlen(pattern), &status);
         
         
         s=(UChar*)malloc(sizeof(UChar) * (strlen("03-Apr-04 2:20:47 o'clock AM PST")+1) );
@@ -200,7 +200,7 @@ void TestRunTogetherPattern985()
     UErrorCode status = U_ZERO_ERROR;
     pattern=(UChar*)malloc(sizeof(UChar) * (strlen("yyyyMMddHHmmssSSS")+1) );
     u_uastrcpy(pattern, "yyyyMMddHHmmssSSS");
-    format = udat_open(UDAT_IGNORE, UDAT_IGNORE, NULL, NULL, 0,pattern, u_strlen(pattern), &status);
+    format = udat_open(UDAT_PATTERN, UDAT_PATTERN, NULL, NULL, 0,pattern, u_strlen(pattern), &status);
     if(U_FAILURE(status)){
         log_data_err("FAIL: Error in date format construction with pattern: %s - (Are you missing data?)\n", myErrorName(status));
         return;
@@ -316,7 +316,7 @@ void TestQuotePattern161()
     /* this is supposed to open default date format, but later on it treats it like it is "en_US" 
        - very bad if you try to run the tests on machine where default locale is NOT "en_US" */
     /* format= udat_openPattern(pattern, u_strlen(pattern), NULL, &status); */
-    format= udat_open(UDAT_IGNORE, UDAT_IGNORE,"en_US", NULL, 0,pattern, u_strlen(pattern), &status);
+    format= udat_open(UDAT_PATTERN, UDAT_PATTERN,"en_US", NULL, 0,pattern, u_strlen(pattern), &status);
     if(U_FAILURE(status)){
         log_data_err("error in udat_open: %s - (Are you missing data?)\n", myErrorName(status));
         return;

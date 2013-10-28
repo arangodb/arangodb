@@ -1,19 +1,16 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zh_Hans_HK.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hans_HK.xml
 // *
 // ***************************************************************************
 zh_Hans_HK{
     Countries{
-        CC{"科科斯（基林）群岛"}
-        LA{"老挝"}
+        GP{"瓜德罗普岛"}
         ME{"黑山"}
-        MQ{"马提尼克"}
-        MS{"蒙特塞拉特"}
-        SC{"塞舌尔"}
+        PM{"圣皮埃尔和密克隆"}
     }
-    Version{"2.0.64.65"}
+    Version{"2.0.92.87"}
 }

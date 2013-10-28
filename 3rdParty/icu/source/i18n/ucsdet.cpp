@@ -1,6 +1,6 @@
 /*
  ********************************************************************************
- *   Copyright (C) 2005-2007, International Business Machines
+ *   Copyright (C) 2005-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  ********************************************************************************
  */
@@ -11,6 +11,11 @@
 #include "unicode/ucsdet.h"
 #include "csdetect.h"
 #include "csmatch.h"
+#include "csrsbcs.h"
+#include "csrmbcs.h"
+#include "csrutf8.h"
+#include "csrucode.h"
+#include "csr2022.h"
 
 #include "cmemory.h"
 
@@ -175,6 +180,26 @@ ucsdet_getUChars(const UCharsetMatch *ucsm,
 
     return ((CharsetMatch *) ucsm)->getUChars(buf, cap, status);
 }
+
+U_CAPI void U_EXPORT2
+ucsdet_setDetectableCharset(UCharsetDetector *ucsd, const char *encoding, UBool enabled, UErrorCode *status)
+{
+    ((CharsetDetector *)ucsd)->setDetectableCharset(encoding, enabled, *status);
+}
+
+U_CAPI  UEnumeration * U_EXPORT2
+ucsdet_getAllDetectableCharsets(const UCharsetDetector * /*ucsd*/, UErrorCode *status)
+{
+    return CharsetDetector::getAllDetectableCharsets(*status);
+}
+
+U_DRAFT UEnumeration * U_EXPORT2
+ucsdet_getDetectableCharsets(const UCharsetDetector *ucsd,  UErrorCode *status)
+{
+    return ((CharsetDetector *)ucsd)->getDetectableCharsets(*status);
+}
+
 U_CDECL_END
+
 
 #endif

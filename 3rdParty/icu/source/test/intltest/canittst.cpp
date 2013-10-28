@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2002-2011, International Business Machines Corporation and
+ * Copyright (c) 2002-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  *
@@ -163,7 +163,7 @@ void CanonicalIteratorTest::TestBasic() {
               //logln(++counter + ": " + hex.transliterate(result));
               //logln(" = " + name.transliterate(result));
           }
-          expectEqual(i + ": ", testStr, collectionToString(set), CharsToUnicodeString(testArray[i][1]));
+          expectEqual(i + UnicodeString(": "), testStr, collectionToString(set), CharsToUnicodeString(testArray[i][1]));
 
       }
     } else {

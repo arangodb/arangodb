@@ -63,17 +63,17 @@
 
 .searchInput {
   background-color: #FFFFFF;
-  border: 1px solid #c0c0c0;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset;
+  border: 0 !important;
+  box-shadow: 0 !important;
   color: #555555;
   display: inline-block;
   font-size: 12px;
-  height: 18px;
+  height: 18px !important;
   line-height: 18px;
-  margin-top: 3px;
+  margin-top: 5px;
   padding: 2px;
   vertical-align: middle;
-  width:212px !important;
+  width:214px !important;
   border-radius: 0px 0px 0px 0px !important;
 }
 
@@ -216,8 +216,8 @@ border-top: 0;
   border-radius: 0 !important;
 }
 
-#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
-  background-color: rgba(0, 0, 0, 0.15);
+#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut, .dropdownOut {
+  background-color: white;
   position:relative;
   display:none;
   margin-left: 5px;
@@ -225,48 +225,48 @@ border-top: 0;
   width: auto;
 }
 
-#collectionsDropdown, #dashboardDropdown, #foxxDropdown {
+#collectionsDropdown, #dashboardDropdown, #foxxDropdown, .dropdownIn{
   position: relative;
   min-height: 125px;
   width: auto;
-  border-left: 1px solid #686766;
-  border-bottom: 1px solid #686766;
-  border-right: 1px solid #686766;
-  border-top: none;
   box-shadow: 0 !important;
 }
 
-#collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header {
+#collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header, .dropdownOut .nav-header{
   font-size: 13px;
   font-weight: 400;
   color: black;
 }
 
-#collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label{
+#collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label, .dropdownIn label{
   color: black;
   font-weight: 300;
 }
 
-#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
-  border-left: 1px solid white;
+#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul, .dropdownIn ul{
+  border-left: 1px solid black;
 }
 
+.dropdownOut ul:last-of-type,
 #collectionsDropdown ul:last-of-type,
 #dashboardDropdown ul:last-of-type,
 #foxxDropdown ul:last-of-type {
-  border-left: 1px solid white;
+  border-left: 1px solid black;
 }
 
+.dropdownOut ul:first-of-type,
 #collectionsDropdown ul:first-of-type, 
 #dashboardDropdown ul:first-of-type,
 #foxxDropdown ul:first-of-type {
   border: 0 !important;
 }
 
+.dropdownIn ul,
 #collectionsDropdown ul, #foxxDropdown ul {
   min-height: 105px;
 }
 
+.dropdownIn ul,
 #collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
   float: left;
   margin-top: 10px;
@@ -274,6 +274,7 @@ border-top: 0;
   display: inline;
 }
 
+.dropdownIn ul li label,
 #collectionsDropdown ul li label,
 #dashboardDropdown ul li label,
 #foxxDropdown ul li label {

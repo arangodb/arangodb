@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2005-2011, International Business Machines
+*   Copyright (C) 2005-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -121,7 +121,7 @@ private:
     UnicodeString *fDateTimeMsg;
     DateFormat::EStyle fTimeStyle;
     DateFormat::EStyle fDateStyle;
-    const Locale *fLocale;
+    Locale fLocale;
     int32_t fLCID;
     UnicodeString fZoneID;
     TIME_ZONE_INFORMATION *fTZI;

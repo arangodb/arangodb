@@ -34,10 +34,6 @@
   color: #DA4F49;
 }
 
-#newIndexView table {
-  width: 100%;
-}
-
 #change-collection .glyphicon-minus-sign {
   color: #DA4F49;
   font-size: 20px;
@@ -64,15 +60,6 @@
   margin-top: 0px;
 }
 
-#newIndexType {
-  margin-left: 5px;
-}
-
-#createIndex {
-  margin-top: 15px !important;
-  margin-left: 0;
-}
-
 #tab-content-collection-edit {
   max-height: 300px !important;
 }
@@ -84,10 +71,3 @@
   color: black;
 }
 
-#newIndexView select {
-  margin-left: -10px;
-}
-
-#newIndexView input[type='checkbox'] {
-  margin-left: -20px;
-}

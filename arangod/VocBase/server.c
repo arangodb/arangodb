@@ -513,6 +513,74 @@ static int NameComparator (const void* lhs, const void* rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create base app directory
+////////////////////////////////////////////////////////////////////////////////
+
+static int CreateBaseApplicationDirectory (char const* basePath,
+                                           char const* type) {
+  char* path;
+  int res;
+
+  if (basePath == NULL || strlen(basePath) == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+  path = TRI_Concatenate2File(basePath, type);
+
+  if (path != NULL) {
+    if (! TRI_IsDirectory(path)) {
+      res = TRI_CreateDirectory(path);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        LOG_INFO("created base application directory '%s'", path);
+      }
+      else {
+        LOG_ERROR("unable to create base application directory '%s'", path);
+      }
+    }
+
+    TRI_Free(TRI_CORE_MEM_ZONE, path);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create app subdirectory for a database
+////////////////////////////////////////////////////////////////////////////////
+
+static int CreateApplicationDirectory (char const* name,
+                                       char const* basePath) {
+  char* path;
+  int res;
+
+  if (basePath == NULL || strlen(basePath) == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+  path = TRI_Concatenate3File(basePath, "databases", name);
+
+  if (path != NULL) {
+    if (! TRI_IsDirectory(path)) {
+      res = TRI_CreateDirectory(path);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        LOG_INFO("created application directory '%s' for database '%s'", path, name);
+      }
+      else {
+        LOG_ERROR("unable to create application directory '%s' for database '%s'", path, name);
+      }
+    }
+
+    TRI_Free(TRI_CORE_MEM_ZONE, path);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all databases in the databases directory and open them
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -524,6 +592,11 @@ static int OpenDatabases (TRI_server_t* server) {
   res = TRI_ERROR_NO_ERROR;
   files = TRI_FilesDirectory(server->_databasePath);
   n = files._length;
+ 
+  // open databases in defined order
+  if (n > 1) {
+    qsort(files._buffer, n, sizeof(char**), &NameComparator);
+  }
 
   for (i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
@@ -678,6 +751,26 @@ static int OpenDatabases (TRI_server_t* server) {
       res = TRI_ERROR_OUT_OF_MEMORY;
       break;
     }
+    
+    // .............................................................................
+    // create app directories
+    // .............................................................................
+
+    res = CreateApplicationDirectory(databaseName, server->_appPath);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      break;
+    }
+
+    res = CreateApplicationDirectory(databaseName, server->_devAppPath);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      break;
+    }
 
     // .............................................................................
     // open the database and scan collections in it
@@ -737,7 +830,7 @@ static int OpenDatabases (TRI_server_t* server) {
 
 static int CloseDatabases (TRI_server_t* server) {
   size_t i, n;
- 
+
   TRI_WriteLockReadWriteLock(&server->_databasesLock);
   n = server->_databases._nrAlloc;
 
@@ -1235,7 +1328,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
 
   return res;
 }
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the list of databases
 ////////////////////////////////////////////////////////////////////////////////
@@ -1291,7 +1384,7 @@ static int InitDatabases (TRI_server_t* server,
       }
     }
   }
-
+  
   TRI_DestroyVectorString(&names);
 
   return res;
@@ -1510,7 +1603,7 @@ int TRI_InitServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_devAppPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, appPath);
+  server->_devAppPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, devAppPath);
   
   if (server->_devAppPath == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
@@ -1752,6 +1845,71 @@ int TRI_StartServer (TRI_server_t* server,
               TRI_errno_string(res));
     return res;
   }
+  
+  // .............................................................................
+  // create shared application directories
+  // .............................................................................
+
+  if (server->_appPath != NULL && 
+      strlen(server->_appPath) > 0 &&
+      ! TRI_IsDirectory(server->_appPath)) {
+    if (! isUpgrade) {
+      LOG_ERROR("specified --javascript.app-path directory '%s' does not exist. "
+                "Please start again with --upgrade option to create it.", 
+                server->_appPath);
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+
+    res = TRI_CreateDirectory(server->_appPath);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to create --javascript.app-path directory '%s': %s", 
+                server->_appPath, 
+                TRI_errno_string(res));
+      return res;
+    }
+  }
+  
+  if (server->_devAppPath != NULL && 
+      strlen(server->_devAppPath) > 0 &&
+      ! TRI_IsDirectory(server->_devAppPath)) {
+    if (! isUpgrade) {
+      LOG_ERROR("specified --javascript.dev-app-path directory '%s' does not exist. "
+                "Please start again with --upgrade option to create it.", 
+                server->_devAppPath);
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+
+    res = TRI_CreateDirectory(server->_devAppPath);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to create --javascript.dev-app-path directory '%s': %s", 
+                server->_devAppPath, 
+                TRI_errno_string(res));
+      return res;
+    }
+  }
+   
+  // create subdirectories if not yet present 
+  res = CreateBaseApplicationDirectory(server->_appPath, "databases");
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = CreateBaseApplicationDirectory(server->_appPath, "system");
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = CreateBaseApplicationDirectory(server->_devAppPath, "databases");
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = CreateBaseApplicationDirectory(server->_devAppPath, "system");
+  }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to initialise databases: %s", 
+              TRI_errno_string(res));
+    return res;
+  }
 
 
   // .............................................................................
@@ -1901,6 +2059,11 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   }
 
   assert(vocbase != NULL);
+ 
+  // create application directories 
+  CreateApplicationDirectory(vocbase->_name, server->_appPath);
+  CreateApplicationDirectory(vocbase->_name, server->_devAppPath);
+
 
   // increase reference counter
   TRI_UseVocBase(vocbase);

@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -32,6 +32,7 @@ struct MarkArray
     le_int32 getMarkClass(LEGlyphID glyphID, le_int32 coverageIndex, const LEFontInstance *fontInstance,
         LEPoint &anchor) const;
 };
+LE_VAR_ARRAY(MarkArray, markRecordArray)
 
 U_NAMESPACE_END
 #endif

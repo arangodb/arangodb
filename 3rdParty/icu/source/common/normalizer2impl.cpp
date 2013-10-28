@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2012, International Business Machines
+*   Copyright (C) 2009-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -255,7 +255,7 @@ struct CanonIterData : public UMemory {
 Normalizer2Impl::~Normalizer2Impl() {
     udata_close(memory);
     utrie2_close(normTrie);
-    delete (CanonIterData *)canonIterDataSingleton.fInstance;
+    delete fCanonIterData;
 }
 
 UBool U_CALLCONV
@@ -392,8 +392,7 @@ Normalizer2Impl::addCanonIterPropertyStarts(const USetAdder *sa, UErrorCode &err
     /* add the start code point of each same-value range of the canonical iterator data trie */
     if(ensureCanonIterData(errorCode)) {
         // currently only used for the SEGMENT_STARTER property
-        utrie2_enum(((CanonIterData *)canonIterDataSingleton.fInstance)->trie,
-                    segmentStarterMapper, enumPropertyStartsRange, sa);
+        utrie2_enum(fCanonIterData->trie, segmentStarterMapper, enumPropertyStartsRange, sa);
     }
 }
 
@@ -657,8 +656,10 @@ void Normalizer2Impl::decomposeAndAppend(const UChar *src, const UChar *limit,
     if(limit==NULL) {  // appendZeroCC() needs limit!=NULL
         limit=u_strchr(iter.codePointStart, 0);
     }
-    buffer.append(src, (int32_t)(iter.codePointStart-src), firstCC, prevCC, errorCode) &&
+
+    if (buffer.append(src, (int32_t)(iter.codePointStart-src), firstCC, prevCC, errorCode)) {
         buffer.appendZeroCC(iter.codePointStart, limit, errorCode);
+    }
 }
 
 // Note: hasDecompBoundary() could be implemented as aliases to
@@ -1789,59 +1790,43 @@ void CanonIterData::addToStartSet(UChar32 origin, UChar32 decompLead, UErrorCode
     }
 }
 
-class CanonIterDataSingleton {
-public:
-    CanonIterDataSingleton(SimpleSingleton &s, Normalizer2Impl &ni, UErrorCode &ec) :
-        singleton(s), impl(ni), errorCode(ec) {}
-    CanonIterData *getInstance(UErrorCode &errorCode) {
-        void *duplicate;
-        CanonIterData *instance=
-            (CanonIterData *)singleton.getInstance(createInstance, this, duplicate, errorCode);
-        delete (CanonIterData *)duplicate;
-        return instance;
-    }
-    static void *createInstance(const void *context, UErrorCode &errorCode);
-    UBool rangeHandler(UChar32 start, UChar32 end, uint32_t value) {
-        if(value!=0) {
-            impl.makeCanonIterDataFromNorm16(start, end, (uint16_t)value, *newData, errorCode);
-        }
-        return U_SUCCESS(errorCode);
-    }
-
-private:
-    SimpleSingleton &singleton;
-    Normalizer2Impl &impl;
-    CanonIterData *newData;
-    UErrorCode &errorCode;
-};
-
 U_CDECL_BEGIN
 
 // Call Normalizer2Impl::makeCanonIterDataFromNorm16() for a range of same-norm16 characters.
+//     context: the Normalizer2Impl
 static UBool U_CALLCONV
 enumCIDRangeHandler(const void *context, UChar32 start, UChar32 end, uint32_t value) {
-    return ((CanonIterDataSingleton *)context)->rangeHandler(start, end, value);
+    UErrorCode errorCode = U_ZERO_ERROR;
+    if (value != 0) {
+        Normalizer2Impl *impl = (Normalizer2Impl *)context;
+        impl->makeCanonIterDataFromNorm16(
+            start, end, (uint16_t)value, *impl->fCanonIterData, errorCode);
+    }
+    return U_SUCCESS(errorCode);
+}
+
+
+
+// UInitOnce instantiation function for CanonIterData
+
+static void U_CALLCONV 
+initCanonIterData(Normalizer2Impl *impl, UErrorCode &errorCode) {
+    U_ASSERT(impl->fCanonIterData == NULL);
+    impl->fCanonIterData = new CanonIterData(errorCode);
+    if (impl->fCanonIterData == NULL) {
+        errorCode=U_MEMORY_ALLOCATION_ERROR;
+    }
+    if (U_SUCCESS(errorCode)) {
+        utrie2_enum(impl->getNormTrie(), NULL, enumCIDRangeHandler, impl);
+        utrie2_freeze(impl->fCanonIterData->trie, UTRIE2_32_VALUE_BITS, &errorCode);
+    }
+    if (U_FAILURE(errorCode)) {
+        delete impl->fCanonIterData;
+        impl->fCanonIterData = NULL;
+    }
 }
 
 U_CDECL_END
-
-void *CanonIterDataSingleton::createInstance(const void *context, UErrorCode &errorCode) {
-    CanonIterDataSingleton *me=(CanonIterDataSingleton *)context;
-    me->newData=new CanonIterData(errorCode);
-    if(me->newData==NULL) {
-        errorCode=U_MEMORY_ALLOCATION_ERROR;
-        return NULL;
-    }
-    if(U_SUCCESS(errorCode)) {
-        utrie2_enum(me->impl.getNormTrie(), NULL, enumCIDRangeHandler, me);
-        utrie2_freeze(me->newData->trie, UTRIE2_32_VALUE_BITS, &errorCode);
-        if(U_SUCCESS(errorCode)) {
-            return me->newData;
-        }
-    }
-    delete me->newData;
-    return NULL;
-}
 
 void Normalizer2Impl::makeCanonIterDataFromNorm16(UChar32 start, UChar32 end, uint16_t norm16,
                                                   CanonIterData &newData,
@@ -1919,17 +1904,16 @@ void Normalizer2Impl::makeCanonIterDataFromNorm16(UChar32 start, UChar32 end, ui
 UBool Normalizer2Impl::ensureCanonIterData(UErrorCode &errorCode) const {
     // Logically const: Synchronized instantiation.
     Normalizer2Impl *me=const_cast<Normalizer2Impl *>(this);
-    CanonIterDataSingleton(me->canonIterDataSingleton, *me, errorCode).getInstance(errorCode);
+    umtx_initOnce(me->fCanonIterDataInitOnce, &initCanonIterData, me, errorCode);
     return U_SUCCESS(errorCode);
 }
 
 int32_t Normalizer2Impl::getCanonValue(UChar32 c) const {
-    return (int32_t)utrie2_get32(((CanonIterData *)canonIterDataSingleton.fInstance)->trie, c);
+    return (int32_t)utrie2_get32(fCanonIterData->trie, c);
 }
 
 const UnicodeSet &Normalizer2Impl::getCanonStartSet(int32_t n) const {
-    return *(const UnicodeSet *)(
-        ((CanonIterData *)canonIterDataSingleton.fInstance)->canonStartSets[n]);
+    return *(const UnicodeSet *)fCanonIterData->canonStartSets[n];
 }
 
 UBool Normalizer2Impl::isCanonSegmentStarter(UChar32 c) const {

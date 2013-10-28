@@ -43,6 +43,7 @@ function ArangoAdapterControls(list, adapter) {
   this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",
       idprefix = prefix + "_";
+      
     adapter.getCollections(function(nodeCols, edgeCols) {
       adapter.getGraphs(function(graphs) {
         uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
@@ -52,18 +53,20 @@ function ArangoAdapterControls(list, adapter) {
               id: "collections",
               group: "loadtype",
               text: "Select existing collections",
-              isDefault: true,
+              isDefault: (adapter.getGraphName() === undefined),
               interior: [
                 {
                   type: "list",
                   id: "node_collection",
                   text: "Vertex collection",
-                  objects: nodeCols
+                  objects: nodeCols,
+                  selected: adapter.getNodeCollection()
                 },{
                   type: "list",
                   id: "edge_collection",
                   text: "Edge collection",
-                  objects: edgeCols
+                  objects: edgeCols,
+                  selected: adapter.getEdgeCollection()
                 }
               ]
             },{
@@ -71,17 +74,24 @@ function ArangoAdapterControls(list, adapter) {
               id: "graphs",
               group: "loadtype",
               text: "Select existing graph",
-              isDefault: false,
+              isDefault: (adapter.getGraphName() !== undefined),
               interior: [
                 {
                   type: "list",
                   id: "graph",
-                  objects: graphs
+                  objects: graphs,
+                  selected: adapter.getGraphName()
                 }
               ]
             },{
               type: "checkbox",
-              id: "undirected"
+              text: "Start with random vertex",
+              id: "random",
+              selected: true
+            },{
+              type: "checkbox",
+              id: "undirected",
+              selected: (adapter.getDirection() === "any")
             }], function () {
               var nodes = $("#" + idprefix + "node_collection")
                 .children("option")
@@ -96,11 +106,16 @@ function ArangoAdapterControls(list, adapter) {
                   .filter(":selected")
                   .text(),
                 undirected = !!$("#" + idprefix + "undirected").attr("checked"),
+                random = !!$("#" + idprefix + "random").attr("checked"),
                 selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
               if (selected === idprefix + "collections") {
                 adapter.changeToCollections(nodes, edges, undirected);
               } else {
                 adapter.changeToGraph(graph, undirected);
+              }
+              if (random) {
+                adapter.loadRandomNode(callback);
+                return;
               }
               if (_.isFunction(callback)) {
                 callback();
@@ -116,6 +131,7 @@ function ArangoAdapterControls(list, adapter) {
     var prefix = "control_adapter_priority",
       idprefix = prefix + "_",
       prioList = adapter.getPrioList();
+
       uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
         modalDialogHelper.createModalChangeDialog("Group By",
           idprefix, [{
@@ -157,6 +173,7 @@ function ArangoAdapterControls(list, adapter) {
               edges = $("#" + idprefix + "edgecollection").attr("value"),
               undirected = !!$("#" + idprefix + "undirected").attr("checked");
             adapter.changeTo(nodes, edges, undirected);
+
           }
         );
       });

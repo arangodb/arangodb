@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ******************************************************************************
 *   file name:  nfsubs.cpp
@@ -14,7 +14,7 @@
 */
 
 #include <stdio.h>
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "nfsubs.h"
 #include "digitlst.h"

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2012, International Business Machines
+*   Copyright (C) 1998-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -205,21 +205,6 @@
 /* if it is too small, heap allocation will occur.*/
 /* you can change this value if you need memory - it will affect the performance, though, since we're going to malloc */
 #define UCOL_MAX_BUFFER 128
-#define UCOL_PRIMARY_MAX_BUFFER 8*UCOL_MAX_BUFFER
-#define UCOL_SECONDARY_MAX_BUFFER UCOL_MAX_BUFFER
-#define UCOL_TERTIARY_MAX_BUFFER UCOL_MAX_BUFFER
-/*
-#define UCOL_CASE_MAX_BUFFER UCOL_MAX_BUFFER/4
-
-UCOL_CASE_MAX_BUFFER as previously defined above was too small. A single collation element can
-generate two caseShift values, and UCOL_CASE_SHIFT_START (=7) caseShift values are compressed into
-one byte. UCOL_MAX_BUFFER should effectively be multipled by 2/UCOL_CASE_SHIFT_START (2/7), not 1/4.
-Perhaps UCOL_CASE_SHIFT_START used to be 8; then this would have been correct. We should dynamically
-define UCOL_CASE_MAX_BUFFER in terms of both UCOL_MAX_BUFFER and UCOL_CASE_SHIFT_START. Since
-UCOL_CASE_SHIFT_START is defined lower down, we move the real definition of UCOL_CASE_MAX_BUFFER
-after it, further down.
-*/
-#define UCOL_QUAD_MAX_BUFFER 2*UCOL_MAX_BUFFER
 
 #define UCOL_NORMALIZATION_GROWTH 2
 #define UCOL_NORMALIZATION_MAX_BUFFER UCOL_MAX_BUFFER*UCOL_NORMALIZATION_GROWTH
@@ -423,15 +408,6 @@ uprv_init_pce(const struct UCollationElements *elems);
 #define UCOL_CASE_BYTE_START 0x80
 #define UCOL_CASE_SHIFT_START 7
 
-/*
-The definition of UCOL_CASE_MAX_BUFFER is moved down here so it can use UCOL_CASE_SHIFT_START.
-
-A single collation element can generate two caseShift values, and UCOL_CASE_SHIFT_START caseShift
-values are compressed into one byte. The UCOL_CASE_MAX_BUFFER should effectively be UCOL_MAX_BUFFER
-multipled by 2/UCOL_CASE_SHIFT_START, with suitable rounding up.
-*/
-#define UCOL_CASE_MAX_BUFFER (((2*UCOL_MAX_BUFFER) + UCOL_CASE_SHIFT_START - 1)/UCOL_CASE_SHIFT_START)
-
 #define UCOL_IGNORABLE 0
 
 /* get weights from a CE */
@@ -555,16 +531,17 @@ void *ucol_getABuffer(const UCollator *coll, uint32_t size);
 
 U_NAMESPACE_BEGIN
 
+class CollationKey;
 class SortKeyByteSink;
 
 U_NAMESPACE_END
 
 /* function used by C++ getCollationKey to prevent restarting the calculation */
 U_CFUNC int32_t
-ucol_getSortKeyWithAllocation(const UCollator *coll,
-                              const UChar *source, int32_t sourceLength,
-                              uint8_t *&result, int32_t &resultCapacity,
-                              UErrorCode *pErrorCode);
+ucol_getCollationKey(const UCollator *coll,
+                     const UChar *source, int32_t sourceLength,
+                     icu::CollationKey &key,
+                     UErrorCode &errorCode);
 
 typedef void U_CALLCONV
 SortKeyGenerator(const    UCollator    *coll,
@@ -600,18 +577,6 @@ SortKeyGenerator(const    UCollator    *coll,
         UErrorCode *status);
 
 #endif
-
-/**
- * Makes a copy of the Collator's rule data. The format is
- * that of .col files.
- *
- * @param length returns the length of the data, in bytes.
- * @param status the error status
- * @return memory, owned by the caller, of size 'length' bytes.
- * @internal INTERNAL USE ONLY
- */
-U_CFUNC uint8_t* U_EXPORT2 
-ucol_cloneRuleData(const UCollator *coll, int32_t *length, UErrorCode *status);
 
 /**
  * Used to set requested and valid locales on a collator returned by the collator

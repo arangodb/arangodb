@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zh_Hans_HK.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hans_HK.xml
 // *
 // ***************************************************************************
 zh_Hans_HK{
@@ -12,17 +12,13 @@ zh_Hans_HK{
             "AWG",
             "阿鲁巴弗罗林",
         }
-        BAM{
-            "BAM",
-            "波斯尼亚-黑塞哥维那可兑换马克",
-        }
-        FKP{
-            "FKP",
-            "福克兰群岛镑",
-        }
         HKD{
             "$",
             "港元",
+        }
+        HNL{
+            "HNL",
+            "洪都拉斯拉伦皮拉",
         }
         KYD{
             "KYD",
@@ -36,14 +32,37 @@ zh_Hans_HK{
             "NIO",
             "尼加拉瓜科多巴",
         }
-        RUB{
-            "RUB",
-            "俄罗斯卢布",
-        }
         UAH{
             "UAH",
             "乌克兰赫夫纳",
         }
+        XAG{
+            "XAG",
+            "白银",
+        }
     }
-    Version{"2.0.64.65"}
+    CurrencyPlurals{
+        AWG{
+            other{"阿鲁巴弗罗林"}
+        }
+        HNL{
+            other{"洪都拉斯拉伦皮拉"}
+        }
+        KYD{
+            other{"开曼群岛元"}
+        }
+        KZT{
+            other{"哈萨克斯坦腾格"}
+        }
+        NIO{
+            other{"尼加拉瓜科多巴"}
+        }
+        UAH{
+            other{"乌克兰赫夫纳"}
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
 }

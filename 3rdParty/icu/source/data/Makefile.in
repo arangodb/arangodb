@@ -1,5 +1,5 @@
 ## Makefile.in for ICU data
-## Copyright (c) 1999-2012, International Business Machines Corporation and
+## Copyright (c) 1999-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -54,6 +54,10 @@ OS390INSTALL=install390
 # Additional data for 390
 OS390LIST=$(OUTTMPDIR)/icudata390.lst
 OUTTMPDIR_390STUB=$(top_builddir)/data/out/tmp_390stub
+endif
+
+ifeq ($(OS390BATCH),1)
+CPPFLAGS += -Wc,'ros,roc'
 endif
 
 # OBJDATADIR must be a short path (with ..'s) to the data.
@@ -246,10 +250,10 @@ BREAK_TREE=brkitr
 ALL_BRK_SOURCE= $(BRK_SOURCE) $(BRK_SOURCE_LOCAL)
 BRK_FILES_SHORT=$(ALL_BRK_SOURCE:%.txt=$(BREAK_TREE)/%.brk)
 BRK_FILES=$(ALL_BRK_SOURCE:%.txt=$(BRKBLDDIR)/%.brk)
-ifdef BRK_CTD_SOURCE
-ALL_CTD_SOURCE=$(BRK_CTD_SOURCE) $(BRK_CTD_SOURCE_LOCAL)
-CTD_FILES_SHORT=$(ALL_CTD_SOURCE:%.txt=$(BREAK_TREE)/%.ctd)
-CTD_FILES=$(ALL_CTD_SOURCE:%.txt=$(BRKBLDDIR)/%.ctd)
+ifdef BRK_DICT_SOURCE
+ALL_DICT_SOURCE=$(BRK_DICT_SOURCE) $(BRK_DICT_SOURCE_LOCAL)
+DICT_FILES_SHORT=$(ALL_DICT_SOURCE:%.txt=$(BREAK_TREE)/%.dict)
+DICT_FILES=$(ALL_DICT_SOURCE:%.txt=$(BRKBLDDIR)/%.dict)
 endif
 ifdef BRK_RES_SOURCE
 BRS_SRC= root.txt $(BRK_RES_SOURCE) $(BRK_RES_SOURCE_LOCAL)
@@ -413,11 +417,11 @@ SPREP_FILES = $(ALL_SPREP_SOURCE:%.txt=$(BUILDDIR)/%.spp)
 SPREP_FILES_SHORT = $(ALL_SPREP_SOURCE:%.txt=%.spp)
 
 ## All generated files
-ALL_FILES = $(DAT_FILES) $(CNV_FILES) $(CNV_FILES_SPECIAL) $(BRK_FILES) $(CTD_FILES) $(RES_FILES) $(INDEX_RES_FILE) $(CURR_FILES) $(LANG_FILES) $(REGION_FILES) $(ZONE_FILES) $(COLLATION_FILES) $(BRK_RES_FILES) $(RBNF_FILES) $(TRANSLIT_FILES) $(SPREP_FILES) $(CFU_FILES)
+ALL_FILES = $(DAT_FILES) $(CNV_FILES) $(CNV_FILES_SPECIAL) $(BRK_FILES) $(DICT_FILES) $(RES_FILES) $(INDEX_RES_FILE) $(CURR_FILES) $(LANG_FILES) $(REGION_FILES) $(ZONE_FILES) $(COLLATION_FILES) $(BRK_RES_FILES) $(RBNF_FILES) $(TRANSLIT_FILES) $(SPREP_FILES) $(CFU_FILES)
 ALL_INDEX_SRC_FILES = $(PKGDATA_LIST) $(INDEX_FILE) $(CURR_INDEX_FILE) $(LANG_INDEX_FILE) $(REGION_INDEX_FILE) $(ZONE_INDEX_FILE) $(COLLATION_INDEX_FILE) $(BRK_RES_INDEX_FILE) $(RBNF_INDEX_FILE)
 # a list to use in the .lst files (package-relative)
 COLL_FILES_LIST=$(COLLATION_FILES_SHORT) $(COLLATION_INDEX_RES_SHORT)
-BRK_FILES_LIST=$(BRK_FILES_SHORT) $(CTD_FILES_SHORT) $(BRK_RES_FILES_SHORT) $(BRK_RES_INDEX_RES_SHORT) 
+BRK_FILES_LIST=$(BRK_FILES_SHORT) $(BRK_RES_FILES_SHORT) $(BRK_RES_INDEX_RES_SHORT) $(DICT_FILES_SHORT)
 LOCALE_FILES_LIST= $(RES_FILES_SHORT) $(LANG_FILES_SHORT) $(REGION_FILES_SHORT) $(ZONE_FILES_SHORT)
 MISC_FILES_LIST=$(DAT_FILES_SHORT) $(CNV_FILES_SHORT) $(CNV_FILES_SHORT_SPECIAL) $(CURR_FILES_SHORT) $(RBNF_FILES_SHORT) $(RBNF_INDEX_RES_SHORT) $(TRANSLIT_FILES_SHORT) $(SPREP_FILES_SHORT) $(CFU_FILES_SHORT)
 UNI_CORE_DATA=pnames.icu uprops.icu ucase.icu ubidi.icu
@@ -509,20 +513,26 @@ $(BUILDDIR)/%.spp: $(SPREPSRCDIR)/%.txt $(TOOLBINDIR)/gensprep$(TOOLEXEEXT) $(BU
 ####################################################    BRK
 # BRK FILES
 
-#thaidict.brk: $(SRCDATADIR)/thaidict.brk
-#	$(RMV) $@ && ln -s $(BUILDDIR) $@
-
-#khmerdict.brk: $(SRCDATADIR)/khmerdict.brk
-#	$(RMV) $@ && ln -s $(BUILDDIR) $@
-
 $(BRKBLDDIR)/%.brk: $(BRKSRCDIR)/%.txt $(TOOLBINDIR)/genbrk$(TOOLEXEEXT) $(DAT_FILES)
 	$(INVOKE) $(TOOLBINDIR)/genbrk -c -i $(BUILDDIR) -r $< -o $@
 
-####################################################    CTD
-# CTD FILES
+####################################################    DICT
+# DICT FILES
 
-$(BRKBLDDIR)/%.ctd: $(BRKSRCDIR)/%.txt $(TOOLBINDIR)/genctd$(TOOLEXEEXT) $(DAT_FILES)
-	$(INVOKE) $(TOOLBINDIR)/genctd -c -i $(BUILDDIR) -o $@ $<
+# .dict file generated regardless of whether dictionary file exists
+
+$(BRKBLDDIR)/%.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
+	$(INVOKE) $(TOOLBINDIR)/gendict --uchars -c -i $(BUILDDIR) $(BRKSRCDIR)/$(*F).txt $@
+
+$(BRKBLDDIR)/thaidict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
+	$(INVOKE) $(TOOLBINDIR)/gendict --bytes --transform offset-0x0e00 -c -i $(BUILDDIR) $(BRKSRCDIR)/thaidict.txt $(BRKBLDDIR)/thaidict.dict
+
+$(BRKBLDDIR)/laodict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
+	$(INVOKE) $(TOOLBINDIR)/gendict --bytes --transform offset-0x0e80 -c -i $(BUILDDIR) $(BRKSRCDIR)/laodict.txt $(BRKBLDDIR)/laodict.dict
+
+# TODO: figure out why combining characters are here?
+$(BRKBLDDIR)/khmerdict.dict: $(TOOLBINDIR)/gendict$(TOOLEXEEXT) $(DAT_FILES)
+	$(INVOKE) $(TOOLBINDIR)/gendict --bytes --transform offset-0x1780 -c -i $(BUILDDIR) $(BRKSRCDIR)/khmerdict.txt $(BRKBLDDIR)/khmerdict.dict
 
 ####################################################    CFU
 # CFU FILES
@@ -664,7 +674,7 @@ $(COLLATION_INDEX_FILE): $(SRCLISTDEPS)
 	echo "}" >> $@;
 
 ### brk res
-$(BRKBLDDIR)/%.res: $(BRKSRCDIR)/%.txt $(TOOLBINDIR)/genrb$(TOOLEXEEXT) $(BRK_FILES) $(DAT_FILES)
+$(BRKBLDDIR)/%.res: $(BRKSRCDIR)/%.txt $(TOOLBINDIR)/genrb$(TOOLEXEEXT) $(BRK_FILES) $(DICT_FILES) $(DAT_FILES)
 	$(INVOKE) $(TOOLBINDIR)/genrb $(GENRBOPTS) -i $(BUILDDIR) -s $(BRKSRCDIR) -d $(BRKBLDDIR) $(<F)
 
 $(BRKBLDDIR)/$(INDEX_NAME).res: $(OUTTMPDIR)/$(BREAK_TREE)/$(INDEX_NAME).txt $(TOOLBINDIR)/genrb$(TOOLEXEEXT)

@@ -203,9 +203,7 @@ createCommonDataFile(const char *destDir, const char *name, const char *entrypoi
         addFile(getLongPathname(line), name, source, sourceTOC, verbose);
     }
 
-    if (linePtr) {
-      uprv_free(linePtr);
-    }
+    uprv_free(linePtr);
 
     if(in!=T_FileStream_stdin()) {
         T_FileStream_close(in);

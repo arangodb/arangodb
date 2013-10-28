@@ -1,6 +1,6 @@
 /*  
  **********************************************************************
- *   Copyright (C) 2010-2011, International Business Machines
+ *   Copyright (C) 2010-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *  file name:  dicttrieperf.cpp
@@ -34,7 +34,6 @@
 #include "charstr.h"
 #include "package.h"
 #include "toolutil.h"
-#include "triedict.h"
 #include "ucbuf.h"  // struct ULine
 #include "uoptions.h"
 #include "uvectr32.h"
@@ -335,56 +334,6 @@ public:
 
 protected:
     const DictionaryTriePerfTest &perf;
-};
-
-class CompactTrieDictLookup : public DictLookup {
-public:
-    CompactTrieDictLookup(const DictionaryTriePerfTest &perfTest)
-            : DictLookup(perfTest), ctd(NULL) {
-        IcuToolErrorCode errorCode("UCharsTrieDictLookup()");
-        // U+0E1C is the median code unit, from
-        // the UCharsTrie root node (split-branch node) for thaidict.txt.
-        MutableTrieDictionary builder(0xe1c, errorCode);
-        const ULine *lines=perf.getCachedLines();
-        int32_t numLines=perf.getNumLines();
-        for(int32_t i=0; i<numLines; ++i) {
-            // Skip comment lines (start with a character below 'A').
-            if(lines[i].name[0]<0x41) {
-                continue;
-            }
-            builder.addWord(lines[i].name, lines[i].len, errorCode);
-        }
-        ctd=new CompactTrieDictionary(builder, errorCode);
-        int32_t length=(int32_t)ctd->dataSize();
-        printf("size of CompactTrieDict:    %6ld bytes\n", (long)length);
-    }
-
-    virtual ~CompactTrieDictLookup() {
-        delete ctd;
-    }
-
-    virtual void call(UErrorCode *pErrorCode) {
-        UText text=UTEXT_INITIALIZER;
-        int32_t lengths[20];
-        const ULine *lines=perf.getCachedLines();
-        int32_t numLines=perf.getNumLines();
-        for(int32_t i=0; i<numLines; ++i) {
-            // Skip comment lines (start with a character below 'A').
-            if(lines[i].name[0]<0x41) {
-                continue;
-            }
-            utext_openUChars(&text, lines[i].name, lines[i].len, pErrorCode);
-            int32_t count;
-            ctd->matches(&text, lines[i].len,
-                         lengths, count, LENGTHOF(lengths));
-            if(count==0 || lengths[count-1]!=lines[i].len) {
-                fprintf(stderr, "word %ld (0-based) not found\n", (long)i);
-            }
-        }
-    }
-
-protected:
-    CompactTrieDictionary *ctd;
 };
 
 // Closely imitate CompactTrieDictionary::matches().
@@ -695,30 +644,24 @@ UPerfFunction *DictionaryTriePerfTest::runIndexedTest(int32_t index, UBool exec,
     if(hasFile()) {
         switch(index) {
         case 0:
-            name="compacttriematches";
-            if(exec) {
-                return new CompactTrieDictLookup(*this);
-            }
-            break;
-        case 1:
             name="ucharstriematches";
             if(exec) {
                 return new UCharsTrieDictMatches(*this);
             }
             break;
-        case 2:
+        case 1:
             name="ucharstriecontains";
             if(exec) {
                 return new UCharsTrieDictContains(*this);
             }
             break;
-        case 3:
+        case 2:
             name="bytestriematches";
             if(exec) {
                 return new BytesTrieDictMatches(*this);
             }
             break;
-        case 4:
+        case 3:
             name="bytestriecontains";
             if(exec) {
                 return new BytesTrieDictContains(*this);

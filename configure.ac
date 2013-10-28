@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [1.4.0-beta2], [info@triagens.de], [arangodb], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [1.4.0-rc1], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -214,7 +214,7 @@ dnl ============================================================================
 BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
-AC_CONFIG_FILES([Makefile Documentation/arango.template])
+AC_CONFIG_FILES([Makefile Documentation/arango.template Installation/MacOSX/Bundle/Info.plist])
 AC_CONFIG_HEADER([config/config.h lib/BasicsC/local-configuration.h])
 AC_OUTPUT
 

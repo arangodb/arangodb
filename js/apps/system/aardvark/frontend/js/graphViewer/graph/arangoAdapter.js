@@ -49,7 +49,6 @@ function ArangoAdapter(nodes, edges, config) {
     }
   }
 
-  
   var self = this,
     absAdapter,
     absConfig = {},
@@ -57,8 +56,12 @@ function ArangoAdapter(nodes, edges, config) {
     queries = {},
     nodeCollection,
     edgeCollection,
-    arangodb,
+    graphName,
     direction,
+
+    setGraphName = function(name) {
+      graphName = name;
+    },
 
     setNodeCollection = function(name) {
       nodeCollection = name;
@@ -85,7 +88,7 @@ function ArangoAdapter(nodes, edges, config) {
     },
 
     parseConfig = function(config) {
-      arangodb = config.baseUrl;
+      var arangodb = config.baseUrl || "";
       if (config.width !== undefined) {
         absAdapter.setWidth(config.width);
       }
@@ -106,12 +109,14 @@ function ArangoAdapter(nodes, edges, config) {
       api.graph = api.base + "graph";
       api.collection = api.base + "collection/";
       api.document = api.base + "document/";
-      api.any = api.base + "simple/any";      
+      api.any = api.base + "simple/any";     
       if (config.graph) {
         getCollectionsFromGraph(config.graph);
+        setGraphName(config.graph);
       } else {
         setNodeCollection(config.nodeCollection);
         setEdgeCollection(config.edgeCollection);
+        setGraphName(undefined);
       }
     },
   
@@ -332,6 +337,18 @@ function ArangoAdapter(nodes, edges, config) {
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
+
+  self.loadRandomNode = function(callback) {
+    var self = this;
+    getNRandom(1, function(list) {
+      var r = list[0];
+      if (r._id) {
+        self.loadInitialNode(r._id, callback);
+        return; 
+      }
+      return;
+    });
+  };
   
   self.loadInitialNode = function(nodeId, callback) {
     absAdapter.cleanUp();
@@ -511,6 +528,8 @@ function ArangoAdapter(nodes, edges, config) {
         direction = "outbound";
       }
     }
+
+    setGraphName(undefined);
   };
   
   self.changeToGraph = function (name, dir) {
@@ -523,6 +542,7 @@ function ArangoAdapter(nodes, edges, config) {
         direction = "outbound";
       }
     }
+    setGraphName(name);
   };
   
   self.setNodeLimit = function (pLimit, callback) {
@@ -598,6 +618,22 @@ function ArangoAdapter(nodes, edges, config) {
         callback(ret);
       });
     }
+  };
+
+  self.getNodeCollection = function () {
+    return nodeCollection;
+  };
+
+  self.getEdgeCollection = function () {
+    return edgeCollection;
+  };
+
+  self.getDirection = function () {
+    return direction;
+  };
+
+  self.getGraphName = function () {
+    return graphName;
   };
   
   self.setWidth = absAdapter.setWidth;

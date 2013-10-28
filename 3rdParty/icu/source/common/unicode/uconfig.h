@@ -1,6 +1,6 @@
 /*  
 **********************************************************************
-*   Copyright (C) 2002-2012, International Business Machines
+*   Copyright (C) 2002-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  uconfig.h
@@ -82,25 +82,6 @@
 #endif
 
 /**
- * \def ICU_USE_THREADS
- *
- * Allows thread support (use of mutexes) to be compiled out of ICU.
- * Default: use threads.
- *
- * Even with thread support compiled out, applications may override the
- * (empty) mutex implementation with the u_setMutexFunctions() functions.
- * @internal
- */
-#ifdef ICU_USE_THREADS
-    /* Use the predefined value. */
-#elif defined(APP_NO_THREADS)
-    /* APP_NO_THREADS is an old symbol. We'll honour it if present. */
-#   define ICU_USE_THREADS 0
-#else
-#   define ICU_USE_THREADS 1
-#endif
-
-/**
  * \def U_DISABLE_RENAMING
  * Determines whether to disable renaming or not.
  * @internal
@@ -115,7 +96,7 @@
  * utypes.h includes those headers if this macro is defined to 0.
  * Otherwise, each those headers must be included explicitly when using one of their macros.
  * Defaults to 0 for backward compatibility, except inside ICU.
- * @draft ICU 49
+ * @stable ICU 49
  */
 #ifdef U_NO_DEFAULT_INCLUDE_UTF_HEADERS
     /* Use the predefined value. */
@@ -311,6 +292,9 @@
 #   define UCONFIG_NO_NORMALIZATION 0
 #elif UCONFIG_NO_NORMALIZATION
     /* common library */
+    /* ICU 50 CJK dictionary BreakIterator uses normalization */
+#   define UCONFIG_NO_BREAK_ITERATION 1
+    /* IDNA (UTS #46) is implemented via normalization */
 #   define UCONFIG_NO_IDNA 1
 
     /* i18n library */
@@ -405,37 +389,24 @@
 #endif
 
 /**
- * \def UCONFIG_INTERNAL_DIGITLIST
- * This switch turns on the fast but binary-incompatible Formattable class with an internal DigitList
- *
- * @internal
- */
-#ifndef UCONFIG_INTERNAL_DIGITLIST
-#   define UCONFIG_INTERNAL_DIGITLIST 0
-#endif
-
-
-
-
-/**
  * \def UCONFIG_HAVE_PARSEALLINPUT
  * This switch turns on the "parse all input" attribute. Binary incompatible.
  *
  * @internal
  */
 #ifndef UCONFIG_HAVE_PARSEALLINPUT
-#   define UCONFIG_HAVE_PARSEALLINPUT 0
+#   define UCONFIG_HAVE_PARSEALLINPUT 1
 #endif
 
 
 /**
- * \def UCONFIG_HAVE_PARSEALLINPUT
+ * \def UCONFIG_FORMAT_FASTPATHS_49
  * This switch turns on other formatting fastpaths. Binary incompatible in object DecimalFormat and DecimalFormatSymbols
  *
  * @internal
  */
 #ifndef UCONFIG_FORMAT_FASTPATHS_49
-#   define UCONFIG_FORMAT_FASTPATHS_49 0
+#   define UCONFIG_FORMAT_FASTPATHS_49 1
 #endif
 
 #endif

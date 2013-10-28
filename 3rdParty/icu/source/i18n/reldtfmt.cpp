@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2011, International Business Machines Corporation and
+* Copyright (C) 2007-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 */
@@ -9,17 +9,16 @@
 
 #if !UCONFIG_NO_FORMATTING
 
-//#define DEBUG_RELDTFMT
-
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "reldtfmt.h"
-#include "unicode/msgfmt.h"
+#include "unicode/datefmt.h"
 #include "unicode/smpdtfmt.h"
+#include "unicode/msgfmt.h"
 
 #include "gregoimp.h" // for CalendarData
 #include "cmemory.h"
+#include "uresimp.h"
 
 U_NAMESPACE_BEGIN
 
@@ -39,49 +38,67 @@ static const char DT_DateTimePatternsTag[]="DateTimePatterns";
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(RelativeDateFormat)
 
 RelativeDateFormat::RelativeDateFormat(const RelativeDateFormat& other) :
-DateFormat(other), fDateFormat(NULL), fTimeFormat(NULL), fCombinedFormat(NULL),
-fDateStyle(other.fDateStyle), fTimeStyle(other.fTimeStyle), fLocale(other.fLocale),
-fDayMin(other.fDayMin), fDayMax(other.fDayMax),
-fDatesLen(other.fDatesLen), fDates(NULL)
+ DateFormat(other), fDateTimeFormatter(NULL), fDatePattern(other.fDatePattern),
+ fTimePattern(other.fTimePattern), fCombinedFormat(NULL),
+ fDateStyle(other.fDateStyle), fLocale(other.fLocale),
+ fDayMin(other.fDayMin), fDayMax(other.fDayMax),
+ fDatesLen(other.fDatesLen), fDates(NULL)
 {
-    if(other.fDateFormat != NULL) {
-        fDateFormat = (DateFormat*)other.fDateFormat->clone();
-    } else {
-        fDateFormat = NULL;
+    if(other.fDateTimeFormatter != NULL) {
+        fDateTimeFormatter = (SimpleDateFormat*)other.fDateTimeFormatter->clone();
+    }
+    if(other.fCombinedFormat != NULL) {
+        fCombinedFormat = (MessageFormat*)other.fCombinedFormat->clone();
     }
     if (fDatesLen > 0) {
         fDates = (URelativeString*) uprv_malloc(sizeof(fDates[0])*fDatesLen);
         uprv_memcpy(fDates, other.fDates, sizeof(fDates[0])*fDatesLen);
     }
-    //fCalendar = other.fCalendar->clone();
-/*    
-    if(other.fTimeFormat != NULL) {
-        fTimeFormat = (DateFormat*)other.fTimeFormat->clone();
-    } else {
-        fTimeFormat = NULL;
-    }
-*/
 }
 
-RelativeDateFormat::RelativeDateFormat( UDateFormatStyle timeStyle, UDateFormatStyle dateStyle, const Locale& locale, UErrorCode& status)
- : DateFormat(), fDateFormat(NULL), fTimeFormat(NULL), fCombinedFormat(NULL),
-fDateStyle(dateStyle), fTimeStyle(timeStyle), fLocale(locale), fDatesLen(0), fDates(NULL)
- {
+RelativeDateFormat::RelativeDateFormat( UDateFormatStyle timeStyle, UDateFormatStyle dateStyle,
+                                        const Locale& locale, UErrorCode& status) :
+ DateFormat(), fDateTimeFormatter(NULL), fDatePattern(), fTimePattern(), fCombinedFormat(NULL),
+ fDateStyle(dateStyle), fLocale(locale), fDatesLen(0), fDates(NULL)
+{
     if(U_FAILURE(status) ) {
         return;
     }
     
-    if(fDateStyle != UDAT_NONE) {
-        EStyle newStyle = (EStyle)(fDateStyle & ~UDAT_RELATIVE);
-        // Create a DateFormat in the non-relative style requested.
-        fDateFormat = createDateInstance(newStyle, locale);
-    }
-    if(fTimeStyle >= UDAT_FULL && fTimeStyle <= UDAT_SHORT) {
-        fTimeFormat = createTimeInstance((EStyle)fTimeStyle, locale);
-    } else if(fTimeStyle != UDAT_NONE) {
+    if (timeStyle < UDAT_NONE || timeStyle > UDAT_SHORT) {
         // don't support other time styles (e.g. relative styles), for now
         status = U_ILLEGAL_ARGUMENT_ERROR;
         return;
+    }
+    UDateFormatStyle baseDateStyle = (dateStyle > UDAT_SHORT)? (UDateFormatStyle)(dateStyle & ~UDAT_RELATIVE): dateStyle;
+    DateFormat * df;
+    // Get fDateTimeFormatter from either date or time style (does not matter, we will override the pattern).
+    // We do need to get separate patterns for the date & time styles.
+    if (baseDateStyle != UDAT_NONE) {
+        df = createDateInstance((EStyle)baseDateStyle, locale);
+        fDateTimeFormatter=dynamic_cast<SimpleDateFormat *>(df);
+        if (fDateTimeFormatter == NULL) {
+            status = U_UNSUPPORTED_ERROR;
+             return;
+        }
+        fDateTimeFormatter->toPattern(fDatePattern);
+        if (timeStyle != UDAT_NONE) {
+            df = createTimeInstance((EStyle)timeStyle, locale);
+            SimpleDateFormat *sdf = dynamic_cast<SimpleDateFormat *>(df);
+            if (sdf != NULL) {
+                sdf->toPattern(fTimePattern);
+                delete sdf;
+            }
+        }
+    } else {
+        // does not matter whether timeStyle is UDAT_NONE, we need something for fDateTimeFormatter
+        df = createTimeInstance((EStyle)timeStyle, locale);
+        fDateTimeFormatter=dynamic_cast<SimpleDateFormat *>(df);
+        if (fDateTimeFormatter == NULL) {
+            status = U_UNSUPPORTED_ERROR;
+            return;
+        }
+        fDateTimeFormatter->toPattern(fTimePattern);
     }
     
     // Initialize the parent fCalendar, so that parse() works correctly.
@@ -90,8 +107,7 @@ fDateStyle(dateStyle), fTimeStyle(timeStyle), fLocale(locale), fDatesLen(0), fDa
 }
 
 RelativeDateFormat::~RelativeDateFormat() {
-    delete fDateFormat;
-    delete fTimeFormat;
+    delete fDateTimeFormatter;
     delete fCombinedFormat;
     uprv_free(fDates);
 }
@@ -106,19 +122,21 @@ UBool RelativeDateFormat::operator==(const Format& other) const {
         // DateFormat::operator== guarantees following cast is safe
         RelativeDateFormat* that = (RelativeDateFormat*)&other;
         return (fDateStyle==that->fDateStyle   &&
-                fTimeStyle==that->fTimeStyle   &&
+                fDatePattern==that->fDatePattern   &&
+                fTimePattern==that->fTimePattern   &&
                 fLocale==that->fLocale);
     }
     return FALSE;
 }
+
+static const UChar APOSTROPHE = (UChar)0x0027;
 
 UnicodeString& RelativeDateFormat::format(  Calendar& cal,
                                 UnicodeString& appendTo,
                                 FieldPosition& pos) const {
                                 
     UErrorCode status = U_ZERO_ERROR;
-    UChar emptyStr = 0;
-    UnicodeString dateString(&emptyStr);
+    UnicodeString relativeDayString;
     
     // calculate the difference, in days, between 'cal' and now.
     int dayDiff = dayDifference(cal, status);
@@ -128,34 +146,35 @@ UnicodeString& RelativeDateFormat::format(  Calendar& cal,
     const UChar *theString = getStringForDay(dayDiff, len, status);
     if(U_SUCCESS(status) && (theString!=NULL)) {
         // found a relative string
-        dateString.setTo(theString, len);
+        relativeDayString.setTo(theString, len);
     }
     
-    if(fTimeFormat == NULL || fCombinedFormat == 0) {
-        if (dateString.length() > 0) {
-            appendTo.append(dateString);
-        } else if(fDateFormat != NULL) {
-            fDateFormat->format(cal,appendTo,pos);
+    if (fDatePattern.isEmpty()) {
+        fDateTimeFormatter->applyPattern(fTimePattern);
+        fDateTimeFormatter->format(cal,appendTo,pos);
+    } else if (fTimePattern.isEmpty() || fCombinedFormat == NULL) {
+        if (relativeDayString.length() > 0) {
+            appendTo.append(relativeDayString);
+        } else {
+            fDateTimeFormatter->applyPattern(fDatePattern);
+            fDateTimeFormatter->format(cal,appendTo,pos);
         }
     } else {
-        if (dateString.length() == 0 && fDateFormat != NULL) {
-            fDateFormat->format(cal,dateString,pos);
+        UnicodeString datePattern;
+        if (relativeDayString.length() > 0) {
+            // Need to quote the relativeDayString to make it a legal date pattern
+            relativeDayString.findAndReplace(UNICODE_STRING("'", 1), UNICODE_STRING("''", 2)); // double any existing APOSTROPHE
+            relativeDayString.insert(0, APOSTROPHE); // add APOSTROPHE at beginning...
+            relativeDayString.append(APOSTROPHE); // and at end
+            datePattern.setTo(relativeDayString);
+        } else {
+            datePattern.setTo(fDatePattern);
         }
-        UnicodeString timeString(&emptyStr);
-        FieldPosition timepos = pos;
-        fTimeFormat->format(cal,timeString,timepos);
-        Formattable timeDateStrings[] = { timeString, dateString };
-        fCombinedFormat->format(timeDateStrings, 2, appendTo, pos, status); // pos is ignored by this
-        int32_t offset;
-        if (pos.getEndIndex() > 0 && (offset = appendTo.indexOf(dateString)) >= 0) {
-            // pos.field was found in dateString, offset start & end based on final position of dateString
-            pos.setBeginIndex( pos.getBeginIndex() + offset );
-            pos.setEndIndex( pos.getEndIndex() + offset );
-        } else if (timepos.getEndIndex() > 0 && (offset = appendTo.indexOf(timeString)) >= 0) {
-            // pos.field was found in timeString, offset start & end based on final position of timeString
-            pos.setBeginIndex( timepos.getBeginIndex() + offset );
-            pos.setEndIndex( timepos.getEndIndex() + offset );
-        }
+        UnicodeString combinedPattern;
+        Formattable timeDatePatterns[] = { fTimePattern, datePattern };
+        fCombinedFormat->format(timeDatePatterns, 2, combinedPattern, pos, status); // pos is ignored by this
+        fDateTimeFormatter->applyPattern(combinedPattern);
+        fDateTimeFormatter->format(cal,appendTo,pos);
     }
     
     return appendTo;
@@ -181,40 +200,97 @@ void RelativeDateFormat::parse( const UnicodeString& text,
                     Calendar& cal,
                     ParsePosition& pos) const {
 
-    // Can the fDateFormat parse it?
-    if(fDateFormat != NULL) {
-        ParsePosition aPos(pos);
-        fDateFormat->parse(text,cal,aPos);
-        if((aPos.getIndex() != pos.getIndex()) && 
-            (aPos.getErrorIndex()==-1)) {
-                pos=aPos; // copy the sub parse
-                return; // parsed subfmt OK
-        }
-    }
-    
-    // Linear search the relative strings
-    for(int n=0;n<fDatesLen;n++) {
-        if(fDates[n].string != NULL &&
-            (0==text.compare(pos.getIndex(),
-                         fDates[n].len,
-                         fDates[n].string))) {
-            UErrorCode status = U_ZERO_ERROR;
-            
-            // Set the calendar to now+offset
-            cal.setTime(Calendar::getNow(),status);
-            cal.add(UCAL_DATE,fDates[n].offset, status);
-            
-            if(U_FAILURE(status)) { 
-                // failure in setting calendar fields
-                pos.setErrorIndex(pos.getIndex()+fDates[n].len);
-            } else {
-                pos.setIndex(pos.getIndex()+fDates[n].len);
+    int32_t startIndex = pos.getIndex();
+    if (fDatePattern.isEmpty()) {
+        // no date pattern, try parsing as time
+        fDateTimeFormatter->applyPattern(fTimePattern);
+        fDateTimeFormatter->parse(text,cal,pos);
+    } else if (fTimePattern.isEmpty() || fCombinedFormat == NULL) {
+        // no time pattern or way to combine, try parsing as date
+        // first check whether text matches a relativeDayString
+        UBool matchedRelative = FALSE;
+        for (int n=0; n < fDatesLen && !matchedRelative; n++) {
+            if (fDates[n].string != NULL &&
+                    text.compare(startIndex, fDates[n].len, fDates[n].string) == 0) {
+                // it matched, handle the relative day string
+                UErrorCode status = U_ZERO_ERROR;
+                matchedRelative = TRUE;
+
+                // Set the calendar to now+offset
+                cal.setTime(Calendar::getNow(),status);
+                cal.add(UCAL_DATE,fDates[n].offset, status);
+
+                if(U_FAILURE(status)) { 
+                    // failure in setting calendar field, set offset to beginning of rel day string
+                    pos.setErrorIndex(startIndex);
+                } else {
+                    pos.setIndex(startIndex + fDates[n].len);
+                }
             }
-            return;
+        }
+        if (!matchedRelative) {
+            // just parse as normal date
+            fDateTimeFormatter->applyPattern(fDatePattern);
+            fDateTimeFormatter->parse(text,cal,pos);
+        }
+    } else {
+        // Here we replace any relativeDayString in text with the equivalent date
+        // formatted per fDatePattern, then parse text normally using the combined pattern.
+        UnicodeString modifiedText(text);
+        FieldPosition fPos;
+        int32_t dateStart = 0, origDateLen = 0, modDateLen = 0;
+        UErrorCode status = U_ZERO_ERROR;
+        for (int n=0; n < fDatesLen; n++) {
+            int32_t relativeStringOffset;
+            if (fDates[n].string != NULL &&
+                    (relativeStringOffset = modifiedText.indexOf(fDates[n].string, fDates[n].len, startIndex)) >= startIndex) {
+                // it matched, replace the relative date with a real one for parsing
+                UnicodeString dateString;
+                Calendar * tempCal = cal.clone();
+
+                // Set the calendar to now+offset
+                tempCal->setTime(Calendar::getNow(),status);
+                tempCal->add(UCAL_DATE,fDates[n].offset, status);
+                if(U_FAILURE(status)) { 
+                    pos.setErrorIndex(startIndex);
+                    delete tempCal;
+                    return;
+                }
+
+                fDateTimeFormatter->applyPattern(fDatePattern);
+                fDateTimeFormatter->format(*tempCal, dateString, fPos);
+                dateStart = relativeStringOffset;
+                origDateLen = fDates[n].len;
+                modDateLen = dateString.length();
+                modifiedText.replace(dateStart, origDateLen, dateString);
+                delete tempCal;
+                break;
+            }
+        }
+        UnicodeString combinedPattern;
+        Formattable timeDatePatterns[] = { fTimePattern, fDatePattern };
+        fCombinedFormat->format(timeDatePatterns, 2, combinedPattern, fPos, status); // pos is ignored by this
+        fDateTimeFormatter->applyPattern(combinedPattern);
+        fDateTimeFormatter->parse(modifiedText,cal,pos);
+
+        // Adjust offsets
+        UBool noError = (pos.getErrorIndex() < 0);
+        int32_t offset = (noError)? pos.getIndex(): pos.getErrorIndex();
+        if (offset >= dateStart + modDateLen) {
+            // offset at or after the end of the replaced text,
+            // correct by the difference between original and replacement
+            offset -= (modDateLen - origDateLen);
+        } else if (offset >= dateStart) {
+            // offset in the replaced text, set it to the beginning of that text
+            // (i.e. the beginning of the relative day string)
+            offset = dateStart;
+        }
+        if (noError) {
+            pos.setIndex(offset);
+        } else {
+            pos.setErrorIndex(offset);
         }
     }
-    
-    // parse failed
 }
 
 UDate
@@ -260,23 +336,14 @@ RelativeDateFormat::toPattern(UnicodeString& result, UErrorCode& status) const
 {
     if (!U_FAILURE(status)) {
         result.remove();
-        if (fTimeFormat == NULL || fCombinedFormat == 0) {
-            if (fDateFormat != NULL) {
-                UnicodeString datePattern;
-                this->toPatternDate(datePattern, status);
-                if (!U_FAILURE(status)) {
-                    result.setTo(datePattern);
-                }
-            }
+        if (fDatePattern.isEmpty()) {
+            result.setTo(fTimePattern);
+        } else if (fTimePattern.isEmpty() || fCombinedFormat == NULL) {
+            result.setTo(fDatePattern);
         } else {
-            UnicodeString datePattern, timePattern;
-            this->toPatternDate(datePattern, status);
-            this->toPatternTime(timePattern, status);
-            if (!U_FAILURE(status)) {
-                Formattable timeDatePatterns[] = { timePattern, datePattern };
-                FieldPosition pos;
-                fCombinedFormat->format(timeDatePatterns, 2, result, pos, status);
-            }
+            Formattable timeDatePatterns[] = { fTimePattern, fDatePattern };
+            FieldPosition pos;
+            fCombinedFormat->format(timeDatePatterns, 2, result, pos, status);
         }
     }
     return result;
@@ -287,14 +354,7 @@ RelativeDateFormat::toPatternDate(UnicodeString& result, UErrorCode& status) con
 {
     if (!U_FAILURE(status)) {
         result.remove();
-        if ( fDateFormat ) {
-            SimpleDateFormat* sdtfmt = dynamic_cast<SimpleDateFormat*>(fDateFormat);
-            if (sdtfmt != NULL) {
-                sdtfmt->toPattern(result);
-            } else {
-                status = U_UNSUPPORTED_ERROR;
-            }
-        }
+        result.setTo(fDatePattern);
     }
     return result;
 }
@@ -304,14 +364,7 @@ RelativeDateFormat::toPatternTime(UnicodeString& result, UErrorCode& status) con
 {
     if (!U_FAILURE(status)) {
         result.remove();
-        if ( fTimeFormat ) {
-            SimpleDateFormat* sdtfmt = dynamic_cast<SimpleDateFormat*>(fTimeFormat);
-            if (sdtfmt != NULL) {
-                sdtfmt->toPattern(result);
-            } else {
-                status = U_UNSUPPORTED_ERROR;
-            }
-        }
+        result.setTo(fTimePattern);
     }
     return result;
 }
@@ -320,33 +373,15 @@ void
 RelativeDateFormat::applyPatterns(const UnicodeString& datePattern, const UnicodeString& timePattern, UErrorCode &status)
 {
     if (!U_FAILURE(status)) {
-        SimpleDateFormat* sdtfmt = NULL;
-        SimpleDateFormat* stmfmt = NULL;
-        if (fDateFormat && (sdtfmt = dynamic_cast<SimpleDateFormat*>(fDateFormat)) == NULL) {
-            status = U_UNSUPPORTED_ERROR;
-            return;
-        }
-        if (fTimeFormat && (stmfmt = dynamic_cast<SimpleDateFormat*>(fTimeFormat)) == NULL) {
-            status = U_UNSUPPORTED_ERROR;
-            return;
-        }
-        if ( fDateFormat ) {
-            sdtfmt->applyPattern(datePattern);
-        }
-        if ( fTimeFormat ) {
-            stmfmt->applyPattern(timePattern);
-        }
+        fDatePattern.setTo(datePattern);
+        fTimePattern.setTo(timePattern);
     }
 }
 
 const DateFormatSymbols*
 RelativeDateFormat::getDateFormatSymbols() const
 {
-    SimpleDateFormat* sdtfmt = NULL;
-    if (fDateFormat && (sdtfmt = dynamic_cast<SimpleDateFormat*>(fDateFormat)) != NULL) {
-        return sdtfmt->getDateFormatSymbols();
-    }
-    return NULL;
+    return fDateTimeFormatter->getDateFormatSymbols();
 }
 
 void RelativeDateFormat::loadDates(UErrorCode &status) {
@@ -389,17 +424,22 @@ void RelativeDateFormat::loadDates(UErrorCode &status) {
         }
     }
 
-    UResourceBundle *strings = calData.getByKey3("fields", "day", "relative", status);
+    UResourceBundle *rb = ures_open(NULL, fLocale.getBaseName(), &status);
+    UResourceBundle *sb = ures_getByKeyWithFallback(rb, "fields", NULL, &status);
+    rb = ures_getByKeyWithFallback(sb, "day", rb, &status);
+    sb = ures_getByKeyWithFallback(rb, "relative", sb, &status);
+    ures_close(rb);
     // set up min/max 
     fDayMin=-1;
     fDayMax=1;
 
     if(U_FAILURE(status)) {
         fDatesLen=0;
+        ures_close(sb);
         return;
     }
 
-    fDatesLen = ures_getSize(strings);
+    fDatesLen = ures_getSize(sb);
     fDates = (URelativeString*) uprv_malloc(sizeof(fDates[0])*fDatesLen);
 
     // Load in each item into the array...
@@ -407,8 +447,8 @@ void RelativeDateFormat::loadDates(UErrorCode &status) {
 
     UResourceBundle *subString = NULL;
     
-    while(ures_hasNext(strings) && U_SUCCESS(status)) {  // iterate over items
-        subString = ures_getNextResource(strings, subString, &status);
+    while(ures_hasNext(sb) && U_SUCCESS(status)) {  // iterate over items
+        subString = ures_getNextResource(sb, subString, &status);
         
         if(U_FAILURE(status) || (subString==NULL)) break;
         
@@ -440,6 +480,7 @@ void RelativeDateFormat::loadDates(UErrorCode &status) {
         n++;
     }
     ures_close(subString);
+    ures_close(sb);
     
     // the fDates[] array could be sorted here, for direct access.
 }

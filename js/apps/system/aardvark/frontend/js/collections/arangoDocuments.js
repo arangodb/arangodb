@@ -67,14 +67,34 @@ window.arangoDocuments = Backbone.Collection.extend({
 
         this.offset = (this.currentPage - 1) * this.documentsPerPage;
 
+        var myQueryVal;
+        var sortParameter = '_key';
+        var sortCount = 10000;
+
+        if (this.documentsCount <= sortCount) {
+          //sorted
+          myQueryVal = "FOR x in @@collection SORT x._key LIMIT @offset, @count RETURN x";
+        }
+        else {
+          //not sorted
+          myQueryVal = "FOR x in @@collection LIMIT @offset, @count RETURN x";
+        }
+
+        var myQuery = {
+          query: myQueryVal,
+          bindVars: {
+            "@collection": this.collectionID,
+            "offset": this.offset,
+            "count": this.documentsPerPage
+          }
+        };
+
         $.ajax({
           cache: false,
-          type: 'PUT',
+          type: 'POST',
           async: false,
-          url: '/_api/simple/all/',
-          data:
-            '{"collection":"' + this.collectionID + '","skip":'+
-            this.offset + ',"limit":' + String(this.documentsPerPage) + '}',
+          url: '/_api/cursor',
+          data: JSON.stringify(myQuery),
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();

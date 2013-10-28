@@ -1,6 +1,6 @@
 /*
 ***************************************************************************
-* Copyright (C) 1999-2011, International Business Machines Corporation
+* Copyright (C) 1999-2013, International Business Machines Corporation
 * and others. All Rights Reserved.
 ***************************************************************************
 *   Date        Name        Description
@@ -21,6 +21,9 @@
  */
 
 U_NAMESPACE_BEGIN
+
+// Forward Declarations.
+void UnicodeSet_initInclusion(int32_t src, UErrorCode &status); /**< @internal */
 
 class BMPSet;
 class ParsePosition;
@@ -1586,6 +1589,7 @@ private:
                               UnicodeString& rebuiltPat,
                               UErrorCode& ec);
 
+    friend void UnicodeSet_initInclusion(int32_t src, UErrorCode &status);
     static const UnicodeSet* getInclusions(int32_t src, UErrorCode &status);
 
     /**

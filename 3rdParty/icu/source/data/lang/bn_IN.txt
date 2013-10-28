@@ -1,12 +1,15 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/bn_IN.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/bn_IN.xml
 // *
 // ***************************************************************************
 bn_IN{
+    Keys{
+        calendar{"ক্যালেন্ডার"}
+    }
     Languages{
         ab{"আবখাজিয়ান"}
         ace{"অ্যাচাইনিজ"}
@@ -22,14 +25,15 @@ bn_IN{
         cu{"চার্চ স্লাভিক"}
         de_AT{"অস্ট্রিয়ান জারমান"}
         doi{"ডোগরি"}
-        en_AU{"অস্ট্রেলিয়ান ইংরাজী"}
-        en_CA{"ক্যানাডিয়ান ইংরেজি"}
-        en_GB{"ব্রিটিশ ইংরেজী"}
         fr_CA{"ক্যানাডিয়ান ফরাসী"}
         map{"অস্ট্রোনেসিয়ান"}
+        or{"উড়িয়া"}
         rup{"আরমেনিয়ান"}
         tut{"আলটাইক"}
         zbl{"ব্লিসসিম্বলস"}
     }
-    Version{"2.0.59.53"}
+    Scripts{
+        Hant{"ঐতিহ্যবাহী"}
+    }
+    Version{"2.0.92.80"}
 }

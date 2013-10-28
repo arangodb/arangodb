@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2010, International Business Machines
+ *   Copyright (C) 2003-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -42,17 +42,18 @@ U_CDECL_BEGIN
 Static cache for already opened StringPrep profiles
 */
 static UHashtable *SHARED_DATA_HASHTABLE = NULL;
+static icu::UInitOnce gSharedDataInitOnce;
 
-static UMTX usprepMutex = NULL;
+static UMutex usprepMutex = U_MUTEX_INITIALIZER;
 
 /* format version of spp file */
-static uint8_t formatVersion[4]={ 0, 0, 0, 0 };
+//static uint8_t formatVersion[4]={ 0, 0, 0, 0 };
 
 /* the Unicode version of the sprep data */
 static UVersionInfo dataVersion={ 0, 0, 0, 0 };
 
 /* Profile names must be aligned to UStringPrepProfileType */
-static const char *PROFILE_NAMES[] = {
+static const char * const PROFILE_NAMES[] = {
     "rfc3491",      /* USPREP_RFC3491_NAMEPREP */
     "rfc3530cs",    /* USPREP_RFC3530_NFS4_CS_PREP */
     "rfc3530csci",  /* USPREP_RFC3530_NFS4_CS_PREP_CI */
@@ -86,7 +87,7 @@ isSPrepAcceptable(void * /* context */,
         pInfo->formatVersion[2]==UTRIE_SHIFT &&
         pInfo->formatVersion[3]==UTRIE_INDEX_SHIFT
     ) {
-        uprv_memcpy(formatVersion, pInfo->formatVersion, 4);
+        //uprv_memcpy(formatVersion, pInfo->formatVersion, 4);
         uprv_memcpy(dataVersion, pInfo->dataVersion, 4);
         return TRUE;
     } else {
@@ -195,35 +196,25 @@ static UBool U_CALLCONV usprep_cleanup(void){
             SHARED_DATA_HASHTABLE = NULL;
         }
     }
-
-    umtx_destroy(&usprepMutex);             /* Don't worry about destroying the mutex even  */
-                                            /*  if the hash table still exists.  The mutex  */
-                                            /*  will lazily re-init  itself if needed.      */
+    gSharedDataInitOnce.reset();
     return (SHARED_DATA_HASHTABLE == NULL);
 }
 U_CDECL_END
 
 
 /** Initializes the cache for resources */
+static void U_CALLCONV
+createCache(UErrorCode &status) {
+    SHARED_DATA_HASHTABLE = uhash_open(hashEntry, compareEntries, NULL, &status);
+    if (U_FAILURE(status)) {
+        SHARED_DATA_HASHTABLE = NULL;
+    }
+    ucln_common_registerCleanup(UCLN_COMMON_USPREP, usprep_cleanup);
+}
+
 static void 
 initCache(UErrorCode *status) {
-    UBool makeCache;
-    UMTX_CHECK(&usprepMutex, (SHARED_DATA_HASHTABLE ==  NULL), makeCache);
-    if(makeCache) {
-        UHashtable *newCache = uhash_open(hashEntry, compareEntries, NULL, status);
-        if (U_SUCCESS(*status)) {
-            umtx_lock(&usprepMutex);
-            if(SHARED_DATA_HASHTABLE == NULL) {
-                SHARED_DATA_HASHTABLE = newCache;
-                ucln_common_registerCleanup(UCLN_COMMON_USPREP, usprep_cleanup);
-                newCache = NULL;
-            }
-            umtx_unlock(&usprepMutex);
-        }
-        if(newCache != NULL) {
-            uhash_close(newCache);
-        }
-    }
+    umtx_initOnce(gSharedDataInitOnce, &createCache, *status);
 }
 
 static UBool U_CALLCONV

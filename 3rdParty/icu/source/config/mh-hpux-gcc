@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 ## HPUX/gcc specific setup
-## Copyright (c) 1999-2011, International Business Machines Corporation and
+## Copyright (c) 1999-2012, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Commands to generate dependency files
@@ -17,7 +17,8 @@ SHAREDLIBCPPFLAGS = -DPIC
 LD_DEFAULTPATH= -Wl,+b,.:'$$'ORIGIN/
 
 # Need to override this or we will get unworking assembly
-GENCCODE_ASSEMBLY=-a gcc
+#GENCCODE_ASSEMBLY=-a gcc
+GENCCODE_ASSEMBLY=
 
 # Get some handy functions defined properly
 DEFS += -D_HPUX_SOURCE -D_POSIX_C_SOURCE=199506L

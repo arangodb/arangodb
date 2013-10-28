@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2009-2011, International Business Machines Corporation and    *
+* Copyright (C) 2009-2013, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 *
@@ -69,10 +69,31 @@ static const UChar gStrictDashEquivalentsPattern[] = {
         // [       \      -      MINUS     ]
         0x005B, 0x005C, 0x002D, 0x2212, 0x005D, 0x0000};
 
+static UChar32 gMinusSigns[] = {
+    0x002D,
+    0x207B,
+    0x208B,
+    0x2212,
+    0x2796,
+    0xFE63,
+    0xFF0D};
 
-DecimalFormatStaticSets *DecimalFormatStaticSets::gStaticSets = NULL;
+static UChar32 gPlusSigns[] = {
+    0x002B,
+    0x207A,
+    0x208A,
+    0x2795,
+    0xfB29,
+    0xFE62,
+    0xFF0B};
 
-DecimalFormatStaticSets::DecimalFormatStaticSets(UErrorCode *status)
+static void initUnicodeSet(const UChar32 *raw, int32_t len, UnicodeSet *s) {
+    for (int32_t i = 0; i < len; ++i) {
+        s->add(raw[i]);
+    }
+}
+
+DecimalFormatStaticSets::DecimalFormatStaticSets(UErrorCode &status)
 : fDotEquivalents(NULL),
   fCommaEquivalents(NULL),
   fOtherGroupingSeparators(NULL),
@@ -82,17 +103,19 @@ DecimalFormatStaticSets::DecimalFormatStaticSets(UErrorCode *status)
   fStrictOtherGroupingSeparators(NULL),
   fStrictDashEquivalents(NULL),
   fDefaultGroupingSeparators(NULL),
-  fStrictDefaultGroupingSeparators(NULL)
+  fStrictDefaultGroupingSeparators(NULL),
+  fMinusSigns(NULL),
+  fPlusSigns(NULL)
 {
-    fDotEquivalents                = new UnicodeSet(UnicodeString(TRUE, gDotEquivalentsPattern, -1),                *status);
-    fCommaEquivalents              = new UnicodeSet(UnicodeString(TRUE, gCommaEquivalentsPattern, -1),              *status);
-    fOtherGroupingSeparators       = new UnicodeSet(UnicodeString(TRUE, gOtherGroupingSeparatorsPattern, -1),       *status);
-    fDashEquivalents               = new UnicodeSet(UnicodeString(TRUE, gDashEquivalentsPattern, -1),               *status);
+    fDotEquivalents                = new UnicodeSet(UnicodeString(TRUE, gDotEquivalentsPattern, -1),                status);
+    fCommaEquivalents              = new UnicodeSet(UnicodeString(TRUE, gCommaEquivalentsPattern, -1),              status);
+    fOtherGroupingSeparators       = new UnicodeSet(UnicodeString(TRUE, gOtherGroupingSeparatorsPattern, -1),       status);
+    fDashEquivalents               = new UnicodeSet(UnicodeString(TRUE, gDashEquivalentsPattern, -1),               status);
     
-    fStrictDotEquivalents          = new UnicodeSet(UnicodeString(TRUE, gStrictDotEquivalentsPattern, -1),          *status);
-    fStrictCommaEquivalents        = new UnicodeSet(UnicodeString(TRUE, gStrictCommaEquivalentsPattern, -1),        *status);
-    fStrictOtherGroupingSeparators = new UnicodeSet(UnicodeString(TRUE, gStrictOtherGroupingSeparatorsPattern, -1), *status);
-    fStrictDashEquivalents         = new UnicodeSet(UnicodeString(TRUE, gStrictDashEquivalentsPattern, -1),         *status);
+    fStrictDotEquivalents          = new UnicodeSet(UnicodeString(TRUE, gStrictDotEquivalentsPattern, -1),          status);
+    fStrictCommaEquivalents        = new UnicodeSet(UnicodeString(TRUE, gStrictCommaEquivalentsPattern, -1),        status);
+    fStrictOtherGroupingSeparators = new UnicodeSet(UnicodeString(TRUE, gStrictOtherGroupingSeparatorsPattern, -1), status);
+    fStrictDashEquivalents         = new UnicodeSet(UnicodeString(TRUE, gStrictDashEquivalentsPattern, -1),         status);
 
 
     fDefaultGroupingSeparators = new UnicodeSet(*fDotEquivalents);
@@ -103,12 +126,27 @@ DecimalFormatStaticSets::DecimalFormatStaticSets(UErrorCode *status)
     fStrictDefaultGroupingSeparators->addAll(*fStrictCommaEquivalents);
     fStrictDefaultGroupingSeparators->addAll(*fStrictOtherGroupingSeparators);
 
+    fMinusSigns = new UnicodeSet();
+    fPlusSigns = new UnicodeSet();
+
     // Check for null pointers
     if (fDotEquivalents == NULL || fCommaEquivalents == NULL || fOtherGroupingSeparators == NULL || fDashEquivalents == NULL ||
         fStrictDotEquivalents == NULL || fStrictCommaEquivalents == NULL || fStrictOtherGroupingSeparators == NULL || fStrictDashEquivalents == NULL ||
-        fDefaultGroupingSeparators == NULL || fStrictOtherGroupingSeparators == NULL) {
-        goto ExitConstrDeleteAll;
+        fDefaultGroupingSeparators == NULL || fStrictOtherGroupingSeparators == NULL ||
+        fMinusSigns == NULL || fPlusSigns == NULL) {
+      cleanup();
+      status = U_MEMORY_ALLOCATION_ERROR;
+      return;
     }
+
+    initUnicodeSet(
+            gMinusSigns,
+            sizeof(gMinusSigns) / sizeof(gMinusSigns[0]),
+            fMinusSigns);
+    initUnicodeSet(
+            gPlusSigns,
+            sizeof(gPlusSigns) / sizeof(gPlusSigns[0]),
+            fPlusSigns);
 
     // Freeze all the sets
     fDotEquivalents->freeze();
@@ -121,27 +159,15 @@ DecimalFormatStaticSets::DecimalFormatStaticSets(UErrorCode *status)
     fStrictDashEquivalents->freeze();
     fDefaultGroupingSeparators->freeze();
     fStrictDefaultGroupingSeparators->freeze();
-
-    return; // If we reached this point, everything is fine so just exit
-
-ExitConstrDeleteAll: // Remove fPropSets and fRuleSets and return error
-    delete fDotEquivalents; fDotEquivalents = NULL;
-    delete fCommaEquivalents; fCommaEquivalents = NULL;
-    delete fOtherGroupingSeparators; fOtherGroupingSeparators = NULL;
-    delete fDashEquivalents; fDashEquivalents = NULL;
-    delete fStrictDotEquivalents; fStrictDotEquivalents = NULL;
-    delete fStrictCommaEquivalents; fStrictCommaEquivalents = NULL;
-    delete fStrictOtherGroupingSeparators; fStrictOtherGroupingSeparators = NULL;
-    delete fStrictDashEquivalents; fStrictDashEquivalents = NULL;
-    delete fDefaultGroupingSeparators; fDefaultGroupingSeparators = NULL;
-    delete fStrictDefaultGroupingSeparators; fStrictDefaultGroupingSeparators = NULL;
-    delete fStrictOtherGroupingSeparators; fStrictOtherGroupingSeparators = NULL;
-
-    *status = U_MEMORY_ALLOCATION_ERROR;
+    fMinusSigns->freeze();
+    fPlusSigns->freeze();
 }
-
 
 DecimalFormatStaticSets::~DecimalFormatStaticSets() {
+  cleanup();
+}
+
+void DecimalFormatStaticSets::cleanup() { // Be sure to clean up newly added fields!
     delete fDotEquivalents; fDotEquivalents = NULL;
     delete fCommaEquivalents; fCommaEquivalents = NULL;
     delete fOtherGroupingSeparators; fOtherGroupingSeparators = NULL;
@@ -153,7 +179,12 @@ DecimalFormatStaticSets::~DecimalFormatStaticSets() {
     delete fDefaultGroupingSeparators; fDefaultGroupingSeparators = NULL;
     delete fStrictDefaultGroupingSeparators; fStrictDefaultGroupingSeparators = NULL;
     delete fStrictOtherGroupingSeparators; fStrictOtherGroupingSeparators = NULL;
+    delete fMinusSigns; fMinusSigns = NULL;
+    delete fPlusSigns; fPlusSigns = NULL;
 }
+
+static DecimalFormatStaticSets *gStaticSets;
+static icu::UInitOnce gStaticSetsInitOnce = U_INITONCE_INITIALIZER;
 
 
 //------------------------------------------------------------------------------
@@ -162,62 +193,41 @@ DecimalFormatStaticSets::~DecimalFormatStaticSets() {
 //                      cached memory.  Called by ICU's u_cleanup() function.
 //
 //------------------------------------------------------------------------------
-UBool
-DecimalFormatStaticSets::cleanup(void)
-{
-    delete DecimalFormatStaticSets::gStaticSets;
-    DecimalFormatStaticSets::gStaticSets = NULL;
-
-    return TRUE;
-}
-
 U_CDECL_BEGIN
 static UBool U_CALLCONV
 decimfmt_cleanup(void)
 {
-    return DecimalFormatStaticSets::cleanup();
+    delete gStaticSets;
+    gStaticSets = NULL;
+    gStaticSetsInitOnce.reset();
+    return TRUE;
+}
+
+static void U_CALLCONV initSets(UErrorCode &status) {
+    U_ASSERT(gStaticSets == NULL);
+    ucln_i18n_registerCleanup(UCLN_I18N_DECFMT, decimfmt_cleanup);
+    gStaticSets = new DecimalFormatStaticSets(status);
+    if (U_FAILURE(status)) {
+        delete gStaticSets;
+        gStaticSets = NULL;
+        return;
+    }
+    if (gStaticSets == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+    }
 }
 U_CDECL_END
 
-void DecimalFormatStaticSets::initSets(UErrorCode *status)
-{
-    DecimalFormatStaticSets *p;
-
-    UMTX_CHECK(NULL, gStaticSets, p);
-    if (p == NULL) {
-        p = new DecimalFormatStaticSets(status);
-
-        if (p == NULL) {
-            *status = U_MEMORY_ALLOCATION_ERROR;
-            return;
-        }
-
-        if (U_FAILURE(*status)) {
-            delete p;
-            return;
-        }
-
-        umtx_lock(NULL);
-        if (gStaticSets == NULL) {
-            gStaticSets = p;
-            p = NULL;
-        }
-
-        umtx_unlock(NULL);
-        if (p != NULL) {
-            delete p;
-        }
-
-        ucln_i18n_registerCleanup(UCLN_I18N_DECFMT, decimfmt_cleanup);
-    }
+const DecimalFormatStaticSets *DecimalFormatStaticSets::getStaticSets(UErrorCode &status) {
+    umtx_initOnce(gStaticSetsInitOnce, initSets, status);
+    return gStaticSets;
 }
+
 
 const UnicodeSet *DecimalFormatStaticSets::getSimilarDecimals(UChar32 decimal, UBool strictParse)
 {
     UErrorCode status = U_ZERO_ERROR;
-
-    initSets(&status);
-
+    umtx_initOnce(gStaticSetsInitOnce, initSets, status);
     if (U_FAILURE(status)) {
         return NULL;
     }

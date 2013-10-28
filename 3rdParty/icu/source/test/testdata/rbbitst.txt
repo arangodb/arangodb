@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2001-2012 International Business Machines
+﻿# Copyright (c) 2001-2013 International Business Machines
 # Corporation and others. All Rights Reserved.
 #
 # RBBI Test Data
@@ -33,8 +33,10 @@
 
 
 #   Temp debugging tests 
-<line>
-<data>•\ufffc•\u30e3\u000c<100>\u1b39\u300a\u002f\u203a\u200b•\ufffc•\uaf64•\udcfb•</data>
+<word>
+<data>•Isn't<200></data>
+<char>
+<data>•\U00010020•\U00010000\N{COMBINING MACRON}•</data>
 
 ########################################################################################
 #
@@ -170,7 +172,23 @@
 <data>•abc<200>\U0001D800•def<200>\U0001D3FF• •</data>
 
 # Hiragana & Katakana stay together, but separates from each other and Latin.
-<data>•abc<200>\N{HIRAGANA LETTER SMALL A}<300>\N{HIRAGANA LETTER VU}\N{COMBINING ACUTE ACCENT}<300>\N{HIRAGANA ITERATION MARK}<300>\N{KATAKANA LETTER SMALL A}\N{KATAKANA ITERATION MARK}\N{HALFWIDTH KATAKANA LETTER WO}\N{HALFWIDTH KATAKANA LETTER N}<300>def<200>#•</data>
+# *** what to do about theoretical combos of chars? i.e. hiragana + accent
+#<data>•abc<200>\N{HIRAGANA LETTER SMALL A}<400>\N{HIRAGANA LETTER VU}\N{COMBINING ACUTE ACCENT}<400>\N{HIRAGANA ITERATION MARK}<400>\N{KATAKANA LETTER SMALL A}\N{KATAKANA ITERATION MARK}\N{HALFWIDTH KATAKANA LETTER WO}\N{HALFWIDTH KATAKANA LETTER N}<400>def<200>#•</data>
+
+# test normalization/dictionary handling of halfwidth katakana: same dictionary phrase in fullwidth and halfwidth
+<data>•芽キャベツ<400>芽キャﾍﾞツ<400></data>
+
+# more Japanese tests
+# TODO: Currently, U+30FC and other characters (script=common) in the Hiragana
+# and the Katakana block are not treated correctly. Enable this later.
+#<data>•どー<400>せ<400>日本語<400>を<400>勉強<400>する<400>理由<400>について<400>　•て<400>こと<400>は<400>我<400>でも<400>知<400>ら<400>も<400>い<400>こと<400>なん<400>だ<400>。•</data>
+<data>•日本語<400>を<400>勉強<400>する<400>理由<400>について<400>　•て<400>こと<400>は<400>我<400>でも<400>知<400>ら<400>も<400>い<400>こと<400>なん<400>だ<400>。•</data>
+
+# Testing of word boundary for dictionary word containing both kanji and kana
+<data>•中だるみ<400>蔵王の森<400>ウ離島<400></data>
+
+# Testing of Chinese segmentation (taken from a Chinese news article)
+<data>•400<100>余<400>名<400>中央<400>委员<400>和<400>中央<400>候补<400>委员<400>都<400>领<400>到了<400>“•推荐<400>票<400>”•，•有<400>资格<400>在<400>200<100>多<400>名<400>符合<400>条件<400>的<400>63<100>岁<400>以下<400>中共<400>正<400>部<400>级<400>干部<400>中<400>，•选出<400>他们<400>属意<400>的<400>中央<400>政治局<400>委员<400>以<400>向<400>政治局<400>常委<400>会<400>举荐<400>。•</data>
 
 # Words with interior formatting characters
 <data>•def\N{COMBINING ACUTE ACCENT}\N{SYRIAC ABBREVIATION MARK}ghi<200> •</data>
@@ -178,6 +196,9 @@
 # to test for bug #4097779
 <data>•aa\N{COMBINING GRAVE ACCENT}a<200> •</data>
 
+# fullwidth numeric, midletter characters etc should be treated like their halfwidth counterparts
+# <data>•ＩＳＮ'Ｔ<200> •１９<100>日<400></data>
+# why was this added with the dbbi stuff?
 
 #      to test for bug #4098467
 #      What follows is a string of Korean characters (I found it in the Yellow Pages
@@ -187,9 +208,15 @@
 #      precomposed syllables...
 <data>•\uc0c1\ud56d<200> •\ud55c\uc778<200> •\uc5f0\ud569<200> •\uc7a5\ub85c\uad50\ud68c<200> •\u1109\u1161\u11bc\u1112\u1161\u11bc<200> •\u1112\u1161\u11ab\u110b\u1175\u11ab<200> •\u110b\u1167\u11ab\u1112\u1161\u11b8<200> •\u110c\u1161\u11bc\u1105\u1169\u1100\u116d\u1112\u116c<200> •</data>
 
-<data>•abc<200>\u4e01<400>\u4e02<400>\u3005<200>\u4e03<400>\u4e03<400>abc<200> •</data>
+# more Korean tests (Jamo not tested here, not counted as dictionary characters)
+# Disable them now because we don't include a Korean dictionary.
+#<data>•\ud55c\uad6d<200>\ub300\ud559\uad50<200>\uc790\uc5f0<200>\uacfc\ud559<200>\ub300\ud559<200>\ubb3c\ub9ac\ud559\uacfc<200></data>
+#<data>•\ud604\uc7ac<200>\ub294<200> •\uac80\ucc30<200>\uc774<200> •\ubd84\uc2dd<200>\ud68c\uacc4<200>\ubb38\uc81c<200>\ub97c<200> •\uc870\uc0ac<200>\ud560<200> •\uac00\ub2a5\uc131<200>\uc740<200> •\uc5c6\ub2e4<200>\u002e•</data>
 
-<data>•\u06c9\uc799\ufffa<200></data>
+<data>•abc<200>\u4e01<400>\u4e02<400>\u3005<400>\u4e03\u4e03<400>abc<200> •</data>
+
+<data>•\u06c9<200>\uc799\ufffa•</data>
+
 
 #      
 #      Try some words from other scripts.
@@ -506,15 +533,15 @@ What is the proper use of the abbreviation pp.? •Yes, I am definatelly 12" tal
 <data>•\uc0c1•\ud56d •\ud55c•\uc778 •\uc5f0•\ud569 •\uc7a5•\ub85c•\uad50•\ud68c•</data>
 
 #      conjoining jamo...
-#      TODO:  rules update needed
-#<data>•\u1109\u1161\u11bc•\u1112\u1161\u11bc •\u1112\u1161\u11ab•\u110b\u1175\u11ab #•\u110b\u1167\u11ab•\u1112\u1161\u11b8 •\u110c\u1161\u11bc•\u1105\u1169•\u1100\u116d•\u1112\u116c•</data>
+<data>•\u1109\u1161\u11bc•\u1112\u1161\u11bc •\u1112\u1161\u11ab•\u110b\u1175\u11ab •\u110b\u1167\u11ab•\u1112\u1161\u11b8 •\u110c\u1161\u11bc•\u1105\u1169•\u1100\u116d•\u1112\u116c•</data>
 
 #      to test for bug #4117554: Fullwidth .!? should be treated as postJwrd
 <data>•\u4e01\uff0e•\u4e02\uff01•\u4e03\uff1f•</data>
 
 #      Surrogate line break tests.
 #
-<data>•\u4e01•\ud840\udc01•\u4e02•abc •\ue000 •\udb80\udc01•</data>
+<data>•\u4e01•\ud840\udc01•\u4e02•abc •\ue000 •\udb80\udc01•</data>  #This line and the following are equivalent.
+<data>•\u4e01•\U00020001•\u4e02•abc •\ue000 •\U000f0001•</data>
 
 #      Regression for bug 836
 #        Note:  Unicode 5.1 changed this behavior
@@ -540,6 +567,14 @@ What is the proper use of the abbreviation pp.? •Yes, I am definatelly 12" tal
 <data>•\u114d\u31f3•\ube44\u002d•\u0362\u24e2\u276e\u2014\u205f\ufe16•\uc877•\u0fd0\u000a<100>\u20a3•</data>
 <data>•\u080a\u215b\U0001d7d3\u002c•\u2025\U000e012e•\u02df\u118d\u0029\ua8d6\u0085<100>\u6cc4\u2024\u202f\ufffc•</data>
  
+# Test for #10176 (in root)
+<line>
+<data>•abc/•s •def•</data>
+<data>•abc/\u05D9 •def•</data>
+<data>•\u05E7\u05D7/\u05D9 •\u05DE\u05E2\u05D9\u05DC•</data>
+<data>•\u05D3\u05E8\u05D5\u05E9\u05D9\u05DD •\u05E9\u05D7\u05E7\u05E0\u05D9\u05DD/\u05D9\u05D5\u05EA•</data>
+
+
 
 ########################################################################################
 #
@@ -651,7 +686,23 @@ Bangkok)•</data>
 \u0e22\u0e07•\
 \u0e43\u0e2b\u0e21\u0e48•</data>
 
+# Test for #10296
+<line>
+<data>•ใช•มั้ย•</data>
+<data>•มั๊ยล่ะ•ที่รัก•</data>
 
+##########################################################################################
+#
+#   Lao Tests
+#
+##########################################################################################
+<locale en>
+# Basic check for #7647
+<line>
+<data>•ສະບາຍດີ•</data>
+<data>•ດີ•ຂອບໃຈ•</data>
+<data>•ເຈົ້າ•ເວົ້າ•ພາສາ•ອັງກິດ•ໄດ້•ບໍ່•</data>
+<data>•ກະລຸນາ•ເວົ້າ•ຊ້າ•ໆ•</data>
 
 ##########################################################################################
 #
@@ -721,19 +772,30 @@ Bangkok)•</data>
 # The following data was originally in RBBITest::TestJapaneseWordBreak()
 <locale ja>
 <word>
-<data>•\u4ECA\u65E5<400>\u306F\u3044\u3044<300>\u5929\u6C17<400>\u3067\u3059\u306D<300>\u3002•\u000D\u000A•</data>
+<data>•\u4ECA\u65E5<400>\u306F<400>\u3044\u3044<400>\u5929\u6C17<400>\u3067\u3059<400>\u306D<400>\u3002•\u000D\u000A•</data>
 
 # UBreakIteratorType UBRK_WORD, Locale "ja"
 # Don't break in runs of hiragana or runs of ideograph, where the latter includes \u3005 \u3007 \u303B (cldrbug #2009).
 # \u79C1\u9054\u306B\u4E00\u3007\u3007\u3007\u306E\u30B3\u30F3\u30D4\u30E5\u30FC\u30BF\u304C\u3042\u308B\u3002\u5948\u3005\u306F\u30EF\u30FC\u30C9\u3067\u3042\u308B\u3002
+# modified to work with dbbi code - should verify
 
 <locale ja>
 <word>
-<data>•私達<400>に<300>一〇〇〇<400>の<300>コンピュータ<300>がある<300>。<0>奈々<400>は<300>ワード<300>である<300>。•</data>
+<data>•私<400>達<400>に<400>一<400>〇<400>〇〇<400>の<400>コンピュータ<400>が<400>ある<400>。<0>奈々<400>は<400>ワード<400>で<400>ある<400>。•</data>
+
+# Test for #10176 (in ja)
+<line>
+<data>•abc/•s •def•</data>
+<data>•abc/\u05D9 •def•</data>
+<data>•\u05E7\u05D7/\u05D9 •\u05DE\u05E2\u05D9\u05DC•</data>
+<data>•\u05D3\u05E8\u05D5\u05E9\u05D9\u05DD •\u05E9\u05D7\u05E7\u05E0\u05D9\u05DD/\u05D9\u05D5\u05EA•</data>
+
 
 <locale root>
 <word>
-<data>•私<400>達<400>に<300>一<400>〇<400>〇<400>〇<400>の<300>コンピュータ<300>が<300>あ<300>る<300>。<0>奈<400>々<200>は<300>ワード<300>で<300>あ<300>る<300>。•</data>
+<data>•私<400>達<400>に<400>一<400>〇<400>〇〇<400>の<400>コンピュータ<400>が<400>ある<400>。<0>奈々<400>は<400>ワード<400>で<400>ある<400>。•</data>
+# The following test is for #10300
+<data>•例えば<400>オーストラリア<400>。•</data>
 
 # UBreakIteratorType UBRK_SENTENCE, Locale "el"
 # Add break after Greek question mark (cldrbug #2069).
@@ -756,11 +818,14 @@ Bangkok)•</data>
 <word>
 <data>•Can't<200> •have<200> •breaks<200> •in<200> •xx:yy<200> •or<200> •struct.field<200> \
 •for<200> •CS<200>-•types<200>.•</data>
+<data>•\uFF92\uFF76\uFF9E<400> •</data>
 
 <locale en_US_POSIX>
 <word>
-<data>•Can't<200> •have<200> •breaks<200> •in<200> •xx<200>:•yy<200> •or<200> •struct<200>.•field<200> \
+<data>•Can't<200> •have<200> •breaks<200> •in<200> •xx:yy<200> •or<200> •struct<200>.•field<200> \
 •for<200> •CS<200>-•types<200>.•</data>
+<data>•\u06c9<200>\uc799\ufffa•</data>
+<data>•\uFF92\uFF76\uFF9E<400> •</data>
 
 
 # UBreakIteratorType UBRK_CHARACTER, Locale "th"
@@ -773,12 +838,6 @@ Bangkok)•</data>
 # which is "กระท่อมรจนา (สุชาติ-จุฑามาศ) เด็กมีปัญหา "
 
 <locale th>
-<char>
-<data>•\u0E01•\u0E23•\u0E30•\u0E17\u0E48•\u0E2D•\u0E21•\u0E23•\u0E08•\u0E19•\u0E32• •\
-(•\u0E2A\u0E38•\u0E0A•\u0E32•\u0E15\u0E34•-•\u0E08\u0E38•\u0E11•\u0E32•\u0E21•\u0E32•\u0E28•)• •\
-\u0E40•\u0E14\u0E47•\u0E01•\u0E21\u0E35•\u0E1B\u0E31•\u0E0D•\u0E2B•\u0E32• •</data>
-
-<locale root>
 <char>
 <data>•\u0E01•\u0E23•\u0E30•\u0E17\u0E48•\u0E2D•\u0E21•\u0E23•\u0E08•\u0E19•\u0E32• •\
 (•\u0E2A\u0E38•\u0E0A•\u0E32•\u0E15\u0E34•-•\u0E08\u0E38•\u0E11•\u0E32•\u0E21•\u0E32•\u0E28•)• •\
@@ -798,6 +857,16 @@ Bangkok)•</data>
 
 <locale fi>
 <line>
-<data>•abc •- •def    •abc •-def    •abc- •def   •abc-•def•</data>   # With ASCII hyphen
-<data>•abc •‐ •def    •abc •‐def    •abc‐ •def   •abc‐•def•</data>   # With Unicode u2010 hyphen
+# TODO: problems with Finnish line break rules cause these two lines to fail.
+#<data>•abc •- •def    •abc •-def    •abc- •def   •abc-•def•</data>   # With ASCII hyphen
+#<data>•abc •‐ •def    •abc •‐def    •abc‐ •def   •abc‐•def•</data>   # With Unicode u2010 hyphen
 
+<data>•abc •- •def    •abc •-def    •abc- •def   •</data>   # With ASCII hyphen
+<data>•abc •‐ •def    •abc •‐def    •abc‐ •def   •</data>   # With Unicode u2010 hyphen
+
+# Test for #10176 (in fi)
+<line>
+<data>•abc/•s •def•</data>
+<data>•abc/\u05D9 •def•</data>
+<data>•\u05E7\u05D7/\u05D9 •\u05DE\u05E2\u05D9\u05DC•</data>
+<data>•\u05D3\u05E8\u05D5\u05E9\u05D9\u05DD •\u05E9\u05D7\u05E7\u05E0\u05D9\u05DD/\u05D9\u05D5\u05EA•</data>

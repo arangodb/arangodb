@@ -63,7 +63,8 @@ files = {
   "js/actions/api-system.js" : "system",
   "js/actions/api-transaction.js" : "transaction",
   "js/actions/api-traversal.js" : "traversal",
-  "js/actions/api-user.js" : "user"
+  "js/actions/api-user.js" : "user",
+  "lib/Admin/RestVersionHandler.cpp" : "version"
 }
 
 if len(sys.argv) < 3:

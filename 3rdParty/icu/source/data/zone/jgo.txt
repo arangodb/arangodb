@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/jgo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/jgo.xml
+ */
+jgo{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0}"}
+    }
+}

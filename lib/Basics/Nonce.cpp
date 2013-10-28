@@ -98,7 +98,7 @@ namespace triagens {
 
 
       string createNonce () {
-        uint32_t timestamp = time(0);
+        uint32_t timestamp = (uint32_t) time(0);
         uint32_t rand1 = Random::interval(0U, UINT32_MAX);
         uint32_t rand2 = Random::interval(0U, UINT32_MAX);
 
@@ -170,7 +170,7 @@ namespace triagens {
         }
 
         // statistics, compute the log2 of the age and increment the proofs count
-        uint32_t now = time(0);
+        uint32_t now = (uint32_t) time(0);
         uint32_t age = 1;
 
         if (timestamp < now) {

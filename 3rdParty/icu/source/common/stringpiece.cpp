@@ -1,4 +1,4 @@
-// Copyright (C) 2009-2010, International Business Machines
+// Copyright (C) 2009-2013, International Business Machines
 // Corporation and others. All Rights Reserved.
 //
 // Copyright 2004 and onwards Google Inc.
@@ -68,15 +68,6 @@ operator==(const StringPiece& x, const StringPiece& y) {
 }
 
 
-/* Microsft Visual Studios <= 8.0 complains about redefinition of this
- * static const class variable. However, the C++ standard states that this 
- * definition is correct. Perhaps there is a bug in the Microsoft compiler. 
- * This is not an issue on any other compilers (that we know of) including 
- * Visual Studios 9.0.
- * Cygwin with MSVC 9.0 also complains here about redefinition.
- */
-#if (!defined(_MSC_VER) || (_MSC_VER > 1500)) && !defined(CYGWINMSVC)
-const int32_t StringPiece::npos;
-#endif
+const int32_t StringPiece::npos = 0x7fffffff;
 
 U_NAMESPACE_END

@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2006, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -17,19 +17,44 @@ U_NAMESPACE_BEGIN
 class InputText;
 class CharsetRecognizer;
 
+/*
+ * CharsetMatch represents the results produced by one Charset Recognizer for one input text
+ *              Any confidence > 0 indicates a possible match, meaning that the input bytes
+ *              are at least legal.
+ *
+ *              The full results of a detect are represented by an array of these
+ *              CharsetMatch objects, each representing a possible matching charset.
+ *
+ *              Note that a single charset recognizer may detect multiple closely related
+ *              charsets, and set different names depending on the exact input bytes seen.
+ */
 class CharsetMatch : public UMemory
 {
  private:
-    CharsetRecognizer *csr;
-    InputText *textIn;
-    int32_t confidence;
+    InputText               *textIn;
+    int32_t                  confidence;
+    const char              *fCharsetName;
+    const char              *fLang;
 
  public:
     CharsetMatch();
 
-    void set(InputText *input, CharsetRecognizer *cr, int32_t conf);
+    /**
+      * fully set the state of this CharsetMatch.
+      * Called by the CharsetRecognizers to record match results.
+      * Default (NULL) parameters for names will be filled by calling the
+      *   corresponding getters on the recognizer.
+      */
+    void set(InputText               *input, 
+             const CharsetRecognizer *cr, 
+             int32_t                  conf, 
+             const char              *csName=NULL, 
+             const char              *lang=NULL);
 
-    const char *getName()const;
+    /**
+      * Return the name of the charset for this Match
+      */
+    const char *getName() const;
 
     const char *getLanguage()const;
 

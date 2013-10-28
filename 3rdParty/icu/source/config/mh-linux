@@ -1,11 +1,11 @@
 ## -*-makefile-*-
 ## Linux-specific setup
-## Copyright (c) 1999-2010, International Business Machines Corporation and
+## Copyright (c) 1999-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Commands to generate dependency files
 GEN_DEPS.c=  $(CC) -E -MM $(DEFS) $(CPPFLAGS)
-GEN_DEPS.cc= $(CXX) -E -MM $(DEFS) $(CPPFLAGS)
+GEN_DEPS.cc= $(CXX) -E -MM $(DEFS) $(CPPFLAGS) $(CXXFLAGS)
 
 ## Flags for position independent code
 SHAREDLIBCFLAGS = -fPIC
@@ -39,25 +39,25 @@ STATIC_O = ao
 
 ## Compilation rules
 %.$(STATIC_O): $(srcdir)/%.c
-	$(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS)) -o $@ $<)
 %.o: $(srcdir)/%.c
-	$(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS)) -o $@ $<)
 
 %.$(STATIC_O): $(srcdir)/%.cpp
-	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS)) -o $@ $<)
 %.o: $(srcdir)/%.cpp
-	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS)) -o $@ $<)
 
 
 ## Dependency rules
 %.d: $(srcdir)/%.c
-	@echo "generating dependency information for $<"
+	$(call ICU_MSG,(deps)) $<
 	@$(SHELL) -ec '$(GEN_DEPS.c) $< \
 		| sed '\''s%\($*\)\.o[ :]*%\1.o $@ : %g'\'' > $@; \
 		[ -s $@ ] || rm -f $@'
 
 %.d: $(srcdir)/%.cpp
-	@echo "generating dependency information for $<"
+	$(call ICU_MSG,(deps)) $<
 	@$(SHELL) -ec '$(GEN_DEPS.cc) $< \
 		| sed '\''s%\($*\)\.o[ :]*%\1.o $@ : %g'\'' > $@; \
 		[ -s $@ ] || rm -f $@'

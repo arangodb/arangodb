@@ -1,6 +1,6 @@
 <small>
   <div class="plain">
-    <h5 class="applicationName"><%= attributes.name %></h5>
+    <h5 class="applicationName"><%= attributes.name %><%= attributes.isSystem ? " (system)" : "" %></h5>
     <img src="/_admin/aardvark/foxxes/thumbnail/<%=attributes.app %>" alt="icon" class="foxxIcon"/>
     <p class="foxxDescription">
       <!--Description: <%=attributes.description %><br />-->

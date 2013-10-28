@@ -1,5 +1,5 @@
 /*
- * (C) Copyright IBM Corp. 1998-2010 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -27,7 +27,7 @@ U_NAMESPACE_BEGIN
 class GlyphSubstitutionLookupProcessor : public LookupProcessor
 {
 public:
-    GlyphSubstitutionLookupProcessor(const GlyphSubstitutionTableHeader *glyphSubstitutionTableHeader,
+    GlyphSubstitutionLookupProcessor(const LEReferenceTo<GlyphSubstitutionTableHeader> &glyphSubstitutionTableHeader,
         LETag scriptTag, 
         LETag languageTag, 
         const LEGlyphFilter *filter, 
@@ -38,7 +38,7 @@ public:
 
     virtual ~GlyphSubstitutionLookupProcessor();
 
-    virtual le_uint32 applySubtable(const LookupSubtable *lookupSubtable, le_uint16 lookupType, GlyphIterator *glyphIterator,
+    virtual le_uint32 applySubtable(const LEReferenceTo<LookupSubtable> &lookupSubtable, le_uint16 lookupType, GlyphIterator *glyphIterator,
         const LEFontInstance *fontInstance, LEErrorCode& success) const;
 
 protected:

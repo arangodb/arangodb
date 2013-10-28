@@ -207,7 +207,10 @@ noinst_PROGRAMS = $(am__EXEEXT_2)
 @ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a
 @ENABLE_MRUBY_TRUE@am__append_6 = bin/arangoirb
 @ENABLE_MRUBY_TRUE@am__append_7 = \
-@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions -name "*.rb" -print) 
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions -name "*.rb" -print) \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/common -name "*.rb" -print) \
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/server -name "*.rb" -print)
 
 DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/arangod/Makefile.files \
@@ -228,6 +231,7 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(top_srcdir)/config/config.h.in \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Documentation/arango.template.in \
+	$(top_srcdir)/Installation/MacOSX/Bundle/Info.plist.in \
 	$(top_srcdir)/config/depcomp $(dist_man_MANS) README \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing \
@@ -357,7 +361,8 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config/config.h \
 	$(top_builddir)/lib/BasicsC/local-configuration.h
-CONFIG_CLEAN_FILES = Documentation/arango.template
+CONFIG_CLEAN_FILES = Documentation/arango.template \
+	Installation/MacOSX/Bundle/Info.plist
 CONFIG_CLEAN_VPATH_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
@@ -1115,6 +1120,9 @@ comma := ,
 empty := 
 space := $(empty) $(empty)
 MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
+VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
+VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
+VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
 ################################################################################
 ### @brief source to build before compile
@@ -2083,6 +2091,7 @@ JAVASCRIPT_JSLINT = \
 @ENABLE_MRUBY_TRUE@	mr/server/mr-server.h
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
+DMG_NAME := ArangoDB-CLI.app
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -2147,6 +2156,8 @@ lib/BasicsC/stamp-h2: $(top_srcdir)/lib/BasicsC/local-configuration.h.in $(top_b
 distclean-hdr:
 	-rm -f config/config.h config/stamp-h1 lib/BasicsC/local-configuration.h lib/BasicsC/stamp-h2
 Documentation/arango.template: $(top_builddir)/config.status $(top_srcdir)/Documentation/arango.template.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+Installation/MacOSX/Bundle/Info.plist: $(top_builddir)/config.status $(top_srcdir)/Installation/MacOSX/Bundle/Info.plist.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 clean-noinstLIBRARIES:
@@ -7510,6 +7521,7 @@ unittests-brief: \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
+	unittests-dump \
 	unittests-arangob \
 	unittests-import \
 	unittests-upgrade \
@@ -7959,6 +7971,35 @@ unittests-foxx-manager:
 	$(VALGRIND) @builddir@/bin/foxx-manager --relative $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/foxx-manager --relative $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
 	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+################################################################################
+### @brief ARANGODUMP TESTS
+################################################################################
+
+.PHONY: unittests-dump
+
+unittests-dump:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< ARANGODUMP TESTS                                                           >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-setup.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangodump --configuration none --server.database "UnitTestsDumpSrc" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --output-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-teardown.js || test "x$(FORCE)" == "x1"
+
 	kill `cat $(PIDFILE)`
 
 	while test -f $(PIDFILE); do sleep 1; done
@@ -8615,6 +8656,31 @@ clean-zlib:
 ################################################################################
 ### @brief ICU
 ################################################################################
+
+.PHONY: pack-dmg
+
+pack-dmg:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--prefix=/opt/arangodb \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--enable-mruby
+
+	cd Build && cmake \
+		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "USE_MRUBY=ON" \
+		-D "USE_RAW_CONFIG=ON" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		..
+
+	cd Build && cpack \
+		-G Bundle \
+		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

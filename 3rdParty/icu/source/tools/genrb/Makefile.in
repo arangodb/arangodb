@@ -1,6 +1,6 @@
 #################################################################################
 ## Makefile.in for ICU - tools/genrb                                            #
-## Copyright (c) 1999-2011, International Business Machines Corporation and     #
+## Copyright (c) 1999-2013, International Business Machines Corporation and     #
 ## others. All Rights Reserved.                                                 #
 #################################################################################
 
@@ -20,17 +20,18 @@ DERB_STUB_NAME = derb
 
 SECTION = 1
 
-MAN_FILES = $(TARGET_STUB_NAME).$(SECTION) $(DERB_STUB_NAME).$(SECTION)
-
+MAN_FILES = $(TARGET_STUB_NAME).$(SECTION)
+@ICUIO_TRUE@MAN_FILES += $(DERB_STUB_NAME).$(SECTION)
 
 ## Extra files to remove for 'make clean'
 CLEANFILES = *~ $(MAN_FILES) $(DEPS) $(DERB_DEPS)
 
 ## Target information
 TARGET = $(BINDIR)/$(TARGET_STUB_NAME)$(EXEEXT)
-DERB = $(BINDIR)/$(DERB_STUB_NAME)$(EXEEXT)
+# derb depends on icuio
+@ICUIO_TRUE@DERB = $(BINDIR)/$(DERB_STUB_NAME)$(EXEEXT)
 
-CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(srcdir)/../toolutil
+CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(srcdir)/../toolutil -I$(top_srcdir)/io
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
 OBJECTS = errmsg.o genrb.o parse.o read.o reslist.o ustr.o rbutil.o \
@@ -57,12 +58,12 @@ distclean : distclean-local
 dist: dist-local
 check: all check-local
 
-all-local: $(TARGET) $(DERB) $(MAN_FILES) 
+all-local: $(TARGET) $(DERB) $(MAN_FILES)
 
 install-local: all-local install-man
 	$(MKINSTALLDIRS) $(DESTDIR)$(bindir)
 	$(INSTALL) $(TARGET) $(DESTDIR)$(bindir)
-	$(INSTALL) $(DERB) $(DESTDIR)$(bindir)
+@ICUIO_TRUE@	$(INSTALL) $(DERB) $(DESTDIR)$(bindir)
 
 install-man: $(MAN_FILES)
 	$(MKINSTALLDIRS) $(DESTDIR)$(mandir)/man$(SECTION)
@@ -84,11 +85,11 @@ Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	 && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 $(TARGET) : $(OBJECTS)
-	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS) 
+	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS)
 	$(POST_BUILD_STEP)
 
 $(DERB) : $(DERB_OBJ)
-	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS)
+	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBICUIO) $(LIBS)
 	$(POST_BUILD_STEP)
 
 # This line is needed to serialize builds when the gmake -j option is used.

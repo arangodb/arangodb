@@ -1226,7 +1226,7 @@ do_canonicalize(const char*    localeID,
     }
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uloc_addLikelySubtags(const char*    localeID,
          char* maximizedLocaleID,
          int32_t maximizedLocaleIDCapacity,
@@ -1250,7 +1250,7 @@ uloc_addLikelySubtags(const char*    localeID,
     }    
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uloc_minimizeSubtags(const char*    localeID,
          char* minimizedLocaleID,
          int32_t minimizedLocaleIDCapacity,

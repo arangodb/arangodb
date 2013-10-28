@@ -525,7 +525,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
                         isStandaloneOperation, 
                         forceSync);
 
-  TRI_FreeShapedJson(primary->_shaper, shaped);
+  TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

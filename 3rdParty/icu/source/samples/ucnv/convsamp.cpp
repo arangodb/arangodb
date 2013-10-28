@@ -1,6 +1,6 @@
 /**************************************************************************
 *
-*   Copyright (C) 2000-2011, International Business Machines
+*   Copyright (C) 2000-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ***************************************************************************
@@ -786,8 +786,7 @@ UBool convsample_21_didSubstitute(const char *source)
          debugCtx1->subContext, flagCtx, debugCtx2, debugCtx2->subCallback);
 #endif
 
-  cloneLen = 1; /* but passing in null so it will clone */
-  cloneCnv = ucnv_safeClone(conv,  NULL,  &cloneLen, &status);
+  cloneCnv = ucnv_safeClone(conv, NULL, NULL, &status);
 
   U_ASSERT(status);
 

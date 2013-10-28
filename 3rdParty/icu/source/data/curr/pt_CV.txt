@@ -1,0 +1,32 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/pt_CV.xml
+// *
+// ***************************************************************************
+pt_CV{
+    %%Parent{"pt_PT"}
+    Currencies{
+        CVE{
+            "CVE",
+            "Escudo cabo-verdiano",
+            {
+                "#,##0.00 ¤",
+                "$",
+                " ",
+            }
+        }
+        PTE{
+            "Esc.",
+            "Escudo português",
+            {
+                "#,##0.00 ¤",
+                ",",
+                " ",
+            }
+        }
+    }
+    Version{"2.0.90.61"}
+}

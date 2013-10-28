@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1999-2011, International Business Machines Corporation and
+ * Copyright (c) 1999-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -24,6 +24,10 @@
 #include "unicode/uloc.h"
 #include "unicode/locid.h"
 #include "putilimp.h"
+#include "intltest.h"
+#include "tsmthred.h"
+#include "unicode/ushape.h"
+
 
 #if U_PLATFORM_USES_ONLY_WIN32_API
     /* Prefer native Windows APIs even if POSIX is implemented (i.e., on Cygwin). */
@@ -34,6 +38,8 @@
 #   undef POSIX
 #endif
 
+
+#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 /* Needed by z/OS to get usleep */
 #if U_PLATFORM == U_PF_OS390
 #define __DOT1 1
@@ -93,10 +99,6 @@
 #undef sleep
 #endif
 
-
-
-#include "tsmthred.h"
-
 #define TSMTHREAD_FAIL(msg) errln("%s at file %s, line %d", msg, __FILE__, __LINE__)
 #define TSMTHREAD_ASSERT(expr) {if (!(expr)) {TSMTHREAD_FAIL("Fail");}}
 
@@ -136,7 +138,7 @@ void MultithreadTest::runIndexedTest( int32_t index, UBool exec,
 #include "unicode/choicfmt.h"
 #include "unicode/msgfmt.h"
 #include "unicode/locid.h"
-#include "unicode/ucol.h"
+#include "unicode/coll.h"
 #include "unicode/calendar.h"
 #include "ucaconf.h"
 
@@ -186,6 +188,14 @@ void MultithreadTest::runIndexedTest( int32_t index, UBool exec,
         }
         break;
 
+	case 5:
+        name = "TestArabicShapingThreads"; 
+        if (exec) {
+            TestArabicShapingThreads();
+        }
+        break;
+		
+
     default:
         name = "";
         break; //needed to end loop
@@ -203,6 +213,7 @@ void MultithreadTest::runIndexedTest( int32_t index, UBool exec,
 //
 //-----------------------------------------------------------------------------------
 #define THREADTEST_NRTHREADS 8
+#define ARABICSHAPE_THREADTEST 30
 
 class TestThreadsThread : public SimpleThread
 {
@@ -214,6 +225,75 @@ public:
     }
 private:
     char *fWhatToChange;
+};
+//-----------------------------------------------------------------------------------
+//
+//   TestArabicShapeThreads -- see if calls to u_shapeArabic in many threads works successfully
+//
+//   Set up N threads pointing at N chars. When they are started, they will make calls to doTailTest which tests
+//   u_shapeArabic, if the calls are successful it will the set * chars. 
+//   At the end we make sure all threads managed to run u_shapeArabic successfully.
+//   This is a unit test for ticket 9473
+//
+//-----------------------------------------------------------------------------------
+class TestArabicShapeThreads : public SimpleThread 
+{
+public:
+    TestArabicShapeThreads(char* whatToChange) { fWhatToChange = whatToChange;}
+    virtual void run() { 
+	    if(doTailTest()==TRUE)
+			*fWhatToChange = '*';             
+    }
+private:
+    char *fWhatToChange;
+	
+	UBool doTailTest(void) {
+  static const UChar src[] = { 0x0020, 0x0633, 0 };
+  static const UChar dst_old[] = { 0xFEB1, 0x200B,0 };
+  static const UChar dst_new[] = { 0xFEB1, 0xFE73,0 };
+  UChar dst[3] = { 0x0000, 0x0000,0 };
+  int32_t length;
+  UErrorCode status;
+  IntlTest inteltst =  IntlTest();
+ 
+  status = U_ZERO_ERROR;
+  length = u_shapeArabic(src, -1, dst, LENGTHOF(dst),
+                         U_SHAPE_LETTERS_SHAPE|U_SHAPE_SEEN_TWOCELL_NEAR, &status);
+  if(U_FAILURE(status)) {
+	   inteltst.errln("Fail: status %s\n", u_errorName(status)); 
+	return FALSE;
+  } else if(length!=2) {
+    inteltst.errln("Fail: len %d expected 3\n", length);
+	return FALSE;
+  } else if(u_strncmp(dst,dst_old,LENGTHOF(dst))) {
+    inteltst.errln("Fail: got U+%04X U+%04X expected U+%04X U+%04X\n",
+            dst[0],dst[1],dst_old[0],dst_old[1]);
+	return FALSE;
+  }
+
+
+  //"Trying new tail
+  status = U_ZERO_ERROR;
+  length = u_shapeArabic(src, -1, dst, LENGTHOF(dst),
+                         U_SHAPE_LETTERS_SHAPE|U_SHAPE_SEEN_TWOCELL_NEAR|U_SHAPE_TAIL_NEW_UNICODE, &status);
+  if(U_FAILURE(status)) {
+    inteltst.errln("Fail: status %s\n", u_errorName(status)); 
+	return FALSE;
+  } else if(length!=2) {
+    inteltst.errln("Fail: len %d expected 3\n", length);
+	return FALSE;
+  } else if(u_strncmp(dst,dst_new,LENGTHOF(dst))) {
+    inteltst.errln("Fail: got U+%04X U+%04X expected U+%04X U+%04X\n",
+            dst[0],dst[1],dst_new[0],dst_new[1]);
+	return FALSE;
+  } 
+  
+  
+  return TRUE;
+  
+}
+	
+
 };
 
 void MultithreadTest::TestThreads()
@@ -286,6 +366,78 @@ void MultithreadTest::TestThreads()
 }
 
 
+void MultithreadTest::TestArabicShapingThreads()
+{
+    char threadTestChars[ARABICSHAPE_THREADTEST + 1];
+    SimpleThread *threads[ARABICSHAPE_THREADTEST];
+    int32_t numThreadsStarted = 0;
+
+    int32_t i;
+    
+    for(i=0;i<ARABICSHAPE_THREADTEST;i++)
+    {
+        threadTestChars[i] = ' ';
+        threads[i] = new TestArabicShapeThreads(&threadTestChars[i]);
+    }
+    threadTestChars[ARABICSHAPE_THREADTEST] = '\0';
+
+    logln("-> do TestArabicShapingThreads <- Firing off threads.. ");
+    for(i=0;i<ARABICSHAPE_THREADTEST;i++)
+    {
+        if (threads[i]->start() != 0) {
+            errln("Error starting thread %d", i);
+        }
+        else {
+            numThreadsStarted++;
+        }
+        //SimpleThread::sleep(100);
+        logln(" Subthread started.");
+    }
+
+    logln("Waiting for threads to be set..");
+    if (numThreadsStarted == 0) {
+        errln("No threads could be started for testing!");
+        return;
+    }
+
+    int32_t patience = 100; // seconds to wait
+
+    while(patience--)
+    {
+        int32_t count = 0;
+        umtx_lock(NULL);
+        for(i=0;i<ARABICSHAPE_THREADTEST;i++)
+        {
+            if(threadTestChars[i] == '*')
+            {
+                count++;
+            }
+        }
+        umtx_unlock(NULL);
+        
+        if(count == ARABICSHAPE_THREADTEST)
+        {
+            logln("->TestArabicShapingThreads <- Got all threads! cya");
+            for(i=0;i<ARABICSHAPE_THREADTEST;i++)
+            {
+                delete threads[i];
+            }
+            return;
+        }
+
+        logln("-> TestArabicShapingThreads <- Waiting..");
+        SimpleThread::sleep(500);
+    }
+
+    errln("-> TestArabicShapingThreads <- PATIENCE EXCEEDED!! Still missing some.");
+    for(i=0;i<ARABICSHAPE_THREADTEST;i++)
+    {
+        delete threads[i];
+    }
+	
+}
+
+ 
 //-----------------------------------------------------------------------
 //
 //  TestMutex  - a simple (non-stress) test to verify that ICU mutexes
@@ -294,8 +446,8 @@ void MultithreadTest::TestThreads()
 //               platform's mutex support is at least superficially there.
 //
 //----------------------------------------------------------------------
-static UMTX    gTestMutexA = NULL;
-static UMTX    gTestMutexB = NULL;
+static UMutex    gTestMutexA = U_MUTEX_INITIALIZER;
+static UMutex    gTestMutexB = U_MUTEX_INITIALIZER;
 
 static int     gThreadsStarted = 0; 
 static int     gThreadsInMiddle = 0;
@@ -398,11 +550,6 @@ void MultithreadTest::TestMutex()
     }
 
     // All threads made it by both mutexes.
-    // Destroy the test mutexes.
-    umtx_destroy(&gTestMutexA);
-    umtx_destroy(&gTestMutexB);
-    gTestMutexA=NULL;
-    gTestMutexB=NULL;
 
     for (i=0; i<TESTMUTEX_THREAD_COUNT; i++) {
         delete threads[i];
@@ -480,7 +627,7 @@ UnicodeString showDifference(const UnicodeString& expected, const UnicodeString&
 //
 //-------------------------------------------------------------------------------------------
 
-const int kFormatThreadIterations = 20;  // # of iterations per thread
+const int kFormatThreadIterations = 100;  // # of iterations per thread
 const int kFormatThreadThreads    = 10;  // # of threads to spawn   
 const int kFormatThreadPatience   = 60;  // time in seconds to wait for all threads
 
@@ -498,7 +645,7 @@ struct FormatThreadTestData
 
 // "Someone from {2} is receiving a #{0} error - {1}. Their telephone call is costing {3 number,currency}."
 
-void formatErrorMessage(UErrorCode &realStatus, const UnicodeString& pattern, const Locale& theLocale,
+static void formatErrorMessage(UErrorCode &realStatus, const UnicodeString& pattern, const Locale& theLocale,
                      UErrorCode inStatus0, /* statusString 1 */ const Locale &inCountry2, double currency3, // these numbers are the message arguments.
                      UnicodeString &result)
 {
@@ -532,6 +679,105 @@ void formatErrorMessage(UErrorCode &realStatus, const UnicodeString& pattern, co
     delete fmt;
 }
 
+/**
+ * Class for thread-safe (theoretically) format.
+ * 
+ *
+ * Its constructor, destructor, and init/fini are NOT thread safe.
+ */
+class ThreadSafeFormat {
+public:
+  /* give a unique offset to each thread */
+  ThreadSafeFormat();
+  UBool doStuff(int32_t offset, UnicodeString &appendErr, UErrorCode &status);
+private:
+  LocalPointer<NumberFormat> fFormat; // formtter - default constructed currency
+  Formattable  fYDDThing;    // Formattable currency - YDD
+  Formattable  fBBDThing;   // Formattable currency - BBD
+
+  // statics
+private:
+  static LocalPointer<NumberFormat> gFormat;
+  static NumberFormat *createFormat(UErrorCode &status);
+  static Formattable gYDDThing, gBBDThing;
+public:
+  static void init(UErrorCode &status); // avoid static init.
+  static void fini(UErrorCode &status); // avoid static fini
+};
+
+LocalPointer<NumberFormat> ThreadSafeFormat::gFormat;
+Formattable ThreadSafeFormat::gYDDThing;
+Formattable ThreadSafeFormat::gBBDThing;
+UnicodeString gYDDStr, gBBDStr;
+NumberFormat *ThreadSafeFormat::createFormat(UErrorCode &status) {
+  LocalPointer<NumberFormat> fmt(NumberFormat::createCurrencyInstance(Locale::getUS(), status));
+  return fmt.orphan();
+}
+
+
+static const UChar kYDD[] = { 0x59, 0x44, 0x44, 0x00 };
+static const UChar kBBD[] = { 0x42, 0x42, 0x44, 0x00 };
+static const UChar kUSD[] = { 0x55, 0x53, 0x44, 0x00 };
+
+void ThreadSafeFormat::init(UErrorCode &status) {
+  gFormat.adoptInstead(createFormat(status));
+  gYDDThing.adoptObject(new CurrencyAmount(123.456, kYDD, status));
+  gBBDThing.adoptObject(new CurrencyAmount(987.654, kBBD, status));
+  if (U_FAILURE(status)) {
+      return;
+  }
+  gFormat->format(gYDDThing, gYDDStr, NULL, status);
+  gFormat->format(gBBDThing, gBBDStr, NULL, status);
+}
+
+void ThreadSafeFormat::fini(UErrorCode &/*status*/) {
+  gFormat.adoptInstead(NULL);
+}
+
+ThreadSafeFormat::ThreadSafeFormat() {
+}
+
+UBool ThreadSafeFormat::doStuff(int32_t offset, UnicodeString &appendErr, UErrorCode &status) {
+  UBool okay = TRUE;
+  if(fFormat.isNull()) {
+    fFormat.adoptInstead(createFormat(status));
+  }
+
+  if(u_strcmp(fFormat->getCurrency(), kUSD)) {
+    appendErr.append("fFormat currency != ")
+      .append(kUSD)
+      .append(", =")
+      .append(fFormat->getCurrency())
+      .append("! ");
+    okay = FALSE;
+  }
+
+  if(u_strcmp(gFormat->getCurrency(), kUSD)) {
+    appendErr.append("gFormat currency != ")
+      .append(kUSD)
+      .append(", =")
+      .append(gFormat->getCurrency())
+      .append("! ");
+    okay = FALSE;
+  }
+  UnicodeString str;
+  const UnicodeString *o=NULL;
+  Formattable f;
+  const NumberFormat *nf = NULL; // only operate on it as const.
+  switch(offset%4) {
+  case 0:  f = gYDDThing;  o = &gYDDStr;  nf = gFormat.getAlias();  break;
+  case 1:  f = gBBDThing;  o = &gBBDStr;  nf = gFormat.getAlias();  break;
+  case 2:  f = gYDDThing;  o = &gYDDStr;  nf = fFormat.getAlias();  break;
+  case 3:  f = gBBDThing;  o = &gBBDStr;  nf = fFormat.getAlias();  break;
+  }
+  nf->format(f, str, NULL, status);
+
+  if(*o != str) {
+    appendErr.append(showDifference(*o, str));
+    okay = FALSE;
+  }
+  return okay;
+}
 
 UBool U_CALLCONV isAcceptable(void *, const char *, const char *, const UDataInfo *) {
     return TRUE;
@@ -546,6 +792,8 @@ class FormatThreadTest : public ThreadWithStatus
 public:
     int     fNum;
     int     fTraceInfo;
+
+    ThreadSafeFormat fTSF;
 
     FormatThreadTest() // constructor is NOT multithread safe.
         : ThreadWithStatus(),
@@ -747,8 +995,16 @@ public:
                 error("PatternFormat: \n" + showDifference(expected,result));
                 goto cleanupAndReturn;
             }
+            // test the Thread Safe Format
+            UnicodeString appendErr;
+            if(!fTSF.doStuff(fNum, appendErr, status)) {
+              error(appendErr);
+              goto cleanupAndReturn;
+            }
         }   /*  end of for loop */
-        
+
+
+
 cleanupAndReturn:
         //  while (fNum == 4) {SimpleThread::sleep(10000);}   // Force a failure by preventing thread from finishing
         fTraceInfo = 2;
@@ -766,6 +1022,11 @@ void MultithreadTest::TestThreadedIntl()
     UnicodeString theErr;
     UBool   haveDisplayedInfo[kFormatThreadThreads];
     static const int32_t PATIENCE_SECONDS = 45;
+
+    UErrorCode threadSafeErr = U_ZERO_ERROR;
+
+    ThreadSafeFormat::init(threadSafeErr);
+    assertSuccess("initializing ThreadSafeFormat", threadSafeErr, TRUE);
 
     //
     //  Create and start the test threads
@@ -789,13 +1050,18 @@ void MultithreadTest::TestThreadedIntl()
     UBool   stillRunning;
     UDate startTime, endTime;
     startTime = Calendar::getNow();
+    double lastComplaint = 0;
     do {
         /*  Spin until the test threads  complete. */
         stillRunning = FALSE;
         endTime = Calendar::getNow();
-        if (((int32_t)(endTime - startTime)/U_MILLIS_PER_SECOND) > PATIENCE_SECONDS) {
+        double elapsedSeconds =  ((int32_t)(endTime - startTime)/U_MILLIS_PER_SECOND);
+        if (elapsedSeconds > PATIENCE_SECONDS) {
             errln("Patience exceeded. Test is taking too long.");
             return;
+        } else if((elapsedSeconds-lastComplaint) > 2.0) {
+            infoln("%.1f seconds elapsed (still waiting..)", elapsedSeconds);
+            lastComplaint = elapsedSeconds;
         }
         /*
          The following sleep must be here because the *BSD operating systems
@@ -820,6 +1086,8 @@ void MultithreadTest::TestThreadedIntl()
     //
     //  All threads have finished.
     //
+    ThreadSafeFormat::fini(threadSafeErr);
+    assertSuccess("finalizing ThreadSafeFormat", threadSafeErr, TRUE);
 }
 #endif /* #if !UCONFIG_NO_FORMATTING */
 
@@ -842,78 +1110,93 @@ struct Line {
     int32_t buflen;
 } ;
 
+static UBool
+skipLineBecauseOfBug(const UChar *s, int32_t length) {
+    // TODO: Fix ICU ticket #8052
+    if(length >= 3 &&
+            (s[0] == 0xfb2 || s[0] == 0xfb3) &&
+            s[1] == 0x334 &&
+            (s[2] == 0xf73 || s[2] == 0xf75 || s[2] == 0xf81)) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static UCollationResult
+normalizeResult(int32_t result) {
+    return result<0 ? UCOL_LESS : result==0 ? UCOL_EQUAL : UCOL_GREATER;
+}
+
 class CollatorThreadTest : public ThreadWithStatus
 {
 private: 
-    const UCollator *coll;
+    const Collator *coll;
     const Line *lines;
     int32_t noLines;
+    UBool isAtLeastUCA62;
 public:
     CollatorThreadTest()  : ThreadWithStatus(),
         coll(NULL),
         lines(NULL),
-        noLines(0)
+        noLines(0),
+        isAtLeastUCA62(TRUE)
     {
     };
-    void setCollator(UCollator *c, Line *l, int32_t nl) 
+    void setCollator(Collator *c, Line *l, int32_t nl, UBool atLeastUCA62)
     {
         coll = c;
         lines = l;
         noLines = nl;
+        isAtLeastUCA62 = atLeastUCA62;
     }
     virtual void run() {
-        //sleep(10000);
-        int32_t line = 0;
-
         uint8_t sk1[1024], sk2[1024];
         uint8_t *oldSk = NULL, *newSk = sk1;
-        int32_t resLen = 0, oldLen = 0;
+        int32_t oldLen = 0;
+        int32_t prev = 0;
         int32_t i = 0;
 
         for(i = 0; i < noLines; i++) {
-            resLen = ucol_getSortKey(coll, lines[i].buff, lines[i].buflen, newSk, 1024);
+            if(lines[i].buflen == 0) { continue; }
 
-            int32_t res = 0, cmpres = 0, cmpres2 = 0;
+            if(skipLineBecauseOfBug(lines[i].buff, lines[i].buflen)) { continue; }
+
+            int32_t resLen = coll->getSortKey(lines[i].buff, lines[i].buflen, newSk, 1024);
 
             if(oldSk != NULL) {
-                res = strcmp((char *)oldSk, (char *)newSk);
-                cmpres = ucol_strcoll(coll, lines[i-1].buff, lines[i-1].buflen, lines[i].buff, lines[i].buflen);
-                cmpres2 = ucol_strcoll(coll, lines[i].buff, lines[i].buflen, lines[i-1].buff, lines[i-1].buflen);
-                //cmpres = res;
-                //cmpres2 = -cmpres;
+                int32_t skres = strcmp((char *)oldSk, (char *)newSk);
+                int32_t cmpres = coll->compare(lines[prev].buff, lines[prev].buflen, lines[i].buff, lines[i].buflen);
+                int32_t cmpres2 = coll->compare(lines[i].buff, lines[i].buflen, lines[prev].buff, lines[prev].buflen);
 
                 if(cmpres != -cmpres2) {
-                    error("Compare result not symmetrical on line "+ line);
+                    error(UnicodeString("Compare result not symmetrical on line ") + (i + 1));
                     break;
                 }
 
-                if(((res&0x80000000) != (cmpres&0x80000000)) || (res == 0 && cmpres != 0) || (res != 0 && cmpres == 0)) {
-                    error(UnicodeString("Difference between ucol_strcoll and sortkey compare on line ")+ UnicodeString(line));
+                if(cmpres != normalizeResult(skres)) {
+                    error(UnicodeString("Difference between coll->compare and sortkey compare on line ") + (i + 1));
                     break;
                 }
 
+                int32_t res = cmpres;
+                if(res == 0 && !isAtLeastUCA62) {
+                    // Up to UCA 6.1, the collation test files use a custom tie-breaker,
+                    // comparing the raw input strings.
+                    res = u_strcmpCodePointOrder(lines[prev].buff, lines[i].buff);
+                    // Starting with UCA 6.2, the collation test files use the standard UCA tie-breaker,
+                    // comparing the NFD versions of the input strings,
+                    // which we do via setting strength=identical.
+                }
                 if(res > 0) {
-                    error(UnicodeString("Line %i is not greater or equal than previous line ")+ UnicodeString(i));
+                    error(UnicodeString("Line is not greater or equal than previous line, for line ") + (i + 1));
                     break;
-                } else if(res == 0) { /* equal */
-                    res = u_strcmpCodePointOrder(lines[i-1].buff, lines[i].buff);
-                    if (res == 0) {
-                        error(UnicodeString("Probable error in test file on line %i (comparing identical strings)")+ UnicodeString(i));
-                        break;
-                    }
-                    /*
-                     * UCA 6.0 test files can have lines that compare == if they are
-                     * different strings but canonically equivalent.
-                    else if (res > 0) {
-                        error(UnicodeString("Sortkeys are identical, but code point compare gives >0 on line ")+ UnicodeString(i));
-                        break;
-                    }
-                     */
                 }
             }
 
             oldSk = newSk;
             oldLen = resLen;
+            (void)oldLen;   // Suppress set but not used warning.
+            prev = i;
 
             newSk = (newSk == sk1)?sk2:sk1;
         }
@@ -978,26 +1261,25 @@ void MultithreadTest::TestCollators()
         }
     }
 
-    Line *lines = new Line[200000];
-    memset(lines, 0, sizeof(Line)*200000);
+    LocalArray<Line> lines(new Line[200000]);
+    memset(lines.getAlias(), 0, sizeof(Line)*200000);
     int32_t lineNum = 0;
 
     UChar bufferU[1024];
-    int32_t buflen = 0;
     uint32_t first = 0;
-    uint32_t offset = 0;
 
     while (fgets(buffer, 1024, testFile) != NULL) {
-        offset = 0;
-        if(*buffer == 0 || strlen(buffer) < 3 || buffer[0] == '#') {
-            continue;
+        if(*buffer == 0 || buffer[0] == '#') {
+            // Store empty and comment lines so that errors are reported
+            // for the real test file lines.
+            lines[lineNum].buflen = 0;
+            lines[lineNum].buff[0] = 0;
+        } else {
+            int32_t buflen = u_parseString(buffer, bufferU, 1024, &first, &status);
+            lines[lineNum].buflen = buflen;
+            u_memcpy(lines[lineNum].buff, bufferU, buflen);
+            lines[lineNum].buff[buflen] = 0;
         }
-        offset = u_parseString(buffer, bufferU, 1024, &first, &status);
-        buflen = offset;
-        bufferU[offset++] = 0;
-        lines[lineNum].buflen = buflen;
-        //lines[lineNum].buff = new UChar[buflen+1];
-        u_memcpy(lines[lineNum].buff, bufferU, buflen);
         lineNum++;
     }
     fclose(testFile);
@@ -1006,16 +1288,21 @@ void MultithreadTest::TestCollators()
       return;
     }
 
-    UCollator *coll = ucol_open("root", &status);
+    UVersionInfo uniVersion;
+    static const UVersionInfo v62 = { 6, 2, 0, 0 };
+    u_getUnicodeVersion(uniVersion);
+    UBool isAtLeastUCA62 = uprv_memcmp(uniVersion, v62, 4) >= 0;
+
+    LocalPointer<Collator> coll(Collator::createInstance(Locale::getRoot(), status));
     if(U_FAILURE(status)) {
         errcheckln(status, "Couldn't open UCA collator");
         return;
     }
-    ucol_setAttribute(coll, UCOL_NORMALIZATION_MODE, UCOL_ON, &status);
-    ucol_setAttribute(coll, UCOL_CASE_FIRST, UCOL_OFF, &status);
-    ucol_setAttribute(coll, UCOL_CASE_LEVEL, UCOL_OFF, &status);
-    ucol_setAttribute(coll, UCOL_STRENGTH, UCOL_TERTIARY, &status);
-    ucol_setAttribute(coll, UCOL_ALTERNATE_HANDLING, UCOL_NON_IGNORABLE, &status);
+    coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_ON, status);
+    coll->setAttribute(UCOL_CASE_FIRST, UCOL_OFF, status);
+    coll->setAttribute(UCOL_CASE_LEVEL, UCOL_OFF, status);
+    coll->setAttribute(UCOL_STRENGTH, isAtLeastUCA62 ? UCOL_IDENTICAL : UCOL_TERTIARY, status);
+    coll->setAttribute(UCOL_ALTERNATE_HANDLING, UCOL_NON_IGNORABLE, status);
 
     int32_t noSpawned = 0;
     int32_t spawnResult = 0;
@@ -1025,7 +1312,7 @@ void MultithreadTest::TestCollators()
     int32_t j = 0;
     for(j = 0; j < kCollatorThreadThreads; j++) {
         //logln("Setting collator %i", j);
-        tests[j].setCollator(coll, lines, lineNum);
+        tests[j].setCollator(coll.getAlias(), lines.getAlias(), lineNum, isAtLeastUCA62);
     }
     for(j = 0; j < kCollatorThreadThreads; j++) {
         log("%i ", j);
@@ -1078,12 +1365,6 @@ void MultithreadTest::TestCollators()
                 errln("There were errors.");
                 SimpleThread::errorFunc();
             }
-            ucol_close(coll);
-            //for(i = 0; i < lineNum; i++) {
-            //delete[] lines[i].buff;
-            //}
-            delete[] lines;
-
             return;
         }
 
@@ -1091,7 +1372,6 @@ void MultithreadTest::TestCollators()
     }
     errln("patience exceeded. ");
     SimpleThread::errorFunc();
-    ucol_close(coll);
 }
 
 #endif /* #if !UCONFIG_NO_COLLATION */

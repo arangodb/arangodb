@@ -1,19 +1,15 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/en_AU.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_AU.xml
 // *
 // ***************************************************************************
 en_AU{
-    Version{"2.0.64.65"}
+    %%Parent{"en_GB"}
+    Version{"2.0.92.87"}
     zoneStrings{
-        "meta:Atlantic"{
-            sd{"∅∅∅"}
-            sg{"∅∅∅"}
-            ss{"∅∅∅"}
-        }
         "meta:Australia_Central"{
             sd{"ACDT"}
             sg{"ACT"}

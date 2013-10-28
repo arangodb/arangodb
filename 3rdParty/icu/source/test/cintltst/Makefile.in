@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1999-2011, International Business Machines
+#   Copyright (C) 1999-2013, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -37,7 +37,7 @@ CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(top_srcdir)/tools/ct
 DEFS += -D'ICU_UNICODE_VERSION="$(UNICODE_VERSION)"' -D'ICU_VERSION="@VERSION@"' -D'ICUDATA_NAME="$(ICUDATA_PLATFORM_NAME)"' -D'U_TOPSRCDIR="$(top_srcdir)/"' -D'U_TOPBUILDDIR="$(BUILDDIR)"'
 LIBS = $(LIBCTESTFW) $(LIBICUI18N) $(LIBICUTOOLUTIL) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-OBJECTS = callcoll.o calltest.o colutil.o capitst.o cbiapts.o cbkittst.o \
+OBJECTS = callcoll.o calltest.o capitst.o cbiapts.o cbkittst.o \
 ccaltst.o ucnvseltst.o cctest.o ccapitst.o ccolltst.o encoll.o cconvtst.o ccurrtst.o \
 cdateintervalformattest.o cdattst.o cdetst.o cdtdptst.o cdtrgtst.o cestst.o cfintst.o \
 cformtst.o cfrtst.o cg7coll.o chashtst.o cintltst.o citertst.o cjaptst.o cloctst.o \
@@ -49,7 +49,8 @@ ncnvfbts.o ncnvtst.o putiltst.o cstrtest.o udatpg_test.o utf8tst.o \
 stdnmtst.o usrchtst.o custrtrn.o sorttest.o trietest.o trie2test.o usettest.o \
 uenumtst.o utmstest.o currtest.o \
 idnatest.o nfsprep.o spreptst.o sprpdata.o \
-hpmufn.o tracetst.o reapits.o utexttst.o ucsdetst.o spooftest.o
+hpmufn.o tracetst.o reapits.o uregiontest.o utexttst.o ucsdetst.o spooftest.o \
+cgendtst.o
 
 DEPS = $(OBJECTS:.o=.d)
 
@@ -86,15 +87,17 @@ clean-local:
 distclean-local: clean-local
 	$(RMV) Makefile
 
+# cintltest gets $(THREADSENVFLAGS) - just in case we get a threaded cintltst.
+
 check-local: all-local
-	$(INVOKE) ./$(TARGET) $(CINTLTST_OPTS)
+	$(THREADSENVFLAGS) $(INVOKE) ./$(TARGET) $(TEST_OUTPUT_OPTS) $(CINTLTST_OPTS)
 
 check-exhaustive-local: all-local
-	$(INVOKE) ./$(TARGET) -e
+	$(THREADSENVFLAGS) $(INVOKE) ./$(TARGET) $(TEST_OUTPUT_OPTS) -e
 
 TESTXML=$(top_builddir)/test-$(TARGET).xml
 xcheck-local: all-local
-	$(INVOKE) ./$(TARGET) $(CINTLTST_OPTS) -x $(TESTXML)
+	$(THREADSENVFLAGS) $(INVOKE) ./$(TARGET) $(TEST_OUTPUT_OPTS) $(CINTLTST_OPTS) -x $(TESTXML)
 
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
@@ -113,4 +116,3 @@ ifneq ($(patsubst %install,,$(MAKECMDGOALS)),)
 endif
 endif
 endif
-

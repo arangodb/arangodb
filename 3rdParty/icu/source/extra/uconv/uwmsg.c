@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 1998-2004, International Business Machines Corporation 
+* Copyright (C) 1998-2012, International Business Machines Corporation
 * and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -84,7 +84,6 @@ finish:
     ucnv_close(converter);
 }
 
-static const char *gPath = 0;
 static UResourceBundle *gBundle = NULL;
 
 U_STRING_DECL(gNoFormatting, " (UCONFIG_NO_FORMATTING see uconfig.h)", 38);
@@ -110,7 +109,6 @@ U_CFUNC UResourceBundle *u_wmsg_setPath(const char *path, UErrorCode *err)
          return 0;
     }
 
-    gPath = uprv_strdup(path);
     gBundle = b;
 
     U_STRING_INIT(gNoFormatting, " (UCONFIG_NO_FORMATTING see uconfig.h)", 38);
@@ -143,9 +141,6 @@ U_CFUNC int u_wmsg(FILE *fp, const char *tag, ... )
 
     if(U_FAILURE(err))
     {
-#if 0
-        fprintf(stderr, "u_wmsg: failed to load tag [%s] [%s] [%s]!!\n", tag,  u_errorName(err), gPath);
-#endif
         return -1;
     }
 
