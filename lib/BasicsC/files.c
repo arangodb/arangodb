@@ -1647,6 +1647,7 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
   void* buffer;
   int bufferSize;
   int res;
+  int res2;
 
   *crc = TRI_InitialCrc32();
 
@@ -1684,10 +1685,16 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
       break;
     }
   }
-
-  fclose(fin);
-
+  
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+  res2 = fclose(fin);
+  if (res2 != TRI_ERROR_NO_ERROR && res2 != EOF) {
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = res2;
+    }
+    // otherwise keep original error
+  }
 
   *crc = TRI_FinalCrc32(*crc);
 
