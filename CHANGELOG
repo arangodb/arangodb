@@ -1,6 +1,16 @@
 v1.4.0 (2013-10-28)
 -------------------
 
+* fixed issue #647: Icon tooltips missing
+
+* fixed issue #646: index creation in web interface
+
+* merged PR for issue #643: Some minor corrections and a link to "Downloads"
+
+* fixed issue #642: Completion of error handling
+
+* fixed issue #639: compiling v1.4 on maverick produces warnings on -Wstrict-null-sentinel
+
 * fixed issue #620: added startup option `--server.default-api-compatibility`
 
   This adds the following changes to the ArangoDB server and clients:
