@@ -32,6 +32,7 @@
 #endif
 
 #include "BasicsC/common.h"
+#include "BasicsC/conversions.h"
 #include "Basics/Common.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/json.h"
@@ -75,6 +76,35 @@ void Version::initialise () {
   Values["env"] = getConfigureEnvironment();
   Values["build-date"] = getBuildDate();
   Values["repository-version"] = getRepositoryVersion();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get numeric server version
+////////////////////////////////////////////////////////////////////////////////
+
+int32_t Version::getNumericServerVersion () {
+  char const* apiVersion = TRI_VERSION;
+  char const* p = apiVersion;
+
+  // read major version
+  while (*p >= '0' && *p <= '9') {
+    ++p;
+  }
+
+  assert(*p == '.');
+  int32_t major = TRI_Int32String2(apiVersion, (p - apiVersion));
+
+  apiVersion = ++p;
+
+  // read minor version
+  while (*p >= '0' && *p <= '9') {
+    ++p;
+  }
+
+  assert((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
+  int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
+
+  return (int32_t) (minor * 100L + major * 10000L);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

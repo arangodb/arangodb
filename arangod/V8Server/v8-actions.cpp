@@ -624,6 +624,11 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   req->Set(v8g->CookiesKey, cookiesObject);
+
+  
+  // determine API compatibility version
+  int32_t compatibility = request->compatibility();
+  req->Set(v8g->CompatibilityKey, v8::Integer::New(compatibility));
   
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();

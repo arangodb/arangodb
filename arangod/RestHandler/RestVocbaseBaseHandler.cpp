@@ -200,7 +200,15 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
-    _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
+
+    if (_request->compatibility() < 10400L) {
+      // pre-1.4-location header (e.g. /_api/document/xyz)
+      _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + handle));
+    }
+    else {
+      // 1.4-location header (e.g. /_api/document/xyz)
+      _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
+    }
   }
 
   // _id and _key are safe and do not need to be JSON-encoded

@@ -56,10 +56,12 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
+                                        int32_t minCompatibility,
                                         bool allowMethodOverride,
                                         context_fptr setContext,
                                         void* setContextData)
   : _authenticationRealm(authenticationRealm),
+    _minCompatibility(minCompatibility), 
     _allowMethodOverride(allowMethodOverride),
     _setContext(setContext),
     _setContextData(setContextData),
@@ -72,6 +74,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
+    _minCompatibility(that._minCompatibility),
     _allowMethodOverride(that._allowMethodOverride),
     _setContext(that._setContext),
     _setContextData(that._setContextData),
@@ -88,6 +91,7 @@ HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
 HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& that) {
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm;
+    _minCompatibility = that._minCompatibility;
     _allowMethodOverride = that._allowMethodOverride;
     _setContext = that._setContext;
     _setContextData = that._setContextData;
@@ -184,7 +188,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
   }
 #endif
 
-  HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
+  HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility, _allowMethodOverride);
 
   if (request != 0) {
     setRequestContext(request);
