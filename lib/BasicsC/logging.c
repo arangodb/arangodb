@@ -30,6 +30,7 @@
 #endif
 
 #include "BasicsC/logging.h"
+#include "BasicsC/shell-colors.h"
 
 #ifdef TRI_ENABLE_SYSLOG
 #define SYSLOG_NAMES
@@ -58,6 +59,12 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef enum {
+  APPENDER_TYPE_FILE,
+  APPENDER_TYPE_SYSLOG
+}
+TRI_log_appender_type_e;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base structure for log appenders
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,9 +73,12 @@ typedef struct TRI_log_appender_s {
   void (*log) (struct TRI_log_appender_s*, TRI_log_level_e, TRI_log_severity_e, char const* msg, size_t length);
   void (*reopen) (struct TRI_log_appender_s*);
   void (*close) (struct TRI_log_appender_s*);
-  char*              _contentFilter;   // an optional content filter for log messages
-  TRI_log_severity_e _severityFilter;  // appender will care only about message with a specific severity. set to TRI_LOG_SEVERITY_UNKNOWN to catch all
-  bool               _consume;         // whether or not the appender will consume the message (true) or let it through to other appenders (false)
+  char* (*details) (struct TRI_log_appender_s*);
+
+  char*                     _contentFilter;   // an optional content filter for log messages
+  TRI_log_severity_e        _severityFilter;  // appender will care only about message with a specific severity. set to TRI_LOG_SEVERITY_UNKNOWN to catch all
+  TRI_log_appender_type_e   _type;
+  bool                      _consume;         // whether or not the appender will consume the message (true) or let it through to other appenders (false)
 }
 TRI_log_appender_t;
 
@@ -594,6 +604,7 @@ static bool WriteStderr (char const* line, ssize_t len) {
 
   // if write() fails, we do not care
   n = TRI_WRITE(STDERR_FILENO, "\n", 1);
+
   if (n <= 0) {
     return false;
   }
@@ -612,6 +623,33 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t offset,
                            bool copy) {
   assert(message != NULL);
+
+  if (level == TRI_LOG_LEVEL_FATAL ) {
+    // a fatal error. always print this on stderr, too.
+    if (LoggingActive) {
+      size_t i;
+
+      fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", message);
+
+      TRI_LockSpin(&AppendersLock);
+
+      for (i = 0;  i < Appenders._length;  ++i) {
+        TRI_log_appender_t* appender;
+        char* details;
+
+        appender = Appenders._buffer[i];
+    
+        details = appender->details(appender);
+
+        if (details != NULL) {
+          fprintf(stderr, "%s\n", details);
+          TRI_Free(TRI_CORE_MEM_ZONE, details);
+        }
+      }
+
+      TRI_UnlockSpin(&AppendersLock);
+    }
+  }
 
   if (! LoggingActive) {
     WriteStderr(message, (ssize_t) length);
@@ -1466,6 +1504,15 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
   if (fd < 0) {
     return;
   }
+  
+  if (level == TRI_LOG_LEVEL_FATAL && 
+      self->_filename == NULL &&
+      (fd == STDOUT_FILENO || fd == STDERR_FILENO)) {
+    // fatal errors are caught somewhere else already. no need to print them again to 
+    // stderr / stdout
+    return;
+  }
+
 
   escaped = TRI_EscapeControlsCString(TRI_UNKNOWN_MEM_ZONE, msg, length, &escapedLength, true);
 
@@ -1552,6 +1599,28 @@ static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief provide details about the logfile appender
+////////////////////////////////////////////////////////////////////////////////
+
+static char* LogAppenderFile_Details (TRI_log_appender_t* appender) {
+  log_appender_file_t* self;
+  char buffer[1024];
+
+  self = (log_appender_file_t*) appender;
+
+  if (self->_filename != NULL && 
+      self->_fd != STDOUT_FILENO && 
+      self->_fd != STDERR_FILENO) {
+
+    snprintf(buffer, sizeof(buffer), "More error details may be provided in the logfile '%s'", self->_filename);
+
+    return TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, buffer);
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1588,6 +1657,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
     return NULL;
   }
     
+  appender->base._type           = APPENDER_TYPE_FILE;
   appender->base._contentFilter  = NULL;
   appender->base._severityFilter = severityFilter;
   appender->base._consume        = consume;
@@ -1604,13 +1674,13 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
   // logging to stdout
   if (TRI_EqualString(filename, "+")) {
     appender->_filename = NULL;
-    appender->_fd = 1;
+    appender->_fd = STDOUT_FILENO;
   }
 
   // logging to stderr
   else if (TRI_EqualString(filename, "-")) {
     appender->_filename = NULL;
-    appender->_fd = 2;
+    appender->_fd = STDERR_FILENO;
   }
 
   // logging to file
@@ -1635,9 +1705,10 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
   }
 
   // set methods
-  appender->base.log    = LogAppenderFile_Log;
-  appender->base.reopen = LogAppenderFile_Reopen;
-  appender->base.close  = LogAppenderFile_Close;
+  appender->base.log     = LogAppenderFile_Log;
+  appender->base.reopen  = LogAppenderFile_Reopen;
+  appender->base.close   = LogAppenderFile_Close;
+  appender->base.details = LogAppenderFile_Details;
 
   // create lock
   TRI_InitSpin(&appender->_lock);
@@ -1776,6 +1847,18 @@ static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief provide details about the logfile appender
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_SYSLOG
+
+static char* LogAppenderSyslog_Details (TRI_log_appender_t* appender) {
+  return TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "More error details may be provided in the syslog");
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1817,6 +1900,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name,
     return NULL;
   }
   
+  appender->base._type           = APPENDER_TYPE_SYSLOG;
   appender->base._contentFilter  = NULL;
   appender->base._severityFilter = severityFilter;
   appender->base._consume        = consume;
@@ -1825,6 +1909,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name,
   appender->base.log             = LogAppenderSyslog_Log;
   appender->base.reopen          = LogAppenderSyslog_Reopen;
   appender->base.close           = LogAppenderSyslog_Close;
+  appender->base.details         = LogAppenderSyslog_Details;
 
   if (contentFilter != NULL) {
     if (NULL == (appender->base._contentFilter = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, contentFilter))) {
