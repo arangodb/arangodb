@@ -17,7 +17,7 @@
   },
   { 
     "name" : "Sequences", 
-    "value": "/* Returns the sequence of integers between 2010 and 2013 (including) */FOR year IN 2010..2013\n  RETURN year" 
+    "value": "/* Returns the sequence of integers between 2010 and 2013 (including) */\nFOR year IN 2010..2013\n  RETURN year" 
   },
   { 
     "name" : "Bind parameters", 

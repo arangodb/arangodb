@@ -335,10 +335,7 @@ var documentsView = Backbone.View.extend({
 
     if (doctype === 'edge') {
       $('#edgeCreateModal').modal('show');
-      $('.modalTooltips').tooltip({
-        placement: "left",
-        delay: {show: 3000, hide: 100}
-      });
+      arangoHelper.fixTooltips(".modalTooltips", "left");
     }
     else {
       var result = window.arangoDocumentStore.createTypeDocument(collid);
@@ -534,13 +531,15 @@ var documentsView = Backbone.View.extend({
             + value.attributes.key
             + '</div>',
 
-            /*  '<button class="enabled" id="deleteDoc">'
-                + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
             '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
-            +'Add a document"></span><a>'
-        ]
+            +'Delete document" title="Delete document"></span><a>'
+          ]
         );
       });
+
+      // we added some icons, so we need to fix their tooltips
+      arangoHelper.fixTooltips(".glyphicon, .arangoicon", "top");
+
       $(".prettify").snippet("javascript", {
         style: "nedit",
         menu: false,
@@ -548,6 +547,7 @@ var documentsView = Backbone.View.extend({
         transparent: true,
         showNum: false
       });
+
     }
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
@@ -582,11 +582,8 @@ var documentsView = Backbone.View.extend({
     $('.modalImportTooltips').tooltip({
       placement: "left"
     });
-
-    $('.glyphicon, .arangoicon').tooltip({
-      placement: "top",
-      delay: {show: 3000, hide: 100}
-    });
+      
+    arangoHelper.fixTooltips(".glyphicon, .arangoicon", "top");
 
     return this;
   },

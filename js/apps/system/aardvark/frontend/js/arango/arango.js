@@ -17,6 +17,15 @@ window.arangoHelper = {
       '$id' : true
     };
   },
+
+  fixTooltips: function (selector, placement) {
+    $(selector).tooltip({
+      placement: placement,
+      hide: false,
+      show: false
+    });
+  },
+
   removeNotifications: function () {
     $.gritter.removeAll();
     this.lastNotificationMessage = null;
@@ -200,10 +209,5 @@ window.arangoHelper = {
     }
     return typeof v;
   }
-
-
-
-
-
 
 };

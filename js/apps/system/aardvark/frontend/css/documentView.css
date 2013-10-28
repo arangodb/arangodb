@@ -70,18 +70,18 @@
   color: #8AA050;
 }
 
-#deleteRow {
+.deleteAttribute {
   color: #B30000;
 }
 
-#editSecondRow, #editFirstRow {
+.editSecondAttribute, .editFirstAttribute {
   color: #444444;
   font-size: 16px;
   float:right;
   padding-top: 4px;
 }
 
-#addRow, #deleteRow {
+.addAttribute, .deleteAttribute {
   font-size: 20px;
   float:right;
   padding-top: 2px;
@@ -114,13 +114,13 @@ table.dataTable thead th {
   cursor: default !important;
 }
 
-#editFirstRow {
+.editFirstAttribute {
   float:right;
   text-align:right;
   margin-right: -17px !important;
 }
 
-#editSecondRow {
+.editSecondAttribute {
   float:right;
   text-align:right;
   margin-right: -30px !important;

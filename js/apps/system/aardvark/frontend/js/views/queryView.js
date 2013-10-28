@@ -165,10 +165,7 @@ var queryView = Backbone.View.extend({
             }
         });
 
-        $('.queryTooltips').tooltip({
-            placement: "top",
-            delay: {show: 3000, hide: 100}
-        });
+        arangoHelper.fixTooltips(".queryTooltips, .glyphicon", "top");
 
         $('#aqlEditor .ace_text-input').focus();
         $.gritter.removeAll();
