@@ -13,17 +13,17 @@ var documentView = Backbone.View.extend({
   },
 
   events: {
-    "click #saveDocument"               : "saveDocument",
-    "click #addDocumentLine"            : "addLine",
-    "click #addRow"                     : "addLine",
-    "click #documentTableID #deleteRow" : "deleteLine",
-    "click #sourceView"                 : "sourceView",
-    "click #editFirstRow"               : "editFirst",
-    "click #documentTableID tr"         : "clicked",
-    "click #editSecondRow"              : "editSecond",
-    "keydown .sorting_1"                : "listenKey",
-    "keydown #documentviewMain"         : "listenGlobalKey",
-    "blur #documentviewMain textarea"   : "checkFocus"
+    "click #saveDocument"                     : "saveDocument",
+    "click #addDocumentLine"                  : "addLine",
+    "click .addAttribute"                     : "addLine",
+    "click #documentTableID .deleteAttribute" : "deleteLine",
+    "click #sourceView"                       : "sourceView",
+    "click #editFirstAttribute"               : "editFirst",
+    "click #documentTableID tr"               : "clicked",
+    "click .editSecondAttribute"              : "editSecond",
+    "keydown .sorting_1"                      : "listenKey",
+    "keydown #documentviewMain"               : "listenGlobalKey",
+    "blur #documentviewMain textarea"         : "checkFocus"
   },
 
   checkFocus: function(e) {
@@ -71,6 +71,8 @@ var documentView = Backbone.View.extend({
         this.drawTable();
       }
     }
+
+    arangoHelper.fixTooltips(".glyphicon", "left");
   },
   clicked: function (a) {
     var self = a.currentTarget;
@@ -111,7 +113,7 @@ var documentView = Backbone.View.extend({
       result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Document saved');
-        $('#addRow').removeClass('disabledBtn');
+        $('.addAttribute').removeClass('disabledBtn');
         $('td').removeClass('validateError');
       }
       else if (result === false) {
@@ -124,7 +126,7 @@ var documentView = Backbone.View.extend({
       result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Edge saved');
-        $('#addRow').removeClass('disabledBtn');
+        $('.addAttribute').removeClass('disabledBtn');
         $('td').removeClass('validateError');
       }
       else if (result === false) {
@@ -170,24 +172,24 @@ var documentView = Backbone.View.extend({
         $(self.table).dataTable().fnAddData(
           [
             key,
-            '<a id="editFirstRow"><span class="glyphicon glyphicon-edit"></span></a>',
+            '<a class="editFirstAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
             self.value2html(value),
             JSON.stringify(value, null, 4),
-            '<a id="editSecondRow"><span class="glyphicon glyphicon-edit"></span></a>',
-            '<a id="deleteRow"><span class="glyphicon glyphicon-minus-sign"></span></a>'
+            '<a class="editSecondAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
+            '<a class="deleteAttribute"><span class="glyphicon glyphicon-minus-sign" ' +
+            'title="Delete attribute"></span></a>'
         ]);
       }
     });
     this.makeEditable();
-    $(this.table).dataTable().fnSort([ [0,'asc'] ]);
-
+    $(this.table).dataTable().fnSort([ [0, 'asc'] ]);
   },
 
   addLine: function (event) {
-    if ($('#addRow').hasClass('disabledBtn') === true) {
+    if ($('.addAttribute').hasClass('disabledBtn') === true) {
       return;
     }
-    $('#addRow').addClass('disabledBtn');
+    $('.addAttribute').addClass('disabledBtn');
     //event.stopPropagation();
     var randomKey = arangoHelper.getRandomToken();
     var self = this;
@@ -195,11 +197,12 @@ var documentView = Backbone.View.extend({
     $(this.table).dataTable().fnAddData(
       [
         self.currentKey,
-        '<a id="editFirstRow"><span class="glyphicon glyphicon-edit"></span></a>',
+        '<a class="editFirstAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
         this.value2html("editme"),
         JSON.stringify("editme"),
-        '<a id="editSecondRow"><span class="glyphicon glyphicon-edit"></span></a>',
-        '<a id="deleteRow"><span class="glyphicon glyphicon-minus-sign"></span></a>'
+        '<a class="editSecondAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
+        '<a class="deleteAttribute"><span class="glyphicon glyphicon-minus-sign" ' +
+        'title="Delete attribute"></span></a>'
       ]
     );
     this.makeEditable();
@@ -211,6 +214,8 @@ var documentView = Backbone.View.extend({
         return;
       }
     });
+
+    arangoHelper.fixTooltips(".glyphicon", "left");
   },
 
   deleteLine: function (a) {
@@ -359,7 +364,7 @@ var documentView = Backbone.View.extend({
       $.each(data, function(key, val) {
         if (val[0] === currentKey2) {
           $('#documentTableID').dataTable().fnDeleteRow(key);
-          $('#addRow').removeClass('disabledBtn');
+          $('.addAttribute').removeClass('disabledBtn');
         }
       });
     }

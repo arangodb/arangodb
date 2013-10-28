@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, window, setTimeout, clearTimeout, $*/
+/*global require, exports, Backbone, EJS, window, setTimeout, clearTimeout, arangoHelper, $*/
 
 var collectionsView = Backbone.View.extend({
   el: '#content',
@@ -63,6 +63,7 @@ var collectionsView = Backbone.View.extend({
     $('#searchInput').val('');
     $('#searchInput').val(val);
 
+    arangoHelper.fixTooltips(".glyphicon, .arangoicon", "top");
 
     return this;
   },
