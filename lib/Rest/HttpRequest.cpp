@@ -93,34 +93,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     parseHeader(request, length);
   }
 }
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http request constructor
-////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest ()
-  : _requestPath(EMPTY_STR),
-    _headers(1),
-    _values(1),
-    _arrayValues(1),
-    _cookies(1),
-    _contentLength(0),
-    _body(0),
-    _bodySize(0),
-    _freeables(),
-    _connectionInfo(),
-    _type(HTTP_REQUEST_ILLEGAL),
-    _prefix(),
-    _suffix(),
-    _version(HTTP_UNKNOWN),
-    _databaseName(),
-    _user(),
-    _requestContext(0),
-    _isRequestContextOwner(false),
-    _defaultApinCompatibility(0),
-    _allowMethodOverride(false) {
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
