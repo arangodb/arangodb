@@ -1,5 +1,5 @@
-v1.4.0-XXXXX (2013-XX-XX)
--------------------------
+v1.4.0 (2013-10-28)
+-------------------
 
 * fixed issue #620: added startup option `--server.default-api-compatibility`
 
