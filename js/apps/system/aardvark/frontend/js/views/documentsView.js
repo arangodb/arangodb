@@ -669,6 +669,7 @@ var documentsView = Backbone.View.extend({
   resetIndexForms: function () {
     $('#indexHeader input').val('').prop("checked", false);
     $('#newIndexType').val('Cap').prop('selected',true);
+    this.selectIndexType();
   },
   stringToArray: function (fieldString) {
     var fields = [];
@@ -799,14 +800,13 @@ var documentsView = Backbone.View.extend({
       var actionString = '';
 
       $.each(this.index.indexes, function(k,v) {
-
         if (v.type === 'primary' || v.type === 'edge') {
           actionString = '<span class="glyphicon glyphicon-ban-circle" ' +
             'data-original-title="No action"></span>';
         }
         else {
           actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" ' +
-            'data-original-title="Delete index"></span>';
+            'data-original-title="Delete index" title="Delete index"></span>';
         }
 
         if (v.fields !== undefined) {
@@ -827,6 +827,8 @@ var documentsView = Backbone.View.extend({
           '</tr>'
         );
       });
+
+      arangoHelper.fixTooltips("deleteIndex", "left");
     }
   }
 });
