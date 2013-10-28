@@ -85,8 +85,13 @@ function ArangoAdapterControls(list, adapter) {
               ]
             },{
               type: "checkbox",
+              text: "Start with random vertex",
+              id: "random",
+              selected: true
+            },{
+              type: "checkbox",
               id: "undirected",
-              selected: (adapter.getDirection() === "any"),
+              selected: (adapter.getDirection() === "any")
             }], function () {
               var nodes = $("#" + idprefix + "node_collection")
                 .children("option")
@@ -101,11 +106,16 @@ function ArangoAdapterControls(list, adapter) {
                   .filter(":selected")
                   .text(),
                 undirected = !!$("#" + idprefix + "undirected").attr("checked"),
+                random = !!$("#" + idprefix + "random").attr("checked"),
                 selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
               if (selected === idprefix + "collections") {
                 adapter.changeToCollections(nodes, edges, undirected);
               } else {
                 adapter.changeToGraph(graph, undirected);
+              }
+              if (random) {
+                adapter.loadRandomNode(callback);
+                return;
               }
               if (_.isFunction(callback)) {
                 callback();
@@ -163,6 +173,7 @@ function ArangoAdapterControls(list, adapter) {
               edges = $("#" + idprefix + "edgecollection").attr("value"),
               undirected = !!$("#" + idprefix + "undirected").attr("checked");
             adapter.changeTo(nodes, edges, undirected);
+
           }
         );
       });
