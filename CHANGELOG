@@ -1,6 +1,9 @@
 v1.4.0-XXXXX (2013-XX-XX)
 -------------------------
 
+* fixed issue #639: compiling v1.4 on maverick produces warnings on 
+  -Wstrict-null-sentinel 
+
 * added function to manage indexes (web interface)
 
 * improved server shutdown time by signalling shutdown to applicationserver,
