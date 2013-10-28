@@ -453,6 +453,26 @@ The following command-line options have been added for _arangod_ in ArangoDB 1.4
     let certain types of requests pass. Enabling this option may impose a security 
     risk, so it should only be used in very controlled environments.
     The default value for this option is `false` (no method overriding allowed).
+  
+  - `--server.default-api-compatibility`: this option can be used to determine the 
+    compatibility of (some) server API return values. The value for this parameter is 
+    a server version number calculated as follows: `10000 * major + 100 * minor` 
+    (e.g. `10400` for ArangoDB 1.3). The default value is `10400` (1.4), the minimum 
+    allowed value is `10300` (1.3).
+
+    When setting this option to a value lower than the current server version,
+    the server might respond with old-style results to "old" clients, increasing
+    compatibility with "old" (non-up-to-date) clients. In ArangoDB 1.4.0, this option
+    mainly affects the style of the returned `location` headers:
+
+    When set to `10300`, the returned `location` headers will not include the 
+    database name. When set to `10400` or higher, the `location` headers returned
+    will also include the database name.
+
+    The default value for this option is `10400` (ArangoDB 1.4), so ArangoDB will
+    return the new-style location headers (including database name) by default.
+    If you use a non-1.4 compatible ArangoDB client driver, you may set this option
+    to make ArangoDB return the old-style headers.
 
   * `--scheduler.maximal-queue-size`: limits the size of the asynchronous request
     execution queue. Please have a look at @ref NewFeatures14Async for more details.
