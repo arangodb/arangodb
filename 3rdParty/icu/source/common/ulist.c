@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-*   Copyright (C) 2009, International Business Machines
+*   Copyright (C) 2009-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ******************************************************************************
 */
@@ -210,13 +210,16 @@ U_CAPI int32_t U_EXPORT2 ulist_count_keyword_values(UEnumeration *en, UErrorCode
 }
 
 U_CAPI const char * U_EXPORT2 ulist_next_keyword_value(UEnumeration *en, int32_t *resultLength, UErrorCode *status) {
+    const char *s;
     if (U_FAILURE(*status)) {
         return NULL;
     }
-    
-    /* TODO: resultLength; */
-    
-    return (const char *)ulist_getNext((UList *)(en->context));
+
+    s = (const char *)ulist_getNext((UList *)(en->context));
+    if (s != NULL && resultLength != NULL) {
+        *resultLength = uprv_strlen(s);
+    }
+    return s;
 }
 
 U_CAPI void U_EXPORT2 ulist_reset_keyword_values_iterator(UEnumeration *en, UErrorCode *status) {

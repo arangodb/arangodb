@@ -266,7 +266,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   }
 
   result->_pid = shaper->_nextPid++;
-  result->_nameLength = len + 1;
+  result->_nameLength = (uint32_t) len + 1;
   result->_aidLength = count;
 
   memcpy(((char*) result) + sizeof(TRI_shape_path_t), aids, count * sizeof(TRI_shape_aid_t));

@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 1996-2012, International Business Machines Corporation and    *
+ * Copyright (C) 1996-2013, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  */
@@ -1096,8 +1096,9 @@ IntlTestRBNF::TestEnglishSpellout()
         doTest(formatter, testData, TRUE);
 
 #if !UCONFIG_NO_COLLATION
-        formatter->setLenient(TRUE);
-        static const char* lpTestData[][2] = {
+        if( !logKnownIssue("9503") ) {
+          formatter->setLenient(TRUE);
+          static const char* lpTestData[][2] = {
             { "fifty-7", "57" },
             { " fifty-7", "57" },
             { "  fifty-7", "57" },
@@ -1105,8 +1106,9 @@ IntlTestRBNF::TestEnglishSpellout()
             { "fifteen hundred and zero", "1,500" },
             { "FOurhundred     thiRTY six", "436" },
             { NULL, NULL}
-        };
-        doLenientParseTest(formatter, lpTestData);
+          };
+          doLenientParseTest(formatter, lpTestData);
+        }
 #endif
     }
     delete formatter;
@@ -1250,20 +1252,20 @@ IntlTestRBNF::TestFrenchSpellout()
             { "80", "quatre-vingts" },
             { "88", "quatre-vingt-huit" },
             { "100", "cent" },
-            { "106", "cent-six" },
-            { "127", "cent-vingt-sept" },
-            { "200", "deux-cents" },
-            { "579", "cinq-cent-soixante-dix-neuf" },
+            { "106", "cent six" },
+            { "127", "cent vingt-sept" },
+            { "200", "deux cents" },
+            { "579", "cinq cent soixante-dix-neuf" },
             { "1,000", "mille" },
-            { "1,123", "mille-cent-vingt-trois" },
-            { "1,594", "mille-cinq-cent-quatre-vingt-quatorze" },
-            { "2,000", "deux-mille" },
-            { "3,004", "trois-mille-quatre" },
-            { "4,567", "quatre-mille-cinq-cent-soixante-sept" },
-            { "15,943", "quinze-mille-neuf-cent-quarante-trois" },
-            { "2,345,678", "deux millions trois-cent-quarante-cinq-mille-six-cent-soixante-dix-huit" },
+            { "1,123", "mille cent vingt-trois" },
+            { "1,594", "mille cinq cent quatre-vingt-quatorze" },
+            { "2,000", "deux mille" },
+            { "3,004", "trois mille quatre" },
+            { "4,567", "quatre mille cinq cent soixante-sept" },
+            { "15,943", "quinze mille neuf cent quarante-trois" },
+            { "2,345,678", "deux millions trois cent quarante-cinq mille six cent soixante-dix-huit" },
             { "-36", "moins trente-six" },
-            { "234.567", "deux-cent-trente-quatre virgule cinq six sept" },
+            { "234.567", "deux cent trente-quatre virgule cinq six sept" },
             { NULL, NULL}
         };
         
@@ -1295,20 +1297,20 @@ static const char* const swissFrenchTestData[][2] = {
     { "80", "huitante" },
     { "88", "huitante-huit" },
     { "100", "cent" },
-    { "106", "cent-six" },
-    { "127", "cent-vingt-sept" },
-    { "200", "deux-cents" },
-    { "579", "cinq-cent-septante-neuf" },
+    { "106", "cent six" },
+    { "127", "cent vingt-sept" },
+    { "200", "deux cents" },
+    { "579", "cinq cent septante-neuf" },
     { "1,000", "mille" },
-    { "1,123", "mille-cent-vingt-trois" },
-    { "1,594", "mille-cinq-cent-nonante-quatre" },
-    { "2,000", "deux-mille" },
-    { "3,004", "trois-mille-quatre" },
-    { "4,567", "quatre-mille-cinq-cent-soixante-sept" },
-    { "15,943", "quinze-mille-neuf-cent-quarante-trois" },
-    { "2,345,678", "deux millions trois-cent-quarante-cinq-mille-six-cent-septante-huit" },
+    { "1,123", "mille cent vingt-trois" },
+    { "1,594", "mille cinq cent nonante-quatre" },
+    { "2,000", "deux mille" },
+    { "3,004", "trois mille quatre" },
+    { "4,567", "quatre mille cinq cent soixante-sept" },
+    { "15,943", "quinze mille neuf cent quarante-trois" },
+    { "2,345,678", "deux millions trois cent quarante-cinq mille six cent septante-huit" },
     { "-36", "moins trente-six" },
-    { "234.567", "deux-cent-trente-quatre virgule cinq six sept" },
+    { "234.567", "deux cent trente-quatre virgule cinq six sept" },
     { NULL, NULL}
 };
 
@@ -1338,25 +1340,25 @@ static const char* const belgianFrenchTestData[][2] = {
     { "71", "septante-et-un" },
     { "73", "septante-trois" },
     { "80", "quatre-vingts" },
-    { "88", "quatre-vingt-huit" },
+    { "88", "quatre-vingt huit" },
     { "90", "nonante" },
     { "91", "nonante-et-un" },
     { "95", "nonante-cinq" },
     { "100", "cent" },
-    { "106", "cent-six" },
-    { "127", "cent-vingt-sept" },
-    { "200", "deux-cents" },
-    { "579", "cinq-cent-septante-neuf" },
+    { "106", "cent six" },
+    { "127", "cent vingt-sept" },
+    { "200", "deux cents" },
+    { "579", "cinq cent septante-neuf" },
     { "1,000", "mille" },
-    { "1,123", "mille-cent-vingt-trois" },
-    { "1,594", "mille-cinq-cent-nonante-quatre" },
-    { "2,000", "deux-mille" },
-    { "3,004", "trois-mille-quatre" },
-    { "4,567", "quatre-mille-cinq-cent-soixante-sept" },
-    { "15,943", "quinze-mille-neuf-cent-quarante-trois" },
-    { "2,345,678", "deux millions trois-cent-quarante-cinq-mille-six-cent-septante-huit" },
+    { "1,123", "mille cent vingt-trois" },
+    { "1,594", "mille cinq cent nonante-quatre" },
+    { "2,000", "deux mille" },
+    { "3,004", "trois mille quatre" },
+    { "4,567", "quatre mille cinq cent soixante-sept" },
+    { "15,943", "quinze mille neuf cent quarante-trois" },
+    { "2,345,678", "deux millions trois cent quarante-cinq mille six cent septante-huit" },
     { "-36", "moins trente-six" },
-    { "234.567", "deux-cent-trente-quatre virgule cinq six sept" },
+    { "234.567", "deux cent trente-quatre virgule cinq six sept" },
     { NULL, NULL}
 };
 
@@ -1396,7 +1398,7 @@ IntlTestRBNF::TestItalianSpellout()
             { "73", "settanta\\u00ADtr\\u00E9" },
             { "88", "ottant\\u00ADotto" },
             { "100", "cento" },
-            { "101", "cent\\u00ADuno" },
+            { "101", "cento\\u00ADuno" },
             { "103", "cento\\u00ADtr\\u00E9" },
             { "106", "cento\\u00ADsei" },
             { "108", "cent\\u00ADotto" },
@@ -1441,7 +1443,7 @@ IntlTestRBNF::TestPortugueseSpellout()
             { "108", "cento e oito" },
             { "127", "cento e vinte e sete" },
             { "181", "cento e oitenta e um" },
-            { "200", "duzcentos" },
+            { "200", "duzentos" },
             { "579", "quinhentos e setenta e nove" },
             { "1,000", "mil" },
             { "2,000", "dois mil" },
@@ -1449,7 +1451,7 @@ IntlTestRBNF::TestPortugueseSpellout()
             { "4,567", "quatro mil e quinhentos e sessenta e sete" },
             { "15,943", "quinze mil e novecentos e quarenta e tr\\u00EAs" },
             { "-36", "menos trinta e seis" },
-            { "234.567", "duzcentos e trinta e quatro v\\u00EDrgula cinco seis sete" },
+            { "234.567", "duzentos e trinta e quatro v\\u00EDrgula cinco seis sete" },
             { NULL, NULL}
         };
         
@@ -1563,21 +1565,21 @@ IntlTestRBNF::TestSwedishSpellout()
         doTest(formatter, testDataDefault, TRUE);
 
           static const char* testDataNeutrum[][2] = {
-              { "101", "ett\\u00adhundra\\u00aden" },
-              { "1,001", "ettusen en" },
-              { "1,101", "ettusen ett\\u00adhundra\\u00aden" },
-              { "10,001", "tio\\u00adtusen en" },
-              { "21,001", "tjugo\\u00aden\\u00adtusen en" },
+              { "101", "ett\\u00adhundra\\u00adett" },
+              { "1,001", "et\\u00adtusen ett" },
+              { "1,101", "et\\u00adtusen ett\\u00adhundra\\u00adett" },
+              { "10,001", "tio\\u00adtusen ett" },
+              { "21,001", "tjugo\\u00adet\\u00adtusen ett" },
               { NULL, NULL }
           };
   
-          formatter->setDefaultRuleSet("%spellout-cardinal-neutre", status);
+          formatter->setDefaultRuleSet("%spellout-cardinal-neuter", status);
           if (U_SUCCESS(status)) {
-          logln("        testing spellout-cardinal-neutre rules");
+          logln("        testing spellout-cardinal-neuter rules");
           doTest(formatter, testDataNeutrum, TRUE);
           }
           else {
-          errln("Can't test spellout-cardinal-neutre rules");
+          errln("Can't test spellout-cardinal-neuter rules");
           }
 
         static const char* testDataYear[][2] = {
@@ -1592,6 +1594,7 @@ IntlTestRBNF::TestSwedishSpellout()
             { NULL, NULL }
         };
 
+        status = U_ZERO_ERROR;
         formatter->setDefaultRuleSet("%spellout-numbering-year", status);
         if (U_SUCCESS(status)) {
             logln("testing year rules");

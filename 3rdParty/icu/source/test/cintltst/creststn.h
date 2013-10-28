@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2006, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /***************************************************************************
@@ -45,6 +45,8 @@ static void TestAliasConflict(void);
 
 static void TestFallback(void);
 
+static void TestPreventFallback(void);
+
 static void TestBinaryCollationData(void);
 
 static void TestNewTypes(void);
@@ -62,6 +64,8 @@ static void TestGetVersionColl(void);
 static void TestEmptyBundle(void);
 
 static void TestDirectAccess(void);
+
+static void TestTicket9804(void);
 
 static void TestResourceLevelAliasing(void);
 

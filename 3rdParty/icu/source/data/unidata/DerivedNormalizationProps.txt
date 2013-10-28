@@ -1,8 +1,8 @@
-# DerivedNormalizationProps-6.1.0.txt
-# Date: 2011-07-26, 04:18:07 GMT [MD]
+# DerivedNormalizationProps-6.3.0.txt
+# Date: 2013-03-02, 16:07:38 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 
@@ -3377,6 +3377,7 @@ FFE3          ; Expands_On_NFKC
 0555          ; NFKC_CF; 0585
 0556          ; NFKC_CF; 0586
 0587          ; NFKC_CF; 0565 0582
+061C          ; NFKC_CF;
 0675          ; NFKC_CF; 0627 0674
 0676          ; NFKC_CF; 0648 0674
 0677          ; NFKC_CF; 06C7 0674
@@ -3468,6 +3469,7 @@ FFE3          ; Expands_On_NFKC
 115F..1160    ; NFKC_CF;
 17B4..17B5    ; NFKC_CF;
 180B..180D    ; NFKC_CF;
+180E          ; NFKC_CF;
 1D2C          ; NFKC_CF; 0061
 1D2D          ; NFKC_CF; 00E6
 1D2E          ; NFKC_CF; 0062
@@ -3870,8 +3872,8 @@ FFE3          ; Expands_On_NFKC
 2057          ; NFKC_CF; 2032 2032 2032 2032
 205F          ; NFKC_CF; 0020
 2060..2064    ; NFKC_CF;
-2065..2069    ; NFKC_CF;
-206A..206F    ; NFKC_CF;
+2065          ; NFKC_CF;
+2066..206F    ; NFKC_CF;
 2070          ; NFKC_CF; 0030
 2071          ; NFKC_CF; 0069
 2074          ; NFKC_CF; 0034
@@ -8403,7 +8405,7 @@ E0080..E00FF  ; NFKC_CF;
 E0100..E01EF  ; NFKC_CF;
 E01F0..E0FFF  ; NFKC_CF;
 
-# Total code points: 9944
+# Total code points: 9946
 
 # ================================================
 
@@ -8698,6 +8700,7 @@ E01F0..E0FFF  ; NFKC_CF;
 0526          ; Changes_When_NFKC_Casefolded
 0531..0556    ; Changes_When_NFKC_Casefolded
 0587          ; Changes_When_NFKC_Casefolded
+061C          ; Changes_When_NFKC_Casefolded
 0675..0678    ; Changes_When_NFKC_Casefolded
 0958..095F    ; Changes_When_NFKC_Casefolded
 09DC..09DD    ; Changes_When_NFKC_Casefolded
@@ -8733,6 +8736,7 @@ E01F0..E0FFF  ; NFKC_CF;
 115F..1160    ; Changes_When_NFKC_Casefolded
 17B4..17B5    ; Changes_When_NFKC_Casefolded
 180B..180D    ; Changes_When_NFKC_Casefolded
+180E          ; Changes_When_NFKC_Casefolded
 1D2C..1D2E    ; Changes_When_NFKC_Casefolded
 1D30..1D3A    ; Changes_When_NFKC_Casefolded
 1D3C..1D4D    ; Changes_When_NFKC_Casefolded
@@ -8914,8 +8918,8 @@ E01F0..E0FFF  ; NFKC_CF;
 2057          ; Changes_When_NFKC_Casefolded
 205F          ; Changes_When_NFKC_Casefolded
 2060..2064    ; Changes_When_NFKC_Casefolded
-2065..2069    ; Changes_When_NFKC_Casefolded
-206A..206F    ; Changes_When_NFKC_Casefolded
+2065          ; Changes_When_NFKC_Casefolded
+2066..206F    ; Changes_When_NFKC_Casefolded
 2070          ; Changes_When_NFKC_Casefolded
 2071          ; Changes_When_NFKC_Casefolded
 2074..2079    ; Changes_When_NFKC_Casefolded
@@ -9363,6 +9367,6 @@ E0080..E00FF  ; Changes_When_NFKC_Casefolded
 E0100..E01EF  ; Changes_When_NFKC_Casefolded
 E01F0..E0FFF  ; Changes_When_NFKC_Casefolded
 
-# Total code points: 9944
+# Total code points: 9946
 
 # EOF

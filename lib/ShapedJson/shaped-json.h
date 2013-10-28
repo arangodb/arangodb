@@ -168,6 +168,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_memory_zone_s;
 struct TRI_shaper_s;
 struct TRI_string_buffer_s;
 
@@ -947,13 +948,13 @@ TRI_shaped_json_t* TRI_CopyShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t*)
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t*);
+void TRI_DestroyShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t*);
+void TRI_FreeShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

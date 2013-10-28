@@ -1,7 +1,7 @@
 
 /*
 ************************************************************************
-* Copyright (c) 2007-2011, International Business Machines
+* Copyright (c) 2007-2012, International Business Machines
 * Corporation and others.  All Rights Reserved.
 ************************************************************************
 */
@@ -17,7 +17,7 @@
 
 #if !UCONFIG_NO_FORMATTING
 
-U_CAPI const icu::UnicodeString& U_EXPORT2
+U_TOOLUTIL_API const icu::UnicodeString& U_EXPORT2
 udbg_enumString(UDebugEnumType type, int32_t field);
 
 /**

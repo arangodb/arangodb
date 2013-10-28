@@ -1,5 +1,5 @@
 /*
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -25,10 +25,10 @@ LEGlyphID MarkToLigaturePositioningSubtable::findLigatureGlyph(GlyphIterator *gl
     return 0xFFFF;
 }
 
-le_int32 MarkToLigaturePositioningSubtable::process(GlyphIterator *glyphIterator, const LEFontInstance *fontInstance) const
+le_int32 MarkToLigaturePositioningSubtable::process(const LETableReference &base, GlyphIterator *glyphIterator, const LEFontInstance *fontInstance, LEErrorCode &success) const
 {
     LEGlyphID markGlyph = glyphIterator->getCurrGlyphID();
-    le_int32 markCoverage = getGlyphCoverage((LEGlyphID) markGlyph);
+    le_int32 markCoverage = getGlyphCoverage(base, (LEGlyphID) markGlyph, success);
 
     if (markCoverage < 0) {
         // markGlyph isn't a covered mark glyph
@@ -49,7 +49,7 @@ le_int32 MarkToLigaturePositioningSubtable::process(GlyphIterator *glyphIterator
     // FIXME: we probably don't want to find a ligature before a previous base glyph...
     GlyphIterator ligatureIterator(*glyphIterator, (le_uint16) (lfIgnoreMarks /*| lfIgnoreBaseGlyphs*/));
     LEGlyphID ligatureGlyph = findLigatureGlyph(&ligatureIterator);
-    le_int32 ligatureCoverage = getBaseCoverage((LEGlyphID) ligatureGlyph);
+    le_int32 ligatureCoverage = getBaseCoverage(base, (LEGlyphID) ligatureGlyph, success);
     const LigatureArray *ligatureArray = (const LigatureArray *) ((char *) this + SWAPW(baseArrayOffset));
     le_uint16 ligatureCount = SWAPW(ligatureArray->ligatureCount);
 

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2011, International Business Machines
+*   Copyright (C) 2009-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -268,7 +268,7 @@ U_NAMESPACE_END
 
 U_NAMESPACE_USE
 
-U_DRAFT UNormalizer2 * U_EXPORT2
+U_CAPI UNormalizer2 * U_EXPORT2
 unorm2_openFiltered(const UNormalizer2 *norm2, const USet *filterSet, UErrorCode *pErrorCode) {
     if(U_FAILURE(*pErrorCode)) {
         return NULL;

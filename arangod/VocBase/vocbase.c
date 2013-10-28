@@ -1340,6 +1340,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
+  TRI_InitCondition(&vocbase->_compactorCondition);
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
@@ -1489,10 +1490,18 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   
   // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
+  
+  TRI_LockCondition(&vocbase->_compactorCondition);
+  TRI_SignalCondition(&vocbase->_compactorCondition);
+  TRI_UnlockCondition(&vocbase->_compactorCondition);
   TRI_JoinThread(&vocbase->_compactor);
 
   // this will signal the cleanup thread to do one last iteration
   vocbase->_state = 3;
+
+  TRI_LockCondition(&vocbase->_cleanupCondition);
+  TRI_SignalCondition(&vocbase->_cleanupCondition);
+  TRI_UnlockCondition(&vocbase->_cleanupCondition);
   TRI_JoinThread(&vocbase->_cleanup);
 
   // free replication  
@@ -1513,9 +1522,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // free collections
   for (i = 0;  i < vocbase->_collections._length;  ++i) {
-    TRI_vocbase_col_t* collection;
-
-    collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
+    TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
 
     TRI_FreeCollectionVocBase(collection);
   }
@@ -1544,6 +1551,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyReadWriteLock(&vocbase->_lock);
   TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
+  TRI_DestroyCondition(&vocbase->_compactorCondition);
 
   // free name and path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
@@ -2341,6 +2349,10 @@ bool TRI_IsAllowedNameVocBase (bool allowSystem,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

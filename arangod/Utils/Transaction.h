@@ -803,7 +803,8 @@ namespace triagens {
             return res;
           }
 
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper(trxCollection), json);
+          TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json);
 
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
@@ -818,7 +819,7 @@ namespace triagens {
                        data, 
                        forceSync); 
 
-          TRI_FreeShapedJson(shaper(trxCollection), shaped);
+          TRI_FreeShapedJson(shaper->_memoryZone, shaped);
 
           return res;
         }
@@ -865,7 +866,8 @@ namespace triagens {
                     TRI_voc_rid_t* actualRevision,
                     const bool forceSync) {
 
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper(trxCollection), json);
+          TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json);
 
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
@@ -881,7 +883,7 @@ namespace triagens {
                            actualRevision, 
                            forceSync); 
 
-          TRI_FreeShapedJson(shaper(trxCollection), shaped);
+          TRI_FreeShapedJson(shaper->_memoryZone, shaped);
 
           return res;
         }

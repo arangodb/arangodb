@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/de_CH.xml
+// *
+// ***************************************************************************
+de_CH{
+    Currencies{
+        CHF{
+            "CHF",
+            "Schweizer Franken",
+        }
+    }
+    Version{"2.0.92.87"}
+}

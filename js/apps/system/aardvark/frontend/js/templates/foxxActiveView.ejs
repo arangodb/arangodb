@@ -1,14 +1,14 @@
 <small>
   <div class="plain foxxElement">
     <% var appInfos = attributes.app.split(":"); %>
-    <h5 class="applicationName"><%= appInfos[1] %></h5>
+    <h5 class="applicationName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
     <div class="pull-right">
-        <span class="glyphicon glyphicon-edit" alt="Properties" title="Change foxx properties"></span>
+        <span class="glyphicon glyphicon-info-sign" alt="Show API documentation" title="Show API documentation"></span>
     </div>
     <img src="/_admin/aardvark/foxxes/thumbnail/<%=attributes.app %>" alt="icon" class="foxxIcon"/>
     <p class="foxxDescription">
       <!--Description: <%=attributes.description %><br /> -->
-      <strong>Mount-Point:</strong>&nbsp;<%=attributes.mount %><br />
+      <strong>Mount:</strong>&nbsp;<%=attributes.mount %><br />
       <strong>Version:</strong>&nbsp;<%=appInfos[2] %><br />
       <strong>Prefix:</strong>&nbsp;<%=attributes.options && attributes.options.collectionPrefix%><br />
       

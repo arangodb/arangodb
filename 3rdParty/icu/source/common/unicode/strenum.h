@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2007, International Business Machines
+*   Copyright (C) 2002-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -118,6 +118,7 @@ public:
      *
      * Starting with ICU 2.8, the default implementation calls snext()
      * and handles the conversion.
+     * Either next() or snext() must be implemented differently by a subclass.
      *
      * @param status the error code.
      * @param resultLength a pointer to receive the length, can be NULL.
@@ -163,12 +164,16 @@ public:
      * <p>If the iterator is out of sync with its service, status is set
      * to U_ENUM_OUT_OF_SYNC_ERROR and NULL is returned.</p>
      *
+     * Starting with ICU 2.8, the default implementation calls next()
+     * and handles the conversion.
+     * Either next() or snext() must be implemented differently by a subclass.
+     *
      * @param status the error code.
      * @return a pointer to the string, or NULL.
      *
      * @stable ICU 2.4 
      */
-    virtual const UnicodeString* snext(UErrorCode& status) = 0;
+    virtual const UnicodeString* snext(UErrorCode& status);
 
     /**
      * <p>Resets the iterator.  This re-establishes sync with the

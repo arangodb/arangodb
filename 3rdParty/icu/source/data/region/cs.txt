@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/cs.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/cs.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/cs.xml
+ * ICU <specials> source: <path>/common/main/cs.xml
  */
 cs{
     Countries{
@@ -29,9 +29,9 @@ cs{
         034{"Jižní Asie"}
         035{"Jihovýchodní Asie"}
         039{"Jižní Evropa"}
-        053{"Austrálie a Nový Zéland"}
+        053{"Australasie"}
         054{"Melanésie"}
-        057{"Mikronésie oblast"}
+        057{"Mikronésie (region)"}
         061{"Polynésie"}
         142{"Asie"}
         143{"Střední Asie"}
@@ -41,7 +41,7 @@ cs{
         154{"Severní Evropa"}
         155{"Západní Evropa"}
         419{"Latinská Amerika"}
-        AC{"Ostrov Ascension"}
+        AC{"Ascension"}
         AD{"Andorra"}
         AE{"Spojené arabské emiráty"}
         AF{"Afghánistán"}
@@ -57,7 +57,7 @@ cs{
         AT{"Rakousko"}
         AU{"Austrálie"}
         AW{"Aruba"}
-        AX{"Alandy"}
+        AX{"Ålandy"}
         AZ{"Ázerbájdžán"}
         BA{"Bosna a Hercegovina"}
         BB{"Barbados"}
@@ -72,6 +72,7 @@ cs{
         BM{"Bermudy"}
         BN{"Brunej"}
         BO{"Bolívie"}
+        BQ{"Karibské Nizozemsko"}
         BR{"Brazílie"}
         BS{"Bahamy"}
         BT{"Bhútán"}
@@ -93,14 +94,14 @@ cs{
         CO{"Kolumbie"}
         CP{"Clippertonův ostrov"}
         CR{"Kostarika"}
-        CS{"Srbsko a Černá Hora"}
         CU{"Kuba"}
         CV{"Kapverdy"}
-        CX{"Vánoční ostrovy"}
+        CW{"Curaçao"}
+        CX{"Vánoční ostrov"}
         CY{"Kypr"}
         CZ{"Česká republika"}
         DE{"Německo"}
-        DG{"Diego Garcia"}
+        DG{"Diego García"}
         DJ{"Džibutsko"}
         DK{"Dánsko"}
         DM{"Dominika"}
@@ -140,7 +141,7 @@ cs{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
-        HK{"Hongkong - zvláštní administrativní oblast Číny"}
+        HK{"Hongkong - ZAO Číny"}
         HM{"Heardův ostrov a McDonaldovy ostrovy"}
         HN{"Honduras"}
         HR{"Chorvatsko"}
@@ -166,7 +167,7 @@ cs{
         KH{"Kambodža"}
         KI{"Kiribati"}
         KM{"Komory"}
-        KN{"Svatý Kitts a Nevis"}
+        KN{"Svatý Kryštof a Nevis"}
         KP{"Severní Korea"}
         KR{"Jižní Korea"}
         KW{"Kuvajt"}
@@ -192,9 +193,9 @@ cs{
         MH{"Marshallovy ostrovy"}
         MK{"Makedonie"}
         ML{"Mali"}
-        MM{"Myanmar"}
+        MM{"Myanmar (Barma)"}
         MN{"Mongolsko"}
-        MO{"Macao - zvláštní administrativní oblast Číny"}
+        MO{"Macao - ZAO Číny"}
         MP{"Severní Mariany"}
         MQ{"Martinik"}
         MR{"Mauritánie"}
@@ -226,7 +227,7 @@ cs{
         PH{"Filipíny"}
         PK{"Pákistán"}
         PL{"Polsko"}
-        PM{"Svatý Pierre a Miquelon"}
+        PM{"Saint-Pierre a Miquelon"}
         PN{"Pitcairnovy ostrovy"}
         PR{"Portoriko"}
         PS{"Palestinská území"}
@@ -255,14 +256,16 @@ cs{
         SN{"Senegal"}
         SO{"Somálsko"}
         SR{"Surinam"}
-        ST{"Svatý Tomáš"}
+        SS{"Jižní Súdán"}
+        ST{"Svatý Tomáš a Princův ostrov"}
         SV{"Salvador"}
+        SX{"Sint Maarten"}
         SY{"Sýrie"}
         SZ{"Svazijsko"}
         TA{"Tristan da Cunha"}
-        TC{"Ostrovy Turks a Caicos"}
+        TC{"Turks a Caicos"}
         TD{"Čad"}
-        TF{"Francouzská jižní teritoria"}
+        TF{"Francouzská jižní území"}
         TG{"Togo"}
         TH{"Thajsko"}
         TJ{"Tádžikistán"}
@@ -291,12 +294,20 @@ cs{
         VU{"Vanuatu"}
         WF{"Wallis a Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
         ZA{"Jihoafrická republika"}
         ZM{"Zambie"}
         ZW{"Zimbabwe"}
-        ZZ{"Neznámá nebo neplatná oblast"}
+        ZZ{"Neznámá oblast"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"VB"}
+        HK{"Hongkong"}
+        MO{"Macao"}
+        PS{"Palestina"}
+        US{"USA"}
+    }
+    Version{"2.0.92.98"}
 }

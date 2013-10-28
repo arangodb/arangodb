@@ -601,7 +601,7 @@ static int ProcessInputDirectory (string& errorMsg) {
 
             // file name wins over "name" attribute value
             nameAttribute->_value._string.data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name.c_str());
-            nameAttribute->_value._string.length = name.size() + 1; // + NUL byte
+            nameAttribute->_value._string.length = (uint32_t) name.size() + 1; // + NUL byte
 
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
           }

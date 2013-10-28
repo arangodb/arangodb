@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -86,11 +86,12 @@ class BasicTimeZone;
  * and calendar style (for example, Japanese-Gregorian, Japanese-Traditional).
  *
  * <p>
- * When computing a <code>UDate</code> from time fields, two special circumstances
+ * When computing a <code>UDate</code> from time fields, some special circumstances
  * may arise: there may be insufficient information to compute the
  * <code>UDate</code> (such as only year and month but no day in the month),
- * or there may be inconsistent information (such as "Tuesday, July 15, 1996"
- * -- July 15, 1996 is actually a Monday).
+ * there may be inconsistent information (such as "Tuesday, July 15, 1996"
+ * -- July 15, 1996 is actually a Monday), or the input time might be ambiguous
+ * because of time zone transition.
  *
  * <p>
  * <strong>Insufficient information.</strong> The calendar will use default
@@ -123,6 +124,26 @@ class BasicTimeZone;
  * AM_PM + HOUR
  * </pre>
  * \htmlonly</blockquote>\endhtmlonly
+ *
+ * <p>
+ * <strong>Ambiguous Wall Clock Time.</strong> When time offset from UTC has
+ * changed, it produces ambiguous time slot around the transition. For example,
+ * many US locations observe daylight saving time. On the date switching to daylight
+ * saving time in US, wall clock time jumps from 1:00 AM (standard) to 2:00 AM
+ * (daylight). Therefore, wall clock time from 1:00 AM to 1:59 AM do not exist on
+ * the date. When the input wall time fall into this missing time slot, the ICU
+ * Calendar resolves the time using the UTC offset before the transition by default.
+ * In this example, 1:30 AM is interpreted as 1:30 AM standard time (non-exist),
+ * so the final result will be 2:30 AM daylight time.
+ * 
+ * <p>On the date switching back to standard time, wall clock time is moved back one
+ * hour at 2:00 AM. So wall clock time from 1:00 AM to 1:59 AM occur twice. In this
+ * case, the ICU Calendar resolves the time using the UTC offset after the transition
+ * by default. For example, 1:30 AM on the date is resolved as 1:30 AM standard time.
+ *
+ * <p>Ambiguous wall clock time resolution behaviors can be customized by Calendar APIs
+ * {@link #setRepeatedWallTimeOption} and {@link #setSkippedWallTimeOption}.
+ * These methods are available in ICU 49 or later versions.
  *
  * <p>
  * <strong>Note:</strong> for some non-Gregorian calendars, different
@@ -160,6 +181,19 @@ class BasicTimeZone;
  * adding the specified (signed) amount of time to a particular time field.
  * For example, subtracting 5 days from the date <code>September 12, 1996</code>
  * results in <code>September 7, 1996</code>.
+ *
+ * <p><big><b>Supported range</b></big>
+ *
+ * <p>The allowable range of <code>Calendar</code> has been
+ * narrowed. <code>GregorianCalendar</code> used to attempt to support
+ * the range of dates with millisecond values from
+ * <code>Long.MIN_VALUE</code> to <code>Long.MAX_VALUE</code>.
+ * The new <code>Calendar</code> protocol specifies the
+ * maximum range of supportable dates as those having Julian day numbers
+ * of <code>-0x7F000000</code> to <code>+0x7F000000</code>. This
+ * corresponds to years from ~5,800,000 BCE to ~5,800,000 CE. Programmers
+ * should use the protected constants in <code>Calendar</code> to
+ * specify an extremely early or extremely late date.</p>
  *
  * @stable ICU 2.0
  */
@@ -341,7 +375,7 @@ public:
      * Gets a Calendar using the given timezone and given locale.  The TimeZone
      * is _not_ adopted; the client is still responsible for deleting it.
      *
-     * @param zoneToAdopt  The given timezone to be adopted.
+     * @param zone         The given timezone.
      * @param aLocale      The given locale.
      * @param success      Indicates the success/failure of Calendar creation. Filled in
      *                     with U_ZERO_ERROR if created successfully, set to a failure result
@@ -349,7 +383,7 @@ public:
      * @return             A Calendar if created successfully. NULL otherwise.
      * @stable ICU 2.0
      */
-    static Calendar* U_EXPORT2 createInstance(const TimeZone& zoneToAdopt, const Locale& aLocale, UErrorCode& success);
+    static Calendar* U_EXPORT2 createInstance(const TimeZone& zone, const Locale& aLocale, UErrorCode& success);
 
     /**
      * Returns a list of the locales for which Calendars are installed.
@@ -506,6 +540,9 @@ public:
      * the month or Calendar::MONTH field, other fields like date might conflict and
      * need to be changed. For instance, adding 1 month on the date 01/31/96 will result
      * in 02/29/96.
+     * Adding a positive value always means moving forward in time, so for the Gregorian calendar,
+     * starting with 100 BC and adding +1 to year results in 99 BC (even though this actually reduces
+     * the numeric value of the field itself).
      *
      * @param field   Specifies which date field to modify.
      * @param amount  The amount of time to be added to the field, in the natural unit
@@ -525,6 +562,9 @@ public:
      * the month or Calendar::MONTH field, other fields like date might conflict and
      * need to be changed. For instance, adding 1 month on the date 01/31/96 will result
      * in 02/29/96.
+     * Adding a positive value always means moving forward in time, so for the Gregorian calendar,
+     * starting with 100 BC and adding +1 to year results in 99 BC (even though this actually reduces
+     * the numeric value of the field itself).
      *
      * @param field   Specifies which date field to modify.
      * @param amount  The amount of time to be added to the field, in the natural unit
@@ -546,10 +586,19 @@ public:
      * value returned by getMaximum(Calendar::YEAR). When rolling on the month or
      * Calendar::MONTH field, other fields like date might conflict and, need to be
      * changed. For instance, rolling the month up on the date 01/31/96 will result in
-     * 02/29/96. Rolling up always means rolling forward in time; e.g., rolling the year
-     * up on "100 BC" will result in "99 BC", for Gregorian calendar. When rolling on the
-     * hour-in-day or Calendar::HOUR_OF_DAY field, it will roll the hour value in the range
-     * between 0 and 23, which is zero-based.
+     * 02/29/96. Rolling up always means rolling forward in time (unless the limit of the
+     * field is reached, in which case it may pin or wrap), so for Gregorian calendar,
+     * starting with 100 BC and rolling the year up results in 99 BC.
+     * When eras have a definite beginning and end (as in the Chinese calendar, or as in
+     * most eras in the Japanese calendar) then rolling the year past either limit of the
+     * era will cause the year to wrap around. When eras only have a limit at one end,
+     * then attempting to roll the year past that limit will result in pinning the year
+     * at that limit. Note that for most calendars in which era 0 years move forward in
+     * time (such as Buddhist, Hebrew, or Islamic), it is possible for add or roll to
+     * result in negative years for era 0 (that is the only way to represent years before
+     * the calendar epoch).
+     * When rolling on the hour-in-day or Calendar::HOUR_OF_DAY field, it will roll the
+     * hour value in the range between 0 and 23, which is zero-based.
      * <P>
      * NOTE: Do not use this method -- use roll(EDateFields, int, UErrorCode&) instead.
      *
@@ -572,10 +621,19 @@ public:
      * value returned by getMaximum(Calendar::YEAR). When rolling on the month or
      * Calendar::MONTH field, other fields like date might conflict and, need to be
      * changed. For instance, rolling the month up on the date 01/31/96 will result in
-     * 02/29/96. Rolling up always means rolling forward in time; e.g., rolling the year
-     * up on "100 BC" will result in "99 BC", for Gregorian calendar. When rolling on the
-     * hour-in-day or Calendar::HOUR_OF_DAY field, it will roll the hour value in the range
-     * between 0 and 23, which is zero-based.
+     * 02/29/96. Rolling up always means rolling forward in time (unless the limit of the
+     * field is reached, in which case it may pin or wrap), so for Gregorian calendar,
+     * starting with 100 BC and rolling the year up results in 99 BC.
+     * When eras have a definite beginning and end (as in the Chinese calendar, or as in
+     * most eras in the Japanese calendar) then rolling the year past either limit of the
+     * era will cause the year to wrap around. When eras only have a limit at one end,
+     * then attempting to roll the year past that limit will result in pinning the year
+     * at that limit. Note that for most calendars in which era 0 years move forward in
+     * time (such as Buddhist, Hebrew, or Islamic), it is possible for add or roll to
+     * result in negative years for era 0 (that is the only way to represent years before
+     * the calendar epoch).
+     * When rolling on the hour-in-day or Calendar::HOUR_OF_DAY field, it will roll the
+     * hour value in the range between 0 and 23, which is zero-based.
      * <P>
      * NOTE: Do not use this method -- use roll(UCalendarDateFields, int, UErrorCode&) instead.
      *
@@ -595,10 +653,19 @@ public:
      * roll(Calendar::DATE, +1, status). When rolling on the month or
      * Calendar::MONTH field, other fields like date might conflict and, need to be
      * changed. For instance, rolling the month up on the date 01/31/96 will result in
-     * 02/29/96.  Rolling by a positive value always means rolling forward in time;
-     * e.g., rolling the year by +1 on "100 BC" will result in "99 BC", for Gregorian
-     * calendar. When rolling on the hour-in-day or Calendar::HOUR_OF_DAY field, it will
-     * roll the hour value in the range between 0 and 23, which is zero-based.
+     * 02/29/96. Rolling by a positive value always means rolling forward in time (unless
+     * the limit of the field is reached, in which case it may pin or wrap), so for
+     * Gregorian calendar, starting with 100 BC and rolling the year by + 1 results in 99 BC.
+     * When eras have a definite beginning and end (as in the Chinese calendar, or as in
+     * most eras in the Japanese calendar) then rolling the year past either limit of the
+     * era will cause the year to wrap around. When eras only have a limit at one end,
+     * then attempting to roll the year past that limit will result in pinning the year
+     * at that limit. Note that for most calendars in which era 0 years move forward in
+     * time (such as Buddhist, Hebrew, or Islamic), it is possible for add or roll to
+     * result in negative years for era 0 (that is the only way to represent years before
+     * the calendar epoch).
+     * When rolling on the hour-in-day or Calendar::HOUR_OF_DAY field, it will roll the
+     * hour value in the range between 0 and 23, which is zero-based.
      * <P>
      * The only difference between roll() and add() is that roll() does not change
      * the value of more significant fields when it reaches the minimum or maximum
@@ -619,10 +686,19 @@ public:
      * roll(Calendar::DATE, +1, status). When rolling on the month or
      * Calendar::MONTH field, other fields like date might conflict and, need to be
      * changed. For instance, rolling the month up on the date 01/31/96 will result in
-     * 02/29/96.  Rolling by a positive value always means rolling forward in time;
-     * e.g., rolling the year by +1 on "100 BC" will result in "99 BC", for Gregorian
-     * calendar. When rolling on the hour-in-day or Calendar::HOUR_OF_DAY field, it will
-     * roll the hour value in the range between 0 and 23, which is zero-based.
+     * 02/29/96. Rolling by a positive value always means rolling forward in time (unless
+     * the limit of the field is reached, in which case it may pin or wrap), so for
+     * Gregorian calendar, starting with 100 BC and rolling the year by + 1 results in 99 BC.
+     * When eras have a definite beginning and end (as in the Chinese calendar, or as in
+     * most eras in the Japanese calendar) then rolling the year past either limit of the
+     * era will cause the year to wrap around. When eras only have a limit at one end,
+     * then attempting to roll the year past that limit will result in pinning the year
+     * at that limit. Note that for most calendars in which era 0 years move forward in
+     * time (such as Buddhist, Hebrew, or Islamic), it is possible for add or roll to
+     * result in negative years for era 0 (that is the only way to represent years before
+     * the calendar epoch).
+     * When rolling on the hour-in-day or Calendar::HOUR_OF_DAY field, it will roll the
+     * hour value in the range between 0 and 23, which is zero-based.
      * <P>
      * The only difference between roll() and add() is that roll() does not change
      * the value of more significant fields when it reaches the minimum or maximum
@@ -822,7 +898,6 @@ public:
      */
     UBool isLenient(void) const;
 
-#ifndef U_HIDE_DRAFT_API
     /**
      * Sets the behavior for handling wall time repeating multiple times
      * at negative time zone offset transitions. For example, 1:30 AM on
@@ -841,7 +916,7 @@ public:
      * @param option the behavior for handling repeating wall time, either
      * <code>UCAL_WALLTIME_FIRST</code> or <code>UCAL_WALLTIME_LAST</code>.
      * @see #getRepeatedWallTimeOption
-     * @draft ICU 49
+     * @stable ICU 49
      */
     void setRepeatedWallTimeOption(UCalendarWallTimeOption option);
 
@@ -852,7 +927,7 @@ public:
      * @return the behavior for handling repeating wall time, either
      * <code>UCAL_WALLTIME_FIRST</code> or <code>UCAL_WALLTIME_LAST</code>.
      * @see #setRepeatedWallTimeOption
-     * @draft ICU 49
+     * @stable ICU 49
      */
     UCalendarWallTimeOption getRepeatedWallTimeOption(void) const;
 
@@ -875,7 +950,7 @@ public:
      * <code>UCAL_WALLTIME_NEXT_VALID</code>.
      * @see #getSkippedWallTimeOption
      * 
-     * @draft ICU 49
+     * @stable ICU 49
      */
     void setSkippedWallTimeOption(UCalendarWallTimeOption option);
 
@@ -887,10 +962,9 @@ public:
      * <code>UCAL_WALLTIME_FIRST</code>, <code>UCAL_WALLTIME_LAST</code>
      * and <code>UCAL_WALLTIME_NEXT_VALID</code>.
      * @see #setSkippedWallTimeOption
-     * @draft ICU 49
+     * @stable ICU 49
      */
     UCalendarWallTimeOption getSkippedWallTimeOption(void) const;
-#endif  /* U_HIDE_DRAFT_API */
 
 #ifndef U_HIDE_DEPRECATED_API
     /**
@@ -1295,14 +1369,15 @@ public:
      * \endcode
      *
      * @return legacy calendar type name string
-     * @draft ICU 49
+     * @stable ICU 49
      */
     virtual const char * getType() const = 0;
 
     /**
-     * Returns whether the given day of the week is a weekday, a
-     * weekend day, or a day that transitions from one to the other,
-     * in this calendar system. If a transition occurs at midnight,
+     * Returns whether the given day of the week is a weekday, a weekend day,
+     * or a day that transitions from one to the other, for the locale and
+     * calendar system associated with this Calendar (the locale's region is
+     * often the most determinant factor). If a transition occurs at midnight,
      * then the days before and after the transition will have the
      * type UCAL_WEEKDAY or UCAL_WEEKEND. If a transition occurs at a time
      * other than midnight, then the day of the transition will have
@@ -1318,7 +1393,7 @@ public:
 
     /**
      * Returns the time during the day at which the weekend begins or ends in
-     * this calendar system.  If getDayOfWeekType() rerturns UCAL_WEEKEND_ONSET
+     * this calendar system.  If getDayOfWeekType() returns UCAL_WEEKEND_ONSET
      * for the specified dayOfWeek, return the time at which the weekend begins.
      * If getDayOfWeekType() returns UCAL_WEEKEND_CEASE for the specified dayOfWeek,
      * return the time at which the weekend ends. If getDayOfWeekType() returns
@@ -1531,11 +1606,13 @@ protected:
      * @internal
      */
     enum ELimitType {
+#ifndef U_HIDE_INTERNAL_API
       UCAL_LIMIT_MINIMUM = 0,
       UCAL_LIMIT_GREATEST_MINIMUM,
       UCAL_LIMIT_LEAST_MAXIMUM,
       UCAL_LIMIT_MAXIMUM,
       UCAL_LIMIT_COUNT
+#endif  /* U_HIDE_INTERNAL_API */
     };
 
     /**
@@ -1631,8 +1708,8 @@ protected:
      * (YEAR_WOY and WEEK_OF_YEAR) to an extended year in the case
      * where YEAR, EXTENDED_YEAR are not set.
      * The Calendar implementation assumes yearWoy is in extended gregorian form
-     * @internal
      * @return the extended year, UCAL_EXTENDED_YEAR
+     * @internal
      */
     virtual int32_t handleGetExtendedYearFromWeekFields(int32_t yearWoy, int32_t woy);
 
@@ -2311,19 +2388,19 @@ private:
 #endif /* !UCONFIG_NO_SERVICE */
 
     /**
-     * @internal
      * @return TRUE if this calendar has a default century (i.e. 03 -> 2003)
+     * @internal
      */
     virtual UBool haveDefaultCentury() const = 0;
 
     /**
-     * @internal
      * @return the start of the default century, as a UDate
+     * @internal
      */
     virtual UDate defaultCenturyStart() const = 0;
     /**
-     * @internal
      * @return the beginning year of the default century, as a year
+     * @internal
      */
     virtual int32_t defaultCenturyStartYear() const = 0;
 

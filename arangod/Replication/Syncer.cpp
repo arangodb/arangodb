@@ -320,7 +320,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
         res = primary->update(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
       }
       
-      TRI_FreeShapedJson(primary->_shaper, shaped);
+      TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);
 
       return res;
     }

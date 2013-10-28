@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2009, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -27,9 +27,12 @@ public:
     void testRounding(/*char *par*/);
     void testRoundingInc(/*char *par*/);
     void TestCurrencyPluralInfo();
+    void TestScale();
+    void TestFixedDecimal();
 private:
     /*Helper functions */
     void verify(const UnicodeString& message, const UnicodeString& got, double expected);
+    void verifyString(const UnicodeString& message, const UnicodeString& got, UnicodeString& expected);
 };
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

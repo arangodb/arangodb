@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -74,7 +74,7 @@ U_NAMESPACE_USE
 //static const UChar POSIX_OPEN[]  = { SET_OPEN,COLON,0 };  // "[:"
 static const UChar POSIX_CLOSE[] = { COLON,SET_CLOSE,0 };  // ":]"
 //static const UChar PERL_OPEN[]   = { BACKSLASH,LOWER_P,0 }; // "\\p"
-static const UChar PERL_CLOSE[]  = { CLOSE_BRACE,0 };    // "}"
+//static const UChar PERL_CLOSE[]  = { CLOSE_BRACE,0 };    // "}"
 //static const UChar NAME_OPEN[]   = { BACKSLASH,UPPER_N,0 };  // "\\N"
 static const UChar HYPHEN_RIGHT_BRACE[] = {HYPHEN,SET_CLOSE,0}; /*-]*/
 
@@ -97,39 +97,15 @@ static const char ASSIGNED[] = "Assigned"; // [:^Cn:]
 
 U_CDECL_BEGIN
 static UBool U_CALLCONV uset_cleanup();
-U_CDECL_END
 
-// Not a TriStateSingletonWrapper because we think the UnicodeSet constructor
-// can only fail with an out-of-memory error
-// if we have a correct pattern and the properties data is hardcoded and always available.
-class UnicodeSetSingleton : public SimpleSingletonWrapper<UnicodeSet> {
-public:
-    UnicodeSetSingleton(SimpleSingleton &s, const char *pattern) :
-            SimpleSingletonWrapper<UnicodeSet>(s), fPattern(pattern) {}
-    UnicodeSet *getInstance(UErrorCode &errorCode) {
-        return SimpleSingletonWrapper<UnicodeSet>::getInstance(createInstance, fPattern, errorCode);
-    }
-private:
-    static void *createInstance(const void *context, UErrorCode &errorCode) {
-        UnicodeString pattern((const char *)context, -1, US_INV);
-        UnicodeSet *set=new UnicodeSet(pattern, errorCode);
-        if(set==NULL) {
-            errorCode=U_MEMORY_ALLOCATION_ERROR;
-            return NULL;
-        }
-        set->freeze();
-        ucln_common_registerCleanup(UCLN_COMMON_USET, uset_cleanup);
-        return set;
-    }
-
-    const char *fPattern;
+struct Inclusion {
+    UnicodeSet  *fSet;
+    UInitOnce    fInitOnce;
 };
+static Inclusion gInclusions[UPROPS_SRC_COUNT]; // cached getInclusions()
 
-U_CDECL_BEGIN
-
-static UnicodeSet *INCLUSIONS[UPROPS_SRC_COUNT] = { NULL }; // cached getInclusions()
-
-STATIC_SIMPLE_SINGLETON(uni32Singleton);
+static UnicodeSet *uni32Singleton;
+static icu::UInitOnce uni32InitOnce = U_INITONCE_INITIALIZER;
 
 //----------------------------------------------------------------
 // Inclusions list
@@ -156,15 +132,16 @@ _set_addString(USet *set, const UChar *str, int32_t length) {
  * Cleanup function for UnicodeSet
  */
 static UBool U_CALLCONV uset_cleanup(void) {
-    int32_t i;
-
-    for(i = UPROPS_SRC_NONE; i < UPROPS_SRC_COUNT; ++i) {
-        if (INCLUSIONS[i] != NULL) {
-            delete INCLUSIONS[i];
-            INCLUSIONS[i] = NULL;
-        }
+    for(int32_t i = UPROPS_SRC_NONE; i < UPROPS_SRC_COUNT; ++i) {
+        Inclusion &in = gInclusions[i];
+        delete in.fSet;
+        in.fSet = NULL;
+        in.fInitOnce.reset();
     }
-    UnicodeSetSingleton(uni32Singleton, NULL).deleteInstance();
+
+    delete uni32Singleton;
+    uni32Singleton = NULL;
+    uni32InitOnce.reset();
     return TRUE;
 }
 
@@ -173,110 +150,131 @@ U_CDECL_END
 U_NAMESPACE_BEGIN
 
 /*
-Reduce excessive reallocation, and make it easier to detect initialization
-problems.
+Reduce excessive reallocation, and make it easier to detect initialization problems.
 Usually you don't see smaller sets than this for Unicode 5.0.
 */
 #define DEFAULT_INCLUSION_CAPACITY 3072
 
-const UnicodeSet* UnicodeSet::getInclusions(int32_t src, UErrorCode &status) {
-    UBool needInit;
-    UMTX_CHECK(NULL, (INCLUSIONS[src] == NULL), needInit);
-    if (needInit) {
-        UnicodeSet* incl = new UnicodeSet();
-        USetAdder sa = {
-            (USet *)incl,
-            _set_add,
-            _set_addRange,
-            _set_addString,
-            NULL, // don't need remove()
-            NULL // don't need removeRange()
-        };
-        if (incl != NULL) {
-            incl->ensureCapacity(DEFAULT_INCLUSION_CAPACITY, status);
-            switch(src) {
-            case UPROPS_SRC_CHAR:
-                uchar_addPropertyStarts(&sa, &status);
-                break;
-            case UPROPS_SRC_PROPSVEC:
-                upropsvec_addPropertyStarts(&sa, &status);
-                break;
-            case UPROPS_SRC_CHAR_AND_PROPSVEC:
-                uchar_addPropertyStarts(&sa, &status);
-                upropsvec_addPropertyStarts(&sa, &status);
-                break;
-#if !UCONFIG_NO_NORMALIZATION
-            case UPROPS_SRC_CASE_AND_NORM: {
-                const Normalizer2Impl *impl=Normalizer2Factory::getNFCImpl(status);
-                if(U_SUCCESS(status)) {
-                    impl->addPropertyStarts(&sa, status);
-                }
-                ucase_addPropertyStarts(ucase_getSingleton(), &sa, &status);
-                break;
-            }
-            case UPROPS_SRC_NFC: {
-                const Normalizer2Impl *impl=Normalizer2Factory::getNFCImpl(status);
-                if(U_SUCCESS(status)) {
-                    impl->addPropertyStarts(&sa, status);
-                }
-                break;
-            }
-            case UPROPS_SRC_NFKC: {
-                const Normalizer2Impl *impl=Normalizer2Factory::getNFKCImpl(status);
-                if(U_SUCCESS(status)) {
-                    impl->addPropertyStarts(&sa, status);
-                }
-                break;
-            }
-            case UPROPS_SRC_NFKC_CF: {
-                const Normalizer2Impl *impl=Normalizer2Factory::getNFKC_CFImpl(status);
-                if(U_SUCCESS(status)) {
-                    impl->addPropertyStarts(&sa, status);
-                }
-                break;
-            }
-            case UPROPS_SRC_NFC_CANON_ITER: {
-                const Normalizer2Impl *impl=Normalizer2Factory::getNFCImpl(status);
-                if(U_SUCCESS(status)) {
-                    impl->addCanonIterPropertyStarts(&sa, status);
-                }
-                break;
-            }
-#endif
-            case UPROPS_SRC_CASE:
-                ucase_addPropertyStarts(ucase_getSingleton(), &sa, &status);
-                break;
-            case UPROPS_SRC_BIDI:
-                ubidi_addPropertyStarts(ubidi_getSingleton(), &sa, &status);
-                break;
-            default:
-                status = U_INTERNAL_PROGRAM_ERROR;
-                break;
-            }
-            if (U_SUCCESS(status)) {
-                // Compact for caching
-                incl->compact();
-                umtx_lock(NULL);
-                if (INCLUSIONS[src] == NULL) {
-                    INCLUSIONS[src] = incl;
-                    incl = NULL;
-                    ucln_common_registerCleanup(UCLN_COMMON_USET, uset_cleanup);
-                }
-                umtx_unlock(NULL);
-            }
-            delete incl;
-        } else {
-            status = U_MEMORY_ALLOCATION_ERROR;
-        }
+void U_CALLCONV UnicodeSet_initInclusion(int32_t src, UErrorCode &status) {
+    // This function is invoked only via umtx_initOnce().
+    // This function is a friend of class UnicodeSet.
+
+    U_ASSERT(src >=0 && src<UPROPS_SRC_COUNT);
+    UnicodeSet * &incl = gInclusions[src].fSet;
+    U_ASSERT(incl == NULL);
+
+    incl = new UnicodeSet();
+    if (incl == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return;
     }
-    return INCLUSIONS[src];
+    USetAdder sa = {
+        (USet *)incl,
+        _set_add,
+        _set_addRange,
+        _set_addString,
+        NULL, // don't need remove()
+        NULL // don't need removeRange()
+    };
+
+    incl->ensureCapacity(DEFAULT_INCLUSION_CAPACITY, status);
+    switch(src) {
+    case UPROPS_SRC_CHAR:
+        uchar_addPropertyStarts(&sa, &status);
+        break;
+    case UPROPS_SRC_PROPSVEC:
+        upropsvec_addPropertyStarts(&sa, &status);
+        break;
+    case UPROPS_SRC_CHAR_AND_PROPSVEC:
+        uchar_addPropertyStarts(&sa, &status);
+        upropsvec_addPropertyStarts(&sa, &status);
+        break;
+#if !UCONFIG_NO_NORMALIZATION
+    case UPROPS_SRC_CASE_AND_NORM: {
+        const Normalizer2Impl *impl=Normalizer2Factory::getNFCImpl(status);
+        if(U_SUCCESS(status)) {
+            impl->addPropertyStarts(&sa, status);
+        }
+        ucase_addPropertyStarts(ucase_getSingleton(), &sa, &status);
+        break;
+    }
+    case UPROPS_SRC_NFC: {
+        const Normalizer2Impl *impl=Normalizer2Factory::getNFCImpl(status);
+        if(U_SUCCESS(status)) {
+            impl->addPropertyStarts(&sa, status);
+        }
+        break;
+    }
+    case UPROPS_SRC_NFKC: {
+        const Normalizer2Impl *impl=Normalizer2Factory::getNFKCImpl(status);
+        if(U_SUCCESS(status)) {
+            impl->addPropertyStarts(&sa, status);
+        }
+        break;
+    }
+    case UPROPS_SRC_NFKC_CF: {
+        const Normalizer2Impl *impl=Normalizer2Factory::getNFKC_CFImpl(status);
+        if(U_SUCCESS(status)) {
+            impl->addPropertyStarts(&sa, status);
+        }
+        break;
+    }
+    case UPROPS_SRC_NFC_CANON_ITER: {
+        const Normalizer2Impl *impl=Normalizer2Factory::getNFCImpl(status);
+        if(U_SUCCESS(status)) {
+            impl->addCanonIterPropertyStarts(&sa, status);
+        }
+        break;
+    }
+#endif
+    case UPROPS_SRC_CASE:
+        ucase_addPropertyStarts(ucase_getSingleton(), &sa, &status);
+        break;
+    case UPROPS_SRC_BIDI:
+        ubidi_addPropertyStarts(ubidi_getSingleton(), &sa, &status);
+        break;
+    default:
+        status = U_INTERNAL_PROGRAM_ERROR;
+        break;
+    }
+
+    if (U_FAILURE(status)) {
+        delete incl;
+        incl = NULL;
+        return;
+    }
+    // Compact for caching
+    incl->compact();
+    ucln_common_registerCleanup(UCLN_COMMON_USET, uset_cleanup);
 }
 
+
+
+const UnicodeSet* UnicodeSet::getInclusions(int32_t src, UErrorCode &status) {
+    U_ASSERT(src >=0 && src<UPROPS_SRC_COUNT);
+    Inclusion &i = gInclusions[src];
+    umtx_initOnce(i.fInitOnce, &UnicodeSet_initInclusion, src, status);
+    return i.fSet;
+}
+
+
 // Cache some sets for other services -------------------------------------- ***
+void U_CALLCONV createUni32Set(UErrorCode &errorCode) {
+    U_ASSERT(uni32Singleton == NULL);
+    uni32Singleton = new UnicodeSet(UNICODE_STRING_SIMPLE("[:age=3.2:]"), errorCode);
+    if(uni32Singleton==NULL) {
+        errorCode=U_MEMORY_ALLOCATION_ERROR;
+    } else {
+        uni32Singleton->freeze();
+    }
+    ucln_common_registerCleanup(UCLN_COMMON_USET, uset_cleanup);
+}
+
 
 U_CFUNC UnicodeSet *
 uniset_getUnicode32Instance(UErrorCode &errorCode) {
-    return UnicodeSetSingleton(uni32Singleton, "[:age=3.2:]").getInstance(errorCode);
+    umtx_initOnce(uni32InitOnce, &createUni32Set, errorCode);
+    return uni32Singleton;
 }
 
 // helper functions for matching of pattern syntax pieces ------------------ ***
@@ -1038,7 +1036,6 @@ UnicodeSet::applyPropertyAlias(const UnicodeString& prop,
                     applyFilter(numericValueFilter, &value, UPROPS_SRC_CHAR, ec);
                     return *this;
                 }
-                break;
             case UCHAR_NAME:
                 {
                     // Must munge name, since u_charFromName() does not do
@@ -1054,7 +1051,6 @@ UnicodeSet::applyPropertyAlias(const UnicodeString& prop,
                         FAIL(ec);
                     }
                 }
-                break;
             case UCHAR_UNICODE_1_NAME:
                 // ICU 49 deprecates the Unicode_1_Name property APIs.
                 FAIL(ec);
@@ -1069,7 +1065,6 @@ UnicodeSet::applyPropertyAlias(const UnicodeString& prop,
                     applyFilter(versionFilter, &version, UPROPS_SRC_PROPSVEC, ec);
                     return *this;
                 }
-                break;
             case UCHAR_SCRIPT_EXTENSIONS:
                 v = u_getPropertyValueEnum(UCHAR_SCRIPT, vname.data());
                 if (v == UCHAR_INVALID_CODE) {

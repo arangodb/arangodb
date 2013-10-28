@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2011, International Business Machines
+*   Copyright (C) 2010-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  uts46.cpp
@@ -108,8 +108,6 @@ IDNA::nameToUnicodeUTF8(const StringPiece &name, ByteSink &dest,
                       info, errorCode).toUTF8(dest);
     }
 }
-
-UOBJECT_DEFINE_NO_RTTI_IMPLEMENTATION(IDNA)
 
 // UTS46 class declaration ------------------------------------------------- ***
 
@@ -1290,12 +1288,12 @@ U_NAMESPACE_END
 
 U_NAMESPACE_USE
 
-U_DRAFT UIDNA * U_EXPORT2
+U_CAPI UIDNA * U_EXPORT2
 uidna_openUTS46(uint32_t options, UErrorCode *pErrorCode) {
     return reinterpret_cast<UIDNA *>(IDNA::createUTS46Instance(options, *pErrorCode));
 }
 
-U_DRAFT void U_EXPORT2
+U_CAPI void U_EXPORT2
 uidna_close(UIDNA *idna) {
     delete reinterpret_cast<IDNA *>(idna);
 }
@@ -1330,7 +1328,7 @@ idnaInfoToStruct(IDNAInfo &info, UIDNAInfo *pInfo) {
     pInfo->errors=info.getErrors();
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_labelToASCII(const UIDNA *idna,
                    const UChar *label, int32_t length,
                    UChar *dest, int32_t capacity,
@@ -1346,7 +1344,7 @@ uidna_labelToASCII(const UIDNA *idna,
     return destString.extract(dest, capacity, *pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_labelToUnicode(const UIDNA *idna,
                      const UChar *label, int32_t length,
                      UChar *dest, int32_t capacity,
@@ -1362,7 +1360,7 @@ uidna_labelToUnicode(const UIDNA *idna,
     return destString.extract(dest, capacity, *pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_nameToASCII(const UIDNA *idna,
                   const UChar *name, int32_t length,
                   UChar *dest, int32_t capacity,
@@ -1378,7 +1376,7 @@ uidna_nameToASCII(const UIDNA *idna,
     return destString.extract(dest, capacity, *pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_nameToUnicode(const UIDNA *idna,
                     const UChar *name, int32_t length,
                     UChar *dest, int32_t capacity,
@@ -1394,7 +1392,7 @@ uidna_nameToUnicode(const UIDNA *idna,
     return destString.extract(dest, capacity, *pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_labelToASCII_UTF8(const UIDNA *idna,
                         const char *label, int32_t length,
                         char *dest, int32_t capacity,
@@ -1410,7 +1408,7 @@ uidna_labelToASCII_UTF8(const UIDNA *idna,
     return u_terminateChars(dest, capacity, sink.NumberOfBytesAppended(), pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_labelToUnicodeUTF8(const UIDNA *idna,
                          const char *label, int32_t length,
                          char *dest, int32_t capacity,
@@ -1426,7 +1424,7 @@ uidna_labelToUnicodeUTF8(const UIDNA *idna,
     return u_terminateChars(dest, capacity, sink.NumberOfBytesAppended(), pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_nameToASCII_UTF8(const UIDNA *idna,
                        const char *name, int32_t length,
                        char *dest, int32_t capacity,
@@ -1442,7 +1440,7 @@ uidna_nameToASCII_UTF8(const UIDNA *idna,
     return u_terminateChars(dest, capacity, sink.NumberOfBytesAppended(), pErrorCode);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uidna_nameToUnicodeUTF8(const UIDNA *idna,
                         const char *name, int32_t length,
                         char *dest, int32_t capacity,

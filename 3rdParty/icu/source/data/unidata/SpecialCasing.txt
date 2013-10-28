@@ -1,8 +1,8 @@
-# SpecialCasing-6.1.0.txt
-# Date: 2011-11-27, 05:10:51 GMT [MD]
+# SpecialCasing-6.3.0.txt
+# Date: 2013-05-08, 13:54:51 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2011 Unicode, Inc.
+# Copyright (c) 1991-2013 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 #
@@ -39,7 +39,7 @@
 # A language ID is defined by BCP 47, with '-' and '_' treated equivalently.
 #
 # A context for a character C is defined by Section 3.13 Default Case 
-# Operations, of The Unicode Standard, Version 5.0.
+# Algorithms, of The Unicode Standard, Version 6.3.
 # (This is identical to the context defined by Unicode 4.1.0,
 #  as specified in http://www.unicode.org/versions/Unicode4.1.0/)
 #

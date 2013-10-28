@@ -1,5 +1,5 @@
 /******************************************************************************
- *   Copyright (C) 2009-2011, International Business Machines
+ *   Copyright (C) 2009-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *******************************************************************************
  */
@@ -24,7 +24,7 @@ parseFlagsFile(const char *fileName, char **flagBuffer, int32_t flagBufferSize, 
     char* buffer = uprv_malloc(sizeof(char) * currentBufferSize);
     char* tmpFlagBuffer = uprv_malloc(sizeof(char) * flagBufferSize);
     UBool allocateMoreSpace = FALSE;
-    int32_t index, i;
+    int32_t idx, i;
     int32_t result = 0;
 
     FileStream *f = T_FileStream_open(fileName, "r");
@@ -65,7 +65,7 @@ parseFlagsFile(const char *fileName, char **flagBuffer, int32_t flagBufferSize, 
                 T_FileStream_rewind(f);
                 break;
             } else {
-                index = extractFlag(buffer, currentBufferSize, tmpFlagBuffer, flagBufferSize, flagNames, numOfFlags, status);
+                idx = extractFlag(buffer, currentBufferSize, tmpFlagBuffer, flagBufferSize, flagNames, numOfFlags, status);
                 if (U_FAILURE(*status)) {
                     if (*status == U_BUFFER_OVERFLOW_ERROR) {
                         result = currentBufferSize;
@@ -75,8 +75,8 @@ parseFlagsFile(const char *fileName, char **flagBuffer, int32_t flagBufferSize, 
                     break;
                 } else {
                     if (flagNames != NULL) {
-                        if (index >= 0) {
-                            uprv_strcpy(flagBuffer[index], tmpFlagBuffer);
+                        if (idx >= 0) {
+                            uprv_strcpy(flagBuffer[idx], tmpFlagBuffer);
                         } else {
                             /* No match found.  Skip it. */
                             continue;
@@ -106,7 +106,7 @@ parseFlagsFile(const char *fileName, char **flagBuffer, int32_t flagBufferSize, 
  * Extract the setting after the '=' and store it in flag excluding the newline character.
  */
 static int32_t extractFlag(char* buffer, int32_t bufferSize, char* flag, int32_t flagSize, const char **flagNames, int32_t numOfFlags, UErrorCode *status) {
-    int32_t i, index = -1;
+    int32_t i, idx = -1;
     char *pBuffer;
     int32_t offset=0;
     UBool bufferWritten = FALSE;
@@ -141,13 +141,13 @@ static int32_t extractFlag(char* buffer, int32_t bufferSize, char* flag, int32_t
         offset--;  /* Move offset back 1 because of '='*/
         for (i = 0; i < numOfFlags; i++) {
             if (uprv_strncmp(buffer, flagNames[i], offset) == 0) {
-                index = i;
+                idx = i;
                 break;
             }
         }
     }
 
-    return index;
+    return idx;
 }
 
 /*

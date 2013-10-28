@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/yo.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/yo.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/yo.xml
+ * ICU <specials> source: <path>/common/main/yo.xml
  */
 yo{
     Countries{
@@ -56,7 +56,6 @@ yo{
         CN{"Orílẹ́ède ṣáínà"}
         CO{"Orílẹ́ède Kòlómíbìa"}
         CR{"Orílẹ́ède Kuusita Ríkà"}
-        CS{"Orílẹ́ède sẹbia ati Mọtinegoro"}
         CU{"Orílẹ́ède Kúbà"}
         CV{"Orílẹ́ède Etíokun Kápé féndè"}
         CY{"Orílẹ́ède Kúrúsì"}
@@ -238,5 +237,5 @@ yo{
         ZM{"Orílẹ́ède ṣamibia"}
         ZW{"Orílẹ́ède ṣimibabe"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

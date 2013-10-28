@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/luy.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/luy.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/luy.xml
+ * ICU <specials> source: <path>/common/main/luy.xml
  */
 luy{
     Currencies{
@@ -20,7 +20,7 @@ luy{
             "Kwanza ya Angola",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dola ya Australia",
         }
         BHD{
@@ -104,7 +104,7 @@ luy{
             "Sarafu ya Kijapani",
         }
         KES{
-            "KES",
+            "Ksh",
             "Sirinji ya Kenya",
         }
         KMF{
@@ -221,6 +221,10 @@ luy{
         }
         ZMK{
             "ZMK",
+            "Kwacha ya Zambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Kwacha ya Zambia",
         }
         ZWD{
@@ -228,5 +232,5 @@ luy{
             "Dola ya Zimbabwe",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

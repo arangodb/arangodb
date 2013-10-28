@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/asa.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/asa.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/asa.xml
+ * ICU <specials> source: <path>/common/main/asa.xml
  */
 asa{
     Currencies{
@@ -20,7 +20,7 @@ asa{
             "kwandha ya Angola",
         }
         AUD{
-            "AU$",
+            "A$",
             "dola ya Authtralia",
         }
         BHD{
@@ -225,6 +225,10 @@ asa{
         }
         ZMK{
             "ZMK",
+            "kwacha ya Dhambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "kwacha ya Dhambia",
         }
         ZWD{
@@ -232,5 +236,5 @@ asa{
             "dola ya Dhimbabwe",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

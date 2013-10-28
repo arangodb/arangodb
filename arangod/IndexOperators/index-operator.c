@@ -175,7 +175,7 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
         for (i = 0; i < relationOperator->_numFields; ++i) {
           // destroy each individual shapedJson object
           TRI_shaped_json_t* shaped = relationOperator->_fields + i;
-          TRI_DestroyShapedJson(relationOperator->base._shaper, shaped);
+          TRI_DestroyShapedJson(relationOperator->base._shaper->_memoryZone, shaped);
         }
         // free the memory pointer
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);

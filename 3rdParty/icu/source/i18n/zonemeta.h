@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2012, International Business Machines Corporation and    *
+* Copyright (C) 2007-2013, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 */
@@ -50,17 +50,13 @@ public:
 
     /**
      * Return the canonical country code for this tzid.  If we have none, or if the time zone
-     * is not associated with a country, return null.
+     * is not associated with a country, return bogus string.
+     * @param tzid Zone ID
+     * @param country [output] Country code
+     * @param isPrimary [output] TRUE if the zone is the primary zone for the country
+     * @return A reference to the result country
      */
-    static UnicodeString& U_EXPORT2 getCanonicalCountry(const UnicodeString &tzid, UnicodeString &canonicalCountry);
-
-    /**
-     * Return the country code if this is a 'single' time zone that can fallback to just
-     * the country, otherwise return empty string.  (Note, one must also check the locale data
-     * to see that there is a localization for the country in order to implement
-     * tr#35 appendix J step 5.)
-     */
-    static UnicodeString& U_EXPORT2 getSingleCountry(const UnicodeString &tzid, UnicodeString &country);
+    static UnicodeString& U_EXPORT2 getCanonicalCountry(const UnicodeString &tzid, UnicodeString &country, UBool *isPrimary = NULL);
 
     /**
      * Returns a CLDR metazone ID for the given Olson tzid and time.
@@ -94,11 +90,27 @@ public:
      */
     static TimeZone* createCustomTimeZone(int32_t offset);
 
+    /**
+     * Returns the time zone's short ID (null terminated) for the zone.
+     * For example, "uslax" for zone "America/Los_Angeles".
+     * @param tz the time zone
+     * @return the short ID of the time zone, or null if the short ID is not available.
+     */
+    static const UChar* U_EXPORT2 getShortID(const TimeZone& tz);
+
+    /**
+     * Returns the time zone's short ID (null terminated) for the zone ID.
+     * For example, "uslax" for zone ID "America/Los_Angeles".
+     * @param tz the time zone ID
+     * @return the short ID of the time zone ID, or null if the short ID is not available.
+     */
+    static const UChar* U_EXPORT2 getShortID(const UnicodeString& id);
+
 private:
     ZoneMeta(); // Prevent construction.
     static UVector* createMetazoneMappings(const UnicodeString &tzid);
-    static void initAvailableMetaZoneIDs();
     static UnicodeString& formatCustomID(uint8_t hour, uint8_t min, uint8_t sec, UBool negative, UnicodeString& id);
+    static const UChar* getShortIDFromCanonical(const UChar* canonicalID);
 };
 
 U_NAMESPACE_END

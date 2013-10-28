@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011 International Business Machines
+*   Copyright (C) 1999-2013 International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -49,6 +49,7 @@ ubrk_swap(const UDataSwapper *ds,
 
 #include "unicode/uobject.h"
 #include "unicode/unistr.h"
+#include "umutex.h"
 #include "utrie.h"
 
 U_NAMESPACE_BEGIN
@@ -180,7 +181,7 @@ public:
     UTrie               fTrie;
 
 private:
-    int32_t             fRefCount;
+    u_atomic_int32_t    fRefCount;
     UDataMemory        *fUDataMem;
     UnicodeString       fRuleString;
     UBool               fDontFreeData;

@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-* Copyright (C) 1998-2010, International Business Machines Corporation and
+* Copyright (C) 1998-2012, International Business Machines Corporation and
 * others. All Rights Reserved.
 ******************************************************************************
 *
@@ -13,7 +13,7 @@
 ******************************************************************************
 */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/chariter.h"
 #include "unicode/schriter.h"

@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2003-2009, International Business Machines Corporation and    *
+* Copyright (C) 2003-2009,2012, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 *
@@ -478,7 +478,7 @@ int32_t JapaneseCalendar::handleGetLimit(UCalendarDateFields field, ELimitType l
     switch(field) {
     case UCAL_ERA:
         if (limitType == UCAL_LIMIT_MINIMUM || limitType == UCAL_LIMIT_GREATEST_MINIMUM) {
-            return 1;
+            return 0;
         }
         return kCurrentEra;
     case UCAL_YEAR:

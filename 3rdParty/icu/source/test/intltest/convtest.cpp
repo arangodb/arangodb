@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2010, International Business Machines
+*   Copyright (C) 2003-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -652,11 +652,13 @@ ConversionTest::TestGetUnicodeSet2() {
 
 UConverter *
 ConversionTest::cnv_open(const char *name, UErrorCode &errorCode) {
+    if(name!=NULL && *name=='+') {
+        // Converter names that start with '+' are ignored in ICU4J tests.
+        ++name;
+    }
     if(name!=NULL && *name=='*') {
         /* loadTestData(): set the data directory */
         return ucnv_openPackage(loadTestData(errorCode), name+1, &errorCode);
-    } else if(name!=NULL && *name=='+') {
-        return ucnv_open((name+1), &errorCode);
     } else {
         return ucnv_open(name, &errorCode);
     }

@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -34,25 +34,31 @@ typedef uint32_t Flags;
     See UCharDirection in uchar.h .
 */
 enum {
-    L=  U_LEFT_TO_RIGHT,
-    R=  U_RIGHT_TO_LEFT,
-    EN= U_EUROPEAN_NUMBER,
-    ES= U_EUROPEAN_NUMBER_SEPARATOR,
-    ET= U_EUROPEAN_NUMBER_TERMINATOR,
-    AN= U_ARABIC_NUMBER,
-    CS= U_COMMON_NUMBER_SEPARATOR,
-    B=  U_BLOCK_SEPARATOR,
-    S=  U_SEGMENT_SEPARATOR,
-    WS= U_WHITE_SPACE_NEUTRAL,
-    ON= U_OTHER_NEUTRAL,
-    LRE=U_LEFT_TO_RIGHT_EMBEDDING,
-    LRO=U_LEFT_TO_RIGHT_OVERRIDE,
-    AL= U_RIGHT_TO_LEFT_ARABIC,
-    RLE=U_RIGHT_TO_LEFT_EMBEDDING,
-    RLO=U_RIGHT_TO_LEFT_OVERRIDE,
-    PDF=U_POP_DIRECTIONAL_FORMAT,
-    NSM=U_DIR_NON_SPACING_MARK,
-    BN= U_BOUNDARY_NEUTRAL,
+    L=  U_LEFT_TO_RIGHT,                /*  0 */
+    R=  U_RIGHT_TO_LEFT,                /*  1 */
+    EN= U_EUROPEAN_NUMBER,              /*  2 */
+    ES= U_EUROPEAN_NUMBER_SEPARATOR,    /*  3 */
+    ET= U_EUROPEAN_NUMBER_TERMINATOR,   /*  4 */
+    AN= U_ARABIC_NUMBER,                /*  5 */
+    CS= U_COMMON_NUMBER_SEPARATOR,      /*  6 */
+    B=  U_BLOCK_SEPARATOR,              /*  7 */
+    S=  U_SEGMENT_SEPARATOR,            /*  8 */
+    WS= U_WHITE_SPACE_NEUTRAL,          /*  9 */
+    ON= U_OTHER_NEUTRAL,                /* 10 */
+    LRE=U_LEFT_TO_RIGHT_EMBEDDING,      /* 11 */
+    LRO=U_LEFT_TO_RIGHT_OVERRIDE,       /* 12 */
+    AL= U_RIGHT_TO_LEFT_ARABIC,         /* 13 */
+    RLE=U_RIGHT_TO_LEFT_EMBEDDING,      /* 14 */
+    RLO=U_RIGHT_TO_LEFT_OVERRIDE,       /* 15 */
+    PDF=U_POP_DIRECTIONAL_FORMAT,       /* 16 */
+    NSM=U_DIR_NON_SPACING_MARK,         /* 17 */
+    BN= U_BOUNDARY_NEUTRAL,             /* 18 */
+    FSI=U_FIRST_STRONG_ISOLATE,         /* 19 */
+    LRI=U_LEFT_TO_RIGHT_ISOLATE,        /* 20 */
+    RLI=U_RIGHT_TO_LEFT_ISOLATE,        /* 21 */
+    PDI=U_POP_DIRECTIONAL_ISOLATE,      /* 22 */
+    ENL,                                /* 23 */
+    ENR,                                /* 24 */
     dirPropCount
 };
 
@@ -68,30 +74,27 @@ enum {
 #define DIRPROP_FLAG_MULTI_RUNS (1UL<<31)
 
 /* are there any characters that are LTR or RTL? */
-#define MASK_LTR (DIRPROP_FLAG(L)|DIRPROP_FLAG(EN)|DIRPROP_FLAG(AN)|DIRPROP_FLAG(LRE)|DIRPROP_FLAG(LRO))
-#define MASK_RTL (DIRPROP_FLAG(R)|DIRPROP_FLAG(AL)|DIRPROP_FLAG(RLE)|DIRPROP_FLAG(RLO))
+#define MASK_LTR (DIRPROP_FLAG(L)|DIRPROP_FLAG(EN)|DIRPROP_FLAG(AN)|DIRPROP_FLAG(LRE)|DIRPROP_FLAG(LRO)|DIRPROP_FLAG(LRI))
+#define MASK_RTL (DIRPROP_FLAG(R)|DIRPROP_FLAG(AL)|DIRPROP_FLAG(RLE)|DIRPROP_FLAG(RLO)|DIRPROP_FLAG(RLI))
 #define MASK_R_AL (DIRPROP_FLAG(R)|DIRPROP_FLAG(AL))
+#define MASK_STRONG_EN_AN (DIRPROP_FLAG(L)|DIRPROP_FLAG(R)|DIRPROP_FLAG(AL)|DIRPROP_FLAG(EN)|DIRPROP_FLAG(AN))
 
 /* explicit embedding codes */
-#define MASK_LRX (DIRPROP_FLAG(LRE)|DIRPROP_FLAG(LRO))
-#define MASK_RLX (DIRPROP_FLAG(RLE)|DIRPROP_FLAG(RLO))
-#define MASK_OVERRIDE (DIRPROP_FLAG(LRO)|DIRPROP_FLAG(RLO))
+#define MASK_EXPLICIT (DIRPROP_FLAG(LRE)|DIRPROP_FLAG(LRO)|DIRPROP_FLAG(RLE)|DIRPROP_FLAG(RLO)|DIRPROP_FLAG(PDF))
 
-#define MASK_EXPLICIT (MASK_LRX|MASK_RLX|DIRPROP_FLAG(PDF))
+/* explicit isolate codes */
+#define MASK_ISO (DIRPROP_FLAG(LRI)|DIRPROP_FLAG(RLI)|DIRPROP_FLAG(FSI)|DIRPROP_FLAG(PDI))
+
 #define MASK_BN_EXPLICIT (DIRPROP_FLAG(BN)|MASK_EXPLICIT)
 
 /* paragraph and segment separators */
 #define MASK_B_S (DIRPROP_FLAG(B)|DIRPROP_FLAG(S))
 
 /* all types that are counted as White Space or Neutral in some steps */
-#define MASK_WS (MASK_B_S|DIRPROP_FLAG(WS)|MASK_BN_EXPLICIT)
-#define MASK_N (DIRPROP_FLAG(ON)|MASK_WS)
-
-/* all types that are included in a sequence of European Terminators for (W5) */
-#define MASK_ET_NSM_BN (DIRPROP_FLAG(ET)|DIRPROP_FLAG(NSM)|MASK_BN_EXPLICIT)
+#define MASK_WS (MASK_B_S|DIRPROP_FLAG(WS)|MASK_BN_EXPLICIT|MASK_ISO)
 
 /* types that are neutrals or could becomes neutrals in (Wn) */
-#define MASK_POSSIBLE_N (DIRPROP_FLAG(CS)|DIRPROP_FLAG(ES)|DIRPROP_FLAG(ET)|MASK_N)
+#define MASK_POSSIBLE_N (DIRPROP_FLAG(ON)|DIRPROP_FLAG(CS)|DIRPROP_FLAG(ES)|DIRPROP_FLAG(ET)|MASK_WS)
 
 /*
  * These types may be changed to "e",
@@ -106,22 +109,33 @@ enum {
 #define IS_DEFAULT_LEVEL(level) ((level)>=0xfe)
 
 /*
- * The following bit is ORed to the property of characters in paragraphs
- * with contextual RTL direction when paraLevel is contextual.
+ * The following bit is ORed to the property of directional control
+ * characters which are ignored: unmatched PDF or PDI; LRx, RLx or FSI
+ * which would exceed the maximum explicit bidi level.
  */
-#define CONTEXT_RTL 0x80
-#define NO_CONTEXT_RTL(dir) ((dir)&~CONTEXT_RTL)
+#define IGNORE_CC   0x40
+
+#define PURE_DIRPROP(prop)  ((prop)&~IGNORE_CC)
+
 /*
- * The following is a variant of DIRPROP_FLAG which ignores the CONTEXT_RTL bit.
+ * The following bit is used for the directional isolate status.
+ * Stack entries corresponding to isolate sequences are greater than ISOLATE.
  */
-#define DIRPROP_FLAG_NC(dir) (1UL<<(NO_CONTEXT_RTL(dir)))
+#define ISOLATE  0x0100
+
+U_CFUNC UBiDiLevel
+ubidi_getParaLevelAtIndex(const UBiDi *pBiDi, int32_t index);
 
 #define GET_PARALEVEL(ubidi, index) \
-            (UBiDiLevel)((ubidi)->defaultParaLevel ? (ubidi)->dirProps[index]>>7 \
-                                                   : (ubidi)->paraLevel)
+            ((UBiDiLevel)(!(ubidi)->defaultParaLevel || (index)<(ubidi)->paras[0].limit ? \
+                         (ubidi)->paraLevel : ubidi_getParaLevelAtIndex((ubidi), (index))))
 
-/* Paragraph type for multiple paragraph support ---------------------------- */
-typedef int32_t Para;
+/* number of paras entries allocated initially without malloc */
+#define SIMPLE_PARAS_SIZE   10
+/* number of isolate entries allocated initially without malloc */
+#define SIMPLE_ISOLATES_SIZE 5
+/* number of isolate run entries for paired brackets allocated initially without malloc */
+#define SIMPLE_OPENINGS_SIZE 20
 
 #define CR  0x000D
 #define LF  0x000A
@@ -133,6 +147,55 @@ enum {
     RLM_BEFORE=4,
     RLM_AFTER=8
 };
+
+typedef struct Para {
+    int32_t limit;
+    int32_t level;
+} Para;
+
+enum {                                  /* flags for Opening.flags */
+    FOUND_L=DIRPROP_FLAG(L),
+    FOUND_R=DIRPROP_FLAG(R)
+};
+
+typedef struct Opening {
+    int32_t position;                   /* position of opening bracket */
+    int32_t match;                      /* matching char or -position of closing bracket */
+    int32_t contextPos;                 /* position of last strong char found before opening */
+    uint16_t flags;                     /* bits for L or R/AL found within the pair */
+    UBiDiDirection contextDir;          /* L or R according to last strong char before opening */
+    uint8_t filler;                     /* to complete a nice multiple of 4 chars */
+} Opening;
+
+typedef struct IsoRun {
+    int32_t  lastStrongPos;             /* position of last strong char found in this run */
+    int32_t  contextPos;                /* position of last char defining context */
+    uint16_t start;                     /* index of first opening entry for this run */
+    uint16_t limit;                     /* index after last opening entry for this run */
+    UBiDiLevel level;                   /* level of this run */
+    DirProp lastStrong;                 /* bidi class of last strong char found in this run */
+    UBiDiDirection contextDir;          /* L or R to use as context for following openings */
+    uint8_t filler;                     /* to complete a nice multiple of 4 chars */
+} IsoRun;
+
+typedef struct BracketData {
+    UBiDi   *pBiDi;
+    /* array of opening entries which should be enough in most cases; no malloc() */
+    Opening simpleOpenings[SIMPLE_OPENINGS_SIZE];
+    Opening *openings;                  /* pointer to current array of entries */
+    int32_t openingsSize;               /* number of allocated entries */
+    int32_t isoRunLast;                 /* index of last used entry */
+    /* array of nested isolated sequence entries; can never excess UBIDI_MAX_EXPLICIT_LEVEL
+       + 1 for index 0, + 1 for before the first isolated sequence */
+    IsoRun  isoRuns[UBIDI_MAX_EXPLICIT_LEVEL+2];
+    UBool isNumbersSpecial;             /* reordering mode for NUMBERS_SPECIAL */
+} BracketData;
+
+typedef struct Isolate {
+    int32_t start1;
+    int16_t stateImp;
+    int16_t state;
+} Isolate;
 
 typedef struct Run {
     int32_t logicalStart,   /* first character of the run; b31 indicates even/odd level */
@@ -166,10 +229,14 @@ enum {
     RLE_CHAR,
     PDF_CHAR,
     LRO_CHAR,
-    RLO_CHAR
+    RLO_CHAR,
+    LRI_CHAR=0x2066,
+    RLI_CHAR,
+    FSI_CHAR,
+    PDI_CHAR
 };
 
-#define IS_BIDI_CONTROL_CHAR(c) (((uint32_t)(c)&0xfffffffc)==ZWNJ_CHAR || (uint32_t)((c)-LRE_CHAR)<5)
+#define IS_BIDI_CONTROL_CHAR(c) (((uint32_t)(c)&0xfffffffc)==ZWNJ_CHAR || (uint32_t)((c)-LRE_CHAR)<5 || (uint32_t)((c)-LRI_CHAR)<4)
 
 /* InsertPoints structure for noting where to put BiDi marks ---------------- */
 
@@ -218,19 +285,21 @@ struct UBiDi {
     int32_t resultLength;
 
     /* memory sizes in bytes */
-    int32_t dirPropsSize, levelsSize, parasSize, runsSize;
+    int32_t dirPropsSize, levelsSize, openingsSize, parasSize, runsSize, isolatesSize;
 
     /* allocated memory */
     DirProp *dirPropsMemory;
     UBiDiLevel *levelsMemory;
+    Opening *openingsMemory;
     Para *parasMemory;
     Run *runsMemory;
+    Isolate *isolatesMemory;
 
     /* indicators for whether memory may be allocated after ubidi_open() */
     UBool mayAllocateText, mayAllocateRuns;
 
     /* arrays with one value per text-character */
-    const DirProp *dirProps;
+    DirProp *dirProps;
     UBiDiLevel *levels;
 
     /* are we performing an approximation of the "inverse BiDi" algorithm? */
@@ -281,11 +350,11 @@ struct UBiDi {
 
     /* fields for paragraph handling */
     int32_t paraCount;                  /* set in getDirProps() */
-    Para *paras;                        /* limits of paragraphs, filled in
-                            ResolveExplicitLevels() or CheckExplicitLevels() */
+    /* filled in getDirProps() */
+    Para *paras;
 
-    /* for single paragraph text, we only need a tiny array of paras (no malloc()) */
-    Para simpleParas[1];
+    /* for relatively short text, we only need a tiny array of paras (no malloc()) */
+    Para simpleParas[SIMPLE_PARAS_SIZE];
 
     /* fields for line reordering */
     int32_t runCount;     /* ==-1: runs not set up yet */
@@ -293,6 +362,17 @@ struct UBiDi {
 
     /* for non-mixed text, we only need a tiny array of runs (no malloc()) */
     Run simpleRuns[1];
+
+    /* maximum or current nesting depth of isolate sequences */
+    /* Within resolveExplicitLevels() and checkExplicitLevels(), this is the maximal
+       nesting encountered.
+       Within resolveImplicitLevels(), this is the index of the current isolates
+       stack entry. */
+    int32_t isolateCount;
+    Isolate *isolates;
+
+    /* for simple text, have a small stack (no malloc()) */
+    Isolate simpleIsolates[SIMPLE_ISOLATES_SIZE];
 
     /* for inverse Bidi with insertion of directional marks */
     InsertPoints insertPoints;
@@ -311,8 +391,10 @@ struct UBiDi {
 typedef union {
     DirProp *dirPropsMemory;
     UBiDiLevel *levelsMemory;
+    Opening *openingsMemory;
     Para *parasMemory;
     Run *runsMemory;
+    Isolate *isolatesMemory;
 } BidiMemoryForAllocation;
 
 /* Macros for initial checks at function entry */
@@ -378,6 +460,10 @@ ubidi_getMemory(BidiMemoryForAllocation *pMemory, int32_t *pSize, UBool mayAlloc
         ubidi_getMemory((BidiMemoryForAllocation *)&(pBiDi)->levelsMemory, &(pBiDi)->levelsSize, \
                         TRUE, (length))
 
+#define getInitialOpeningsMemory(pBiDi, length) \
+        ubidi_getMemory((BidiMemoryForAllocation *)&(pBiDi)->openingsMemory, &(pBiDi)->openingsSize, \
+                        TRUE, (length)*sizeof(Opening))
+
 #define getInitialParasMemory(pBiDi, length) \
         ubidi_getMemory((BidiMemoryForAllocation *)&(pBiDi)->parasMemory, &(pBiDi)->parasSize, \
                         TRUE, (length)*sizeof(Para))
@@ -385,6 +471,10 @@ ubidi_getMemory(BidiMemoryForAllocation *pMemory, int32_t *pSize, UBool mayAlloc
 #define getInitialRunsMemory(pBiDi, length) \
         ubidi_getMemory((BidiMemoryForAllocation *)&(pBiDi)->runsMemory, &(pBiDi)->runsSize, \
                         TRUE, (length)*sizeof(Run))
+
+#define getInitialIsolatesMemory(pBiDi, length) \
+        ubidi_getMemory((BidiMemoryForAllocation *)&(pBiDi)->isolatesMemory, &(pBiDi)->isolatesSize, \
+                        TRUE, (length)*sizeof(Isolate))
 
 #endif
 

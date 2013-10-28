@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ta_LK.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ta_LK.xml
 // *
 // ***************************************************************************
 ta_LK{
@@ -13,5 +13,5 @@ ta_LK{
             "இலங்கை ரூபாய்",
         }
     }
-    Version{"2.0.57.98"}
+    Version{"2.0.90.61"}
 }

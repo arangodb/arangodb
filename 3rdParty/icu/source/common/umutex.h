@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -22,149 +22,362 @@
 #include "unicode/uclean.h"
 #include "putilimp.h"
 
-#if defined(_MSC_VER) && _MSC_VER >= 1500
-# include <intrin.h>
-#endif
 
-#if U_PLATFORM_IS_DARWIN_BASED
-#if defined(__STRICT_ANSI__)
-#define UPRV_REMAP_INLINE
-#define inline
-#endif
-#include <libkern/OSAtomic.h>
-#define USE_MAC_OS_ATOMIC_INCREMENT 1
-#if defined(UPRV_REMAP_INLINE)
-#undef inline
-#undef UPRV_REMAP_INLINE
-#endif
-#endif
 
-/*
- * If we do not compile with dynamic_annotations.h then define
- * empty annotation macros.
- *  See http://code.google.com/p/data-race-test/wiki/DynamicAnnotations
- */
-#ifndef ANNOTATE_HAPPENS_BEFORE
-# define ANNOTATE_HAPPENS_BEFORE(obj)
-# define ANNOTATE_HAPPENS_AFTER(obj)
-# define ANNOTATE_UNPROTECTED_READ(x) (x)
-#endif
+// Forward Declarations. UMutex is not in the ICU namespace (yet) because
+//                       there are some remaining references from plain C.
+struct UMutex;
 
-#ifndef UMTX_FULL_BARRIER
-# if !ICU_USE_THREADS
-#  define UMTX_FULL_BARRIER
-# elif U_HAVE_GCC_ATOMICS
-#  define UMTX_FULL_BARRIER __sync_synchronize();
-# elif defined(_MSC_VER) && _MSC_VER >= 1500
-    /* From MSVC intrin.h. Use _ReadWriteBarrier() only on MSVC 9 and higher. */
-#  define UMTX_FULL_BARRIER _ReadWriteBarrier();
-# elif U_PLATFORM_IS_DARWIN_BASED
-#  define UMTX_FULL_BARRIER OSMemoryBarrier();
-# else
-#  define UMTX_FULL_BARRIER \
-    { \
-        umtx_lock(NULL); \
-        umtx_unlock(NULL); \
-    }
+U_NAMESPACE_BEGIN
+struct UInitOnce;
+U_NAMESPACE_END
+
+// Stringify macros, to allow #include of user supplied atomic & mutex files.
+#define U_MUTEX_STR(s) #s
+#define U_MUTEX_XSTR(s) U_MUTEX_STR(s)
+
+/****************************************************************************
+ *
+ *   Low Level Atomic Operations.
+ *      Compiler dependent. Not operating system dependent.
+ *
+ ****************************************************************************/
+#if defined (U_USER_ATOMICS_H)
+#include U_MUTEX_XSTR(U_USER_ATOMICS_H)
+
+#elif U_HAVE_STD_ATOMICS
+
+//  C++11 atomics are available.
+
+#include <atomic>
+
+U_NAMESPACE_BEGIN
+
+typedef std::atomic<int32_t> u_atomic_int32_t;
+#define ATOMIC_INT32_T_INITIALIZER(val) ATOMIC_VAR_INIT(val)
+
+inline int32_t umtx_loadAcquire(u_atomic_int32_t &var) {
+    return var.load(std::memory_order_acquire);
+}
+
+inline void umtx_storeRelease(u_atomic_int32_t &var, int32_t val) {
+    var.store(val, std::memory_order_release);
+}
+
+inline int32_t umtx_atomic_inc(u_atomic_int32_t *var) {
+    return var->fetch_add(1) + 1;
+}
+
+inline int32_t umtx_atomic_dec(u_atomic_int32_t *var) {
+    return var->fetch_sub(1) - 1;
+}
+U_NAMESPACE_END
+
+#elif U_PLATFORM_HAS_WIN32_API
+
+// MSVC compiler. Reads and writes of volatile variables have
+//                acquire and release memory semantics, respectively.
+//                This is a Microsoft extension, not standard C++ behavior.
+//
+//   Update:      can't use this because of MinGW, built with gcc.
+//                Original plan was to use gcc atomics for MinGW, but they
+//                aren't supported, so we fold MinGW into this path.
+
+# define WIN32_LEAN_AND_MEAN
+# define VC_EXTRALEAN
+# define NOUSER
+# define NOSERVICE
+# define NOIME
+# define NOMCX
+# ifndef NOMINMAX
+# define NOMINMAX
 # endif
-#endif
+# include <windows.h>
 
-#ifndef UMTX_ACQUIRE_BARRIER
-# define UMTX_ACQUIRE_BARRIER UMTX_FULL_BARRIER
-#endif
+U_NAMESPACE_BEGIN
+typedef volatile LONG u_atomic_int32_t;
+#define ATOMIC_INT32_T_INITIALIZER(val) val
 
-#ifndef UMTX_RELEASE_BARRIER
-# define UMTX_RELEASE_BARRIER UMTX_FULL_BARRIER
-#endif
+inline int32_t umtx_loadAcquire(u_atomic_int32_t &var) {
+    return InterlockedCompareExchange(&var, 0, 0);
+}
 
-/**
- * \def UMTX_CHECK
- * Encapsulates a safe check of an expression
- * for use with double-checked lazy inititialization.
- * Either memory barriers or mutexes are required, to prevent both the hardware
- * and the compiler from reordering operations across the check.
- * The expression must involve only a  _single_ variable, typically
- *    a possibly null pointer or a boolean that indicates whether some service
- *    is initialized or not.
- * The setting of the variable involved in the test must be the last step of
- *    the initialization process.
- *
- * @internal
+inline void umtx_storeRelease(u_atomic_int32_t &var, int32_t val) {
+    InterlockedExchange(&var, val);
+}
+
+
+inline int32_t umtx_atomic_inc(u_atomic_int32_t *var) {
+    return InterlockedIncrement(var);
+}
+
+inline int32_t umtx_atomic_dec(u_atomic_int32_t *var) {
+    return InterlockedDecrement(var);
+}
+U_NAMESPACE_END
+
+
+#elif U_HAVE_GCC_ATOMICS
+/*
+ * gcc atomic ops. These are available on several other compilers as well.
  */
-#define UMTX_CHECK(pMutex, expression, result) \
-    { \
-        (result)=(expression); \
-        UMTX_ACQUIRE_BARRIER; \
+
+U_NAMESPACE_BEGIN
+typedef int32_t u_atomic_int32_t;
+#define ATOMIC_INT32_T_INITIALIZER(val) val
+
+inline int32_t umtx_loadAcquire(u_atomic_int32_t &var) {
+    int32_t val = var;
+    __sync_synchronize();
+    return val;
+}
+
+inline void umtx_storeRelease(u_atomic_int32_t &var, int32_t val) {
+    __sync_synchronize();
+    var = val;
+}
+
+inline int32_t umtx_atomic_inc(u_atomic_int32_t *p)  {
+   return __sync_add_and_fetch(p, 1);
+}
+
+inline int32_t umtx_atomic_dec(u_atomic_int32_t *p)  {
+   return __sync_sub_and_fetch(p, 1);
+}
+U_NAMESPACE_END
+
+#else
+
+/*
+ * Unknown Platform. Use out-of-line functions, which in turn use mutexes.
+ *                   Slow but correct.
+ */
+
+#define U_NO_PLATFORM_ATOMICS
+
+U_NAMESPACE_BEGIN
+typedef int32_t u_atomic_int32_t;
+#define ATOMIC_INT32_T_INITIALIZER(val) val
+
+U_COMMON_API int32_t U_EXPORT2 
+umtx_loadAcquire(u_atomic_int32_t &var);
+
+U_COMMON_API void U_EXPORT2 
+umtx_storeRelease(u_atomic_int32_t &var, int32_t val);
+
+U_COMMON_API int32_t U_EXPORT2 
+umtx_atomic_inc(u_atomic_int32_t *p);
+
+U_COMMON_API int32_t U_EXPORT2 
+umtx_atomic_dec(u_atomic_int32_t *p);
+
+U_NAMESPACE_END
+
+#endif  /* Low Level Atomic Ops Platfrom Chain */
+
+
+
+/*************************************************************************************************
+ *
+ *  UInitOnce Definitions.
+ *     These are platform neutral.
+ *
+ *************************************************************************************************/
+
+U_NAMESPACE_BEGIN
+
+struct UInitOnce {
+    u_atomic_int32_t   fState;
+    UErrorCode       fErrCode;
+    void reset() {fState = 0;};
+    UBool isReset() {return umtx_loadAcquire(fState) == 0;};
+// Note: isReset() is used by service registration code.
+//                 Thread safety of this usage needs review.
+};
+
+#define U_INITONCE_INITIALIZER {ATOMIC_INT32_T_INITIALIZER(0), U_ZERO_ERROR}
+
+
+U_COMMON_API UBool U_EXPORT2 umtx_initImplPreInit(UInitOnce &);
+U_COMMON_API void  U_EXPORT2 umtx_initImplPostInit(UInitOnce &);
+
+template<class T> void umtx_initOnce(UInitOnce &uio, T *obj, void (T::*fp)()) {
+    if (umtx_loadAcquire(uio.fState) == 2) {
+        return;
     }
-/*
- * TODO: Replace all uses of UMTX_CHECK and surrounding code
- * with SimpleSingleton or TriStateSingleton, and remove UMTX_CHECK.
+    if (umtx_initImplPreInit(uio)) {
+        (obj->*fp)();
+        umtx_initImplPostInit(uio);
+    }
+}
+
+
+// umtx_initOnce variant for plain functions, or static class functions.
+//               No context parameter.
+inline void umtx_initOnce(UInitOnce &uio, void (*fp)()) {
+    if (umtx_loadAcquire(uio.fState) == 2) {
+        return;
+    }
+    if (umtx_initImplPreInit(uio)) {
+        (*fp)();
+        umtx_initImplPostInit(uio);
+    }
+}
+
+// umtx_initOnce variant for plain functions, or static class functions.
+//               With ErrorCode, No context parameter.
+inline void umtx_initOnce(UInitOnce &uio, void (*fp)(UErrorCode &), UErrorCode &errCode) {
+    if (U_FAILURE(errCode)) {
+        return;
+    }
+    if (umtx_loadAcquire(uio.fState) != 2 && umtx_initImplPreInit(uio)) {
+        // We run the initialization.
+        (*fp)(errCode);
+        uio.fErrCode = errCode;
+        umtx_initImplPostInit(uio);
+    } else {
+        // Someone else already ran the initialization.
+        if (U_FAILURE(uio.fErrCode)) {
+            errCode = uio.fErrCode;
+        }
+    }
+}
+
+// umtx_initOnce variant for plain functions, or static class functions,
+//               with a context parameter.
+template<class T> void umtx_initOnce(UInitOnce &uio, void (*fp)(T), T context) {
+    if (umtx_loadAcquire(uio.fState) == 2) {
+        return;
+    }
+    if (umtx_initImplPreInit(uio)) {
+        (*fp)(context);
+        umtx_initImplPostInit(uio);
+    }
+}
+
+// umtx_initOnce variant for plain functions, or static class functions,
+//               with a context parameter and an error code.
+template<class T> void umtx_initOnce(UInitOnce &uio, void (*fp)(T, UErrorCode &), T context, UErrorCode &errCode) {
+    if (U_FAILURE(errCode)) {
+        return;
+    }
+    if (umtx_loadAcquire(uio.fState) != 2 && umtx_initImplPreInit(uio)) {
+        // We run the initialization.
+        (*fp)(context, errCode);
+        uio.fErrCode = errCode;
+        umtx_initImplPostInit(uio);
+    } else {
+        // Someone else already ran the initialization.
+        if (U_FAILURE(uio.fErrCode)) {
+            errCode = uio.fErrCode;
+        }
+    }
+}
+
+U_NAMESPACE_END
+
+
+
+/*************************************************************************************************
+ *
+ *  Mutex Definitions. Platform Dependent, #if platform chain follows.
+ *         TODO:  Add a C++11 version.
+ *                Need to convert all mutex using files to C++ first.
+ *
+ *************************************************************************************************/
+
+#if defined(U_USER_MUTEX_H)
+// #inlcude "U_USER_MUTEX_H"
+#include U_MUTEX_XSTR(U_USER_MUTEX_H)
+
+#elif U_PLATFORM_HAS_WIN32_API
+
+/* Windows Definitions.
+ *    Windows comes first in the platform chain.
+ *    Cygwin (and possibly others) have both WIN32 and POSIX APIs. Prefer Win32 in this case.
  */
 
+
+/* For CRITICAL_SECTION */
+
 /*
- * Code within ICU that accesses shared static or global data should
- * instantiate a Mutex object while doing so.  The unnamed global mutex
- * is used throughout ICU, so keep locking short and sweet.
- *
- * For example:
- *
- * void Function(int arg1, int arg2)
- * {
- *   static Object* foo;     // Shared read-write object
- *   umtx_lock(NULL);        // Lock the ICU global mutex
- *   foo->Method();
- *   umtx_unlock(NULL);
- * }
- *
- * an alternative C++ mutex API is defined in the file common/mutex.h
+ *   Note: there is an earlier include of windows.h in this file, but it is in
+ *         different conditionals.
+ *         This one is needed if we are using C++11 for atomic ops, but
+ *         win32 APIs for Critical Sections.
  */
+
+# define WIN32_LEAN_AND_MEAN
+# define VC_EXTRALEAN
+# define NOUSER
+# define NOSERVICE
+# define NOIME
+# define NOMCX
+# ifndef NOMINMAX
+# define NOMINMAX
+# endif
+# include <windows.h>
+
+
+typedef struct UMutex {
+    UInitOnce         fInitOnce;
+    CRITICAL_SECTION  fCS;
+} UMutex;
+
+/* Initializer for a static UMUTEX. Deliberately contains no value for the
+ *  CRITICAL_SECTION.
+ */
+#define U_MUTEX_INITIALIZER {U_INITONCE_INITIALIZER}
+
+
+
+#elif U_PLATFORM_IMPLEMENTS_POSIX
+
+/*
+ *  POSIX platform
+ */
+
+#include <pthread.h>
+
+struct UMutex {
+    pthread_mutex_t  fMutex;
+};
+typedef struct UMutex UMutex;
+#define U_MUTEX_INITIALIZER  {PTHREAD_MUTEX_INITIALIZER}
+
+#else
+
+/*
+ *  Unknow platform type.
+ *      This is an error condition. ICU requires mutexes.
+ */
+
+#error Unknown Platform.
+
+#endif
+
+
+
+/**************************************************************************************
+ *
+ *  Mutex Implementation function declaratations.
+ *     Declarations are platform neutral.
+ *     Implementations, in umutex.cpp, are platform specific.
+ *
+ ************************************************************************************/
 
 /* Lock a mutex.
  * @param mutex The given mutex to be locked.  Pass NULL to specify
  *              the global ICU mutex.  Recursive locks are an error
  *              and may cause a deadlock on some platforms.
  */
-U_CAPI void U_EXPORT2 umtx_lock   ( UMTX* mutex ); 
+U_INTERNAL void U_EXPORT2 umtx_lock(UMutex* mutex);
 
-/* Unlock a mutex. Pass in NULL if you want the single global
-   mutex. 
+/* Unlock a mutex.
  * @param mutex The given mutex to be unlocked.  Pass NULL to specify
  *              the global ICU mutex.
  */
-U_CAPI void U_EXPORT2 umtx_unlock ( UMTX* mutex );
+U_INTERNAL void U_EXPORT2 umtx_unlock (UMutex* mutex);
 
-/* Initialize a mutex. Use it this way:
-   umtx_init( &aMutex ); 
- * ICU Mutexes do not need explicit initialization before use.  Use of this
- *   function is not necessary.
- * Initialization of an already initialized mutex has no effect, and is safe to do.
- * Initialization of mutexes is thread safe.  Two threads can concurrently 
- *   initialize the same mutex without causing problems.
- * @param mutex The given mutex to be initialized
- */
-U_CAPI void U_EXPORT2 umtx_init   ( UMTX* mutex );
-
-/* Destroy a mutex. This will free the resources of a mutex.
- * Use it this way:
- *   umtx_destroy( &aMutex ); 
- * Destroying an already destroyed mutex has no effect, and causes no problems.
- * This function is not thread safe.  Two threads must not attempt to concurrently
- *   destroy the same mutex.
- * @param mutex The given mutex to be destroyed.
- */
-U_CAPI void U_EXPORT2 umtx_destroy( UMTX *mutex );
-
-/*
- * Atomic Increment and Decrement of an int32_t value.
- *
- * Return Values:
- *   If the result of the operation is zero, the return zero.
- *   If the result of the operation is not zero, the sign of returned value
- *      is the same as the sign of the result, but the returned value itself may
- *      be different from the result of the operation.
- */
-U_CAPI int32_t U_EXPORT2 umtx_atomic_inc(int32_t *);
-U_CAPI int32_t U_EXPORT2 umtx_atomic_dec(int32_t *);
-
-#endif /*_CMUTEX*/
+#endif /* UMUTEX_H */
 /*eof*/

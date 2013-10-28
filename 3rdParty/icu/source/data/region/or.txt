@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/or.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/or.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/or.xml
+ * ICU <specials> source: <path>/common/main/or.xml
  */
 or{
     Countries{
@@ -91,7 +91,6 @@ or{
         CN{"ଚିନ୍"}
         CO{"କୋଲମ୍ବିଆ"}
         CR{"କୋଷ୍ଟା ରିକା"}
-        CS{"ସର୍ବିଆ ଏବଂ ମଣ୍ଟେନଗ୍ରୋ"}
         CU{"କ୍ୱିବା"}
         CV{"କେପ୍ ଭର୍ଦେ"}
         CX{"ଖ୍ରୀଷ୍ଟମାସ ଆଇଲ୍ୟାଣ୍ଡ"}
@@ -292,5 +291,5 @@ or{
         ZW{"ଜିମ୍ବାୱେ"}
         ZZ{"ଅଜଣା କିମ୍ବା ଅବୈଧ ପ୍ରଦେଶ"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

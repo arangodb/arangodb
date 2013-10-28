@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -25,9 +25,9 @@ class LEGlyphStorage;
 class TrimmedArrayProcessor : public NonContextualGlyphSubstitutionProcessor
 {
 public:
-    virtual void process(LEGlyphStorage &glyphStorage);
+    virtual void process(LEGlyphStorage &glyphStorage, LEErrorCode &success);
 
-    TrimmedArrayProcessor(const MorphSubtableHeader *morphSubtableHeader);
+    TrimmedArrayProcessor(const LEReferenceTo<MorphSubtableHeader> &morphSubtableHeader, LEErrorCode &success);
 
     virtual ~TrimmedArrayProcessor();
 
@@ -51,7 +51,7 @@ private:
 protected:
     TTGlyphID firstGlyph;
     TTGlyphID lastGlyph;
-    const TrimmedArrayLookupTable *trimmedArrayLookupTable;
+    LEReferenceTo<TrimmedArrayLookupTable> trimmedArrayLookupTable;
 
 };
 

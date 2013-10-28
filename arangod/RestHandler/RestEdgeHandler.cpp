@@ -33,13 +33,21 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "Utilities/ResourceHolder.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a string if defined, nop otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+#define FREE_STRING(zone, what)                                           \
+  if (what != 0) {                                                        \
+    TRI_Free(zone, what);                                                 \
+    what = 0;                                                             \
+  }
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -178,20 +186,19 @@ bool RestEdgeHandler::createDocument () {
 
   const bool waitForSync = extractWaitForSync();
 
-  // auto-ptr that will free JSON data when scope is left
-  ResourceHolder holder;
-
   TRI_json_t* json = parseJsonBody();
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
-    return false;
-  }
-  
-  if (json->_type != TRI_JSON_ARRAY) {
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -203,14 +210,17 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
   
   if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection    
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -219,32 +229,32 @@ bool RestEdgeHandler::createDocument () {
   // edge
   TRI_document_edge_t edge;
   edge._fromCid = cid;
-  edge._toCid = cid;
+  edge._toCid   = cid;
   edge._fromKey = 0;
-  edge._toKey = 0;
+  edge._toKey   = 0;
 
+  string wrongPart;
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
-  holder.registerString(TRI_CORE_MEM_ZONE, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-      generateError(HttpResponse::NOT_FOUND, res, "'from' does not point to a valid collection");
+    wrongPart = "'from'";
+  }
+  else {
+    res = parseDocumentId(to, edge._toCid, edge._toKey);
+    if (res != TRI_ERROR_NO_ERROR) {
+      wrongPart = "'to'";
     }
-    else {
-      generateError(HttpResponse::BAD, res, "'from' is not a document handle");
-    }
-    return false;
   }
 
-  res = parseDocumentId(to, edge._toCid, edge._toKey);
-  holder.registerString(TRI_CORE_MEM_ZONE, edge._toKey);
-
   if (res != TRI_ERROR_NO_ERROR) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
+    FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-      generateError(HttpResponse::NOT_FOUND, res, "'to' does not point to a valid collection");
+      generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");
     }
     else {
-      generateError(HttpResponse::BAD, res, "'to' is not a document handle");
+      generateError(HttpResponse::BAD, res, wrongPart + " is not a document handle");
     }
     return false;
   }
@@ -258,6 +268,10 @@ bool RestEdgeHandler::createDocument () {
   res = trx.createEdge(&document, json, waitForSync, &edge);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
+  
+  FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
+  FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
   // outside write transaction

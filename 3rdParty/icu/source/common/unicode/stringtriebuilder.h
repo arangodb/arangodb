@@ -18,6 +18,11 @@
 #include "unicode/utypes.h"
 #include "unicode/uobject.h"
 
+/**
+ * \file
+ * \brief C++ API: Builder API for trie builders
+ */
+
 // Forward declaration.
 struct UHashtable;
 typedef struct UHashtable UHashtable;
@@ -234,9 +239,6 @@ protected:
     protected:
         int32_t hash;
         int32_t offset;
-    private:
-        // No ICU "poor man's RTTI" for this class nor its subclasses.
-        virtual UClassID getDynamicClassID() const;
     };
 
     // This class should not be overridden because
@@ -255,7 +257,9 @@ protected:
         int32_t value;
     };
 
-    /** @internal */
+    /**
+     * @internal 
+     */
     class ValueNode : public Node {
     public:
         ValueNode(int32_t initialHash) : Node(initialHash), hasValue(FALSE), value(0) {}
@@ -270,7 +274,9 @@ protected:
         int32_t value;
     };
 
-    /** @internal */
+    /** 
+     * @internal 
+     */
     class IntermediateValueNode : public ValueNode {
     public:
         IntermediateValueNode(int32_t v, Node *nextNode)
@@ -282,7 +288,9 @@ protected:
         Node *next;
     };
 
-    /** @internal */
+    /**
+     * @internal 
+     */
     class LinearMatchNode : public ValueNode {
     public:
         LinearMatchNode(int32_t len, Node *nextNode)
@@ -295,7 +303,9 @@ protected:
         Node *next;
     };
 
-    /** @internal */
+    /**
+     * @internal 
+     */
     class BranchNode : public Node {
     public:
         BranchNode(int32_t initialHash) : Node(initialHash) {}
@@ -303,7 +313,9 @@ protected:
         int32_t firstEdgeNumber;
     };
 
-    /** @internal */
+    /**
+     * @internal 
+     */
     class ListBranchNode : public BranchNode {
     public:
         ListBranchNode() : BranchNode(0x444444), length(0) {}
@@ -333,7 +345,9 @@ protected:
         UChar units[kMaxBranchLinearSubNodeLength];
     };
 
-    /** @internal */
+    /**
+     * @internal 
+     */
     class SplitBranchNode : public BranchNode {
     public:
         SplitBranchNode(UChar middleUnit, Node *lessThanNode, Node *greaterOrEqualNode)
@@ -379,10 +393,6 @@ protected:
     virtual int32_t writeValueAndType(UBool hasValue, int32_t value, int32_t node) = 0;
     /** @internal */
     virtual int32_t writeDeltaTo(int32_t jumpTarget) = 0;
-
-private:
-    // No ICU "poor man's RTTI" for this class nor its subclasses.
-    virtual UClassID getDynamicClassID() const;
 };
 
 U_NAMESPACE_END

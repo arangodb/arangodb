@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/es.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/es.xml
+ * ICU <specials> source: <path>/common/main/es.xml
  */
 es{
     Countries{
@@ -22,16 +22,16 @@ es{
         015{"África septentrional"}
         017{"África central"}
         018{"África meridional"}
-        019{"Américas"}
+        019{"América"}
         021{"Norteamérica"}
         029{"Caribe"}
         030{"Asia oriental"}
         034{"Asia meridional"}
         035{"Sudeste asiático"}
         039{"Europa meridional"}
-        053{"Australia y Nueva Zelanda"}
+        053{"Australasia"}
         054{"Melanesia"}
-        057{"Micronesia [057]"}
+        057{"Región de Micronesia"}
         061{"Polinesia"}
         142{"Asia"}
         143{"Asia central"}
@@ -59,19 +59,20 @@ es{
         AW{"Aruba"}
         AX{"Islas Åland"}
         AZ{"Azerbaiyán"}
-        BA{"Bosnia-Herzegovina"}
+        BA{"Bosnia y Herzegovina"}
         BB{"Barbados"}
-        BD{"Bangladesh"}
+        BD{"Bangladés"}
         BE{"Bélgica"}
         BF{"Burkina Faso"}
         BG{"Bulgaria"}
-        BH{"Bahréin"}
+        BH{"Baréin"}
         BI{"Burundi"}
         BJ{"Benín"}
         BL{"San Bartolomé"}
         BM{"Bermudas"}
         BN{"Brunéi"}
         BO{"Bolivia"}
+        BQ{"Caribe neerlandés"}
         BR{"Brasil"}
         BS{"Bahamas"}
         BT{"Bután"}
@@ -83,7 +84,7 @@ es{
         CC{"Islas Cocos"}
         CD{"República Democrática del Congo"}
         CF{"República Centroafricana"}
-        CG{"Congo - Brazzaville"}
+        CG{"República del Congo"}
         CH{"Suiza"}
         CI{"Costa de Marfil"}
         CK{"Islas Cook"}
@@ -93,9 +94,9 @@ es{
         CO{"Colombia"}
         CP{"Isla Clipperton"}
         CR{"Costa Rica"}
-        CS{"Serbia y Montenegro"}
         CU{"Cuba"}
         CV{"Cabo Verde"}
+        CW{"Curazao"}
         CX{"Isla Christmas"}
         CY{"Chipre"}
         CZ{"República Checa"}
@@ -126,7 +127,7 @@ es{
         GD{"Granada"}
         GE{"Georgia"}
         GF{"Guayana Francesa"}
-        GG{"Guernsey"}
+        GG{"Guernesey"}
         GH{"Ghana"}
         GI{"Gibraltar"}
         GL{"Groenlandia"}
@@ -138,18 +139,15 @@ es{
         GS{"Islas Georgia del Sur y Sandwich del Sur"}
         GT{"Guatemala"}
         GU{"Guam"}
-        GW{"Guinea-Bissau"}
+        GW{"Guinea-Bisáu"}
         GY{"Guyana"}
-        HK{
-            "Región Administrativa Especial de Hong Kong de la República Popular Chin"
-            "a"
-        }
+        HK{"RAE de Hong Kong (China)"}
         HM{"Islas Heard y McDonald"}
         HN{"Honduras"}
         HR{"Croacia"}
         HT{"Haití"}
         HU{"Hungría"}
-        IC{"Islas Canarias"}
+        IC{"islas Canarias"}
         ID{"Indonesia"}
         IE{"Irlanda"}
         IL{"Israel"}
@@ -195,9 +193,9 @@ es{
         MH{"Islas Marshall"}
         MK{"Macedonia"}
         ML{"Mali"}
-        MM{"Myanmar [Birmania]"}
+        MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
-        MO{"Región Administrativa Especial de Macao de la República Popular China"}
+        MO{"RAE de Macao (China)"}
         MP{"Islas Marianas del Norte"}
         MQ{"Martinica"}
         MR{"Mauritania"}
@@ -236,7 +234,7 @@ es{
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
-        QA{"Qatar"}
+        QA{"Catar"}
         QO{"Territorios alejados de Oceanía"}
         RE{"Reunión"}
         RO{"Rumanía"}
@@ -258,8 +256,10 @@ es{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
+        SS{"Sudán del Sur"}
         ST{"Santo Tomé y Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Siria"}
         SZ{"Suazilandia"}
         TA{"Tristán da Cunha"}
@@ -281,7 +281,7 @@ es{
         TZ{"Tanzania"}
         UA{"Ucrania"}
         UG{"Uganda"}
-        UM{"Islas menores alejadas de los Estados Unidos"}
+        UM{"Islas menores alejadas de EE. UU."}
         US{"Estados Unidos"}
         UY{"Uruguay"}
         UZ{"Uzbekistán"}
@@ -289,11 +289,12 @@ es{
         VC{"San Vicente y las Granadinas"}
         VE{"Venezuela"}
         VG{"Islas Vírgenes Británicas"}
-        VI{"Islas Vírgenes de los Estados Unidos"}
+        VI{"Islas Vírgenes de EE. UU."}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Wallis y Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
         ZA{"Sudáfrica"}
@@ -301,5 +302,12 @@ es{
         ZW{"Zimbabue"}
         ZZ{"Región desconocida"}
     }
-    Version{"2.0.67.6"}
+    CountriesShort{
+        GB{"UK"}
+        HK{"Hong Kong"}
+        MO{"Macao"}
+        PS{"Palestina"}
+        US{"EE. UU."}
+    }
+    Version{"2.0.92.87"}
 }

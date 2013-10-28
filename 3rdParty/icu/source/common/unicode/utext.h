@@ -304,7 +304,7 @@ utext_openReplaceable(UText *ut, icu::Replaceable *rep, UErrorCode *status);
  * @stable ICU 3.4
  */
 U_STABLE UText * U_EXPORT2
-utext_openCharacterIterator(UText *ut, icu::CharacterIterator *ic, UErrorCode *status);
+utext_openCharacterIterator(UText *ut, icu::CharacterIterator *ci, UErrorCode *status);
 
 #endif
 

@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (c) 2002-2011, International Business Machines Corporation
+*   Copyright (c) 2002-2012, International Business Machines Corporation
 *   and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -93,7 +93,7 @@ UnicodeFunctor* StringReplacer::clone() const {
  * Implement UnicodeFunctor
  */
 UnicodeReplacer* StringReplacer::toReplacer() const {
-    return (UnicodeReplacer*) this;
+  return const_cast<StringReplacer *>(this);
 }
 
 /**

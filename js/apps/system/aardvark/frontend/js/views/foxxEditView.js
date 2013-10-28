@@ -18,29 +18,35 @@ window.foxxEditView = Backbone.View.extend({
   },
   events: {
     "hidden #change-foxx"   : "hidden",
-    "click #uninstall"      : "uninstall",
-    "click #deactivate"     : "deactivate",
-    "click #activate"       : "activate"
+    // "click #deactivate"     : "deactivate",
+    // "click #activate"       : "activate",
+    "click #uninstall"      : "uninstall"
   },
   hidden: function () {
     window.App.navigate("applications", {trigger: true});
   },
   
   uninstall: function () {
-    this.model.destroy({ wait: true });
-    this.hideModal();
+    if (! this.model.isSystem) { 
+      this.model.destroy({ wait: true });
+      this.hideModal();
+    }
   },
-  
+ 
+  /* not yet implemented
   deactivate: function () {
     this.model.save({active: false});
     this.hideModal();
   },
+  */
   
+  /* not yet implemented
   activate: function () {
     this.model.save({active: true});
     this.hideModal();
   },
-  
+  */
+
   hideModal: function () {
     $('#change-foxx').modal('hide');
   }

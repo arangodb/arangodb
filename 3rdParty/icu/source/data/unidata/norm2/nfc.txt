@@ -1,4 +1,4 @@
-# Copyright (C) 1999-2012, International Business Machines
+# Copyright (C) 1999-2013, International Business Machines
 # Corporation and others.  All Rights Reserved.
 #
 # file name: nfc.txt
@@ -7,7 +7,7 @@
 #
 # Complete data for Unicode NFC normalization.
 
-* Unicode 6.1.0
+* Unicode 6.3.0
 
 # Canonical_Combining_Class (ccc) values
 0300..0314:230

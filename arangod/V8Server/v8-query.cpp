@@ -191,14 +191,14 @@ static void CalculateSkipLimitSlice (size_t length,
 /// @brief cleans up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupExampleObject (TRI_shaper_t* shaper,
+static void CleanupExampleObject (TRI_memory_zone_t* zone,
                                   size_t n,
                                   TRI_shape_pid_t* pids,
                                   TRI_shaped_json_t** values) {
 
   // clean shaped json objects
   for (size_t j = 0;  j < n;  ++j) {
-    TRI_FreeShapedJson(shaper, values[j]);
+    TRI_FreeShapedJson(zone, values[j]);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
@@ -255,7 +255,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
     }
 
     if (*keyStr == 0 || pids[i] == 0 || values[i] == 0) {
-      CleanupExampleObject(shaper, i, pids, values);
+      CleanupExampleObject(shaper->_memoryZone, i, pids, values);
 
       if (*keyStr == 0) {
         *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -914,14 +914,14 @@ static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_
 /// @brief destroys the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DestroySearchValue (TRI_shaper_t* shaper,
+static void DestroySearchValue (TRI_memory_zone_t* zone,
                                 TRI_index_search_value_t& value) {
   size_t n;
 
   n = value._length;
 
   for (size_t j = 0;  j < n;  ++j) {
-    TRI_DestroyShapedJson(shaper, &value._values[j]);
+    TRI_DestroyShapedJson(zone, &value._values[j]);
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, value._values);
@@ -953,7 +953,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
-      DestroySearchValue(shaper, result);
+      DestroySearchValue(shaper->_memoryZone, result);
       *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "shaper failed");
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -971,7 +971,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      DestroySearchValue(shaper, result);
+      DestroySearchValue(shaper->_memoryZone, result);
       *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
       return res;
     }
@@ -2019,10 +2019,10 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  result->Set(v8::String::New("total"), v8::Number::New((double) total));
-  result->Set(v8::String::New("count"), v8::Number::New(count));
+  result->Set(v8::String::New("total"), v8::Integer::New(total));
+  result->Set(v8::String::New("count"), v8::Integer::New(count));
 
-  CleanupExampleObject(shaper, n, pids, values);
+  CleanupExampleObject(shaper->_memoryZone, n, pids, values);
 
   if (error) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2093,7 +2093,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
 
   // find the matches
   TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
-  DestroySearchValue(shaper, searchValue);
+  DestroySearchValue(shaper->_memoryZone, searchValue);
 
   // convert result
   size_t total = list._length;

@@ -371,7 +371,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   n = strlen(name) + 1;
   
   totalSize = sizeof(TRI_df_attribute_marker_t) + n;
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
   if (mem == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -639,7 +639,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // initialise a new shape marker
   totalSize = sizeof(TRI_df_shape_marker_t) + shape->_size;
-  mem = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
+  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
   if (mem == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -948,14 +948,16 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
+static bool OpenIterator (TRI_df_marker_t const* marker, 
+                          void* data, 
+                          TRI_datafile_t* datafile, 
+                          bool journal) {
   voc_shaper_t* shaper = data;
-  void* f;
-  attribute_weight_t* weightedAttribute;
 
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
     char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
     TRI_shape_t* l = (TRI_shape_t*) p;
+    void* f;
 
     LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
@@ -972,6 +974,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
     char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
+    void* f;
+    attribute_weight_t* weightedAttribute;
 
     LOG_TRACE("found attribute %lu / '%s'", (unsigned long) m->_aid, p);
 
@@ -999,7 +1003,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       weightedAttribute->_aid       = m->_aid;
       weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-      weightedAttribute->_attribute = (char*)(m) + sizeof(TRI_df_attribute_marker_t);
+      weightedAttribute->_attribute = (char*) m + sizeof(TRI_df_attribute_marker_t);
       weightedAttribute->_next      = NULL;
 
       // ..........................................................................
@@ -1016,16 +1020,15 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       (shaper->_weights)._last = weightedAttribute;
       (shaper->_weights)._length += 1;
 
-      result = (attribute_weight_t*)(TRI_InsertKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid), weightedAttribute, false));
+      result = (attribute_weight_t*) TRI_InsertKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid), weightedAttribute, false);
 
       if (result == NULL) {
         attribute_weight_t* weightedItem;
 
         weightedItem = TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid));
-        if (weightedItem == NULL) {
-          LOG_ERROR("attribute weight could not be located immediately after insert into associative array");
-        }
-        else if (weightedItem->_aid != weightedAttribute->_aid) {
+
+        if (weightedItem == NULL ||
+            weightedItem->_aid != weightedAttribute->_aid) {
           LOG_ERROR("attribute weight could not be located immediately after insert into associative array");
         }
         else {
@@ -1086,13 +1089,13 @@ static bool EqualKeyElementWeightedAttribute (TRI_associative_pointer_t* array, 
 
 static uint64_t HashKeyWeightedAttribute (TRI_associative_pointer_t* array, const void* key) {
   TRI_shape_aid_t* aid = (TRI_shape_aid_t*)(key);
-  return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*)(aid), sizeof(TRI_shape_aid_t));
+  return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*) aid, sizeof(TRI_shape_aid_t));
 }
 
 static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, const void* element) {
   attribute_weight_t* item = (attribute_weight_t*)(element);
   TRI_shape_aid_t* aid = &(item->_aid);
-  return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*)(aid), sizeof(TRI_shape_aid_t));
+  return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*) aid, sizeof(TRI_shape_aid_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1332,7 +1335,9 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   res = TRI_SaveCollectionInfo(collection->base._directory, &parameter, vocbase->_settings.forceSyncProperties);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot save collection parameters in directory '%s': %s", collection->base._directory, TRI_last_error());
+    LOG_ERROR("cannot save collection parameters in directory '%s': %s", 
+              collection->base._directory, 
+              TRI_last_error());
     TRI_FreeVocShaper(&shaper->base);
 
     return NULL;
@@ -1509,17 +1514,18 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
 
 int TRI_CloseVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
-  int err;
+  int res;
 
-  err = TRI_CloseShapeCollection(shaper->_collection);
+  res = TRI_CloseShapeCollection(shaper->_collection);
 
-  if (err != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot close shape collection of shaper, error %d", (int) err);
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot close shape collection of shaper: %s",
+              TRI_errno_string(res));
   }
 
   // TODO free the accessors
 
-  return err;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

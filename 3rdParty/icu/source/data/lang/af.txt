@@ -1,41 +1,60 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/af.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/af.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/af.xml
+ * ICU <specials> source: <path>/common/main/af.xml
  */
 af{
     Keys{
         calendar{"Kalender"}
-        collation{"Insortering"}
+        colAlternate{"Ignoreer simboolsortering"}
+        colBackwards{"Omgekeerde aksentsortering"}
+        colCaseFirst{"Hoofletters/kleinletters-sortering"}
+        colCaseLevel{"Kassensitiewe sortering"}
+        colHiraganaQuaternary{"Kana-sortering"}
+        colNormalization{"Genormaliseerde sortering"}
+        colNumeric{"Numeriese sortering"}
+        colStrength{"Sorteringssterkte"}
+        collation{"Sorteervolgorde"}
         currency{"Geldeenheid"}
         numbers{"Nommers"}
+        timezone{"Tydsone"}
+        va{"Lokaalvariant"}
+        variableTop{"Sorteer as simbole"}
         x{"Privaat gebruik"}
     }
     Languages{
         ab{"Abkasies"}
+        ach{"Akoli"}
         af{"Afrikaans"}
         afa{"Ander Afro-Asiaties"}
         ak{"Akan"}
         am{"Amharies"}
         ar{"Arabies"}
+        ar_001{"Moderne Standaard Arabies"}
         arc{"Aramees"}
         art{"Kunsmatige taal"}
         as{"Assamees"}
         ay{"Aymara"}
         az{"Azerbeidjaans"}
         be{"Wit-Russies"}
+        bem{"Bemba"}
         bg{"Bulgaars"}
+        bh{"Bihari"}
         bn{"Bengaals"}
         bo{"Tibettaans"}
+        br{"Bretons"}
         bs{"Bosnies"}
         ca{"Katalaans"}
         cel{"Keltiese taal"}
+        chr{"Cherokees"}
+        ckb{"Sorani Koerdies"}
+        co{"Korsikaans"}
         cs{"Tsjeggies"}
         cy{"Wallies"}
         da{"Deens"}
@@ -44,6 +63,7 @@ af{
         de_CH{"Switserse hoog-Duits"}
         dv{"Divehi"}
         dz{"Dzongkha"}
+        ee{"Ewe"}
         efi{"Efik"}
         egy{"Antieke Egipties"}
         el{"Grieks"}
@@ -55,7 +75,8 @@ af{
         eo{"Esperanto"}
         es{"Spaans"}
         es_419{"Latyns-Amerikaanse Spaans"}
-        es_ES{"Iberiese Spaans"}
+        es_ES{"Europese Spaans"}
+        es_MX{"Meksikaanse Spaans"}
         et{"Estnies"}
         eu{"Baskies"}
         fa{"Persies"}
@@ -68,6 +89,7 @@ af{
         fr_CH{"Switserse Frans"}
         fy{"Wes-Fries"}
         ga{"Iers"}
+        gaa{"Gaa"}
         gd{"Skotse Gallies"}
         gem{"Germaanse taal"}
         gl{"Galisies"}
@@ -77,13 +99,14 @@ af{
         gsw{"Switserse Duits"}
         gu{"Gudjarati"}
         ha{"Hausa"}
-        haw{"Hawaies"}
+        haw{"Hawaiies"}
         he{"Hebreeus"}
         hi{"Hindi"}
         hr{"Kroaties"}
         ht{"Haïtiaans"}
         hu{"Hongaars"}
         hy{"Armeens"}
+        ia{"Interlingua"}
         id{"Indonesies"}
         ig{"Igbo"}
         ine{"Indo-Europese taal"}
@@ -92,6 +115,7 @@ af{
         ja{"Japannees"}
         jv{"Javaans"}
         ka{"Georgies"}
+        kg{"Kongolees"}
         kk{"Kazak"}
         km{"Khmer"}
         kn{"Kannada"}
@@ -101,10 +125,14 @@ af{
         ky{"Kirgisies"}
         la{"Latyn"}
         lb{"Luxemburgs"}
+        lg{"Ganda"}
         ln{"Lingaals"}
         lo{"Lao"}
+        loz{"Lozi"}
         lt{"Litaus"}
+        lua{"Luba-Lulua"}
         lv{"Letties"}
+        mfe{"Morisjen"}
         mg{"Malgassies"}
         mi{"Maori"}
         mk{"Masedonies"}
@@ -124,6 +152,9 @@ af{
         nr{"Suid-Ndebele"}
         nso{"Noord-Sotho"}
         ny{"Nyanja"}
+        nyn{"Nyankole"}
+        oc{"Oksitaans"}
+        om{"Oromo"}
         or{"Oriya"}
         os{"Osseties"}
         pa{"Pandjabi"}
@@ -131,7 +162,7 @@ af{
         ps{"Pasjto"}
         pt{"Portugees"}
         pt_BR{"Brasiliaanse Portugees"}
-        pt_PT{"Iberiese Portugees"}
+        pt_PT{"Europese Portugees"}
         qu{"Quechua"}
         rm{"Reto-Romaans"}
         rn{"Rundi"}
@@ -163,12 +194,14 @@ af{
         th{"Thais"}
         ti{"Tigrinya"}
         tk{"Turkmeens"}
+        tlh{"Klingon"}
         tn{"Tswana"}
-        to{"Tonga"}
+        to{"Tongaans"}
         tpi{"Tok Pisin"}
         tr{"Turks"}
         ts{"Tsonga"}
         tt{"Tataars"}
+        tum{"Toemboeka"}
         ty{"Tahities"}
         ug{"Uighur"}
         uk{"Oekraïens"}
@@ -179,7 +212,9 @@ af{
         vi{"Viëtnamees"}
         wo{"Wolof"}
         xh{"Xhosa"}
+        yi{"Jiddisj"}
         yo{"Yoruba"}
+        zgh{"Standaard Marokkaanse Tamazight"}
         zh{"Sjinees"}
         zh_Hans{"Vereenvoudigde Chinees"}
         zh_Hant{"Tradisionele Chinees"}
@@ -188,6 +223,8 @@ af{
     }
     LanguagesShort{
         az{"Azeri"}
+        en_GB{"Engels (GB)"}
+        en_US{"Engels (US)"}
     }
     Scripts{
         Arab{"Arabies"}
@@ -250,15 +287,54 @@ af{
             persian{"Persiese kalender"}
             roc{"Minguo-kalender"}
         }
+        colAlternate{
+            non-ignorable{"Sorteer simbole"}
+            shifted{"Sorteer ignoreersimbole"}
+        }
+        colBackwards{
+            no{"Sorteer aksente gewoonweg"}
+            yes{"Sorteer aksente omgekeerd"}
+        }
+        colCaseFirst{
+            lower{"Sorteer kleinletters veerste"}
+            no{"Sorteer gewone letterorde"}
+            upper{"Sorteer hoofletters eerste"}
+        }
+        colCaseLevel{
+            no{"Sorteer nie kassensitief nie"}
+            yes{"Sorteer kassensitief"}
+        }
+        colHiraganaQuaternary{
+            no{"Sorteer Kana afsonderlik"}
+            yes{"Sorteer Kana anders"}
+        }
+        colNormalization{
+            no{"Sorteer sonder normalisering"}
+            yes{"Sorteer Unicode genormaliseer"}
+        }
+        colNumeric{
+            no{"Sorteer syfers individueel"}
+            yes{"Sorteer syfers numeries"}
+        }
+        colStrength{
+            identical{"Sorteer almal"}
+            primary{"Sorteer slegs basisletters"}
+            quaternary{"Sorteer aksente/kas/breedte/Kana"}
+            secondary{"Sorteer aksente"}
+            tertiary{"Sorteer aksente/kas/breedte"}
+        }
         collation{
             big5han{"Tradisionele Chinese sorteervolgorde - Groot5"}
             dictionary{"Woordeboek-sorteervolgorde"}
             ducet{"Verstek Unicode-sorteervolgorde"}
             gb2312han{"Vereenvoudigde Chinese sorteervolgorde - GB2312"}
             phonebook{"Foonboek-sorteervolgorde"}
+            phonetic{"Fonetiese sorteerorde"}
             pinyin{"Pinyin-sorteervolgorde"}
             reformed{"Gereformeerde sorteervolgorde"}
             search{"Algemenedoel-soektog"}
+            searchjl{"Soek volgens Hangul-beginkonsonant"}
+            standard{"Standaard sorteervolgorde"}
             stroke{"Slag-sorteervolgorde"}
             traditional{"Tradisionele sorteervolgorde"}
             unihan{"Radikale-slag-sorteervolgorde"}
@@ -271,6 +347,7 @@ af{
             beng{"Bengaalse syfers"}
             deva{"Devanagari syfers"}
             ethi{"Ethiopiese syfers"}
+            finance{"Finansiële syfers"}
             fullwide{"Vollewydte-syfers"}
             geor{"Georgiese syfers"}
             grek{"Griekse syfers"}
@@ -292,22 +369,28 @@ af{
             mlym{"Malabaarse syfers"}
             mong{"Mongoliese syfers"}
             mymr{"Mianmar-syfers"}
+            native{"Inheemse syfers"}
             orya{"Oriya-syfers"}
             roman{"Romeinse syfers"}
             romanlow{"Romeinse kleinletter-syfers"}
-            taml{"Tamil-syfers"}
+            taml{"Tradisionele Tamil-syfers"}
+            tamldec{"Tamil-syfers"}
             telu{"Telugu-syfers"}
             thai{"Thaise syfers"}
             tibt{"Tibettaanse syfers"}
+            traditional{"Tradisionele syfers"}
+            vaii{"Vai-syfers"}
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     codePatterns{
         language{"Taal: {0}"}
         script{"Skrif: {0}"}
-        territory{"Omgewing: {0}"}
+        territory{"Streek: {0}"}
     }
     localeDisplayPattern{
-        separator{","}
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0},{1}"}
     }
 }

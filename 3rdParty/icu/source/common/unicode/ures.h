@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -831,7 +831,7 @@ ures_getNextUnicodeString(UResourceBundle *resB,
  * Returns the string in a given resource at the specified index.
  *
  * @param resB              a resource
- * @param index             an index to the wanted string.
+ * @param indexS            an index to the wanted string.
  * @param status            fills in the outgoing error code
  * @return                  an UnicodeString object. If there is an error, string is bogus
  * @stable ICU 2.0

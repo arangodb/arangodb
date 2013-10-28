@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -113,9 +113,9 @@ UnicodeStringTest::TestBasicManipulation()
         errln("operator+=() failed:  expected \"" + expectedValue + "\"\n,got \"" + test2 + "\"");
     
     if (test1.length() != 70)
-        errln("length() failed: expected 70, got " + test1.length());
+        errln(UnicodeString("length() failed: expected 70, got ") + test1.length());
     if (test2.length() != 30)
-        errln("length() failed: expected 30, got " + test2.length());
+        errln(UnicodeString("length() failed: expected 30, got ") + test2.length());
 
     UnicodeString test3;
     test3.append((UChar32)0x20402);
@@ -123,7 +123,7 @@ UnicodeStringTest::TestBasicManipulation()
         errln((UnicodeString)"append failed for UChar32, expected \"\\\\ud841\\\\udc02\", got " + prettify(test3));
     }
     if(test3.length() != 2){
-        errln("append or length failed for UChar32, expected 2, got " + test3.length());
+        errln(UnicodeString("append or length failed for UChar32, expected 2, got ") + test3.length());
     }
     test3.append((UChar32)0x0074);
     if(test3 != CharsToUnicodeString("\\uD841\\uDC02t")){
@@ -721,14 +721,15 @@ UnicodeStringTest::TestSearching()
           (startPos = test1.indexOf(test2, startPos)) != -1 ? (++occurrences, startPos += 4) : 0)
         ;
     if (occurrences != 6)
-        errln("indexOf failed: expected to find 6 occurrences, found " + occurrences);
-    
+        errln(UnicodeString("indexOf failed: expected to find 6 occurrences, found ") + occurrences);
+
     for ( occurrences = 0, startPos = 10;
           startPos != -1 && startPos < test1.length();
           (startPos = test1.indexOf(test2, startPos)) != -1 ? (++occurrences, startPos += 4) : 0)
         ;
     if (occurrences != 4)
-        errln("indexOf with starting offset failed: expected to find 4 occurrences, found " + occurrences);
+        errln(UnicodeString("indexOf with starting offset failed: "
+                            "expected to find 4 occurrences, found ") + occurrences);
 
     int32_t endPos = 28;
     for ( occurrences = 0, startPos = 5;
@@ -736,7 +737,8 @@ UnicodeStringTest::TestSearching()
           (startPos = test1.indexOf(test2, startPos, endPos - startPos)) != -1 ? (++occurrences, startPos += 4) : 0)
         ;
     if (occurrences != 4)
-        errln("indexOf with starting and ending offsets failed: expected to find 4 occurrences, found " + occurrences);
+        errln(UnicodeString("indexOf with starting and ending offsets failed: "
+                            "expected to find 4 occurrences, found ") + occurrences);
 
     //using UChar32 string
     for ( startPos=0, occurrences=0;
@@ -751,7 +753,7 @@ UnicodeStringTest::TestSearching()
           (startPos = test3.indexOf(test4, startPos)) != -1 ? (++occurrences, startPos += 2) : 0)
         ;
     if (occurrences != 2)
-        errln("indexOf failed: expected to find 2 occurrences, found " + occurrences);
+        errln(UnicodeString("indexOf failed: expected to find 2 occurrences, found ") + occurrences);
     //---
 
     for ( occurrences = 0, startPos = 0;
@@ -759,21 +761,24 @@ UnicodeStringTest::TestSearching()
           (startPos = test1.indexOf(testChar, startPos)) != -1 ? (++occurrences, startPos += 1) : 0)
         ;
     if (occurrences != 16)
-        errln("indexOf with character failed: expected to find 16 occurrences, found " + occurrences);
+        errln(UnicodeString("indexOf with character failed: "
+                            "expected to find 16 occurrences, found ") + occurrences);
 
     for ( occurrences = 0, startPos = 10;
           startPos != -1 && startPos < test1.length();
           (startPos = test1.indexOf(testChar, startPos)) != -1 ? (++occurrences, startPos += 1) : 0)
         ;
     if (occurrences != 12)
-        errln("indexOf with character & start offset failed: expected to find 12 occurrences, found " + occurrences);
+        errln(UnicodeString("indexOf with character & start offset failed: "
+                            "expected to find 12 occurrences, found ") + occurrences);
 
     for ( occurrences = 0, startPos = 5, endPos = 28;
           startPos != -1 && startPos < test1.length();
           (startPos = test1.indexOf(testChar, startPos, endPos - startPos)) != -1 ? (++occurrences, startPos += 1) : 0)
         ;
     if (occurrences != 10)
-        errln("indexOf with character & start & end offsets failed: expected to find 10 occurrences, found " + occurrences);
+        errln(UnicodeString("indexOf with character & start & end offsets failed: "
+                            "expected to find 10 occurrences, found ") + occurrences);
 
     //testing for UChar32
     UnicodeString subString;
@@ -816,14 +821,16 @@ UnicodeStringTest::TestSearching()
           (startPos = test1.lastIndexOf(test2, 5, startPos - 5)) != -1 ? ++occurrences : 0)
         ;
     if (occurrences != 4)
-        errln("lastIndexOf with starting and ending offsets failed: expected to find 4 occurrences, found " + occurrences);
+        errln(UnicodeString("lastIndexOf with starting and ending offsets failed: "
+                            "expected to find 4 occurrences, found ") + occurrences);
 
     for ( occurrences = 0, startPos = 32;
           startPos != -1;
           (startPos = test1.lastIndexOf(testChar, 5, startPos - 5)) != -1 ? ++occurrences : 0)
         ;
     if (occurrences != 11)
-        errln("lastIndexOf with character & start & end offsets failed: expected to find 11 occurrences, found " + occurrences);
+        errln(UnicodeString("lastIndexOf with character & start & end offsets failed: "
+                            "expected to find 11 occurrences, found ") + occurrences);
 
     //testing UChar32
     startPos=test3.length();
@@ -1167,6 +1174,14 @@ UnicodeStringTest::TestMiscellaneous()
         errln("UnicodeString(shared buffer).remove().getTerminatedBuffer() "
               "modified another copy of the string!");
     }
+
+    // ticket #9740
+    test1.setTo(TRUE, ucs, 3);
+    assertEquals("length of read-only alias", 3, test1.length());
+    test1.trim();
+    assertEquals("length of read-only alias after trim()", 2, test1.length());
+    assertEquals("length of terminated buffer of read-only alias + trim()",
+                 2, u_strlen(test1.getTerminatedBuffer()));
 }
 
 void
@@ -1675,7 +1690,7 @@ public:
 private:
     static const char fgClassID;
 
-    int32_t i, length;
+    int32_t i;
 };
 
 const char TestEnumeration::fgClassID=0;
@@ -1776,7 +1791,7 @@ namespace bogus {
     public:
         enum EInvariant { kInvariant };
         UnicodeString() : i(1) {}
-        UnicodeString(UBool /*isTerminated*/, const UChar * /*text*/, int32_t textLength) : i(textLength) {}
+        UnicodeString(UBool /*isTerminated*/, const UChar * /*text*/, int32_t textLength) : i(textLength) {(void)i;}
         UnicodeString(const char * /*src*/, int32_t length, enum EInvariant /*inv*/
 ) : i(length) {}
     private:

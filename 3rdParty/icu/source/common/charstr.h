@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (c) 2001-2011, International Business Machines
+*   Copyright (c) 2001-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -61,9 +61,9 @@ public:
      */
     CharString &copyFrom(const CharString &other, UErrorCode &errorCode);
 
-    UBool isEmpty() { return len==0; }
+    UBool isEmpty() const { return len==0; }
     int32_t length() const { return len; }
-    char operator[] (int32_t index) const { return buffer[index]; }
+    char operator[](int32_t index) const { return buffer[index]; }
     StringPiece toStringPiece() const { return StringPiece(buffer.getAlias(), len); }
 
     const char *data() const { return buffer.getAlias(); }

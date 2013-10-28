@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/agq.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/agq.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/agq.xml
+ * ICU <specials> source: <path>/common/main/agq.xml
  */
 agq{
     Currencies{
@@ -20,7 +20,7 @@ agq{
             "Kwanzà è Àŋgolà",
         }
         AUD{
-            "AU$",
+            "A$",
             "Dɔlà e Ùsɨ̀tɛ̀lɛlìa",
         }
         BHD{
@@ -221,6 +221,10 @@ agq{
         }
         ZMK{
             "ZMK",
+            "Kwachà è Zambìa (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "Kwachà è Zambìa",
         }
         ZWD{
@@ -228,5 +232,5 @@ agq{
             "Dɔlà è Zìmbagbɛ̀",
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

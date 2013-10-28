@@ -665,7 +665,7 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
   gc.latitude = lat;
   gc.longitude = lon;
 
-  return GeoIndex_NearestCountPoints(geo->_geoIndex, &gc, count);
+  return GeoIndex_NearestCountPoints(geo->_geoIndex, &gc, (int) count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

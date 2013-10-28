@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 1999-2011 International Business Machines Corporation and
+*   Copyright (C) 1999-2013 International Business Machines Corporation and
 *   others. All Rights Reserved.
 ********************************************************************************
 *   Date        Name        Description
@@ -1049,7 +1049,7 @@ void UnicodeSetTest::TestPropertySet() {
         // Script_Extensions, new in Unicode 6.0
         "[:scx=Arab:]",
         "\\u061E\\u061F\\u0620\\u0621\\u063F\\u0640\\u0650\\u065E\\uFDF1\\uFDF2\\uFDF3",
-        "\\u061D\\u065F\\uFDEF\\uFDFE",
+        "\\u061D\\uFDEF\\uFDFE",
 
         // U+FDF2 has Script=Arabic and also Arab in its Script_Extensions,
         // so scx-sc is missing U+FDF2.
@@ -1488,6 +1488,7 @@ void UnicodeSetTest::TestInvalidCodePoint() {
         b = set.contains(start, end);
         b = set.containsNone(start, end);
         b = set.containsSome(start, end);
+        (void)b;   // Suppress set but not used warning.
 
         /*int32_t index = set.indexOf(start);*/
         
@@ -2363,9 +2364,6 @@ private:
 
     char utf8[1024];
     int32_t utf8Lengths[20];
-
-    int32_t nextStringIndex;
-    int32_t nextUTF8Start;
 };
 
 class UnicodeSetWithStringsIterator {
@@ -2626,10 +2624,7 @@ static int32_t containsSpanUTF8(const UnicodeSetWithStrings &set, const char *s,
         UChar32 c;
         int32_t start=0, prev;
         while((prev=start)<length) {
-            U8_NEXT(s, start, length, c);
-            if(c<0) {
-                c=0xfffd;
-            }
+            U8_NEXT_OR_FFFD(s, start, length, c);
             if(realSet.contains(c)!=spanCondition) {
                 break;
             }
@@ -2640,10 +2635,7 @@ static int32_t containsSpanUTF8(const UnicodeSetWithStrings &set, const char *s,
         UChar32 c;
         int32_t start, next;
         for(start=next=0; start<length;) {
-            U8_NEXT(s, next, length, c);
-            if(c<0) {
-                c=0xfffd;
-            }
+            U8_NEXT_OR_FFFD(s, next, length, c);
             if(realSet.contains(c)) {
                 break;
             }
@@ -2664,10 +2656,7 @@ static int32_t containsSpanUTF8(const UnicodeSetWithStrings &set, const char *s,
         UChar32 c;
         int32_t start, next, maxSpanLimit=0;
         for(start=next=0; start<length;) {
-            U8_NEXT(s, next, length, c);
-            if(c<0) {
-                c=0xfffd;
-            }
+            U8_NEXT_OR_FFFD(s, next, length, c);
             if(!realSet.contains(c)) {
                 next=start;  // Do not span this single, not-contained code point.
             }
@@ -2738,10 +2727,7 @@ static int32_t containsSpanBackUTF8(const UnicodeSetWithStrings &set, const char
         UChar32 c;
         int32_t prev=length;
         do {
-            U8_PREV(s, 0, length, c);
-            if(c<0) {
-                c=0xfffd;
-            }
+            U8_PREV_OR_FFFD(s, 0, length, c);
             if(realSet.contains(c)!=spanCondition) {
                 break;
             }
@@ -2752,10 +2738,7 @@ static int32_t containsSpanBackUTF8(const UnicodeSetWithStrings &set, const char
         UChar32 c;
         int32_t prev=length;
         do {
-            U8_PREV(s, 0, length, c);
-            if(c<0) {
-                c=0xfffd;
-            }
+            U8_PREV_OR_FFFD(s, 0, length, c);
             if(realSet.contains(c)) {
                 break;
             }
@@ -2775,10 +2758,7 @@ static int32_t containsSpanBackUTF8(const UnicodeSetWithStrings &set, const char
         UChar32 c;
         int32_t prev=length, minSpanStart=length;
         do {
-            U8_PREV(s, 0, length, c);
-            if(c<0) {
-                c=0xfffd;
-            }
+            U8_PREV_OR_FFFD(s, 0, length, c);
             if(!realSet.contains(c)) {
                 length=prev;  // Do not span this single, not-contained code point.
             }
@@ -3789,6 +3769,7 @@ void UnicodeSetTest::TestStringSpan() {
     string16=UNICODE_STRING_SIMPLE("byayaxya");
     const UChar *s16=string16.getBuffer();
     int32_t length16=string16.length();
+    (void)length16;   // Suppress set but not used warning.
     if( set.span(s16, 8, USET_SPAN_NOT_CONTAINED)!=4 ||
         set.span(s16, 7, USET_SPAN_NOT_CONTAINED)!=4 ||
         set.span(s16, 6, USET_SPAN_NOT_CONTAINED)!=4 ||

@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2011, International Business Machines
+*   Copyright (C) 2010-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  bytestriebuilder.cpp
@@ -179,9 +179,9 @@ U_CDECL_BEGIN
 
 static int32_t U_CALLCONV
 compareElementStrings(const void *context, const void *left, const void *right) {
-    const CharString *strings=reinterpret_cast<const CharString *>(context);
-    const BytesTrieElement *leftElement=reinterpret_cast<const BytesTrieElement *>(left);
-    const BytesTrieElement *rightElement=reinterpret_cast<const BytesTrieElement *>(right);
+    const CharString *strings=static_cast<const CharString *>(context);
+    const BytesTrieElement *leftElement=static_cast<const BytesTrieElement *>(left);
+    const BytesTrieElement *rightElement=static_cast<const BytesTrieElement *>(right);
     return leftElement->compareStringTo(*rightElement, *strings);
 }
 
@@ -253,7 +253,7 @@ BytesTrieBuilder::buildBytes(UStringTrieBuildOption buildOption, UErrorCode &err
     }
     if(bytesCapacity<capacity) {
         uprv_free(bytes);
-        bytes=reinterpret_cast<char *>(uprv_malloc(capacity));
+        bytes=static_cast<char *>(uprv_malloc(capacity));
         if(bytes==NULL) {
             errorCode=U_MEMORY_ALLOCATION_ERROR;
             bytesCapacity=0;
@@ -379,7 +379,7 @@ BytesTrieBuilder::ensureCapacity(int32_t length) {
         do {
             newCapacity*=2;
         } while(newCapacity<=length);
-        char *newBytes=reinterpret_cast<char *>(uprv_malloc(newCapacity));
+        char *newBytes=static_cast<char *>(uprv_malloc(newCapacity));
         if(newBytes==NULL) {
             // unable to allocate memory
             uprv_free(bytes);
@@ -430,9 +430,9 @@ BytesTrieBuilder::writeValueAndFinal(int32_t i, UBool isFinal) {
     int32_t length=1;
     if(i<0 || i>0xffffff) {
         intBytes[0]=(char)BytesTrie::kFiveByteValueLead;
-        intBytes[1]=(char)(i>>24);
-        intBytes[2]=(char)(i>>16);
-        intBytes[3]=(char)(i>>8);
+        intBytes[1]=(char)((uint32_t)i>>24);
+        intBytes[2]=(char)((uint32_t)i>>16);
+        intBytes[3]=(char)((uint32_t)i>>8);
         intBytes[4]=(char)i;
         length=5;
     // } else if(i<=BytesTrie::kMaxOneByteValue) {

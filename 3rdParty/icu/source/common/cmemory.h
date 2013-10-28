@@ -24,31 +24,55 @@
 #ifndef CMEMORY_H
 #define CMEMORY_H
 
+#include "unicode/utypes.h"
+
 #include <stddef.h>
 #include <string.h>
-#include "unicode/utypes.h"
 #include "unicode/localpointer.h"
 
 #if U_DEBUG && defined(UPRV_MALLOC_COUNT)
 #include <stdio.h>
 #endif
 
+#if U_DEBUG
+
+/*
+ * The C++ standard requires that the source pointer for memcpy() & memmove()
+ * is valid, not NULL, and not at the end of an allocated memory block.
+ * In debug mode, we read one byte from the source point to verify that it's
+ * a valid, readable pointer.
+ */
+
+U_CAPI void uprv_checkValidMemory(const void *p, size_t n);
+
+#define uprv_memcpy(dst, src, size) ( \
+    uprv_checkValidMemory(src, 1), \
+    U_STANDARD_CPP_NAMESPACE memcpy(dst, src, size))
+#define uprv_memmove(dst, src, size) ( \
+    uprv_checkValidMemory(src, 1), \
+    U_STANDARD_CPP_NAMESPACE memmove(dst, src, size))
+
+#else
+
 #define uprv_memcpy(dst, src, size) U_STANDARD_CPP_NAMESPACE memcpy(dst, src, size)
 #define uprv_memmove(dst, src, size) U_STANDARD_CPP_NAMESPACE memmove(dst, src, size)
+
+#endif  /* U_DEBUG */
+
 #define uprv_memset(buffer, mark, size) U_STANDARD_CPP_NAMESPACE memset(buffer, mark, size)
 #define uprv_memcmp(buffer1, buffer2, size) U_STANDARD_CPP_NAMESPACE memcmp(buffer1, buffer2,size)
 
 U_CAPI void * U_EXPORT2
-uprv_malloc(size_t s);
+uprv_malloc(size_t s) U_MALLOC_ATTR U_ALLOC_SIZE_ATTR(1);
 
 U_CAPI void * U_EXPORT2
-uprv_realloc(void *mem, size_t size);
+uprv_realloc(void *mem, size_t size) U_ALLOC_SIZE_ATTR(2);
 
 U_CAPI void U_EXPORT2
 uprv_free(void *mem);
 
 U_CAPI void * U_EXPORT2
-uprv_calloc(size_t num, size_t size);
+uprv_calloc(size_t num, size_t size) U_MALLOC_ATTR U_ALLOC_SIZE_ATTR2(1,2);
 
 /**
  * This should align the memory properly on any machine.
@@ -251,12 +275,15 @@ public:
      * @return getAlias()+getCapacity()
      */
     T *getArrayLimit() const { return getAlias()+capacity; }
+    // No "operator T *() const" because that can make
+    // expressions like mbs[index] ambiguous for some compilers.
     /**
-     * Access without ownership change. Same as getAlias().
-     * A class instance can be used directly in expressions that take a T *.
-     * @return the array pointer
+     * Array item access (const).
+     * No index bounds check.
+     * @param i array index
+     * @return reference to the array item
      */
-    operator T *() const { return ptr; }
+    const T &operator[](ptrdiff_t i) const { return ptr[i]; }
     /**
      * Array item access (writable).
      * No index bounds check.

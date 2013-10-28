@@ -110,13 +110,13 @@ bool RestAdminLogHandler::isDirect () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the log files (inheritDoc)
+/// @brief returns the log files
 ///
 /// @RESTHEADER{GET /_api/log,reads the global log from the server}
 ///
-/// @RESTURLPARAMETERS
+/// @RESTQUERYPARAMETERS
 ///
-/// @RESTURLPARAM{upto,string,optional}
+/// @RESTQUERYPARAM{upto,string,optional}
 /// Returns all log entries up to log level `upto`. Note that `upto` must be:
 /// - `fatal` or `0`
 /// - `error` or `1`
@@ -125,25 +125,25 @@ bool RestAdminLogHandler::isDirect () {
 /// - `debug`  or `4`
 /// The default value is `info`.
 ///
-/// @RESTURLPARAM{level,string,optional}
+/// @RESTQUERYPARAM{level,string,optional}
 /// Returns all log entries of log level `level`. Note that the URL parameters
 /// `upto` and `level` are mutually exclusive.
 ///
-/// @RESTURLPARAM{start,number,optional}
+/// @RESTQUERYPARAM{start,number,optional}
 /// Returns all log entries such that their log entry identifier (`lid` value) 
 /// is greater or equal to `start`.
 ///
-/// @RESTURLPARAM{size,number,optional}
+/// @RESTQUERYPARAM{size,number,optional}
 /// Restricts the result to at most `size` log entries.
 ///
-/// @RESTURLPARAM{offset,number,optional}
+/// @RESTQUERYPARAM{offset,number,optional}
 /// Starts to return log entries skipping the first `offset` log entries. `offset`
 /// and `size` can be used for pagination.
 ///
-/// @RESTURLPARAM{search,string,optional}
+/// @RESTQUERYPARAM{search,string,optional}
 /// Only return the log entries containing the text specified in `search`.
 ///
-/// @RESTURLPARAM{sort,string,optional}
+/// @RESTQUERYPARAM{sort,string,optional}
 /// Sort the log entries either ascending (if `sort` is `asc`) or descending 
 /// (if `sort` is `desc`) according to their `lid` values. Note that the `lid`
 /// imposes a chronological order. The default value is `asc`.
@@ -168,8 +168,10 @@ bool RestAdminLogHandler::isDirect () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if invalid values are specified for `upto` or `level`, or if 
-/// the method is called in a database other than `_system`.
+/// is returned if invalid values are specified for `upto` or `level`.
+///
+/// @RESTRETURNCODE{403}
+/// is returned if the log is requested for any database other than `_system`.
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if the server cannot generate the result due to an out-of-memory
@@ -179,7 +181,7 @@ bool RestAdminLogHandler::isDirect () {
 HttpHandler::status_e RestAdminLogHandler::execute () {
   // /log can only be called for the _system database
   if (_request->databaseName() != "_system") {
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(HttpResponse::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return HANDLER_DONE;
   }
 

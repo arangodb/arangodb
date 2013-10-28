@@ -7,8 +7,6 @@ Upgrading to ArangoDB 1.4 {#Upgrading14}
 Upgrading {#Upgrading14Introduction}
 ====================================
 
-1.4 is currently beta, please do not use in production.
-
 Filesystem layout changes {#Upgrading14FileSystem}
 --------------------------------------------------
 
@@ -162,7 +160,12 @@ like this:
     2013-10-09T19:11:47Z [7121] FATAL no value has been specified for --javascript.app-path.
 
 To fix this, you can either specify the value for `--javascript.app-path` on the command-line
-or in a configuration file.
+or in a configuration file. You then need to start the server with the app path specified and
+the `--upgrade` option. This will make ArangoDB create the directory automatically.
+
+If you want to use the development mode for Foxx applications, it is necessary to also specify
+the parameter `--javascript.dev-app-path` when starting with `--upgrade`. This will initialise
+the directories for development mode apps, too.
 
 Problem: Server does not start
 ------------------------------

@@ -282,7 +282,7 @@ function post_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph properties
 ///
-/// @RESTHEADER{GET /_api/graph/{graph-name},get the properties of a specific or all graphs}
+/// @RESTHEADER{GET /_api/graph/`graph-name`,get the properties of a specific or all graphs}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -399,7 +399,7 @@ function get_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a graph
 ///
-/// @RESTHEADER{DELETE /_api/graph/{graph-name},delete graph}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`,delete graph}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -949,7 +949,7 @@ function put_graph_vertex (req, res, g) {
 /// This will modify the behavior of the patch command to remove any attributes 
 /// from the existing document that are contained in the patch document 
 /// with an attribute value of `null`.
-//
+///
 /// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///

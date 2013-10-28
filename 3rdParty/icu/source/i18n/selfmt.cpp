@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  * Copyright (C) 2010 , Yahoo! Inc.
  ********************************************************************
@@ -14,7 +14,7 @@
  *   11/16/09    kirtig      Improved version
  ********************************************************************/
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/messagepattern.h"
 #include "unicode/rbnf.h"

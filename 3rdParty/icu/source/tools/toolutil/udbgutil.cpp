@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2007-2012, International Business Machines Corporation and
+ * Copyright (c) 2007-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -11,35 +11,36 @@
 #include "putilimp.h"
 #include "unicode/ulocdata.h"
 #include "unicode/ucnv.h"
+#include "unicode/unistr.h"
 
 /*
-To add a new enum type 
+To add a new enum type
       (For example: UShoeSize  with values USHOE_WIDE=0, USHOE_REGULAR, USHOE_NARROW, USHOE_COUNT)
 
     1. udbgutil.h:  add  UDBG_UShoeSize to the UDebugEnumType enum before UDBG_ENUM_COUNT
       ( The subsequent steps involve this file, udbgutil.cpp )
     2. Find the marker "Add new enum types above this line"
     3. Before that marker, add a #include of any header file you need.
-    4. Each enum type has three things in this section:  a #define, a count_, and an array of Fields. 
+    4. Each enum type has three things in this section:  a #define, a count_, and an array of Fields.
        It may help to copy and paste a previous definition.
     5. In the case of the USHOE_... strings above, "USHOE_" is common to all values- six characters
-         " #define LEN_USHOE 6 "   
+         " #define LEN_USHOE 6 "
        6 characters will strip off "USHOE_" leaving enum values of WIDE, REGULAR, and NARROW.
-    6. Define the 'count_' variable, with the number of enum values. If the enum has a _MAX or _COUNT value, 
+    6. Define the 'count_' variable, with the number of enum values. If the enum has a _MAX or _COUNT value,
         that can be helpful for automatically defining the count. Otherwise define it manually.
         " static const int32_t count_UShoeSize = USHOE_COUNT; "
     7. Define the field names, in order.
         " static const Field names_UShoeSize[] =  {
-        "  FIELD_NAME_STR( LEN_USHOE, USHOE_WIDE ), 
-        "  FIELD_NAME_STR( LEN_USHOE, USHOE_REGULAR ), 
-        "  FIELD_NAME_STR( LEN_USHOE, USHOE_NARROW ), 
+        "  FIELD_NAME_STR( LEN_USHOE, USHOE_WIDE ),
+        "  FIELD_NAME_STR( LEN_USHOE, USHOE_REGULAR ),
+        "  FIELD_NAME_STR( LEN_USHOE, USHOE_NARROW ),
         " };
       ( The following command  was usedfor converting ucol.h into partially correct entities )
-      grep "^[  ]*UCOL" < unicode/ucol.h  | 
-         sed -e 's%^[  ]*\([A-Z]*\)_\([A-Z_]*\).*%   FIELD_NAME_STR( LEN_\1, \1_\2 ),%g' 
+      grep "^[  ]*UCOL" < unicode/ucol.h  |
+         sed -e 's%^[  ]*\([A-Z]*\)_\([A-Z_]*\).*%   FIELD_NAME_STR( LEN_\1, \1_\2 ),%g'
     8. Now, a bit farther down, add the name of the enum itself to the end of names_UDebugEnumType
           ( UDebugEnumType is an enum, too!)
-        names_UDebugEnumType[] { ...  
+        names_UDebugEnumType[] { ...
             " FIELD_NAME_STR( LEN_UDBG, UDBG_UShoeSize ),   "
     9. Find the function _udbg_enumCount  and add the count macro:
             " COUNT_CASE(UShoeSize)
@@ -80,7 +81,7 @@ struct Field {
 // 'UCAL_' = 5
 #define LEN_UCAL 5 /* UCAL_ */
 static const int32_t count_UCalendarDateFields = UCAL_FIELD_COUNT;
-static const Field names_UCalendarDateFields[] = 
+static const Field names_UCalendarDateFields[] =
 {
     FIELD_NAME_STR( LEN_UCAL, UCAL_ERA ),
     FIELD_NAME_STR( LEN_UCAL, UCAL_YEAR ),
@@ -109,7 +110,7 @@ static const Field names_UCalendarDateFields[] =
 
 
 static const int32_t count_UCalendarMonths = UCAL_UNDECIMBER+1;
-static const Field names_UCalendarMonths[] = 
+static const Field names_UCalendarMonths[] =
 {
   FIELD_NAME_STR( LEN_UCAL, UCAL_JANUARY ),
   FIELD_NAME_STR( LEN_UCAL, UCAL_FEBRUARY ),
@@ -130,7 +131,7 @@ static const Field names_UCalendarMonths[] =
 
 #define LEN_UDAT 5 /* "UDAT_" */
 static const int32_t count_UDateFormatStyle = UDAT_SHORT+1;
-static const Field names_UDateFormatStyle[] = 
+static const Field names_UDateFormatStyle[] =
 {
         FIELD_NAME_STR( LEN_UDAT, UDAT_FULL ),
         FIELD_NAME_STR( LEN_UDAT, UDAT_LONG ),
@@ -140,17 +141,17 @@ static const Field names_UDateFormatStyle[] =
     /*
      *  negative enums.. leave out for now.
         FIELD_NAME_STR( LEN_UDAT, UDAT_NONE ),
-        FIELD_NAME_STR( LEN_UDAT, UDAT_IGNORE ),
+        FIELD_NAME_STR( LEN_UDAT, UDAT_PATTERN ),
      */
 };
 
 #endif
- 
+
 #include "unicode/uloc.h"
 
 #define LEN_UAR 12 /* "ULOC_ACCEPT_" */
 static const int32_t count_UAcceptResult = 3;
-static const Field names_UAcceptResult[] = 
+static const Field names_UAcceptResult[] =
 {
         FIELD_NAME_STR( LEN_UAR, ULOC_ACCEPT_FAILED ),
         FIELD_NAME_STR( LEN_UAR, ULOC_ACCEPT_VALID ),
@@ -204,7 +205,7 @@ static const Field names_UPlugLevel[]  = {
 
 #define LEN_UDBG 5 /* "UDBG_" */
 static const int32_t count_UDebugEnumType = UDBG_ENUM_COUNT;
-static const Field names_UDebugEnumType[] = 
+static const Field names_UDebugEnumType[] =
 {
     FIELD_NAME_STR( LEN_UDBG, UDBG_UDebugEnumType ),
 #if !UCONFIG_NO_FORMATTING
@@ -286,7 +287,7 @@ int32_t  udbg_enumExpectedCount(UDebugEnumType type) {
 }
 
 const char *  udbg_enumName(UDebugEnumType type, int32_t field) {
-	if(field<0 || 
+	if(field<0 ||
 				field>=_udbg_enumCount(type,FALSE)) { // also will catch unsupported items
 		return NULL;
 	} else {
@@ -300,7 +301,7 @@ const char *  udbg_enumName(UDebugEnumType type, int32_t field) {
 }
 
 int32_t  udbg_enumArrayValue(UDebugEnumType type, int32_t field) {
-	if(field<0 || 
+	if(field<0 ||
 				field>=_udbg_enumCount(type,FALSE)) { // also will catch unsupported items
 		return -1;
 	} else {
@@ -310,7 +311,7 @@ int32_t  udbg_enumArrayValue(UDebugEnumType type, int32_t field) {
 		} else {
 			return fields[field].num;
 		}
-	}    
+	}
 }
 
 int32_t udbg_enumByName(UDebugEnumType type, const char *value) {
@@ -321,21 +322,21 @@ int32_t udbg_enumByName(UDebugEnumType type, const char *value) {
     for(int32_t field = 0;field<_udbg_enumCount(type, FALSE);field++) {
         if(!strcmp(value, fields[field].str + fields[field].prefix)) {
             return fields[field].num;
-        }        
+        }
     }
     // try with the prefix
     for(int32_t field = 0;field<_udbg_enumCount(type, FALSE);field++) {
         if(!strcmp(value, fields[field].str)) {
             return fields[field].num;
-        }        
+        }
     }
     // fail
     return -1;
 }
 
 /* platform info */
-/** 
- * Print the current platform 
+/**
+ * Print the current platform
  */
 U_CAPI const char *udbg_getPlatform(void)
 {
@@ -343,6 +344,22 @@ U_CAPI const char *udbg_getPlatform(void)
     return "Windows";
 #elif U_PLATFORM == U_PF_UNKNOWN
     return "unknown";
+#elif U_PLATFORM == U_PF_DARWIN
+    return "Darwin";
+#elif U_PLATFORM == U_PF_BSD
+    return "BSD";
+#elif U_PLATFORM == U_PF_QNX
+    return "QNX";
+#elif U_PLATFORM == U_PF_LINUX
+    return "Linux";
+#elif U_PLATFORM == U_PF_ANDROID
+    return "Android";
+#elif U_PLATFORM == U_PF_CLASSIC_MACOS
+    return "MacOS (Classic)";
+#elif U_PLATFORM == U_PF_OS390
+    return "IBM z";
+#elif U_PLATFORM == U_PF_OS400
+    return "IBM i";
 #else
     return "Other (POSIX-like)";
 #endif
@@ -377,10 +394,22 @@ paramStatic(const USystemParams *param, char *target, int32_t targetCapacity, UE
   return u_terminateChars(target, targetCapacity, len, status);
 }
 
+static const char *nullString = "(null)";
+
 static int32_t stringToStringBuffer(char *target, int32_t targetCapacity, const char *str, UErrorCode *status) {
+  if(str==NULL) str=nullString;
+
   int32_t len = uprv_strlen(str);
-  if(target!=NULL) {
-    uprv_strncpy(target,str,uprv_min(len,targetCapacity));
+  if (U_SUCCESS(*status)) {
+    if(target!=NULL) {
+      uprv_strncpy(target,str,uprv_min(len,targetCapacity));
+    }
+  } else {
+    const char *s = u_errorName(*status);
+    len = uprv_strlen(s);
+    if(target!=NULL) {
+      uprv_strncpy(target,s,uprv_min(len,targetCapacity));
+    }
   }
   return u_terminateChars(target, targetCapacity, len, status);
 }
@@ -433,7 +462,7 @@ paramTimezoneDefault(const USystemParams * /* param */, char *target, int32_t ta
   UChar buf[100];
   char buf2[100];
   int32_t len;
-  
+
   len = ucal_getDefaultTimeZone(buf, 100, status);
   if(U_SUCCESS(*status)&&len>0) {
     u_UCharsToChars(buf, buf2, len+1);
@@ -468,7 +497,7 @@ STRING_PARAM(paramConverterDefault, ucnv_getDefaultName())
 STRING_PARAM(paramTimezoneVersion, ucal_getTZDataVersion(status))
 #endif
 
-static USystemParams systemParams[] = {
+static const USystemParams systemParams[] = {
   { "copyright",    paramStatic, U_COPYRIGHT_STRING,0 },
   { "product",      paramStatic, "icu4c",0 },
   { "product.full", paramStatic, "International Components for Unicode for C/C++",0 },
@@ -485,12 +514,12 @@ static USystemParams systemParams[] = {
   { "icudata.path", paramIcudataPath, NULL, 0},
 
   { "cldr.version", paramCldrVersion, NULL, 0},
-  
+
 #if !UCONFIG_NO_FORMATTING
   { "tz.version", paramTimezoneVersion, NULL, 0},
   { "tz.default", paramTimezoneDefault, NULL, 0},
 #endif
-  
+
   { "cpu.bits",       paramInteger, "d", (sizeof(void*))*8},
   { "cpu.big_endian", paramInteger, "b", U_IS_BIG_ENDIAN},
   { "os.wchar_width", paramInteger, "d", U_SIZEOF_WCHAR_T},
@@ -510,7 +539,7 @@ static USystemParams systemParams[] = {
 #if defined (CYGWINMSVC)
   { "build.cygwinmsvc", paramInteger, "b", 1},
 #endif
-  { "uconfig.internal_digitlist", paramInteger, "b", UCONFIG_INTERNAL_DIGITLIST},
+  { "uconfig.internal_digitlist", paramInteger, "b", 1}, /* always 1 */
   { "uconfig.have_parseallinput", paramInteger, "b", UCONFIG_HAVE_PARSEALLINPUT},
   { "uconfig.format_fastpaths_49",paramInteger, "b", UCONFIG_FORMAT_FASTPATHS_49},
 
@@ -552,3 +581,197 @@ U_CAPI void udbg_writeIcuInfo(FILE *out) {
   }
   fprintf(out, " </icuSystemParams>\n");
 }
+
+#define ICU_TRAC_URL "http://bugs.icu-project.org/trac/ticket/"
+#define CLDR_TRAC_URL "http://unicode.org/cldr/trac/ticket/"
+#define CLDR_TICKET_PREFIX "cldrbug:"
+
+U_CAPI char *udbg_knownIssueURLFrom(const char *ticket, char *buf) {
+  if( ticket==NULL ) {
+    return NULL;
+  }
+
+  if( !strncmp(ticket, CLDR_TICKET_PREFIX, strlen(CLDR_TICKET_PREFIX)) ) {
+    strcpy( buf, CLDR_TRAC_URL );
+    strcat( buf, ticket+strlen(CLDR_TICKET_PREFIX) );
+  } else {
+    strcpy( buf, ICU_TRAC_URL );
+    strcat( buf, ticket );
+  }
+  return buf;
+}
+
+
+#if !U_HAVE_STD_STRING
+const char *warning = "WARNING: Don't have std::string (STL) - known issue logs will be deficient.";
+
+U_CAPI void *udbg_knownIssue_openU(void *ptr, const char *ticket, char *where, const UChar *msg, UBool *firstForTicket,
+                                   UBool *firstForWhere) {
+  if(ptr==NULL) {
+    puts(warning);
+  }
+  printf("%s\tKnown Issue #%s\n", where, ticket);
+
+  return (void*)warning;
+}
+
+U_CAPI void *udbg_knownIssue_open(void *ptr, const char *ticket, char *where, const char *msg, UBool *firstForTicket,
+                                   UBool *firstForWhere) {
+  if(ptr==NULL) {
+    puts(warning);
+  }
+  if(msg==NULL) msg = "";
+  printf("%s\tKnown Issue #%s  \"%s\n", where, ticket, msg);
+
+  return (void*)warning;
+}
+
+U_CAPI UBool udbg_knownIssue_print(void *ptr) {
+  puts(warning);
+  return FALSE;
+}
+
+U_CAPI void udbg_knownIssue_close(void *ptr) {
+  // nothing to do
+}
+#else
+
+#include <set>
+#include <map>
+#include <string>
+#include <ostream>
+#include <iostream>
+
+class KnownIssues {
+public:
+  KnownIssues();
+  ~KnownIssues();
+  void add(const char *ticket, const char *where, const UChar *msg, UBool *firstForTicket, UBool *firstForWhere);
+  void add(const char *ticket, const char *where, const char *msg, UBool *firstForTicket, UBool *firstForWhere);
+  UBool print();
+private:
+  std::map< std::string,
+            std::map < std::string, std::set < std::string > > > fTable;
+};
+
+KnownIssues::KnownIssues()
+  : fTable()
+{
+}
+
+KnownIssues::~KnownIssues()
+{
+}
+
+void KnownIssues::add(const char *ticket, const char *where, const UChar *msg, UBool *firstForTicket, UBool *firstForWhere)
+{
+  if(fTable.find(ticket) == fTable.end()) {
+    if(firstForTicket!=NULL) *firstForTicket = TRUE;
+    fTable[ticket] = std::map < std::string, std::set < std::string > >();
+  } else {
+    if(firstForTicket!=NULL) *firstForTicket = FALSE;
+  }
+  if(where==NULL) return;
+
+  if(fTable[ticket].find(where) == fTable[ticket].end()) {
+    if(firstForWhere!=NULL) *firstForWhere = TRUE;
+    fTable[ticket][where] = std::set < std::string >();
+  } else {
+    if(firstForWhere!=NULL) *firstForWhere = FALSE;
+  }
+  if(msg==NULL || !*msg) return;
+
+  std::string str;
+  fTable[ticket][where].insert(icu::UnicodeString(msg).toUTF8String(str));
+}
+
+void KnownIssues::add(const char *ticket, const char *where, const char *msg, UBool *firstForTicket, UBool *firstForWhere)
+{
+  if(fTable.find(ticket) == fTable.end()) {
+    if(firstForTicket!=NULL) *firstForTicket = TRUE;
+    fTable[ticket] = std::map < std::string, std::set < std::string > >();
+  } else {
+    if(firstForTicket!=NULL) *firstForTicket = FALSE;
+  }
+  if(where==NULL) return;
+
+  if(fTable[ticket].find(where) == fTable[ticket].end()) {
+    if(firstForWhere!=NULL) *firstForWhere = TRUE;
+    fTable[ticket][where] = std::set < std::string >();
+  } else {
+    if(firstForWhere!=NULL) *firstForWhere = FALSE;
+  }
+  if(msg==NULL || !*msg) return;
+
+  std::string str(msg);
+  fTable[ticket][where].insert(str);
+}
+
+UBool KnownIssues::print()
+{
+  if(fTable.empty()) {
+    return FALSE;
+  }
+
+  std::cout << "KNOWN ISSUES" << std::endl;
+  for( std::map<  std::string,
+          std::map <  std::string,  std::set <  std::string > > >::iterator i = fTable.begin();
+       i != fTable.end();
+       i++ ) {
+    char URL[1024];
+    std::cout << '#' << (*i).first << " <" << udbg_knownIssueURLFrom( (*i).first.c_str(), URL ) << ">" << std::endl;
+
+    for( std::map< std::string, std::set < std::string > >::iterator ii = (*i).second.begin();
+         ii != (*i).second.end();
+         ii++ ) {
+      std::cout << "  " << (*ii).first << std::endl;
+      for ( std::set < std::string >::iterator iii = (*ii).second.begin();
+            iii != (*ii).second.end();
+            iii++ ) {
+        std::cout << "     " << '"' << (*iii) << '"' << std::endl;
+      }
+    }
+  }
+  return TRUE;
+}
+
+U_CAPI void *udbg_knownIssue_openU(void *ptr, const char *ticket, char *where, const UChar *msg, UBool *firstForTicket,
+                                   UBool *firstForWhere) {
+  KnownIssues *t = static_cast<KnownIssues*>(ptr);
+  if(t==NULL) {
+    t = new KnownIssues();
+  }
+
+  t->add(ticket, where, msg, firstForTicket, firstForWhere);
+
+  return static_cast<void*>(t);
+}
+
+U_CAPI void *udbg_knownIssue_open(void *ptr, const char *ticket, char *where, const char *msg, UBool *firstForTicket,
+                                   UBool *firstForWhere) {
+  KnownIssues *t = static_cast<KnownIssues*>(ptr);
+  if(t==NULL) {
+    t = new KnownIssues();
+  }
+
+  t->add(ticket, where, msg, firstForTicket, firstForWhere);
+
+  return static_cast<void*>(t);
+}
+
+U_CAPI UBool udbg_knownIssue_print(void *ptr) {
+  KnownIssues *t = static_cast<KnownIssues*>(ptr);
+  if(t==NULL) {
+    return FALSE;
+  } else {
+    t->print();
+    return TRUE;
+  }
+}
+
+U_CAPI void udbg_knownIssue_close(void *ptr) {
+  KnownIssues *t = static_cast<KnownIssues*>(ptr);
+  delete t;
+}
+
+#endif

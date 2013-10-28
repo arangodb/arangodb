@@ -1,6 +1,6 @@
 /********************************************************************
 * COPYRIGHT:
-* Copyright (C) 2001-2011 IBM, Inc.   All Rights Reserved.
+* Copyright (C) 2001-2012 IBM, Inc.   All Rights Reserved.
 *
 ********************************************************************/
 
@@ -14,7 +14,10 @@
 #include "unicode/coll.h"
 #include <unicode/ucoleitr.h>
 
-
+#if !U_PLATFORM_HAS_WIN32_API
+#define DWORD uint32_t
+#define WCHAR wchar_t
+#endif
 
 /* To store an array of string<UNIT> in continue space.
 Since string<UNIT> itself is treated as an array of UNIT, this 
@@ -109,6 +112,7 @@ public:
             ucol_getSortKey(col, data[i].icu_data, data[i].icu_data_len, icu_key, MAX_KEY_LENGTH);
         }
 
+#if U_PLATFORM_HAS_WIN32_API
         // pre-generated in CollPerfTest::prepareData(), need not to check error here
         void win_key_null(int32_t i){
             //LCMAP_SORTsk             0x00000400  // WC sort sk (normalize)
@@ -118,6 +122,7 @@ public:
         void win_key_len(int32_t i){
             LCMapStringW(win_langid, LCMAP_SORTKEY, data[i].win_data, data[i].win_data_len, win_key, MAX_KEY_LENGTH);
         }
+#endif
 
         void posix_key_null(int32_t i){
             strxfrm(posix_key, data[i].posix_data, MAX_KEY_LENGTH);
@@ -289,6 +294,7 @@ struct CmdQsort : public UPerfFunction{
         return strcmp((char *) da->icu_key, (char *) db->icu_key); 
     }
 
+#if U_PLATFORM_HAS_WIN32_API
     static int win_cmp_null(const void *a, const void *b) {
         QCAST();
         //CSTR_LESS_THAN		1
@@ -313,6 +319,7 @@ struct CmdQsort : public UPerfFunction{
             return t - CSTR_EQUAL;
         }
     }
+#endif
 
 #define QFUNC(name, func, data) \
     static int name (const void *a, const void *b){ \
@@ -322,8 +329,10 @@ struct CmdQsort : public UPerfFunction{
 
     QFUNC(posix_strcoll_null, strcoll, posix_data)
         QFUNC(posix_cmpkey, strcmp, posix_key)
+#if U_PLATFORM_HAS_WIN32_API
         QFUNC(win_cmpkey, strcmp, win_key)
         QFUNC(win_wcscmp, wcscmp, win_data)
+#endif
         QFUNC(icu_strcmp, u_strcmp, icu_data)
         QFUNC(icu_cmpcpo, u_strcmpCodePointOrder, icu_data)
 
@@ -440,6 +449,7 @@ public:
             return strcmp( (char *) rnd[i].icu_key, (char *) ord[j].icu_key );
         }
 
+#if U_PLATFORM_HAS_WIN32_API
         int win_cmp_null(int32_t i, int32_t j) {
             int t = CompareStringW(win_langid, 0, rnd[i].win_data, -1, ord[j].win_data, -1);
             if (t == 0){
@@ -459,6 +469,7 @@ public:
                 return t - CSTR_EQUAL;
             }
         }
+#endif
 
 #define BFUNC(name, func, data) \
     int name(int32_t i, int32_t j) { \
@@ -575,7 +586,7 @@ public:
             locale = "en_US";   // set default locale
         }
 
-        //#if U_PLATFORM_USES_ONLY_WIN32_API
+#if U_PLATFORM_HAS_WIN32_API
         if (options[i].doesOccur) {
             char *endp;
             int tmp = strtol(options[i].value, &endp, 0);
@@ -587,7 +598,7 @@ public:
         } else {
             win_langid = uloc_getLCID(locale);
         }
-        //#endif
+#endif
 
         //  Set up an ICU collator
         if (options[r].doesOccur) {
@@ -675,8 +686,10 @@ public:
         TEST_KEYGEN(TestIcu_KeyGen_null, icu_key_null);
         TEST_KEYGEN(TestIcu_KeyGen_len,  icu_key_len);
         TEST_KEYGEN(TestPosix_KeyGen_null, posix_key_null);
+#if U_PLATFORM_HAS_WIN32_API
         TEST_KEYGEN(TestWin_KeyGen_null, win_key_null);
         TEST_KEYGEN(TestWin_KeyGen_len, win_key_len);
+#endif
 
 #define TEST_ITER(testname, func)\
     TEST(testname, CmdIter, col, count, icu_data, &CmdIter::func,0,0)
@@ -699,9 +712,11 @@ public:
         TEST_QSORT(TestIcu_qsort_usekey, icu_cmpkey);
         TEST_QSORT(TestPosix_qsort_strcoll_null, posix_strcoll_null);
         TEST_QSORT(TestPosix_qsort_usekey, posix_cmpkey);
+#if U_PLATFORM_HAS_WIN32_API
         TEST_QSORT(TestWin_qsort_CompareStringW_null, win_cmp_null);
         TEST_QSORT(TestWin_qsort_CompareStringW_len, win_cmp_len);
         TEST_QSORT(TestWin_qsort_usekey, win_cmpkey);
+#endif
 
 #define TEST_BIN(testname, func)\
     TEST(testname, CmdBinSearch, col, win_langid, count, rnd_index, ord_icu_key, &CmdBinSearch::func)
@@ -712,8 +727,10 @@ public:
         TEST_BIN(TestIcu_BinarySearch_cmpCPO, icu_cmpcpo);
         TEST_BIN(TestPosix_BinarySearch_strcoll_null, posix_strcoll_null);
         TEST_BIN(TestPosix_BinarySearch_usekey, posix_cmpkey);
+#if U_PLATFORM_HAS_WIN32_API
         TEST_BIN(TestWin_BinarySearch_CompareStringW_null, win_cmp_null);
         TEST_BIN(TestWin_BinarySearch_CompareStringW_len, win_cmp_len);
+#endif
         TEST_BIN(TestWin_BinarySearch_usekey, win_cmpkey);
         TEST_BIN(TestWin_BinarySearch_wcscmp, win_wcscmp);
 
@@ -810,6 +827,7 @@ public:
             t = strxfrm(posix_key->last(), posix_data->dataOf(i), s);
             if (t != s) {status = U_INVALID_FORMAT_ERROR;return;}
 
+#if U_PLATFORM_HAS_WIN32_API
             // Win data
             s = icu_data->lengthOf(i) + 1; // plus terminal NULL
             win_data->append_one(s);
@@ -821,7 +839,7 @@ public:
             win_key->append_one(s);
             t = LCMapStringW(win_langid, LCMAP_SORTKEY, win_data->dataOf(i), win_data->lengthOf(i), (WCHAR *)(win_key->last()),s);
             if (t != s) {status = U_INVALID_FORMAT_ERROR;return;}
-
+#endif
         };
 
         // append_one() will make points shifting, should not merge following code into previous iteration
@@ -832,9 +850,11 @@ public:
             rnd_index[i].posix_key = posix_key->last();
             rnd_index[i].posix_data = posix_data->dataOf(i);
             rnd_index[i].posix_data_len = posix_data->lengthOf(i);
+#if U_PLATFORM_HAS_WIN32_API
             rnd_index[i].win_key = win_key->dataOf(i);
             rnd_index[i].win_data = win_data->dataOf(i);
             rnd_index[i].win_data_len = win_data->lengthOf(i);
+#endif
         };
 
         ucnv_close(conv);
@@ -849,9 +869,11 @@ public:
         SORT(ord_icu_key, icu_cmpkey);
         SORT(ord_posix_data, posix_strcoll_null);
         SORT(ord_posix_key, posix_cmpkey);
+#if U_PLATFORM_HAS_WIN32_API
         SORT(ord_win_data, win_cmp_len);
         SORT(ord_win_key, win_cmpkey);
         SORT(ord_win_wcscmp, win_wcscmp);
+#endif
         SORT(ord_icu_strcmp, icu_strcmp);
         SORT(ord_icu_cmpcpo, icu_cmpcpo);
     }

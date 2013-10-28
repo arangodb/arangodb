@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2002-2012, International Business Machines
+* Copyright (c) 2002-2013, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -269,7 +269,7 @@ ucurr_openISOCurrencies(uint32_t currType, UErrorCode *pErrorCode);
   * 
   * @stable ICU 4.8 
   */ 
-U_DRAFT UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 ucurr_isAvailable(const UChar* isoCode, 
              UDate from, 
              UDate to, 
@@ -343,7 +343,6 @@ ucurr_getKeywordValuesForLocale(const char* key,
                                 UBool commonlyUsed,
                                 UErrorCode* status);
 
-#ifndef U_HIDE_DRAFT_API
 /**
  * Returns the ISO 4217 numeric code for the currency.
  * <p>Note: If the ISO 4217 numeric code is not assigned for the currency or
@@ -351,11 +350,10 @@ ucurr_getKeywordValuesForLocale(const char* key,
  *
  * @param currency null-terminated 3-letter ISO 4217 code
  * @return The ISO 4217 numeric code of the currency
- * @draft ICU 49
+ * @stable ICU 49
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 ucurr_getNumericCode(const UChar* currency);
-#endif  /* U_HIDE_DRAFT_API */
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
 

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -15,17 +15,13 @@
 
 void IntlTestDecimalFormatSymbols::runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par*/ )
 {
-    if (exec) logln("TestSuite DecimalFormatSymbols");
-    switch (index) {
-        case 0: name = "DecimalFormatSymbols test";
-                if (exec) {
-                    logln("DecimalFormatSymbols test---"); logln("");
-                    testSymbols(/*par*/);
-                }
-                break;
-
-        default: name = ""; break;
+    if (exec) {
+        logln("TestSuite DecimalFormatSymbols:");
     }
+    TESTCASE_AUTO_BEGIN;
+    TESTCASE_AUTO(testSymbols);
+    TESTCASE_AUTO(testLastResortData);
+    TESTCASE_AUTO_END;
 }
 
 /**
@@ -213,20 +209,57 @@ void IntlTestDecimalFormatSymbols::testSymbols(/* char *par */)
 
 }
 
-void IntlTestDecimalFormatSymbols::Verify(double value, const UnicodeString& pattern, DecimalFormatSymbols sym, const UnicodeString& expected){
+void IntlTestDecimalFormatSymbols::testLastResortData() {
+    IcuTestErrorCode errorCode(*this, "testLastResortData");
+    LocalPointer<DecimalFormatSymbols> lastResort(
+        DecimalFormatSymbols::createWithLastResortData(errorCode));
+    if(errorCode.logIfFailureAndReset("DecimalFormatSymbols::createWithLastResortData() failed")) {
+        return;
+    }
+    DecimalFormatSymbols root(Locale::getRoot(), errorCode);
+    if(errorCode.logDataIfFailureAndReset("DecimalFormatSymbols(root) failed")) {
+        return;
+    }
+    // Note: It is not necessary that the last resort data matches the root locale,
+    // but it seems weird if most symbols did not match.
+    // Also, one purpose for calling operator==() is to find uninitialized memory in a debug build.
+    if(*lastResort == root) {
+        errln("DecimalFormatSymbols last resort data unexpectedly matches root");
+    }
+    // Here we adjust for expected differences.
+    assertEquals("last-resort grouping separator",
+                 "", lastResort->getSymbol(DecimalFormatSymbols::kGroupingSeparatorSymbol));
+    lastResort->setSymbol(DecimalFormatSymbols::kGroupingSeparatorSymbol, ",");
+    assertEquals("last-resort monetary grouping separator",
+                 "", lastResort->getSymbol(DecimalFormatSymbols::kMonetaryGroupingSeparatorSymbol));
+    lastResort->setSymbol(DecimalFormatSymbols::kMonetaryGroupingSeparatorSymbol, ",");
+    assertEquals("last-resort NaN",
+                 UnicodeString((UChar)0xfffd), lastResort->getSymbol(DecimalFormatSymbols::kNaNSymbol));
+    lastResort->setSymbol(DecimalFormatSymbols::kNaNSymbol, "NaN");
+    // Check that now all of the symbols match root.
+    for(int32_t i = 0; i < DecimalFormatSymbols::kFormatSymbolCount; ++i) {
+        DecimalFormatSymbols::ENumberFormatSymbol e = (DecimalFormatSymbols::ENumberFormatSymbol)i;
+        assertEquals("last-resort symbol vs. root", root.getSymbol(e), lastResort->getSymbol(e));
+    }
+    // Also, the CurrencySpacing patterns are empty in the last resort instance,
+    // but not in root.
+    Verify(1234567.25, "#,##0.##", *lastResort, "1,234,567.25");
+}
+
+void IntlTestDecimalFormatSymbols::Verify(double value, const UnicodeString& pattern,
+                                          const DecimalFormatSymbols &sym, const UnicodeString& expected){
     UErrorCode status = U_ZERO_ERROR;
-    DecimalFormat *df = new DecimalFormat(pattern, sym, status);
+    DecimalFormat df(pattern, sym, status);
     if(U_FAILURE(status)){
-        errln("ERROR: construction of decimal format failed");
+        errln("ERROR: construction of decimal format failed - %s", u_errorName(status));
     }
     UnicodeString buffer;
     FieldPosition pos(FieldPosition::DONT_CARE);
-    buffer = df->format(value, buffer, pos);
+    buffer = df.format(value, buffer, pos);
     if(buffer != expected){
-        errln((UnicodeString)"ERROR: format failed after setSymbols()\n Expected " +
+        errln((UnicodeString)"ERROR: format() returns wrong result\n Expected " +
             expected + ", Got " + buffer);
     }
-    delete df;
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

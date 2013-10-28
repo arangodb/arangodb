@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-* Copyright (C) 2001-2011, International Business Machines
+* Copyright (C) 2001-2013, International Business Machines
 *                Corporation and others. All Rights Reserved.
 ******************************************************************************
 *   file name:  ucln_cmn.c
@@ -16,7 +16,7 @@
 #include "unicode/uclean.h"
 #include "utracimp.h"
 #include "ucln_cmn.h"
-#include "umutex.h"
+#include "cmutex.h"
 #include "ucln.h"
 #include "cmemory.h"
 #include "uassert.h"
@@ -25,15 +25,9 @@
 #define UCLN_TYPE_IS_COMMON
 #include "ucln_imp.h"
 
-U_CDECL_BEGIN
-
-UBool gICUInitialized = FALSE;
-UMTX  gICUInitMutex   = NULL;
-
-U_CDECL_END
-
 static cleanupFunc *gCommonCleanupFunctions[UCLN_COMMON_COUNT];
 static cleanupFunc *gLibCleanupFunctions[UCLN_COMMON];
+
 
 /************************************************
  The cleanup order is important in this function.
@@ -48,10 +42,7 @@ u_cleanup(void)
 
     ucln_lib_cleanup();
 
-    umtx_destroy(&gICUInitMutex);
-    umtx_cleanup();
     cmemory_cleanup();       /* undo any heap functions set by u_setMemoryFunctions(). */
-    gICUInitialized = FALSE;
     UTRACE_EXIT();           /* Must be before utrace_cleanup(), which turns off tracing. */
 /*#if U_ENABLE_TRACING*/
     utrace_cleanup();

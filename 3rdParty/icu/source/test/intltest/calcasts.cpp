@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2003-2011, International Business Machines Corporation 
+ * Copyright (c) 2003-2013, International Business Machines Corporation 
  * and others. All Rights Reserved.
  ********************************************************************
  * Calendar Case Test is a type of CalendarTest which compares the 
@@ -169,9 +169,9 @@ void CalendarCaseTest::IslamicCivil()
     doTestCases(tests, c);
 
     static const UChar expectedUChars[] = {
-        0x0627, 0x0644, 0x062e, 0x0645, 0x064a, 0x0633, 0x060c, 0x0020, 0x0662, 0x0662,
-        0x0020, 0x0634, 0x0648, 0x0627, 0x0644, 0x0020, 0x0661, 0x0663, 0x0668, 0x0669, 0
-    };
+        0x0627, 0x0644, 0x062e, 0x0645, 0x064a, 0x0633, 0x060c, 0x0020, 0x0662, 0x0662, 0x0020,
+        0x0634, 0x0648, 0x0627, 0x0644, 0x060c, 0x0020, 0x0661, 0x0663, 0x0668, 0x0669, 0x0020, 0x0647, 0x0640, 0
+     };
     UnicodeString result;
     DateFormat *fmt = DateFormat::createDateInstance(DateFormat::kFull, Locale("ar_JO@calendar=islamic-civil"));
     if (fmt == NULL) {

@@ -1,7 +1,7 @@
 ## -*-makefile-*-
 ## Darwin-specific setup (Darwin is the Mac OS X developer preview, successor
 ## to Rhapsody, aka Mac OS X Server)
-## Copyright (c) 1999-2011 International Business Machines Corporation and
+## Copyright (c) 1999-2012 International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Flags for position independent code
@@ -9,12 +9,15 @@ SHAREDLIBCFLAGS = -dynamic
 SHAREDLIBCXXFLAGS = -dynamic
 SHAREDLIBCPPFLAGS =
 
+# Do not export internal methods by default
+LIBCFLAGS += -fvisibility=hidden
+LIBCXXFLAGS += -fvisibility=hidden
+
 # Pad out the paths to the maximum possible length
 LD_FLAGS += -headerpad_max_install_names
 
-## Commands to generate dependency files
-GEN_DEPS.c=	$(CC) -E -MMD  $(DEFS) $(CPPFLAGS)
-GEN_DEPS.cc=	$(CXX) -E -MMD  $(DEFS) $(CPPFLAGS)
+# We do not need to see the stderr message that the archive was made.
+ARFLAGS += -c
 
 ## Commands to compile
 COMPILE.c=	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -fno-common -c
@@ -49,34 +52,16 @@ STATIC_O = ao
 FINAL_SO_TARGET=  $(basename $(SO_TARGET)).$(SO_TARGET_VERSION).$(SO)
 MIDDLE_SO_TARGET= $(basename $(SO_TARGET)).$(SO_TARGET_VERSION_MAJOR).$(SO)
 
-## Compilation rules
+## Compilation and dependency rules
 %.$(STATIC_O): $(srcdir)/%.c
-	$(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS)) -MMD -MT "$*.d $*.o $*.$(STATIC_O)" -o $@ $<)
 %.o: $(srcdir)/%.c
-	$(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS)) -MMD -MT "$*.d $*.o $*.$(STATIC_O)" -o $@ $<)
 
 %.$(STATIC_O): $(srcdir)/%.cpp
-	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) -o $@ $<
+	$(call SILENT_COMPILE,$(strip $(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS)) -MMD -MT "$*.d $*.o $*.$(STATIC_O)" -o $@ $<)
 %.o: $(srcdir)/%.cpp
-	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) -o $@ $<
-
-
-## Dependency rules
-%.d : $(srcdir)/%.c
-	@echo "generating dependency information for $<"
-	@$(GEN_DEPS.c) $< > /dev/null
-	@mv $@ $@~
-	@printf "%s" "$@ " > $@
-	@cat < $@~ >> $@
-	@-rm $@~
-
-%.d : $(srcdir)/%.cpp
-	@echo "generating dependency information for $<"
-	@$(GEN_DEPS.cc) $< >/dev/null
-	@mv $@ $@~
-	@printf "%s" "$@ " > $@
-	@cat < $@~ >> $@
-	@-rm $@~
+	$(call SILENT_COMPILE,$(strip $(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS)) -MMD -MT "$*.d $*.o $*.$(STATIC_O)" -o $@ $<)
 
 ## Versioned libraries rules
 

@@ -1,6 +1,6 @@
 /*
  *****************************************************************************
- * Copyright (C) 1996-2011, International Business Machines Corporation and others.
+ * Copyright (C) 1996-2013, International Business Machines Corporation and others.
  * All Rights Reserved.
  *****************************************************************************
  *
@@ -29,7 +29,6 @@
  */
  
 #if !UCONFIG_NO_COLLATION
-#ifndef U_HIDE_DEPRECATED_API
 
 #include "unicode/uobject.h"
 #include "unicode/unistr.h"
@@ -92,7 +91,7 @@ class RuleBasedCollator;
  * @see          RuleBasedCollator
  * @version      1.3 12/18/96
  * @author       Helena Shih
- * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+ * @stable ICU 2.0
  */
 class U_I18N_API CollationKey : public UObject {
 public:
@@ -101,7 +100,7 @@ public:
     * collation key contains no sorting information.  When comparing two empty
     * collation keys, the result is Collator::EQUAL.  Comparing empty collation key
     * with non-empty collation key is always Collator::LESS.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     CollationKey();
 
@@ -110,7 +109,7 @@ public:
     * Creates a collation key based on the collation key values.
     * @param values the collation key values
     * @param count number of collation key values, including trailing nulls.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     CollationKey(const  uint8_t*    values,
                 int32_t     count);
@@ -118,20 +117,20 @@ public:
     /**
     * Copy constructor.
     * @param other    the object to be copied.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     CollationKey(const CollationKey& other);
 
     /**
     * Sort key destructor.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     virtual ~CollationKey();
 
     /**
     * Assignment operator
     * @param other    the object to be copied.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     const   CollationKey&   operator=(const CollationKey& other);
 
@@ -139,7 +138,7 @@ public:
     * Compare if two collation keys are the same.
     * @param source the collation key to compare to.
     * @return Returns true if two collation keys are equal, false otherwise.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     UBool                   operator==(const CollationKey& source) const;
 
@@ -147,7 +146,7 @@ public:
     * Compare if two collation keys are not the same.
     * @param source the collation key to compare to.
     * @return Returns TRUE if two collation keys are different, FALSE otherwise.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     UBool                   operator!=(const CollationKey& source) const;
 
@@ -156,7 +155,7 @@ public:
     * Test to see if the key is in an invalid state. The key will be in an
     * invalid state if it couldn't allocate memory for some operation.
     * @return Returns TRUE if the key is in an invalid, FALSE otherwise.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     UBool                   isBogus(void) const;
 
@@ -167,7 +166,7 @@ public:
     * @param count the output parameter of number of collation key values,
     * including any trailing nulls.
     * @return a pointer to the collation key values.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     const    uint8_t*       getByteArray(int32_t& count) const;
 
@@ -182,6 +181,7 @@ public:
     uint8_t*                toByteArray(int32_t& count) const;
 #endif
 
+#ifndef U_HIDE_DEPRECATED_API 
     /**
     * Convenience method which does a string(bit-wise) comparison of the
     * two collation keys.
@@ -192,6 +192,7 @@ public:
     * @deprecated ICU 2.6 use the overload with error code
     */
     Collator::EComparisonResult compareTo(const CollationKey& target) const;
+#endif  /* U_HIDE_DEPRECATED_API */
 
     /**
     * Convenience method which does a string(bit-wise) comparison of the
@@ -201,7 +202,7 @@ public:
     * @return Returns UCOL_LESS if sourceKey &lt; targetKey,
     * UCOL_GREATER if sourceKey > targetKey and UCOL_EQUAL
     * otherwise.
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.6
     */
     UCollationResult compareTo(const CollationKey& target, UErrorCode &status) const;
 
@@ -223,48 +224,45 @@ public:
     * </pre>
     * @return the hash value based on the string's collation order.
     * @see UnicodeString#hashCode
-    * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+    * @stable ICU 2.0
     */
     int32_t                 hashCode(void) const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for the actual class.
-     * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+     * @stable ICU 2.2
      */
     virtual UClassID getDynamicClassID() const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.
-     * @deprecated ICU 2.8 Use Collator::getSortKey(...) instead
+     * @stable ICU 2.2
      */
     static UClassID U_EXPORT2 getStaticClassID();
 
 private:
     /**
-    * Returns an array of the collation key values as 16-bit integers.
-    * The caller owns the storage and must delete it.
-    * @param values Output param of the collation key values.
-    * @param capacity Size of the values array.
-    * @param count output parameter of the number of collation key values
-    * @return a pointer to an array of 16-bit collation key values.
-    */
-    void adopt(uint8_t *values, int32_t capacity, int32_t count);
+     * Replaces the current bytes buffer with a new one of newCapacity
+     * and copies length bytes from the old buffer to the new one.
+     * @return the new buffer, or NULL if the allocation failed
+     */
+    uint8_t *reallocate(int32_t newCapacity, int32_t length);
     /**
      * Set a new length for a new sort key in the existing fBytes.
      */
     void setLength(int32_t newLength);
 
-    /*
-    * Creates a collation key with a string.
-    */
+    uint8_t *getBytes() {
+        return (fFlagAndLength >= 0) ? fUnion.fStackBuffer : fUnion.fFields.fBytes;
+    }
+    const uint8_t *getBytes() const {
+        return (fFlagAndLength >= 0) ? fUnion.fStackBuffer : fUnion.fFields.fBytes;
+    }
+    int32_t getCapacity() const {
+        return (fFlagAndLength >= 0) ? (int32_t)sizeof(fUnion) : fUnion.fFields.fCapacity;
+    }
+    int32_t getLength() const { return fFlagAndLength & 0x7fffffff; }
 
-    /**
-    * If this CollationKey has capacity less than newSize,
-    * its internal capacity will be increased to newSize.
-    * @param newSize minimum size this CollationKey has to have
-    * @return this CollationKey
-    */
-    CollationKey&           ensureCapacity(int32_t newSize);
     /**
     * Set the CollationKey to a "bogus" or invalid state
     * @return this CollationKey
@@ -275,33 +273,42 @@ private:
     * @return this CollationKey
     */
     CollationKey&           reset(void);
-    
+
     /**
     * Allow private access to RuleBasedCollator
     */
     friend  class           RuleBasedCollator;
-    /**
-    * Bogus status
-    */
-    UBool                   fBogus;
-    /**
-    * Size of fBytes used to store the sortkey. i.e. up till the 
-    * null-termination.
-    */
-    int32_t                 fCount;
-    /**
-    * Full size of the fBytes
-    */
-    int32_t                 fCapacity;
-    /**
-    * Unique hash value of this CollationKey
-    */
-    int32_t                 fHashCode;
-    /**
-    * Array to store the sortkey
-    */
-    uint8_t*                fBytes;
+    friend  class           CollationKeyByteSink;
 
+    // Class fields. sizeof(CollationKey) is intended to be 48 bytes
+    // on a machine with 64-bit pointers.
+    // We use a union to maximize the size of the internal buffer,
+    // similar to UnicodeString but not as tight and complex.
+
+    // (implicit) *vtable;
+    /**
+     * Sort key length and flag.
+     * Bit 31 is set if the buffer is heap-allocated.
+     * Bits 30..0 contain the sort key length.
+     */
+    int32_t fFlagAndLength;
+    /**
+    * Unique hash value of this CollationKey.
+    * Special value 2 if the key is bogus.
+    */
+    mutable int32_t fHashCode;
+    /**
+     * fUnion provides 32 bytes for the internal buffer or for
+     * pointer+capacity.
+     */
+    union StackBufferOrFields {
+        /** fStackBuffer is used iff fFlagAndLength>=0, else fFields is used */
+        uint8_t fStackBuffer[32];
+        struct {
+            uint8_t *fBytes;
+            int32_t fCapacity;
+        } fFields;
+    } fUnion;
 };
 
 inline UBool
@@ -313,19 +320,18 @@ CollationKey::operator!=(const CollationKey& other) const
 inline UBool
 CollationKey::isBogus() const
 {
-    return fBogus;
+    return fHashCode == 2;  // kBogusHashCode
 }
 
 inline const uint8_t*
 CollationKey::getByteArray(int32_t &count) const
 {
-    count = fCount;
-    return fBytes;
+    count = getLength();
+    return getBytes();
 }
 
 U_NAMESPACE_END
 
-#endif  /* U_HIDE_DEPRECATED_API */
 #endif /* #if !UCONFIG_NO_COLLATION */
 
 #endif

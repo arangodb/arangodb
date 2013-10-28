@@ -183,6 +183,7 @@ window.arangoCollections = Backbone.Collection.extend({
             returnVal = true;
           },
           error: function(data) {
+            returnVal = data;
           }
         });
         return returnVal;

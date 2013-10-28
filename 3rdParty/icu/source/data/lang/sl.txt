@@ -1,20 +1,31 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sl.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sl.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sl.xml
+ * ICU <specials> source: <path>/common/main/sl.xml
  */
 sl{
     Keys{
         calendar{"koledar"}
+        colAlternate{"Razvrščanje s prezrtimi znaki"}
+        colBackwards{"Razvrščanje z obratnimi naglasi"}
+        colCaseFirst{"Razvrščanje velike črke/male črke"}
+        colCaseLevel{"Razvrščanje, občutljivo na velike/male črke"}
+        colHiraganaQuaternary{"Razvrščanje kana"}
+        colNormalization{"Normalizirano razvrščanje"}
+        colNumeric{"Številsko razvrščanje"}
+        colStrength{"Moč razvrščanja"}
         collation{"razvrščanje"}
         currency{"valuta"}
         numbers{"Številke"}
+        timezone{"Časovni pas"}
+        va{"Različica območnih nastavitev"}
+        variableTop{"Razvrščanje kot simboli"}
         x{"Private-Use"}
     }
     Languages{
@@ -40,6 +51,7 @@ sl{
         anp{"angikaščina"}
         apa{"apaški jezik"}
         ar{"arabščina"}
+        ar_001{"sodobna standardna arabščina"}
         arc{"aramejščina"}
         arn{"aravkanščina"}
         arp{"arapaščina"}
@@ -100,6 +112,7 @@ sl{
         chp{"čipevščina"}
         chr{"čerokeščina"}
         chy{"čejenščina"}
+        ckb{"soranska kurdščina"}
         cmc{"camski jezik"}
         co{"korziščina"}
         cop{"koptščina"}
@@ -297,6 +310,7 @@ sl{
         mdf{"mokšavščina"}
         mdr{"mandarščina"}
         men{"mende"}
+        mfe{"morisjenščina"}
         mg{"malagaščina"}
         mga{"srednja irščina"}
         mh{"marshallovščina"}
@@ -501,6 +515,7 @@ sl{
         zap{"zapoteščina"}
         zbl{"znakovni jezik Bliss"}
         zen{"zenaščina"}
+        zgh{"standardni maroški tamazig"}
         zh{"kitajščina"}
         zh_Hans{"poenostavljena kitajščina"}
         zh_Hant{"tradicionalna kitajščina"}
@@ -512,6 +527,7 @@ sl{
     }
     LanguagesShort{
         az{"azerščina"}
+        en_US{"angleščina (ZDA)"}
     }
     Scripts{
         Arab{"arabski"}
@@ -655,15 +671,54 @@ sl{
             persian{"Perzijski koledar"}
             roc{"kitajski državni koledar"}
         }
+        colAlternate{
+            non-ignorable{"Razvrščanje simbolov"}
+            shifted{"Razvrščanje s prezrtjem simbolov"}
+        }
+        colBackwards{
+            no{"Navadno razvrščanje naglasov"}
+            yes{"Obratno razvrščanje naglasov"}
+        }
+        colCaseFirst{
+            lower{"Razvrščanje malih črk najprej"}
+            no{"Razvrščanje v običajnem zaporedju velikih/malih črk"}
+            upper{"Razvrščanje velikih črk najprej"}
+        }
+        colCaseLevel{
+            no{"Razvrščanje ne glede na velike/male črke"}
+            yes{"Razvrščanje ob upoštevanju velikih/malih črk"}
+        }
+        colHiraganaQuaternary{
+            no{"Razvrščanje kana ločeno"}
+            yes{"Razvrščanje kana različno"}
+        }
+        colNormalization{
+            no{"Razvrščanje brez normaliziranja"}
+            yes{"Normalizirano razvrščanje Unicode"}
+        }
+        colNumeric{
+            no{"Ločeno razvrščanje številk"}
+            yes{"Številsko razvrščanje števk"}
+        }
+        colStrength{
+            identical{"Razvrščanje vsega"}
+            primary{"Razvrščanje samo osnovnih črk"}
+            quaternary{"Razvrščanje po naglasih/velikih črkah/malih črkah/širini/kana"}
+            secondary{"Razvrščanje naglasov"}
+            tertiary{"Razvrščanje po naglasih/velikih črkah/malih črkah/širini"}
+        }
         collation{
             big5han{"razvrščanje po sistemu tradicionalne kitajščine - Big5"}
             dictionary{"Vrstni red razvrščanja v slovarju"}
             ducet{"Privzeto razvrščanje Unicode"}
             gb2312han{"razvrščanje po sistemu poenostavljene kitajščine - GB2312"}
             phonebook{"razvrščanje po abecedi"}
+            phonetic{"Fonetično razvrščanje"}
             pinyin{"razvrščanje po sistemu pinjin"}
             reformed{"Reformirano razvrščanje"}
             search{"Splošno iskanje"}
+            searchjl{"Iskanje po začetnem soglasniku hangul"}
+            standard{"Standardno razvrščanje"}
             stroke{"razvrščanje po zaporedju pisanja pismenk"}
             traditional{"razvrščanje po tradicionalnem sistemu"}
             unihan{"Razvrščanje koren-poteza"}
@@ -676,6 +731,7 @@ sl{
             beng{"Bengalske števke"}
             deva{"Devangarske števke"}
             ethi{"Etiopijske številke"}
+            finance{"Finančne številke"}
             fullwide{"Števke polne širine"}
             geor{"Gruzijske številke"}
             grek{"Grške številke"}
@@ -697,13 +753,17 @@ sl{
             mlym{"Malajalamske števke"}
             mong{"Mongolske števke"}
             mymr{"Mjanmarske števke"}
+            native{"Domače števke"}
             orya{"Orijske števke"}
             roman{"Rimske številke"}
             romanlow{"Rimske male številke"}
             taml{"Tamilske številke"}
+            tamldec{"Tamilske števke"}
             telu{"Teluške števke"}
             thai{"Tajske števke"}
             tibt{"Tibetanske števke"}
+            traditional{"Tradicionalne številke"}
+            vaii{"Številke vai"}
         }
     }
     Variants{
@@ -736,13 +796,15 @@ sl{
         VALENCIA{"valencijski pravopis"}
         WADEGILE{"romanizacija Wade-Giles"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
     codePatterns{
         language{"Jezik: {0}"}
+        script{"{0}"}
         territory{"Regija: {0}"}
     }
     localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
         pattern{"{0} ({1})"}
-        separator{", "}
+        separator{"{0}, {1}"}
     }
 }

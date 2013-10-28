@@ -92,7 +92,7 @@ TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
   }
 
   wordlist->_words    = words;
-  wordlist->_numWords = numWords;
+  wordlist->_numWords = (uint32_t) numWords;
 
   return wordlist;
 }

@@ -2,7 +2,7 @@
 
 # Placeholders starting with @ will be replaced by make
 
-ARANGOSH="@BINDIR@/arangosh"
+ARANGOSH="${ARANGODB_ROOT}@BINDIR@/arangosh"
 RCFILE=""
 
 if [ "$1" == "--relative" ] ;  then

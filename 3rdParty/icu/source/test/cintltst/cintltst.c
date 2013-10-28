@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -22,7 +22,6 @@
 #include "unicode/putil.h"
 #include "cstring.h"
 #include "cintltst.h"
-#include "umutex.h"
 #include "uassert.h"
 #include "cmemory.h"
 #include "unicode/uchar.h"
@@ -41,9 +40,17 @@
 #   include <console.h>
 #endif
 
+#define CTST_MAX_ALLOC 8192
+/* Array used as a queue */
+static void * ctst_allocated_stuff[CTST_MAX_ALLOC] = {0};
+static int ctst_allocated = 0;
+static UBool ctst_free = FALSE;
+static int ctst_allocated_total = 0;
+
 #define CTST_LEAK_CHECK 1
+
 #ifdef CTST_LEAK_CHECK
-U_CFUNC void ctst_freeAll(void);
+static void ctst_freeAll(void);
 #endif
 
 static char* _testDataPath=NULL;
@@ -210,6 +217,10 @@ int main(int argc, const char* const argv[])
         ctst_freeAll();
         /* To check for leaks */
         u_cleanup(); /* nuke the hashtable.. so that any still-open cnvs are leaked */
+        
+        if(getTestOption(VERBOSITY_OPTION) && ctst_allocated_total>0) {
+          fprintf(stderr,"ctst_freeAll():  cleaned up after %d allocations (queue of %d)\n", ctst_allocated_total, CTST_MAX_ALLOC);
+        }
 #ifdef URES_DEBUG
         if(ures_dumpCacheContents()) {
           fprintf(stderr, "Error: After final u_cleanup, RB cache was not empty.\n");
@@ -222,10 +233,6 @@ int main(int argc, const char* const argv[])
 
     }  /* End of loop that repeats the entire test, if requested.  (Normally doesn't loop)  */
 
-    if (ALLOCATION_COUNT > 0) {
-        fprintf(stderr, "There were %d blocks leaked!\n", ALLOCATION_COUNT);
-        nerrors++;
-    }
     endTime = uprv_getRawUTCtime();
     diffTime = (int32_t)(endTime - startTime);
     printf("Elapsed Time: %02d:%02d:%02d.%03d\n",
@@ -612,13 +619,9 @@ U_CFUNC void ctest_resetTimeZone(void) {
 #endif
 }
 
-#define CTST_MAX_ALLOC 8192
-/* Array used as a queue */
-static void * ctst_allocated_stuff[CTST_MAX_ALLOC] = {0};
-static int ctst_allocated = 0;
-static UBool ctst_free = FALSE;
 
 void *ctst_malloc(size_t size) {
+  ctst_allocated_total++;
     if(ctst_allocated >= CTST_MAX_ALLOC - 1) {
         ctst_allocated = 0;
         ctst_free = TRUE;
@@ -630,14 +633,14 @@ void *ctst_malloc(size_t size) {
 }
 
 #ifdef CTST_LEAK_CHECK
-void ctst_freeAll() {
+static void ctst_freeAll() {
     int i;
-    if(ctst_free == 0) {
+    if(ctst_free == FALSE) { /* only free up to the allocated mark */
         for(i=0; i<ctst_allocated; i++) {
             free(ctst_allocated_stuff[i]);
             ctst_allocated_stuff[i] = NULL;
         }
-    } else {
+    } else { /* free all */
         for(i=0; i<CTST_MAX_ALLOC; i++) {
             free(ctst_allocated_stuff[i]);
             ctst_allocated_stuff[i] = NULL;
@@ -649,13 +652,22 @@ void ctst_freeAll() {
 
 #define VERBOSE_ASSERTIONS
 
-U_CFUNC UBool assertSuccess(const char* msg, UErrorCode* ec) {
+U_CFUNC UBool assertSuccessCheck(const char* msg, UErrorCode* ec, UBool possibleDataError) {
     U_ASSERT(ec!=NULL);
     if (U_FAILURE(*ec)) {
-        log_err_status(*ec, "FAIL: %s (%s)\n", msg, u_errorName(*ec));
+        if (possibleDataError) {
+            log_data_err("FAIL: %s (%s)\n", msg, u_errorName(*ec));
+        } else {
+            log_err_status(*ec, "FAIL: %s (%s)\n", msg, u_errorName(*ec));
+        }
         return FALSE;
     }
     return TRUE;
+}
+
+U_CFUNC UBool assertSuccess(const char* msg, UErrorCode* ec) {
+    U_ASSERT(ec!=NULL);
+    return assertSuccessCheck(msg, ec, FALSE);
 }
 
 /* if 'condition' is a UBool, the compiler complains bitterly about
@@ -685,26 +697,6 @@ U_CFUNC UBool assertEquals(const char* message, const char* expected,
     }
 #endif
     return TRUE;
-}
-/*--------------------------------------------------------------------
- * Time bomb - allows temporary behavior that expires at a given
- *             release
- *--------------------------------------------------------------------
- */
-
-U_CFUNC UBool isICUVersionBefore(int major, int minor, int milli) {
-    UVersionInfo iv;
-    UVersionInfo ov;
-    ov[0] = (uint8_t)major;
-    ov[1] = (uint8_t)minor;
-    ov[2] = (uint8_t)milli;
-    ov[3] = 0;
-    u_getVersion(iv);
-    return uprv_memcmp(iv, ov, U_MAX_VERSION_LENGTH) < 0;
-}
-
-U_CFUNC UBool isICUVersionAtLeast(int major, int minor, int milli) {
-    return !isICUVersionBefore(major, minor, milli);
 }
 
 #endif

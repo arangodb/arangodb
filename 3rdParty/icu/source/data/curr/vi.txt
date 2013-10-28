@@ -1,175 +1,343 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/vi.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/vi.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/vi.xml
+ * ICU <specials> source: <path>/common/main/vi.xml
  */
 vi{
     Currencies{
+        ADP{
+            "ADP",
+            "Đồng Peseta của Andora",
+        }
         AED{
             "AED",
-            "Điram UAE",
+            "Dirham UAE",
+        }
+        AFA{
+            "AFA",
+            "Đồng Afghani của Afghanistan (1927–2002)",
         }
         AFN{
             "AFN",
-            "Đồng afghani của Afghanistan",
+            "Afghani Afghanistan",
         }
         ALL{
             "ALL",
-            "Đồng lek của Albani",
+            "Lek Albania",
         }
         AMD{
             "AMD",
-            "Đồng dram của Armenia",
+            "Dram Armenia",
         }
         ANG{
             "ANG",
-            "Đồng guilder của Antille thuộc Hà Lan",
+            "Guilder Tây Ấn Hà Lan",
         }
         AOA{
             "AOA",
-            "Đồng kwanza của Angola",
+            "Kwanza Angola",
+        }
+        AOK{
+            "AOK",
+            "Đồng Kwanza của Angola (1977–1991)",
+        }
+        AON{
+            "AON",
+            "Đồng Kwanza Mới của Angola (1990–2000)",
+        }
+        AOR{
+            "AOR",
+            "Đồng Kwanza Điều chỉnh lại của Angola (1995–1999)",
+        }
+        ARA{
+            "ARA",
+            "Đồng Austral của Argentina",
+        }
+        ARL{
+            "ARL",
+            "Đồng Peso Ley của Argentina (1970–1983)",
+        }
+        ARM{
+            "ARM",
+            "Đồng Peso Argentina (1881–1970)",
+        }
+        ARP{
+            "ARP",
+            "Đồng Peso Argentina (1983–1985)",
         }
         ARS{
             "ARS",
-            "Đồng peso của Argentina",
+            "Peso Argentina",
+        }
+        ATS{
+            "ATS",
+            "Đồng Schiling Áo",
         }
         AUD{
             "AU$",
-            "Đồng đô la của Úc",
+            "Đô la Australia",
         }
         AWG{
             "AWG",
-            "Đồng florin của Aruba",
+            "Florin Aruba",
+        }
+        AZM{
+            "AZM",
+            "Đồng Manat của Azerbaijan (1993–2006)",
         }
         AZN{
             "AZN",
-            "Đồng manat của Azerbaijan",
+            "Manat Azerbaijan",
+        }
+        BAD{
+            "BAD",
+            "Đồng Dinar của Bosnia-Herzegovina (1992–1994)",
         }
         BAM{
             "BAM",
-            "Đồng mác có thể chuyển đổi của Bosnia-Herzegovina",
+            "Mark Bosnia-Herzegovina có thể chuyển đổi",
+        }
+        BAN{
+            "BAN",
+            "Đồng Dinar Mới của Bosnia-Herzegovina (1994–1997)",
         }
         BBD{
             "BBD",
-            "Đồng đô la của Barbadia",
+            "Đô la Barbados",
         }
         BDT{
             "BDT",
-            "Đồng taka của Bangladesh",
+            "Taka Bangladesh",
+        }
+        BEC{
+            "BEC",
+            "Đồng Franc Bỉ (có thể chuyển đổi)",
+        }
+        BEF{
+            "BEF",
+            "Đồng Franc Bỉ",
+        }
+        BEL{
+            "BEL",
+            "Đồng Franc Bỉ (tài chính)",
+        }
+        BGL{
+            "BGL",
+            "Đồng Lev Xu của Bun-ga-ri",
+        }
+        BGM{
+            "BGM",
+            "Đồng Lev Xã hội chủ nghĩa của Bun-ga-ri",
         }
         BGN{
             "BGN",
-            "Lép Bungari",
+            "Lev Bulgaria",
+        }
+        BGO{
+            "BGO",
+            "Đồng Lev của Bun-ga-ri (1879–1952)",
         }
         BHD{
             "BHD",
-            "Đồng dinar của Bahrain",
+            "Dinar Bahrain",
         }
         BIF{
             "BIF",
-            "Đồng franc của Burundi",
+            "Franc Burundi",
         }
         BMD{
             "BMD",
-            "Đồng đô la Bermuda",
+            "Đô la Bermuda",
         }
         BND{
             "BND",
-            "Đồng đô la của Brunei",
+            "Đô la Brunei",
         }
         BOB{
             "BOB",
-            "Đồng boliviano của Bolivia",
+            "Boliviano Bolivia",
+        }
+        BOL{
+            "BOL",
+            "Đồng Boliviano của Bolivia (1863–1963)",
+        }
+        BOP{
+            "BOP",
+            "Đồng Peso Bolivia",
+        }
+        BOV{
+            "BOV",
+            "Đồng Mvdol Bolivia",
+        }
+        BRB{
+            "BRB",
+            "Đồng Cruzerio Mới của Braxin (1967–1986)",
+        }
+        BRC{
+            "BRC",
+            "Đồng Cruzado của Braxin (1986–1989)",
+        }
+        BRE{
+            "BRE",
+            "Đồng Cruzerio của Braxin (1990–1993)",
         }
         BRL{
             "R$",
             "Real Braxin",
         }
+        BRN{
+            "BRN",
+            "Đồng Cruzado Mới của Braxin (1989–1990)",
+        }
+        BRR{
+            "BRR",
+            "Đồng Cruzeiro của Braxin (1993–1994)",
+        }
+        BRZ{
+            "BRZ",
+            "Đồng Cruzeiro của Braxin (1942–1967)",
+        }
         BSD{
             "BSD",
-            "Đồng đô la của Bahamia",
+            "Đô la Bahamas",
         }
         BTN{
             "BTN",
-            "Đồng ngultrum của Bhutan",
+            "Ngultrum Bhutan",
+        }
+        BUK{
+            "BUK",
+            "Đồng Kyat Miến Điện",
         }
         BWP{
             "BWP",
-            "Đồng pula của Botswana",
+            "Pula Botswana",
+        }
+        BYB{
+            "BYB",
+            "Đồng Rúp Mới của Belarus (1994–1999)",
         }
         BYR{
             "BYR",
-            "Đồng rúp của Belarus",
+            "Rúp Belarus",
         }
         BZD{
             "BZD",
-            "Đồng đô la của Belize",
+            "Đô la Belize",
         }
         CAD{
             "CA$",
-            "Đồng đô la của Canada",
+            "Đô la Canada",
         }
         CDF{
             "CDF",
-            "Đồng franc của Congo",
+            "Franc Congo",
+        }
+        CHE{
+            "CHE",
+            "Đồng Euro WIR",
         }
         CHF{
             "CHF",
             "Franc Thụy sĩ",
         }
+        CHW{
+            "CHW",
+            "Đồng France WIR",
+        }
+        CLE{
+            "CLE",
+            "Đồng Escudo của Chile",
+        }
+        CLF{
+            "CLF",
+            "Đơn vị Kế toán của Chile (UF)",
+        }
         CLP{
             "CLP",
-            "Đồng Peso của Chile",
+            "Peso Chile",
         }
         CNY{
             "CN¥",
-            "Yuan Trung Quốc",
+            "Nhân dân tệ",
         }
         COP{
             "COP",
-            "Đồng Peso của Colombia",
+            "Peso Colombia",
+        }
+        COU{
+            "COU",
+            "Đơn vị Giá trị Thực của Colombia",
         }
         CRC{
             "CRC",
-            "Đồng colón của Costa Rica",
+            "Colón Costa Rica",
+        }
+        CSD{
+            "CSD",
+            "Đồng Dinar của Serbia (2002–2006)",
+        }
+        CSK{
+            "CSK",
+            "Đồng Koruna Xu của Czechoslovakia",
         }
         CUC{
             "CUC",
-            "Đồng peso có thể chuyển đổi của Cuba",
+            "Peso Cuba có thể chuyển đổi",
         }
         CUP{
             "CUP",
-            "Đồng peso của Cu Ba",
+            "Peso Cuba",
         }
         CVE{
             "CVE",
-            "Đồng escudo của Cape Verde",
+            "Escudo Cape Verde",
+        }
+        CYP{
+            "CYP",
+            "Đồng Bảng Síp",
         }
         CZK{
             "CZK",
-            "Đồng curon của cộng hòa Séc",
+            "Koruna Cộng hòa Séc",
+        }
+        DDM{
+            "DDM",
+            "Đồng Mark Đông Đức",
+        }
+        DEM{
+            "DEM",
+            "Đồng Mark Đức",
         }
         DJF{
             "DJF",
-            "Đồng franc của Djibouti",
+            "Franc Djibouti",
         }
         DKK{
             "DKK",
-            "Đồng curon của Đan Mạch",
+            "Krone Đan Mạch",
         }
         DOP{
             "DOP",
-            "Đồng peso của Dominica",
+            "Peso Dominica",
         }
         DZD{
             "DZD",
-            "Đồng dina của Algeri",
+            "Dinar Algeria",
+        }
+        ECS{
+            "ECS",
+            "Đồng Scure Ecuador",
+        }
+        ECV{
+            "ECV",
+            "Đơn vị Giá trị Không đổi của Ecuador",
         }
         EEK{
             "EEK",
@@ -177,27 +345,43 @@ vi{
         }
         EGP{
             "EGP",
-            "Đồng bảng của Ai Cập",
+            "Bảng Ai Cập",
         }
         ERN{
             "ERN",
-            "Đồng nakfa của Eritrea",
+            "Nakfa Eritrea",
+        }
+        ESA{
+            "ESA",
+            "Đồng Peseta Tây Ban Nha (Tài khoản)",
+        }
+        ESB{
+            "ESB",
+            "Đồng Peseta Tây Ban Nha (tài khoản có thể chuyển đổi)",
+        }
+        ESP{
+            "ESP",
+            "Đồng Peseta Tây Ban Nha",
         }
         ETB{
             "ETB",
-            "Đồng birr của Ethiopia",
+            "Birr Ethiopia",
         }
         EUR{
             "€",
             "Euro",
         }
+        FIM{
+            "FIM",
+            "Đồng Markka Phần Lan",
+        }
         FJD{
             "FJD",
-            "Đô-la Fi-ji",
+            "Đô la Fiji",
         }
         FKP{
             "FKP",
-            "Đồng bảng của quần đảo Falkland",
+            "Bảng Quần đảo Falkland",
         }
         FRF{
             "FRF",
@@ -207,13 +391,17 @@ vi{
             "£",
             "Bảng Anh",
         }
+        GEK{
+            "GEK",
+            "Đồng Kupon Larit của Georgia",
+        }
         GEL{
             "GEL",
-            "Lari Georgia",
+            "Lari Gruzia",
         }
         GHC{
             "GHC",
-            "Cedi Ghana (1979-2007)",
+            "Cedi Ghana (1979–2007)",
         }
         GHS{
             "GHS",
@@ -221,11 +409,11 @@ vi{
         }
         GIP{
             "GIP",
-            "Pao Gibraltar",
+            "Bảng Gibraltar",
         }
         GMD{
             "GMD",
-            "Đồng dalasi của Gambia",
+            "Dalasi Gambia",
         }
         GNF{
             "GNF",
@@ -235,6 +423,10 @@ vi{
             "GNS",
             "Syli Guinea",
         }
+        GQE{
+            "GQE",
+            "Đồng Ekwele của Guinea Xích Đạo",
+        }
         GRD{
             "GRD",
             "Drachma Hy Lạp",
@@ -243,25 +435,33 @@ vi{
             "GTQ",
             "Quetzal Guatemala",
         }
+        GWE{
+            "GWE",
+            "Đồng Guinea Escudo Bồ Đào Nha",
+        }
         GWP{
             "GWP",
             "Peso Guinea-Bissau",
         }
         GYD{
             "GYD",
-            "Đô-la Guyana",
+            "Đô la Guyana",
         }
         HKD{
             "HK$",
-            "Đô-la Hồng Kông",
+            "Đô la Hồng Kông",
         }
         HNL{
             "HNL",
-            "Honduras Lempira",
+            "Lempira Honduras",
+        }
+        HRD{
+            "HRD",
+            "Đồng Dinar Croatia",
         }
         HRK{
             "HRK",
-            "Đồng kuna của Croatia",
+            "Kuna Croatia",
         }
         HTG{
             "HTG",
@@ -269,11 +469,11 @@ vi{
         }
         HUF{
             "HUF",
-            "Phôrin Hungari",
+            "Forint Hungaria",
         }
         IDR{
             "IDR",
-            "Rupia Inđônêxia",
+            "Rupiah Indonesia",
         }
         IEP{
             "IEP",
@@ -285,11 +485,11 @@ vi{
         }
         ILS{
             "₪",
-            "Sêken Ixraen",
+            "Sheqel Israel mới",
         }
         INR{
             "₹",
-            "Rupi Ấn Độ",
+            "Rupee Ấn Độ",
         }
         IQD{
             "IQD",
@@ -297,11 +497,11 @@ vi{
         }
         IRR{
             "IRR",
-            "Rial I-ran",
+            "Rial Iran",
         }
         ISK{
             "ISK",
-            "Đồng curon của Iceland",
+            "Króna Iceland",
         }
         ITL{
             "ITL",
@@ -321,23 +521,31 @@ vi{
         }
         KES{
             "KES",
-            "Si-ling Kê-ny-a",
+            "Shilling Kenya",
         }
         KGS{
             "KGS",
-            "Đồng som của Kyrgystan",
+            "Som Kyrgyzstan",
         }
         KHR{
             "KHR",
-            "Riên Campuchia",
+            "Riel Campuchia",
         }
         KMF{
             "KMF",
-            "Đồng franc của Comoros",
+            "Franc Comoros",
         }
         KPW{
             "KPW",
-            "Đồng Won Triều Tiên",
+            "Won Triều Tiên",
+        }
+        KRH{
+            "KRH",
+            "Đồng Hwan Hàn Quốc (1953–1962)",
+        }
+        KRO{
+            "KRO",
+            "Đồng Won Hàn Quốc (1945–1953)",
         }
         KRW{
             "₩",
@@ -345,7 +553,7 @@ vi{
         }
         KWD{
             "KWD",
-            "Đồng dina của Kuwait",
+            "Dinar Kuwait",
         }
         KYD{
             "KYD",
@@ -353,19 +561,19 @@ vi{
         }
         KZT{
             "KZT",
-            "Kazakhstan Tenge",
+            "Tenge Kazakhstan",
         }
         LAK{
             "LAK",
-            "Đồng kíp của Lào",
+            "Kip Lào",
         }
         LBP{
             "LBP",
-            "Đồng bảng của Li Băng",
+            "Bảng Li-băng",
         }
         LKR{
             "LKR",
-            "Đồng rupi của Sri Lanka",
+            "Rupee Sri Lanka",
         }
         LRD{
             "LRD",
@@ -377,151 +585,255 @@ vi{
         }
         LTL{
             "LTL",
-            "Litat Lituani",
+            "Litas Lít-va",
+        }
+        LTT{
+            "LTT",
+            "Đồng Talonas Litva",
+        }
+        LUC{
+            "LUC",
+            "Đồng Franc Luxembourg có thể chuyển đổi",
+        }
+        LUF{
+            "LUF",
+            "Đồng Franc Luxembourg",
+        }
+        LUL{
+            "LUL",
+            "Đồng Franc Luxembourg tài chính",
         }
         LVL{
             "LVL",
-            "Đồng lats của Latvia",
+            "Lats Lít-va",
+        }
+        LVR{
+            "LVR",
+            "Đồng Rúp Latvia",
         }
         LYD{
             "LYD",
-            "Đồng dinar của Libi",
+            "Dinar Libi",
         }
         MAD{
             "MAD",
-            "Điaham Marốc",
+            "Dirham Ma-rốc",
+        }
+        MAF{
+            "MAF",
+            "Đồng Franc Ma-rốc",
+        }
+        MCF{
+            "MCF",
+            "Đồng Franc Monegasque",
+        }
+        MDC{
+            "MDC",
+            "Đồng Cupon Moldova",
         }
         MDL{
             "MDL",
-            "Đồng leu của Moldova",
+            "Leu Moldova",
         }
         MGA{
             "MGA",
-            "Đồng Ariary của Malagasy",
+            "Ariary Malagasy",
+        }
+        MGF{
+            "MGF",
+            "Đồng Franc Magalasy",
         }
         MKD{
             "MKD",
-            "Đồng dena của Macedonia",
+            "Denar Macedonia",
+        }
+        MKN{
+            "MKN",
+            "Đồng Denar Macedonia (1992–1993)",
+        }
+        MLF{
+            "MLF",
+            "Đồng Franc Mali",
         }
         MMK{
             "MMK",
-            "Đồng kyat của Myanma",
+            "Kyat Myanma",
         }
         MNT{
             "MNT",
-            "Đồng tugrik của Mông Cổ",
+            "Tugrik Mông Cổ",
         }
         MOP{
             "MOP",
-            "Đồng pataca của Ma Cao",
+            "Pataca Ma Cao",
         }
         MRO{
             "MRO",
-            "Đồng ouguiya của Mauritania",
+            "Ouguiya Mauritania",
         }
         MTL{
             "MTL",
             "Lia xứ Man-tơ",
         }
+        MTP{
+            "MTP",
+            "Đồng Bảng Malta",
+        }
         MUR{
             "MUR",
-            "Đồng rupi của Mauritius",
+            "Rupee Mauritius",
         }
         MVR{
             "MVR",
-            "Đồng rufiyaa của Maldives",
+            "Rufiyaa Maldives",
         }
         MWK{
             "MWK",
-            "Đồng kwacha của Malawi",
+            "Kwacha Malawi",
         }
         MXN{
             "MX$",
-            "Peso Mêhicô",
+            "Peso Mexico",
+        }
+        MXP{
+            "MXP",
+            "Đồng Peso Bạc Mê-hi-cô (1861–1992)",
+        }
+        MXV{
+            "MXV",
+            "Đơn vị Đầu tư Mê-hi-cô",
         }
         MYR{
             "MYR",
-            "Rinhgit Malaixia",
+            "Ringgit Malaysia",
+        }
+        MZE{
+            "MZE",
+            "Đồng Escudo Mozambique",
+        }
+        MZM{
+            "MZM",
+            "Đồng Metical Mozambique (1980–2006)",
+        }
+        MZN{
+            "MZN",
+            "Metical Mozambique",
         }
         NAD{
             "NAD",
-            "Đồng đô la của Namibia",
+            "Đô la Namibia",
         }
         NGN{
             "NGN",
-            "Đồng naira của Nigeria",
+            "Naira Nigeria",
+        }
+        NIC{
+            "NIC",
+            "Đồng Córdoba Nicaragua (1988–1991)",
         }
         NIO{
             "NIO",
-            "Đồng córdoba của Nicaragua",
+            "Córdoba Nicaragua",
+        }
+        NLG{
+            "NLG",
+            "Đồng Guilder Hà Lan",
         }
         NOK{
             "NOK",
-            "Curon Na Uy",
+            "Krone Na Uy",
         }
         NPR{
             "NPR",
-            "Đồng rupi của Nepal",
+            "Rupee Nepal",
         }
         NZD{
             "NZ$",
-            "Đô-la New Zealand",
+            "Đô la New Zealand",
         }
         OMR{
             "OMR",
-            "Đồng rial của Oman",
+            "Rial Oman",
         }
         PAB{
             "PAB",
-            "Đồng balboa của Panama",
+            "Balboa Panama",
+        }
+        PEI{
+            "PEI",
+            "Đồng Inti Peru",
         }
         PEN{
             "PEN",
-            "Nuevo Sol Pêru",
+            "Nuevo Sol Peru",
+        }
+        PES{
+            "PES",
+            "Đồng Sol Peru (1863–1965)",
         }
         PGK{
             "PGK",
-            "Đồng kina của Papua New Guinean",
+            "Kina Papua New Guinean",
         }
         PHP{
             "PHP",
-            "Peso Philíppin",
+            "Peso Philipin",
         }
         PKR{
             "PKR",
-            "Rupi Pakistan",
+            "Rupee Pakistan",
         }
         PLN{
             "PLN",
             "Zloty Ba Lan",
         }
+        PLZ{
+            "PLZ",
+            "Đồng Zloty Ba Lan (1950–1995)",
+        }
+        PTE{
+            "PTE",
+            "Đồng Escudo Bồ Đào Nha",
+        }
         PYG{
             "PYG",
-            "Đồng guarani của Paraguay",
+            "Guarani Paraguay",
         }
         QAR{
             "QAR",
-            "Đồng rial của Qatari",
+            "Rial Qatar",
+        }
+        RHD{
+            "RHD",
+            "Đồng Đô la Rhode",
+        }
+        ROL{
+            "ROL",
+            "Đồng Leu Rumani (1952–2006)",
         }
         RON{
             "RON",
-            "Lây Rumani",
+            "Leu Romania",
         }
         RSD{
             "RSD",
-            "Đina Xéc-bi",
+            "Dinar Serbia",
         }
         RUB{
             "RUB",
             "Rúp Nga",
         }
+        RUR{
+            "RUR",
+            "Đồng Rúp Nga (1991–1998)",
+        }
         RWF{
             "RWF",
-            "Đồng franc của Rwanda",
+            "Franc Rwanda",
         }
         SAR{
             "SAR",
-            "Rian Ả rập Xêút",
+            "Riyal Ả Rập Xê-út",
         }
         SBD{
             "SBD",
@@ -529,23 +841,31 @@ vi{
         }
         SCR{
             "SCR",
-            "Đồng rupi của Seychelles",
+            "Rupee Seychelles",
+        }
+        SDD{
+            "SDD",
+            "Đồng Dinar Sudan (1992–2007)",
         }
         SDG{
             "SDG",
-            "Đồng bảng của Sudan",
+            "Bảng Sudan",
+        }
+        SDP{
+            "SDP",
+            "Đồng Bảng Sudan (1957–1998)",
         }
         SEK{
             "SEK",
-            "Cua-ron Thuỵ Điển",
+            "Krona Thụy Điển",
         }
         SGD{
             "SGD",
-            "Đô-la Singapore",
+            "Đô la Singapore",
         }
         SHP{
             "SHP",
-            "Đồng bảng của Saint Helena",
+            "Bảng Saint Helena",
         }
         SIT{
             "SIT",
@@ -557,147 +877,779 @@ vi{
         }
         SLL{
             "SLL",
-            "Đồng leone của Sierra Leone",
+            "Leone Sierra Leone",
         }
         SOS{
             "SOS",
-            "Đồng shilling của Somali",
+            "Schilling Somali",
         }
         SRD{
             "SRD",
-            "Đồng đô la của Suriname",
+            "Đô la Suriname",
+        }
+        SRG{
+            "SRG",
+            "Đồng Guilder Surinam",
+        }
+        SSP{
+            "SSP",
+            "Bảng Nam Sudan",
         }
         STD{
             "STD",
-            "Đồng dobra của São Tomé và Príncipe",
+            "Dobra São Tomé và Príncipe",
+        }
+        SUR{
+            "SUR",
+            "Đồng Rúp Sô viết",
+        }
+        SVC{
+            "SVC",
+            "Đồng Colón Salvador",
         }
         SYP{
             "SYP",
-            "Đồng bảng của Syria",
+            "Bảng Syria",
         }
         SZL{
             "SZL",
-            "Đồng Lilangeni của Swazi",
+            "Lilangeni Swaziland",
         }
         THB{
             "฿",
             "Bạt Thái Lan",
         }
+        TJR{
+            "TJR",
+            "Đồng Rúp Tajikistan",
+        }
         TJS{
             "TJS",
-            "Đồng somoni của Tajikistan",
+            "Somoni Tajikistan",
+        }
+        TMM{
+            "TMM",
+            "Đồng Manat Turkmenistan (1993–2009)",
         }
         TMT{
             "TMT",
-            "Đồng manat của Turkmenistan",
+            "Manat Turkmenistan",
         }
         TND{
             "TND",
-            "Đồng dinar của Tunisia",
+            "Dinar Tunisia",
         }
         TOP{
             "TOP",
-            "Đồng paʻanga của Tonga",
+            "Paʻanga Tonga",
+        }
+        TPE{
+            "TPE",
+            "Đồng Escudo Timor",
         }
         TRL{
             "TRL",
-            "Lia Thổ Nhĩ Kỳ",
+            "Lia Thổ Nhĩ Kỳ (1922–2005)",
         }
         TRY{
             "TRY",
-            "Lia Thổ Nhĩ Kỳ Mới",
+            "Lia Thổ Nhĩ Kỳ",
         }
         TTD{
             "TTD",
-            "Đồng đô la của Trinidad và Tobago",
+            "Đô la Trinidad và Tobago",
         }
         TWD{
             "NT$",
-            "Đô-la Đài Loan",
+            "Đô la Đài Loan mới",
         }
         TZS{
             "TZS",
-            "Đồng shilling của Tanzania",
+            "Shilling Tanzania",
         }
         UAH{
             "UAH",
-            "Rúp U-crai-na",
+            "Hryvnia Ucraina",
+        }
+        UAK{
+            "UAK",
+            "Đồng Karbovanets Ucraina",
+        }
+        UGS{
+            "UGS",
+            "Đồng Shilling Uganda (1966–1987)",
         }
         UGX{
             "UGX",
-            "Đồng shilling của Uganda",
+            "Shilling Uganda",
         }
         USD{
             "US$",
-            "Đô-la Mỹ",
+            "Đô la Mỹ",
+        }
+        USN{
+            "USN",
+            "Đô la Mỹ (Ngày tiếp theo)",
+        }
+        USS{
+            "USS",
+            "Đô la Mỹ (Cùng ngày)",
+        }
+        UYI{
+            "UYI",
+            "Đồng Peso Uruguay (Đơn vị Theo chỉ số)",
+        }
+        UYP{
+            "UYP",
+            "Đồng Peso Uruguay (1975–1993)",
         }
         UYU{
             "UYU",
-            "Đồng peso của Uruguay",
+            "Peso Uruguay",
         }
         UZS{
             "UZS",
-            "Đồng som của Uzbekistan",
+            "Som Uzbekistan",
         }
         VEB{
             "VEB",
-            "Bôliva Vênêduêla",
+            "Đồng bolívar của Venezuela (1871–2008)",
         }
         VEF{
             "VEF",
-            "Đồng bolívar của Venezuela",
+            "Bolívar Venezuela",
         }
         VND{
             "₫",
-            "Đồng",
+            "Đồng Việt Nam",
+        }
+        VNN{
+            "VNN",
+            "Đồng Việt Nam (1978–1985)",
         }
         VUV{
             "VUV",
-            "Đồng vatu của Vanuatu",
+            "Vatu Vanuatu",
         }
         WST{
             "WST",
-            "Đồng tala của Samoa",
+            "Tala Samoa",
         }
         XAF{
             "FCFA",
-            "Đồng CFA Franc BEAC",
+            "CFA Franc BEAC",
+        }
+        XAG{
+            "XAG",
+            "Bạc",
         }
         XAU{
             "XAU",
             "Vàng",
         }
+        XBA{
+            "XBA",
+            "Đơn vị Tổng hợp Châu Âu",
+        }
+        XBB{
+            "XBB",
+            "Đơn vị Tiền tệ Châu Âu",
+        }
+        XBC{
+            "XBC",
+            "Đơn vị Kế toán Châu Âu (XBC)",
+        }
+        XBD{
+            "XBD",
+            "Đơn vị Kế toán Châu Âu (XBD)",
+        }
         XCD{
             "EC$",
-            "Đồng đô là của phía đông Caribê",
+            "Đô la Đông Caribê",
+        }
+        XDR{
+            "XDR",
+            "Quyền Rút vốn Đặc biệt",
+        }
+        XEU{
+            "XEU",
+            "Đơn vị Tiền Châu Âu",
+        }
+        XFO{
+            "XFO",
+            "Đồng France Pháp Vàng",
+        }
+        XFU{
+            "XFU",
+            "Đồng UIC-Franc Pháp",
         }
         XOF{
             "CFA",
             "Franc CFA BCEAO",
         }
+        XPD{
+            "XPD",
+            "Paladi",
+        }
         XPF{
             "CFPF",
-            "Đồng Franc Thái Bình Dương",
+            "Franc CFP",
+        }
+        XPT{
+            "XPT",
+            "Bạch kim",
+        }
+        XRE{
+            "XRE",
+            "Quỹ RINET",
+        }
+        XTS{
+            "XTS",
+            "Mã Tiền tệ Kiểm tra",
         }
         XXX{
             "XXX",
-            "Tiền tệ chưa biết hoặc không hợp lệ",
+            "Tiền tệ chưa biết",
+        }
+        YDD{
+            "YDD",
+            "Đồng Dinar Yemen",
         }
         YER{
             "YER",
-            "Đồng rial của Yemen",
+            "Rial Yemen",
+        }
+        YUD{
+            "YUD",
+            "Đồng Dinar Nam Tư Xu (1966–1990)",
+        }
+        YUM{
+            "YUM",
+            "Đồng Dinar Nam Tư Mới (1994–2002)",
+        }
+        YUN{
+            "YUN",
+            "Đồng Dinar Nam Tư Có thể chuyển đổi (1990–1992)",
+        }
+        YUR{
+            "YUR",
+            "Đồng Dinar Nam Tư Tái cơ cấu (1992–1993)",
+        }
+        ZAL{
+            "ZAL",
+            "Đồng Rand Nam Phi (tài chính)",
         }
         ZAR{
             "ZAR",
-            "Ran Nam Phi",
+            "Rand Nam Phi",
         }
         ZMK{
             "ZMK",
-            "Đồng kwacha của Zambia",
+            "Đồng kwacha của Zambia (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
+            "Kwacha Zambia",
+        }
+        ZRN{
+            "ZRN",
+            "Đồng Zaire Mới (1993–1998)",
+        }
+        ZRZ{
+            "ZRZ",
+            "Đồng Zaire (1971–1993)",
+        }
+        ZWD{
+            "ZWD",
+            "Đồng Đô la Zimbabwe (1980–2008)",
+        }
+        ZWL{
+            "ZWL",
+            "Đồng Đô la Zimbabwe (2009)",
+        }
+        ZWR{
+            "ZWR",
+            "Đồng Đô la Zimbabwe (2008)",
+        }
+    }
+    CurrencyPlurals{
+        AED{
+            other{"dirham UAE"}
+        }
+        AFN{
+            other{"afghani Afghanistan"}
+        }
+        ALL{
+            other{"lek Albania"}
+        }
+        AMD{
+            other{"dram Armenia"}
+        }
+        ANG{
+            other{"guilder Tây Ấn Hà Lan"}
+        }
+        AOA{
+            other{"kwanza Angola"}
+        }
+        ARS{
+            other{"peso Argentina"}
+        }
+        AUD{
+            other{"đô la Australia"}
+        }
+        AWG{
+            other{"florin Aruba"}
+        }
+        AZN{
+            other{"manat Azerbaijan"}
+        }
+        BAM{
+            other{"mark Bosnia-Herzegovina có thể chuyển đổi"}
+        }
+        BBD{
+            other{"đô la Barbados"}
+        }
+        BDT{
+            other{"taka Bangladesh"}
+        }
+        BGN{
+            other{"lev Bulgaria"}
+        }
+        BHD{
+            other{"dinar Bahrain"}
+        }
+        BIF{
+            other{"franc Burundi"}
+        }
+        BMD{
+            other{"đô la Bermuda"}
+        }
+        BND{
+            other{"đô la Brunei"}
+        }
+        BOB{
+            other{"boliviano Bolivia"}
+        }
+        BRL{
+            other{"real Braxin"}
+        }
+        BSD{
+            other{"đô la Bahamas"}
+        }
+        BTN{
+            other{"ngultrum Bhutan"}
+        }
+        BWP{
+            other{"pula Botswana"}
+        }
+        BYR{
+            other{"rúp Belarus"}
+        }
+        BZD{
+            other{"đô la Belize"}
+        }
+        CAD{
+            other{"đô la Canada"}
+        }
+        CDF{
+            other{"franc Congo"}
+        }
+        CHF{
+            other{"franc Thụy sĩ"}
+        }
+        CLP{
+            other{"peso Chile"}
+        }
+        CNY{
+            other{"nhân dân tệ"}
+        }
+        COP{
+            other{"peso Colombia"}
+        }
+        CRC{
+            other{"colón Costa Rica"}
+        }
+        CUC{
+            other{"peso Cuba có thể chuyển đổi"}
+        }
+        CUP{
+            other{"peso Cuba"}
+        }
+        CVE{
+            other{"escudo Cape Verde"}
+        }
+        CZK{
+            other{"koruna Cộng hòa Séc"}
+        }
+        DJF{
+            other{"franc Djibouti"}
+        }
+        DKK{
+            other{"krone Đan Mạch"}
+        }
+        DOP{
+            other{"peso Dominica"}
+        }
+        DZD{
+            other{"dinar Algeria"}
+        }
+        EGP{
+            other{"bảng Ai Cập"}
+        }
+        ERN{
+            other{"nakfa Eritrea"}
+        }
+        ETB{
+            other{"birr Ethiopia"}
+        }
+        EUR{
+            other{"euro"}
+        }
+        FJD{
+            other{"đô la Fiji"}
+        }
+        FKP{
+            other{"bảng Quần đảo Falkland"}
+        }
+        GBP{
+            other{"bảng Anh"}
+        }
+        GEL{
+            other{"lari Gruzia"}
+        }
+        GHS{
+            other{"cedi Ghana"}
+        }
+        GIP{
+            other{"bảng Gibraltar"}
+        }
+        GMD{
+            other{"dalasi Gambia"}
+        }
+        GNF{
+            other{"franc Guinea"}
+        }
+        GTQ{
+            other{"quetzal Guatemala"}
+        }
+        GYD{
+            other{"đô la Guyana"}
+        }
+        HKD{
+            other{"đô la Hồng Kông"}
+        }
+        HNL{
+            other{"lempira Honduras"}
+        }
+        HRK{
+            other{"kuna Croatia"}
+        }
+        HTG{
+            other{"gourde Haiti"}
+        }
+        HUF{
+            other{"forint Hungaria"}
+        }
+        IDR{
+            other{"rupiah Indonesia"}
+        }
+        ILS{
+            other{"sheqel Israel mới"}
+        }
+        INR{
+            other{"rupee Ấn Độ"}
+        }
+        IQD{
+            other{"dinar I-rắc"}
+        }
+        IRR{
+            other{"rial Iran"}
+        }
+        ISK{
+            other{"króna Iceland"}
+        }
+        JMD{
+            other{"đô la Jamaica"}
+        }
+        JOD{
+            other{"dinar Jordan"}
+        }
+        JPY{
+            other{"yên Nhật"}
+        }
+        KES{
+            other{"shilling Kenya"}
+        }
+        KGS{
+            other{"som Kyrgyzstan"}
+        }
+        KHR{
+            other{"riel Campuchia"}
+        }
+        KMF{
+            other{"franc Comoros"}
+        }
+        KPW{
+            other{"won Triều Tiên"}
+        }
+        KRW{
+            other{"won Hàn Quốc"}
+        }
+        KWD{
+            other{"dinar Kuwait"}
+        }
+        KYD{
+            other{"đô la Quần đảo Cayman"}
+        }
+        KZT{
+            other{"tenge Kazakhstan"}
+        }
+        LAK{
+            other{"kip Lào"}
+        }
+        LBP{
+            other{"bảng Li-băng"}
+        }
+        LKR{
+            other{"rupee Sri Lanka"}
+        }
+        LRD{
+            other{"đô la Liberia"}
+        }
+        LTL{
+            other{"litas Lít-va"}
+        }
+        LVL{
+            other{"lats Lít-va"}
+        }
+        LYD{
+            other{"dinar Libi"}
+        }
+        MAD{
+            other{"dirham Ma-rốc"}
+        }
+        MDL{
+            other{"leu Moldova"}
+        }
+        MGA{
+            other{"ariary Malagasy"}
+        }
+        MKD{
+            other{"denar Macedonia"}
+        }
+        MMK{
+            other{"kyat Myanma"}
+        }
+        MNT{
+            other{"tugrik Mông Cổ"}
+        }
+        MOP{
+            other{"pataca Ma Cao"}
+        }
+        MRO{
+            other{"ouguiya Mauritania"}
+        }
+        MUR{
+            other{"rupee Mauritius"}
+        }
+        MVR{
+            other{"rufiyaa Maldives"}
+        }
+        MWK{
+            other{"kwacha Malawi"}
+        }
+        MXN{
+            other{"peso Mexico"}
+        }
+        MYR{
+            other{"ringgit Malaysia"}
+        }
+        MZN{
+            other{"metical Mozambique"}
+        }
+        NAD{
+            other{"đô la Namibia"}
+        }
+        NGN{
+            other{"naira Nigeria"}
+        }
+        NIO{
+            other{"córdoba Nicaragua"}
+        }
+        NOK{
+            other{"krone Na Uy"}
+        }
+        NPR{
+            other{"rupee Nepal"}
+        }
+        NZD{
+            other{"đô la New Zealand"}
+        }
+        OMR{
+            other{"rial Oman"}
+        }
+        PAB{
+            other{"balboa Panama"}
+        }
+        PEN{
+            other{"nuevo sol Peru"}
+        }
+        PGK{
+            other{"kina Papua New Guinean"}
+        }
+        PHP{
+            other{"peso Philipin"}
+        }
+        PKR{
+            other{"rupee Pakistan"}
+        }
+        PLN{
+            other{"Zloty Ba Lan"}
+        }
+        PYG{
+            other{"guarani Paraguay"}
+        }
+        QAR{
+            other{"rial Qatar"}
+        }
+        RON{
+            other{"leu Romania"}
+        }
+        RSD{
+            other{"dinar Serbia"}
+        }
+        RUB{
+            other{"Rúp Nga"}
+        }
+        RWF{
+            other{"franc Rwanda"}
+        }
+        SAR{
+            other{"riyal Ả Rập Xê-út"}
+        }
+        SBD{
+            other{"đô la quần đảo Solomon"}
+        }
+        SCR{
+            other{"rupee Seychelles"}
+        }
+        SDG{
+            other{"bảng Sudan"}
+        }
+        SEK{
+            other{"krona Thụy Điển"}
+        }
+        SGD{
+            other{"đô la Singapore"}
+        }
+        SHP{
+            other{"bảng Saint Helena"}
+        }
+        SLL{
+            other{"leone Sierra Leone"}
+        }
+        SOS{
+            other{"schilling Somali"}
+        }
+        SRD{
+            other{"đô la Suriname"}
+        }
+        SSP{
+            other{"bảng Nam Sudan"}
+        }
+        STD{
+            other{"dobra São Tomé và Príncipe"}
+        }
+        SYP{
+            other{"bảng Syria"}
+        }
+        SZL{
+            other{"emalangeni Swaziland"}
+        }
+        THB{
+            other{"bạt Thái Lan"}
+        }
+        TJS{
+            other{"somoni Tajikistan"}
+        }
+        TMT{
+            other{"manat Turkmenistan"}
+        }
+        TND{
+            other{"dinar Tunisia"}
+        }
+        TOP{
+            other{"paʻanga Tonga"}
+        }
+        TRL{
+            other{"lia Thổ Nhĩ Kỳ (1922–2005)"}
+        }
+        TRY{
+            other{"lia Thổ Nhĩ Kỳ"}
+        }
+        TTD{
+            other{"đô la Trinidad và Tobago"}
+        }
+        TWD{
+            other{"đô la Đài Loan mới"}
+        }
+        TZS{
+            other{"shilling Tanzania"}
+        }
+        UAH{
+            other{"hryvnia Ucraina"}
+        }
+        UGX{
+            other{"shilling Uganda"}
+        }
+        USD{
+            other{"đô la Mỹ"}
+        }
+        UYU{
+            other{"peso Uruguay"}
+        }
+        UZS{
+            other{"som Uzbekistan"}
+        }
+        VEF{
+            other{"bolívar Venezuela"}
+        }
+        VND{
+            other{"đồng Việt Nam"}
+        }
+        VUV{
+            other{"vatu Vanuatu"}
+        }
+        WST{
+            other{"tala Samoa"}
+        }
+        XAF{
+            other{"CFA Franc BEAC"}
+        }
+        XCD{
+            other{"đô la Đông Caribê"}
+        }
+        XOF{
+            other{"franc CFA BCEAO"}
+        }
+        XPF{
+            other{"franc CFP"}
+        }
+        XXX{
+            other{"(tiền tệ chưa biết)"}
+        }
+        YER{
+            other{"rial Yemen"}
+        }
+        ZAR{
+            other{"rand Nam Phi"}
+        }
+        ZMW{
+            other{"kwacha Zambia"}
         }
     }
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.0.67.6"}
+    Version{"2.0.92.87"}
 }

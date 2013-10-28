@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -8,6 +8,7 @@
 #include "unicode/uchar.h"
 #include "unicode/uniset.h"
 #include "unicode/putil.h"
+#include "unicode/uscript.h"
 #include "cstring.h"
 #include "hash.h"
 #include "patternprops.h"
@@ -59,6 +60,8 @@ void UnicodeTest::runIndexedTest( int32_t index, UBool exec, const char* &name, 
     TESTCASE_AUTO(TestBinaryValues);
     TESTCASE_AUTO(TestConsistency);
     TESTCASE_AUTO(TestPatternProperties);
+    TESTCASE_AUTO(TestScriptMetadata);
+    TESTCASE_AUTO(TestBidiPairedBracketType);
     TESTCASE_AUTO_END;
 }
 
@@ -425,4 +428,101 @@ UnicodeTest::compareUSets(const UnicodeSet &a, const UnicodeSet &b,
         errln("Sets are different: %s vs. %s\n", a_name, b_name);
     }
     return same;
+}
+
+namespace {
+
+/**
+ * Maps a special script code to the most common script of its encoded characters.
+ */
+UScriptCode getCharScript(UScriptCode script) {
+    switch(script) {
+    case USCRIPT_SIMPLIFIED_HAN:
+    case USCRIPT_TRADITIONAL_HAN:
+        return USCRIPT_HAN;
+    case USCRIPT_JAPANESE:
+        return USCRIPT_HIRAGANA;
+    case USCRIPT_KOREAN:
+        return USCRIPT_HANGUL;
+    default:
+        return script;
+    }
+}
+
+}  // namespace
+
+void UnicodeTest::TestScriptMetadata() {
+    IcuTestErrorCode errorCode(*this, "TestScriptMetadata()");
+    UnicodeSet rtl("[[:bc=R:][:bc=AL:]-[:Cn:]-[:sc=Common:]]", errorCode);
+    // So far, sample characters are uppercase.
+    // Georgian is special.
+    UnicodeSet cased("[[:Lu:]-[:sc=Common:]-[:sc=Geor:]]", errorCode);
+    for(int32_t sci = 0; sci < USCRIPT_CODE_LIMIT; ++sci) {
+        UScriptCode sc = (UScriptCode)sci;
+        // Run the test with -v to see which script has failures:
+        // .../intltest$ make && ./intltest utility/UnicodeTest/TestScriptMetadata -v | grep -C 3 FAIL
+        logln(uscript_getShortName(sc));
+        UScriptUsage usage = uscript_getUsage(sc);
+        UnicodeString sample = uscript_getSampleUnicodeString(sc);
+        UnicodeSet scriptSet;
+        scriptSet.applyIntPropertyValue(UCHAR_SCRIPT, sc, errorCode);
+        if(usage == USCRIPT_USAGE_NOT_ENCODED) {
+            assertTrue("not encoded, no sample", sample.isEmpty());
+            assertFalse("not encoded, not RTL", uscript_isRightToLeft(sc));
+            assertFalse("not encoded, not LB letters", uscript_breaksBetweenLetters(sc));
+            assertFalse("not encoded, not cased", uscript_isCased(sc));
+            assertTrue("not encoded, no characters", scriptSet.isEmpty());
+        } else {
+            assertFalse("encoded, has a sample character", sample.isEmpty());
+            UChar32 firstChar = sample.char32At(0);
+            UScriptCode charScript = getCharScript(sc);
+            assertEquals("script(sample(script))",
+                         (int32_t)charScript, (int32_t)uscript_getScript(firstChar, errorCode));
+            assertEquals("RTL vs. set", (UBool)rtl.contains(firstChar), (UBool)uscript_isRightToLeft(sc));
+            assertEquals("cased vs. set", (UBool)cased.contains(firstChar), (UBool)uscript_isCased(sc));
+            assertEquals("encoded, has characters", (UBool)(sc == charScript), (UBool)(!scriptSet.isEmpty()));
+            if(uscript_isRightToLeft(sc)) {
+                rtl.removeAll(scriptSet);
+            }
+            if(uscript_isCased(sc)) {
+                cased.removeAll(scriptSet);
+            }
+        }
+    }
+    UnicodeString pattern;
+    assertEquals("no remaining RTL characters",
+                 UnicodeString("[]"), rtl.toPattern(pattern));
+    assertEquals("no remaining cased characters",
+                 UnicodeString("[]"), cased.toPattern(pattern));
+
+    assertTrue("Hani breaks between letters", uscript_breaksBetweenLetters(USCRIPT_HAN));
+    assertTrue("Thai breaks between letters", uscript_breaksBetweenLetters(USCRIPT_THAI));
+    assertFalse("Latn does not break between letters", uscript_breaksBetweenLetters(USCRIPT_LATIN));
+}
+
+void UnicodeTest::TestBidiPairedBracketType() {
+    // BidiBrackets-6.3.0.txt says:
+    //
+    // The set of code points listed in this file was originally derived
+    // using the character properties General_Category (gc), Bidi_Class (bc),
+    // Bidi_Mirrored (Bidi_M), and Bidi_Mirroring_Glyph (bmg), as follows:
+    // two characters, A and B, form a pair if A has gc=Ps and B has gc=Pe,
+    // both have bc=ON and Bidi_M=Y, and bmg of A is B. Bidi_Paired_Bracket
+    // maps A to B and vice versa, and their Bidi_Paired_Bracket_Type
+    // property values are Open and Close, respectively.
+    IcuTestErrorCode errorCode(*this, "TestBidiPairedBracketType()");
+    UnicodeSet bpt("[:^bpt=n:]", errorCode);
+    assertTrue("bpt!=None is not empty", !bpt.isEmpty());
+    // The following should always be true.
+    UnicodeSet mirrored("[:Bidi_M:]", errorCode);
+    UnicodeSet other_neutral("[:bc=ON:]", errorCode);
+    assertTrue("bpt!=None is a subset of Bidi_M", mirrored.containsAll(bpt));
+    assertTrue("bpt!=None is a subset of bc=ON", other_neutral.containsAll(bpt));
+    // The following are true at least initially in Unicode 6.3.
+    UnicodeSet bpt_open("[:bpt=o:]", errorCode);
+    UnicodeSet bpt_close("[:bpt=c:]", errorCode);
+    UnicodeSet ps("[:Ps:]", errorCode);
+    UnicodeSet pe("[:Pe:]", errorCode);
+    assertTrue("bpt=Open is a subset of Ps", ps.containsAll(bpt_open));
+    assertTrue("bpt=Close is a subset of Pe", pe.containsAll(bpt_close));
 }

@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -29,6 +29,7 @@
 #include "unicode/ucnv.h"
 #include "unicode/utrans.h"
 #include "unicode/localpointer.h"
+#include "unicode/unum.h"
 
 /*
     TODO
@@ -364,7 +365,7 @@ u_frewind(UFILE *file);
 /**
  * Get the FILE* associated with a UFILE.
  * @param f The UFILE
- * @return A FILE*, owned by the UFILE.  The FILE <EM>must not</EM> be closed.
+ * @return A FILE*, owned by the UFILE. (The FILE <EM>must not</EM> be modified or closed)
  * @stable ICU 3.0
  */
 U_STABLE FILE* U_EXPORT2
@@ -432,12 +433,21 @@ u_fsetcodepage(const char   *codepage,
 /**
  * Returns an alias to the converter being used for this file.
  * @param f The UFILE to get the value from
- * @return alias to the converter
+ * @return alias to the converter (The converter <EM>must not</EM> be modified or closed)
  * @stable ICU 3.0
  */
 U_STABLE UConverter* U_EXPORT2 u_fgetConverter(UFILE *f);
 
 #if !UCONFIG_NO_FORMATTING
+#ifndef U_HIDE_DRAFT_API
+/**
+ * Returns an alias to the number formatter being used for this file.
+ * @param f The UFILE to get the value from
+ * @return alias to the number formatter (The formatter <EM>must not</EM> be modified or closed)
+ * @draft ICU 51
+*/
+ U_DRAFT const UNumberFormat* U_EXPORT2 u_fgetNumberFormat(UFILE *f);
+#endif /* U_HIDE_DRAFT_API */
 
 /* Output functions */
 
@@ -446,9 +456,9 @@ U_STABLE UConverter* U_EXPORT2 u_fgetConverter(UFILE *f);
  * @param patternSpecification A pattern specifying how <TT>u_printf</TT> will
  * interpret the variable arguments received and format the data.
  * @return The number of Unicode characters written to <TT>stdout</TT>
- * @draft ICU 49
+ * @stable ICU 49
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 u_printf(const char *patternSpecification,
          ... );
 
@@ -487,19 +497,19 @@ u_vfprintf(UFILE        *f,
  * @param patternSpecification A pattern specifying how <TT>u_printf_u</TT> will
  * interpret the variable arguments received and format the data.
  * @return The number of Unicode characters written to <TT>stdout</TT>
- * @draft ICU 49
+ * @stable ICU 49
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 u_printf_u(const UChar *patternSpecification,
            ... );
 
 /**
  * Get a UFILE for <TT>stdout</TT>.
  * @return UFILE that writes to <TT>stdout</TT>
- * @draft ICU 49
+ * @stable ICU 49
  */
-U_DRAFT UFILE * U_EXPORT2
-u_get_stdout();
+U_STABLE UFILE * U_EXPORT2
+u_get_stdout(void);
 
 /**
  * Write formatted data to a UFILE.

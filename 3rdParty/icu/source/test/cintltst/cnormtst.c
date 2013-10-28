@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2011, International Business Machines Corporation and
+ * Copyright (c) 1997-2012, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -19,13 +19,7 @@
 #include "unicode/utf16.h"
 #include "cintltst.h"
 
-#if UCONFIG_NO_NORMALIZATION
-
-void addNormTest(TestNode** root) {
-    /* no normalization - nothing to do */
-}
-
-#else
+#if !UCONFIG_NO_NORMALIZATION
 
 #include <stdlib.h>
 #include <time.h>

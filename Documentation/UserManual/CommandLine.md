@@ -4,6 +4,13 @@ Command-Line Options {#CommandLine}
 @NAVIGATE_CommandLine
 @EMBEDTOC{CommandLineTOC}
 
+Configuration Files {#CommandLineGeneral}
+=========================================
+
+Options can be specified on the command line or in configuration files. If a
+string `@VARIABLE@` occurs in the value, it is replaced by the corresponding
+environment variable.
+
 General Options {#CommandLineGeneralOptions}
 ============================================
 

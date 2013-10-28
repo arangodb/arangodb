@@ -21,9 +21,10 @@
 #include "unicode/uclean.h"
 #include "cmemory.h"
 #include "putilimp.h"
+#include "uassert.h"
 #include <stdlib.h>
 
-/* uprv_malloc(0) returns a pointer to this read-only data. */                
+/* uprv_malloc(0) returns a pointer to this read-only data. */
 static const int32_t zeroMem[] = {0, 0, 0, 0, 0, 0};
 
 /* Function Pointers for user-supplied heap functions  */
@@ -42,6 +43,29 @@ static int n=0;
 static long b=0; 
 #endif
 
+#if U_DEBUG
+
+static char gValidMemorySink = 0;
+
+U_CAPI void uprv_checkValidMemory(const void *p, size_t n) {
+    /*
+     * Access the memory to ensure that it's all valid.
+     * Load and save a computed value to try to ensure that the compiler
+     * does not throw away the whole loop.
+     * A thread analyzer might complain about un-mutexed access to gValidMemorySink
+     * which is true but harmless because no one ever uses the value in gValidMemorySink.
+     */
+    const char *s = (const char *)p;
+    char c = gValidMemorySink;
+    size_t i;
+    U_ASSERT(p != NULL);
+    for(i = 0; i < n; ++i) {
+        c ^= s[i];
+    }
+    gValidMemorySink = c;
+}
+
+#endif  /* U_DEBUG */
 
 U_CAPI void * U_EXPORT2
 uprv_malloc(size_t s) {
