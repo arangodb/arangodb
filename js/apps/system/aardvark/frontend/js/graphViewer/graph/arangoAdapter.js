@@ -337,6 +337,18 @@ function ArangoAdapter(nodes, edges, config) {
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
+
+  self.loadRandomNode = function(callback) {
+    var self = this;
+    getNRandom(1, function(list) {
+      var r = list[0];
+      if (r._id) {
+        self.loadInitialNode(r._id, callback);
+        return; 
+      }
+      return;
+    });
+  };
   
   self.loadInitialNode = function(nodeId, callback) {
     absAdapter.cleanUp();
