@@ -1,7 +1,7 @@
 # Doxyfile 1.3.7
 #  ********************************************************************
 #  * COPYRIGHT:
-#  * Copyright (c) 2004-2011, International Business Machines Corporation
+#  * Copyright (c) 2004-2012, International Business Machines Corporation
 #  * and others. All Rights Reserved.
 #  ********************************************************************
 
@@ -86,7 +86,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = ./common/unicode/platform.h @srcdir@/common/unicode @srcdir@/i18n/unicode @srcdir@/io/unicode @srcdir@/layout/LEFontInstance.h @srcdir@/layout/LEGlyphStorage.h @srcdir@/layout/LELanguages.h @srcdir@/layout/LEScripts.h @srcdir@/layout/LESwaps.h @srcdir@/layout/LETypes.h @srcdir@/layout/LayoutEngine.h @srcdir@/layoutex/layout
+INPUT                  = @srcdir@/common/unicode @srcdir@/i18n/unicode @srcdir@/io/unicode @srcdir@/layout/LEFontInstance.h @srcdir@/layout/LEGlyphStorage.h @srcdir@/layout/LELanguages.h @srcdir@/layout/LEScripts.h @srcdir@/layout/LESwaps.h @srcdir@/layout/LETypes.h @srcdir@/layout/LayoutEngine.h @srcdir@/layoutex/layout
 FILE_PATTERNS          = *.h
 RECURSIVE              = NO
 EXCLUDE                = @srcdir@/common/unicode/urename.h @srcdir@/common/unicode/udraft.h @srcdir@/common/unicode/udeprctd.h @srcdir@/common/unicode/uobslete.h @srcdir@/common/unicode/ppalmos.h  
@@ -192,7 +192,7 @@ EXPAND_ONLY_PREDEF     = YES
 SEARCH_INCLUDES        = YES
 INCLUDE_PATH           = 
 INCLUDE_FILE_PATTERNS  = 
-PREDEFINED             = U_EXPORT2= U_STABLE= U_DRAFT= U_INTERNAL= U_SYSTEM= U_DEPRECATED= U_OBSOLETE= U_CALLCONV= U_CDECL_BEGIN= U_CDECL_END=  U_NO_THROW= U_NAMESPACE_BEGIN= U_NAMESPACE_END= 
+PREDEFINED             = U_EXPORT2= U_STABLE= U_DRAFT= U_INTERNAL= U_SYSTEM= U_DEPRECATED= U_OBSOLETE= U_CALLCONV= U_CDECL_BEGIN= U_CDECL_END=  U_NO_THROW=\ "U_NAMESPACE_BEGIN=namespace icu{" "U_NAMESPACE_END=}" U_HAVE_STD_STRING=1 U_SHOW_CPLUSPLUS_API=1 U_DEFINE_LOCAL_OPEN_POINTER()= U_IN_DOXYGEN=1 
 EXPAND_AS_DEFINED      = 
 SKIP_FUNCTION_MACROS   = YES
 #---------------------------------------------------------------------------

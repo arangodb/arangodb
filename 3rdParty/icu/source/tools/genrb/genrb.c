@@ -50,12 +50,11 @@ enum
     ICUDATADIR,
     WRITE_JAVA,
     COPYRIGHT,
-    /* PACKAGE_NAME, This option is deprecated and should not be used ever. */
+    JAVA_PACKAGE,
     BUNDLE_NAME,
     WRITE_XLIFF,
     STRICT,
     NO_BINARY_COLLATION,
-    /*added by Jing*/
     LANGUAGE,
     NO_COLLATION_RULES,
     FORMAT_VERSION,
@@ -76,7 +75,7 @@ UOption options[]={
                       UOPTION_ICUDATADIR,
                       UOPTION_WRITE_JAVA,
                       UOPTION_COPYRIGHT,
-                      /* UOPTION_PACKAGE_NAME, This option is deprecated and should not be used ever. */
+                      UOPTION_DEF("java-package", '\x01', UOPT_REQUIRES_ARG),
                       UOPTION_BUNDLE_NAME,
                       UOPTION_DEF("write-xliff", 'x', UOPT_OPTIONAL_ARG),
                       UOPTION_DEF("strict",    'k', UOPT_NO_ARG), /* 14 */
@@ -92,8 +91,6 @@ UOption options[]={
 static     UBool       write_java = FALSE;
 static     UBool       write_xliff = FALSE;
 static     const char* outputEnc ="";
-static     const char* gPackageName=NULL;
-static     const char* bundleName=NULL;
 static     struct SRBRoot *newPoolBundle = NULL;
            UBool       gIncludeUnihanColl = FALSE;
 
@@ -122,9 +119,12 @@ main(int argc,
     const char *inputDir  = NULL;
     const char *encoding  = "";
     int         i;
+    UBool illegalArg = FALSE;
 
     U_MAIN_INIT_ARGS(argc, argv);
 
+    options[JAVA_PACKAGE].value = "com.ibm.icu.impl.data";
+    options[BUNDLE_NAME].value = "LocaleElements";
     argc = u_parseArgs(argc, argv, (int32_t)(sizeof(options)/sizeof(options[0])), options);
 
     /* error handling, printing usage message */
@@ -160,7 +160,18 @@ main(int argc,
         return U_ZERO_ERROR;
     }
 
-    if(argc<0 || options[HELP1].doesOccur || options[HELP2].doesOccur) {
+    if(argc<0) {
+        illegalArg = TRUE;
+    } else if((options[JAVA_PACKAGE].doesOccur || options[BUNDLE_NAME].doesOccur) &&
+              !options[WRITE_JAVA].doesOccur) {
+        fprintf(stderr,
+                "%s error: command line argument --java-package or --bundle-name "
+                "without --write-java\n",
+                argv[0]);
+        illegalArg = TRUE;
+    }
+
+    if(illegalArg || options[HELP1].doesOccur || options[HELP2].doesOccur) {
         /*
          * Broken into chunks because the C89 standard says the minimum
          * required supported string length is 509 bytes.
@@ -186,12 +197,11 @@ main(int argc,
                 u_getDataDirectory(), u_getDataDirectory(), u_getDataDirectory());
         fprintf(stderr,
                 "\t-j or --write-java       write a Java ListResourceBundle for ICU4J, followed by optional encoding\n"
-                "\t                         defaults to ASCII and \\uXXXX format.\n");
-                /* This option is deprecated and should not be used ever.
-                "\t-p or --package-name     For ICU4J: package name for writing the ListResourceBundle for ICU4J,\n"
-                "\t                         defaults to com.ibm.icu.impl.data\n"); */
+                "\t                         defaults to ASCII and \\uXXXX format.\n"
+                "\t      --java-package     For --write-java: package name for writing the ListResourceBundle,\n"
+                "\t                         defaults to com.ibm.icu.impl.data\n");
         fprintf(stderr,
-                "\t-b or --bundle-name      bundle name for writing the ListResourceBundle for ICU4J,\n"
+                "\t-b or --bundle-name      For --write-java: root resource bundle name for writing the ListResourceBundle,\n"
                 "\t                         defaults to LocaleElements\n"
                 "\t-x or --write-xliff      write an XLIFF file for the resource bundle. Followed by\n"
                 "\t                         an optional output file name.\n"
@@ -214,7 +224,7 @@ main(int argc,
                 "\t                           makes .res files smaller but dependent on the pool bundle\n"
                 "\t                           (--writePoolBundle and --usePoolBundle cannot be combined)\n");
 
-        return argc < 0 ? U_ILLEGAL_ARGUMENT_ERROR : U_ZERO_ERROR;
+        return illegalArg ? U_ILLEGAL_ARGUMENT_ERROR : U_ZERO_ERROR;
     }
 
     if(options[VERBOSE].doesOccur) {
@@ -238,18 +248,6 @@ main(int argc,
     if(options[DESTDIR].doesOccur) {
         outputDir = options[DESTDIR].value;
     }
-    /* This option is deprecated and should never be used.
-    if(options[PACKAGE_NAME].doesOccur) {
-        gPackageName = options[PACKAGE_NAME].value;
-        if(!strcmp(gPackageName, "ICUDATA"))
-        {
-            gPackageName = U_ICUDATA_NAME;
-        }
-        if(gPackageName[0] == 0)
-        {
-            gPackageName = NULL;
-        }
-    }*/
 
     if(options[ENCODING].doesOccur) {
         encoding = options[ENCODING].value;
@@ -273,10 +271,6 @@ main(int argc,
     if(options[WRITE_JAVA].doesOccur) {
         write_java = TRUE;
         outputEnc = options[WRITE_JAVA].value;
-    }
-
-    if(options[BUNDLE_NAME].doesOccur) {
-        bundleName = options[BUNDLE_NAME].value;
     }
 
     if(options[WRITE_XLIFF].doesOccur) {
@@ -425,7 +419,7 @@ main(int argc,
         if (isVerbose()) {
             printf("Processing file \"%s\"\n", theCurrentFileName);
         }
-        processFile(arg, encoding, inputDir, outputDir, gPackageName,
+        processFile(arg, encoding, inputDir, outputDir, NULL,
                     options[NO_BINARY_COLLATION].doesOccur,
                     &status);
     }
@@ -440,6 +434,8 @@ main(int argc,
             fprintf(stderr, "unable to write the pool bundle: %s\n", u_errorName(status));
         }
     }
+
+    u_cleanup();
 
     /* Dont return warnings as a failure */
     if (U_SUCCESS(status)) {
@@ -600,7 +596,8 @@ processFile(
         goto finish;
     }
     if(write_java== TRUE){
-        bundle_write_java(data,outputDir,outputEnc, outputFileName, sizeof(outputFileName),packageName,bundleName,status);
+        bundle_write_java(data,outputDir,outputEnc, outputFileName, sizeof(outputFileName),
+                          options[JAVA_PACKAGE].value, options[BUNDLE_NAME].value, status);
     }else if(write_xliff ==TRUE){
         bundle_write_xml(data,outputDir,outputEnc, filename, outputFileName, sizeof(outputFileName),language, xliffOutputFileName,status);
     }else{

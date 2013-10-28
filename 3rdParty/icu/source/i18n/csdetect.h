@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2006, International Business Machines
+ *   Copyright (C) 2005-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -28,6 +28,10 @@ private:
     UBool fFreshTextSet;
     static void setRecognizers(UErrorCode &status);
 
+    UBool *fEnabledRecognizers;  // If not null, active set of charset recognizers had
+                                // been changed from the default. The array index is
+                                // corresponding to fCSRecognizers. See setDetectableCharset().
+
 public:
     CharsetDetector(UErrorCode &status);
 
@@ -47,7 +51,12 @@ public:
 
 //    const char *getCharsetName(int32_t index, UErrorCode& status) const;
 
-    static int32_t getDetectableCount(); 
+    static int32_t getDetectableCount();
+
+
+    static UEnumeration * getAllDetectableCharsets(UErrorCode &status);
+    UEnumeration * getDetectableCharsets(UErrorCode &status) const;
+    void setDetectableCharset(const char *encoding, UBool enabled, UErrorCode &status);
 };
 
 U_NAMESPACE_END

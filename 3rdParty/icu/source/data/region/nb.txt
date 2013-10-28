@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/nb.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nb.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/nb.xml
+ * ICU <specials> source: <path>/common/main/nb.xml
  */
 nb{
     Countries{
@@ -29,7 +29,7 @@ nb{
         034{"Sør-Asia"}
         035{"Sørøst-Asia"}
         039{"Sør-Europa"}
-        053{"Australia og New Zealand"}
+        053{"Australasia"}
         054{"Melanesia"}
         057{"Mikronesia"}
         061{"Polynesia"}
@@ -72,6 +72,7 @@ nb{
         BM{"Bermuda"}
         BN{"Brunei Darussalam"}
         BO{"Bolivia"}
+        BQ{"Karibisk Nederland"}
         BR{"Brasil"}
         BS{"Bahamas"}
         BT{"Bhutan"}
@@ -93,9 +94,9 @@ nb{
         CO{"Colombia"}
         CP{"Clippertonøya"}
         CR{"Costa Rica"}
-        CS{"Serbia og Montenegro"}
         CU{"Cuba"}
         CV{"Kapp Verde"}
+        CW{"Curaçao"}
         CX{"Christmasøya"}
         CY{"Kypros"}
         CZ{"Tsjekkia"}
@@ -135,7 +136,7 @@ nb{
         GP{"Guadeloupe"}
         GQ{"Ekvatorial-Guinea"}
         GR{"Hellas"}
-        GS{"Sør-Georgia og de sørlige Sandwich-øyene"}
+        GS{"Sør-Georgia og Sør-Sandwichøyene"}
         GT{"Guatemala"}
         GU{"Guam"}
         GW{"Guinea-Bissau"}
@@ -187,12 +188,12 @@ nb{
         MC{"Monaco"}
         MD{"Moldova"}
         ME{"Montenegro"}
-        MF{"Saint Martin"}
+        MF{"Saint-Martin"}
         MG{"Madagaskar"}
         MH{"Marshalløyene"}
         MK{"Makedonia"}
         ML{"Mali"}
-        MM{"Myanmar"}
+        MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
         MO{"Macao S.A.R. Kina"}
         MP{"Nord-Marianene"}
@@ -229,13 +230,13 @@ nb{
         PM{"St. Pierre og Miquelon"}
         PN{"Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Palestinsk territorium"}
+        PS{"Det palestinske området"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
         QA{"Qatar"}
-        QO{"avsidesliggende Oceania"}
-        RE{"Reunion"}
+        QO{"ytre Oseania"}
+        RE{"Réunion"}
         RO{"Romania"}
         RS{"Serbia"}
         RU{"Russland"}
@@ -255,8 +256,10 @@ nb{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
+        SS{"Sør-Sudan"}
         ST{"São Tomé og Príncipe"}
         SV{"El Salvador"}
+        SX{"Sint Maarten"}
         SY{"Syria"}
         SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
@@ -278,7 +281,7 @@ nb{
         TZ{"Tanzania"}
         UA{"Ukraina"}
         UG{"Uganda"}
-        UM{"USAs ytre småøyer"}
+        UM{"USAs ytre øyer"}
         US{"USA"}
         UY{"Uruguay"}
         UZ{"Usbekistan"}
@@ -291,6 +294,7 @@ nb{
         VU{"Vanuatu"}
         WF{"Wallis og Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
         ZA{"Sør-Afrika"}
@@ -298,5 +302,12 @@ nb{
         ZW{"Zimbabwe"}
         ZZ{"ukjent område"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"Storbritannia"}
+        HK{"Hongkong"}
+        MO{"Macao"}
+        PS{"Palestina"}
+        US{"USA"}
+    }
+    Version{"2.0.92.87"}
 }

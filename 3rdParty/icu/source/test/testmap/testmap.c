@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 1998-2010, International Business Machines Corporation
+* Copyright (C) 1998-2012, International Business Machines Corporation
 * and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -18,8 +18,9 @@
 #include <string.h>
 #include "unicode/udata.h"
 #include "unicode/ucnv.h"
+#include "ucmndata.h"
 
-extern const  char U_IMPORT U_ICUDATA_ENTRY_POINT [];
+extern const DataHeader U_DATA_API U_ICUDATA_ENTRY_POINT;
 
 int
 main(int argc,
@@ -37,8 +38,8 @@ main(int argc,
   }
 
   status = U_ZERO_ERROR;
-  udata_setCommonData(U_ICUDATA_ENTRY_POINT, &status);  
-  printf("setCommonData(%p) -> %s\n", U_ICUDATA_ENTRY_POINT, u_errorName(status));
+  udata_setCommonData(&U_ICUDATA_ENTRY_POINT, &status);  
+  printf("setCommonData(%p) -> %s\n", (void*)&U_ICUDATA_ENTRY_POINT, u_errorName(status));
   if(U_FAILURE(status))
   {
     printf("*** FAIL: should have returned U_ZERO_ERROR\n");
@@ -46,8 +47,8 @@ main(int argc,
   }
 
   status = U_ZERO_ERROR;
-  c = ucnv_open("iso-8859-7", &status);
-  printf("ucnv_open(iso-8859-7)-> %p, err = %s, name=%s\n",
+  c = ucnv_open("iso-8859-3", &status);
+  printf("ucnv_open(iso-8859-3)-> %p, err = %s, name=%s\n",
          (void *)c, u_errorName(status), (!c)?"?":ucnv_getName(c,&status)  );
   if(status != U_ZERO_ERROR)
   {
@@ -60,8 +61,8 @@ main(int argc,
   }
 
   status = U_ZERO_ERROR;
-  udata_setCommonData(U_ICUDATA_ENTRY_POINT, &status);
-  printf("setCommonData(%p) -> %s [should pass]\n", U_ICUDATA_ENTRY_POINT, u_errorName(status));
+  udata_setCommonData(&U_ICUDATA_ENTRY_POINT, &status);
+  printf("setCommonData(%p) -> %s [should pass]\n", (void*) &U_ICUDATA_ENTRY_POINT, u_errorName(status));
   if (U_FAILURE(status) || status == U_USING_DEFAULT_WARNING )
   {
     printf("\n*** FAIL: should pass and not set U_USING_DEFAULT_ERROR\n");

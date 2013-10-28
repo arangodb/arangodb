@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- * Copyright (c) 2011,International Business Machines
+ * Copyright (c) 2011-2012,International Business Machines
  * Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -108,9 +108,9 @@ double qs(double *times, int n, double *q1, double *q2, double *q3) {
   return *q3-*q1;
 }
 
-U_CAPI double uprv_getMeanTime(double *times, uint32_t timeCount, double *marginOfError) {
+U_CAPI double uprv_getMeanTime(double *times, uint32_t *timeCount, double *marginOfError) {
   double q1,q2,q3;
-  int n = timeCount;
+  int n = *timeCount;
 
   /* calculate medians */
   qsort(times,n,sizeof(times[0]),comdoub);
@@ -126,18 +126,23 @@ U_CAPI double uprv_getMeanTime(double *times, uint32_t timeCount, double *margin
   for(int i=0;i<newN;i++) {
     if(times[i]<rangeMin || times[i]>rangeMax) {
 #if U_DEBUG
-      printf("Knocking out: %.9f from [%.9f:%.9f]\n", times[i], rangeMin, rangeMax);
+      printf("Removing outlier: %.9f outside [%.9f:%.9f]\n", times[i], rangeMin, rangeMax);
 #endif
       times[i--] = times[--newN]; // bring down a new value
     }
   }
 
+#if U_DEBUG
+  UBool didRemove = false;
+#endif
   /* if we removed any outliers, recalculate iqr */
   if(newN<n) {
 #if U_DEBUG
-    printf("Kicked out %d, retrying..\n", n-newN);
+    didRemove = true;
+    printf("removed %d outlier(s), recalculating IQR..\n", n-newN);
 #endif
     n = newN;
+    *timeCount = n;
 
     qsort(times,n,sizeof(times[0]),comdoub);
     double iqr = qs(times,n,&q1,&q2,&q3);
@@ -160,11 +165,13 @@ U_CAPI double uprv_getMeanTime(double *times, uint32_t timeCount, double *margin
   double sd = 0;
   for(int i=0;i<n;i++) {
 #if U_DEBUG
-    printf("  %d: %.9f\n", i, times[i]);
+    if(didRemove) {
+      printf("recalc %d/%d: %.9f\n", i, n, times[i]);
+    }
 #endif
     sd += (times[i]-meanTime)*(times[i]-meanTime);
   }
-  sd = sqrt(sd/(n-1));
+  sd = sqrt(sd/((double)n-1.0));
 
 #if U_DEBUG
   printf("sd: %.9f, mean: %.9f\n", sd, meanTime);
@@ -173,7 +180,7 @@ U_CAPI double uprv_getMeanTime(double *times, uint32_t timeCount, double *margin
 #endif
 
   /* 1.960 = z sub 0.025 */
-  *marginOfError = 1.960 * (sd/sqrt(n));
+  *marginOfError = 1.960 * (sd/sqrt((double)n));
   /*printf("Margin of Error = %.4f (95%% confidence)\n", me);*/
 
   return meanTime;
@@ -186,16 +193,17 @@ double meanSieveME = 0.0;
 U_CAPI double uprv_getSieveTime(double *marginOfError) {
   if(calcSieveTime==FALSE) {
 #define SAMPLES 50
+    uint32_t samples = SAMPLES;
     double times[SAMPLES];
     
     for(int i=0;i<SAMPLES;i++) {
       times[i] = uprv_calcSieveTime();
 #if U_DEBUG
-      printf("#%d/%d: %.9f\n", i,SAMPLES, times[i]);
+      printf("sieve: %d/%d: %.9f\n", i,SAMPLES, times[i]);
 #endif
     }
     
-    meanSieveTime = uprv_getMeanTime(times, SAMPLES,&meanSieveME);
+    meanSieveTime = uprv_getMeanTime(times, &samples,&meanSieveME);
     calcSieveTime=TRUE;
   }
   if(marginOfError!=NULL) {

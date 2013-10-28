@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/is.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/is.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/is.xml
+ * ICU <specials> source: <path>/common/main/is.xml
  */
 is{
     Currencies{
@@ -21,15 +21,15 @@ is{
         }
         AFN{
             "AFN",
-            "Afganskur afghani",
+            "Afgani",
         }
         ALL{
             "ALL",
-            "Lek",
+            "Albanskt lek",
         }
         AMD{
             "AMD",
-            "Dramm",
+            "Armenskt dramm",
         }
         ANG{
             "ANG",
@@ -37,7 +37,7 @@ is{
         }
         AOA{
             "AOA",
-            "Kwanza í Angóla",
+            "Angólsk kvansa",
         }
         ARA{
             "ARA",
@@ -45,18 +45,18 @@ is{
         }
         ARP{
             "ARP",
-            "Argentískur pesi (1983-1985)",
+            "Argentískur pesi (1983–1985)",
         }
         ARS{
             "ARS",
-            "Argentískur pesi",
+            "Argentínskur pesi",
         }
         ATS{
             "ATS",
             "Austurrískur skildingur",
         }
         AUD{
-            "AU$",
+            "A$",
             "Ástralskur dalur",
         }
         AWG{
@@ -65,11 +65,11 @@ is{
         }
         AZN{
             "AZN",
-            "Manat í Aserbaídsjan",
+            "Aserskt manat",
         }
         BAM{
             "BAM",
-            "Skiptanlegt mark í Bosníu-Hersegóvínu",
+            "Skiptanlegt Bosníu og Hersegóvínu-mark",
         }
         BBD{
             "BBD",
@@ -77,7 +77,7 @@ is{
         }
         BDT{
             "BDT",
-            "Taka í Bangladesh",
+            "Bangladessk taka",
         }
         BEF{
             "BEF",
@@ -89,11 +89,11 @@ is{
         }
         BGN{
             "BGN",
-            "Lef, nýtt",
+            "Búlgarskt lef",
         }
         BHD{
             "BHD",
-            "Dínar í Bahrain",
+            "Bareinskur denari",
         }
         BIF{
             "BIF",
@@ -101,7 +101,7 @@ is{
         }
         BMD{
             "BMD",
-            "Bermúdeyskur dalur",
+            "Bermúdadalur",
         }
         BND{
             "BND",
@@ -109,7 +109,7 @@ is{
         }
         BOB{
             "BOB",
-            "Boliviano í Bólivíu",
+            "Bólivíani",
         }
         BOP{
             "BOP",
@@ -125,11 +125,11 @@ is{
         }
         BSD{
             "BSD",
-            "Bahameyskur dalur",
+            "Bahamadalur",
         }
         BTN{
             "BTN",
-            "Bútanskt ngultrum",
+            "Bútanskt núltrum",
         }
         BUK{
             "BUK",
@@ -137,7 +137,7 @@ is{
         }
         BWP{
             "BWP",
-            "Pula í Botsvana",
+            "Botsvönsk púla",
         }
         BYR{
             "BYR",
@@ -148,12 +148,12 @@ is{
             "Belískur dalur",
         }
         CAD{
-            "CA$",
+            "CAD",
             "Kanadískur dalur",
         }
         CDF{
             "CDF",
-            "Franki í Kongó",
+            "Kongóskur franki",
         }
         CHF{
             "CHF",
@@ -165,11 +165,11 @@ is{
         }
         CLP{
             "CLP",
-            "Chileskur pesi",
+            "Síleskur pesi",
         }
         CNY{
             "CN¥",
-            "Júan",
+            "Kínverskt júan",
         }
         COP{
             "COP",
@@ -177,7 +177,7 @@ is{
         }
         CRC{
             "CRC",
-            "Colón á Kosta ríka",
+            "Kostarískt kólon",
         }
         CSK{
             "CSK",
@@ -185,7 +185,7 @@ is{
         }
         CUC{
             "CUC",
-            "Kúbanskur skiptanlegur pesó",
+            "Kúbverskur skiptanlegur pesi",
         }
         CUP{
             "CUP",
@@ -213,7 +213,7 @@ is{
         }
         DJF{
             "DJF",
-            "Djibouti Franc",
+            "Djíbútískur franki",
         }
         DKK{
             "DKK",
@@ -225,7 +225,7 @@ is{
         }
         DZD{
             "DZD",
-            "Alsírskur dínar",
+            "Alsírskur denari",
         }
         ECS{
             "ECS",
@@ -241,7 +241,7 @@ is{
         }
         ERN{
             "ERN",
-            "Eritrean Nakfa",
+            "Erítresk nakfa",
         }
         ESP{
             "ESP",
@@ -253,7 +253,7 @@ is{
         }
         EUR{
             "€",
-            "Euro",
+            "Evra",
         }
         FIM{
             "FIM",
@@ -277,11 +277,11 @@ is{
         }
         GEL{
             "GEL",
-            "Georgískt lari",
+            "Georgískur lari",
         }
         GHS{
             "GHS",
-            "Cedi í Gana",
+            "Ganverskur sedi",
         }
         GIP{
             "GIP",
@@ -301,7 +301,7 @@ is{
         }
         GTQ{
             "GTQ",
-            "Guatemala Quetzal",
+            "Gvatemalskt kvesal",
         }
         GWE{
             "GWE",
@@ -317,19 +317,19 @@ is{
         }
         HNL{
             "HNL",
-            "Hoduras Lempira",
+            "Hondúrsk lempíra",
         }
         HRK{
             "HRK",
-            "Kúna",
+            "Króatísk kúna",
         }
         HTG{
             "HTG",
-            "Gourde á Haítí",
+            "Haítískur gúrdi",
         }
         HUF{
             "HUF",
-            "Fórinta",
+            "Ungversk fórinta",
         }
         IDR{
             "IDR",
@@ -345,7 +345,7 @@ is{
         }
         ILS{
             "₪",
-            "Sikill",
+            "Nýr ísraelskur sikill",
         }
         INR{
             "₹",
@@ -373,11 +373,11 @@ is{
         }
         JOD{
             "JOD",
-            "Jórdanskur dínar",
+            "Jórdanskur denari",
         }
         JPY{
             "JP¥",
-            "Jen",
+            "Japanskt jen",
         }
         KES{
             "KES",
@@ -385,11 +385,11 @@ is{
         }
         KGS{
             "KGS",
-            "Som í Kyrgystan",
+            "Kirgiskt som",
         }
         KHR{
             "KHR",
-            "Kambódískt riel",
+            "Kambódískt ríal",
         }
         KMF{
             "KMF",
@@ -413,11 +413,11 @@ is{
         }
         KZT{
             "KZT",
-            "Kazakhstan Tenge",
+            "Kasakst tengi",
         }
         LAK{
             "LAK",
-            "Kip í Laos",
+            "Laoskt kip",
         }
         LBP{
             "LBP",
@@ -437,7 +437,7 @@ is{
         }
         LTL{
             "LTL",
-            "Lít",
+            "Litháískt lít",
         }
         LTT{
             "LTT",
@@ -449,7 +449,7 @@ is{
         }
         LVL{
             "LVL",
-            "Lat",
+            "Lettneskt lat",
         }
         LVR{
             "LVR",
@@ -469,11 +469,11 @@ is{
         }
         MDL{
             "MDL",
-            "Moldavískt leu",
+            "Moldavískt lei",
         }
         MGA{
             "MGA",
-            "Madagascar Ariary",
+            "Madagaskararjari",
         }
         MGF{
             "MGF",
@@ -493,15 +493,15 @@ is{
         }
         MNT{
             "MNT",
-            "Túríkur",
+            "Mongólskur túríkur",
         }
         MOP{
             "MOP",
-            "Macao Pataca",
+            "Makaópataka",
         }
         MRO{
             "MRO",
-            "Mauritania Ouguiya",
+            "Máritönsk úgía",
         }
         MTL{
             "MTL",
@@ -517,19 +517,19 @@ is{
         }
         MVR{
             "MVR",
-            "Rufiyaa á Maldíveyjum",
+            "Maldíveysk rúpía",
         }
         MWK{
             "MWK",
-            "Kwacha í Malavíu",
+            "Malavísk kvaka",
         }
         MXN{
-            "MX$",
+            "MXN",
             "Mexíkóskur pesi",
         }
         MXP{
             "MXP",
-            "Mexíkóskur silfurpesi (1861-1992)",
+            "Mexíkóskur silfurpesi (1861–1992)",
         }
         MXV{
             "MXV",
@@ -537,11 +537,15 @@ is{
         }
         MYR{
             "MYR",
-            "Malaysian Ringgit",
+            "Malasískt ringit",
         }
         MZE{
             "MZE",
             "Mósambískur skúti",
+        }
+        MZN{
+            "MZN",
+            "Mósambískt metikal",
         }
         NAD{
             "NAD",
@@ -549,11 +553,11 @@ is{
         }
         NGN{
             "NGN",
-            "Nigerian Naira",
+            "Nígerísk næra",
         }
         NIO{
             "NIO",
-            "Córdoba í Níkaragúa",
+            "Níkarögsk kordóva",
         }
         NLG{
             "NLG",
@@ -581,15 +585,15 @@ is{
         }
         PEN{
             "PEN",
-            "Perúskt nuevo sol",
+            "Perúskt sól",
         }
         PGK{
             "PGK",
-            "Kina í Papúa Nýju Gíneu",
+            "Papúsk kína",
         }
         PHP{
             "PHP",
-            "Filippínskur pesó",
+            "Filippseyskur pesi",
         }
         PKR{
             "PKR",
@@ -597,7 +601,7 @@ is{
         }
         PLN{
             "PLN",
-            "Pólskt zloty",
+            "Pólskt slot",
         }
         PLZ{
             "PLZ",
@@ -613,15 +617,19 @@ is{
         }
         QAR{
             "QAR",
-            "Rial í Katar",
+            "Katarskt ríal",
         }
         ROL{
             "ROL",
+            "Rúmenskt lei (1952–2006)",
+        }
+        RON{
+            "RON",
             "Rúmenskt lei",
         }
         RSD{
             "RSD",
-            "Serbneskur dínar",
+            "Serbneskur denari",
         }
         RUB{
             "RUB",
@@ -629,11 +637,11 @@ is{
         }
         RUR{
             "RUR",
-            "Rússnesk rúbla (1991-1998)",
+            "Rússnesk rúbla (1991–1998)",
         }
         RWF{
             "RWF",
-            "Rwandan Franc",
+            "Rúandskur franki",
         }
         SAR{
             "SAR",
@@ -645,7 +653,7 @@ is{
         }
         SCR{
             "SCR",
-            "Seychelles rúpía",
+            "Seychellesrúpía",
         }
         SDD{
             "SDD",
@@ -657,7 +665,7 @@ is{
         }
         SDP{
             "SDP",
-            "Súdanskt pund (1957-1998)",
+            "Súdanskt pund (1957–1998)",
         }
         SEK{
             "SEK",
@@ -681,7 +689,7 @@ is{
         }
         SLL{
             "SLL",
-            "Leone í Síerra Leóne",
+            "Síerraleónsk ljóna",
         }
         SOS{
             "SOS",
@@ -689,15 +697,19 @@ is{
         }
         SRD{
             "SRD",
-            "Súrinamískur dollar",
+            "Súrínamdalur",
         }
         SRG{
             "SRG",
             "Suriname Guilder",
         }
+        SSP{
+            "SSP",
+            "Suðursúdanskt pund",
+        }
         STD{
             "STD",
-            "Sao Tome and Principe Dobra",
+            "Saó Tóme og Prinsípe-dóbra",
         }
         SUR{
             "SUR",
@@ -717,7 +729,7 @@ is{
         }
         THB{
             "฿",
-            "Bat",
+            "Taílenskt bat",
         }
         TJR{
             "TJR",
@@ -725,23 +737,23 @@ is{
         }
         TJS{
             "TJS",
-            "Tajikistan Somoni",
+            "Tadsjikskur sómóni",
         }
         TMM{
             "TMM",
-            "Túrkmenskt manat",
+            "Túrkmenskt manat (1993–2009)",
         }
         TMT{
             "TMT",
-            "Manat í Túrkmenistan",
+            "Túrkmenskt manat",
         }
         TND{
             "TND",
-            "Túnískur dínar",
+            "Túniskur denari",
         }
         TOP{
             "TOP",
-            "Tongan Paʻanga",
+            "Tongapanga",
         }
         TPE{
             "TPE",
@@ -749,11 +761,11 @@ is{
         }
         TRL{
             "TRL",
-            "Tyrknesk líra",
+            "Tyrknesk líra (1922–2005)",
         }
         TRY{
             "TRY",
-            "Ný tyrknesk líra",
+            "Tyrknesk líra",
         }
         TTD{
             "TTD",
@@ -765,11 +777,11 @@ is{
         }
         TZS{
             "TZS",
-            "Tanzanian Shilling",
+            "Tansanískur skildingur",
         }
         UAH{
             "UAH",
-            "Hrinja",
+            "Úkraínsk hrinja",
         }
         UAK{
             "UAK",
@@ -780,7 +792,7 @@ is{
             "Úgandskur skildingur",
         }
         USD{
-            "US$",
+            "USD",
             "Bandaríkjadalur",
         }
         USN{
@@ -793,39 +805,39 @@ is{
         }
         UYU{
             "UYU",
-            "Úrúgvæskur pesó",
+            "Úrúgvæskur pesi",
         }
         UZS{
             "UZS",
-            "Som í Úsbekistan",
+            "Úsbekskt súm",
         }
         VEB{
             "VEB",
-            "Venezuelan Bolivar",
+            "Bolívar í Venesúela (1871–2008)",
         }
         VEF{
             "VEF",
-            "Bolívar í Venesúela",
+            "Venesúelskur bólívari",
         }
         VND{
             "₫",
-            "Víetnamískt dong",
+            "Víetnamskt dong",
         }
         VUV{
             "VUV",
-            "Vanuatu Vatu",
+            "Vanúatúskt vatú",
         }
         WST{
             "WST",
-            "Tala á Samóaeyjum",
+            "Samóatala",
         }
         XAF{
             "FCFA",
-            "Miðafrískur franki, BEAC",
+            "Miðafrískur franki",
         }
         XCD{
             "EC$",
-            "Austur-Karíbahafsdalur",
+            "Austurkarabískur dalur",
         }
         XDR{
             "XDR",
@@ -841,7 +853,7 @@ is{
         }
         XOF{
             "CFA",
-            "Miðafrískur franki, BCEAO",
+            "Vesturafrískur franki",
         }
         XPF{
             "CFPF",
@@ -849,7 +861,7 @@ is{
         }
         XXX{
             "XXX",
-            "Óþekktur eða ógildur gjaldeyrir",
+            "Óþekktur gjaldmiðill",
         }
         YDD{
             "YDD",
@@ -873,7 +885,11 @@ is{
         }
         ZMK{
             "ZMK",
-            "Zambian Kwacha",
+            "Zambian Kwacha (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
+            "Sambísk kvaka",
         }
         ZWD{
             "ZWD",
@@ -881,10 +897,650 @@ is{
         }
     }
     CurrencyPlurals{
+        AED{
+            one{"arabískt dírham"}
+            other{"arabísk dírhöm"}
+        }
+        AFN{
+            one{"afgani"}
+            other{"afganar"}
+        }
+        ALL{
+            one{"albanskt lek"}
+            other{"albönsk lek"}
+        }
+        AMD{
+            one{"armenskt dramm"}
+            other{"armensk drömm"}
+        }
+        ANG{
+            one{"hollenskt Antillugyllini"}
+            other{"hollensk Antillugyllini"}
+        }
+        AOA{
+            one{"angólsk kvansa"}
+            other{"angólskar kvönsur"}
+        }
+        ARS{
+            one{"argentínskur pesi"}
+            other{"argentínskir pesar"}
+        }
+        AUD{
+            one{"ástralskur dalur"}
+            other{"ástralskir dalir"}
+        }
+        AWG{
+            one{"arúbönsk flórína"}
+            other{"arúbanskar flórínur"}
+        }
+        AZN{
+            one{"aserskt manat"}
+            other{"asersk manöt"}
+        }
+        BAM{
+            one{"skiptanlegt Bosníu og Hersegóvínu-mark"}
+            other{"skiptanleg Bosníu og Hersegóvínu-mörk"}
+        }
+        BBD{
+            one{"barbadoskur dalur"}
+            other{"barbadoskir dalir"}
+        }
+        BDT{
+            one{"bangladessk taka"}
+            other{"bangladesskar tökur"}
+        }
+        BGN{
+            one{"búlgarskt lef"}
+            other{"búlgörsk lef"}
+        }
+        BHD{
+            one{"bareinskur denari"}
+            other{"bareinskir denarar"}
+        }
+        BIF{
+            one{"búrúndískur franki"}
+            other{"búrúndískir frankar"}
+        }
+        BMD{
+            one{"Bermúdadalur"}
+            other{"Bermúdadalir"}
+        }
+        BND{
+            one{"brúneiskur dalur"}
+            other{"brúneiskir dalir"}
+        }
+        BOB{
+            one{"bólivíani"}
+            other{"bólivíanar"}
+        }
+        BRL{
+            one{"brasilískt ríal"}
+            other{"brasilísk ríöl"}
+        }
+        BSD{
+            one{"Bahamadalur"}
+            other{"Bahamadalir"}
+        }
+        BTN{
+            one{"bútanskt núltrum"}
+            other{"bútönsk núltrum"}
+        }
+        BWP{
+            one{"botsvönsk púla"}
+            other{"botsvanskar púlur"}
+        }
+        BYR{
+            one{"hvítrússnesk rúbla"}
+            other{"hvítrússneskar rúblur"}
+        }
+        BZD{
+            one{"belískur dalur"}
+            other{"belískir dalir"}
+        }
+        CAD{
+            one{"kanadískur dalur"}
+            other{"kanadískir dalir"}
+        }
+        CDF{
+            one{"kongóskur franki"}
+            other{"kongóskir frankar"}
+        }
+        CHF{
+            one{"svissneskur franki"}
+            other{"svissneskir frankar"}
+        }
+        CLP{
+            one{"síleskur pesi"}
+            other{"síleskir pesar"}
+        }
+        CNY{
+            one{"kínverskt júan"}
+            other{"kínversk júön"}
+        }
+        COP{
+            one{"kólumbískur pesi"}
+            other{"kólumbískir pesar"}
+        }
+        CRC{
+            one{"kostarískt kólon"}
+            other{"kostarísk kólon"}
+        }
+        CUC{
+            one{"kúbverskur skiptanlegur pesi"}
+            other{"kúbverskir skiptanlegir pesar"}
+        }
+        CUP{
+            one{"kúbverskur pesi"}
+            other{"kúbverskir pesar"}
+        }
+        CVE{
+            one{"grænhöfðeyskur skúti"}
+            other{"grænhöfðeyskir skútar"}
+        }
+        CZK{
+            one{"tékknesk króna"}
+            other{"tékkneskar krónur"}
+        }
+        DJF{
+            one{"djíbútískur franki"}
+            other{"djíbútískir frankar"}
+        }
+        DKK{
+            one{"dönsk króna"}
+            other{"danskar krónur"}
+        }
+        DOP{
+            one{"dóminískur pesi"}
+            other{"dóminískir pesar"}
+        }
+        DZD{
+            one{"alsírskur denari"}
+            other{"alsírskir denarar"}
+        }
+        EGP{
+            one{"egypskt pund"}
+            other{"egypsk pund"}
+        }
+        ERN{
+            one{"erítresk nakfa"}
+            other{"erítreskar nökfur"}
+        }
+        ETB{
+            one{"eþíópískt birr"}
+            other{"eþíópísk birr"}
+        }
+        EUR{
+            one{"evra"}
+            other{"evrur"}
+        }
+        FJD{
+            one{"fídjeyskur dalur"}
+            other{"fídjeyskir dalir"}
+        }
+        FKP{
+            one{"falklenskt pund"}
+            other{"falklensk pund"}
+        }
+        GBP{
+            one{"sterlingspund"}
+            other{"sterlingspund"}
+        }
+        GEL{
+            one{"georgískur lari"}
+            other{"georgískir larar"}
+        }
+        GHS{
+            one{"ganverskur sedi"}
+            other{"ganverskir sedar"}
+        }
+        GIP{
+            one{"Gíbraltarspund"}
+            other{"Gíbraltarspund"}
+        }
+        GMD{
+            one{"gambískur dalasi"}
+            other{"gambískir dalasar"}
+        }
+        GNF{
+            one{"Gíneufranki"}
+            other{"Gíneufrankar"}
+        }
+        GTQ{
+            one{"gvatemalskt kvesal"}
+            other{"gvatemölsk kvesöl"}
+        }
+        GYD{
+            one{"gvæjanskur dalur"}
+            other{"gvæjanskir dalir"}
+        }
+        HKD{
+            one{"Hong Kong-dalur"}
+            other{"Hong Kong-dalir"}
+        }
+        HNL{
+            one{"hondúrsk lempíra"}
+            other{"hondúrskar lempírur"}
+        }
+        HRK{
+            one{"króatísk kúna"}
+            other{"króatískar kúnur"}
+        }
+        HTG{
+            one{"haítískur gúrdi"}
+            other{"haítískir gúrdar"}
+        }
+        HUF{
+            one{"ungversk fórinta"}
+            other{"ungverskar fórintur"}
+        }
+        IDR{
+            one{"indónesísk rúpía"}
+            other{"indónesískar rúpíur"}
+        }
+        ILS{
+            one{"nýr ísraelskur sikill"}
+            other{"nýir ísraelskir siklar"}
+        }
+        INR{
+            one{"indversk rúpía"}
+            other{"indverskar rúpíur"}
+        }
+        IQD{
+            one{"írakskur denari"}
+            other{"írakskir denarar"}
+        }
+        IRR{
+            one{"íranskt ríal"}
+            other{"írönsk ríöl"}
+        }
+        ISK{
+            one{"íslensk króna"}
+            other{"íslenskar krónur"}
+        }
+        JMD{
+            one{"jamaískur dalur"}
+            other{"jamaískir dalir"}
+        }
+        JOD{
+            one{"jórdanskur denari"}
+            other{"jórdanskir denarar"}
+        }
+        JPY{
+            one{"japanskt jen"}
+            other{"japönsk jen"}
+        }
+        KES{
+            one{"kenískur skildingur"}
+            other{"kenískir skildingar"}
+        }
+        KGS{
+            one{"kirgiskt som"}
+            other{"kirgisk som"}
+        }
+        KHR{
+            one{"kambódískt ríal"}
+            other{"kambódísk ríöl"}
+        }
+        KMF{
+            one{"kómoreyskur franki"}
+            other{"kómoreyskir frankar"}
+        }
+        KPW{
+            one{"norðurkóreskt vonn"}
+            other{"norðurkóresk vonn"}
+        }
+        KRW{
+            one{"suðurkóreskt vonn"}
+            other{"suðurkóresk vonn"}
+        }
+        KWD{
+            one{"kúveiskur denari"}
+            other{"kúveiskir denarar"}
+        }
+        KYD{
+            one{"caymaneyskur dalur"}
+            other{"caymaneyskir dalir"}
+        }
+        KZT{
+            one{"kasakst tengi"}
+            other{"kasöksk tengi"}
+        }
+        LAK{
+            one{"laoskt kip"}
+            other{"laosk kip"}
+        }
+        LBP{
+            one{"líbanskt pund"}
+            other{"líbönsk pund"}
+        }
+        LKR{
+            one{"srílönsk rúpía"}
+            other{"srílanskar rúpíur"}
+        }
+        LRD{
+            one{"líberískur dalur"}
+            other{"líberískir dalir"}
+        }
+        LTL{
+            one{"litháískt lít"}
+            other{"litháísk lít"}
+        }
+        LVL{
+            one{"lettneskt lat"}
+            other{"lettnesk löt"}
+        }
+        LYD{
+            one{"líbískur denari"}
+            other{"líbískir denarar"}
+        }
+        MAD{
+            one{"marokkóskt dírham"}
+            other{"marokkósk dírhöm"}
+        }
+        MDL{
+            one{"moldavískt lei"}
+            other{"moldavísk lei"}
+        }
+        MGA{
+            one{"Madagaskararjari"}
+            other{"Madagaskararjarar"}
+        }
+        MKD{
+            one{"makedónskur denari"}
+            other{"makedónskir denarar"}
+        }
+        MMK{
+            one{"mjanmarskt kjat"}
+            other{"mjanmörsk kjöt"}
+        }
+        MNT{
+            one{"mongólskur túríkur"}
+            other{"mongólskir túríkar"}
+        }
+        MOP{
+            one{"Makaópataka"}
+            other{"Makaópatökur"}
+        }
+        MRO{
+            one{"máritönsk úgía"}
+            other{"máritanskar úgíur"}
+        }
+        MUR{
+            one{"máritísk rúpía"}
+            other{"máritískar rúpíur"}
+        }
+        MVR{
+            one{"maldíveysk rúpía"}
+            other{"maldíveyskar rúpíur"}
+        }
+        MWK{
+            one{"malavísk kvaka"}
+            other{"malavískar kvökur"}
+        }
+        MXN{
+            one{"mexíkóskur pesi"}
+            other{"mexíkóskir pesar"}
+        }
+        MYR{
+            one{"malasískt ringit"}
+            other{"malasísk ringit"}
+        }
+        MZN{
+            one{"mósambískt metikal"}
+            other{"mósambísk metiköl"}
+        }
+        NAD{
+            one{"namibískur dalur"}
+            other{"namibískir dalir"}
+        }
+        NGN{
+            one{"nígerísk næra"}
+            other{"nígerískar nærur"}
+        }
+        NIO{
+            one{"níkarögsk kordóva"}
+            other{"níkaragskar kordóvur"}
+        }
+        NOK{
+            one{"norsk króna"}
+            other{"norskar krónur"}
+        }
+        NPR{
+            one{"nepölsk rúpía"}
+            other{"nepalskar rúpíur"}
+        }
+        NZD{
+            one{"nýsjálenskur dalur"}
+            other{"nýsjálenskir dalir"}
+        }
+        OMR{
+            one{"ómanskt ríal"}
+            other{"ómönsk ríöl"}
+        }
+        PAB{
+            one{"balbói"}
+            other{"balbóar"}
+        }
+        PEN{
+            one{"perúskt sól"}
+            other{"perúsk sól"}
+        }
+        PGK{
+            one{"papúsk kína"}
+            other{"papúskar kínur"}
+        }
+        PHP{
+            one{"filippseyskur pesi"}
+            other{"filippseyskir pesar"}
+        }
+        PKR{
+            one{"pakistönsk rúpía"}
+            other{"pakistanskar rúpíur"}
+        }
+        PLN{
+            one{"pólskt slot"}
+            other{"pólsk slot"}
+        }
+        PYG{
+            one{"paragvæskt gvaraní"}
+            other{"paragvæsk gvaraní"}
+        }
+        QAR{
+            one{"katarskt ríal"}
+            other{"katörsk ríöl"}
+        }
+        ROL{
+            one{"Rúmenskt lei (1952–2006)"}
+            other{"Rúmenskt lei (1952–2006)"}
+        }
+        RON{
+            one{"rúmenskt lei"}
+            other{"rúmensk lei"}
+        }
+        RSD{
+            one{"serbneskur denari"}
+            other{"serbneskir denarar"}
+        }
+        RUB{
+            one{"rússnesk rúbla"}
+            other{"rússneskar rúblur"}
+        }
+        RWF{
+            one{"rúandskur franki"}
+            other{"rúandskir frankar"}
+        }
+        SAR{
+            one{"sádiarabískt ríal"}
+            other{"sádiarabísk ríöl"}
+        }
+        SBD{
+            one{"salómonseyskur dalur"}
+            other{"salómonseyskir dalir"}
+        }
+        SCR{
+            one{"Seychellesrúpía"}
+            other{"Seychellesrúpíur"}
+        }
+        SDG{
+            one{"súdanskt pund"}
+            other{"súdönsk pund"}
+        }
+        SEK{
+            one{"sænsk króna"}
+            other{"sænskar krónur"}
+        }
+        SGD{
+            one{"singapúrskur dalur"}
+            other{"singapúrskir dalir"}
+        }
+        SHP{
+            one{"helenskt pund"}
+            other{"helensk pund"}
+        }
+        SLL{
+            one{"síerraleónsk ljóna"}
+            other{"síerraleónskar ljónur"}
+        }
+        SOS{
+            one{"sómalískur skildingur"}
+            other{"sómalískir skildingar"}
+        }
+        SRD{
+            one{"Súrínamdalur"}
+            other{"Súrínamdalir"}
+        }
+        SSP{
+            one{"suðursúdanskt pund"}
+            other{"suðursúdönsk pund"}
+        }
+        STD{
+            one{"Saó Tóme og Prinsípe-dóbra"}
+            other{"Saó Tóme og Prinsípe-dóbrur"}
+        }
+        SVC{
+            one{"El Salvador Colon"}
+            other{"El Salvador Colon"}
+        }
+        SYP{
+            one{"sýrlenskt pund"}
+            other{"sýrlensk pund"}
+        }
+        SZL{
+            one{"svasílenskur lílangeni"}
+            other{"svasílenskir lílangenar"}
+        }
+        THB{
+            one{"taílenskt bat"}
+            other{"taílensk böt"}
+        }
+        TJS{
+            one{"tadsjikskur sómóni"}
+            other{"tadsjikskir sómónar"}
+        }
+        TMM{
+            one{"Túrkmenskt manat (1993–2009)"}
+            other{"Túrkmenskt manat (1993–2009)"}
+        }
+        TMT{
+            one{"túrkmenskt manat"}
+            other{"túrkmensk manöt"}
+        }
+        TND{
+            one{"túniskur denari"}
+            other{"túniskir denarar"}
+        }
+        TOP{
+            one{"Tongapanga"}
+            other{"Tongapöngur"}
+        }
+        TRY{
+            one{"tyrknesk líra"}
+            other{"tyrkneskar lírur"}
+        }
+        TTD{
+            one{"Trínidad og Tóbagó-dalur"}
+            other{"Trínidad og Tóbagó-dalir"}
+        }
+        TWD{
+            one{"taívanskur dalur"}
+            other{"taívanskir dalir"}
+        }
+        TZS{
+            one{"tansanískur skildingur"}
+            other{"tansanískir skildingar"}
+        }
+        UAH{
+            one{"úkraínsk hrinja"}
+            other{"úkraínskar hrinjur"}
+        }
+        UGX{
+            one{"úgandskur skildingur"}
+            other{"úgandskir skildingur"}
+        }
+        USD{
+            one{"Bandaríkjadalur"}
+            other{"Bandaríkjadalir"}
+        }
+        UYU{
+            one{"úrúgvæskur pesi"}
+            other{"úrúgvæskir pesar"}
+        }
+        UZS{
+            one{"úsbekskt súm"}
+            other{"úsbeksk súm"}
+        }
+        VEF{
+            one{"venesúelskur bólívari"}
+            other{"venesúelskir bólívarar"}
+        }
+        VND{
+            one{"víetnamskt dong"}
+            other{"víetnömsk dong"}
+        }
+        VUV{
+            one{"vanúatúskt vatú"}
+            other{"vanúatúsk vatú"}
+        }
+        WST{
+            one{"Samóatala"}
+            other{"Samóatölur"}
+        }
+        XAF{
+            one{"miðafrískur franki"}
+            other{"miðafrískir frankar"}
+        }
+        XCD{
+            one{"austurkarabískur dalur"}
+            other{"austurkarabískir dalir"}
+        }
+        XOF{
+            one{"vesturafrískur franki"}
+            other{"vesturafrískir frankar"}
+        }
+        XPF{
+            one{"pólinesískur franki"}
+            other{"pólinesískir frankar"}
+        }
         XXX{
-            one{"óþekktur eða ógildur gjaldeyrir"}
-            other{"óþekktur eða ógildur gjaldeyrir"}
+            one{"(óþekktur gjaldmiðill)"}
+            other{"(óþekktur gjaldmiðill)"}
+        }
+        YER{
+            one{"jemenskt ríal"}
+            other{"jemensk ríöl"}
+        }
+        ZAR{
+            one{"suðurafrískt rand"}
+            other{"suðurafrísk rönd"}
+        }
+        ZMW{
+            one{"sambísk kvaka"}
+            other{"sambískar kvökur"}
         }
     }
-    Version{"2.0.65.46"}
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
 }

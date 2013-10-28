@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/naq.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/naq.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/naq.xml
+ * ICU <specials> source: <path>/common/main/naq.xml
  */
 naq{
     Countries{
@@ -56,7 +56,6 @@ naq{
         CN{"Chinab"}
         CO{"Colombiab"}
         CR{"Costa Rica"}
-        CS{"Serbiab tsî Montenegrob"}
         CU{"Cubab"}
         CV{"Cape Verde Islands"}
         CY{"Cyprus"}
@@ -238,5 +237,5 @@ naq{
         ZM{"Zambiab"}
         ZW{"Zimbabweb"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

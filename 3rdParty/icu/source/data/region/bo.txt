@@ -1,16 +1,17 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/bo.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/bo.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/bo.xml
+ * ICU <specials> source: <path>/common/main/bo.xml
  */
 bo{
     Countries{
+        001{"འཛམ་གླིང་།"}
         CN{"རྒྱ་ནག"}
         DE{"འཇར་མན་"}
         GB{"དབྱིན་ཇི་"}
@@ -19,8 +20,8 @@ bo{
         JP{"རི་པིན་"}
         NP{"བར་ཡུལ་"}
         RU{"ཨུ་རུ་སུ་"}
-        US{"ཨ་མེ་རི་ཀ་"}
+        US{"ཨ་མེ་རི་ཀ།"}
         ZZ{"མིའི་ཤེས་རྟོགས་མ་བྱུང་བའི་ཁོར་ཡུག"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

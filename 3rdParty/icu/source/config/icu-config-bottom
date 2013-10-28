@@ -1,11 +1,11 @@
 ## -*-sh-*-
 ## BEGIN of icu-config-bottom.
-## Copyright (c) 2002-2011, International Business Machines Corporation and
+## Copyright (c) 2002-2013, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ICUUC_FILE="${libdir}/${ICULIBS_COMMON_LIB_NAME}"
 ICUUC_FILE_A="${libdir}/${ICULIBS_COMMON_LIB_NAME_A}"
-    
+
 #  echo ENABLE RPATH $ENABLE_RPATH and RPATHLDFLAGS=${RPATH_LDFLAGS}
 if [ "x$PKGDATA_MODE" = "x" ]; then
     PKGDATA_MODE=dll
@@ -42,7 +42,7 @@ allflags()
     echo "  --icudata-mode         Print default ICU pkgdata mode (dll) - use as --mode option to pkgdata(1)."
     echo "  --icudatadir           Print path to packaged archive data. Can set as [ICU_DATA]"
     echo "  --invoke               Print commands to invoke an ICU program"
-    echo "  --invoke=<prog>        Print commands to invoke an ICU program named <prog> (ex: genrb)" 
+    echo "  --invoke=<prog>        Print commands to invoke an ICU program named <prog> (ex: genrb)"
     echo "  --ldflags              Print -L search path and -l libraries to link with ICU [LDFLAGS].  This is for the data, uc (common), and i18n libraries only.  "
     echo "  --ldflags-layout       Print ICU layout engine link directive. Use in addition to --ldflags"
     echo "  --ldflags-libsonly     Same as --ldflags, but only the -l directives"
@@ -85,10 +85,13 @@ usage()
     echo "Usage:"
     allflags
 
-    echo 
+    echo
     echo " [Brackets] show MAKE variable equivalents,  (parenthesis) show example output"
     echo
-    echo "Copyright (c) 2002, International Business Machines Corporation and others. All Rights Reserved."
+    echo "Copyright (c) 2002-2013, International Business Machines Corporation and others. All Rights Reserved."
+    echo
+    echo "NOTE: Please consider using the pkg-config (.pc) files instead of icu-config."
+    echo " See: <http://userguide.icu-project.org/howtouseicu#TOC-pkg-config> "
 }
 
 ## Check the sanity of current variables
@@ -125,7 +128,7 @@ case "$1" in
     ;;
 esac
 
-case "$1" in 
+case "$1" in
 *prefix*)
     IGNORE_ICUUC_FILE_CHECK="yes"
     ;;
@@ -139,7 +142,7 @@ loaddefs
 if [ $# -gt 0 -a $1 = "--selfcheck" ];
 then
 	echo "passed"
-	exit 
+	exit
 	# EXIT for self check
 fi
 
@@ -156,12 +159,12 @@ do
         --debug)
 	    set -x
 	    ;;
-        
+
         --noverify)
             echo "### $ME: Error: --noverify must be the first argument." 1>&2
             exit 1
             ;;
-            
+
     --so)
         echo $SO
         ;;
@@ -194,8 +197,8 @@ do
 	    QUOT="\""
             CMD="${var}"
 
-            # If it's not a locally executable command (1st choice) then 
-            # search for it in the ICU directories. 
+            # If it's not a locally executable command (1st choice) then
+            # search for it in the ICU directories.
             if [ ! -x ${CMD} ]; then
                 if [ -x ${bindir}/${var} ]; then
                     CMD="${bindir}/${var}"
@@ -216,11 +219,11 @@ do
 	--cflags)
 	    echo $ECHO_N "${CFLAGS} ${ECHO_C}"
 	    ;;
-	    
+
 	--cc)
 	    echo $ECHO_N "${CC} ${ECHO_C}"
 	    ;;
-	    
+
 	--cxx)
 	    echo $ECHO_N "${CXX} ${ECHO_C}"
 	    ;;
@@ -338,7 +341,7 @@ do
 	--icudata-install-dir)
         echo $ECHO_N "${ICUPKGDATA_DIR} ${ECHO_C}"
 	    ;;
-	    
+
 	--icudatadir)
 	    echo $ECHO_N "${ICUDATA_DIR} ${ECHO_C}"
 	    ;;
@@ -358,7 +361,7 @@ do
 	--unicode-version)
 	    echo $ECHO_N $UNICODE_VERSION
 	    ;;
-	
+
 	--host)
 	    echo $host
 	    exit 0
@@ -393,7 +396,7 @@ do
             ;;
     esac
     shift
-    
+
     # Reset the ignore icuuc file check flag
     if [ $IGNORE_ICUUC_FILE_CHECK = "yes" ]; then
         IGNORE_ICUUC_FILE_CHECK="no"
@@ -406,4 +409,3 @@ sanity
 ## END of icu-config-bottom
 
 exit 0
-

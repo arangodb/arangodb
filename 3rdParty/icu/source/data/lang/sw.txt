@@ -1,37 +1,55 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sw.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sw.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sw.xml
+ * ICU <specials> source: <path>/common/main/sw.xml
  */
 sw{
     Keys{
         calendar{"Kalenda"}
-        collation{"Mbinu ya Kupanga"}
+        colAlternate{"Puuza Upangaji Alama"}
+        colBackwards{"Upangaji Uliogeuzwa wa Kiinitoni"}
+        colCaseFirst{"Upangaji wa Herufi kubwa/Herufi ndogo"}
+        colCaseLevel{"Upangaji Unaoathiriwa na Herufi"}
+        colHiraganaQuaternary{"Upangaji wa Kana"}
+        colNormalization{"Upangaji wa Kawaida"}
+        colNumeric{"Upangaji wa Namba"}
+        colStrength{"Nguvu ya Upangaji"}
+        collation{"Utaratibu wa Kupanga"}
         currency{"Fedha"}
         numbers{"Nambari"}
+        timezone{"Ukanda Saa"}
+        va{"Tofauti ya Mandhari"}
+        variableTop{"Panga Kama Alama"}
         x{"Matumizi ya Kibinafsi"}
     }
     Languages{
         ab{"Kiabkhazi"}
+        ach{"Kiakoli"}
         af{"Kiafrikana"}
-        ak{"Kiakan"}
+        ak{"Kiakani"}
         am{"Kiamhari"}
         ar{"Kiarabu"}
         as{"Kiassam"}
         ay{"Aimara"}
         az{"Kiazabajani"}
         be{"Kibelarusi"}
+        bem{"Kibemba"}
         bg{"Kibulgaria"}
+        bh{"Kibihari"}
         bn{"Kibangla"}
         bo{"Kitibeti"}
+        br{"Kibretoni"}
         bs{"Kibosnia"}
         ca{"Kikatalani"}
+        chr{"Kicherokee"}
+        ckb{"Kisorani Kikurdi"}
+        co{"Kikosikani"}
         cs{"Kicheki"}
         cy{"Kiwelisi"}
         da{"Kidenmaki"}
@@ -40,6 +58,7 @@ sw{
         de_CH{"Kijerumani cha Juu cha Uswisi"}
         dv{"Kidivehi"}
         dz{"Kizongkha"}
+        ee{"Kiwe"}
         efi{"Kiefiki"}
         el{"Kigiriki"}
         en{"Kiingereza"}
@@ -50,7 +69,8 @@ sw{
         eo{"Kiesperanto"}
         es{"Kihispania"}
         es_419{"Kihispania cha Amerika ya Kilatinini"}
-        es_ES{"Kihispania cha Iberia"}
+        es_ES{"Kihispania cha Ulaya"}
+        es_MX{"Kihispania cha Meksiko"}
         et{"Kiestonia"}
         eu{"Kibasque"}
         fa{"Kiajemi"}
@@ -63,6 +83,7 @@ sw{
         fr_CH{"Kifaransa cha Uswisi"}
         fy{"Kifrisia cha Magharibi"}
         ga{"Kiayalandi"}
+        gaa{"Kiga"}
         gd{"Kigaeli cha Uskoti"}
         gl{"Kigalisia"}
         gn{"Kiguarani"}
@@ -76,6 +97,7 @@ sw{
         ht{"Kihaiti"}
         hu{"Kihungari"}
         hy{"Kiarmenia"}
+        ia{"Kiintalingua"}
         id{"Kiindonesia"}
         ig{"Kiigbo"}
         is{"Kiaisilandi"}
@@ -83,21 +105,26 @@ sw{
         ja{"Kijapani"}
         jv{"Kijava"}
         ka{"Kijojia"}
+        kg{"Kikongo"}
         kk{"Kikazaki"}
         km{"Kikambodia"}
         kn{"Kikannada"}
         ko{"Kikorea"}
-        ks{"Kashmiri"}
+        ks{"Kikashmiri"}
         ku{"Kikurdi"}
         ky{"Kirigizi"}
         la{"Kilatini"}
         lb{"Kilasembagi"}
+        lg{"Kiganda"}
         ln{"Kilingala"}
         lo{"Kilaosi"}
+        loz{"Kilozi"}
         lt{"Kilithuania"}
+        lua{"Kiluba-Lulua"}
         lv{"Kilatvia"}
+        mfe{"Kimoriseni"}
         mg{"Malagasi"}
-        mi{"Maori"}
+        mi{"Kimaori"}
         mk{"Kimasedonia"}
         ml{"Kimalayalam"}
         mn{"Mongolia"}
@@ -113,6 +140,9 @@ sw{
         nn{"Kinorwe Kipya"}
         nso{"Kisotho cha Kaskazini"}
         ny{"Kinyanja"}
+        nyn{"Kinyankole"}
+        oc{"Kiokitani"}
+        om{"Kioromo"}
         or{"Kioriya"}
         os{"Kiosetia"}
         pa{"Kipunjabi"}
@@ -120,8 +150,8 @@ sw{
         ps{"Kipashto"}
         pt{"Kireno"}
         pt_BR{"Kireno cha Brazil"}
-        pt_PT{"Kireno cha Iberia"}
-        qu{"Quechua"}
+        pt_PT{"Kireno cha Ulaya"}
+        qu{"Kiquechua"}
         rm{"Kiromanshi"}
         rn{"Kirundi"}
         ro{"Kiromania"}
@@ -151,23 +181,27 @@ sw{
         th{"Kitailandi"}
         ti{"Kitigrinya"}
         tk{"Kiturukimeni"}
+        tlh{"Kiklingoni"}
         tn{"Kitswana"}
         to{"Tonga"}
         tpi{"Kitokpisin"}
         tr{"Kituruki"}
         ts{"Kitsonga"}
         tt{"Kitatari"}
+        tum{"Kitumbuka"}
         ty{"Kitahiti"}
-        ug{"Kiuigur"}
+        ug{"Kiuiguri"}
         uk{"Kiukrania"}
         und{"Lugha Isiyojulikana"}
         ur{"Kiurdu"}
         uz{"Kiuzbeki"}
         ve{"Kivenda"}
         vi{"Kivietinamu"}
-        wo{"Wolof"}
+        wo{"Kiwolofu"}
         xh{"Kixhosa"}
+        yi{"Kiyidi"}
         yo{"Kiyoruba"}
+        zgh{"Tamaziti Msingi ya Kimoroko"}
         zh{"Kichina"}
         zh_Hans{"Kichina Rahisi"}
         zh_Hant{"Kichina cha Jadi"}
@@ -238,15 +272,53 @@ sw{
             persian{"Kalenda ya Kiajemi"}
             roc{"Kalenda ya Minguo"}
         }
+        colAlternate{
+            non-ignorable{"Panga Alama"}
+            shifted{"Panga Alama za Kupuuza"}
+        }
+        colBackwards{
+            no{"Panga Viinitoni kwa Kawaida"}
+            yes{"Panga Viinitoni Kumegeuzwa"}
+        }
+        colCaseFirst{
+            lower{"Panga Herufi ndogo Kwanza"}
+            no{"Panga Utaratibu wa Herufi ya Kawaida"}
+            upper{"Panga Herufi kubwa Kwanza"}
+        }
+        colCaseLevel{
+            no{"Panga Isiyoathiriwa na Herufi"}
+            yes{"Panga kwa Inayoathiriwa na Herufi"}
+        }
+        colHiraganaQuaternary{
+            no{"Panga Kana Kando"}
+            yes{"Panga Kana Kitofauti"}
+        }
+        colNormalization{
+            no{"Panga Bila Ukawaida"}
+            yes{"Upangaji Msimbosare Umekawaidishwa"}
+        }
+        colNumeric{
+            no{"Panga Tarakimu Kivyake"}
+            yes{"Panga Dijiti kwa Namba"}
+        }
+        colStrength{
+            identical{"Panga Zote"}
+            primary{"Panga Herufi Msingi Tu"}
+            quaternary{"Panga Viinitoni/Herufi/Upana/Kana"}
+            secondary{"Panga Viinitoni"}
+            tertiary{"Panga Viinitoni/Herufi/Upana"}
+        }
         collation{
             big5han{"Mpangilio wa Kichina cha Jadi - Big5"}
             dictionary{"Mpangilio wa Kamusi"}
             ducet{"Mpangilio wa Chaguo-Msingi wa Unicode"}
             gb2312han{"Mpangilio wa Kichina Rahisi - GB2312"}
             phonebook{"Mpangilio wa Orodha za Nambari za Simu"}
+            phonetic{"Utaratibu wa Kupanga Fonetiki"}
             pinyin{"Mpangilio wa Kipinyin"}
             reformed{"Mpangilio Uliorekebishwa"}
             search{"Utafutaji wa Kijumla"}
+            searchjl{"Tafuta kwa Konsonanti Halisi ya Hangul"}
             stroke{"Mpangilio wa Mikwaju"}
             traditional{"Mpangilio wa Kawaida"}
             unihan{"Mpangilio wa Mikwaju ya Shina"}
@@ -259,6 +331,7 @@ sw{
             beng{"Nambari za Kibengali"}
             deva{"Nambari za Kidevanagari"}
             ethi{"Nambari za Kiethiopia"}
+            finance{"Tarakimu za Kifedha"}
             fullwide{"Nambari za Upana Kamili"}
             geor{"Nambari za Georgia"}
             grek{"Nambari za Kigiriki"}
@@ -280,17 +353,28 @@ sw{
             mlym{"Nambari za Kimalayamu"}
             mong{"Nambari za Kimongolia"}
             mymr{"Nambari za Myama"}
+            native{"Digiti Asili"}
             orya{"Nambari za Kioriya"}
             roman{"Nambari za Kirumi"}
             romanlow{"Nambari Ndogo za Kirumi"}
-            taml{"Nambari za Kitamil"}
+            taml{"Nambari za Kitamili"}
+            tamldec{"Nambari za Kitamili"}
             telu{"Nambari za Kitelugu"}
             thai{"Nambari za Kitai"}
             tibt{"Nambari za Kitibeti"}
+            traditional{"Tarakimu za Jadi"}
+            vaii{"Dijiti za Vai"}
         }
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
+    codePatterns{
+        language{"{0}"}
+        script{"{0}"}
+        territory{"{0}"}
+    }
     localeDisplayPattern{
-        separator{","}
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

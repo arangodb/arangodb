@@ -24,7 +24,6 @@
 #include "unicode/uscript.h"
 #include "unicode/udata.h"
 #include "uassert.h"
-#include "umutex.h"
 #include "cmemory.h"
 #include "ucln_cmn.h"
 #include "utrie2.h"
@@ -409,7 +408,7 @@ u_getNumericValue(UChar32 c) {
         int32_t numerator=(ntv>>4)-12;
         int32_t denominator=(ntv&0xf)+1;
         return (double)numerator/denominator;
-    } else if(ntv<UPROPS_NTV_RESERVED_START) {
+    } else if(ntv<UPROPS_NTV_BASE60_START) {
         /* large, single-significant-digit integer */
         double numValue;
         int32_t mant=(ntv>>5)-14;
@@ -430,6 +429,30 @@ u_getNumericValue(UChar32 c) {
             break;
         case 1:
             numValue*=10.;
+            break;
+        case 0:
+        default:
+            break;
+        }
+
+        return numValue;
+    } else if(ntv<UPROPS_NTV_RESERVED_START) {
+        /* sexagesimal (base 60) integer */
+        int32_t numValue=(ntv>>2)-0xbf;
+        int32_t exp=(ntv&3)+1;
+
+        switch(exp) {
+        case 4:
+            numValue*=60*60*60*60;
+            break;
+        case 3:
+            numValue*=60*60*60;
+            break;
+        case 2:
+            numValue*=60*60;
+            break;
+        case 1:
+            numValue*=60;
             break;
         case 0:
         default:
@@ -548,7 +571,7 @@ uscript_getScript(UChar32 c, UErrorCode *pErrorCode) {
     }
 }
 
-U_DRAFT UBool U_EXPORT2
+U_CAPI UBool U_EXPORT2
 uscript_hasScript(UChar32 c, UScriptCode sc) {
     const uint16_t *scx;
     uint32_t scriptX=u_getUnicodeProperties(c, 0)&UPROPS_SCRIPT_X_MASK;
@@ -560,7 +583,7 @@ uscript_hasScript(UChar32 c, UScriptCode sc) {
     if(scriptX>=UPROPS_SCRIPT_X_WITH_OTHER) {
         scx=scriptExtensions+scx[1];
     }
-    if(sc>0x7fff) {
+    if(sc>=USCRIPT_CODE_LIMIT) {
         /* Guard against bogus input that would make us go past the Script_Extensions terminator. */
         return FALSE;
     }
@@ -570,7 +593,7 @@ uscript_hasScript(UChar32 c, UScriptCode sc) {
     return sc==(*scx&0x7fff);
 }
 
-U_DRAFT int32_t U_EXPORT2
+U_CAPI int32_t U_EXPORT2
 uscript_getScriptExtensions(UChar32 c,
                             UScriptCode *scripts, int32_t capacity,
                             UErrorCode *pErrorCode) {
@@ -603,7 +626,7 @@ uscript_getScriptExtensions(UChar32 c,
     do {
         sx=*scx++;
         if(length<capacity) {
-            scripts[length]=sx&0x7fff;
+            scripts[length]=(UScriptCode)(sx&0x7fff);
         }
         ++length;
     } while(sx<0x8000);

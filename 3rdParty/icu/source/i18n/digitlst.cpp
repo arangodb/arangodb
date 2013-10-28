@@ -54,8 +54,8 @@
 
 
 /* Only for 32 bit numbers. Ignore the negative sign. */
-static const char LONG_MIN_REP[] = "2147483648";
-static const char I64_MIN_REP[] = "9223372036854775808";
+//static const char LONG_MIN_REP[] = "2147483648";
+//static const char I64_MIN_REP[] = "9223372036854775808";
 
 
 static const uint8_t DIGIT_HAVE_NONE=0;
@@ -462,21 +462,21 @@ DigitList::getDouble() const
             DigitList numToConvert(*this);
             numToConvert.reduce();    // Removes any trailing zeros, so that digit count is good.
             numToConvert.round(MAX_DBL_DIGITS+3);
-            uprv_decNumberToString(numToConvert.fDecNumber, s);
+            uprv_decNumberToString(numToConvert.fDecNumber, s.getAlias());
             // TODO:  how many extra digits should be included for an accurate conversion?
         } else {
-            uprv_decNumberToString(this->fDecNumber, s);
+            uprv_decNumberToString(this->fDecNumber, s.getAlias());
         }
         U_ASSERT(uprv_strlen(&s[0]) < MAX_DBL_DIGITS+18);
         
         if (decimalSeparator != '.') {
-            char *decimalPt = strchr(s, '.');
+            char *decimalPt = strchr(s.getAlias(), '.');
             if (decimalPt != NULL) {
                 *decimalPt = decimalSeparator;
             }
         }
         char *end = NULL;
-        tDouble = uprv_strtod(s, &end);
+        tDouble = uprv_strtod(s.getAlias(), &end);
     }
     {
         Mutex mutex;
@@ -732,29 +732,56 @@ DigitList::setInteger(int64_t source)
  * be acceptable for a public API.
  */
 void
-DigitList::set(const StringPiece &source, UErrorCode &status) {
+DigitList::set(const StringPiece &source, UErrorCode &status, uint32_t /*fastpathBits*/) {
     if (U_FAILURE(status)) {
         return;
     }
 
-    // Figure out a max number of digits to use during the conversion, and
-    // resize the number up if necessary.
-    int32_t numDigits = source.length();
-    if (numDigits > fContext.digits) {
+#if 0    
+    if(fastpathBits==(kFastpathOk|kNoDecimal)) {
+      int32_t size = source.size();
+      const char *data = source.data();
+      int64_t r = 0;
+      int64_t m = 1;
+      // fast parse
+      while(size>0) {
+        char ch = data[--size];
+        if(ch=='+') {
+          break;
+        } else if(ch=='-') {
+          r = -r;
+          break;
+        } else {
+          int64_t d = ch-'0';
+          //printf("CH[%d]=%c, %d, *=%d\n", size,ch, (int)d, (int)m);
+          r+=(d)*m;
+          m *= 10;
+        }
+      }
+      //printf("R=%d\n", r);
+      set(r);
+    } else
+#endif
+        {
+      // Figure out a max number of digits to use during the conversion, and
+      // resize the number up if necessary.
+      int32_t numDigits = source.length();
+      if (numDigits > fContext.digits) {
         // fContext.digits == fStorage.getCapacity()
         decNumber *t = fStorage.resize(numDigits, fStorage.getCapacity());
         if (t == NULL) {
-            status = U_MEMORY_ALLOCATION_ERROR;
-            return;
+          status = U_MEMORY_ALLOCATION_ERROR;
+          return;
         }
         fDecNumber = t;
         fContext.digits = numDigits;
-    }
+      }
 
-    fContext.status = 0;
-    uprv_decNumberFromString(fDecNumber, source.data(), &fContext);
-    if ((fContext.status & DEC_Conversion_syntax) != 0) {
+      fContext.status = 0;
+      uprv_decNumberFromString(fDecNumber, source.data(), &fContext);
+      if ((fContext.status & DEC_Conversion_syntax) != 0) {
         status = U_DECIMAL_NUMBER_SYNTAX_ERROR;
+      }
     }
     internalClear();
 }   
@@ -918,13 +945,6 @@ DigitList::isZero() const
 {
     return decNumberIsZero(fDecNumber);
 }
-
-
-
-void * U_EXPORT2 DigitList::operator new(size_t size, void *stack, EStackMode mode) U_NO_THROW {
-  return stack;
-}
-
 
 U_NAMESPACE_END
 #endif // #if !UCONFIG_NO_FORMATTING

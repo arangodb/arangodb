@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2006, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -16,11 +16,17 @@
 
 U_NAMESPACE_BEGIN
 
+class CharsetMatch;
+
 class CharsetRecognizer : public UMemory
 {
  public:
     /**
      * Get the IANA name of this charset.
+     * Note that some recognizers can recognize more than one charset, but that this API
+     * assumes just one name per recognizer.
+     * TODO: need to account for multiple names in public API that enumerates over the
+     *       known detectable charsets.
      * @return the charset name.
      */
     virtual const char *getName() const = 0;
@@ -31,7 +37,14 @@ class CharsetRecognizer : public UMemory
      */
     virtual const char *getLanguage() const;
         
-    virtual int32_t match(InputText *textIn) = 0;
+    /*
+     * Try the given input text against this Charset, and fill in the results object
+     * with the quality of the match plus other information related to the match.
+     *
+     * Return TRUE if the the input bytes are a potential match, and
+     * FALSE if the input data is not compatible with, or illegal in this charset.
+     */
+    virtual UBool match(InputText *textIn, CharsetMatch *results) const = 0;
 
     virtual ~CharsetRecognizer();
 };

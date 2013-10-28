@@ -1,7 +1,7 @@
 /*
  ********************************************************************************
  *
- *   Copyright (C) 1998-2011, International Business Machines
+ *   Copyright (C) 1998-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  ********************************************************************************
@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
     }
 
     if(options[OPT_VERSION].doesOccur) {
-        printf("makeconv version %hu.%hu, ICU tool to read .ucm codepage mapping files and write .cnv files\n",
+        printf("makeconv version %u.%u, ICU tool to read .ucm codepage mapping files and write .cnv files\n",
                dataInfo.formatVersion[0], dataInfo.formatVersion[1]);
         printf("%s\n", U_COPYRIGHT_STRING);
         exit(0);
@@ -293,7 +293,7 @@ int main(int argc, char* argv[])
         arg = getLongPathname(*argv);
 
         /* Check for potential buffer overflow */
-        if(strlen(arg) > UCNV_MAX_FULL_FILE_NAME_LENGTH)
+        if(strlen(arg) >= UCNV_MAX_FULL_FILE_NAME_LENGTH)
         {
             fprintf(stderr, "%s\n", u_errorName(U_BUFFER_OVERFLOW_ERROR));
             return U_BUFFER_OVERFLOW_ERROR;

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2011, International Business Machines
+*   Copyright (C) 1998-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -19,6 +19,7 @@
 #include "read.h"
 #include "errmsg.h"
 #include "unicode/ustring.h"
+#include "unicode/utf16.h"
 
 #define OPENBRACE    0x007B
 #define CLOSEBRACE   0x007D

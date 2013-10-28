@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- * Copyright (c) 1997-2010, International Business Machines Corporation and *
+ * Copyright (c) 1997-2013, International Business Machines Corporation and *
  * others. All Rights Reserved.                                             *
  ****************************************************************************
  */
@@ -198,6 +198,7 @@ static void TestFromInt64(void)
     UErrorCode status = U_ZERO_ERROR;
 
     result = utmscale_fromInt64(0, -1, &status);
+    (void)result;    /* Suppress set but not used warning. */
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         log_err("utmscale_fromInt64(0, -1, status) did not set status to U_ILLEGAL_ARGUMENT_ERROR.\n");
     }
@@ -258,6 +259,7 @@ static void TestToInt64(void)
     UErrorCode status = U_ZERO_ERROR;
 
     result = utmscale_toInt64(0, -1, &status);
+    (void)result;    /* suppress set but not used warning. */
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         log_err("utmscale_toInt64(0, -1, &status) did not generate U_ILLEGAL_ARGUMENT_ERROR.\n");
     }

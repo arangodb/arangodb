@@ -1,166 +1,165 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/ewo.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ewo.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/ewo.xml
+ * ICU <specials> source: <path>/common/main/ewo.xml
  */
 ewo{
     Countries{
         AD{"Andór"}
-        AE{"Bemirá yá Arábǝ uní"}
-        AF{"Afǝganisǝtán"}
-        AG{"Antígwa ai Barǝbúda"}
-        AI{"Angíyǝ"}
-        AL{"Alǝbánia"}
-        AM{"Arǝménia"}
-        AN{"Anǝtíyǝ Nɛdǝlánia"}
+        AE{"Bemirá yá Arábə uní"}
+        AF{"Afəganisətán"}
+        AG{"Antígwa ai Barəbúda"}
+        AI{"Angíyə"}
+        AL{"Aləbánia"}
+        AM{"Arəménia"}
+        AN{"Anətíyə Nɛdəlánia"}
         AO{"Angolá"}
-        AR{"Arǝhenǝtína"}
-        AS{"Bǝsamóa yá Amǝ́rǝka"}
-        AT{"Osǝtǝlía"}
-        AU{"Osǝtǝlalí"}
+        AR{"Arəhenətína"}
+        AS{"Bəsamóa yá Amə́rəka"}
+        AT{"Osətəlía"}
+        AU{"Osətəlalí"}
         AW{"Arúba"}
-        AZ{"Azɛrǝbaidzáŋ"}
-        BA{"Bosǝní ai ɛrǝzegovín"}
-        BB{"Barǝbád"}
+        AZ{"Azɛrəbaidzáŋ"}
+        BA{"Bosəní ai ɛrəzegovín"}
+        BB{"Barəbád"}
         BD{"Bangaladɛ́s"}
-        BE{"Bɛlǝhíg"}
-        BF{"Bulǝkiná Fasó"}
-        BG{"Bulǝgarí"}
-        BH{"Bahǝrɛ́n"}
+        BE{"Bɛləhíg"}
+        BF{"Buləkiná Fasó"}
+        BG{"Buləgarí"}
+        BH{"Bahərɛ́n"}
         BI{"Burundí"}
-        BJ{"Bǝníŋ"}
-        BM{"Bɛrǝmúd"}
+        BJ{"Bəníŋ"}
+        BM{"Bɛrəmúd"}
         BN{"Buluné"}
         BO{"Bolívia"}
-        BR{"Bǝlazíl"}
+        BR{"Bəlazíl"}
         BS{"Bahámas"}
         BT{"Butáŋ"}
         BW{"Botswaná"}
-        BY{"Bǝlarús"}
-        BZ{"Bǝlís"}
+        BY{"Bəlarús"}
+        BZ{"Bəlís"}
         CA{"kanadá"}
-        CD{"ǹnam Kongó Demokǝlatíg"}
+        CD{"ǹnam Kongó Demokəlatíg"}
         CF{"ǹnam Zǎŋ Afiriká"}
         CG{"Kongó"}
         CH{"Suís"}
         CI{"Kód Divɔ́r"}
         CK{"Minlán Mí kúg"}
         CL{"Tsilí"}
-        CM{"Kamǝrún"}
+        CM{"Kamərún"}
         CN{"Tsáina"}
         CO{"Kolɔmbí"}
         CR{"Kosta Ríka"}
-        CS{"Sɛrǝbí-ai-Mɔntenégǝlo"}
         CU{"Kubá"}
         CV{"Minlán Mí Káb Vɛr"}
-        CY{"Sipǝlús"}
+        CY{"Sipəlús"}
         CZ{"Ǹnam Tsɛ́g"}
         DE{"Ndzáman"}
         DJ{"Dzibutí"}
-        DK{"Danǝmárǝg"}
-        DM{"Dómǝnika"}
+        DK{"Danəmárəg"}
+        DM{"Dómənika"}
         DO{"République dominicaine"}
-        DZ{"Alǝyéria"}
+        DZ{"Aləyéria"}
         EC{"Ekwatór"}
         EE{"Esetoní"}
-        EG{"Ehíbǝtɛn"}
-        ER{"Elitǝlé"}
-        ES{"Kpǝnyá"}
+        EG{"Ehíbətɛn"}
+        ER{"Elitəlé"}
+        ES{"Kpənyá"}
         ET{"Etiopí"}
-        FI{"Finǝlán"}
+        FI{"Finəlán"}
         FJ{"Fidzí"}
-        FK{"Minlán Mi Fólǝkǝlan"}
+        FK{"Minlán Mi Fóləkəlan"}
         FM{"Mikoronésia"}
         FR{"Fulɛnsí"}
         GA{"Gabóŋ"}
-        GB{"Ǹnam Engǝlis"}
-        GD{"Gǝlǝnádǝ"}
-        GE{"Horǝ́yia"}
+        GB{"Ǹnam Engəlis"}
+        GD{"Gələnádə"}
+        GE{"Horə́yia"}
         GF{"Guyán yá Fulɛnsí"}
         GH{"Ganá"}
-        GI{"Yilǝbalatár"}
+        GI{"Yiləbalatár"}
         GL{"Goelán"}
         GM{"Gambí"}
         GN{"Giné"}
-        GP{"Guadǝlúb"}
+        GP{"Guadəlúb"}
         GQ{"Giné Ekwató"}
-        GR{"Gǝlɛ́s"}
+        GR{"Gəlɛ́s"}
         GT{"Guatemalá"}
         GU{"Guám"}
         GW{"Giné Bisaó"}
         GY{"Guyán"}
         HN{"Ondurás"}
-        HR{"Kǝlowásia"}
+        HR{"Kəlowásia"}
         HT{"Aití"}
         HU{"Ongirí"}
         ID{"ɛndonésia"}
-        IE{"Irǝlándǝ"}
-        IL{"Isǝraɛ́l"}
-        IN{"ɛ́ndǝ"}
-        IO{"ǹnam ɛngǝlís yá Máŋ mǝ́ ɛ́ndǝ"}
+        IE{"Irəlándə"}
+        IL{"Isəraɛ́l"}
+        IN{"ɛ́ndə"}
+        IO{"ǹnam ɛngəlís yá Máŋ mə́ ɛ́ndə"}
         IQ{"Irág"}
         IR{"Irán"}
-        IS{"Isǝlándǝ"}
+        IS{"Isəlándə"}
         IT{"Itáliɛn"}
         JM{"Hamaíka"}
-        JO{"Horǝdaní"}
+        JO{"Horədaní"}
         JP{"Hapɔ́n"}
         KE{"Keniá"}
-        KG{"Kirigisǝtán"}
+        KG{"Kirigisətán"}
         KH{"kambodía"}
         KI{"Kiribatí"}
         KM{"Komɔ́r"}
-        KN{"Ǹfúfúb-Kilisǝtóv-ai-Nevis"}
+        KN{"Ǹfúfúb-Kilisətóv-ai-Nevis"}
         KP{"Koré yá Nór"}
         KR{"Koré yá Súd"}
         KW{"Kowɛ́d"}
         KY{"Minlán Mí Kalimáŋ"}
-        KZ{"Kazakǝtáŋ"}
+        KZ{"Kazakətáŋ"}
         LA{"Laós"}
         LB{"Libáŋ"}
         LC{"Ǹfúfúb-Lúsia"}
-        LI{"Lísǝ́sǝ́táin"}
-        LK{"Sǝri Laŋká"}
+        LI{"Lísə́sə́táin"}
+        LK{"Səri Laŋká"}
         LR{"Libéria"}
-        LS{"Lǝsotó"}
+        LS{"Ləsotó"}
         LT{"Lituaní"}
-        LU{"Lukǝzambúd"}
-        LV{"Lǝtoní"}
+        LU{"Lukəzambúd"}
+        LV{"Lətoní"}
         LY{"Libí"}
         MA{"Marɔ́g"}
         MC{"Mɔnakó"}
-        MD{"Molǝdaví"}
-        MG{"Madagasǝkárǝ"}
+        MD{"Molədaví"}
+        MG{"Madagasəkárə"}
         MH{"Minlán Mí Maresál"}
         MK{"Masedónia"}
         ML{"Malí"}
-        MM{"Mianǝmár"}
+        MM{"Mianəmár"}
         MN{"Mɔngɔ́lia"}
         MP{"Minlán Mi Marián yá Nór"}
-        MQ{"Marǝtiníg"}
+        MQ{"Marətiníg"}
         MR{"Moritaní"}
         MS{"Mɔ́ntserád"}
-        MT{"Málǝtǝ"}
+        MT{"Málətə"}
         MU{"Morís"}
-        MV{"Malǝdívǝ"}
+        MV{"Malədívə"}
         MW{"Malawí"}
-        MX{"Mɛkǝsíg"}
+        MX{"Mɛkəsíg"}
         MY{"Malɛ́zia"}
         MZ{"Mozambíg"}
         NA{"Namibí"}
         NC{"Ǹkpámɛn Kaledónia"}
         NE{"Nihɛ́r"}
-        NF{"Minlán Nɔrǝfɔ́lǝkǝ"}
+        NF{"Minlán Nɔrəfɔ́ləkə"}
         NG{"Nihéria"}
         NI{"Nikarágua"}
         NL{"Pɛíbá"}
-        NO{"Nɔrǝvɛ́s"}
+        NO{"Nɔrəvɛ́s"}
         NP{"Nepál"}
         NR{"Naurú"}
         NU{"Niué"}
@@ -171,13 +170,13 @@ ewo{
         PF{"Polinesí yá Fulɛnsí"}
         PG{"Papwazi yá Ǹkpámɛ́n Giné"}
         PH{"Filipín"}
-        PK{"Pakisǝtán"}
+        PK{"Pakisətán"}
         PL{"fólis"}
-        PM{"Ǹfúfúb-Píɛr-ai-Mikǝlɔ́ŋ"}
-        PN{"Pítǝ́kɛ́rɛnǝ"}
-        PR{"Pwɛrǝto Ríko"}
-        PS{"Ǹnam Palɛsǝtín"}
-        PT{"fɔrǝtugɛ́s"}
+        PM{"Ǹfúfúb-Píɛr-ai-Mikəlɔ́ŋ"}
+        PN{"Pítə́kɛ́rɛnə"}
+        PR{"Pwɛrəto Ríko"}
+        PS{"Ǹnam Palɛsətín"}
+        PT{"fɔrətugɛ́s"}
         PW{"Palau"}
         PY{"Paragué"}
         QA{"Katár"}
@@ -192,43 +191,43 @@ ewo{
         SE{"Suwɛ́d"}
         SG{"Singapúr"}
         SH{"Ǹfúfúb-Ɛlɛ́na"}
-        SI{"Sǝlovénia"}
-        SK{"Sǝlovakí"}
-        SL{"Sierá-leónǝ"}
+        SI{"Səlovénia"}
+        SK{"Səlovakí"}
+        SL{"Sierá-leónə"}
         SM{"Ǹfúfúb Maríno"}
         SN{"Senegál"}
         SO{"Somália"}
         SR{"Surinám"}
-        ST{"Saó Tomé ai Pǝlinǝsípe"}
-        SV{"Salǝvadór"}
+        ST{"Saó Tomé ai Pəlinəsípe"}
+        SV{"Saləvadór"}
         SY{"Sirí"}
-        SZ{"Swazilándǝ"}
-        TC{"Minlán Mí túrǝ́g-ai-Kaíg"}
+        SZ{"Swazilándə"}
+        TC{"Minlán Mí túrə́g-ai-Kaíg"}
         TD{"Tsád"}
         TG{"Togó"}
         TH{"Tailán"}
-        TJ{"Tadzikisǝtáŋ"}
+        TJ{"Tadzikisətáŋ"}
         TK{"Tokeló"}
         TL{"Timôr"}
-        TM{"Turǝkǝmǝnisǝtáŋ"}
+        TM{"Turəkəmənisətáŋ"}
         TN{"Tunisí"}
         TO{"Tɔngá"}
-        TR{"Turǝkí"}
-        TT{"Tǝlinité-ai-Tobágo"}
+        TR{"Turəkí"}
+        TT{"Təlinité-ai-Tobágo"}
         TV{"Tuvalú"}
         TW{"Taiwán"}
-        TZ{"Taŋǝzaní"}
-        UA{"Ukǝrɛ́n"}
+        TZ{"Taŋəzaní"}
+        UA{"Ukərɛ́n"}
         UG{"Ugandá"}
-        US{"Ǹnam Amɛrǝkǝ"}
+        US{"Ǹnam Amɛrəkə"}
         UY{"Urugué"}
-        UZ{"Uzubekisǝtán"}
+        UZ{"Uzubekisətán"}
         VA{"Ǹnam Vatikán"}
-        VC{"Ǹfúfúb-Vɛngǝsáŋ-ai-Bǝ Gǝlǝnadín"}
+        VC{"Ǹfúfúb-Vɛngəsáŋ-ai-Bə Gələnadín"}
         VE{"Venezuéla"}
-        VG{"ńnam Minlán ɛ́ngǝlís"}
-        VI{"Minlán Mi Amɛrǝkǝ"}
-        VN{"Viɛdǝnám"}
+        VG{"ńnam Minlán ɛ́ngəlís"}
+        VI{"Minlán Mi Amɛrəkə"}
+        VN{"Viɛdənám"}
         VU{"Vanuátu"}
         WF{"Walís-ai-Futúna"}
         WS{"Samoá"}
@@ -238,5 +237,5 @@ ewo{
         ZM{"Zambí"}
         ZW{"Zimbabwé"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.87"}
 }

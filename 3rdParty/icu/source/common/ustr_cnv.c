@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1998-2010, International Business Machines
+*   Copyright (C) 1998-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -24,7 +24,7 @@
 #include "unicode/ucnv.h"
 #include "cstring.h"
 #include "cmemory.h"
-#include "umutex.h"
+#include "cmutex.h"
 #include "ustr_cnv.h"
 
 /* mutexed access to a shared default converter ----------------------------- */

@@ -1,9 +1,9 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/fa_AF.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fa_AF.xml
 // *
 // ***************************************************************************
 fa_AF{
@@ -54,7 +54,6 @@ fa_AF{
         KE{"کینیا"}
         KG{"قرغزستان"}
         KH{"کمپوچیا"}
-        KM{"کومور"}
         KN{"سنت کیتس و نیویس"}
         KP{"کوریای شمالی"}
         KR{"کوریای جنوبی"}
@@ -99,8 +98,7 @@ fa_AF{
         UY{"یوروگوای"}
         VC{"سنت وینسنت و گرینادین"}
         VE{"ونزویلا"}
-        WS{"ساموآ"}
         ZW{"زیمبابوی"}
     }
-    Version{"2.0.65.46"}
+    Version{"2.0.92.80"}
 }

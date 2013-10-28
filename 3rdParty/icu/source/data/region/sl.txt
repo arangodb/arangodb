@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sl.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sl.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sl.xml
+ * ICU <specials> source: <path>/common/main/sl.xml
  */
 sl{
     Countries{
@@ -72,6 +72,7 @@ sl{
         BM{"Bermudi"}
         BN{"Brunej"}
         BO{"Bolivija"}
+        BQ{"Nizozemski Karibi"}
         BR{"Brazilija"}
         BS{"Bahami"}
         BT{"Butan"}
@@ -93,9 +94,9 @@ sl{
         CO{"Kolumbija"}
         CP{"Otok Clipperton"}
         CR{"Kostarika"}
-        CS{"Srbija in Črna gora"}
         CU{"Kuba"}
         CV{"Zelenortski otoki"}
+        CW{"Curaçao"}
         CX{"Božični otok"}
         CY{"Ciper"}
         CZ{"Češka"}
@@ -192,7 +193,7 @@ sl{
         MH{"Marshallovi otoki"}
         MK{"Makedonija"}
         ML{"Mali"}
-        MM{"Mjanmar [Burma]"}
+        MM{"Mjanmar (Burma)"}
         MN{"Mongolija"}
         MO{"Posebno administrativno območje LR Kitajske Macao"}
         MP{"Severni Marianski otoki"}
@@ -255,8 +256,10 @@ sl{
         SN{"Senegal"}
         SO{"Somalija"}
         SR{"Surinam"}
+        SS{"Južni Sudan"}
         ST{"Sao Tome in Principe"}
         SV{"Salvador"}
+        SX{"Sint Maarten"}
         SY{"Sirija"}
         SZ{"Svazi"}
         TA{"Tristan da Cunha"}
@@ -291,6 +294,7 @@ sl{
         VU{"Vanuatu"}
         WF{"Wallis in Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
         ZA{"Južnoafriška republika"}
@@ -298,5 +302,12 @@ sl{
         ZW{"Zimbabve"}
         ZZ{"Neznano ali neveljavno območje"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"ZK"}
+        HK{"Hongkong"}
+        MO{"Macao"}
+        PS{"Palestina"}
+        US{"ZDA"}
+    }
+    Version{"2.0.92.87"}
 }

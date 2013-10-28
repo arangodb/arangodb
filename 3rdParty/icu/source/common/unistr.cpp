@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-* Copyright (C) 1999-2012, International Business Machines Corporation and
+* Copyright (C) 1999-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 ******************************************************************************
 *
@@ -100,7 +100,7 @@ U_NAMESPACE_BEGIN
    due to how AIX works with multiple definitions of virtual functions.
 */
 Replaceable::~Replaceable() {}
-Replaceable::Replaceable() {}
+
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(UnicodeString)
 
 UnicodeString U_EXPORT2
@@ -117,23 +117,19 @@ operator+ (const UnicodeString &s1, const UnicodeString &s2) {
 //========================================
 
 void
-UnicodeString::addRef()
-{  umtx_atomic_inc((int32_t *)fUnion.fFields.fArray - 1);}
+UnicodeString::addRef() {
+  umtx_atomic_inc((u_atomic_int32_t *)fUnion.fFields.fArray - 1);
+}
 
 int32_t
-UnicodeString::removeRef()
-{ return umtx_atomic_dec((int32_t *)fUnion.fFields.fArray - 1);}
+UnicodeString::removeRef() {
+  return umtx_atomic_dec((u_atomic_int32_t *)fUnion.fFields.fArray - 1);
+}
 
 int32_t
-UnicodeString::refCount() const 
-{ 
-    umtx_lock(NULL);
-    // Note: without the lock to force a memory barrier, we might see a very
-    //       stale value on some multi-processor systems.
-    int32_t  count = *((int32_t *)fUnion.fFields.fArray - 1);
-    umtx_unlock(NULL);
-    return count;
- }
+UnicodeString::refCount() const {
+  return umtx_loadAcquire(*((u_atomic_int32_t *)fUnion.fFields.fArray - 1));
+}
 
 void
 UnicodeString::releaseArray() {
@@ -147,10 +143,8 @@ UnicodeString::releaseArray() {
 //========================================
 // Constructors
 //========================================
-UnicodeString::UnicodeString()
-  : fShortLength(0),
-    fFlags(kShortString)
-{}
+
+// The default constructor is inline in unistr.h.
 
 UnicodeString::UnicodeString(int32_t capacity, UChar32 c, int32_t count)
   : fShortLength(0),
@@ -570,6 +564,13 @@ UChar32 UnicodeString::unescapeAt(int32_t &offset) const {
 //========================================
 // Read-only implementation
 //========================================
+UBool
+UnicodeString::doEquals(const UnicodeString &text, int32_t len) const {
+  // Requires: this & text not bogus and have same lengths.
+  // Byte-wise comparison works for equality regardless of endianness.
+  return uprv_memcmp(getArrayStart(), text.getArrayStart(), len * U_SIZEOF_UCHAR) == 0;
+}
+
 int8_t
 UnicodeString::doCompare( int32_t start,
               int32_t length,
@@ -1124,6 +1125,44 @@ UnicodeString::unBogus() {
   }
 }
 
+const UChar *
+UnicodeString::getTerminatedBuffer() {
+  if(!isWritable()) {
+    return 0;
+  }
+  UChar *array = getArrayStart();
+  int32_t len = length();
+  if(len < getCapacity()) {
+    if(fFlags & kBufferIsReadonly) {
+      // If len<capacity on a read-only alias, then array[len] is
+      // either the original NUL (if constructed with (TRUE, s, length))
+      // or one of the original string contents characters (if later truncated),
+      // therefore we can assume that array[len] is initialized memory.
+      if(array[len] == 0) {
+        return array;
+      }
+    } else if(((fFlags & kRefCounted) == 0 || refCount() == 1)) {
+      // kRefCounted: Do not write the NUL if the buffer is shared.
+      // That is mostly safe, except when the length of one copy was modified
+      // without copy-on-write, e.g., via truncate(newLength) or remove(void).
+      // Then the NUL would be written into the middle of another copy's string.
+
+      // Otherwise, the buffer is fully writable and it is anyway safe to write the NUL.
+      // Do not test if there is a NUL already because it might be uninitialized memory.
+      // (That would be safe, but tools like valgrind & Purify would complain.)
+      array[len] = 0;
+      return array;
+    }
+  }
+  if(cloneArrayIfNeeded(len+1)) {
+    array = getArrayStart();
+    array[len] = 0;
+    return array;
+  } else {
+    return NULL;
+  }
+}
+
 // setTo() analogous to the readonly-aliasing constructor with the same signature
 UnicodeString &
 UnicodeString::setTo(UBool isTerminated,
@@ -1249,8 +1288,9 @@ UnicodeString::replace(int32_t start,
   UBool isError = FALSE;
   U16_APPEND(buffer, count, U16_MAX_LENGTH, srcChar, isError);
   // We test isError so that the compiler does not complain that we don't.
-  // If isError then count==0 which turns the doReplace() into a no-op anyway.
-  return isError ? *this : doReplace(start, _length, buffer, 0, count);
+  // If isError (srcChar is not a valid code point) then count==0 which means
+  // we remove the source segment rather than replacing it with srcChar.
+  return doReplace(start, _length, buffer, 0, isError ? 0 : count);
 }
 
 UnicodeString&
@@ -1673,13 +1713,16 @@ UnicodeString::cloneArrayIfNeeded(int32_t newCapacity,
       // release the old array
       if(flags & kRefCounted) {
         // the array is refCounted; decrement and release if 0
-        int32_t *pRefCount = ((int32_t *)oldArray - 1);
+        u_atomic_int32_t *pRefCount = ((u_atomic_int32_t *)oldArray - 1);
         if(umtx_atomic_dec(pRefCount) == 0) {
           if(pBufferToDelete == 0) {
-            uprv_free(pRefCount);
+              // Note: cast to (void *) is needed with MSVC, where u_atomic_int32_t
+              // is defined as volatile. (Volatile has useful non-standard behavior
+              //   with this compiler.)
+            uprv_free((void *)pRefCount);
           } else {
             // the caller requested to delete it himself
-            *pBufferToDelete = pRefCount;
+            *pBufferToDelete = (int32_t *)pRefCount;
           }
         }
       }

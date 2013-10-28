@@ -438,6 +438,10 @@ behaviour that previous ArangoDB versions exposed.
 Command-Line Options added {#NewFeatures14Options}
 --------------------------------------------------
 
+Options can be specified on the command line or in configuration files. If a
+string `@VARIABLE@` occurs in the value, it is replaced by the corresponding
+environment variable.
+
 The following command-line options have been added for _arangod_ in ArangoDB 1.4:
 
   * `--server.allow-method-override`: this option can be set to allow overriding the 

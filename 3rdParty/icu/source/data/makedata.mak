@@ -1,5 +1,5 @@
 #**********************************************************************
-#* Copyright (C) 1999-2011, International Business Machines Corporation
+#* Copyright (C) 1999-2013, International Business Machines Corporation
 #* and others.  All Rights Reserved.
 #**********************************************************************
 # nmake file for creating data files on win32
@@ -10,10 +10,10 @@
 
 ##############################################################################
 # Keep the following in sync with the version - see common/unicode/uvernum.h
-U_ICUDATA_NAME=icudt49
+U_ICUDATA_NAME=icudt52
 ##############################################################################
 U_ICUDATA_ENDIAN_SUFFIX=l
-UNICODE_VERSION=6.1
+UNICODE_VERSION=6.3
 ICU_LIB_TARGET=$(DLL_OUTPUT)\$(U_ICUDATA_NAME).dll
 
 #  ICUMAKE
@@ -236,7 +236,7 @@ CNV_FILES_SPECIAL=$(UCM_SOURCE_SPECIAL:.ucm=.cnv)
 !IF EXISTS("$(ICUSRCDATA)\$(ICUBRK)\brklocal.mk")
 !INCLUDE "$(ICUSRCDATA)\$(ICUBRK)\brklocal.mk"
 BRK_SOURCE=$(BRK_SOURCE) $(BRK_SOURCE_LOCAL)
-BRK_CTD_SOURCE=$(BRK_CTD_SOURCE) $(BRK_CTD_SOURCE_LOCAL)
+BRK_DICT_SOURCE=$(BRK_DICT_SOURCE) $(BRK_DICT_SOURCE_LOCAL)
 BRK_RES_SOURCE=$(BRK_RES_SOURCE) $(BRK_RES_SOURCE_LOCAL)
 !ELSE
 !MESSAGE Information: cannot find "brklocal.mk". Not building user-additional break iterator files.
@@ -252,10 +252,10 @@ BRK_FILES=$(ICUBRK)\$(BRK_SOURCE:.txt =.brk brkitr\)
 BRK_FILES=$(BRK_FILES:.txt=.brk)
 BRK_FILES=$(BRK_FILES:brkitr\ =brkitr\)
 
-!IFDEF BRK_CTD_SOURCE
-BRK_CTD_FILES = $(ICUBRK)\$(BRK_CTD_SOURCE:.txt =.ctd brkitr\)
-BRK_CTD_FILES = $(BRK_CTD_FILES:.txt=.ctd)
-BRK_CTD_FILES = $(BRK_CTD_FILES:brkitr\ =)
+!IFDEF BRK_DICT_SOURCE
+BRK_DICT_FILES = $(ICUBRK)\$(BRK_DICT_SOURCE:.txt =.dict brkitr\)
+BRK_DICT_FILES = $(BRK_DICT_FILES:.txt=.dict)
+BRK_DICT_FILES = $(BRK_DICT_FILES:brkitr\ =brkitr\)
 !ENDIF
 
 !IFDEF BRK_RES_SOURCE
@@ -602,7 +602,7 @@ icu4j-data-install :
 	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"
 	-@erase "$(ICUTMP)\$(ICUPKG).dat"
 !ELSE
-"$(ICU_LIB_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) $(CNV_FILES) $(CNV_FILES_SPECIAL) "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\cnvalias.icu" "$(ICUBLD_PKG)\nfc.nrm" "$(ICUBLD_PKG)\nfkc.nrm" "$(ICUBLD_PKG)\nfkc_cf.nrm" "$(ICUBLD_PKG)\uts46.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu" "$(ICUBLD_PKG)\$(ICUCOL)\invuca.icu" $(CURR_RES_FILES) $(LANG_RES_FILES) $(REGION_RES_FILES) $(ZONE_RES_FILES) $(BRK_FILES) $(BRK_CTD_FILES) $(BRK_RES_FILES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(TRANSLIT_RES_FILES) $(ALL_RES) $(SPREP_FILES) "$(ICUBLD_PKG)\confusables.cfu"
+"$(ICU_LIB_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) $(CNV_FILES) $(CNV_FILES_SPECIAL) "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\cnvalias.icu" "$(ICUBLD_PKG)\nfc.nrm" "$(ICUBLD_PKG)\nfkc.nrm" "$(ICUBLD_PKG)\nfkc_cf.nrm" "$(ICUBLD_PKG)\uts46.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu" "$(ICUBLD_PKG)\$(ICUCOL)\invuca.icu" $(CURR_RES_FILES) $(LANG_RES_FILES) $(REGION_RES_FILES) $(ZONE_RES_FILES) $(BRK_FILES) $(BRK_DICT_FILES) $(BRK_RES_FILES) $(ALL_RES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(TRANSLIT_RES_FILES) $(SPREP_FILES) "$(ICUBLD_PKG)\confusables.cfu"
 	@echo Building icu data
 	cd "$(ICUBLD_PKG)"
 	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) <<"$(ICUTMP)\icudata.lst"
@@ -637,7 +637,7 @@ $(TRANSLIT_RES_FILES:.res =.res
 )
 $(BRK_FILES:.brk =.brk
 )
-$(BRK_CTD_FILES:.ctd =.ctd
+$(BRK_DICT_FILES:.dict =.dict
 )
 $(BRK_RES_FILES:.res =.res
 )
@@ -696,7 +696,6 @@ CLEAN : GODATA
 	-@erase "zone\*.txt"
 	@cd "$(ICUBLD_PKG)\$(ICUBRK)"
 	-@erase "*.brk"
-	-@erase "*.ctd"
 	-@erase "*.res"
 	-@erase "*.txt"
 	@cd "$(ICUBLD_PKG)\$(ICUCOL)"
@@ -719,6 +718,7 @@ CLEAN : GODATA
 	-@erase "*.cnv"
 	-@erase "*.icu"
 	-@erase "*.mak"
+	-@erase "*.nrm"
 	-@erase "*.res"
 	-@erase "*.spp"
 	-@erase "*.txt"
@@ -734,21 +734,33 @@ CLEAN : GODATA
 	@echo Creating $@
 	@"$(ICUTOOLS)\genbrk\$(CFG)\genbrk" -c -r $< -o $@ -d"$(ICUBLD_PKG)" -i "$(ICUBLD_PKG)"
 
-# RBBI .ctd file generation.
-{$(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)}.txt.ctd:
-	@echo Creating $@
-	@"$(ICUTOOLS)\genctd\$(CFG)\genctd" -c -o $@ -d"$(ICUBLD_PKG)" -i "$(ICUBLD_PKG)" $<
+#RBBI .dict file generation.
+{$(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)}.txt.dict:
+    @echo Creating $@
+    @"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --uchars $<  "$(ICUBLD_PKG)\$@"
+
+$(ICUBRK)\thaidict.dict:
+	@echo Creating $(ICUBRK)\thaidict.dict
+	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0xe00 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\thaidict.txt "$(ICUBLD_PKG)\$(ICUBRK)\thaidict.dict"
+
+$(ICUBRK)\laodict.dict:
+	@echo Creating $(ICUBRK)\laodict.dict
+	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0xe00 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\laodict.txt "$(ICUBLD_PKG)\$(ICUBRK)\laodict.dict"
+
+$(ICUBRK)\khmerdict.dict:
+	@echo Creating $(ICUBRK)\khmerdict.dict
+	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0x1780 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\khmerdict.txt "$(ICUBLD_PKG)\$(ICUBRK)\khmerdict.dict"
 
 !IFNDEF ICUDATA_SOURCE_ARCHIVE
 # Rule for creating converters
 $(CNV_FILES): $(UCM_SOURCE)
-	@echo Making Charset Conversion tables
+	@echo Building Charset Conversion table $(@B)
 	@"$(ICUTOOLS)\makeconv\$(CFG)\makeconv" -c -d"$(ICUBLD_PKG)" $(ICUSRCDATA_RELATIVE_PATH)\$(ICUUCM)\$(@B).ucm
 !ENDIF
 
 !IFDEF BUILD_SPECIAL_CNV_FILES
 $(CNV_FILES_SPECIAL): $(UCM_SOURCE_SPECIAL)
-	@echo Making Special Charset Conversion tables
+	@echo Building Special Charset Conversion table $(@B)
 	@"$(ICUTOOLS)\makeconv\$(CFG)\makeconv" -c --ignore-siso-check -d"$(ICUBLD_PKG)" $(ICUSRCDATA_RELATIVE_PATH)\$(ICUUCM)\$(@B).ucm
 !ENDIF
 

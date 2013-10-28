@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2012, International Business Machines
+*   Copyright (C) 2002-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -166,9 +166,41 @@ uenum_reset(UEnumeration* en, UErrorCode* status);
  * @return a UEnumeration wrapping the adopted StringEnumeration.
  * @stable ICU 4.2
  */
-U_CAPI UEnumeration* U_EXPORT2
+U_STABLE UEnumeration* U_EXPORT2
 uenum_openFromStringEnumeration(icu::StringEnumeration* adopted, UErrorCode* ec);
 
 #endif
+
+/**
+ * Given an array of const UChar* strings, return a UEnumeration.  String pointers from 0..count-1 must not be null.
+ * Do not free or modify either the string array or the characters it points to until this object has been destroyed with uenum_close.
+ * \snippet test/cintltst/uenumtst.c uenum_openUCharStringsEnumeration
+ * @param strings array of const UChar* strings (each null terminated). All storage is owned by the caller.
+ * @param count length of the array
+ * @param ec error code
+ * @return the new UEnumeration object. Caller is responsible for calling uenum_close to free memory.
+ * @see uenum_close
+ * @stable ICU 50
+ */
+U_STABLE UEnumeration* U_EXPORT2
+uenum_openUCharStringsEnumeration(const UChar* const strings[], int32_t count,
+                                 UErrorCode* ec);
+
+/* Note:  next function is not hidden as draft, as it is used internally (it was formerly an internal function). */
+
+/**
+ * Given an array of const char* strings (invariant chars only), return a UEnumeration.  String pointers from 0..count-1 must not be null.
+ * Do not free or modify either the string array or the characters it points to until this object has been destroyed with uenum_close.
+ * \snippet test/cintltst/uenumtst.c uenum_openCharStringsEnumeration
+ * @param strings array of char* strings (each null terminated).  All storage is owned by the caller.
+ * @param count length of the array
+ * @param ec error code
+ * @return the new UEnumeration object. Caller is responsible for calling uenum_close to free memory
+ * @see uenum_close
+ * @stable ICU 50
+ */
+U_STABLE UEnumeration* U_EXPORT2
+uenum_openCharStringsEnumeration(const char* const strings[], int32_t count,
+                                 UErrorCode* ec);
 
 #endif

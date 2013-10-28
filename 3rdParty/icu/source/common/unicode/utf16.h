@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2011, International Business Machines
+*   Copyright (C) 1999-2012, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -180,6 +180,9 @@
  * The offset may point to either the lead or trail surrogate unit
  * for a supplementary code point, in which case the macro will read
  * the adjacent matching surrogate as well.
+ *
+ * The length can be negative for a NUL-terminated string.
+ *
  * If the offset points to a single, unpaired surrogate, then that itself
  * will be returned as the code point.
  * Iteration through a string is more efficient with U16_NEXT_UNSAFE or U16_NEXT.
@@ -197,7 +200,7 @@
     if(U16_IS_SURROGATE(c)) { \
         uint16_t __c2; \
         if(U16_IS_SURROGATE_LEAD(c)) { \
-            if((i)+1<(length) && U16_IS_TRAIL(__c2=(s)[(i)+1])) { \
+            if((i)+1!=(length) && U16_IS_TRAIL(__c2=(s)[(i)+1])) { \
                 (c)=U16_GET_SUPPLEMENTARY((c), __c2); \
             } \
         } else { \
@@ -242,6 +245,8 @@
  * (Post-incrementing forward iteration.)
  * "Safe" macro, handles unpaired surrogates and checks for string boundaries.
  *
+ * The length can be negative for a NUL-terminated string.
+ *
  * The offset may point to the lead surrogate unit
  * for a supplementary code point, in which case the macro will read
  * the following trail surrogate as well.
@@ -260,7 +265,7 @@
     (c)=(s)[(i)++]; \
     if(U16_IS_LEAD(c)) { \
         uint16_t __c2; \
-        if((i)<(length) && U16_IS_TRAIL(__c2=(s)[(i)])) { \
+        if((i)!=(length) && U16_IS_TRAIL(__c2=(s)[(i)])) { \
             ++(i); \
             (c)=U16_GET_SUPPLEMENTARY((c), __c2); \
         } \
@@ -338,6 +343,8 @@
  * (Post-incrementing iteration.)
  * "Safe" macro, handles unpaired surrogates and checks for string boundaries.
  *
+ * The length can be negative for a NUL-terminated string.
+ *
  * @param s const UChar * string
  * @param i string offset, must be i<length
  * @param length string length
@@ -345,7 +352,7 @@
  * @stable ICU 2.4
  */
 #define U16_FWD_1(s, i, length) { \
-    if(U16_IS_LEAD((s)[(i)++]) && (i)<(length) && U16_IS_TRAIL((s)[i])) { \
+    if(U16_IS_LEAD((s)[(i)++]) && (i)!=(length) && U16_IS_TRAIL((s)[i])) { \
         ++(i); \
     } \
 }
@@ -376,16 +383,18 @@
  * (Post-incrementing iteration.)
  * "Safe" macro, handles unpaired surrogates and checks for string boundaries.
  *
+ * The length can be negative for a NUL-terminated string.
+ *
  * @param s const UChar * string
- * @param i string offset, must be i<length
- * @param length string length
+ * @param i int32_t string offset, must be i<length
+ * @param length int32_t string length
  * @param n number of code points to skip
  * @see U16_FWD_N_UNSAFE
  * @stable ICU 2.4
  */
 #define U16_FWD_N(s, i, length, n) { \
     int32_t __N=(n); \
-    while(__N>0 && (i)<(length)) { \
+    while(__N>0 && ((i)<(length) || ((length)<0 && (s)[i]!=0))) { \
         U16_FWD_1(s, i, length); \
         --__N; \
     } \
@@ -596,15 +605,17 @@
  * The input offset may be the same as the string length.
  * "Safe" macro, handles unpaired surrogates and checks for string boundaries.
  *
+ * The length can be negative for a NUL-terminated string.
+ *
  * @param s const UChar * string
- * @param start starting string offset (usually 0)
- * @param i string offset, start<=i<=length
- * @param length string length
+ * @param start int32_t starting string offset (usually 0)
+ * @param i int32_t string offset, start<=i<=length
+ * @param length int32_t string length
  * @see U16_SET_CP_LIMIT_UNSAFE
  * @stable ICU 2.4
  */
 #define U16_SET_CP_LIMIT(s, start, i, length) { \
-    if((start)<(i) && (i)<(length) && U16_IS_LEAD((s)[(i)-1]) && U16_IS_TRAIL((s)[i])) { \
+    if((start)<(i) && ((i)<(length) || (length)<0) && U16_IS_LEAD((s)[(i)-1]) && U16_IS_TRAIL((s)[i])) { \
         ++(i); \
     } \
 }

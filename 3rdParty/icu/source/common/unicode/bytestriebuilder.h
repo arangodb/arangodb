@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2012, International Business Machines
+*   Copyright (C) 2010-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  bytestriebuilder.h
@@ -11,6 +11,11 @@
 *   created on: 2010sep25
 *   created by: Markus W. Scherer
 */
+
+/**
+ * \file
+ * \brief C++ API: Builder for icu::BytesTrie
+ */
 
 #ifndef __BYTESTRIEBUILDER_H__
 #define __BYTESTRIEBUILDER_H__
@@ -66,6 +71,9 @@ public:
      * Builds a BytesTrie for the add()ed data.
      * Once built, no further data can be add()ed until clear() is called.
      *
+     * A BytesTrie cannot be empty. At least one (byte sequence, value) pair
+     * must have been add()ed.
+     *
      * This method passes ownership of the builder's internal result array to the new trie object.
      * Another call to any build() variant will re-serialize the trie.
      * After clear() has been called, a new array will be used as well.
@@ -82,6 +90,9 @@ public:
     /**
      * Builds a BytesTrie for the add()ed data and byte-serializes it.
      * Once built, no further data can be add()ed until clear() is called.
+     *
+     * A BytesTrie cannot be empty. At least one (byte sequence, value) pair
+     * must have been add()ed.
      *
      * Multiple calls to buildStringPiece() return StringPieces referring to the
      * builder's same byte array, without rebuilding.

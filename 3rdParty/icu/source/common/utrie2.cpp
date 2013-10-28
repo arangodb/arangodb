@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -731,14 +731,6 @@ uint16_t ForwardUTrie2StringIterator::next16() {
     uint16_t result;
     UTRIE2_U16_NEXT16(trie, codePointLimit, limit, codePoint, result);
     return result;
-}
-
-UTrie2 *UTrie2Singleton::getInstance(InstantiatorFn *instantiator, const void *context,
-                                     UErrorCode &errorCode) {
-    void *duplicate;
-    UTrie2 *instance=(UTrie2 *)singleton.getInstance(instantiator, context, duplicate, errorCode);
-    utrie2_close((UTrie2 *)duplicate);
-    return instance;
 }
 
 U_NAMESPACE_END

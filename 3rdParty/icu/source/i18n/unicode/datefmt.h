@@ -1,6 +1,6 @@
 /*
  ********************************************************************************
- *   Copyright (C) 1997-2012, International Business Machines
+ *   Copyright (C) 1997-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  ********************************************************************************
  *
@@ -28,6 +28,7 @@
 #include "unicode/numfmt.h"
 #include "unicode/format.h"
 #include "unicode/locid.h"
+#include "unicode/enumset.h"
 
 /**
  * \file
@@ -38,6 +39,13 @@ U_NAMESPACE_BEGIN
 
 class TimeZone;
 class DateTimePatternGenerator;
+
+// explicit template instantiation. see digitlst.h
+#if defined (_MSC_VER)
+template class U_I18N_API EnumSet<UDateFormatBooleanAttribute,
+            0, 
+            UDAT_BOOLEAN_ATTRIBUTE_COUNT>;
+#endif
 
 /**
  * DateFormat is an abstract class for a family of classes that convert dates and
@@ -373,20 +381,6 @@ public:
     UnicodeString& format(UDate date, UnicodeString& appendTo) const;
 
     /**
-     * Redeclared Format method.
-     *
-     * @param obj       The object to be formatted into a string.
-     * @param appendTo  Output parameter to receive result.
-     *                  Result is appended to existing contents.
-     * @param status    Output param filled with success/failure status.
-     * @return          Reference to 'appendTo' parameter.
-     * @stable ICU 2.0
-     */
-    UnicodeString& format(const Formattable& obj,
-                          UnicodeString& appendTo,
-                          UErrorCode& status) const;
-
-    /**
      * Parse a date/time string. For example, a time text "07/10/96 4:5 PM, PDT"
      * will be parsed into a UDate that is equivalent to Date(837039928046).
      * Parsing begins at the beginning of the string and proceeds as far as
@@ -507,9 +501,6 @@ public:
      *                  last character successfully parsed. If the
      *                  source is not parsed successfully, this param
      *                  will remain unchanged.
-     * @return          A newly created Formattable* object, or NULL
-     *                  on failure.  The caller owns this and should
-     *                  delete it when done.
      * @stable ICU 2.0
      */
     virtual void parseObject(const UnicodeString& source,
@@ -589,7 +580,7 @@ public:
     static const Locale* U_EXPORT2 getAvailableLocales(int32_t& count);
 
     /**
-     * Returns true if the formatter is set for lenient parsing.
+     * Returns true if the encapsulated Calendar object is set for lenient parsing.
      * @stable ICU 2.0
      */
     virtual UBool isLenient(void) const;
@@ -599,6 +590,9 @@ public:
      * parsing, the parser may use heuristics to interpret inputs that do not
      * precisely match this object's format. With strict parsing, inputs must
      * match this object's format.
+     *
+     * Note: This method is specific to the encapsulated Calendar object.  DateFormat
+     * leniency aspects are controlled by setBooleanAttribute.
      *
      * @param lenient  True specifies date/time interpretation to be lenient.
      * @see Calendar::setLenient
@@ -679,6 +673,32 @@ public:
      */
     virtual void setTimeZone(const TimeZone& zone);
 
+   /**
+     * Set an boolean attribute on this DateFormat.
+     * May return U_UNSUPPORTED_ERROR if this instance does not support
+     * the specified attribute.
+     * @param attr the attribute to set
+     * @param newvalue new value
+     * @param status the error type
+     * @return *this - for chaining (example: format.setAttribute(...).setAttribute(...) )
+     * @internal ICU technology preview
+     */
+
+    virtual DateFormat&  U_EXPORT2 setBooleanAttribute(UDateFormatBooleanAttribute attr,
+    									UBool newvalue,
+    									UErrorCode &status);
+
+    /**
+     * Get an boolean from this DateFormat
+     * May return U_UNSUPPORTED_ERROR if this instance does not support
+     * the specified attribute.
+     * @param attr the attribute to set
+     * @param status the error type
+     * @return the attribute value. Undefined if there is an error.
+     * @internal ICU technology preview
+     */
+    virtual UBool U_EXPORT2 getBooleanAttribute(UDateFormatBooleanAttribute attr, UErrorCode &status) const;
+
 protected:
     /**
      * Default constructor.  Creates a DateFormat with no Calendar or NumberFormat
@@ -716,6 +736,7 @@ protected:
      */
     NumberFormat* fNumberFormat;
 
+
 private:
     /**
      * Gets the date/time formatter with the given formatting styles for the
@@ -726,6 +747,13 @@ private:
      * @return a date/time formatter, or 0 on failure.
      */
     static DateFormat* U_EXPORT2 create(EStyle timeStyle, EStyle dateStyle, const Locale& inLocale);
+
+     
+    /**
+     * enum set of active boolean attributes for this instance
+     */
+    EnumSet<UDateFormatBooleanAttribute, 0, UDAT_BOOLEAN_ATTRIBUTE_COUNT> fBoolFlags;
+
 
 public:
 #ifndef U_HIDE_OBSOLETE_API
@@ -784,12 +812,6 @@ public:
 #endif  /* U_HIDE_OBSOLETE_API */
 };
 
-inline UnicodeString&
-DateFormat::format(const Formattable& obj,
-                   UnicodeString& appendTo,
-                   UErrorCode& status) const {
-    return Format::format(obj, appendTo, status);
-}
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

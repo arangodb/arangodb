@@ -1,29 +1,25 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/root.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/root.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/root.xml
+ * ICU <specials> source: <path>/common/main/root.xml
  */
 root{
-    Version{"2.0.67.6"}
+    Version{"2.0.93.8"}
     zoneStrings{
-        ""{
-            ec{""}
-            ld{""}
-            ls{""}
-            sd{""}
-            ss{""}
-        }
         "Africa:Asmera"{
             ec{"Asmara"}
         }
         "America:Coral_Harbour"{
             ec{"Atikokan"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
         }
         "America:Indiana:Knox"{
             ec{"Knox, Indiana"}
@@ -60,6 +56,9 @@ root{
         }
         "America:North_Dakota:New_Salem"{
             ec{"New Salem, North Dakota"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
         }
         "America:St_Barthelemy"{
             ec{"St. Barthelemy"}
@@ -107,26 +106,11 @@ root{
             ec{"Chuuk"}
         }
         fallbackFormat{"{1} ({0})"}
-        fallbackRegionFormat{"{1} ({0})"}
         gmtFormat{"GMT{0}"}
         gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
-        regionFormat{"({0})"}
-        singleCountries{
-            "Europe/Kiev",
-            "Pacific/Majuro",
-            "Africa/Bamako",
-            "America/Godthab",
-            "America/Santiago",
-            "America/Guayaquil",
-            "Asia/Shanghai",
-            "Asia/Tashkent",
-            "Asia/Kuala_Lumpur",
-            "Europe/Madrid",
-            "Europe/Lisbon",
-            "Europe/London",
-            "Pacific/Auckland",
-            "Pacific/Tahiti",
-        }
+        regionFormat{"{0}"}
+        regionFormatDaylight{"{0} (+1)"}
+        regionFormatStandard{"{0} (+0)"}
     }
 }

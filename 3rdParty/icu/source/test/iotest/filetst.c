@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2004-2011, International Business Machines
+ *   Copyright (C) 2004-2013, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *   file name:  filetst.c
@@ -21,6 +21,8 @@
 #include <stdlib.h>
 
 const char *STANDARD_TEST_FILE = "iotest-c.txt";
+
+const char *STANDARD_TEST_LOCALE = "en_US_POSIX";
 
 
 #if !UCONFIG_NO_FORMATTING
@@ -98,7 +100,7 @@ static void TestFileFromICU(UFILE *myFile) {
     fprintf(u_fgetfile(myFile), "\tNormal fprintf count value: n=%d\n", (int)*n); /* Should be 27 as stated later on. */
 
     u_fclose(myFile);
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, NULL);
 
     if (myFile == NULL) {
         log_err("Can't read test file.");
@@ -310,22 +312,26 @@ static void TestFileFromICU(UFILE *myFile) {
 }
 
 static void TestFile(void) {
-/*    FILE *standardFile;*/
 
     log_verbose("Testing u_fopen\n");
-    TestFileFromICU(u_fopen(STANDARD_TEST_FILE, "w", "en_US_POSIX", NULL));
+    TestFileFromICU(u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL));
+}
 
-/* Don't know how to make this work without stdout or stderr */
-/*
+static void TestFinit(void) {
+    FILE *standardFile;
+
     log_verbose("Testing u_finit\n");
-    standardFile = fopen(STANDARD_TEST_FILE, "wb");
-    TestFileFromICU(u_finit(standardFile, NULL, NULL));
+    standardFile = fopen(STANDARD_TEST_FILE, "w");
+    TestFileFromICU(u_finit(standardFile, STANDARD_TEST_LOCALE, NULL));
     fclose(standardFile);
+}
+
+static void TestFadopt(void) {
+    FILE *standardFile;
 
     log_verbose("Testing u_fadopt\n");
-    standardFile = fopen(STANDARD_TEST_FILE, "wb");
-    TestFileFromICU(u_fadopt(standardFile, NULL, NULL));
-*/
+    standardFile = fopen(STANDARD_TEST_FILE, "w");
+    TestFileFromICU(u_fadopt(standardFile, STANDARD_TEST_LOCALE, NULL));
 }
 #endif
 
@@ -917,7 +923,7 @@ static void TestCodepageFlush(void) {
   uint8_t inBuf[200];
   size_t inLen =0;
   const char *enc = "IBM-1388"; /* GBK EBCDIC stateful */
-  UFILE *myFile = u_fopen(STANDARD_TEST_FILE, "wb", "en_US_POSIX", enc);
+  UFILE *myFile = u_fopen(STANDARD_TEST_FILE, "wb", STANDARD_TEST_LOCALE, enc);
   FILE *myCFile;
   int shift = 0;
   int32_t i;
@@ -974,20 +980,21 @@ static void TestCodepageFlush(void) {
 
 #if !UCONFIG_NO_FORMATTING
 static void TestFilePrintCompatibility(void) {
-    UFILE *myFile = u_fopen(STANDARD_TEST_FILE, "wb", "en_US_POSIX", NULL);
+    UFILE *myFile = u_fopen(STANDARD_TEST_FILE, "wb", STANDARD_TEST_LOCALE, NULL);
     FILE *myCFile;
     int32_t num;
     char cVal;
     static const UChar emptyStr[] = {0};
     char readBuf[512] = "";
     char testBuf[512] = "";
+    int32_t n = 0;
 
     if (myFile == NULL) {
         log_err("Can't write test file.\n");
         return;
     }
 #if !UCONFIG_NO_FORMATTING
-    if (strcmp(u_fgetlocale(myFile), "en_US_POSIX") != 0) {
+    if (strcmp(u_fgetlocale(myFile), STANDARD_TEST_LOCALE) != 0) {
         log_err("Got %s instead of en_US_POSIX for locale\n", u_fgetlocale(myFile));
     }
 #endif
@@ -1021,38 +1028,39 @@ static void TestFilePrintCompatibility(void) {
     }
 
     for (num = -STANDARD_TEST_NUM_RANGE; num < STANDARD_TEST_NUM_RANGE; num++) {
-        fscanf(myCFile, "%s", readBuf);
+        /* Note: gcc on Ubuntu complains if return value of scanf is ignored. */
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%x", (int)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%x Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }
 
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%X", (int)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%X Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }
 
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%o", (int)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%o Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }
 
         /* fprintf is not compatible on all platforms e.g. the iSeries */
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%d", (int)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%d Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }
 
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%i", (int)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%i Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }
 
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%f", (double)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%f Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
@@ -1070,13 +1078,13 @@ static void TestFilePrintCompatibility(void) {
             log_err("%%E Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }*/
 
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%g", (double)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%g Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
         }
 
-        fscanf(myCFile, "%s", readBuf);
+        n += fscanf(myCFile, "%s", readBuf);
         sprintf(testBuf, "%G", (double)num);
         if (strcmp(readBuf, testBuf) != 0) {
             log_err("%%G Got: \"%s\", Expected: \"%s\"\n", readBuf, testBuf);
@@ -1085,13 +1093,13 @@ static void TestFilePrintCompatibility(void) {
 
     /* Properly eat the newlines */
     for (num = 0; num < (int32_t)strlen(C_NEW_LINE); num++) {
-        fscanf(myCFile, "%c", &cVal);
+        n += fscanf(myCFile, "%c", &cVal);
         if (cVal != C_NEW_LINE[num]) {
             log_err("OS newline error\n");
         }
     }
     for (num = 0; num < (int32_t)strlen(C_NEW_LINE); num++) {
-        fscanf(myCFile, "%c", &cVal);
+        n += fscanf(myCFile, "%c", &cVal);
         if (cVal != C_NEW_LINE[num]) {
             log_err("ustdio newline error\n");
         }
@@ -1099,17 +1107,18 @@ static void TestFilePrintCompatibility(void) {
 
     for (num = 0; num < 0x80; num++) {
         cVal = -1;
-        fscanf(myCFile, "%c", &cVal);
+        n += fscanf(myCFile, "%c", &cVal);
         if (num != cVal) {
             log_err("%%c Got: 0x%x, Expected: 0x%x\n", cVal, num);
         }
     }
+    (void)n;
     fclose(myCFile);
 }
 #endif
 
 #define TestFPrintFormat(uFormat, uValue, cFormat, cValue) \
-    myFile = u_fopen(STANDARD_TEST_FILE, "w", "en_US_POSIX", NULL);\
+    myFile = u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL);\
     if (myFile == NULL) {\
         log_err("Can't write test file for %s.\n", uFormat);\
         return;\
@@ -1120,7 +1129,7 @@ static void TestFilePrintCompatibility(void) {
     \
     uNumPrinted = u_fprintf(myFile, uFormat, uValue);\
     u_fclose(myFile);\
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", NULL);\
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, NULL);\
     u_fgets(uBuffer, sizeof(uBuffer)/sizeof(*uBuffer), myFile);\
     u_fclose(myFile);\
     u_austrncpy(compBuffer, uBuffer, sizeof(uBuffer)/sizeof(*uBuffer));\
@@ -1251,14 +1260,14 @@ static void TestFprintfFormat(void) {
     TestFPrintFormat("%3f", 1.234,       "%3f", 1.234);
     TestFPrintFormat("%3f", -1.234,      "%3f", -1.234);
 
-    myFile = u_fopen(STANDARD_TEST_FILE, "w", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL);
     /* Reinitialize the buffer to verify null termination works. */
     u_memset(uBuffer, 0x2a, sizeof(uBuffer)/sizeof(*uBuffer));
     memset(buffer, '*', sizeof(buffer)/sizeof(*buffer));
     
     uNumPrinted = u_fprintf(myFile, "%d % d %d", -1234, 1234, 1234);
     u_fclose(myFile);
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, NULL);
     u_fgets(uBuffer, sizeof(uBuffer)/sizeof(*uBuffer), myFile);
     u_fclose(myFile);
     u_austrncpy(compBuffer, uBuffer, sizeof(uBuffer)/sizeof(*uBuffer));
@@ -1299,7 +1308,7 @@ static void TestFScanSetFormat(const char *format, const UChar *uValue, const ch
     
     u_fprintf(myFile, "%S", uValue);
     u_fclose(myFile);
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, NULL);
     uNumScanned = u_fscanf(myFile, format, uBuffer);
     u_fclose(myFile);
     if (expectedToPass) {
@@ -1384,7 +1393,7 @@ static void TestBadFScanfFormat(const char *format, const UChar *uValue, const c
     
     u_fprintf(myFile, "%S", uValue);
     u_fclose(myFile);
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, NULL);
     uNumScanned = u_fscanf(myFile, format, uBuffer);
     u_fclose(myFile);
     if (uNumScanned != 0 || uBuffer[0] != 0x2a || uBuffer[1] != 0x2a) {
@@ -1408,7 +1417,7 @@ static void Test_u_vfprintf(const char *expectedResult, const char *format, ...)
     int32_t count;
     UFILE *myFile;
 
-    myFile = u_fopen(STANDARD_TEST_FILE, "w", "en_US_POSIX", "UTF-8");
+    myFile = u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, "UTF-8");
     if (!myFile) {
         log_err("Test file can't be opened\n");
         return;
@@ -1416,12 +1425,13 @@ static void Test_u_vfprintf(const char *expectedResult, const char *format, ...)
 
     va_start(ap, format);
     count = u_vfprintf(myFile, format, ap);
+    (void)count;    /* Suppress set but not used warning.  */
     va_end(ap);
 
     u_fclose(myFile);
 
 
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", "UTF-8");
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, "UTF-8");
     if (!myFile) {
         log_err("Test file can't be opened\n");
         return;
@@ -1434,7 +1444,7 @@ static void Test_u_vfprintf(const char *expectedResult, const char *format, ...)
     u_fclose(myFile);
 
 
-    myFile = u_fopen(STANDARD_TEST_FILE, "w", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL);
     if (!myFile) {
         log_err("Test file can't be opened\n");
         return;
@@ -1448,7 +1458,7 @@ static void Test_u_vfprintf(const char *expectedResult, const char *format, ...)
     u_fclose(myFile);
 
 
-    myFile = u_fopen(STANDARD_TEST_FILE, "r", "en_US_POSIX", NULL);
+    myFile = u_fopen(STANDARD_TEST_FILE, "r", STANDARD_TEST_LOCALE, NULL);
     if (!myFile) {
         log_err("Test file can't be opened\n");
         return;
@@ -1576,6 +1586,8 @@ U_CFUNC void
 addFileTest(TestNode** root) {
 #if !UCONFIG_NO_FORMATTING
     addTest(root, &TestFile, "file/TestFile");
+    addTest(root, &TestFinit, "file/TestFinit");
+    addTest(root, &TestFadopt, "file/TestFadopt");
 #endif
     addTest(root, &StdinBuffering, "file/StdinBuffering");
     addTest(root, &TestfgetsBuffers, "file/TestfgetsBuffers");

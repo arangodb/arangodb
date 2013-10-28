@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 2005-2009, International Business Machines
+ *   Copyright (C) 2005-2012, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  */
@@ -30,6 +30,7 @@ public:
     virtual void IBM424Test();
     virtual void IBM420Test();
     virtual void Ticket6394Test();
+    virtual void Ticket6954Test();
 
 private:
     void checkEncoding(const UnicodeString &testString,

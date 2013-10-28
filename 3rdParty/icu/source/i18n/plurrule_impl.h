@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2011, International Business Machines Corporation and
+* Copyright (C) 2007-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -20,122 +20,196 @@
 #include "unicode/format.h"
 #include "unicode/locid.h"
 #include "unicode/parseerr.h"
+#include "unicode/ures.h"
 #include "unicode/utypes.h"
 #include "uvector.h"
 #include "hash.h"
 
+class PluralRulesTest;
+
 U_NAMESPACE_BEGIN
 
-#define DOT               ((UChar)0x002E)
-#define SINGLE_QUOTE      ((UChar)0x0027)
-#define SLASH             ((UChar)0x002F)
-#define BACKSLASH         ((UChar)0x005C)
-#define SPACE             ((UChar)0x0020)
-#define QUOTATION_MARK    ((UChar)0x0022)
-#define NUMBER_SIGN       ((UChar)0x0023)
-#define ASTERISK          ((UChar)0x002A)
-#define COMMA             ((UChar)0x002C)
-#define HYPHEN            ((UChar)0x002D)
-#define U_ZERO            ((UChar)0x0030)
-#define U_ONE             ((UChar)0x0031)
-#define U_TWO             ((UChar)0x0032)
-#define U_THREE           ((UChar)0x0033)
-#define U_FOUR            ((UChar)0x0034)
-#define U_FIVE            ((UChar)0x0035)
-#define U_SIX             ((UChar)0x0036)
-#define U_SEVEN           ((UChar)0x0037)
-#define U_EIGHT           ((UChar)0x0038)
-#define U_NINE            ((UChar)0x0039)
-#define COLON             ((UChar)0x003A)
-#define SEMI_COLON        ((UChar)0x003B)
-#define CAP_A             ((UChar)0x0041)
-#define CAP_B             ((UChar)0x0042)
-#define CAP_R             ((UChar)0x0052)
-#define CAP_Z             ((UChar)0x005A)
-#define LOWLINE           ((UChar)0x005F)
-#define LEFTBRACE         ((UChar)0x007B)
-#define RIGHTBRACE        ((UChar)0x007D)
+class AndConstraint;
+class RuleChain;
 
-#define LOW_A             ((UChar)0x0061)
-#define LOW_B             ((UChar)0x0062)
-#define LOW_C             ((UChar)0x0063)
-#define LOW_D             ((UChar)0x0064)
-#define LOW_E             ((UChar)0x0065)
-#define LOW_F             ((UChar)0x0066)
-#define LOW_G             ((UChar)0x0067)
-#define LOW_H             ((UChar)0x0068)
-#define LOW_I             ((UChar)0x0069)
-#define LOW_J             ((UChar)0x006a)
-#define LOW_K             ((UChar)0x006B)
-#define LOW_L             ((UChar)0x006C)
-#define LOW_M             ((UChar)0x006D)
-#define LOW_N             ((UChar)0x006E)
-#define LOW_O             ((UChar)0x006F)
-#define LOW_P             ((UChar)0x0070)
-#define LOW_Q             ((UChar)0x0071)
-#define LOW_R             ((UChar)0x0072)
-#define LOW_S             ((UChar)0x0073)
-#define LOW_T             ((UChar)0x0074)
-#define LOW_U             ((UChar)0x0075)
-#define LOW_V             ((UChar)0x0076)
-#define LOW_W             ((UChar)0x0077)
-#define LOW_Y             ((UChar)0x0079)
-#define LOW_Z             ((UChar)0x007A)
+static const UChar DOT             = ((UChar)0x002E);
+static const UChar SINGLE_QUOTE    = ((UChar)0x0027);
+static const UChar SLASH           = ((UChar)0x002F);
+static const UChar BACKSLASH       = ((UChar)0x005C);
+static const UChar SPACE           = ((UChar)0x0020);
+static const UChar EXCLAMATION     = ((UChar)0x0021);
+static const UChar QUOTATION_MARK  = ((UChar)0x0022);
+static const UChar NUMBER_SIGN     = ((UChar)0x0023);
+static const UChar PERCENT_SIGN    = ((UChar)0x0025);
+static const UChar ASTERISK        = ((UChar)0x002A);
+static const UChar COMMA           = ((UChar)0x002C);
+static const UChar HYPHEN          = ((UChar)0x002D);
+static const UChar U_ZERO          = ((UChar)0x0030);
+static const UChar U_ONE           = ((UChar)0x0031);
+static const UChar U_TWO           = ((UChar)0x0032);
+static const UChar U_THREE         = ((UChar)0x0033);
+static const UChar U_FOUR          = ((UChar)0x0034);
+static const UChar U_FIVE          = ((UChar)0x0035);
+static const UChar U_SIX           = ((UChar)0x0036);
+static const UChar U_SEVEN         = ((UChar)0x0037);
+static const UChar U_EIGHT         = ((UChar)0x0038);
+static const UChar U_NINE          = ((UChar)0x0039);
+static const UChar COLON           = ((UChar)0x003A);
+static const UChar SEMI_COLON      = ((UChar)0x003B);
+static const UChar EQUALS          = ((UChar)0x003D);
+static const UChar AT              = ((UChar)0x0040);
+static const UChar CAP_A           = ((UChar)0x0041);
+static const UChar CAP_B           = ((UChar)0x0042);
+static const UChar CAP_R           = ((UChar)0x0052);
+static const UChar CAP_Z           = ((UChar)0x005A);
+static const UChar LOWLINE         = ((UChar)0x005F);
+static const UChar LEFTBRACE       = ((UChar)0x007B);
+static const UChar RIGHTBRACE      = ((UChar)0x007D);
+static const UChar TILDE           = ((UChar)0x007E);
+static const UChar ELLIPSIS        = ((UChar)0x2026);
+
+static const UChar LOW_A           = ((UChar)0x0061);
+static const UChar LOW_B           = ((UChar)0x0062);
+static const UChar LOW_C           = ((UChar)0x0063);
+static const UChar LOW_D           = ((UChar)0x0064);
+static const UChar LOW_E           = ((UChar)0x0065);
+static const UChar LOW_F           = ((UChar)0x0066);
+static const UChar LOW_G           = ((UChar)0x0067);
+static const UChar LOW_H           = ((UChar)0x0068);
+static const UChar LOW_I           = ((UChar)0x0069);
+static const UChar LOW_J           = ((UChar)0x006a);
+static const UChar LOW_K           = ((UChar)0x006B);
+static const UChar LOW_L           = ((UChar)0x006C);
+static const UChar LOW_M           = ((UChar)0x006D);
+static const UChar LOW_N           = ((UChar)0x006E);
+static const UChar LOW_O           = ((UChar)0x006F);
+static const UChar LOW_P           = ((UChar)0x0070);
+static const UChar LOW_Q           = ((UChar)0x0071);
+static const UChar LOW_R           = ((UChar)0x0072);
+static const UChar LOW_S           = ((UChar)0x0073);
+static const UChar LOW_T           = ((UChar)0x0074);
+static const UChar LOW_U           = ((UChar)0x0075);
+static const UChar LOW_V           = ((UChar)0x0076);
+static const UChar LOW_W           = ((UChar)0x0077);
+static const UChar LOW_Y           = ((UChar)0x0079);
+static const UChar LOW_Z           = ((UChar)0x007A);
 
 
-#define PLURAL_RANGE_HIGH  0x7fffffff;
+static const int32_t PLURAL_RANGE_HIGH = 0x7fffffff;
 
-
-typedef enum PluralKey {
-  pZero,
-  pOne,
-  pTwo,
-  pFew,
-  pMany,
-  pOther,
-  pLast
-}PluralKey;
-
-typedef enum tokenType {
+enum tokenType {
   none,
-  tLetter,
   tNumber,
   tComma,
   tSemiColon,
   tSpace,
   tColon,
+  tAt,           // '@'
   tDot,
+  tDot2,
+  tEllipsis,
   tKeyword,
-  tZero,
-  tOne,
-  tTwo,
-  tFew,
-  tMany,
-  tOther,
   tAnd,
   tOr,
-  tMod,
-  tNot,
-  tIn,
+  tMod,          // 'mod' or '%'
+  tNot,          //  'not' only.
+  tIn,           //  'in'  only.
+  tEqual,        //  '='   only.
+  tNotEqual,     //  '!='
+  tTilde,
   tWithin,
-  tNotIn,
-  tVariableN,
   tIs,
-  tLeftBrace,
-  tRightBrace
-}tokenType;
+  tVariableN,
+  tVariableI,
+  tVariableF,
+  tVariableV,
+  tVariableT,
+  tDecimal,
+  tInteger,
+  tEOF
+};
 
-class RuleParser : public UMemory {
+
+class PluralRuleParser: public UMemory {
 public:
-    RuleParser();
-    virtual ~RuleParser();
-    void getNextToken(const UnicodeString& ruleData, int32_t *ruleIndex, UnicodeString& token,
-                            tokenType& type, UErrorCode &status);
-    void checkSyntax(tokenType prevType, tokenType curType, UErrorCode &status);
+    PluralRuleParser();
+    virtual ~PluralRuleParser();
+
+    void parse(const UnicodeString &rules, PluralRules *dest, UErrorCode &status);
+    void getNextToken(UErrorCode &status);
+    void checkSyntax(UErrorCode &status);
+    static int32_t getNumberValue(const UnicodeString &token);
+
 private:
-    void getKeyType(const UnicodeString& token, tokenType& type, UErrorCode &status);
-    UBool inRange(UChar ch, tokenType& type);
-    UBool isValidKeyword(const UnicodeString& token);
+    static tokenType getKeyType(const UnicodeString& token, tokenType type);
+    static tokenType charType(UChar ch);
+    static UBool isValidKeyword(const UnicodeString& token);
+
+    const UnicodeString  *ruleSrc;  // The rules string.
+    int32_t        ruleIndex;       // String index in the input rules, the current parse position.
+    UnicodeString  token;           // Token most recently scanned.
+    tokenType      type;
+    tokenType      prevType;
+
+                                    // The items currently being parsed & built.
+                                    // Note: currentChain may not be the last RuleChain in the
+                                    //       list because the "other" chain is forced to the end.
+    AndConstraint *curAndConstraint;
+    RuleChain     *currentChain;
+
+    int32_t        rangeLowIdx;     // Indices in the UVector of ranges of the
+    int32_t        rangeHiIdx;      //    low and hi values currently being parsed.
+
+    enum EParseState {
+       kKeyword,
+       kExpr,
+       kValue,
+       kRangeList,
+       kSamples
+    };
+
+};
+
+/**
+ * class FixedDecimal serves to communicate the properties
+ * of a formatted number from a decimal formatter to PluralRules::select()
+ *
+ * see DecimalFormat::getFixedDecimal()
+ * @internal
+ */
+class U_I18N_API FixedDecimal: public UMemory {
+  public:
+    /**
+      * @param n   the number, e.g. 12.345
+      * @param v   The number of visible fraction digits, e.g. 3
+      * @param f   The fraction digits, e.g. 345
+      */
+    FixedDecimal(double  n, int32_t v, int64_t f);
+    FixedDecimal(double n, int32_t);
+    explicit FixedDecimal(double n);
+    FixedDecimal();
+    FixedDecimal(const UnicodeString &s, UErrorCode &ec);
+    FixedDecimal(const FixedDecimal &other);
+
+    double get(tokenType operand) const;
+    int32_t getVisibleFractionDigitCount() const;
+
+    void init(double n, int32_t v, int64_t f);
+    void init(double n);
+    UBool quickInit(double n);  // Try a fast-path only initialization,
+                                //    return TRUE if successful.
+    void adjustForMinFractionDigits(int32_t min);
+    static int64_t getFractionalDigits(double n, int32_t v);
+    static int32_t decimals(double n);
+
+    double      source;
+    int32_t     visibleDecimalDigitCount;
+    int64_t     decimalDigits;
+    int64_t     decimalDigitsWithoutTrailingZeros;
+    int64_t     intValue;
+    UBool       hasIntegerValue;
+    UBool       isNegative;
+    UBool       isNanOrInfinity;
 };
 
 class AndConstraint : public UMemory  {
@@ -145,20 +219,20 @@ public:
         MOD
     } RuleOp;
     RuleOp  op;
-    int32_t opNum;
-    int32_t  rangeLow;
-    int32_t  rangeHigh;
-    UBool   notIn;
-    UBool   integerOnly;
+    int32_t opNum;           // for mod expressions, the right operand of the mod.
+    int32_t     value;       // valid for 'is' rules only.
+    UVector32   *rangeList;  // for 'in', 'within' rules. Null otherwise.
+    UBool   negated;           // TRUE for negated rules.
+    UBool   integerOnly;     // TRUE for 'within' rules.
+    tokenType digitsType;    // n | i | v | f constraint.
     AndConstraint *next;
 
     AndConstraint();
     AndConstraint(const AndConstraint& other);
     virtual ~AndConstraint();
     AndConstraint* add();
-    UBool isFulfilled(double number);
-    UBool isLimited();
-    int32_t updateRepeatLimit(int32_t maxLimit);
+    // UBool isFulfilled(double number);
+    UBool isFulfilled(const FixedDecimal &number);
 };
 
 class OrConstraint : public UMemory  {
@@ -170,28 +244,29 @@ public:
     OrConstraint(const OrConstraint& other);
     virtual ~OrConstraint();
     AndConstraint* add();
-    UBool isFulfilled(double number);
-    UBool isLimited();
+    // UBool isFulfilled(double number);
+    UBool isFulfilled(const FixedDecimal &number);
 };
 
 class RuleChain : public UMemory  {
 public:
-    OrConstraint *ruleHeader;
-    UnicodeString keyword;
+    UnicodeString   fKeyword;
+    RuleChain      *fNext;
+    OrConstraint   *ruleHeader;
+    UnicodeString   fDecimalSamples;  // Samples strings from rule source
+    UnicodeString   fIntegerSamples;  //   without @decimal or @integer, otherwise unprocessed.
+    UBool           fDecimalSamplesUnbounded;
+    UBool           fIntegerSamplesUnbounded;
+
+
     RuleChain();
     RuleChain(const RuleChain& other);
-    RuleChain *next;
-
     virtual ~RuleChain();
-    UnicodeString select(double number) const;
-    void dumpRules(UnicodeString& result);
-    int32_t getRepeatLimit();
-    UBool isLimited();
-    UErrorCode getKeywords(int32_t maxArraySize, UnicodeString *keywords, int32_t& arraySize) const;
-    UBool isKeyword(const UnicodeString& keyword) const;
-    void setRepeatLimit();
-private:
-    int32_t repeatLimit;
+
+    UnicodeString select(const FixedDecimal &number) const;
+    void          dumpRules(UnicodeString& result);
+    UErrorCode    getKeywords(int32_t maxArraySize, UnicodeString *keywords, int32_t& arraySize) const;
+    UBool         isKeyword(const UnicodeString& keyword) const;
 };
 
 class PluralKeywordEnumeration : public StringEnumeration {
@@ -204,8 +279,22 @@ public:
     virtual void reset(UErrorCode& status);
     virtual int32_t count(UErrorCode& status) const;
 private:
-    int32_t pos;
-    UVector fKeywordNames;
+    int32_t         pos;
+    UVector         fKeywordNames;
+};
+
+
+class U_I18N_API PluralAvailableLocalesEnumeration: public StringEnumeration {
+  public:
+    PluralAvailableLocalesEnumeration(UErrorCode &status);
+    virtual ~PluralAvailableLocalesEnumeration();
+    virtual const char* next(int32_t *resultLength, UErrorCode& status);
+    virtual void reset(UErrorCode& status);
+    virtual int32_t count(UErrorCode& status) const;
+  private:
+    UErrorCode      fOpenStatus;
+    UResourceBundle *fLocales;
+    UResourceBundle *fRes;
 };
 
 U_NAMESPACE_END

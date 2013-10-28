@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1998-2011, International Business Machines
+#   Copyright (C) 1998-2012, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -129,7 +129,7 @@ TESTDT=$(TESTDATA)
 TEST_DAT_FILES=$(TESTBUILDDIR)/test.icu
 TEST_SPP_FILES=$(TESTBUILDDIR)/nfscsi.spp $(TESTBUILDDIR)/nfscss.spp $(TESTBUILDDIR)/nfscis.spp $(TESTBUILDDIR)/nfsmxs.spp $(TESTBUILDDIR)/nfsmxp.spp
 
-TEST_UCM_SOURCE= test1.ucm test1bmp.ucm test3.ucm test4.ucm test4x.ucm test5.ucm ibm9027.ucm
+TEST_UCM_SOURCE= test1.ucm test1bmp.ucm test2.ucm test3.ucm test4.ucm test4x.ucm test5.ucm ibm9027.ucm
 TEST_UCM_FILES=$(TEST_UCM_SOURCE:%=$(TESTSRCDATADIR)/data/%)
 TEST_CNV_FILES=$(TEST_UCM_SOURCE:%.ucm=$(TESTBUILDDIR)/%.cnv)
 

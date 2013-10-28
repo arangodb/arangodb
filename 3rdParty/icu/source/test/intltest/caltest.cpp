@@ -1,9 +1,8 @@
 /************************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2012, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ************************************************************************/
-
 #include "unicode/utypes.h"
 
 #if !UCONFIG_NO_FORMATTING
@@ -11,6 +10,7 @@
 #include "caltest.h"
 #include "unicode/dtfmtsym.h"
 #include "unicode/gregocal.h"
+#include "unicode/localpointer.h"
 #include "hebrwcal.h"
 #include "unicode/smpdtfmt.h"
 #include "unicode/simpletz.h"
@@ -19,11 +19,17 @@
 #include "unicode/ustring.h"
 #include "cstring.h"
 #include "unicode/localpointer.h"
+#include "islamcal.h"
 
 #define mkcstr(U) u_austrcpy(calloc(8, u_strlen(U) + 1), U)
 
-#define TEST_CHECK_STATUS {if (U_FAILURE(status)) {errln("%s:%d: Test failure.  status=%s", \
-                                                              __FILE__, __LINE__, u_errorName(status)); return;}}
+#define TEST_CHECK_STATUS { \
+    if (U_FAILURE(status)) { \
+        if (status == U_MISSING_RESOURCE_ERROR) { \
+            dataerrln("%s:%d: Test failure.  status=%s", __FILE__, __LINE__, u_errorName(status)); \
+        } else { \
+            errln("%s:%d: Test failure.  status=%s", __FILE__, __LINE__, u_errorName(status)); \
+        } return;}}
 
 #define TEST_ASSERT(expr) {if ((expr)==FALSE) {errln("%s:%d: Test failure \n", __FILE__, __LINE__);};}
 
@@ -278,6 +284,20 @@ void CalendarTest::runIndexedTest( int32_t index, UBool exec, const char* &name,
             TestCloneLocale();
           }
           break;
+        case 31:
+          name = "TestIslamicUmAlQura";
+          if(exec) {
+            logln("TestIslamicUmAlQura---"); logln("");
+            TestIslamicUmAlQura();
+          }
+          break;
+        case 32:
+          name = "TestIslamicTabularDates";
+          if(exec) {
+            logln("TestIslamicTabularDates---"); logln("");
+            TestIslamicTabularDates();
+          }
+          break;
         default: name = ""; break;
     }
 }
@@ -420,11 +440,11 @@ CalendarTest::TestGenericAPI()
     for (i=0; i<UCAL_FIELD_COUNT; ++i)
     {
         if (cal->getMinimum((UCalendarDateFields)i) > cal->getGreatestMinimum((UCalendarDateFields)i))
-            errln("FAIL: getMinimum larger than getGreatestMinimum for field " + i);
+            errln(UnicodeString("FAIL: getMinimum larger than getGreatestMinimum for field ") + i);
         if (cal->getLeastMaximum((UCalendarDateFields)i) > cal->getMaximum((UCalendarDateFields)i))
-            errln("FAIL: getLeastMaximum larger than getMaximum for field " + i);
+            errln(UnicodeString("FAIL: getLeastMaximum larger than getMaximum for field ") + i);
         if (cal->getMinimum((UCalendarDateFields)i) >= cal->getMaximum((UCalendarDateFields)i))
-            errln("FAIL: getMinimum not less than getMaximum for field " + i);
+            errln(UnicodeString("FAIL: getMinimum not less than getMaximum for field ") + i);
     }
 
     cal->adoptTimeZone(TimeZone::createDefault());
@@ -555,11 +575,49 @@ CalendarTest::TestGenericAPI()
         cal->roll(Calendar::MONTH, (int32_t)100, status);
     }
 
-    StringEnumeration *en = Calendar::getKeywordValuesForLocale(NULL, Locale::getDefault(),FALSE, status);
-    if (en == NULL || U_FAILURE(status)) {
-        dataerrln("FAIL: getKeywordValuesForLocale for Calendar. : %s", u_errorName(status));
+    LocalPointer<StringEnumeration> values(
+        Calendar::getKeywordValuesForLocale("calendar", Locale("he"), FALSE, status));
+    if (values.isNull() || U_FAILURE(status)) {
+        dataerrln("FAIL: Calendar::getKeywordValuesForLocale(he): %s", u_errorName(status));
+    } else {
+        UBool containsHebrew = FALSE;
+        const char *charValue;
+        int32_t valueLength;
+        while ((charValue = values->next(&valueLength, status)) != NULL) {
+            if (valueLength == 6 && strcmp(charValue, "hebrew") == 0) {
+                containsHebrew = TRUE;
+            }
+        }
+        if (!containsHebrew) {
+            errln("Calendar::getKeywordValuesForLocale(he)->next() does not contain \"hebrew\"");
+        }
+
+        values->reset(status);
+        containsHebrew = FALSE;
+        UnicodeString hebrew = UNICODE_STRING_SIMPLE("hebrew");
+        const UChar *ucharValue;
+        while ((ucharValue = values->unext(&valueLength, status)) != NULL) {
+            UnicodeString value(FALSE, ucharValue, valueLength);
+            if (value == hebrew) {
+                containsHebrew = TRUE;
+            }
+        }
+        if (!containsHebrew) {
+            errln("Calendar::getKeywordValuesForLocale(he)->unext() does not contain \"hebrew\"");
+        }
+
+        values->reset(status);
+        containsHebrew = FALSE;
+        const UnicodeString *stringValue;
+        while ((stringValue = values->snext(status)) != NULL) {
+            if (*stringValue == hebrew) {
+                containsHebrew = TRUE;
+            }
+        }
+        if (!containsHebrew) {
+            errln("Calendar::getKeywordValuesForLocale(he)->snext() does not contain \"hebrew\"");
+        }
     }
-    delete en;
     delete cal;
 }
 
@@ -2676,6 +2734,157 @@ void CalendarTest::TestCloneLocale(void) {
   }
   TEST_CHECK_STATUS;
 }
+
+void CalendarTest::setAndTestCalendar(Calendar* cal, int32_t initMonth, int32_t initDay, int32_t initYear, UErrorCode& status) {
+        cal->clear();
+        cal->setLenient(FALSE);
+        cal->set(initYear, initMonth, initDay);
+        int32_t day = cal->get(UCAL_DAY_OF_MONTH, status);
+        int32_t month = cal->get(UCAL_MONTH, status);
+        int32_t year = cal->get(UCAL_YEAR, status);
+        if(U_FAILURE(status))
+            return;
+
+        if(initDay != day || initMonth != month || initYear != year)
+        {
+            errln(" year init values:\tmonth %i\tday %i\tyear %i", initMonth, initDay, initYear);
+            errln("values post set():\tmonth %i\tday %i\tyear %i",month, day, year);
+        }
+}
+
+void CalendarTest::setAndTestWholeYear(Calendar* cal, int32_t startYear, UErrorCode& status) {
+        for(int32_t startMonth = 0; startMonth < 12; startMonth++) {
+            for(int32_t startDay = 1; startDay < 31; startDay++ ) {                
+                    setAndTestCalendar(cal, startMonth, startDay, startYear, status);
+                    if(U_FAILURE(status) && startDay == 30) {
+                        status = U_ZERO_ERROR;
+                        continue;
+                    }
+                    TEST_CHECK_STATUS;
+            }
+        }
+}
+          
+        
+void CalendarTest::TestIslamicUmAlQura() {
+               
+    UErrorCode status = U_ZERO_ERROR;
+    Locale islamicLoc("ar_SA@calendar=islamic-umalqura"); 
+    Calendar* tstCal = Calendar::createInstance(islamicLoc, status);
+    
+    IslamicCalendar* iCal = (IslamicCalendar*)tstCal;
+    if(strcmp(iCal->getType(), "islamic-umalqura") != 0) {
+        errln("wrong type of calendar created - %s", iCal->getType());
+    }
+   
+
+    int32_t firstYear = 1318;
+    int32_t lastYear = 1368;    // just enough to be pretty sure
+    //int32_t lastYear = 1480;    // the whole shootin' match
+        
+    tstCal->clear();
+    tstCal->setLenient(FALSE);
+        
+    int32_t day=0, month=0, year=0, initDay = 27, initMonth = IslamicCalendar::RAJAB, initYear = 1434;
+    
+    for( int32_t startYear = firstYear; startYear <= lastYear; startYear++) {
+        setAndTestWholeYear(tstCal, startYear, status);
+        status = U_ZERO_ERROR;
+    }
+    
+    initMonth = IslamicCalendar::RABI_2;
+    initDay = 5;
+    int32_t loopCnt = 25;
+    tstCal->clear();
+    setAndTestCalendar( tstCal, initMonth, initDay, initYear, status);
+    TEST_CHECK_STATUS;
+    
+    for(int x=1; x<=loopCnt; x++) {
+        day = tstCal->get(UCAL_DAY_OF_MONTH,status);
+        month = tstCal->get(UCAL_MONTH,status);
+        year = tstCal->get(UCAL_YEAR,status);
+        TEST_CHECK_STATUS;
+        tstCal->roll(UCAL_DAY_OF_MONTH, (UBool)TRUE, status);
+        TEST_CHECK_STATUS;
+    }
+
+    if(day != (initDay + loopCnt - 1) || month != IslamicCalendar::RABI_2 || year != 1434)
+      errln("invalid values for RABI_2 date after roll of %d", loopCnt);
+
+    status = U_ZERO_ERROR;
+    tstCal->clear();
+    initMonth = 2;
+    initDay = 30;
+    setAndTestCalendar( tstCal, initMonth, initDay, initYear, status);      
+    if(U_SUCCESS(status)) {
+        errln("error NOT detected status %i",status);
+        errln("      init values:\tmonth %i\tday %i\tyear %i", initMonth, initDay, initYear);
+        int32_t day = tstCal->get(UCAL_DAY_OF_MONTH, status);
+        int32_t month = tstCal->get(UCAL_MONTH, status);
+        int32_t year = tstCal->get(UCAL_YEAR, status);
+        errln("values post set():\tmonth %i\tday %i\tyear %i",month, day, year);
+    }
+
+    status = U_ZERO_ERROR;        
+    tstCal->clear();
+    initMonth = 3;
+    initDay = 30;
+    setAndTestCalendar( tstCal, initMonth, initDay, initYear, status);
+    TEST_CHECK_STATUS;
+       
+    SimpleDateFormat* formatter = new SimpleDateFormat("yyyy-MM-dd", Locale::getUS(), status);            
+    UDate date = formatter->parse("1975-05-06", status);
+    Calendar* is_cal = Calendar::createInstance(islamicLoc, status);
+    is_cal->setTime(date, status);
+    int32_t is_day = is_cal->get(UCAL_DAY_OF_MONTH,status);
+    int32_t is_month = is_cal->get(UCAL_MONTH,status);
+    int32_t is_year = is_cal->get(UCAL_YEAR,status);
+    TEST_CHECK_STATUS;
+    if(is_day != 29 || is_month != IslamicCalendar::RABI_2 || is_year != 1395)
+        errln("unexpected conversion date month %i not %i or day %i not 20 or year %i not 1395", is_month, IslamicCalendar::RABI_2, is_day, is_year);
+        
+    UDate date2 = is_cal->getTime(status);
+    TEST_CHECK_STATUS;
+    if(date2 != date) {
+        errln("before(%f) and after(%f) dates don't match up!",date, date2);
+    }
+
+    delete is_cal;
+    delete formatter;
+    delete tstCal;
+}            
+
+void CalendarTest::TestIslamicTabularDates() {
+    UErrorCode status = U_ZERO_ERROR;
+    Locale islamicLoc("ar_SA@calendar=islamic-civil"); 
+    Locale tblaLoc("ar_SA@calendar=islamic-tbla"); 
+    SimpleDateFormat* formatter = new SimpleDateFormat("yyyy-MM-dd", Locale::getUS(), status);            
+    UDate date = formatter->parse("1975-05-06", status);
+
+    Calendar* tstCal = Calendar::createInstance(islamicLoc, status);
+    tstCal->setTime(date, status);
+    int32_t is_day = tstCal->get(UCAL_DAY_OF_MONTH,status);
+    int32_t is_month = tstCal->get(UCAL_MONTH,status);
+    int32_t is_year = tstCal->get(UCAL_YEAR,status);
+    TEST_CHECK_STATUS;
+    delete tstCal;
+
+    tstCal = Calendar::createInstance(tblaLoc, status);
+    tstCal->setTime(date, status);
+    int32_t tbla_day = tstCal->get(UCAL_DAY_OF_MONTH,status);
+    int32_t tbla_month = tstCal->get(UCAL_MONTH,status);
+    int32_t tbla_year = tstCal->get(UCAL_YEAR,status);
+    TEST_CHECK_STATUS;
+
+    if(tbla_month != is_month || tbla_year != is_year)
+        errln("unexpected difference between islamic and tbla month %d : %d and/or year %d : %d",tbla_month,is_month,tbla_year,is_year);
+
+    if(tbla_day - is_day != 1)
+        errln("unexpected day difference between islamic and tbla: %d : %d ",tbla_day,is_day);
+    delete tstCal;
+    delete formatter;
+}
+
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
 

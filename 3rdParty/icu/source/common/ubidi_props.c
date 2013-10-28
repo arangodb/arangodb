@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2004-2011, International Business Machines
+*   Copyright (C) 2004-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -21,7 +21,6 @@
 #include "unicode/udata.h" /* UDataInfo */
 #include "ucmndata.h" /* DataHeader */
 #include "udatamem.h"
-#include "umutex.h"
 #include "uassert.h"
 #include "cmemory.h"
 #include "utrie2.h"
@@ -122,6 +121,8 @@ ubidi_getMaxValue(const UBiDiProps *bdp, UProperty which) {
         return (max&UBIDI_MAX_JG_MASK)>>UBIDI_MAX_JG_SHIFT;
     case UCHAR_JOINING_TYPE:
         return (max&UBIDI_JT_MASK)>>UBIDI_JT_SHIFT;
+    case UCHAR_BIDI_PAIRED_BRACKET_TYPE:
+        return (max&UBIDI_BPT_MASK)>>UBIDI_BPT_SHIFT;
     default:
         return -1; /* undefined */
     }
@@ -139,10 +140,9 @@ ubidi_isMirrored(const UBiDiProps *bdp, UChar32 c) {
     return (UBool)UBIDI_GET_FLAG(props, UBIDI_IS_MIRRORED_SHIFT);
 }
 
-U_CFUNC UChar32
-ubidi_getMirror(const UBiDiProps *bdp, UChar32 c) {
-    uint16_t props=UTRIE2_GET16(&bdp->trie, c);
-    int32_t delta=((int16_t)props)>>UBIDI_MIRROR_DELTA_SHIFT;
+static UChar32
+getMirror(const UBiDiProps *bdp, UChar32 c, uint16_t props) {
+    int32_t delta=UBIDI_GET_MIRROR_DELTA(props);
     if(delta!=UBIDI_ESC_MIRROR_DELTA) {
         return c+delta;
     } else {
@@ -170,6 +170,12 @@ ubidi_getMirror(const UBiDiProps *bdp, UChar32 c) {
         /* c not found, return it itself */
         return c;
     }
+}
+
+U_CFUNC UChar32
+ubidi_getMirror(const UBiDiProps *bdp, UChar32 c) {
+    uint16_t props=UTRIE2_GET16(&bdp->trie, c);
+    return getMirror(bdp, c, props);
 }
 
 U_CFUNC UBool
@@ -203,6 +209,22 @@ ubidi_getJoiningGroup(const UBiDiProps *bdp, UChar32 c) {
     }
 }
 
+U_CFUNC UBidiPairedBracketType
+ubidi_getPairedBracketType(const UBiDiProps *bdp, UChar32 c) {
+    uint16_t props=UTRIE2_GET16(&bdp->trie, c);
+    return (UBidiPairedBracketType)((props&UBIDI_BPT_MASK)>>UBIDI_BPT_SHIFT);
+}
+
+U_CFUNC UChar32
+ubidi_getPairedBracket(const UBiDiProps *bdp, UChar32 c) {
+    uint16_t props=UTRIE2_GET16(&bdp->trie, c);
+    if((props&UBIDI_BPT_MASK)==0) {
+        return c;
+    } else {
+        return getMirror(bdp, c, props);
+    }
+}
+
 /* public API (see uchar.h) ------------------------------------------------- */
 
 U_CFUNC UCharDirection
@@ -218,4 +240,9 @@ u_isMirrored(UChar32 c) {
 U_CFUNC UChar32
 u_charMirror(UChar32 c) {
     return ubidi_getMirror(&ubidi_props_singleton, c);
+}
+
+U_STABLE UChar32 U_EXPORT2
+u_getBidiPairedBracket(UChar32 c) {
+    return ubidi_getPairedBracket(&ubidi_props_singleton, c);
 }

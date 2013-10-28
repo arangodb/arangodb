@@ -1,5 +1,5 @@
 ## Makefile.in for ICU - tools/icuinfo
-## Copyright (c) 1999-2011, International Business Machines Corporation and
+## Copyright (c) 1999-2012, International Business Machines Corporation and
 ## others. All Rights Reserved.
 ## Madhu Katragadda
 
@@ -31,7 +31,7 @@ DEPS = $(OBJECTS:.o=.d)
 
 # pass some information
 
-ICUINFO_OPTS=-i ../../data/out/build/$(ICUDATA_PLATFORM_NAME) -x $(top_builddir)/config/icuinfo.xml -v
+ICUINFO_OPTS=-i ../../data/out/build/$(ICUDATA_PLATFORM_NAME) -x $(top_builddir)/config/icuinfo.xml -v -K
 
 ## List of phony targets
 .PHONY : all all-local install install-local clean clean-local		\

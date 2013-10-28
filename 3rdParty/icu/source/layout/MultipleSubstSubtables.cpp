@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -14,7 +14,7 @@
 
 U_NAMESPACE_BEGIN
 
-le_uint32 MultipleSubstitutionSubtable::process(GlyphIterator *glyphIterator, LEErrorCode& success, const LEGlyphFilter *filter) const
+le_uint32 MultipleSubstitutionSubtable::process(const LETableReference &base, GlyphIterator *glyphIterator, LEErrorCode& success, const LEGlyphFilter *filter) const
 {
     if (LE_FAILURE(success)) {
         return 0;
@@ -33,7 +33,7 @@ le_uint32 MultipleSubstitutionSubtable::process(GlyphIterator *glyphIterator, LE
         return 0;
     }
 
-    le_int32 coverageIndex = getGlyphCoverage(glyph);
+    le_int32 coverageIndex = getGlyphCoverage(base, glyph, success);
     le_uint16 seqCount = SWAPW(sequenceCount);
 
     if (coverageIndex >= 0 && coverageIndex < seqCount) {

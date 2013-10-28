@@ -120,7 +120,7 @@ void cmd_version(UBool /* noLoad */, UErrorCode &errorCode)
 void cmd_cleanup()
 {
     u_cleanup();
-    fprintf(stderr,"ICU u_cleanup() called.\n");
+    fprintf(stdout, "ICU u_cleanup() called.\n");
 }
 
 

@@ -1,6 +1,6 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2004 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
@@ -21,11 +21,11 @@ class LEGlyphStorage;
 
 class SubtableProcessor : public UMemory {
 public:
-    virtual void process(LEGlyphStorage &glyphStorage) = 0;
+    virtual void process(LEGlyphStorage &glyphStorage, LEErrorCode &success) = 0;
     virtual ~SubtableProcessor();
 
 protected:
-    SubtableProcessor(const MorphSubtableHeader *morphSubtableHeader);
+    SubtableProcessor(const LEReferenceTo<MorphSubtableHeader> &morphSubtableHeader, LEErrorCode &success);
 
     SubtableProcessor();
 
@@ -33,7 +33,7 @@ protected:
     SubtableCoverage coverage;
     FeatureFlags subtableFeatures;
 
-    const MorphSubtableHeader *subtableHeader;
+    const LEReferenceTo<MorphSubtableHeader> subtableHeader;
 
 private:
 

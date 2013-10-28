@@ -1,19 +1,20 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/sr_Latn.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sr_Latn.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/sr_Latn.xml
+ * ICU <specials> source: <path>/common/main/sr_Latn.xml
  */
 sr_Latn{
+    %%Parent{"root"}
     Currencies{
         ADP{
             "ADP",
-            "Andorska pezeta (ADP)",
+            "Andorska pezeta",
         }
         AED{
             "AED",
@@ -21,11 +22,11 @@ sr_Latn{
         }
         AFA{
             "AFA",
-            "Avganistanski avgani (1927-2002) AFA",
+            "Avganistanski avgani (1927–2002)",
         }
         AFN{
             "AFN",
-            "Avganistanski avgani (AFN)",
+            "Avganistanski avgani",
         }
         ALL{
             "ALL",
@@ -37,31 +38,31 @@ sr_Latn{
         }
         ANG{
             "ANG",
-            "Holandski Antili gilder (ANG)",
+            "Holandski antili gilder",
         }
         AOA{
             "AOA",
-            "Angolijska kvanza (AOA)",
+            "Angolijska kvanza",
         }
         AOK{
             "AOK",
-            "Angolijska kvanza (1977-1990) (AOK)",
+            "Angolijska kvanza (1977–1990)",
         }
         AON{
             "AON",
-            "Angolijska nova kvanza (1990-2000) (AON)",
+            "Angolijska nova kvanza (1990–2000)",
         }
         AOR{
             "AOR",
-            "Angolijska kvanza reajustado (1995-1999) (AOR)",
+            "Angolijska kvanza reađustado (1995–1999)",
         }
         ARA{
             "ARA",
-            "Argentinski austral (ARA)",
+            "Argentinski austral",
         }
         ARP{
             "ARP",
-            "Argentinski pezo (1983-1985) (ARP)",
+            "Argentinski pezo (1983–1985)",
         }
         ARS{
             "ARS",
@@ -72,20 +73,20 @@ sr_Latn{
             "Austrijski šiling",
         }
         AUD{
-            "AU$",
+            "A$",
             "Australijski dolar",
         }
         AWG{
             "AWG",
-            "Arubijski florin (AWG)",
+            "Arubanski florin",
         }
         AZM{
             "AZM",
-            "Azerbejdžanski manat (AZM)",
+            "Azerbejdžanski manat (1993–2006)",
         }
         AZN{
             "AZN",
-            "Azerbejdžanski manat (AZN)",
+            "Azerbejdžanski manat",
         }
         BAD{
             "BAD",
@@ -93,19 +94,19 @@ sr_Latn{
         }
         BAM{
             "KM",
-            "Bosansko-Hercegovačka konvertibilna marka",
+            "Konvertibilna marka",
         }
         BBD{
             "BBD",
-            "Barbadoski dolar (BBD)",
+            "Barbadoški dolar",
         }
         BDT{
             "BDT",
-            "Bangladeška taka (BDT)",
+            "Bangladeška taka",
         }
         BEC{
             "BEC",
-            "Belgijski frank (konvertibilni) (BEC)",
+            "Belgijski franak (konvertibilni)",
         }
         BEF{
             "BEF",
@@ -113,11 +114,11 @@ sr_Latn{
         }
         BEL{
             "BEL",
-            "Belgijski frank (finansijski) (BEL)",
+            "Belgijski franak (finansijski)",
         }
         BGL{
             "BGL",
-            "Bugarski tvrdi lev (BGL)",
+            "Bugarski tvrdi lev",
         }
         BGN{
             "BGN",
@@ -125,15 +126,15 @@ sr_Latn{
         }
         BHD{
             "BHD",
-            "Bahreinski dinar (BHD)",
+            "Bahreinski dinar",
         }
         BIF{
             "BIF",
-            "Burundski franak (BIF)",
+            "Burundski franak",
         }
         BMD{
             "BMD",
-            "Bermudski dolar (BMD)",
+            "Bermudski dolar",
         }
         BND{
             "BND",
@@ -141,67 +142,67 @@ sr_Latn{
         }
         BOB{
             "BOB",
-            "Bolivijski boliviano",
+            "Bolivijski Boliviano",
         }
         BOP{
             "BOP",
-            "Bolivijski pezo (BOP)",
+            "Bolivijski pezo",
         }
         BOV{
             "BOV",
-            "Bolivijski mvdol (BOV)",
+            "Bolivijski mvdol",
         }
         BRB{
             "BRB",
-            "Brazilski kruzeiro novo (1967-1986) (BRB)",
+            "Brazilski novi kruzeiro (1967–1986)",
         }
         BRC{
             "BRC",
-            "Brazilski kruzado (BRC)",
+            "Brazilijski kruzado",
         }
         BRE{
             "BRE",
-            "Brazilski kruzeiro (1990-1993) (BRE)",
+            "Brazilski kruzeiro (1990–1993)",
         }
         BRL{
             "R$",
-            "Brazilski real",
+            "Brazilski Real",
         }
         BRN{
             "BRN",
-            "Brazilski kruzado novo (BRN)",
+            "Brazilijski novi kruzado",
         }
         BRR{
             "BRR",
-            "Brazilski kruzeiro (BRR)",
+            "Brazilski kruzeiro",
         }
         BSD{
             "BSD",
-            "Bahamski dolar (BSD)",
+            "Bahamski dolar",
         }
         BTN{
             "BTN",
-            "Butanski ngultrum (BTN)",
+            "Butanski ngultrum",
         }
         BUK{
             "BUK",
-            "Burmanski kjat (BUK)",
+            "Burmanski kjat",
         }
         BWP{
             "BWP",
-            "Botsvanska pula (BWP)",
+            "Bocvanska pula",
         }
         BYB{
             "BYB",
-            "Beloruska nova rublja (1994-1999) (BYB)",
+            "Beloruska nova rublja (1994–1999)",
         }
         BYR{
             "BYR",
-            "Beloruska rublja (BYR)",
+            "Beloruska rublja",
         }
         BZD{
             "BZD",
-            "Belize dolar (BZD)",
+            "Belize dolar",
         }
         CAD{
             "CA$",
@@ -209,11 +210,11 @@ sr_Latn{
         }
         CDF{
             "CDF",
-            "Kongolski franak (CDF)",
+            "Kongolski franak",
         }
         CHE{
             "CHE",
-            "WIR Evro (CHE)",
+            "WIR evro",
         }
         CHF{
             "CHF",
@@ -221,11 +222,11 @@ sr_Latn{
         }
         CHW{
             "CHW",
-            "WIR franak (CHW)",
+            "WIR franak",
         }
         CLF{
             "CLF",
-            "Čileanski unidades de fomento (CLF)",
+            "Čileovski unidades se fomento",
         }
         CLP{
             "CLP",
@@ -233,7 +234,7 @@ sr_Latn{
         }
         CNY{
             "CN¥",
-            "Kineski Juan Renminbi",
+            "Kineski juan renminbi",
         }
         COP{
             "COP",
@@ -241,11 +242,11 @@ sr_Latn{
         }
         COU{
             "COU",
-            "Unidad de Valor real (COU)",
+            "Unidad de valorški real",
         }
         CRC{
             "CRC",
-            "Kostarikanski kolon (CRC)",
+            "Kostarikanski kolon",
         }
         CSD{
             "CSD",
@@ -253,27 +254,31 @@ sr_Latn{
         }
         CSK{
             "CSK",
-            "Čehoslovačka tvrda koruna (CSK)",
+            "Čehoslovačka tvrda kruna",
+        }
+        CUC{
+            "CUC",
+            "Kubanski konvertibilni peso",
         }
         CUP{
             "CUP",
-            "Kubanski pezo (CUP)",
+            "Kubanski pezo",
         }
         CVE{
             "CVE",
-            "Kejp verdanški eskudo (CVE)",
+            "Zelenortski eskudo",
         }
         CYP{
             "CYP",
-            "Kipratska funta (CYP)",
+            "Kiparska funta",
         }
         CZK{
-            "CZK",
+            "Kč",
             "Češka kruna",
         }
         DDM{
             "DDM",
-            "Istočnoevropska marka (DDM)",
+            "Istočno-nemačka marka",
         }
         DEM{
             "DEM",
@@ -281,7 +286,7 @@ sr_Latn{
         }
         DJF{
             "DJF",
-            "Džibutanski franak (DJF)",
+            "Džibutanski franak",
         }
         DKK{
             "DKK",
@@ -289,23 +294,23 @@ sr_Latn{
         }
         DOP{
             "DOP",
-            "DOminikanski pezo (DOP)",
+            "Dominikanski pezo",
         }
         DZD{
             "DZD",
-            "Alžirski dinar (DZD)",
+            "Alžirski dinar",
         }
         ECS{
             "ECS",
-            "Ekvadorijski sukr (ECS)",
+            "Ekvadorski sakr",
         }
         ECV{
             "ECV",
-            "Ekvadorski unidad de valor konstantin (UVC)",
+            "Ekvadorski unidad de valor konstante",
         }
         EEK{
             "EEK",
-            "Estonska kruna",
+            "Estonska kroon",
         }
         EGP{
             "EGP",
@@ -313,15 +318,15 @@ sr_Latn{
         }
         ERN{
             "ERN",
-            "Eritreanska nakfa (ERN)",
+            "Eritrejska nakfa",
         }
         ESA{
             "ESA",
-            "Španska pezeta (račun) ESA",
+            "Španska pezeta (račun)",
         }
         ESB{
             "ESB",
-            "Španska pezeta (konvertibilni račun) (ESB)",
+            "Španska pezeta (konvertibilniračun)",
         }
         ESP{
             "ESP",
@@ -329,7 +334,7 @@ sr_Latn{
         }
         ETB{
             "ETB",
-            "Etopijski bir (ETB)",
+            "Etiopijski bir",
         }
         EUR{
             "€",
@@ -345,7 +350,7 @@ sr_Latn{
         }
         FKP{
             "FKP",
-            "Foklandska ostrva funta (FKP)",
+            "Foklandska ostrva funta",
         }
         FRF{
             "FRF",
@@ -357,67 +362,67 @@ sr_Latn{
         }
         GEK{
             "GEK",
-            "Gruzijski kupon larit (GEK)",
+            "Gruzijski kupon larit",
         }
         GEL{
             "GEL",
-            "Džordžijski lari (GEL)",
+            "Gruzijski lari",
         }
         GHC{
             "GHC",
-            "Ganijski cedi (1979-2007) (GHC)",
+            "Ganski cedi (1979–2007)",
         }
         GHS{
             "GHS",
-            "Ganijski cedi (GHS)",
+            "Ganski cedi",
         }
         GIP{
             "GIP",
-            "Gibraltarska funta (GIP)",
+            "Gibraltarska funta",
         }
         GMD{
             "GMD",
-            "Gambijski dalasi (GMD)",
+            "Gambijski dalasi",
         }
         GNF{
             "GNF",
-            "Gvinejski franak (GNF)",
+            "Gvinejski franak",
         }
         GNS{
             "GNS",
-            "Gvinejski sili (GNS)",
+            "Gvinejski sili",
         }
         GQE{
             "GQE",
-            "Evatorijalna gvineja ekvele (GQE)",
+            "Ekvatorijalno-gvinejski ekvele",
         }
         GRD{
             "GRD",
-            "Drahma",
+            "Grčka drahma",
         }
         GTQ{
             "GTQ",
-            "Gvatemalski kvetzal (GTQ)",
+            "Gvatemalski kvecal",
         }
         GWE{
             "GWE",
-            "Portugalska Gvineja eskudo (GWE)",
+            "Portugalska gvineja eskudo",
         }
         GWP{
             "GWP",
-            "Gvineja bisao pezo (GWP)",
+            "Gvineja Bisao Pezo",
         }
         GYD{
             "GYD",
-            "Guajanski dolar (GYD)",
+            "Gujanski dolar",
         }
         HKD{
             "HK$",
-            "Honkonški dolar",
+            "Hongkonški dolar",
         }
         HNL{
             "HNL",
-            "Honduranska lempira (HNL)",
+            "Honduraška lempira",
         }
         HRD{
             "HRD",
@@ -429,7 +434,7 @@ sr_Latn{
         }
         HTG{
             "HTG",
-            "Haitski gurd (HTG)",
+            "Haićanski gurd",
         }
         HUF{
             "HUF",
@@ -437,7 +442,7 @@ sr_Latn{
         }
         IDR{
             "IDR",
-            "Indonezijska rupiah",
+            "Indonežanska rupija",
         }
         IEP{
             "IEP",
@@ -445,35 +450,35 @@ sr_Latn{
         }
         ILP{
             "ILP",
-            "Izraelska funta (ILP)",
+            "Izraelska funta",
         }
         ILR{
-            "ILR" /** ===  */,
-            "stari izraelski šekeli",
+            "ILR",
+            "Stari izraelski šekeli",
         }
         ILS{
             "₪",
-            "Izraelski šekel",
+            "Izraelski novi šekel",
         }
         INR{
             "₹",
-            "Indijski rupi",
+            "Indijska rupija",
         }
         IQD{
             "IQD",
-            "Irački dinar (IQD)",
+            "Irački dinar",
         }
         IRR{
             "IRR",
-            "Iranijski rial (IRR)",
+            "Iranski rijal",
         }
         ISJ{
-            "ISJ" /** ===  */,
-            "stara islandska kruna",
+            "ISJ",
+            "Stara islandska kruna",
         }
         ISK{
             "ISK",
-            "Islandska kruna (ISK)",
+            "Islandska kruna",
         }
         ITL{
             "ITL",
@@ -481,14 +486,14 @@ sr_Latn{
         }
         JMD{
             "JMD",
-            "Jamajski dolar (JMD)",
+            "Jamajkanski dolar",
         }
         JOD{
             "JOD",
-            "Jordanski dinar (JOD)",
+            "Jordanski dinar",
         }
         JPY{
-            "JP¥",
+            "¥",
             "Japanski jen",
         }
         KES{
@@ -497,23 +502,23 @@ sr_Latn{
         }
         KGS{
             "KGS",
-            "Kirgistanski som (KGS)",
+            "Kirgistanski som",
         }
         KHR{
             "KHR",
-            "Kambodžijski riel (KHR)",
+            "Kambodžanski rijel",
         }
         KMF{
             "KMF",
-            "Komoranski franak (KMF)",
+            "Komorski franak",
         }
         KPW{
             "KPW",
-            "Severnokorejski von (KPW)",
+            "Severnokorejski von",
         }
         KRW{
             "₩",
-            "Južno-korejski Von",
+            "Južnokorejski Von",
         }
         KWD{
             "KWD",
@@ -521,31 +526,31 @@ sr_Latn{
         }
         KYD{
             "KYD",
-            "Kajmanska ostrva dolar (KYD)",
+            "Kajmanska ostrva dolar",
         }
         KZT{
             "KZT",
-            "Kazahstanski tendž (JZT)",
+            "Kazahstanski tendž",
         }
         LAK{
             "LAK",
-            "Laoški kip (LAK)",
+            "Laoški kip",
         }
         LBP{
             "LBP",
-            "Lebanska funta (LBR)",
+            "Libanska funta",
         }
         LKR{
             "LKR",
-            "Šrilankanski rupi (LKR)",
+            "Šrilankanska rupija",
         }
         LRD{
             "LRD",
-            "Liberijski dolar (LRD)",
+            "Liberijski dolar",
         }
         LSL{
             "LSL",
-            "Lesotski loti (LSL)",
+            "Lesoto loti",
         }
         LTL{
             "LTL",
@@ -553,11 +558,11 @@ sr_Latn{
         }
         LTT{
             "LTT",
-            "Litvanski talonas (LTT)",
+            "Litvanski talonas",
         }
         LUC{
             "LUC",
-            "Luksemburški konvertibilni franak (LUC)",
+            "Luksemburški konvertibilni franak",
         }
         LUF{
             "LUF",
@@ -565,15 +570,15 @@ sr_Latn{
         }
         LUL{
             "LUL",
-            "Luksemburški finansijski franak (LUL)",
+            "Luksemburški finansijski franak",
         }
         LVL{
             "LVL",
-            "Latvijski lats (LVL)",
+            "Latvijski lati",
         }
         LVR{
             "LVR",
-            "Latvijska rublja (LVR)",
+            "Latvijska rublja",
         }
         LYD{
             "LYD",
@@ -585,19 +590,19 @@ sr_Latn{
         }
         MAF{
             "MAF",
-            "Marokanski franak (MAF)",
+            "Marokanski franak",
         }
         MDL{
             "MDL",
-            "Moldovski lju (MDL)",
+            "Moldavski lej",
         }
         MGA{
             "MGA",
-            "Malagasijski ariari (MGA)",
+            "Malagasijski ariari",
         }
         MGF{
             "MGF",
-            "Malagasijski franak (MGF)",
+            "Malagasijski franak",
         }
         MKD{
             "MKD",
@@ -605,23 +610,23 @@ sr_Latn{
         }
         MLF{
             "MLF",
-            "Malijanski franak (MLF)",
+            "Malijanski franak",
         }
         MMK{
             "MMK",
-            "Mjanmaški kjat (MMK)",
+            "Mjanmarski kjat",
         }
         MNT{
             "MNT",
-            "Mongolski tugrik (MNT)",
+            "Mongolski tugrik",
         }
         MOP{
             "MOP",
-            "Makaniška pataka (MOP)",
+            "Makaniška pataka",
         }
         MRO{
             "MRO",
-            "Mauritanijska ugvija",
+            "Mauritanijska ogija",
         }
         MTL{
             "MTL",
@@ -629,63 +634,63 @@ sr_Latn{
         }
         MTP{
             "MTP",
-            "Malteška funta (MTP)",
+            "Malteška funta",
         }
         MUR{
             "MUR",
-            "Mauricijska ruplja (MUR)",
+            "Mauricijska rupija",
         }
         MVR{
             "MVR",
-            "Maldivijska rufija (MVR)",
+            "Maldivska rufija",
         }
         MWK{
             "MWK",
-            "Malavijska kvača (MWK)",
+            "Malavijska kvača",
         }
         MXN{
             "MX$",
-            "Meksički peso",
+            "Meksički pezo",
         }
         MXP{
             "MXP",
-            "Meksijski srebrno pezo (1861-1992) (MXP)",
+            "Meksički srebrni pezo (1861–1992)",
         }
         MXV{
             "MXV",
-            "Meksijski unidad de inverzion (MXV)",
+            "Meksički unidad de inversion (UDI)",
         }
         MYR{
             "MYR",
-            "Malezijski ringit",
+            "Malezijski ringgit",
         }
         MZE{
             "MZE",
-            "Mozambijski eskudo (MZE)",
+            "Mozambijski eskudo",
         }
         MZM{
             "MZM",
-            "Stari mozambijski metikal (MZM)",
+            "Stari mozambijski metikal",
         }
         MZN{
             "MZN",
-            "Mozambijski metikal (MZN)",
+            "Mozambijski metikal",
         }
         NAD{
             "NAD",
-            "Nambijski dolar (NAD)",
+            "Namibijski dolar",
         }
         NGN{
             "NGN",
-            "Nigerijska naira (NGN)",
+            "Nigerijska naira",
         }
         NIC{
             "NIC",
-            "Nikaragvanška kordoba (NIC)",
+            "Nikaragvanska kordoba",
         }
         NIO{
             "NIO",
-            "Nikaragvanška kordoba oro",
+            "Nikaragvanska zlatna kordoba",
         }
         NLG{
             "NLG",
@@ -697,7 +702,7 @@ sr_Latn{
         }
         NPR{
             "NPR",
-            "Nepalska ruplja (NPR)",
+            "Nepalska rupija",
         }
         NZD{
             "NZ$",
@@ -705,15 +710,15 @@ sr_Latn{
         }
         OMR{
             "OMR",
-            "Omanski rial (OMR)",
+            "Omanski rijal",
         }
         PAB{
             "PAB",
-            "Panamanska balboa (PAB)",
+            "Panamska balboa",
         }
         PEI{
             "PEI",
-            "Peruvijski inti (PEI)",
+            "Peruanski inti",
         }
         PEN{
             "PEN",
@@ -721,27 +726,27 @@ sr_Latn{
         }
         PES{
             "PES",
-            "Peruvijski sol (PES)",
+            "Peruanski sol",
         }
         PGK{
             "PGK",
-            "Papua Nova Gvineja kina (PGK)",
+            "Papuanska kina",
         }
         PHP{
             "PHP",
-            "Filipinski peso",
+            "Filipinski pezo",
         }
         PKR{
             "PKR",
-            "Pakistanski rupi",
+            "Pakistanska rupija",
         }
         PLN{
-            "PLN",
-            "Poljski zlot (PLN)",
+            "zl",
+            "Poljski zlot",
         }
         PLZ{
             "PLZ",
-            "Poljski zloti (1950-1995) (PLZ)",
+            "Poljski zloti (1950–1995)",
         }
         PTE{
             "PTE",
@@ -749,23 +754,23 @@ sr_Latn{
         }
         PYG{
             "PYG",
-            "Paragvajski guarni (PYG)",
+            "Paragvajski guarni",
         }
         QAR{
             "QAR",
-            "Katarski rial (QAR)",
+            "Katarški rijal",
         }
         RHD{
             "RHD",
-            "Rodizijski dolar (RHD)",
+            "Rodejskidolar",
         }
         ROL{
             "ROL",
-            "Stari romanski lju (ROL)",
+            "Rumunski lej",
         }
         RON{
             "RON",
-            "Rumunski leu",
+            "Rumunski lej (1952–2006)",
         }
         RSD{
             "din.",
@@ -777,35 +782,35 @@ sr_Latn{
         }
         RUR{
             "RUR",
-            "Ruska rublja (1991-1998)",
+            "Ruska rublja (1991–1998)",
         }
         RWF{
             "RWF",
-            "Ruandski franak (RWF)",
+            "Ruandski franak",
         }
         SAR{
             "SAR",
-            "Saudijski rijal (SAR)",
+            "Saudijski rijal",
         }
         SBD{
             "SBD",
-            "Solomonska ostrva dolar (SBD)",
+            "Solomonsko-ostrvski dolar",
         }
         SCR{
             "SCR",
-            "Sejšelski rupi (SCR)",
+            "Sejšelska rupija",
         }
         SDD{
             "SDD",
-            "STari sudanski dinar (SDD)",
+            "Stari sudanski dinar",
         }
         SDG{
             "SDG",
-            "Sudanska funta (SDG)",
+            "Sudanska funta",
         }
         SDP{
             "SDP",
-            "Stara sudanska funta (SDP)",
+            "Stara sudanska funta",
         }
         SEK{
             "SEK",
@@ -817,11 +822,11 @@ sr_Latn{
         }
         SHP{
             "SHP",
-            "Sv. Helenska funta (SHP)",
+            "Sv. jelenska funta",
         }
         SIT{
             "SIT",
-            "Slovenski tolar",
+            "Slovenački tolar",
         }
         SKK{
             "SKK",
@@ -829,79 +834,87 @@ sr_Latn{
         }
         SLL{
             "SLL",
-            "Sijeraleonski leone (SLL)",
+            "Sijera-leonški leone",
         }
         SOS{
             "SOS",
-            "Somalijski šiling (SOS)",
+            "Somalijski šiling",
         }
         SRD{
             "SRD",
-            "Surinamski dolar (SRD)",
+            "Surinamski dolar",
         }
         SRG{
             "SRG",
-            "Surinamski gilder (SRG)",
+            "Surinamski gilder",
+        }
+        SSP{
+            "SSP",
+            "Južnosudanska funta",
         }
         STD{
             "STD",
-            "Sao Tome i Principe dobra (STD)",
+            "Sao Tome i Principe dobra",
         }
         SUR{
             "SUR",
-            "Sovjetska rublja (SUR)",
+            "Sovjetska rublja",
         }
         SVC{
             "SVC",
-            "Salvadorski kolon (SVC)",
+            "Salvadorski kolon",
         }
         SYP{
             "SYP",
-            "Sirijska funta (SYP)",
+            "Sirijska funta",
         }
         SZL{
             "SZL",
-            "Švazi lilangeni (SZL)",
+            "Svazi lilangeni",
         }
         THB{
             "฿",
-            "Tai baht (THB)",
+            "Tai baht",
         }
         TJR{
             "TJR",
-            "Tadžakistanska rublja (SYR)",
+            "Tadžihistanska rublja",
         }
         TJS{
             "TJS",
-            "Tadžikistanski somoni (TJS)",
+            "Tadžihistanski somon",
         }
         TMM{
             "TMM",
-            "Turkmenistanski manat (TMM)",
+            "Turkmenistanski manat (1993–2009)",
+        }
+        TMT{
+            "TMT",
+            "Turkmenistanski manat",
         }
         TND{
             "TND",
-            "Tunizijski dinar (TND)",
+            "Tunežanski dinar",
         }
         TOP{
             "TOP",
-            "Tongška Paʻanga (TOP)",
+            "Tongonška Panga",
         }
         TPE{
             "TPE",
-            "Timorški eskudo (TPE)",
+            "Timorški eskudo",
         }
         TRL{
             "TRL",
-            "Stara turska lira (TRL)",
+            "Turska lira (1922–2005)",
         }
         TRY{
-            "TRY",
+            "Tl",
             "Turska lira",
         }
         TTD{
             "TTD",
-            "Trinidad i Tobago dolar (TTD)",
+            "Trinidad tobagoški dolar",
         }
         TWD{
             "NT$",
@@ -909,7 +922,7 @@ sr_Latn{
         }
         TZS{
             "TZS",
-            "Tanzijski šiling (TZS)",
+            "Tanzanijski šiling",
         }
         UAH{
             "UAH",
@@ -917,15 +930,15 @@ sr_Latn{
         }
         UAK{
             "UAK",
-            "Ukrajinski karbovaneti (UAK)",
+            "Ukrajinski karbovaneti",
         }
         UGS{
             "UGS",
-            "Ugandijski šiling (1966-1987) (UGS)",
+            "Ugandski šiling (1966–1987)",
         }
         UGX{
             "UGX",
-            "Ugandijski šiling (UGX)",
+            "Ugandski šiling",
         }
         USD{
             "US$",
@@ -933,67 +946,71 @@ sr_Latn{
         }
         USN{
             "USN",
-            "SAD dolar (sledeći dan) (USN)",
+            "SAD dolar (sledeći dan)",
         }
         USS{
             "USS",
-            "SAD dolar (isti dan) (USS)",
+            "SAD dolar (isti dan)",
         }
         UYI{
             "UYI",
-            "Urugvajski pezo en unidades indeksades (UYI)",
+            "Urugvajski pezo en unidades indeksadas",
         }
         UYP{
             "UYP",
-            "Urugvajski pezo (1975-1993) (UYP)",
+            "Urugvajski pezo (1975–1993)",
         }
         UYU{
             "UYU",
-            "Urugvajski pezo (UYU)",
+            "Urugvajski pezo",
         }
         UZS{
             "UZS",
-            "Uzbekistanski som (UZS)",
+            "Uzbekistanski som",
         }
         VEB{
             "VEB",
-            "Venecuelanski bolivar",
+            "Venecuelanski bolivar (1871–2008)",
         }
         VEF{
             "VEF",
-            "Venecuelanska bolivija fuerte (VEF)",
+            "Venecuelanski bolivar",
         }
         VND{
             "₫",
             "Vijetnamski dong",
         }
+        VNN{
+            "VNN",
+            "Vijetnamski dong (1978–1985)",
+        }
         VUV{
             "VUV",
-            "Vanatuški vatu (VUV)",
+            "Vanuatski vatu",
         }
         WST{
             "WST",
-            "Samoanska tala (WST)",
+            "Samoanska tala",
         }
         XAF{
             "FCFA",
-            "CFA franak BEAC (XAF)",
+            "CFA franak BEAC",
         }
         XAG{
             "XAG",
-            "Srebro (CAG)",
+            "Srebro",
         }
         XAU{
             "XAU",
-            "Zlato (XAU)",
+            "Zlato",
         }
         XBA{
             "XBA",
-            "Evropska kompozitna jedinica (XBA)",
+            "Evropska kompozitna jedinica",
         }
         XBB{
             "XBB",
-            "Evropska novčana jedinica (XBB)",
+            "Evropska novčana jedinica",
         }
         XBC{
             "XBC",
@@ -1005,47 +1022,47 @@ sr_Latn{
         }
         XCD{
             "EC$",
-            "Istočnokaribijski dolar (XCD)",
+            "Istočno-karipski dolar",
         }
         XDR{
             "XDR",
-            "Posebna prava (XDR)",
+            "Posebna crtaća prava",
         }
         XEU{
             "XEU",
-            "Evropska valutna jedinica (XEU)",
+            "Evropska valutna jedinica",
         }
         XFO{
             "XFO",
-            "Francuski zlatni frank (XFO)",
+            "Francuski zlatni franak",
         }
         XFU{
             "XFU",
-            "Francuski UIC-frank (XFU)",
+            "Francuski UIC-franak",
         }
         XOF{
             "CFA",
-            "CFA franak BCEAO (XOF)",
+            "CFA franak BCEAO",
         }
         XPD{
             "XPD",
-            "Paladijum (XPD)",
+            "Paladijum",
         }
         XPF{
             "CFPF",
-            "CFP franak (XPF)",
+            "CFP franak",
         }
         XPT{
             "XPT",
-            "Platina (XPT)",
+            "Platina",
         }
         XRE{
             "XRE",
-            "RINET fondovi (XRE)",
+            "RINET fond",
         }
         XTS{
             "XTS",
-            "Kod testirane valute (XTS)",
+            "Kod testirane valute",
         }
         XXX{
             "XXX",
@@ -1053,1672 +1070,1457 @@ sr_Latn{
         }
         YDD{
             "YDD",
-            "Jemenski dinar (YDD)",
+            "Jemenski dinar",
         }
         YER{
             "YER",
-            "Jemenski rial (YER)",
+            "Jemenski rijal",
         }
         YUD{
             "YUD",
-            "Jugoslovenski tvrdi dinar (YUD)",
+            "Jugoslovenski tvrdi dinar",
         }
         YUM{
             "YUM",
-            "Jugoslovenski novi dinar (YUM)",
+            "Jugoslovenski novi dinar",
         }
         YUN{
             "YUN",
-            "Jugoslovenski konvertibilni dinar (YUN)",
+            "Jugoslovenski konvertibilni dinar",
         }
         ZAL{
             "ZAL",
-            "Južnoafrički rand (finansijski) ZAL",
+            "Južno-afrički rand (finansijski)",
         }
         ZAR{
             "ZAR",
-            "Južna Afrika Rand",
+            "Južno-afrički rand",
         }
         ZMK{
             "ZMK",
-            "Zambijska kvača (ZMK)",
+            "Zambijska kvača (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
+            "Zambijska kvača",
         }
         ZRN{
             "ZRN",
-            "Zairski novi zair (ZRN)",
+            "Zairski novi zair",
         }
         ZRZ{
             "ZRZ",
-            "Zairski zair (ZRZ)",
+            "Zairski zair",
         }
         ZWD{
             "ZWD",
-            "Zimbabvejski dolar (ZWD)",
+            "Zimbabveanski dolar (1980–2008)",
+        }
+        ZWL{
+            "ZWL",
+            "Zimbabveanski dolar (2009)",
+        }
+        ZWR{
+            "ZWR",
+            "Zimbabveanski dolar (2008)",
         }
     }
     CurrencyPlurals{
         ADP{
-            few{"Andorijske pezete"}
-            many{"Andorijskih pezeta"}
-            one{"Andorijska pezeta"}
-            other{"Andorijske pezete"}
+            few{"andorske pezete"}
+            one{"andorska pezeta"}
+            other{"andorske pezete"}
         }
         AED{
             few{"UAE dirama"}
-            many{"UAE dirama"}
             one{"UAE diram"}
             other{"UAE dirama"}
         }
         AFA{
-            few{"Avganistanska avgana (AFA)"}
-            many{"Avganistanskih avgana (AFA)"}
-            one{"Avganistanski avgan (AFA)"}
-            other{"Avganistanski avgan (AFA)"}
+            few{"avganistanska avgana (1927–2002)"}
+            one{"avganistanski avgani (1927–2002)"}
+            other{"avganistanskih avgana (1927–2002)"}
         }
         AFN{
-            few{"Avganistanska avgana"}
-            one{"Avganistanski avgan"}
-            other{"Avganistanski avgan"}
+            few{"avganistanska avgana"}
+            one{"avganistanski avgani"}
+            other{"avganistanskih avgana"}
         }
         ALL{
-            few{"Albanska leka"}
-            many{"Albanskih leka"}
+            few{"albanske leke"}
             one{"albanski lek"}
-            other{"albanski lek"}
+            other{"albanskih leka"}
         }
         AMD{
-            few{"Jermenske drame"}
-            many{"Jermenskih drama"}
+            few{"jermenska drama"}
             one{"jermenski dram"}
-            other{"jermenski drami"}
+            other{"jermenska drama"}
         }
         ANG{
-            few{"Holandskoantilska gildera"}
-            many{"Holandskoantilskih gildera"}
-            one{"Holandskoantilski gilder"}
-            other{"Holandskoantilski gildera"}
+            few{"holandska antila"}
+            one{"holandsko-antilski gilder"}
+            other{"holandsko-antilskih gildera"}
         }
         AOA{
-            few{"Angolijske kvanze (AOA)"}
-            many{"Angolijskih kvanzi"}
-            one{"Angolijska kvanza"}
-            other{"Angolijskih kvanzi"}
+            few{"angolijske kvanze"}
+            one{"angolijska kvanza"}
+            other{"angolijskih kvanzi"}
         }
         AOK{
-            few{"Angolijske kvanze (AOK)"}
-            many{"Angolijskih kvanzi (AOK)"}
-            one{"Angolijska kvanza (AOK)"}
-            other{"Angolijskih kvanzi (AOK)"}
+            few{"angolijske kvanze (1977–1990)"}
+            one{"angolijska kvanza (1977–1990)"}
+            other{"angolijskih kvanzi (1977–1990)"}
         }
         AON{
-            few{"angolijske nove kvanze (AON)"}
-            many{"angolijskih novih kvanzi (AON)"}
-            one{"angolijska nova kvanza (AON)"}
-            other{"angolski novi kvanze (AON)"}
+            few{"angolijske nove kvanze"}
+            one{"angolijska nova kvanza"}
+            other{"angolijskih novih kvanzi"}
         }
         AOR{
-            few{"angalske kvanze reađustado (AOR)"}
-            many{"angolijskih kvanzi reađustado"}
-            one{"angolijska kvanza reađustado"}
-            other{"angolijskih kvanzi reađustado"}
+            few{"angolijske kvanze reađustado (1995–1999)"}
+            one{"angolijska kvanza reađustado (1995–1999)"}
+            other{"angolijskih kvanzi reađustado (1995–1999)"}
         }
         ARA{
-            few{"argentinska australa (ARA)"}
-            many{"argentinskih australa (ARA)"}
-            one{"argentinski austral (ARA)"}
-            other{"argentinski australs (ARA)"}
+            few{"argentinska australa"}
+            one{"argentinski austral"}
+            other{"argentinskih australa"}
         }
         ARP{
-            few{"argentinska pezosa (ARP)"}
-            many{"argentinskih pezosa (ARP)"}
-            one{"argentinski pezo (ARP)"}
-            other{"argentinskih pezosa (ARP)"}
+            few{"argentinska pezosa (1983–1985)"}
+            one{"argentinski pezo (1983–1985)"}
+            other{"argentinskih pezosa (1983–1985)"}
         }
         ARS{
             few{"argentinska pezosa"}
-            many{"argentinskih pezosa"}
             one{"argentinski pezos"}
             other{"argentinskih pezosa"}
         }
         ATS{
             few{"austrijska šilinga"}
-            many{"austrijskih šilinga"}
             one{"austrijski šiling"}
             other{"austrijskih šilinga"}
         }
         AUD{
             few{"Australijska dolara"}
-            many{"Australijskih dolara"}
             one{"australijski dolar"}
             other{"australijskih dolara"}
         }
         AWG{
             few{"arubanska florina"}
-            many{"arubanskih florina"}
             one{"arubanski florin"}
             other{"arubanskih florina"}
         }
         AZM{
-            few{"azerbejdžanska manata(AZM)"}
-            many{"azerbejdžanskih manata (AZM)"}
-            one{"azerbejdžanski manat (AZM)"}
-            other{"azerbejdžanskih manata (AZM)"}
+            few{"azerbejdžanska manata (1993–2006)"}
+            one{"azerbejdžanski manat (1993–2006)"}
+            other{"azerbejdžanskih manata (1993–2006)"}
         }
         AZN{
             few{"azerbejdžanska manata"}
-            many{"azerbejdžanskih manata"}
             one{"azerbejdžanski manat"}
             other{"azerbejdžanskih manata"}
         }
         BAD{
-            few{"Bosansko-Hercegovačka dinara"}
-            many{"Bosansko-Hercegovačkih dinara"}
+            few{"bosansko-hercegovačka dinara"}
             one{"bosansko-hercegovački dinar"}
             other{"bosansko-hercegovačkih dinara"}
         }
         BAM{
-            few{"Bosansko-Hercegovačke konvertibilne marke"}
-            many{"Bosansko-Hercegovačkih konvertibilnih maraka"}
+            few{"bosansko-hercegovačke konvertibilne marke"}
             one{"bosansko-hercegovačka konvertibilna marka"}
             other{"bosansko-hercegovačkih konvertibilnih maraka"}
         }
         BBD{
             few{"barbadoška dolara"}
-            many{"barbadoških dolara"}
             one{"barbadoški dolar"}
             other{"barbadoških dolara"}
         }
         BDT{
             few{"bangladeške take"}
-            many{"bangladeških taka"}
             one{"bangladeška taka"}
             other{"bangladeških taka"}
         }
         BEC{
             few{"belgijska franka (konvertibilna)"}
-            many{"belgijskih franaka (BEC) (konvertibilnih)"}
             one{"belgijski franak (konvertibilni)"}
-            other{"belgijskih franaka BEC (konvertibilnih)"}
+            other{"belgijskih franaka (konvertibilnih)"}
         }
         BEF{
             few{"belgijska franka"}
-            many{"belgijskih franaka"}
             one{"belgijski franak"}
             other{"belgijskih franaka"}
         }
         BEL{
-            few{"belgijska franka (BEL) (finansijska)"}
-            many{"belgijskih franaka (BEL) (finansijskih)"}
+            few{"belgijska franka (finansijska)"}
             one{"belgijski franak (finansijski)"}
-            other{"belgijskih franaka BEL (finansijskih)"}
+            other{"belgijskih franaka (finansijskih)"}
         }
         BGL{
             few{"bugarska tvrda leva"}
-            many{"bugarskih tvrdih leva"}
             one{"bugarski tvrdi lev"}
             other{"bugarskih tvrdih leva"}
         }
         BGN{
-            few{"Bugarska leva"}
-            many{"Bugarskih leva"}
+            few{"bugarska leva"}
             one{"bugarski lev"}
-            other{"Bugarskih leva"}
+            other{"bugarskih leva"}
         }
         BHD{
-            few{"bahreinskih dinara"}
-            many{"bahreinskih dinara"}
-            one{"bahreinskih dinara"}
+            few{"bahreinska dinara"}
+            one{"bahreinski dinar"}
             other{"bahreinskih dinara"}
         }
         BIF{
             few{"burundska franka"}
-            many{"burundskih franaka"}
             one{"burundski franak"}
+            other{"burundskih franaka"}
         }
         BMD{
             few{"bermudska dolara"}
-            many{"bermudskih dolara"}
             one{"bermudski dolar"}
             other{"bermudskih dolara"}
         }
         BND{
             few{"brunejska dolara"}
-            many{"brunejskih dolara"}
             one{"brunejski dolar"}
             other{"brunejskih dolara"}
         }
         BOB{
             few{"bolivijska boliviana"}
-            many{"bolivijskih boliviana"}
             one{"bolivijski boliviano"}
             other{"bolivijskih boliviana"}
         }
         BOP{
-            few{"Bolivijska pezosa"}
-            many{"bolivijskih pezosa"}
+            few{"bolivijska pezosa"}
             one{"bolivijski pezo"}
             other{"bolivijskih pezosa"}
         }
         BOV{
             few{"bolivijska mvdola"}
-            many{"bolivijskih mvdola"}
             one{"bolivijski mvdol"}
             other{"bolivijskih mvdola"}
         }
         BRB{
-            few{"brazilska nova kruzeira (BRB)"}
-            many{"brazilskih novih kruzeira (BRB)"}
-            one{"brazilski novi kruzeiro (BRB)"}
-            other{"brazilskih novih kruzeira (BRB)"}
+            few{"brazilska nova kruzeira (1967–1986)"}
+            one{"brazilski novi kruzeiro (1967–1986)"}
+            other{"brazilskih novih kruzeira (1967–1986)"}
         }
         BRC{
             few{"brazilska kruzadosa"}
-            many{"brazilskih kruzadosa"}
-            one{"brazilskih kruzado"}
+            one{"brazilski kruzados"}
             other{"brazilskih kruzadosa"}
         }
         BRE{
-            few{"brazilska kruzeira (BRE"}
-            many{"brazilskih kruzeira (BRE)"}
-            one{"brazilski kruzeiro (BRE)"}
-            other{"brazilskih kruzeira (BRE)"}
+            few{"brazilska kruzeira (1990–1993)"}
+            one{"brazilski kruzeiro (1990–1993)"}
+            other{"brazilskih kruzeira (1990–1993)"}
         }
         BRL{
             few{"brazilska reala"}
-            many{"brazilskih reala"}
             one{"brazilski real"}
             other{"brazilskih reala"}
         }
         BRN{
             few{"brazilska nova kruzada"}
-            many{"brazilskih novih kruzada"}
             one{"brazilski novi kruzado"}
             other{"brazilskih novih kruzada"}
         }
         BRR{
-            few{"brazilijska kruzeira"}
-            many{"brazilskih kruzeira"}
+            few{"brazilska kruzeira"}
             one{"brazilski kruzeiro"}
             other{"brazilskih kruzeira"}
         }
         BSD{
             few{"bahamska dolara"}
-            many{"bahamskih dolara"}
             one{"bahamski dolar"}
             other{"bahamskih dolara"}
         }
         BTN{
             few{"butanska ngultruma"}
-            many{"butanskih ngultruma"}
             one{"butanski ngultrum"}
-            other{"butanski ngultruma"}
+            other{"butanskih ngultruma"}
         }
         BUK{
             few{"burmanska kjata"}
-            many{"burmanskih kjata"}
             one{"burmanski kjat"}
             other{"burmanskih kjata"}
         }
         BWP{
             few{"bocvanske pule"}
-            many{"bocvanskih pula"}
             one{"bocvanska pula"}
             other{"bocvanskih pula"}
         }
         BYB{
-            few{"beloruske nove rublje (BYB)"}
-            many{"beloruskih novih rublji (BYB)"}
-            one{"beloruska nova rublja (BYB)"}
-            other{"beloruskih novih rublji (BYB)"}
+            few{"beloruske nove rublja (1994–1999)"}
+            one{"beloruska nova rublja (1994–1999)"}
+            other{"beloruskih novih rublji (1994–1999)"}
         }
         BYR{
             few{"beloruske rublje"}
-            many{"beloruskih rublji"}
             one{"beloruska rublja"}
-            other{"bjeloruske rublje"}
+            other{"beloruskih rublji"}
         }
         BZD{
             few{"belizeanska dolara"}
-            many{"belizeanskih dolara"}
             one{"belizeanski dolar"}
             other{"belizeanskih dolara"}
         }
         CAD{
-            few{"Kanadska dolara"}
-            many{"Kanadskih dolara"}
+            few{"kanadska dolara"}
             one{"kanadski dolar"}
             other{"kanadskih dolara"}
         }
         CDF{
             few{"kongolska franka"}
-            many{"kongoanskih franaka"}
             one{"kongolski franak"}
             other{"kongolskih franaka"}
         }
         CHE{
             few{"WIR evra"}
-            many{"WIR evra"}
             one{"WIR evro"}
             other{"WIR evra"}
         }
         CHF{
-            few{"Švajcarska franka"}
-            many{"Švajcarskih franaka"}
+            few{"švajcarska franka"}
             one{"švajcarski franak"}
             other{"švajcarskih franaka"}
         }
         CHW{
             few{"WIR franka"}
-            many{"WIR franaka"}
             one{"WIR franak"}
-            other{"WIR franak"}
+            other{"WIR franaka"}
         }
         CLF{
-            few{"čileanska unidades de fomentos"}
-            many{"čileanskih unidades de fomentos"}
-            one{"čileanski unidades de fomentos"}
-            other{"čileanski unidades de fomentos"}
+            few{"čileanska unidades de fomenta"}
+            one{"čileanski unidades de fomento"}
+            other{"čileanski unidadesi de fomento"}
         }
         CLP{
             few{"čileanska pezosa"}
-            many{"čileanskih pezosa"}
-            one{"čileanski pezos"}
-            other{"čileanski pezos"}
+            one{"čileanski pezo"}
+            other{"čileanski pezosi"}
         }
         CNY{
-            few{"kineska juana"}
-            many{"kineskih juana"}
+            few{"kineska juan"}
             one{"kineski juan"}
             other{"kineskih juana"}
         }
         COP{
             few{"kolumbijska pezosa"}
-            many{"kolumbijskih pezosa"}
             one{"kolumbijski pezo"}
-            other{"kolumbijski pezosi"}
+            other{"kolumbijskih pezosa"}
         }
         COU{
-            few{"unidad de valor reala"}
-            many{"unidad de valor reala"}
-            one{"unidad de valor real"}
-            other{"unidad de valor real"}
+            few{"nidad de valor reala"}
+            one{"unidad de valorški real"}
+            other{"unidad de valorških reala"}
         }
         CRC{
             few{"kostarikanska kolona"}
-            many{"kostarikanskih kolona"}
             one{"kostarikanski kolon"}
+            other{"kostarikanski koloni"}
         }
         CSD{
             few{"stara srpska dinara"}
-            many{"starih srpskih dinara"}
             one{"stari srpski dinar"}
             other{"starih srpskih dinara"}
         }
         CSK{
             few{"čehoslovačke tvrde krune"}
-            many{"čehoslovačkih tvrdih kruna"}
             one{"čehoslovačka tvrda kruna"}
-            other{"čehoslovačka tvrda kruna"}
+            other{"čehoslovačkih tvrdih kruna"}
+        }
+        CUC{
+            few{"kubanska konvertibilna pezosa"}
+            one{"kubanski konvertibilni peso"}
+            other{"kubanski konvertibilni pezos"}
         }
         CUP{
             few{"kubanska pezosa"}
-            many{"kubanskih pezosa"}
             one{"kubanski pezos"}
             other{"kubanskih pezosa"}
         }
         CVE{
             few{"zelenortska eskuda"}
-            many{"zelenortskih eskuda"}
             one{"zelenortski eskudo"}
             other{"zelenortskih eskuda"}
         }
         CYP{
             few{"kiparske funte"}
-            many{"kiparskih funti"}
             one{"kiparska funta"}
-            other{"kiparska funta"}
+            other{"kiparskih funti"}
         }
         CZK{
             few{"češke krune"}
-            many{"čeških kruna"}
             one{"češka kruna"}
             other{"čeških kruna"}
         }
         DDM{
-            few{"istočnonemačke marke"}
-            many{"istočnonemačkih maraka"}
-            one{"istočnonemačka marka"}
-            other{"istočnonemačkih maraka"}
+            few{"istočno-nemačke marke"}
+            one{"istočno-nemačka marka"}
+            other{"istočno-nemačkih maraka"}
         }
         DEM{
-            few{"Nemačke marke"}
-            many{"Nemačkih maraka"}
+            few{"nemačke marke"}
             one{"nemačka marka"}
             other{"nemačkih maraka"}
         }
         DJF{
-            few{"džibutska franka"}
-            many{"džibutskih franaka"}
-            one{"džibutski franak"}
-            other{"džibutski franak"}
+            few{"džibutanska franka"}
+            one{"džibutanski franak"}
+            other{"džibutanskih franaka"}
         }
         DKK{
             few{"danske krune"}
-            many{"danskih kruna"}
             one{"danska kruna"}
             other{"danskih kruna"}
         }
         DOP{
             few{"dominikanska pezosa"}
-            many{"dominikanskih pezosa"}
             one{"dominikanski pezo"}
             other{"dominikanskih pezosa"}
         }
         DZD{
             few{"alžirska dinara"}
-            many{"alžirskih dinara"}
             one{"alžirski dinar"}
             other{"alžirskih dinara"}
         }
         ECS{
             few{"ekvadorska sakra"}
-            many{"ekvadorskih sakra"}
-            one{"ekvadorska sakra"}
+            one{"ekvadorski sakr"}
             other{"ekvadorskih sakra"}
         }
         ECV{
-            few{"ekvadorska unidad de valor constante (UVC)"}
-            many{"ekvadorskih unidad de valor constante (UVC)"}
-            one{"ekvadorski unidad de valor constante (UVC)"}
-            other{"ekvadorski unidad de valor constante (UVC)"}
+            few{"ekvadorska unidad de valor konstanta"}
+            one{"ekvadorski unidad de valor konstante"}
+            other{"ekvadorskih unidad de valor konstanta"}
         }
         EEK{
             few{"estonske krune"}
-            many{"estonskih kruna"}
             one{"estonska kruna"}
             other{"estonskih kruna"}
         }
         EGP{
             few{"egipatske funte"}
-            many{"egipatskih funti"}
             one{"egipatska funta"}
             other{"egipatskih funti"}
         }
         ERN{
             few{"eritrejske nakfe"}
-            many{"eritrejskih nakfi"}
             one{"eritrejska nakfa"}
-            other{"eritrejska nakfa"}
+            other{"eritrejskih nakfi"}
         }
         ESA{
             few{"španske pezete (A račun)"}
-            many{"španskih pezeta (A račun)"}
             one{"španska pezeta (A račun)"}
-            other{"španska pezeta (A račun)"}
+            other{"španskih pezeta (A račun)"}
         }
         ESB{
             few{"španske pezete (konvertibilan račun)"}
-            many{"španskih pezeta (konvertibilan račun)"}
             one{"španska pezeta (konvertibilan račun)"}
-            other{"španska pezeta (konvertibilan račun)"}
+            other{"španskih pezeta (konvertibilan račun)"}
         }
         ESP{
             few{"španska pezeta"}
-            many{"španskih pezeta"}
-            one{"španskа pezetа"}
-            other{"španskе pezetе"}
+            one{"španska pezeta"}
+            other{"španske pezete"}
         }
         ETB{
             few{"etiopijska bira"}
-            many{"etiopijskih bira"}
             one{"etiopijski bir"}
             other{"etiopijskih bira"}
         }
         EUR{
             few{"evra"}
-            many{"evra"}
             one{"evro"}
             other{"evra"}
         }
         FIM{
-            few{"Finske marke"}
-            many{"Finskih maraka"}
+            few{"finske marke"}
             one{"finska marka"}
             other{"finskih maraka"}
         }
         FJD{
             few{"fidži dolara"}
-            many{"fidži dolara"}
             one{"fidži dolar"}
             other{"fidži dolara"}
         }
         FKP{
             few{"folklandske funte"}
-            many{"folklandskih funti"}
             one{"folklandska funta"}
-            other{"folklandska funta"}
+            other{"folklandskih funti"}
         }
         FRF{
-            few{"Francuska franka"}
-            many{"Francuskih franaka"}
+            few{"francuska franka"}
             one{"francuski franak"}
             other{"francuskih franaka"}
         }
         GBP{
             few{"britanske funte sterlinga"}
-            many{"britanskih funti sterlinga"}
             one{"britanska funta sterlinga"}
             other{"britanskih funti sterlinga"}
         }
         GEK{
             few{"gruzijska kupon larita"}
-            many{"gruzijskih kupon larita"}
             one{"gruzijski kupon larit"}
             other{"gruzijskih kupon larita"}
         }
         GEL{
             few{"gruzijska larisa"}
-            many{"gruzijskih larisa"}
             one{"gruzijski laris"}
             other{"gruzijskih larisa"}
         }
         GHC{
-            few{"ganska ceda (GHC)"}
-            many{"ganskih ceda (GHC)"}
-            one{"ganski ced (GHC)"}
-            other{"ganskih ceda (GHC)"}
+            few{"ganska ceda (1979–2007)"}
+            one{"ganski ced (1979–2007)"}
+            other{"ganskih ceda (1979–2007)"}
         }
         GHS{
             few{"ganska ceda"}
-            many{"ganskih ceda"}
-            one{"ganski cedi"}
-            other{"ganski cedi"}
+            one{"ganski ced"}
+            other{"ganskih ceda"}
         }
         GIP{
             few{"gibraltarske funte"}
-            many{"gibraltarskih funti"}
             one{"gibraltarska funta"}
-            other{"gibraltarska funta"}
+            other{"gibraltarskih funti"}
         }
         GMD{
             few{"gambijska dalasa"}
-            many{"gambijskih dalasa"}
             one{"gambijski dalas"}
             other{"gambijskih dalasa"}
         }
         GNF{
             few{"gvinejska franka"}
-            many{"gvinejskih franaka"}
             one{"gvinejski franak"}
-            other{"gvinejski franak"}
+            other{"gvinejskih franaka"}
         }
         GNS{
-            few{"gvinejska silija"}
-            many{"gvinejskih silija"}
+            few{"gvinejska sila"}
             one{"gvinejski sili"}
-            other{"gvinejski silij"}
+            other{"gvinejskih sila"}
         }
         GQE{
-            few{"evatorijаlno-gvinejska ekvelа"}
-            many{"evatorijаlno-gvinejskih ekvelа"}
-            one{"evatorijаlno-gvinejski ekvele"}
-            other{"evatorijаlno-gvinejskih ekvelа"}
+            few{"ekvatorijalno-gvinejska ekvela"}
+            one{"ekvatorijalno-gvinejski ekvele"}
+            other{"ekvatorijalno-gvinejskih ekvela"}
         }
         GRD{
             few{"grčke drahme"}
-            many{"grčkih drahmi"}
             one{"grčka drahma"}
             other{"grčkih drahmi"}
         }
         GTQ{
             few{"gvatemalska kvecala"}
-            many{"gvatemalskih kvecala"}
             one{"gvatemalski kvecal"}
             other{"gvatemalskih kvecala"}
         }
         GWE{
             few{"portugalsko-gvinejska eskuda"}
-            many{"portugalsko-gvinejskih eskuda"}
             one{"portugalsko-gvinejski eskudo"}
-            other{"portugalsko-gvinejski eskudo"}
+            other{"portugalsko-gvinejskih eskuda"}
         }
         GWP{
-            few{"gvinejа-bisaoška pezosa"}
-            many{"gvinejа-bisaoških pezosa"}
-            one{"gvinejа-bisaoški pezo"}
-            other{"gvinejsko-bisaoski pezos"}
+            few{"gvineja-bisaoška pezosa"}
+            one{"gvineja-bisaoški pezo"}
+            other{"gvineja-bisaoških pezosa"}
         }
         GYD{
             few{"gvajanska dolara"}
-            many{"gvajanskih dolara"}
             one{"gvajanski dolar"}
-            other{"gvajanski dolari"}
+            other{"gvajanskih dolara"}
         }
         HKD{
             few{"hongkonška dolara"}
-            many{"hongkonških dolara"}
             one{"hongkonški dolar"}
             other{"hongkonških dolara"}
         }
         HNL{
-            few{"honduraškа lempirа"}
-            many{"honduraških lempirа"}
+            few{"honduraška lempira"}
             one{"honduraški lempir"}
-            other{"honduraških lempirа"}
+            other{"honduraških lempira"}
         }
         HRD{
-            few{"Hrvatska dinara"}
-            many{"Hrvatskih dinara"}
+            few{"hrvatska dinara"}
             one{"hrvatski dinar"}
             other{"hrvatskih dinara"}
         }
         HRK{
-            few{"Hrvatske kune"}
-            many{"Hrvatskih kuna"}
+            few{"hrvatske kune"}
             one{"hrvatska kuna"}
             other{"hrvatskih kuna"}
         }
         HTG{
-            few{"haićanska gourda"}
-            many{"haićanskih gourda"}
-            one{"haićanski gourd"}
-            other{"haićanski gourd"}
+            few{"haićanska gurda"}
+            one{"haićanski gurd"}
+            other{"haićanskih gurda"}
         }
         HUF{
             few{"mađarske forinte"}
-            many{"mađarskih forinti"}
             one{"mađarska forinta"}
-            other{"mađarske forinte"}
+            other{"mađarskih forinti"}
         }
         IDR{
             few{"indonežanske rupije"}
-            many{"indonežanskih rupija"}
             one{"indonežanska rupija"}
-            other{"indonežanske rupije"}
+            other{"indonežanskih rupija"}
         }
         IEP{
             few{"irske funte"}
-            many{"irskih funti"}
             one{"irska funta"}
             other{"irskih funti"}
         }
         ILP{
             few{"izraelske funte"}
-            many{"izraelskih funti"}
             one{"izraelska funta"}
-            other{"izraelska funta"}
+            other{"izraelskih funti"}
         }
         ILR{
             few{"stari izraelski šekeli"}
-            many{"stari izraelski šekeli"}
             one{"stari izraelski šekeli"}
             other{"stari izraelski šekeli"}
         }
         ILS{
-            few{"nova izraelska šekela"}
-            many{"novih izraelskih šekela"}
-            one{"novi izraelski šekel"}
-            other{"novih izraelskih šekela"}
+            few{"izraelska nova šekela"}
+            one{"izraelski novi šekel"}
+            other{"izraelskih novih šekela"}
         }
         INR{
             few{"indijske rupije"}
-            many{"indijskih rupija"}
             one{"indijska rupija"}
             other{"indijskih rupija"}
         }
         IQD{
             few{"iračka dinara"}
-            many{"iračkih dinara"}
             one{"irački dinar"}
-            other{"irački dinari"}
+            other{"iračkih dinara"}
         }
         IRR{
             few{"iranska rijala"}
-            many{"iranskih rijala"}
             one{"iranski rijal"}
-            other{"iranski rijali"}
+            other{"iranskih rijala"}
         }
         ISJ{
             few{"stara islandska kruna"}
-            many{"stara islandska kruna"}
             one{"stara islandska kruna"}
             other{"stara islandska kruna"}
         }
         ISK{
             few{"islandske krune"}
-            many{"islandskih kruna"}
             one{"islandska kruna"}
-            other{"islandska kruna"}
+            other{"islandskih kruna"}
         }
         ITL{
-            few{"Italijanske lire"}
-            many{"Italijanskih lira"}
+            few{"italijanske lire"}
             one{"italijanska lira"}
             other{"italijanske lire"}
         }
         JMD{
-            few{"jamajska dolara"}
-            many{"jamajskih dolara"}
-            one{"jamajski dolar"}
-            other{"jamajskih dolara"}
+            few{"jamajkanska dolara"}
+            one{"jamajkanski dolar"}
+            other{"jamajkanskix dolara"}
         }
         JOD{
-            few{"jordanskih dinara"}
-            many{"jordanskih dinara"}
-            one{"ordanskih dinara"}
-            other{"ordanskih dinara"}
+            few{"jordanska dinara"}
+            one{"jordanski dinar"}
+            other{"jordanskih dinara"}
         }
         JPY{
-            few{"Japanska jena"}
-            many{"Japanskih jena"}
+            few{"japanska jena"}
             one{"japanski jen"}
-            other{"japanski jen"}
+            other{"japanskih jena"}
         }
         KES{
             few{"kenijska šilinga"}
-            many{"kenijskih šilinga"}
             one{"kenijski šiling"}
             other{"kenijskih šilinga"}
         }
         KGS{
             few{"kirgistanska soma"}
-            many{"kirgistanskih soma"}
             one{"kirgistanski som"}
-            other{"kirgijski som"}
+            other{"kirgistanskih soma"}
         }
         KHR{
             few{"kambodžanska rijela"}
-            many{"kambodžanskih rijela"}
-            one{"kambodžanski rijal"}
+            one{"kambodžanski rijel"}
             other{"kambodžanskih rijela"}
         }
         KMF{
-            few{"komoranska franka"}
-            many{"komoranskih franaka"}
-            one{"komoranski franak"}
-            other{"komoranski franci"}
+            few{"komorska franka"}
+            one{"komorski franak"}
+            other{"komorskih franaka"}
         }
         KPW{
             few{"severnokorejska vona"}
-            many{"severnokorejskih vona"}
             one{"severnokorejski von"}
-            other{"severnokorejski von"}
+            other{"severnokorejskih vona"}
         }
         KRW{
-            few{"južno-korejska vona"}
-            many{"južno-korejskih vona"}
-            one{"južno-korejski von"}
-            other{"južno-korejski von"}
+            few{"južnokorejska vona"}
+            one{"južnokorejski von"}
+            other{"južnokorejskih vona"}
         }
         KWD{
-            few{"kuvajtskih dinara"}
-            many{"kuvajtskih dinara"}
-            one{"kuvajtskih dinara"}
+            few{"kuvajtska dinara"}
+            one{"kuvajtski dinar"}
             other{"kuvajtskih dinara"}
         }
         KYD{
             few{"kajmanska dolara"}
-            many{"kajmanskih dolara"}
             one{"kajmanski dolar"}
-            other{"kajmanski dolar"}
+            other{"kajmanskih dolara"}
         }
         KZT{
             few{"kazahstanske tendže"}
-            many{"kazahstanskih tendži"}
             one{"kazahstanska tendža"}
             other{"kazahstanskih tendži"}
         }
         LAK{
             few{"laoška kipa"}
-            many{"laoških kipa"}
             one{"laoški kip"}
-            other{"laoški kipovi"}
+            other{"laoški kipi"}
         }
         LBP{
-            few{"lebanske funte"}
-            many{"lebanskih funti"}
-            one{"lebanska funta"}
-            other{"lebanske funte"}
+            few{"libanske funte"}
+            one{"libanska funta"}
+            other{"libanskih funti"}
         }
         LKR{
             few{"šrilankanske rupije"}
-            many{"šrilankanskih ruplji"}
             one{"šrilankanska rupija"}
-            other{"šrilankanska rupija"}
+            other{"šrilankanskih rupija"}
         }
         LRD{
             few{"liberijska dolara"}
-            many{"liberijskih dolara"}
             one{"liberijski dolar"}
             other{"liberijskih dolara"}
         }
         LSL{
             few{"lesotska lotisa"}
-            many{"lesotskih lotisa"}
             one{"lesotski lotis"}
             other{"lesotskih lotisa"}
         }
         LTL{
-            few{"litvanske lite"}
-            many{"litvanskih lita"}
-            one{"litvanska lita"}
-            other{"litvanskih lita"}
+            few{"litvanska litasa"}
+            one{"litvanski litas"}
+            other{"litvanskih litasa"}
         }
         LTT{
-            few{"litvanske talone"}
-            many{"litvanskih talona"}
-            one{"litvanska talona"}
-            other{"litvanskih talona"}
+            few{"litvanska talonasa"}
+            one{"litvanski talonas"}
+            other{"litvanskih talonasa"}
         }
         LUC{
             few{"luksemburška konvertibilna franka"}
-            many{"luksemburških konvertibilnih franaka"}
             one{"luksemburški konvertibilni franak"}
-            other{"luksemburški konvertibilni franak"}
+            other{"luksemburških konvertibilnih franaka"}
         }
         LUF{
             few{"luksemburška franka"}
-            many{"luksemburških franaka"}
             one{"luksemburški franak"}
             other{"luksemburški franci"}
         }
         LUL{
-            few{"luksemburška financijska franka"}
-            many{"luksemburških financijskih franaka"}
-            one{"luksemburški financijski franak"}
-            other{"luksemburški financijski franak"}
+            few{"luksemburška finansijska franka"}
+            one{"luksemburški finansijski franak"}
+            other{"luksemburških finansijskih franaka"}
         }
         LVL{
             few{"latvijska lata"}
-            many{"latvijskih lata"}
             one{"latvijski lat"}
-            other{"latvijski lat"}
+            other{"latvijskih lata"}
         }
         LVR{
-            few{"latvijska rublja"}
-            many{"latvijskih rublji"}
+            few{"latvijske rublje"}
             one{"latvijska rublja"}
-            other{"latvijska rublja"}
+            other{"latvijskih rublji"}
         }
         LYD{
             few{"libijska dinara"}
-            many{"Libijskih dinara"}
-            one{"Libijskih dinara"}
+            one{"libijski dinar"}
             other{"libijskih dinara"}
         }
         MAD{
-            few{"marokanske dirame"}
-            many{"marokanskih dirama"}
-            one{"marokanska dirama"}
-            other{"marokanskih dirama"}
+            few{"marokanske dirhame"}
+            one{"marokanska dirhama"}
+            other{"marokanskih dirhama"}
         }
         MAF{
             few{"marokanska franka"}
-            many{"marokanskih franaka"}
             one{"marokanski franak"}
-            other{"marokanski franak"}
+            other{"marokanskih franaka"}
         }
         MDL{
             few{"moldavska leja"}
-            many{"moldavskih leja"}
             one{"moldavski lej"}
-            other{"moldavski lej"}
+            other{"moldavskih leja"}
         }
         MGA{
-            few{"madagaskarska ariarija"}
-            many{"madagaskarskih ariarija"}
-            one{"madagaskarski ariarij"}
-            other{"madagaskarski ariariji"}
+            few{"malagasijska ariarija"}
+            one{"malagasijski ariari"}
+            other{"malagasijskih ariarija"}
         }
         MGF{
-            few{"madagaskarska franka"}
-            many{"madagaskarskih franaka"}
-            one{"madagaskarski franak"}
+            few{"malagašajska franka"}
+            one{"malagašajski franak"}
+            other{"malagašajski franci"}
         }
         MKD{
             few{"makedonska denara"}
-            many{"Makedonskih denara"}
-            one{"Makedonski denar"}
+            one{"makedonski denar"}
             other{"makedonskih dinara"}
         }
         MLF{
             few{"malijska franka"}
-            many{"malijskih franaka"}
             one{"malijski franak"}
-            other{"malijski franak"}
+            other{"malijskih franaka"}
         }
         MMK{
             few{"mjanmarska kjata"}
-            many{"mjanmarskih kjata"}
             one{"mjanmarski kjat"}
-            other{"mjanmarski kjati"}
+            other{"mjanmarskih kjata"}
         }
         MNT{
             few{"mongolska tugrika"}
-            many{"mongolskih tugrika"}
             one{"mongolski tugrik"}
-            other{"mongolski tugrici"}
+            other{"mongolskih tugrika"}
         }
         MOP{
-            few{"makaneška patka"}
-            many{"makaneških pataka"}
-            one{"makaneški patak"}
-            other{"makaneški patak"}
+            few{"makaneške patake"}
+            one{"makaneška pataka"}
+            other{"makaneških pataka"}
         }
         MRO{
-            few{"mauritanijske ouguje"}
-            many{"mauritanijskih ouguja"}
-            one{"mauritanijska ouguja"}
-            other{"mauritanijske ouguje"}
+            few{"mauritanijske ogije"}
+            one{"mauritanijska ogija"}
+            other{"mauritanijskih ogija"}
         }
         MTL{
             few{"malteške lire"}
-            many{"malteških lira"}
             one{"malteška lira"}
             other{"malteških lira"}
         }
         MTP{
             few{"malteške funte"}
-            many{"malteških funti"}
             one{"malteška funta"}
-            other{"malteška funta"}
+            other{"malteških funti"}
         }
         MUR{
             few{"mauricijske rupije"}
-            many{"mauricijskih rupija"}
             one{"mauricijska rupija"}
-            other{"mauricijske rupije"}
+            other{"mauricijskih rupija"}
         }
         MVR{
-            few{"maldivijske rufije"}
-            many{"maldivijskih rufija"}
-            one{"maldivijska rufija"}
-            other{"maldivijska rufija"}
+            few{"maldivske rufije"}
+            one{"maldivska rufija"}
+            other{"maldivskih rufija"}
         }
         MWK{
             few{"malavijske kvače"}
-            many{"malavijskih kvača"}
             one{"malavijska kvača"}
-            other{"malavijska kvača"}
+            other{"malavijskih kvača"}
         }
         MXN{
             few{"meksička pezosa"}
-            many{"meksičkih pezosa"}
-            one{"meksički pezos"}
+            one{"meksički pezo"}
             other{"meksičkih pezosa"}
         }
         MXP{
-            few{"meksička srebrna pezosa (MXP)"}
-            many{"meksičkih srebrnih pezosa (MXP)"}
-            one{"meksički srebrni pezos (MXP)"}
-            other{"meksički srebrni pezos (MXP)"}
+            few{"meksička srebrna pezosa"}
+            one{"meksički srebrni pezo"}
+            other{"meksičkih srebrnih pezosa"}
         }
         MXV{
-            few{"meksička unidads de inversion (UDI)"}
-            many{"meksičkih unidads de inversion (UDI)"}
-            one{"meksički unidads de inversion (UDI)"}
-            other{"meksički unidads de inversion (UDI)"}
+            few{"meksička unidads de inverziona"}
+            one{"meksički unidads de inverzion"}
+            other{"meksičkih unidads de inverziona"}
         }
         MYR{
-            few{"malezijska ringita"}
-            many{"malezijskih ringita"}
-            one{"malezijski ringit"}
-            other{"malezijskih ringita"}
+            few{"malezijska ringgita"}
+            one{"malezijski ringgit"}
+            other{"malezijskih ringgita"}
         }
         MZE{
             few{"mozambijska eskuda"}
-            many{"mozambijskih eskuda"}
             one{"mozambijski eskudo"}
-            other{"mozambijski eskudo"}
+            other{"mozambijskih eskuda"}
         }
         MZM{
             few{"stara mozambijska metikala"}
-            many{"starih mozambijskih metikala"}
             one{"stari mozambijski metikal"}
-            other{"stari mozambijski metikal"}
+            other{"starih mozambijskih metikala"}
         }
         MZN{
             few{"mozambijska metikala"}
-            many{"mozambijskih metikala"}
             one{"mozambijski metikal"}
-            other{"mozambijski metikal"}
+            other{"mozambijskih metikala"}
         }
         NAD{
             few{"namibijska dolara"}
-            many{"namibijskih dolara"}
             one{"namibijski dolar"}
-            other{"namibijski dolar"}
+            other{"namibijskih dolara"}
         }
         NGN{
-            few{"nigerijska naira"}
-            many{"nigerijskih naira"}
-            one{"nigerijski nair"}
-            other{"nigerijski nair"}
+            few{"nigerijske naire"}
+            one{"nigerijska naira"}
+            other{"nigerijskih naira"}
         }
         NIC{
             few{"nikaragvanske kordobe"}
-            many{"nikaragvanskih kordoba"}
             one{"nikaragvanska kordoba"}
-            other{"nikaragvanska kordoba"}
+            other{"nikaragvanskih kordoba"}
         }
         NIO{
             few{"nikaragvanske zlatne kordobe"}
-            many{"nikaragvanskih zlatnih kordoba"}
             one{"nikaragvanska zlatna kordoba"}
-            other{"nikaragvanska zlatna kordoba"}
+            other{"nikaragvanskih zlatnih kordoba"}
         }
         NLG{
             few{"holandska guldena"}
-            many{"holandskih guldena"}
             one{"holandski gulden"}
             other{"holandskih guldena"}
         }
         NOK{
-            few{"Norveške kune"}
-            many{"Norveških kuna"}
-            one{"Norveška kuna"}
+            few{"norveške krune"}
+            one{"norveška kruna"}
             other{"norveških kruna"}
         }
         NPR{
             few{"nepalske rupije"}
-            many{"nepalskih rupija"}
             one{"nepalska rupija"}
-            other{"nepalska rupija"}
+            other{"nepalskih rupija"}
         }
         NZD{
             few{"novozelandska dolara"}
-            many{"novozelandskih dolara"}
             one{"novozelandski dolar"}
             other{"novozelandskih dolara"}
         }
         OMR{
             few{"omanska rijala"}
-            many{"omanskih rijala"}
             one{"omanski rijal"}
-            other{"omanski rijal"}
+            other{"omanskih rijala"}
         }
         PAB{
             few{"panamske balboe"}
-            many{"panamskih balboa"}
             one{"panamska balboa"}
-            other{"panamska balboa"}
+            other{"panamskih balboa"}
         }
         PEI{
-            few{"peruanske inte"}
-            many{"peruanskih inti"}
-            one{"peruanska inta"}
-            other{"peruanska inta"}
+            few{"peruvijska intija"}
+            one{"peruvijski inti"}
+            other{"peruvijskih intija"}
         }
         PEN{
             few{"peruanska nuevo sola"}
-            many{"peruanskih nuevo sola"}
             one{"peruanski nuevo sol"}
             other{"peruanskih nuevo sola"}
         }
         PES{
             few{"peruanska sola"}
-            many{"peruanskih sola"}
             one{"peruanski sol"}
-            other{"peruanski sol"}
+            other{"peruanskih sola"}
         }
         PGK{
-            few{"kine Papue Nove Gvineje"}
-            many{"kina Papue Nove Gvineje"}
-            one{"kina Papue Nove Gvineje"}
-            other{"kina Papue Nove Gvineje"}
+            few{"papuanske kine"}
+            one{"papuanska kina"}
+            other{"papuanskih kina"}
         }
         PHP{
             few{"filipinska pezosa"}
-            many{"filipinskih pezosa"}
             one{"filipinski pezo"}
             other{"filipinskih pezosa"}
         }
         PKR{
             few{"pakistanske rupije"}
-            many{"pakistanskih rupija"}
             one{"pakistanska rupija"}
-            other{"pakistanske rupije"}
+            other{"pakistanskih rupija"}
         }
         PLN{
-            few{"poljske zlote"}
-            many{"poljskih zlota"}
+            few{"poljska zlota"}
             one{"poljski zlot"}
-            other{"poljski zlot"}
+            other{"poljskih zlota"}
         }
         PLZ{
-            few{"poljske zlote (PLZ)"}
-            many{"poljskih zlota (PLZ)"}
-            one{"poljski zlot (PLZ)"}
-            other{"poljski zlot (PLZ)"}
+            few{"poljska zlota (1950–1995)"}
+            one{"poljski zlot (1950–1995)"}
+            other{"poljskih zlota (1950–1995)"}
         }
         PTE{
             few{"portugalska eskuda"}
-            many{"portugalskih eskuda"}
             one{"portugalski eskudo"}
             other{"portugalskih eskuda"}
         }
         PYG{
             few{"paragvajska gvaranija"}
-            many{"paragvajskih gvaranija"}
-            one{"paragvajski gvarani"}
-            other{"paragvajski gvarani"}
+            one{"paragvajski gvaranij"}
+            other{"paragvajskih gvaranija"}
         }
         QAR{
             few{"katarska rijala"}
-            many{"katarskih rijala"}
             one{"katarski rijal"}
-            other{"katarski rijal"}
+            other{"katarskih rijala"}
         }
         RHD{
-            few{"rodezijska dolara"}
-            many{"rodezijskih dolara"}
-            one{"rodezijski dolar"}
-            other{"rodezijski dolar"}
+            few{"rodežanska dolara"}
+            one{"rodežanski dolar"}
+            other{"rodežanskih dolara"}
         }
         ROL{
-            few{"stara rumunjska leja"}
-            many{"starih rumunjskih leja"}
-            one{"stari rumunjski lej"}
-            other{"stari rumunjski lej"}
+            few{"rumunska leja"}
+            one{"rumunski lej"}
+            other{"rumunskih leja"}
         }
         RON{
-            few{"rumunska leua"}
-            many{"rumunskih leua"}
-            one{"rumunski leu"}
-            other{"rumunskih leua"}
+            few{"rumunska leja (1952–2006)"}
+            one{"rumunski lej (1952–2006)"}
+            other{"rumunskih leja (1952–2006)"}
         }
         RSD{
             few{"srpska dinara"}
-            many{"srpskih dinara"}
             one{"srpski dinar"}
-            other{"srpski dinari"}
+            other{"srpskih dinara"}
         }
         RUB{
             few{"ruske rublje"}
-            many{"ruskih rublji"}
             one{"ruska rublja"}
             other{"ruskih rublji"}
         }
         RUR{
-            few{"ruske rublje (RUR)"}
-            many{"ruskih rublji (RUR)"}
-            one{"ruska rublja (RUR)"}
-            other{"ruskih rublji (RUR)"}
+            few{"ruske rublje (1991–1998)"}
+            one{"ruska rublja (1991–1998)"}
+            other{"ruskih rublji (1991–1998)"}
         }
         RWF{
             few{"ruandska franka"}
-            many{"ruandskih franaka"}
             one{"ruandski franak"}
-            other{"ruandski franci"}
+            other{"ruandskih franaka"}
         }
         SAR{
             few{"saudijska rijala"}
-            many{"saudijskih rijala"}
             one{"saudijski rijal"}
-            other{"saudijski rijal"}
+            other{"saudijskih rijala"}
         }
         SBD{
-            few{"solomonskoostrvska dolara"}
-            many{"solomonskoostrvskih dolara"}
-            one{"solomonskoostrvski dolar"}
-            other{"solomonskoostrvski dolar"}
+            few{"solomonsko-ostrvska dolara"}
+            one{"solomonsko-ostrvski dolar"}
+            other{"solomonsko-ostrvskih dolara"}
         }
         SCR{
             few{"sejšelske rupije"}
-            many{"sejšelskih rupija"}
             one{"sejšelska rupija"}
-            other{"sejšelska rupija"}
+            other{"sejšelskih rupija"}
         }
         SDD{
             few{"stara sudanska dinara"}
-            many{"starih sudanskih dinara"}
             one{"stari sudanski dinar"}
-            other{"stari sudanski dinar"}
+            other{"starih sudanskih dinara"}
         }
         SDG{
             few{"sudanske funte"}
-            many{"sudanskih funti"}
             one{"sudanska funta"}
-            other{"sudanska funta"}
+            other{"sudanskih funti"}
         }
         SDP{
             few{"stare sudanske funte"}
-            many{"starih sudanskih funti"}
             one{"stara sudanska funta"}
-            other{"stara sudanska funta"}
+            other{"starih sudanskih funti"}
         }
         SEK{
             few{"švedske krune"}
-            many{"švedskih kruna"}
             one{"švedska kruna"}
             other{"švedskih kruna"}
         }
         SGD{
-            few{"singapurška dolara"}
-            many{"singapurških dolara"}
-            one{"singapurški dolar"}
-            other{"singapurških dolara"}
+            few{"singapurska dolara"}
+            one{"singapurski dolar"}
+            other{"singapurskih dolara"}
         }
         SHP{
             few{"sv. jelenske funte"}
-            many{"sv. jelenskih funti"}
             one{"sv. jelenska funta"}
-            other{"sv. jelenska funta"}
+            other{"sv. jelenskih funti"}
         }
         SIT{
             few{"slovenačka tolara"}
-            many{"slovenačkih tolara"}
             one{"slovenački tolar"}
             other{"slovenačkih tolara"}
         }
         SKK{
-            few{"slovačke kune"}
-            many{"slovačkih kuna"}
-            one{"slovačka kuna"}
-            other{"slovačkih kuna"}
+            few{"slovačke krune"}
+            one{"slovačka kruna"}
+            other{"slovačkih kruna"}
         }
         SLL{
-            few{"sijeraleonske leone"}
-            many{"sijeraleonskih leona"}
-            one{"sijeraleonska leona"}
-            other{"sijeraleonske leone"}
+            few{"sijeraleonska leona"}
+            one{"sijeraleonski leone"}
+            other{"sijeraleonskih leona"}
         }
         SOS{
             few{"somalijska šilinga"}
-            many{"somalijskih šilinga"}
             one{"somalijski šiling"}
-            other{"somalijski šilinzi"}
+            other{"somalijskih šilinga"}
         }
         SRD{
             few{"surinamska dolara"}
-            many{"surinamskih dolara"}
             one{"surinamski dolar"}
-            other{"surinamski dolar"}
+            other{"surinamskih dolara"}
         }
         SRG{
-            few{"surinamska guldena"}
-            many{"surinamskih guldena"}
-            one{"surinamski gulden"}
-            other{"surinamski gulden"}
+            few{"surinamska gildera"}
+            one{"surinamski gilder"}
+            other{"surinamskih gildera"}
+        }
+        SSP{
+            few{"južnosudanske funte"}
+            one{"južnosudanska funta"}
+            other{"južnosudanskih funti"}
         }
         STD{
-            few{"dobra Sao Toma i Principa"}
-            many{"dobra Sao Toma i Principa"}
-            one{"dobra Sao Toma i Principa"}
-            other{"dobra Sao Toma i Principa"}
+            few{"sao tome i principe dobra"}
+            one{"sao tome i principe dobar"}
+            other{"sao tome i principe dobra"}
         }
         SUR{
             few{"sovjetske rublje"}
-            many{"sovjetskih rublji"}
             one{"sovjetska rublja"}
-            other{"sovjetske rublje"}
+            other{"sovjetskih rublji"}
         }
         SVC{
             few{"salvadorska kolona"}
-            many{"salvadorskih kolona"}
             one{"salvadorski kolon"}
-            other{"salvadorski kolon"}
+            other{"salvadorskih kolona"}
         }
         SYP{
             few{"sirijske funte"}
-            many{"sirijskih funti"}
             one{"sirijska funta"}
-            other{"sirijske funtie"}
+            other{"sirijskih funti"}
         }
         SZL{
-            few{"svazi lilangena"}
-            many{"svazi lilangena"}
-            one{"svazi lilangena"}
-            other{"svazi lilangena"}
+            few{"svazi emalangena"}
+            one{"svazi emalangen"}
+            other{"svazi emalangena"}
         }
         THB{
-            few{"tajlandske bahte"}
-            many{"tajlandskih bahta"}
-            one{"tajlandska bahta"}
-            other{"tajlandska bahta"}
+            few{"tai bahta"}
+            one{"tai baht"}
+            other{"tai bahta"}
         }
         TJR{
-            few{"tadžikistanske rublje"}
-            many{"tadžikistanskih rublji"}
-            one{"tadžikistanska rublja"}
-            other{"tadžikistanska rublja"}
+            few{"tadžihistanske rublje"}
+            one{"tadžihistanska rublja"}
+            other{"tadžihistanskih rublji"}
         }
         TJS{
-            few{"tadžikistanska somona"}
-            many{"tadžikistanskih somona"}
-            one{"tadžikistanski somon"}
-            other{"tadžikistanski somon"}
+            few{"tadžihistanska somona"}
+            one{"tadžihistanski somon"}
+            other{"tadžihistanskih somona"}
         }
         TMM{
+            few{"turkmenistanska manata (1993–2009)"}
+            one{"turkmenistanski manat (1993–2009)"}
+            other{"turkmenistanski manat (1993–2009)"}
+        }
+        TMT{
             few{"turkmenistanska manata"}
-            many{"turkmenistanskih manata"}
             one{"turkmenistanski manat"}
-            other{"turkmenistanski manat"}
+            other{"turkmenistanskih manata"}
         }
         TND{
-            few{"tunizijska dinara"}
-            many{"tunizijskih dinara"}
-            one{"tunizijski dinar"}
-            other{"tunizijski dinar"}
+            few{"tunežanska dinara"}
+            one{"tunežanski dinar"}
+            other{"tunežanskih dinara"}
         }
         TOP{
-            few{"tongaške pa'ange"}
-            many{"tongaških pa'angi"}
-            one{"tongaška pa'anga"}
-            other{"tongaška pa'anga"}
+            few{"tongaške pange"}
+            one{"tongaška panga"}
+            other{"tongaških panga"}
         }
         TPE{
-            few{"timorska eskuda"}
-            many{"timorskih eskuda"}
-            one{"timorski eskudo"}
-            other{"timorski eskudo"}
+            few{"timorška eskuda"}
+            one{"timorški eskudo"}
+            other{"timorških eskuda"}
         }
         TRL{
-            few{"stare turske lire"}
-            many{"starih turskih lira"}
-            one{"stara turska lira"}
-            other{"stara turska lira"}
+            few{"turske lire (1922–2005)"}
+            one{"turska lira (1922–2005)"}
+            other{"turskih lira (1922–2005)"}
         }
         TRY{
             few{"turske lire"}
-            many{"turskih lira"}
             one{"turska lira"}
-            other{"novih turskih lira"}
+            other{"turskih lira"}
         }
         TTD{
-            few{"trinidadtobaška dolara"}
-            many{"trinidadtobaških dolara"}
-            one{"trinidadtobaški dolar"}
-            other{"trinidadtobaški dolar"}
+            few{"trinidad-tobagoška dolara"}
+            one{"trinidad-tobagoški dolar"}
+            other{"trinidad-tobagoških dolara"}
         }
         TWD{
             few{"nova tajvanska dolara"}
-            many{"novih tajvanskih dolara"}
             one{"novi tajvanski dolar"}
-            other{"novi tajvanski dolari"}
+            other{"novih tajvanskih dolara"}
         }
         TZS{
             few{"tanzanijska šilinga"}
-            many{"tanzanijskih šilinga"}
             one{"tanzanijski šiling"}
-            other{"tanzanijski šilinzi"}
+            other{"tanzanijskih šilinga"}
         }
         UAH{
             few{"ukrajinske hrivnje"}
-            many{"ukrajinskih hrivnji"}
             one{"ukrajinska hrivnja"}
             other{"ukrajinskih hrivnji"}
         }
         UAK{
-            few{"ukrajinska karbovantsiva"}
-            many{"ukrajinskih karbovantsiva"}
-            one{"ukrajinski karbovantsiv"}
-            other{"ukrajinski karbovantsiv"}
+            few{"ukrajinska karbovanciva"}
+            one{"ukrajinski karbovanec"}
+            other{"ukrajinskih karbovanciva"}
         }
         UGS{
-            few{"ugandska šilinga (UGS)"}
-            many{"ugandskih šilinga (UGS)"}
-            one{"ugandski šiling (UGS)"}
-            other{"ugandski šiling (UGS)"}
+            few{"ugandijska šilinga (1966–1987)"}
+            one{"ugandijski šiling (1966–1987)"}
+            other{"ugandijskih šilinga (1966–1987)"}
         }
         UGX{
             few{"ugandska šilinga"}
-            many{"ugandskih šilinga"}
             one{"ugandski šiling"}
-            other{"ugandski šilinzi"}
+            other{"ugandskih šilinga"}
         }
         USD{
             few{"američka dolara"}
-            many{"američkih dolara"}
             one{"američki dolar"}
             other{"američkih dolara"}
         }
         USN{
-            few{"američka dolara (sledeći dan)"}
-            many{"američkih dolara (sledeći dan)"}
-            one{"američki dolar (sledeći dan)"}
-            other{"američki dolar (sledeći dan)"}
+            few{"SAD dolara (sledeći dan)"}
+            one{"SAD dolar (sledeći dan)"}
+            other{"SAD dolara (sledeći dan)"}
         }
         USS{
-            few{"američka dolara (isti dan)"}
-            many{"američkih dolara (isti dan)"}
-            one{"američki dolar (isti dan)"}
-            other{"američki dolar (isti dan)"}
+            few{"SAD dolara (isti dan)"}
+            one{"SAD dolar (isti dan)"}
+            other{"SAD dolara (isti dan)"}
         }
         UYI{
-            few{"urugvajska pesosa en unidades indexadas"}
-            many{"urugvajskih pesosa en unidades indexadas"}
-            one{"urugvajski pesos en unidades indexadas"}
-            other{"urugvajski pesos en unidades indexadas"}
+            few{"urugvajska pezosa en unidades indeksadesa"}
+            one{"urugvajski pezo en unidades indeksades"}
+            other{"ugvajskih pezosa en unidades indeksadesa"}
         }
         UYP{
-            few{"urugvajska pezosa (UYP)"}
-            many{"urugvajskih pezosa (UYP)"}
-            one{"urugvajski pezos (UYP)"}
-            other{"urugvajski pezos (UYP)"}
+            few{"urugvajska pezosa (1975–1993)"}
+            one{"urugvajski pezo (1975–1993)"}
+            other{"urugvajskih pezosa (1975–1993)"}
         }
         UYU{
             few{"urugvajska pezosa"}
-            many{"urugvajskih pezosa"}
-            one{"urugvajski pezos"}
-            other{"urugvajski pezos"}
+            one{"urugvajski pezo"}
+            other{"urugvajskih pezosa"}
         }
         UZS{
             few{"uzbekistanska soma"}
-            many{"uzbekistanskih soma"}
             one{"uzbekistanski som"}
-            other{"uzbekistanski som"}
+            other{"uzbekistanskih soma"}
         }
         VEB{
-            few{"venecuelska bolivara"}
-            many{"venecuelskih bolivara"}
-            one{"venecuelski bolivar"}
-            other{"venecuelskih bolivara"}
+            few{"venecuelanska bolivara (1871–2008)"}
+            one{"venecuelanski bolivar (1871–2008)"}
+            other{"venecuelanskih bolivara (1871–2008)"}
         }
         VEF{
-            few{"venezuelanska bolivara fuertes"}
-            many{"venezuelanskih bolivara fuertes"}
-            one{"venezuelanski bolivar fuertes"}
-            other{"venezuelanski bolivar fuertes"}
+            few{"venecuelanska bolivara"}
+            one{"venecuelanski bolivar"}
+            other{"venecuelanskih bolivara"}
         }
         VND{
             few{"vijetnamska donga"}
-            many{"vijetnamskih donga"}
             one{"vijetnamski dong"}
-            other{"vijetnamski dong"}
+            other{"vijetnamskih donga"}
+        }
+        VNN{
+            few{"vijetnamska donga (1978–1985)"}
+            one{"vijetnamski dong (1978–1985)"}
+            other{"vijetnamskih donga (1978–1985)"}
         }
         VUV{
             few{"vanuatska vatua"}
-            many{"vanuatskih vatua"}
             one{"vanuatski vatu"}
-            other{"vanuatski vatui"}
+            other{"vanuatskih vatua"}
         }
         WST{
             few{"samoanske tale"}
-            many{"samoanskih tala"}
             one{"samoanska tala"}
-            other{"samoanska tala"}
+            other{"samoanskih tala"}
         }
         XAF{
             few{"CFA franka BEAC"}
-            many{"CFA franaka BEAC"}
             one{"CFA franak BEAC"}
-            other{"CFA franci BEAC"}
+            other{"CFA franaka BEAC"}
         }
         XAG{
             few{"srebra"}
-            many{"srebra"}
             one{"srebro"}
-            other{"srebro"}
+            other{"srebra"}
         }
         XAU{
             few{"zlata"}
-            many{"zlata"}
             one{"zlato"}
-            other{"zlato"}
+            other{"zlata"}
         }
         XBA{
-            few{"evropske složene jedinice"}
-            many{"evropskih složenih jedinica"}
-            one{"evropska složena jedinica"}
-            other{"evropska složena jedinica"}
+            few{"evropske kompozitne jedinice"}
+            one{"evropska kompozitna jedinica"}
+            other{"evropskih kompozitnih jedinica"}
         }
         XBB{
-            few{"evropske monetarne jedinice"}
-            many{"evropskih monetarnih jedinica"}
-            one{"evropska monetarna jedinica"}
-            other{"evropska monetarna jedinica"}
+            few{"evropske novčane jedinice (XBB)"}
+            one{"evropska novčana jedinica (XBB)"}
+            other{"evropske novčane jedinice (XBB)"}
         }
         XBC{
-            few{"evropske obračunske jedinice (XBC)"}
-            many{"evropskih obračunskih jedinica (XBC)"}
-            one{"evropska obračunska jedinica (XBC)"}
-            other{"evropska obračunska jedinica (XBC)"}
+            few{"evropske jedinice računa (XBC)"}
+            one{"evropska jedinica računa (XBC)"}
+            other{"evropskih jedinica računa (XBC)"}
         }
         XBD{
-            few{"evropske obračunske jedinice (XBD)"}
-            many{"evropskih obračunskih jedinica (XBD)"}
-            one{"evropska obračunska jedinica (XBC"}
-            other{"evropska obračunska jedinica (XBC"}
+            few{"evropske jedinice računa (XBD)"}
+            one{"evropska jedinica računa (XBD)"}
+            other{"evropskih jedinica računa (XBD)"}
         }
         XCD{
-            few{"istočnokaripska dolara"}
-            many{"istočnokaripskih dolara"}
-            one{"istočnokaripski dolar"}
-            other{"istočnokaripski dolar"}
+            few{"istočno-karipska dolara"}
+            one{"istočno-karipski dolar"}
+            other{"istočno-karipskix dolara"}
         }
         XDR{
             few{"posebna crtaća prava"}
-            many{"posebnih crtaćih prava"}
             one{"posebno crtaće pravo"}
             other{"posebnih crtaćih prava"}
         }
         XEU{
-            few{"evropske monetarne jedinice (ECU)"}
-            many{"evropskih monetarnih jedinica (ECU)"}
-            one{"evropska monetarna jedinica (ECU)"}
-            other{"evropskih monetarnih jedinica (ECU)"}
+            few{"evropske novčane jedinice (XEU)"}
+            one{"evropska novčana jedinica (XEU)"}
+            other{"evropskih novčanih jedinica"}
         }
         XFO{
             few{"francuska zlatna franka"}
-            many{"francuskih zlatnih franaka"}
             one{"francuski zlatni franak"}
             other{"francuskih zlatnih franaka"}
         }
         XFU{
             few{"francuska UIC-franka"}
-            many{"francuskih UIC-franaka"}
             one{"francuski UIC-franak"}
             other{"francuskih UIC-franaka"}
         }
         XOF{
             few{"CFA franka BCEAO"}
-            many{"CFA franaka BCEAO"}
             one{"CFA franak BCEAO"}
-            other{"CFA franci BCEAO"}
+            other{"CFA franaka BCEAO"}
         }
         XPD{
             few{"paladijuma"}
-            many{"paladijuma"}
             one{"paladijum"}
             other{"paladijuma"}
         }
         XPF{
-            few{"CFP franaka"}
-            many{"CFP franaka"}
+            few{"CFP franka"}
             one{"CFP franak"}
-            other{"CFP franci"}
+            other{"CFP franaka"}
         }
         XPT{
             few{"platine"}
-            many{"platina"}
             one{"platina"}
             other{"platina"}
         }
         XRE{
             few{"RINET fonda"}
-            many{"RINET fondova"}
             one{"RINET fond"}
             other{"RINET fondova"}
         }
         XTS{
-            few{"ispitna koda valute"}
-            many{"ispitnih kodova valute"}
-            one{"ispitni kod valute"}
-            other{"ispitnih kodova valute"}
+            few{"koda testirane valute"}
+            one{"kod testirane valute"}
+            other{"kodova testirane valute"}
         }
         XXX{
             few{"nepoznate ili nevažeće valute"}
-            many{"nepoznatih ili nevažećih valuta"}
-            one{"nepoznate ili nevažeće valute"}
+            one{"nepoznata ili nevažeća valuta"}
             other{"nepoznatih ili nevažećih valuta"}
         }
         YDD{
-            few{"jemenska dinara"}
-            many{"jemenskih dinara"}
-            one{"jemenski dinar"}
-            other{"jemenskih dinara"}
+            few{"jemenska dolara"}
+            one{"jemenski dolar"}
+            other{"jemenskih dolara"}
         }
         YER{
             few{"jemenska rijala"}
-            many{"jemenskih rijala"}
             one{"jemenski rijal"}
-            other{"jemenski rijali"}
+            other{"jemenskih rijala"}
         }
         YUD{
-            few{"jugoslovenska čvrsta dinara"}
-            many{"jugoslovenskih čvstih dinara"}
-            one{"jugoslovenski čvrsti dinar"}
-            other{"jugoslovenskih čvstih dinara"}
+            few{"jugoslovenska tvrda dinara"}
+            one{"jugoslovenski tvrdi dinar"}
+            other{"jugoslovenskih tvrdih dinara"}
         }
         YUM{
             few{"jugoslovenska nova dinara"}
-            many{"jugoslovenskih novih dinara"}
             one{"jugoslovenski novi dinar"}
             other{"jugoslovenskih novih dinara"}
         }
         YUN{
             few{"jugoslovenska konvertibilna dinara"}
-            many{"jugoslovenskih konvertibilnih dinara"}
             one{"jugoslovenski konvertibilni dinar"}
             other{"jugoslovenskih konvertibilnih dinara"}
         }
         ZAL{
-            few{"južnoafrička randa (financijska)"}
-            many{"južnoafičkih randa (financijskih)"}
-            one{"južnoafrički rand (financijski)"}
-            other{"južnoafičkih randa (financijskih)"}
+            few{"južnoafrička randa (finansijska)"}
+            one{"južnoafrički rand (finansijski)"}
+            other{"južnoafričkih randa (finansijskih)"}
         }
         ZAR{
-            few{"južnoafrička randa"}
-            many{"južnoafričkih randa"}
-            one{"južnoafrički rand"}
-            other{"južnoafričkih randa"}
+            few{"južno-afrička randa"}
+            one{"južno-afrički rand"}
+            other{"južno-afričkih randa"}
         }
         ZMK{
+            few{"zambijske kvače (1968–2012)"}
+            one{"zambijska kvača (1968–2012)"}
+            other{"zambijskih kvača (1968–2012)"}
+        }
+        ZMW{
             few{"zambijske kvače"}
-            many{"zambijskih kvača"}
             one{"zambijska kvača"}
-            other{"zambijske kvače"}
+            other{"zambijskih kvača"}
         }
         ZRN{
             few{"zairska nova zaira"}
-            many{"zairskih novih zaira"}
             one{"zairski novi zair"}
             other{"zairskih novih zaira"}
         }
         ZRZ{
             few{"zairska zaira"}
-            many{"zairskih zaira"}
             one{"zairski zair"}
             other{"zairskih zaira"}
         }
         ZWD{
-            few{"zimbabvejska dolara"}
-            many{"zimbabvejskih dolara"}
-            one{"zimbabvejski dolar"}
-            other{"zimbabvejski dolari"}
+            few{"zimbabvejska dolara (1980–2008)"}
+            one{"zimbabvejski dolar (1980–2008)"}
+            other{"zimbabvejskih dolara (1980–2008)"}
+        }
+        ZWL{
+            few{"zimbabvejska dolara (2009)"}
+            one{"zimbabvejski dolar (2009)"}
+            other{"zimbabvejskih dolara (2009)"}
+        }
+        ZWR{
+            few{"zimbabvejska dolara (2008)"}
+            one{"zimbabvejski dolar (2008)"}
+            other{"zimbabvejskih dolara (2008)"}
         }
     }
-    Version{"2.0.66.10"}
+    CurrencyUnitPatterns{
+        few{"{0} {1}"}
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
 }

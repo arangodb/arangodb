@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (C) 2008-2011, International Business Machines Corporation and
+* Copyright (C) 2008-2013, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -8,7 +8,7 @@
 *******************************************************************************
 */
 
-#include <typeinfo>  // for 'typeid' to work
+#include "utypeinfo.h"  // for 'typeid' to work
 
 #include "unicode/dtitvfmt.h"
 
@@ -863,7 +863,9 @@ DateIntervalFormat::getDateTimeSkeleton(const UnicodeString& skeleton,
 
     /* generate normalized form for date*/
     if ( yCount != 0 ) {
-        normalizedDateSkeleton.append(LOW_Y);
+        for (i = 0; i < yCount; ++i) {
+            normalizedDateSkeleton.append(LOW_Y);
+        }
     }
     if ( MCount != 0 ) {
         if ( MCount < 3 ) {

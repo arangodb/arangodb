@@ -5,7 +5,7 @@
 <!--
 /*
 *******************************************************************************
-* Copyright (C) 2005-2011, International Business Machines Corporation and    *
+* Copyright (C) 2005-2013, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 */
@@ -17,90 +17,63 @@
         <!-- Load environment variables -->
         <property environment="env"/>
 
-        <condition property="is.icu4j.classes.set" >
-            <or>
-                <isset property="env.ICU4J_CLASSES" />
-                <isset property="env.ICU4J_JAR" />
-            </or>
-        </condition >
-        <fail unless="is.icu4j.classes.set" message="Please set the ICU4J_CLASSES or ICU4J_JAR environment variable."/>
+    	<!-- Ant won't set properties that have already been set, so environment variables that have been set before won't be clobbered. -->
+    	<property name="env.ICU4C_DIR" location="../.."/>
 
-        <condition property="is.icu4c.dir.set" >
-            <isset property="env.ICU4C_DIR" />
-        </condition >
-        <fail unless="is.icu4c.dir.set" message="Please set the ICU4C_DIR environment variable."/>
-
-        <condition property="is.cldr.dir.set" >
+    	<condition property="is.cldr.dir.set" >
             <isset property="env.CLDR_DIR" />
         </condition >
-        <fail unless="is.cldr.dir.set" message="Please set the CLDR_DIR environment variable."/>
+        <fail unless="is.cldr.dir.set" message="Please set the CLDR_DIR environment variable to the top level ICU source dir (containing 'common')."/>
 
-        <condition property="is.cldr.classes.set" >
+        <available property="cldrtools.dir" value="${env.CLDR_DIR}/cldr-tools" file="${env.CLDR_DIR}/cldr-tools" type="dir"/>
+        <available property="cldrtools.dir" value="${env.CLDR_DIR}/tools/java" file="${env.CLDR_DIR}/tools/java" type="dir"/>
+        <fail unless="cldrtools.dir" message="Please make sure that the CLDR tools directory is checked out into CLDR_DIR"/>
+
+        <available property="env.CLDR_CLASSES" value="${cldrtools.dir}/classes" file="${cldrtools.dir}/classes" type="dir"/>
+        <available property="cldrtools.jar" value="${cldrtools.dir}/cldr.jar" file="${cldrtools.dir}/cldr.jar" type="file"/>
+        <condition property="is.cldr.classes.set">
             <or>
                 <isset property="env.CLDR_CLASSES" />
-                <isset property="env.CLDR_JAR" />
+                <isset property="cldrtools.jar" />
             </or>
-        </condition >
-        <fail unless="is.cldr.classes.set" message="Please set the CLDR_CLASSES or CLDR_JAR environment variable."/>
+        </condition>
+        <fail unless="is.cldr.classes.set" message="CLDR classes not found in ${cldrtools.dir}. Please either set the CLDR_CLASSES environment variable or build cldr.jar."/>
 
-        <condition property="is.utilities.classes.set" >
-            <or>
-                <isset property="env.ICU4J_CLASSES" />
-                <isset property="env.UTILITIES_JAR" />
-            </or>
-        </condition >
-        <fail unless="is.utilities.classes.set" message="Please set the ICU4J_CLASSES or UTILITIES_JAR environment variable."/>
-
-        <echo message="java home: ${java.home}"/>
+    	<echo message="java home: ${java.home}"/>
         <echo message="java version: ${java.version}"/>
         <echo message="ant java version: ${ant.java.version}"/>
         <echo message="${ant.version}"/>
     </target>
     <target name="setup">
-
-        <echo message="${env.CLDR_CLASSES}"/>
         <taskdef name="cldr-build" classname="org.unicode.cldr.ant.CLDRBuild">
             <classpath>
                 <pathelement path="${java.class.path}/"/>
-                <pathelement path="${env.ICU4J_CLASSES}"/>
                 <pathelement path="${env.CLDR_CLASSES}"/>
-                <pathelement location="${env.ICU4J_JAR}"/>
-                <pathelement location="${env.CLDR_JAR}"/>
-                <pathelement location="${env.UTILITIES_JAR}"/>
+                <pathelement location="${cldrtools.jar}"/>
+                <fileset dir="${cldrtools.dir}/libs" includes="*.jar"/>
             </classpath>
         </taskdef>
     </target>
     <!-- target for generating ICU data -->
-    <target name="all" depends="locales, resfiles, resfiles_curr, resfiles_lang, resfiles_region, resfiles_zone, collation, colfiles, rbnf, rbnffiles, supplementalData, metadata, metaZones, windowsZones, likelySubtags, plurals, numberingSystems, translit, brkitr, brkfiles, keyTypeData" />
+    <target name="all" depends="locales, collation, rbnf, supplementalData, metadata, metaZones, windowsZones, likelySubtags, plurals, numberingSystems, translit, brkitr, keyTypeData, genderList, postalCodeData, dayPeriods" />
     <!-- parallel target -->
     <target name="pall" depends="init">
         <parallel threadsPerProcessor ="1">
           <sequential>
             <ant target='locales' />
-            <ant target='resfiles' />
-            <ant target='resfiles_curr' />
-            <ant target='resfiles_lang' />
-            <ant target='resfiles_region' />
-            <ant target='resfiles_zone' />
           </sequential>
           <sequential>
             <ant target='collation'>
             </ant>
-            <ant target='colfiles'>
-            </ant>
           </sequential>
           <sequential>
             <ant target='rbnf'>
-            </ant>
-            <ant target='rbnffiles'>
             </ant>
           </sequential>
           <ant target='supplementalData'>
           </ant>
           <sequential>
             <ant target='brkitr'>
-            </ant>
-            <ant target='brkfiles'>
             </ant>
           </sequential>
           <sequential>
@@ -113,7 +86,7 @@
      </target>
 
     <target name="locales" depends="init,setup" description="builds locale files in ICU text format">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" srcFile=".*xml" destFile=".*txt">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" srcFile=".*xml" destFile=".*txt">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
@@ -121,6 +94,8 @@
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/locales"/>
                     <arg name="--specialsdir"     value="${env.ICU4C_DIR}/source/data/xml/main"/>
                     <arg name="--supplementaldir" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="--type" value="locales"/>
+                    <arg name="--makefile" value="resfiles.mk"/>
                 </args>
 		<remapper>
 		  <remap sourcePath="/Keys" targetDir="lang" />
@@ -133,6 +108,7 @@
 		  <remap sourcePath="/codePatterns" targetDir="lang" />
 		  <remap sourcePath="/localeDisplayPattern" targetDir="lang" />
 		  <remap sourcePath="/Countries" targetDir="region" />
+		  <remap sourcePath="/CountriesShort" targetDir="region" />
 		  <remap sourcePath="/Currencies" targetDir="curr" />
 		  <remap sourcePath="/CurrencyPlurals" targetDir="curr" />
 		  <remap sourcePath="/CurrencyUnitPatterns" targetDir="curr" />
@@ -141,112 +117,25 @@
 		</remapper>
                 <!-- http://ant.apache.org/faq.html#xml-entity-include -->
                 &icu-config;
-            </run>
-        </cldr-build>
-    </target>
-    <target name="resfiles" depends="init,setup" description="builds resfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="resfiles.mk" noArgs="true">
-            <run>
-                <args>
-                    <arg name="-s" value="${env.CLDR_DIR}/common/main" />
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/locales"/>
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/main"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/main" />
-                </args>
-		&icu-locale-deprecates;
-            </run>
-        </cldr-build>
-    </target>
-    <target name="resfiles_curr" depends="init,setup" description="builds curr/resfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="resfiles.mk" noArgs="true">
-            <run>
-                <args>
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/curr" />
-                    <arg name="-s" value="${env.CLDR_DIR}/common/main" />
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/main"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/main" />
-                </args>
-		&icu-locale-deprecates;
-            </run>
-        </cldr-build>
-    </target>
-    <target name="resfiles_lang" depends="init,setup" description="builds lang/resfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="resfiles.mk" noArgs="true">
-            <run>
-                <args>
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/lang" />
-                    <arg name="-s" value="${env.CLDR_DIR}/common/main" />
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/main"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/main" />
-                </args>
-		&icu-locale-deprecates;
-            </run>
-        </cldr-build>
-    </target>
-    <target name="resfiles_region" depends="init,setup" description="builds region/resfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="resfiles.mk" noArgs="true">
-            <run>
-                <args>
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/region" />
-                    <arg name="-s" value="${env.CLDR_DIR}/common/main" />
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/main"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/main" />
-                </args>
-		&icu-locale-deprecates;
-            </run>
-        </cldr-build>
-    </target>
-    <target name="resfiles_zone" depends="init,setup" description="builds zone/resfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="resfiles.mk" noArgs="true">
-            <run>
-                <args>
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/zone" />
-                    <arg name="-s" value="${env.CLDR_DIR}/common/main" />
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/main"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/main" />
-                </args>
-		&icu-locale-deprecates;
+        		&icu-locale-deprecates;
             </run>
         </cldr-build>
     </target>
     <target name="collation" depends="init,setup" description="builds collation files in ICU text format">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" srcFile=".*xml" destFile=".*txt">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" srcFile=".*xml" destFile=".*txt">
             <run>
                 <args>
                     <arg name="--sourcedir"       value="${env.CLDR_DIR}/common/collation" />
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/coll"/>
                     <arg name="--specialsdir"     value="${env.ICU4C_DIR}/source/data/xml/collation"/>
-                    <arg name="--supplementaldir" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="--type"            value="collation"/>
+                    <arg name="--makefile" value="colfiles.mk"/>
                 </args>
                 <!-- http://ant.apache.org/faq.html#xml-entity-include -->
                 &icu-config;
-            </run>
-        </cldr-build>
-    </target>
-    <target name="colfiles" depends="init, setup" description="builds colfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="colfiles.mk" noArgs="true">
-            <!-- launch the tool and generate the data after reading the config file -->
-            <run>
-                <args>
-                    <arg name="-s" value="${env.CLDR_DIR}/common/collation" />
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/coll"/>
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/collation"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/collation" />
-                </args>
-                <!-- http://ant.apache.org/faq.html#xml-entity-include -->
-                &icu-config;
-                 <deprecates>
-                    <alias from="de__PHONEBOOK" to="de@collation=phonebook"  xpath="//ldml/collations/default[@type='phonebook']"/>
-                    <alias from="es__TRADITIONAL" to="es@collation=traditional" xpath="//ldml/collations/default[@type='traditional']"/>
-                    <alias from="hi__DIRECT" to="hi@collation=direct" xpath="//ldml/collations/default[@type='direct']"/>
-                    <alias from="zh__PINYIN" to="zh@collation=pinyin" xpath="//ldml/collations/default[@type='pinyin']"/>
-                    <alias from="zh_TW_STROKE" to="zh@collation=stroke" xpath="//ldml/collations/default[@type='stroke']"/>
+                <deprecates>
+                    <alias from="de__PHONEBOOK" to="de"  rbpath="/collations/default" value="phonebook"/>
+                    <alias from="es__TRADITIONAL" to="es" rbpath="/collations/default" value="traditional"/>
                     <alias from="in" to="id" />
                     <alias from="in_ID" to="id_ID" />
                     <alias from="iw" to="he" />
@@ -269,51 +158,33 @@
                     <alias from="zh_TW" to="zh_Hant_TW" />
                     <emptyLocale locale="de_" />
                     <emptyLocale locale="es_" />
-                    <emptyLocale locale="hi_" />
-                    <emptyLocale locale="zh_" />
                 </deprecates>
             </run>
         </cldr-build>
     </target>
     <target name="rbnf" depends="init,setup" description="builds rbnf files in ICU text format">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" srcFile=".*xml" destFile=".*txt">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" srcFile=".*xml" destFile=".*txt">
             <run>
                 <args>
                     <arg name="--sourcedir"       value="${env.CLDR_DIR}/common/rbnf" />
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/rbnf"/>
                     <arg name="--specialsdir"     value="${env.ICU4C_DIR}/source/data/xml/rbnf"/>
-                    <arg name="--supplementaldir" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="--type" value="rbnf" />
+                    <arg name="--makefile" value="rbnffiles.mk"/>
                 </args>
                 <!-- http://ant.apache.org/faq.html#xml-entity-include -->
                 &icu-config;
             </run>
         </cldr-build>
     </target>
-    <target name="rbnffiles" depends="init, setup" description="builds rbnffiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="rbnffiles.mk" noArgs="true">
-            <!-- launch the tool and generate the data after reading the config file -->
-            <run>
-                <args>
-                    <arg name="-s" value="${env.CLDR_DIR}/common/rbnf" />
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/rbnf"/>
-                    <arg name="-p" value="${env.ICU4C_DIR}/source/data/xml/rbnf"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.CLDR_DIR}/common/rbnf" />
-                </args>
-                &icu-config;
-            </run>
-        </cldr-build>
-    </target>
     <target name="supplementalData" depends="init,setup" description="builds supplementalData.txt from supplementalData.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="supplementalData.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="supplementalData.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-l"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="supplementalData"/>
                 </args>
 		<remapper>
 		  <remap sourcePath="/CurrencyMap" targetDir="curr" />
@@ -323,96 +194,121 @@
         </cldr-build>
     </target>
     <target name="metadata" depends="init,setup" description="builds metadata.txt from supplementalMetadata.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="metadata.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="metadata.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-q"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="metadata"/>
                 </args>
             </run>
         </cldr-build>
     </target>
     <target name="metaZones" depends="init,setup" description="builds metaZones.txt from metaZones.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="metaZones.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="metaZones.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-z"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="metaZones"/>
                 </args>
             </run>
         </cldr-build>
     </target>
     <target name="windowsZones" depends="init,setup" description="builds windowsZones.txt from windowsZones.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="windowsZones.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="windowsZones.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-i"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="windowsZones"/>
                 </args>
             </run>
         </cldr-build>
     </target>
     <target name="likelySubtags" depends="init,setup" description="builds likelySubtags.txt from likelySubtags.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="likelySubtags.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="likelySubtags.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-t"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="likelySubtags"/>
                 </args>
             </run>
         </cldr-build>
     </target>
     <target name="plurals" depends="init,setup" description="builds plurals.txt from plurals.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="plurals.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="plurals.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-r"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="plurals"/>
                 </args>
             </run>
         </cldr-build>
     </target>
     <target name="numberingSystems" depends="init,setup" description="builds numberingSystems.txt from numberingSystems.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="numberingSystems.txt" noArgs="true">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="numberingSystems.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
-                    <arg name="-n"/>
-                    <arg name="-f"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-t" value="numberingSystems"/>
+                </args>
+            </run>
+        </cldr-build>
+    </target>
+    <target name="genderList" depends="init,setup" description="builds genderList.txt from genderList.xml">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="genderList.txt" noArgs="true">
+            <!-- launch the tool and generate the data after reading the config file -->
+            <run>
+                <args>
+                    <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
+                    <arg name="-t" value="genderList"/>
+                </args>
+            </run>
+        </cldr-build>
+    </target>
+    <target name="postalCodeData" depends="init,setup" description="builds postalCodeData.txt from postalCodeData.xml">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="postalCodeData.txt" noArgs="true">
+            <!-- launch the tool and generate the data after reading the config file -->
+            <run>
+                <args>
+                    <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
+                    <arg name="-t" value="postalCodeData"/>
+                </args>
+            </run>
+        </cldr-build>
+    </target>
+    <target name="dayPeriods" depends="init,setup" description="builds dayPeriods.txt from dayPeriods.xml">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="dayPeriods.txt" noArgs="true">
+            <!-- launch the tool and generate the data after reading the config file -->
+            <run>
+                <args>
+                    <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
+                    <arg name="-t" value="dayPeriods"/>
                 </args>
             </run>
         </cldr-build>
     </target>
     <target name="brkitr" depends="init,setup" description="builds break iterator files in ICU text format">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" srcFile=".*xml" destFile=".*txt">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" srcFile=".*xml" destFile=".*txt">
             <run>
                 <args>
                     <arg name="--sourcedir"       value="${env.ICU4C_DIR}/source/data/xml/brkitr"/>
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/brkitr"/>
-                    <arg name="--supplementaldir" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="--type" value="brkitr" />
+                    <arg name="--makefile" value="brkfiles.mk"/>
                 </args>
                 <!-- The entity include is not required for this target -->
                 <!-- http://ant.apache.org/faq.html#xml-entity-include
@@ -421,28 +317,14 @@
             </run>
         </cldr-build>
     </target>
-    <target name="brkfiles" depends="init, setup" description="builds brkfiles.mk">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" destFile="brkfiles.mk" noArgs="true">
-            <!-- launch the tool and generate the data after reading the config file -->
-            <run>
-                <args>
-                    <arg name="-s" value="${env.ICU4C_DIR}/source/data/xml/brkitr" />
-                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/brkitr"/>
-                    <arg name="-m" value="${env.CLDR_DIR}/common/supplemental" />
-                    <arg name="-w" value="${env.ICU4C_DIR}/source/data/xml/brkitr" />
-                </args>
-            </run>
-        </cldr-build>
-    </target>
 
     <target name="keyTypeData" depends="init,setup" description="builds keyTypeData.txt and timezoneTypes.txt from bcp47/*.xml">
-        <cldr-build toolName="org.unicode.cldr.icu.LDML2ICUConverter" noArgs="true">
-            <!-- launch the tool and generate the data after reading the config file -->
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" noArgs="true">
             <run>
                 <args>
                     <arg name="-s" value="${env.CLDR_DIR}/common/bcp47" />
-                    <arg name="-k" value="${env.CLDR_DIR}/common/bcp47" />
                     <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
+                    <arg name="-t" value="keyTypeData"/>
                 </args>
             </run>
         </cldr-build>
@@ -548,6 +430,15 @@
             <fileset id="keyTypeData" dir="${env.ICU4C_DIR}/source/data/misc">
                 <include name="keyTypeData.txt" />
                 <include name="timezoneTypes.txt" />
+            </fileset>
+            <fileset id="genderList" dir="${env.ICU4C_DIR}/source/data/misc">
+                <include name="genderList.txt" />
+            </fileset>
+            <fileset id="postalCodeData" dir="${env.ICU4C_DIR}/source/data/misc">
+                <include name="postalCodeData.txt" />
+            </fileset>
+            <fileset id="dayPeriods" dir="${env.ICU4C_DIR}/source/data/misc">
+                <include name="dayPeriods.txt" />
             </fileset>
         </delete>
     </target>

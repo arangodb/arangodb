@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2012, International Business Machines Corporation and
+* Copyright (C) 2007-2013, International Business Machines Corporation and
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 *
@@ -44,6 +44,7 @@
 #define CAP_F             ((UChar)0x0046)
 #define CAP_G             ((UChar)0x0047)
 #define CAP_H             ((UChar)0x0048)
+#define CAP_J             ((UChar)0x004A)
 #define CAP_K             ((UChar)0x004B)
 #define CAP_L             ((UChar)0x004C)
 #define CAP_M             ((UChar)0x004D)
@@ -54,6 +55,7 @@
 #define CAP_U             ((UChar)0x0055)
 #define CAP_V             ((UChar)0x0056)
 #define CAP_W             ((UChar)0x0057)
+#define CAP_X             ((UChar)0x0058)
 #define CAP_Y             ((UChar)0x0059)
 #define CAP_Z             ((UChar)0x005A)
 #define LOWLINE           ((UChar)0x005F)
@@ -79,6 +81,7 @@
 #define LOW_U             ((UChar)0x0075)
 #define LOW_V             ((UChar)0x0076)
 #define LOW_W             ((UChar)0x0077)
+#define LOW_X             ((UChar)0x0078)
 #define LOW_Y             ((UChar)0x0079)
 #define LOW_Z             ((UChar)0x007A)
 #define DT_SHORT          -0x102

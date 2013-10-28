@@ -1,0 +1,25 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ta_SG.xml
+// *
+// ***************************************************************************
+ta_SG{
+    Currencies{
+        MYR{
+            "RM",
+            "மலேசிய ரிங்கிட்",
+        }
+        SGD{
+            "$",
+            "சிங்கப்பூர் டாலர்",
+        }
+        USD{
+            "US$",
+            "யூ.எஸ். டாலர்",
+        }
+    }
+    Version{"2.0.92.87"}
+}

@@ -1,7 +1,7 @@
 /*
  ********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1996-2011, International Business Machines Corporation and
+ * Copyright (c) 1996-2013, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  *
@@ -27,7 +27,9 @@
 #include "unicode/udata.h"
 #include "unicode/ucnv.h"
 #include "unicode/uloc.h"
+#include "mutex.h"
 #include "putilimp.h"
+#include "uassert.h"
 #include "utracimp.h"
 #include "ucnv_io.h"
 #include "ucnv_bld.h"
@@ -41,7 +43,6 @@
 #include "cmemory.h"
 #include "ucln_cmn.h"
 #include "ustr_cnv.h"
-
 
 
 #if 0
@@ -159,12 +160,13 @@ static struct {
 
 /*initializes some global variables */
 static UHashtable *SHARED_DATA_HASHTABLE = NULL;
-static UMTX        cnvCacheMutex = NULL;  /* Mutex for synchronizing cnv cache access. */
-                                          /*  Note:  the global mutex is used for      */
-                                          /*         reference count updates.          */
+static UMutex cnvCacheMutex = U_MUTEX_INITIALIZER;  /* Mutex for synchronizing cnv cache access. */
+                                                    /*  Note:  the global mutex is used for      */
+                                                    /*         reference count updates.          */
 
 static const char **gAvailableConverters = NULL;
 static uint16_t gAvailableConverterCount = 0;
+static icu::UInitOnce gAvailableConvertersInitOnce = U_INITONCE_INITIALIZER;
 
 #if !U_CHARSET_IS_UTF8
 
@@ -187,15 +189,18 @@ static UBool gDefaultConverterContainsOption;
 
 static const char DATA_TYPE[] = "cnv";
 
+/* ucnv_flushAvailableConverterCache. This is only called from ucnv_cleanup().
+ *                       If it is ever to be called from elsewhere, synchronization 
+ *                       will need to be considered.
+ */
 static void
 ucnv_flushAvailableConverterCache() {
+    gAvailableConverterCount = 0;
     if (gAvailableConverters) {
-        umtx_lock(&cnvCacheMutex);
-        gAvailableConverterCount = 0;
         uprv_free((char **)gAvailableConverters);
         gAvailableConverters = NULL;
-        umtx_unlock(&cnvCacheMutex);
     }
+    gAvailableConvertersInitOnce.reset();
 }
 
 /* ucnv_cleanup - delete all storage held by the converter cache, except any  */
@@ -219,9 +224,6 @@ static UBool U_CALLCONV ucnv_cleanup(void) {
     gDefaultAlgorithmicSharedData = NULL;
 #endif
 
-    umtx_destroy(&cnvCacheMutex);    /* Don't worry about destroying the mutex even  */
-                                     /*  if the hash table still exists.  The mutex  */
-                                     /*  will lazily re-init  itself if needed.      */
     return (SHARED_DATA_HASHTABLE == NULL);
 }
 
@@ -796,6 +798,8 @@ ucnv_loadSharedData(const char *converterName,
             * without updating the alias table, or when there is no alias table
             */
             pArgs->name = pPieces->cnvName;
+        } else if (internalErrorCode == U_AMBIGUOUS_ALIAS_WARNING) {
+            *err = U_AMBIGUOUS_ALIAS_WARNING;
         }
     }
 
@@ -1111,59 +1115,46 @@ ucnv_flushCache ()
 
 /* available converters list --------------------------------------------------- */
 
-static UBool haveAvailableConverterList(UErrorCode *pErrorCode) {
-    int needInit;
-    UMTX_CHECK(&cnvCacheMutex, (gAvailableConverters == NULL), needInit);
-    if (needInit) {
-        UConverter tempConverter;
-        UEnumeration *allConvEnum = NULL;
-        uint16_t idx;
-        uint16_t localConverterCount;
-        uint16_t allConverterCount;
-        UErrorCode localStatus;
-        const char *converterName;
-        const char **localConverterList;
+static void U_CALLCONV initAvailableConvertersList(UErrorCode &errCode) {
+    U_ASSERT(gAvailableConverterCount == 0);
+    U_ASSERT(gAvailableConverters == NULL);
 
-        allConvEnum = ucnv_openAllNames(pErrorCode);
-        allConverterCount = uenum_count(allConvEnum, pErrorCode);
-        if (U_FAILURE(*pErrorCode)) {
-            return FALSE;
-        }
-
-        /* We can't have more than "*converterTable" converters to open */
-        localConverterList = (const char **) uprv_malloc(allConverterCount * sizeof(char*));
-        if (!localConverterList) {
-            *pErrorCode = U_MEMORY_ALLOCATION_ERROR;
-            return FALSE;
-        }
-
-        /* Open the default converter to make sure that it has first dibs in the hash table. */
-        localStatus = U_ZERO_ERROR;
-        ucnv_close(ucnv_createConverter(&tempConverter, NULL, &localStatus));
-
-        localConverterCount = 0;
-
-        for (idx = 0; idx < allConverterCount; idx++) {
-            localStatus = U_ZERO_ERROR;
-            converterName = uenum_next(allConvEnum, NULL, &localStatus);
-            if (ucnv_canCreateConverter(converterName, &localStatus)) {
-                localConverterList[localConverterCount++] = converterName;
-            }
-        }
-        uenum_close(allConvEnum);
-
-        umtx_lock(&cnvCacheMutex);
-        if (gAvailableConverters == NULL) {
-            gAvailableConverterCount = localConverterCount;
-            gAvailableConverters = localConverterList;
-            ucln_common_registerCleanup(UCLN_COMMON_UCNV, ucnv_cleanup);
-        }
-        else {
-            uprv_free((char **)localConverterList);
-        }
-        umtx_unlock(&cnvCacheMutex);
+    ucln_common_registerCleanup(UCLN_COMMON_UCNV, ucnv_cleanup);
+    UEnumeration *allConvEnum = ucnv_openAllNames(&errCode);
+    int32_t allConverterCount = uenum_count(allConvEnum, &errCode);
+    if (U_FAILURE(errCode)) {
+        return;
     }
-    return TRUE;
+
+    /* We can't have more than "*converterTable" converters to open */
+    gAvailableConverters = (const char **) uprv_malloc(allConverterCount * sizeof(char*));
+    if (!gAvailableConverters) {
+        errCode = U_MEMORY_ALLOCATION_ERROR;
+        return;
+    }
+
+    /* Open the default converter to make sure that it has first dibs in the hash table. */
+    UErrorCode localStatus = U_ZERO_ERROR;
+    UConverter tempConverter;
+    ucnv_close(ucnv_createConverter(&tempConverter, NULL, &localStatus));
+
+    gAvailableConverterCount = 0;
+
+    for (int32_t idx = 0; idx < allConverterCount; idx++) {
+        localStatus = U_ZERO_ERROR;
+        const char *converterName = uenum_next(allConvEnum, NULL, &localStatus);
+        if (ucnv_canCreateConverter(converterName, &localStatus)) {
+            gAvailableConverters[gAvailableConverterCount++] = converterName;
+        }
+    }
+
+    uenum_close(allConvEnum);
+}
+
+
+static UBool haveAvailableConverterList(UErrorCode *pErrorCode) {
+    umtx_initOnce(gAvailableConvertersInitOnce, &initAvailableConvertersList, *pErrorCode);
+    return U_SUCCESS(*pErrorCode);
 }
 
 U_CFUNC uint16_t
@@ -1229,6 +1220,9 @@ internalSetName(const char *name, UErrorCode *status) {
 
     /* gDefaultConverterName MUST be the last global var set by this function.  */
     /*    It is the variable checked in ucnv_getDefaultName() to see if initialization is required. */
+    //    But there is nothing here preventing that from being reordered, either by the compiler
+    //             or hardware. I'm adding the mutex to ucnv_getDefaultName for now. UMTX_CHECK is not enough.
+    //             -- Andy
     gDefaultConverterName = gDefaultConverterNameBuffer;
 
     ucln_common_registerCleanup(UCLN_COMMON_UCNV, ucnv_cleanup);
@@ -1254,10 +1248,13 @@ ucnv_getDefaultName() {
     const char *name;
 
     /*
-    Multiple calls to ucnv_getDefaultName must be thread safe,
+    Concurrent calls to ucnv_getDefaultName must be thread safe,
     but ucnv_setDefaultName is not thread safe.
     */
-    UMTX_CHECK(&cnvCacheMutex, gDefaultConverterName, name);
+    {
+        icu::Mutex lock(&cnvCacheMutex);
+        name = gDefaultConverterName;
+    }
     if(name==NULL) {
         UErrorCode errorCode = U_ZERO_ERROR;
         UConverter *cnv = NULL;
@@ -1297,13 +1294,15 @@ ucnv_getDefaultName() {
 #endif
 }
 
+#if U_CHARSET_IS_UTF8
+U_CAPI void U_EXPORT2 ucnv_setDefaultName(const char *) {}
+#else
 /*
 This function is not thread safe, and it can't be thread safe.
 See internalSetName or the API reference for details.
 */
 U_CAPI void U_EXPORT2
 ucnv_setDefaultName(const char *converterName) {
-#if !U_CHARSET_IS_UTF8
     if(converterName==NULL) {
         /* reset to the default codepage */
         gDefaultConverterName=NULL;
@@ -1329,8 +1328,8 @@ ucnv_setDefaultName(const char *converterName) {
         /* reset the converter cache */
         u_flushDefaultConverter();
     }
-#endif
 }
+#endif
 
 /* data swapping ------------------------------------------------------------ */
 

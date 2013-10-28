@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 1996-2011, International Business Machines Corporation
+ * Copyright (C) 1996-2012, International Business Machines Corporation
  * and others. All Rights Reserved.
  ************************************************************************
  *  2003-nov-07   srl       Port from Java
@@ -63,11 +63,10 @@ static inline UBool isINVALID(double d) {
   return(uprv_isNaN(d));
 }
 
-static UMTX ccLock = NULL;
+static UMutex ccLock = U_MUTEX_INITIALIZER;
 
 U_CDECL_BEGIN
 static UBool calendar_astro_cleanup(void) {
-  umtx_destroy(&ccLock);
   return TRUE;
 }
 U_CDECL_END

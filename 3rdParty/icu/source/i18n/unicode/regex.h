@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2002-2012, International Business Machines
+*   Copyright (C) 2002-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  regex.h
@@ -68,6 +68,7 @@ class  UVector;
 class  UVector32;
 class  UVector64;
 
+#ifndef U_HIDE_INTERNAL_API
 /**
  *   RBBIPatternDump   Debug function, displays the compiled form of a pattern.
  *   @internal
@@ -79,6 +80,7 @@ U_INTERNAL void U_EXPORT2
     #undef RegexPatternDump
     #define RegexPatternDump(pat)
 #endif
+#endif  /* U_HIDE_INTERNAL_API */
 
 
 
@@ -368,7 +370,6 @@ private:
      * or in a UText, using
      * <code>utext_openUChars(UText *ut, const UChar *text, int64_t textLength, UErrorCode *status);</code>
      *
-     * @internal
      */
     RegexMatcher *matcher(const UChar *input,
         UErrorCode          &status) const;
@@ -726,7 +727,6 @@ private:
      * or in a UText, using
      * <code>utext_openUChars(UText *ut, const UChar *text, int64_t textLength, UErrorCode *status);</code>
      *
-     * @internal
      */
     RegexMatcher(const UnicodeString &regexp, const UChar *input,
         uint32_t flags, UErrorCode &status);
@@ -1131,7 +1131,6 @@ private:
      * or in a UText, using
      * <code>utext_openUChars(UText *ut, const UChar *text, int64_t textLength, UErrorCode *status);</code>
      *
-     * @internal
      */
     RegexMatcher &reset(const UChar *input);
 public:

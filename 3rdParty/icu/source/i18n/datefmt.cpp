@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 1997-2011, International Business Machines Corporation and    *
+ * Copyright (C) 1997-2013, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  *
@@ -74,6 +74,7 @@ DateFormat& DateFormat::operator=(const DateFormat& other)
         } else {
           fNumberFormat = NULL;
         }
+        fBoolFlags = other.fBoolFlags;
     }
     return *this;
 }
@@ -509,6 +510,29 @@ DateFormat::isLenient() const
     }
     // fCalendar is rarely null
     return FALSE;
+}
+
+//----------------------------------------------------------------------
+
+DateFormat& 
+DateFormat::setBooleanAttribute(UDateFormatBooleanAttribute attr,
+    									UBool newValue,
+    									UErrorCode &status) {
+    if(!fBoolFlags.isValidValue(newValue)) {
+        status = U_ILLEGAL_ARGUMENT_ERROR;
+    } else {
+        fBoolFlags.set(attr, newValue);
+    }
+
+    return *this;
+}
+
+//----------------------------------------------------------------------
+
+UBool 
+DateFormat::getBooleanAttribute(UDateFormatBooleanAttribute attr, UErrorCode &/*status*/) const {
+
+    return fBoolFlags.get(attr);
 }
 
 U_NAMESPACE_END

@@ -1,17 +1,17 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/lt.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lt.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/lt.xml
+ * ICU <specials> source: <path>/common/main/lt.xml
  */
 lt{
     Countries{
-        001{"Pasaulis"}
+        001{"pasaulis"}
         002{"Afrika"}
         003{"Šiaurės Amerika"}
         005{"Pietų Amerika"}
@@ -21,7 +21,7 @@ lt{
         014{"Rytų Afrika"}
         015{"Šiaurės Afrika"}
         017{"Vidurio Afrika"}
-        018{"Pietų Afrika [018]"}
+        018{"Pietinė Afrika"}
         019{"Amerika"}
         021{"Šiaurinė Amerika"}
         029{"Karibai"}
@@ -29,7 +29,7 @@ lt{
         034{"Pietų Azija"}
         035{"Pietryčių Azija"}
         039{"Pietų Europa"}
-        053{"Australija ir Naujoji Zelandija"}
+        053{"Australazija"}
         054{"Melanezija"}
         057{"Mikronezijos regionas"}
         061{"Polinezija"}
@@ -41,7 +41,7 @@ lt{
         154{"Šiaurės Europa"}
         155{"Vakarų Europa"}
         419{"Lotynų Amerika"}
-        AC{"Ascension sala"}
+        AC{"Dangun Žengimo sala"}
         AD{"Andora"}
         AE{"Jungtiniai Arabų Emyratai"}
         AF{"Afganistanas"}
@@ -51,13 +51,13 @@ lt{
         AM{"Armėnija"}
         AN{"Olandijos Antilai"}
         AO{"Angola"}
-        AQ{"Antarktis"}
+        AQ{"Antarktida"}
         AR{"Argentina"}
         AS{"Amerikos Samoa"}
         AT{"Austrija"}
         AU{"Australija"}
         AW{"Aruba"}
-        AX{"Alandų salos"}
+        AX{"Alandų Salos"}
         AZ{"Azerbaidžanas"}
         BA{"Bosnija ir Hercegovina"}
         BB{"Barbadosas"}
@@ -68,45 +68,46 @@ lt{
         BH{"Bahreinas"}
         BI{"Burundis"}
         BJ{"Beninas"}
-        BL{"Švento Baltramiejaus sala"}
+        BL{"Sen Bartelemi"}
         BM{"Bermuda"}
         BN{"Brunėjus"}
         BO{"Bolivija"}
+        BQ{"Karibų Nyderlandai"}
         BR{"Brazilija"}
         BS{"Bahamos"}
         BT{"Butanas"}
-        BV{"Bouvet sala"}
+        BV{"Buvė Sala"}
         BW{"Botsvana"}
         BY{"Baltarusija"}
         BZ{"Belizas"}
         CA{"Kanada"}
-        CC{"Kokosų salos"}
-        CD{"Kongo Demokratinė Respublika"}
+        CC{"Kokosų (Kilingo) Salos"}
+        CD{"Kongas-Kinšasa"}
         CF{"Centrinės Afrikos Respublika"}
-        CG{"Kongas"}
+        CG{"Kongas-Brazavilis"}
         CH{"Šveicarija"}
         CI{"Dramblio Kaulo Krantas"}
-        CK{"Kuko salos"}
+        CK{"Kuko Salos"}
         CL{"Čilė"}
         CM{"Kamerūnas"}
         CN{"Kinija"}
         CO{"Kolumbija"}
-        CP{"Clipperton sala"}
+        CP{"Klipertono sala"}
         CR{"Kosta Rika"}
-        CS{"Serbija ir Juodkalnija"}
         CU{"Kuba"}
         CV{"Žaliasis Kyšulys"}
-        CX{"Kalėdų sala"}
+        CW{"Kiurasao"}
+        CX{"Kalėdų Sala"}
         CY{"Kipras"}
         CZ{"Čekija"}
         DE{"Vokietija"}
-        DG{"Diego Garcia"}
+        DG{"Diego Garsija"}
         DJ{"Džibutis"}
         DK{"Danija"}
         DM{"Dominika"}
         DO{"Dominikos Respublika"}
         DZ{"Alžyras"}
-        EA{"Ceuta ir Melilla"}
+        EA{"Seuta ir Melila"}
         EC{"Ekvadoras"}
         EE{"Estija"}
         EG{"Egiptas"}
@@ -117,22 +118,22 @@ lt{
         EU{"Europos Sąjunga"}
         FI{"Suomija"}
         FJ{"Fidžis"}
-        FK{"Falklando salos"}
+        FK{"Folklando Salos"}
         FM{"Mikronezija"}
-        FO{"Farerų salos"}
+        FO{"Farerų Salos"}
         FR{"Prancūzija"}
         GA{"Gabonas"}
         GB{"Didžioji Britanija"}
         GD{"Grenada"}
         GE{"Gruzija"}
         GF{"Prancūzijos Gviana"}
-        GG{"Guernsis"}
+        GG{"Gernsis"}
         GH{"Gana"}
         GI{"Gibraltaras"}
         GL{"Grenlandija"}
         GM{"Gambija"}
         GN{"Gvinėja"}
-        GP{"Gvadelupė"}
+        GP{"Gvadelupa"}
         GQ{"Pusiaujo Gvinėja"}
         GR{"Graikija"}
         GS{"Pietų Džordžija ir Pietų Sandvičo salos"}
@@ -140,8 +141,8 @@ lt{
         GU{"Guamas"}
         GW{"Bisau Gvinėja"}
         GY{"Gajana"}
-        HK{"Kinijos S. A. R. Honkongas"}
-        HM{"Heardo ir McDonaldo Salų Sritis"}
+        HK{"Ypatingasis Administracinis Kinijos Regionas Honkongas"}
+        HM{"Herdo ir Makdonaldo Salos"}
         HN{"Hondūras"}
         HR{"Kroatija"}
         HT{"Haitis"}
@@ -150,9 +151,9 @@ lt{
         ID{"Indonezija"}
         IE{"Airija"}
         IL{"Izraelis"}
-        IM{"Meino sala"}
+        IM{"Meno Sala"}
         IN{"Indija"}
-        IO{"Indijos vandenyno britų sritis"}
+        IO{"Indijos Vandenyno Britų Sritis"}
         IQ{"Irakas"}
         IR{"Iranas"}
         IS{"Islandija"}
@@ -162,7 +163,7 @@ lt{
         JO{"Jordanija"}
         JP{"Japonija"}
         KE{"Kenija"}
-        KG{"Kirgiztanas"}
+        KG{"Kirgizija"}
         KH{"Kambodža"}
         KI{"Kiribatis"}
         KM{"Komorai"}
@@ -170,7 +171,7 @@ lt{
         KP{"Šiaurės Korėja"}
         KR{"Pietų Korėja"}
         KW{"Kuveitas"}
-        KY{"Kaimanų salos"}
+        KY{"Kaimanų Salos"}
         KZ{"Kazachstanas"}
         LA{"Laosas"}
         LB{"Libanas"}
@@ -187,21 +188,21 @@ lt{
         MC{"Monakas"}
         MD{"Moldova"}
         ME{"Juodkalnija"}
-        MF{"Saint-Martin"}
+        MF{"Sen Martenas"}
         MG{"Madagaskaras"}
         MH{"Maršalo Salos"}
         MK{"Makedonija"}
         ML{"Malis"}
-        MM{"Mianmaras"}
+        MM{"Mianmaras (Birma)"}
         MN{"Mongolija"}
-        MO{"Macao"}
-        MP{"Marianos šiaurinės salos"}
+        MO{"Ypatingasis Administracinis Kinijos Regionas Makao"}
+        MP{"Marianos Šiaurinės Salos"}
         MQ{"Martinika"}
         MR{"Mauritanija"}
-        MS{"Montserratas"}
+        MS{"Montseratas"}
         MT{"Malta"}
         MU{"Mauricijus"}
-        MV{"Maldivai"}
+        MV{"Maldyvai"}
         MW{"Malavis"}
         MX{"Meksika"}
         MY{"Malaizija"}
@@ -216,7 +217,7 @@ lt{
         NO{"Norvegija"}
         NP{"Nepalas"}
         NR{"Nauru"}
-        NU{"Niue"}
+        NU{"Niujė"}
         NZ{"Naujoji Zelandija"}
         OM{"Omanas"}
         PA{"Panama"}
@@ -235,37 +236,39 @@ lt{
         PY{"Paragvajus"}
         QA{"Kataras"}
         QO{"Nuošali Okeanija"}
-        RE{"Reunionas"}
+        RE{"Reunjonas"}
         RO{"Rumunija"}
         RS{"Serbija"}
-        RU{"Rusijos Federacija"}
+        RU{"Rusija"}
         RW{"Ruanda"}
         SA{"Saudo Arabija"}
-        SB{"Saliamono salos"}
+        SB{"Saliamono Salos"}
         SC{"Seišeliai"}
         SD{"Sudanas"}
         SE{"Švedija"}
         SG{"Singapūras"}
-        SH{"Šventoji Elena"}
+        SH{"Šv. Elenos Sala"}
         SI{"Slovėnija"}
-        SJ{"Svalbardo ir Jan Majen salos"}
+        SJ{"Svalbardas ir Janas Majenas"}
         SK{"Slovakija"}
         SL{"Siera Leonė"}
         SM{"San Marinas"}
         SN{"Senegalas"}
         SO{"Somalis"}
         SR{"Surinamas"}
-        ST{"San Tomė ir Principė"}
+        SS{"Pietų Sudanas"}
+        ST{"San Tomė ir Prinsipė"}
         SV{"Salvadoras"}
+        SX{"Sint Martenas"}
         SY{"Sirija"}
-        SZ{"Svazilendas"}
-        TA{"Tristan da Cunha"}
-        TC{"Turkso ir Caicoso salos"}
+        SZ{"Svazilandas"}
+        TA{"Tristanas da Kunja"}
+        TC{"Terkso ir Kaikoso Salos"}
         TD{"Čadas"}
         TF{"Prancūzijos Pietų sritys"}
         TG{"Togas"}
         TH{"Tailandas"}
-        TJ{"Tadžikistanas"}
+        TJ{"Tadžikija"}
         TK{"Tokelau"}
         TL{"Rytų Timoras"}
         TM{"Turkmėnistanas"}
@@ -278,25 +281,33 @@ lt{
         TZ{"Tanzanija"}
         UA{"Ukraina"}
         UG{"Uganda"}
-        UM{"Jungtinių Valstijų mažosios aplinkinės salos"}
+        UM{"Jungtinių Valstijų Mažosios Tolimosios Salos"}
         US{"Jungtinės Valstijos"}
         UY{"Urugvajus"}
         UZ{"Uzbekistanas"}
-        VA{"Vatikanas"}
+        VA{"Vatikano Miesto Valstybė"}
         VC{"Šventasis Vincentas ir Grenadinai"}
         VE{"Venesuela"}
-        VG{"Didžiosios Britanijos Mergelių salos"}
-        VI{"Mergelių salos (JAV)"}
+        VG{"Didžiosios Britanijos Mergelių Salos"}
+        VI{"Jungtinių Valstijų Mergelių Salos"}
         VN{"Vietnamas"}
         VU{"Vanuatu"}
-        WF{"Wallisas ir Futuna"}
+        WF{"Volisas ir Futuna"}
         WS{"Samoa"}
+        XK{"Kosovas"}
         YE{"Jemenas"}
-        YT{"Mayotte’as"}
+        YT{"Majotas"}
         ZA{"Pietų Afrika"}
         ZM{"Zambija"}
         ZW{"Zimbabvė"}
         ZZ{"nežinoma sritis"}
     }
-    Version{"2.0.65.46"}
+    CountriesShort{
+        GB{"Didžioji Britanija"}
+        HK{"Honkongas"}
+        MO{"Makao"}
+        PS{"Palestina"}
+        US{"JAV"}
+    }
+    Version{"2.0.93.19"}
 }

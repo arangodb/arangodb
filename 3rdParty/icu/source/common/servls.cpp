@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * Copyright (C) 2001-2011, International Business Machines Corporation and    *
+ * Copyright (C) 2001-2012, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  *
@@ -25,7 +25,7 @@
 
 U_NAMESPACE_BEGIN
 
-static UMTX llock;
+static UMutex llock = U_MUTEX_INITIALIZER;
 ICULocaleService::ICULocaleService()
   : fallbackLocale(Locale::getDefault())
 {

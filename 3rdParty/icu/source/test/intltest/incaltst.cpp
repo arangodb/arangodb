@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation
+ * Copyright (c) 1997-2012, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -730,8 +730,106 @@ void IntlCalendarTest::TestPersian() {
             " is not within sampled times [" + timeA + " to " + timeB + "]!");
     }
     // end sanity check
-// quasiGregorianTest(*cal,Locale("ja_JP"),data);
+
+    // Test various dates to be sure of validity
+    int32_t data[] = { 
+        1925, 4, 24, 1304, 2, 4,
+        2011, 1, 11, 1389, 10, 21,
+        1986, 2, 25, 1364, 12, 6, 
+        1934, 3, 14, 1312, 12, 23,
+
+        2090, 3, 19, 1468, 12, 29,
+        2007, 2, 22, 1385, 12, 3,
+        1969, 12, 31, 1348, 10, 10,
+        1945, 11, 12, 1324, 8, 21,
+        1925, 3, 31, 1304, 1, 11,
+
+        1996, 3, 19, 1374, 12, 29,
+        1996, 3, 20, 1375, 1, 1,
+        1997, 3, 20, 1375, 12, 30,
+        1997, 3, 21, 1376, 1, 1,
+
+        2008, 3, 19, 1386, 12, 29,
+        2008, 3, 20, 1387, 1, 1,
+        2004, 3, 19, 1382, 12, 29,
+        2004, 3, 20, 1383, 1, 1,
+
+        2006, 3, 20, 1384, 12, 29,
+        2006, 3, 21, 1385, 1, 1,
+
+        2005, 4, 20, 1384, 1, 31,
+        2005, 4, 21, 1384, 2, 1,
+        2005, 5, 21, 1384, 2, 31,
+        2005, 5, 22, 1384, 3, 1,
+        2005, 6, 21, 1384, 3, 31,
+        2005, 6, 22, 1384, 4, 1,
+        2005, 7, 22, 1384, 4, 31,
+        2005, 7, 23, 1384, 5, 1,
+        2005, 8, 22, 1384, 5, 31,
+        2005, 8, 23, 1384, 6, 1,
+        2005, 9, 22, 1384, 6, 31,
+        2005, 9, 23, 1384, 7, 1,
+        2005, 10, 22, 1384, 7, 30,
+        2005, 10, 23, 1384, 8, 1,
+        2005, 11, 21, 1384, 8, 30,
+        2005, 11, 22, 1384, 9, 1,
+        2005, 12, 21, 1384, 9, 30,
+        2005, 12, 22, 1384, 10, 1,
+        2006, 1, 20, 1384, 10, 30,
+        2006, 1, 21, 1384, 11, 1,
+        2006, 2, 19, 1384, 11, 30,
+        2006, 2, 20, 1384, 12, 1,
+        2006, 3, 20, 1384, 12, 29,
+        2006, 3, 21, 1385, 1, 1,
+
+        // The 2820-year cycle arithmetical algorithm would fail this one.
+        2025, 3, 21, 1404, 1, 1,
+        
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    };
+
+    Calendar *grego = Calendar::createInstance("fa_IR@calendar=gregorian", status);
+    for (int32_t i=0; data[i]!=-1; ) {
+        int32_t gregYear = data[i++];
+        int32_t gregMonth = data[i++]-1;
+        int32_t gregDay = data[i++];
+        int32_t persYear = data[i++];
+        int32_t persMonth = data[i++]-1;
+        int32_t persDay = data[i++];
+        
+        // Test conversion from Persian dates
+        grego->clear();
+        grego->set(gregYear, gregMonth, gregDay);
+
+        cal->clear();
+        cal->set(persYear, persMonth, persDay);
+
+        UDate persTime = cal->getTime(status);
+        UDate gregTime = grego->getTime(status);
+
+        if (persTime != gregTime) {
+          errln(UnicodeString("Expected ") + gregTime + " but got " + persTime);
+        }
+
+        // Test conversion to Persian dates
+        cal->clear();
+        cal->setTime(gregTime, status);
+
+        int32_t computedYear = cal->get(UCAL_YEAR, status);
+        int32_t computedMonth = cal->get(UCAL_MONTH, status);
+        int32_t computedDay = cal->get(UCAL_DATE, status);
+
+        if ((persYear != computedYear) ||
+            (persMonth != computedMonth) ||
+            (persDay != computedDay)) {
+          errln(UnicodeString("Expected ") + persYear + "/" + (persMonth+1) + "/" + persDay +
+                " but got " +  computedYear + "/" + (computedMonth+1) + "/" + computedDay);
+        }
+
+    }
+
     delete cal;
+    delete grego;
 }
 
 void IntlCalendarTest::TestPersianFormat() {

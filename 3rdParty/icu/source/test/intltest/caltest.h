@@ -1,5 +1,5 @@
 /***********************************************************************
- * Copyright (c) 1997-2012, International Business Machines Corporation
+ * Copyright (c) 1997-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -219,6 +219,8 @@ public: // package
     void Test6703(void);
     void Test3785(void);
     void Test1624(void);
+    void TestIslamicUmAlQura(void);
+    void TestIslamicTabularDates(void);
 
     /**
      * Test the time stamp array recalculation during heavy Calendar usage
@@ -237,6 +239,13 @@ public: // package
     void TestSkippedWallTime(void);
 
     void TestCloneLocale(void);
+
+    /*
+     * utility methods for TestIslamicUmAlQura
+     */
+    void setAndTestCalendar(Calendar* cal, int32_t initMonth, int32_t initDay, int32_t initYear, UErrorCode& status);
+    void setAndTestWholeYear(Calendar* cal, int32_t startYear, UErrorCode& status);
+
 };
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

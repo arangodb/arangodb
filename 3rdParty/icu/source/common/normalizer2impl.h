@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2011, International Business Machines
+*   Copyright (C) 2009-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -215,8 +215,8 @@ private:
 
 class U_COMMON_API Normalizer2Impl : public UMemory {
 public:
-    Normalizer2Impl() : memory(NULL), normTrie(NULL) {
-        canonIterDataSingleton.fInstance=NULL;
+    Normalizer2Impl() : memory(NULL), normTrie(NULL), fCanonIterData(NULL) {
+        fCanonIterDataInitOnce.reset();
     }
     ~Normalizer2Impl();
 
@@ -586,7 +586,9 @@ private:
     const uint8_t *smallFCD;  // [0x100] one bit per 32 BMP code points, set if any FCD!=0
     uint8_t tccc180[0x180];  // tccc values for U+0000..U+017F
 
-    SimpleSingleton canonIterDataSingleton;
+  public:           // CanonIterData is public to allow access from C callback functions.
+    UInitOnce       fCanonIterDataInitOnce;
+    CanonIterData  *fCanonIterData;
 };
 
 // bits in canonIterData

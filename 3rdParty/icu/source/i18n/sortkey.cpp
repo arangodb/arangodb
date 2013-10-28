@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
-* Copyright (C) 1996-2011, International Business Machines Corporation and    *
-* others. All Rights Reserved.                                                *
+* Copyright (C) 1996-2012, International Business Machines Corporation and
+* others. All Rights Reserved.
 *******************************************************************************
 */
 //===============================================================================
@@ -38,77 +38,80 @@
 
 U_NAMESPACE_BEGIN
 
-// A hash code of kInvalidHashCode indicates that the has code needs
+// A hash code of kInvalidHashCode indicates that the hash code needs
 // to be computed. A hash code of kEmptyHashCode is used for empty keys
 // and for any key whose computed hash code is kInvalidHashCode.
-#define kInvalidHashCode ((int32_t)0)
-#define kEmptyHashCode ((int32_t)1)
+static const int32_t kInvalidHashCode = 0;
+static const int32_t kEmptyHashCode = 1;
+// The "bogus hash code" replaces a separate fBogus flag.
+static const int32_t kBogusHashCode = 2;
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(CollationKey)
 
 CollationKey::CollationKey()
-    : UObject(), fBogus(FALSE), fCount(0), fCapacity(0),
-      fHashCode(kEmptyHashCode), fBytes(NULL)
+    : UObject(), fFlagAndLength(0),
+      fHashCode(kEmptyHashCode)
 {
 }
 
 // Create a collation key from a bit array.
 CollationKey::CollationKey(const uint8_t* newValues, int32_t count)
-    : UObject(), fBogus(FALSE), fCount(count), fCapacity(count),
+    : UObject(), fFlagAndLength(count),
       fHashCode(kInvalidHashCode)
 {
-    fBytes = (uint8_t *)uprv_malloc(count);
-
-    if (fBytes == NULL)
-    {
+    if (count < 0 || (newValues == NULL && count != 0) ||
+            (count > getCapacity() && reallocate(count, 0) == NULL)) {
         setToBogus();
         return;
     }
 
-    uprv_memcpy(fBytes, newValues, fCount);
+    if (count > 0) {
+        uprv_memcpy(getBytes(), newValues, count);
+    }
 }
 
 CollationKey::CollationKey(const CollationKey& other)
-: UObject(other), fBogus(FALSE), fCount(other.fCount), fCapacity(other.fCapacity),
-  fHashCode(other.fHashCode), fBytes(NULL)
+    : UObject(other), fFlagAndLength(other.getLength()),
+      fHashCode(other.fHashCode)
 {
-    if (other.fBogus)
+    if (other.isBogus())
     {
         setToBogus();
         return;
     }
 
-    fBytes = (uint8_t *)uprv_malloc(fCapacity);
-
-    if (fBytes == NULL)
-    {
+    int32_t length = fFlagAndLength;
+    if (length > getCapacity() && reallocate(length, 0) == NULL) {
         setToBogus();
         return;
     }
 
-    uprv_memcpy(fBytes, other.fBytes, other.fCount);
-    if(fCapacity>fCount) {
-        uprv_memset(fBytes+fCount, 0, fCapacity-fCount);
+    if (length > 0) {
+        uprv_memcpy(getBytes(), other.getBytes(), length);
     }
 }
 
 CollationKey::~CollationKey()
 {
-        uprv_free(fBytes);
+    if(fFlagAndLength < 0) { uprv_free(fUnion.fFields.fBytes); }
 }
 
-void CollationKey::adopt(uint8_t *values, int32_t capacity, int32_t count) {
-    if(fBytes != NULL) {
-        uprv_free(fBytes);
+uint8_t *CollationKey::reallocate(int32_t newCapacity, int32_t length) {
+    uint8_t *newBytes = static_cast<uint8_t *>(uprv_malloc(newCapacity));
+    if(newBytes == NULL) { return NULL; }
+    if(length > 0) {
+        uprv_memcpy(newBytes, getBytes(), length);
     }
-    fBytes = values;
-    fCapacity = capacity;
-    setLength(count);
+    if(fFlagAndLength < 0) { uprv_free(fUnion.fFields.fBytes); }
+    fUnion.fFields.fBytes = newBytes;
+    fUnion.fFields.fCapacity = newCapacity;
+    fFlagAndLength |= 0x80000000;
+    return newBytes;
 }
 
 void CollationKey::setLength(int32_t newLength) {
-    fBogus = FALSE;
-    fCount = newLength;
+    // U_ASSERT(newLength >= 0 && newLength <= getCapacity());
+    fFlagAndLength = (fFlagAndLength & 0x80000000) | newLength;
     fHashCode = kInvalidHashCode;
 }
 
@@ -116,8 +119,7 @@ void CollationKey::setLength(int32_t newLength) {
 CollationKey&
 CollationKey::reset()
 {
-    fCount = 0;
-    fBogus = FALSE;
+    fFlagAndLength &= 0x80000000;
     fHashCode = kEmptyHashCode;
 
     return *this;
@@ -127,12 +129,8 @@ CollationKey::reset()
 CollationKey&
 CollationKey::setToBogus()
 {
-    uprv_free(fBytes);
-    fBytes = NULL;
-
-    fCapacity = 0;
-    fCount = 0;
-    fHashCode = kInvalidHashCode;
+    fFlagAndLength &= 0x80000000;
+    fHashCode = kBogusHashCode;
 
     return *this;
 }
@@ -140,9 +138,9 @@ CollationKey::setToBogus()
 UBool
 CollationKey::operator==(const CollationKey& source) const
 {
-    return (this->fCount == source.fCount &&
-            (this->fBytes == source.fBytes ||
-             uprv_memcmp(this->fBytes, source.fBytes, this->fCount) == 0));
+    return getLength() == source.getLength() &&
+            (this == &source ||
+             uprv_memcmp(getBytes(), source.getBytes(), getLength()) == 0);
 }
 
 const CollationKey&
@@ -155,106 +153,26 @@ CollationKey::operator=(const CollationKey& other)
             return setToBogus();
         }
 
-        if (other.fBytes != NULL)
-        {
-            ensureCapacity(other.fCount);
-
-            if (isBogus())
-            {
-                return *this;
-            }
-
-            fHashCode = other.fHashCode;
-            uprv_memcpy(fBytes, other.fBytes, fCount);
+        int32_t length = other.getLength();
+        if (length > getCapacity() && reallocate(length, 0) == NULL) {
+            return setToBogus();
         }
-        else
-        {
-            fCount = 0;
-            fBogus = FALSE;
-            fHashCode = kEmptyHashCode;
+        if (length > 0) {
+            uprv_memcpy(getBytes(), other.getBytes(), length);
         }
+        fFlagAndLength = (fFlagAndLength & 0x80000000) | length;
+        fHashCode = other.fHashCode;
     }
 
     return *this;
 }
 
 // Bitwise comparison for the collation keys.
-// NOTE: this is somewhat messy 'cause we can't count
-// on memcmp returning the exact values which match
-// Collator::EComparisonResult
 Collator::EComparisonResult
 CollationKey::compareTo(const CollationKey& target) const
 {
-    uint8_t *src = this->fBytes;
-    uint8_t *tgt = target.fBytes;
-
-    // are we comparing the same string
-    if (src == tgt)
-        return  Collator::EQUAL;
-
-        /*
-        int count = (this->fCount < target.fCount) ? this->fCount : target.fCount;
-        if (count == 0)
-        {
-        // If count is 0, at least one of the keys is empty.
-        // An empty key is always LESS than a non-empty one
-        // and EQUAL to another empty
-        if (this->fCount < target.fCount)
-        {
-        return Collator::LESS;
-        }
-
-          if (this->fCount > target.fCount)
-          {
-          return Collator::GREATER;
-          }
-          return Collator::EQUAL;
-          }
-    */
-
-    int                         minLength;
-    Collator::EComparisonResult result;
-
-    // are we comparing different lengths?
-    if (this->fCount != target.fCount) {
-        if (this->fCount < target.fCount) {
-            minLength = this->fCount;
-            result    =  Collator::LESS;
-        }
-        else {
-            minLength = target.fCount;
-            result    =  Collator::GREATER;
-        }
-    }
-    else {
-        minLength = target.fCount;
-        result    =  Collator::EQUAL;
-    }
-
-    if (minLength > 0) {
-        int diff = uprv_memcmp(src, tgt, minLength);
-        if (diff > 0) {
-            return Collator::GREATER;
-        }
-        else
-            if (diff < 0) {
-                return Collator::LESS;
-            }
-    }
-
-    return result;
-    /*
-    if (result < 0)
-    {
-    return Collator::LESS;
-    }
-
-      if (result > 0)
-      {
-      return Collator::GREATER;
-      }
-      return Collator::EQUAL;
-    */
+    UErrorCode errorCode = U_ZERO_ERROR;
+    return static_cast<Collator::EComparisonResult>(compareTo(target, errorCode));
 }
 
 // Bitwise comparison for the collation keys.
@@ -262,30 +180,25 @@ UCollationResult
 CollationKey::compareTo(const CollationKey& target, UErrorCode &status) const
 {
   if(U_SUCCESS(status)) {
-    uint8_t *src = this->fBytes;
-    uint8_t *tgt = target.fBytes;
+    const uint8_t *src = getBytes();
+    const uint8_t *tgt = target.getBytes();
 
     // are we comparing the same string
     if (src == tgt)
         return  UCOL_EQUAL;
 
-    int                         minLength;
     UCollationResult result;
 
     // are we comparing different lengths?
-    if (this->fCount != target.fCount) {
-        if (this->fCount < target.fCount) {
-            minLength = this->fCount;
-            result    =  UCOL_LESS;
-        }
-        else {
-            minLength = target.fCount;
-            result    =  UCOL_GREATER;
-        }
-    }
-    else {
-        minLength = target.fCount;
-        result    =  UCOL_EQUAL;
+    int32_t minLength = getLength();
+    int32_t targetLength = target.getLength();
+    if (minLength < targetLength) {
+        result = UCOL_LESS;
+    } else if (minLength == targetLength) {
+        result = UCOL_EQUAL;
+    } else {
+        minLength = targetLength;
+        result = UCOL_GREATER;
     }
 
     if (minLength > 0) {
@@ -305,31 +218,6 @@ CollationKey::compareTo(const CollationKey& target, UErrorCode &status) const
   }
 }
 
-CollationKey&
-CollationKey::ensureCapacity(int32_t newSize)
-{
-    if (fCapacity < newSize)
-    {
-        uprv_free(fBytes);
-
-        fBytes = (uint8_t *)uprv_malloc(newSize);
-
-        if (fBytes == NULL)
-        {
-            return setToBogus();
-        }
-
-        uprv_memset(fBytes, 0, fCapacity);
-        fCapacity = newSize;
-    }
-
-    fBogus = FALSE;
-    fCount = newSize;
-    fHashCode = kInvalidHashCode;
-
-    return *this;
-}
-
 #ifdef U_USE_COLLATION_KEY_DEPRECATES
 // Create a copy of the byte array.
 uint8_t*
@@ -344,12 +232,29 @@ CollationKey::toByteArray(int32_t& count) const
     else
     {
         count = fCount;
-        uprv_memcpy(result, fBytes, fCount);
+        if (count > 0) {
+            uprv_memcpy(result, fBytes, fCount);
+        }
     }
 
     return result;
 }
 #endif
+
+static int32_t
+computeHashCode(const uint8_t *key, int32_t  length) {
+    const char *s = reinterpret_cast<const char *>(key);
+    int32_t hash;
+    if (s == NULL || length == 0) {
+        hash = kEmptyHashCode;
+    } else {
+        hash = ustr_hashCharsN(s, length);
+        if (hash == kInvalidHashCode || hash == kBogusHashCode) {
+            hash = kEmptyHashCode;
+        }
+    }
+    return hash;
+}
 
 int32_t
 CollationKey::hashCode() const
@@ -362,33 +267,7 @@ CollationKey::hashCode() const
 
     if (fHashCode == kInvalidHashCode)
     {
-        const char *s = reinterpret_cast<const char *>(fBytes);
-        ((CollationKey *)this)->fHashCode = s == NULL ? 0 : ustr_hashCharsN(s, fCount);
-#if 0
-        // We compute the hash by iterating sparsely over 64 (at most) characters
-        // spaced evenly through the string.  For each character, we multiply the
-        // previous hash value by a prime number and add the new character in,
-        // in the manner of a additive linear congruential random number generator,
-        // thus producing a pseudorandom deterministic value which should be well
-        // distributed over the output range. [LIU]
-        const uint8_t   *p = fBytes, *limit = fBytes + fCount;
-        int32_t         inc = (fCount >= 256) ? fCount/128 : 2; // inc = max(fSize/64, 1);
-        int32_t         hash = 0;
-
-        while (p < limit)
-        {
-            hash = ( hash * 37 ) + ((p[0] << 8) + p[1]);
-            p += inc;
-        }
-
-        // If we happened to get kInvalidHashCode, replace it with kEmptyHashCode
-        if (hash == kInvalidHashCode)
-        {
-            hash = kEmptyHashCode;
-        }
-
-        ((CollationKey *)this)->fHashCode = hash; // cast away const
-#endif
+        fHashCode = computeHashCode(getBytes(), getLength());
     }
 
     return fHashCode;
@@ -400,8 +279,7 @@ U_CAPI int32_t U_EXPORT2
 ucol_keyHashCode(const uint8_t *key, 
                        int32_t  length)
 {
-    icu::CollationKey newKey(key, length);
-    return newKey.hashCode();
+    return icu::computeHashCode(key, length);
 }
 
 #endif /* #if !UCONFIG_NO_COLLATION */

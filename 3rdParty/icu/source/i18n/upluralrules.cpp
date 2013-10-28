@@ -1,6 +1,6 @@
 /*
 *****************************************************************************************
-* Copyright (C) 2010-2011, International Business Machines
+* Copyright (C) 2010-2012, International Business Machines
 * Corporation and others. All Rights Reserved.
 *****************************************************************************************
 */
@@ -18,10 +18,15 @@ U_NAMESPACE_USE
 
 
 U_CAPI UPluralRules* U_EXPORT2
-uplrules_open(const char *locale,
-              UErrorCode *status)
+uplrules_open(const char *locale, UErrorCode *status)
 {
-    return (UPluralRules*)PluralRules::forLocale(Locale(locale), *status);
+    return uplrules_openForType(locale, UPLURAL_TYPE_CARDINAL, status);
+}
+
+U_CAPI UPluralRules* U_EXPORT2
+uplrules_openForType(const char *locale, UPluralType type, UErrorCode *status)
+{
+    return (UPluralRules*)PluralRules::forLocale(Locale(locale), type, *status);
 }
 
 U_CAPI void U_EXPORT2

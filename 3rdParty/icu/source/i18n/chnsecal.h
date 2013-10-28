@@ -1,6 +1,6 @@
 /*
  *****************************************************************************
- * Copyright (C) 2007-2008, International Business Machines Corporation
+ * Copyright (C) 2007-2013, International Business Machines Corporation
  * and others. All Rights Reserved.
  *****************************************************************************
  *
@@ -21,6 +21,7 @@
 #if !UCONFIG_NO_FORMATTING
 
 #include "unicode/calendar.h"
+#include "unicode/timezone.h"
 
 U_NAMESPACE_BEGIN
 
@@ -82,7 +83,7 @@ U_NAMESPACE_BEGIN
  * </ul>
  *
  * <p>
- * This class should not be subclassed.</p>
+ * This class should only be subclassed to implement variants of the Chinese lunar calendar.</p>
  * <p>
  * ChineseCalendar usually should be instantiated using 
  * {@link com.ibm.icu.util.Calendar#getInstance(ULocale)} passing in a <code>ULocale</code>
@@ -91,16 +92,16 @@ U_NAMESPACE_BEGIN
  * @see com.ibm.icu.text.ChineseDateFormat
  * @see com.ibm.icu.util.Calendar
  * @author Alan Liu
- * @stable ICU 2.8
+ * @internal
  */
-class ChineseCalendar : public Calendar {
+class U_I18N_API ChineseCalendar : public Calendar {
  public:
   //-------------------------------------------------------------------------
   // Constructors...
   //-------------------------------------------------------------------------
 
   /**
-   * Constructs an ChineseCalendar based on the current time in the default time zone
+   * Constructs a ChineseCalendar based on the current time in the default time zone
    * with the given locale.
    *
    * @param aLocale  The given locale.
@@ -110,6 +111,24 @@ class ChineseCalendar : public Calendar {
    */
   ChineseCalendar(const Locale& aLocale, UErrorCode &success);
 
+ protected:
+ 
+   /**
+   * Constructs a ChineseCalendar based on the current time in the default time zone
+   * with the given locale, using the specified epoch year and time zone for
+   * astronomical calculations.
+   *
+   * @param aLocale         The given locale.
+   * @param epochYear       The epoch year to use for calculation.
+   * @param zoneAstroCalc   The TimeZone to use for astronomical calculations. If null,
+   *                        will be set appropriately for Chinese calendar (UTC + 8:00).
+   * @param success         Indicates the status of ChineseCalendar object construction;
+   *                        if successful, will not be changed to an error value.
+   * @internal
+   */
+  ChineseCalendar(const Locale& aLocale, int32_t epochYear, const TimeZone* zoneAstroCalc, UErrorCode &success);
+
+ public:
   /**
    * Copy Constructor
    * @internal
@@ -132,6 +151,9 @@ class ChineseCalendar : public Calendar {
   //-------------------------------------------------------------------------
     
   UBool isLeapYear;
+  int32_t fEpochYear;   // Start year of this Chinese calendar instance.
+  const TimeZone* fZoneAstroCalc;   // Zone used for the astronomical calculation
+                                    // of this Chinese calendar instance.
 
   //----------------------------------------------------------------------
   // Calendar framework
@@ -145,25 +167,22 @@ class ChineseCalendar : public Calendar {
   virtual void handleComputeFields(int32_t julianDay, UErrorCode &status);
   virtual const UFieldResolutionTable* getFieldResolutionTable() const;
 
-
-
-public:
+ public:
   virtual void add(UCalendarDateFields field, int32_t amount, UErrorCode &status);
   virtual void add(EDateFields field, int32_t amount, UErrorCode &status);
   virtual void roll(UCalendarDateFields field, int32_t amount, UErrorCode &status);
   virtual void roll(EDateFields field, int32_t amount, UErrorCode &status);
 
-  
   //----------------------------------------------------------------------
   // Internal methods & astronomical calculations
   //----------------------------------------------------------------------
 
-private:
+ private:
 
   static const UFieldResolutionTable CHINESE_DATE_PRECEDENCE[];
 
-  static double daysToMillis(double days);
-  static double millisToDays(double millis);
+  double daysToMillis(double days) const;
+  double millisToDays(double millis) const;
   virtual int32_t winterSolstice(int32_t gyear) const;
   virtual int32_t newMoonNear(double days, UBool after) const;
   virtual int32_t synodicMonthsBetween(int32_t day1, int32_t day2) const;
@@ -174,7 +193,7 @@ private:
                  int32_t gmonth, UBool setAllFields);
   virtual int32_t newYear(int32_t gyear) const;
   virtual void offsetMonth(int32_t newMoon, int32_t dom, int32_t delta);
-
+  const TimeZone* getChineseCalZoneAstroCalc(void) const;
 
   // UObject stuff
  public: 
@@ -196,7 +215,7 @@ private:
    * @return   The class ID for all objects of this class.
    * @internal
    */
-  U_I18N_API static UClassID U_EXPORT2 getStaticClassID(void);
+  static UClassID U_EXPORT2 getStaticClassID(void);
 
   /**
    * return the calendar type, "chinese".
@@ -240,28 +259,6 @@ private:
   virtual int32_t defaultCenturyStartYear() const;
 
  private: // default century stuff.
-  /**
-   * The system maintains a static default century start date.  This is initialized
-   * the first time it is used.  Before then, it is set to SYSTEM_DEFAULT_CENTURY to
-   * indicate an uninitialized state.  Once the system default century date and year
-   * are set, they do not change.
-   */
-  static UDate         fgSystemDefaultCenturyStart;
-
-  /**
-   * See documentation for systemDefaultCenturyStart.
-   */
-  static int32_t          fgSystemDefaultCenturyStartYear;
-
-  /**
-   * Default value that indicates the defaultCenturyStartYear is unitialized
-   */
-  static const int32_t    fgSystemDefaultCenturyYear;
-
-  /**
-   * start of default century, as a date
-   */
-  static const UDate        fgSystemDefaultCentury;
 
   /**
    * Returns the beginning date of the 100-year window that dates 
@@ -275,13 +272,6 @@ private:
    */
   int32_t          internalGetDefaultCenturyStartYear(void) const;
 
-  /**
-   * Initializes the 100-year window that dates with 2-digit years
-   * are considered to fall within so that its start date is 80 years
-   * before the current time.
-   */
-  static void  initializeSystemDefaultCentury(void);
-
   ChineseCalendar(); // default constructor not implemented
 };
 
@@ -289,6 +279,3 @@ U_NAMESPACE_END
 
 #endif
 #endif
-
-
-

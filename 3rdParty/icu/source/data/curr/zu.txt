@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2012 International Business Machines
-// * Corporation and others.  All Rights Reserved.
-// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
-// * Source File:<path>/common/main/zu.xml
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zu.xml
 // *
 // ***************************************************************************
 /**
- *  ICU <specials> source: <path>/xml/main/zu.xml
+ * ICU <specials> source: <path>/common/main/zu.xml
  */
 zu{
     Currencies{
@@ -40,7 +40,7 @@ zu{
             "i-Argentina Peso",
         }
         AUD{
-            "AU$",
+            "A$",
             "i-Austrilian Dollar",
         }
         AWG{
@@ -403,6 +403,10 @@ zu{
             "MYR",
             "i-Malaysian Ringgit",
         }
+        MZN{
+            "MZN",
+            "I-Metical yase-Mozambicque",
+        }
         NAD{
             "NAD",
             "i-Namibian Dollar",
@@ -463,6 +467,10 @@ zu{
             "QAR",
             "i-Qatari Rial",
         }
+        RON{
+            "RON",
+            "I-Romanian Leu",
+        }
         RSD{
             "RSD",
             "i-Serbian Dinar",
@@ -514,6 +522,10 @@ zu{
         SRD{
             "SRD",
             "i-Surinamese Dollar",
+        }
+        SSP{
+            "SSP",
+            "Upondo waseNingizimu Sudan",
         }
         STD{
             "STD",
@@ -617,7 +629,7 @@ zu{
         }
         XXX{
             "XXX",
-            "Ikharensi engaziwa",
+            "Imali engaziwa",
         }
         YER{
             "YER",
@@ -629,8 +641,16 @@ zu{
         }
         ZMK{
             "ZMK",
+            "i-Zambian Kwacha (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
             "i-Zambian Kwacha",
         }
     }
-    Version{"2.0.65.46"}
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
 }
