@@ -1480,6 +1480,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
 
   if (! err.IsEmpty()) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
   
@@ -1492,6 +1493,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -8566,6 +8568,9 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
 
   // try to extract the collection name, key, and revision from the object passed
   if (! ExtractDocumentHandle(val, collectionName, key, rid)) {
+    if (key != 0) {
+      FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    }
     return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                             "<document-handle> must be a valid document-handle"));
   }
@@ -8578,6 +8583,9 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     // only a document key without collection name was passed
     if (collection == 0) {
       // we do not know the collection
+      if (key != 0) {
+        FREE_STRING(TRI_CORE_MEM_ZONE, key);
+      }
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "<document-handle> must be a document-handle"));
     }
@@ -8589,6 +8597,9 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     // check cross-collection requests
     if (collection != 0) {
       if (collectionName != resolver.getCollectionName(collection->_cid)) {
+        if (key != 0) {
+          FREE_STRING(TRI_CORE_MEM_ZONE, key);
+        }
         return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
                                                  "cannot execute cross collection query"));
       }
@@ -8602,6 +8613,9 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     const TRI_vocbase_col_t* col = resolver.getCollectionStruct(collectionName);
     if (col == 0) {
       // collection not found
+      if (key != 0) {
+        FREE_STRING(TRI_CORE_MEM_ZONE, key);
+      }
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                                "collection of <document-handle> is unknown"));
     }
