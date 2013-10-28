@@ -7,8 +7,6 @@ Upgrading to ArangoDB 1.4 {#Upgrading14}
 Upgrading {#Upgrading14Introduction}
 ====================================
 
-1.4 is currently beta, please do not use in production.
-
 Filesystem layout changes {#Upgrading14FileSystem}
 --------------------------------------------------
 
