@@ -7,6 +7,7 @@ Upgrading to ArangoDB 1.4 {#Upgrading14}
 Upgrading {#Upgrading14Introduction}
 ====================================
 
+<<<<<<< HEAD
 1.4 is currently beta, please do not use in production.
 
 Please read the following sections if you upgrade from a pre-1.4 version of ArangoDB
@@ -16,6 +17,8 @@ ArangoDB 1.4 comes with a few changes, some of which are not 100% compatible to
 ArangoDB 1.3. The incompatibilies are mainly due to the introduction of the multiple
 databases feature and to some changes inside Foxx.
 
+=======
+>>>>>>> 921f3f28023d1081ab32f4c2699a3870afd31b6e
 Filesystem layout changes {#Upgrading14FileSystem}
 --------------------------------------------------
 
