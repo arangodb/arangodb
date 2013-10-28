@@ -72,7 +72,7 @@ homebrew. However, in case you are not using homebrew, we provide a command-line
 app which contains all the executables.
 
 There is also a version available in the AppStore which comes with a nice
-graphically interface to start und stop the server.
+graphically interface to start and stop the server.
 
 Homebrew {#InstallingMacOSXHomebrew}
 ------------------------------------
