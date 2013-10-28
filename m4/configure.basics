@@ -82,7 +82,7 @@ dnl ----------------------------------------------------------------------------
 
 AC_DEFUN([TRI_TRY_CC_OPTION],
          [AC_MSG_CHECKING([$1 for $CC])
-          AS_IF([AC_TRY_COMMAND([${CC-cc} -Werror $1 -xc /dev/null -S -o /dev/null])],
+          AS_IF([AC_TRY_COMMAND([${CC} -Werror $1 -xc /dev/null -S -o /dev/null])],
                 AC_MSG_RESULT([yes])
                 [$2], 
                 AC_MSG_RESULT([no])
@@ -96,7 +96,7 @@ dnl ----------------------------------------------------------------------------
 
 AC_DEFUN([TRI_TRY_CXX_OPTION],
          [AC_MSG_CHECKING([$1] for $CXX)
-          AS_IF([AC_TRY_COMMAND([${CXX-c++} -Werror $1 -xc++ /dev/null -S -o /dev/null])],
+          AS_IF([AC_TRY_COMMAND([${CXX} -Werror $1 -xc++ /dev/null -S -o /dev/null])],
                 AC_MSG_RESULT([yes])
                 [$2], 
                 AC_MSG_RESULT([no])
@@ -122,8 +122,8 @@ case $target in
     ;;
 
   *) 
-    list_cc="[gcc cc]"
-    list_cxx="[g++ cxx]"
+    list_cc="[${CC} gcc clang cc]"
+    list_cxx="[${CXX} g++ clang++ cxx]"
 
     ;;
 esac
@@ -165,6 +165,11 @@ if test x$GCC == xyes;  then
 
   TRI_TRY_CXX_OPTION([-Wstrict-null-sentinel],
                      [WALLCXX="${WALLCXX} -Wstrict-null-sentinel"])
+  
+  # suppress warnings about unused compiler options. 
+  # this is useful for clang as it complains about -std=... in linking 
+  TRI_TRY_CXX_OPTION([-Qunused-arguments],
+                     [WALLCXX="${WALLCXX} -Qunused-arguments"])
 
   # try to select the correct C standard: gnu90 is nice, because it warns about constructs
   # the Visual Studio Compiler does not like
