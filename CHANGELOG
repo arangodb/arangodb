@@ -1,10 +1,14 @@
 v1.4.0-XXXXX (2013-XX-XX)
 -------------------------
 
-* issue #643: Some minor corrections and a link to "Downloads" by @frankmayer
+* fixed issue #643: Some minor corrections and a link to "Downloads" by @frankmayer
+
+* started issue #642: Completion of error handling
 
 * fixed issue #639: compiling v1.4 on maverick produces warnings on 
   -Wstrict-null-sentinel 
+
+* fixed issue #621: Standard Config needs to be fixed
 
 * added function to manage indexes (web interface)
 
