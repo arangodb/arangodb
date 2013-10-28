@@ -280,7 +280,8 @@ var documentsView = Backbone.View.extend({
 
     var num = ++this.filterId;
     $('#filterHeader').append(' <div class="queryline querylineAdd">'+
-                              '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
+                              '<input id="attribute_name' + num + 
+                              '" type="text" placeholder="Attribute name">'+
                               '<select name="operator" id="operator' + num + '">'+
                               '    <option value="==">==</option>'+
                               '    <option value="!=">!=</option>'+
@@ -289,7 +290,8 @@ var documentsView = Backbone.View.extend({
                               '    <option value="&gt;=">&gt;=</option>'+
                               '    <option value="&gt;">&gt;</option>'+
                               '</select>'+
-                              '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" ' + 
+                              '<input id="attribute_value' + num + 
+                              '" type="text" placeholder="Attribute value" ' + 
                               'class="filterValue">'+
                               ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
                               '<i class="icon icon-minus icon-white"></i></a>'+
@@ -751,7 +753,6 @@ var documentsView = Backbone.View.extend({
       self.resetIndexForms();
     }
     else {
-      console.log(result);
       if (result.responseText) {
         var message = JSON.parse(result.responseText);
         arangoHelper.arangoNotification(message.errorMessage);
@@ -764,7 +765,13 @@ var documentsView = Backbone.View.extend({
 
   prepDeleteIndex: function (e) {
     this.lastTarget = e;
-    this.lastId = $(this.lastTarget.currentTarget).parent().parent().first().children().first().text();
+    this.lastId = $(this.lastTarget.currentTarget).
+                  parent().
+                  parent().
+                  first().
+                  children().
+                  first().
+                  text();
     $("#indexDeleteModal").modal('show');
   },
   deleteIndex: function () {
