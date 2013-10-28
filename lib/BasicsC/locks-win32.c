@@ -46,20 +46,28 @@
 /// @brief initialises a new mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMutex (TRI_mutex_t* mutex) {
+int TRI_InitMutex (TRI_mutex_t* mutex) {
   mutex->_mutex = CreateMutex(NULL, FALSE, NULL);
 
   if (mutex->_mutex == NULL) {
     LOG_FATAL_AND_EXIT("cannot create the mutex");
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyMutex (TRI_mutex_t* mutex) {
-  CloseHandle(mutex->_mutex);
+int TRI_DestroyMutex (TRI_mutex_t* mutex) {
+  if (CloseHandle(mutex->_mutex) == 0) {
+    DWORD result = GetLastError();
+      
+    LOG_FATAL_AND_EXIT("locks-win32.c:TRI_DestroyMutex:could not destroy the mutex -->%d",result);
+  }
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +91,6 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
   DWORD result = WaitForSingleObject(mutex->_mutex, INFINITE);
 
   switch (result) {
-
     case WAIT_ABANDONED: {
       LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_ABANDONED");
     }
@@ -101,7 +108,6 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
       result = GetLastError();
       LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
     }
-
   }
 
 }

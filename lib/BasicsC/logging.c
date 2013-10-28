@@ -1956,6 +1956,7 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
     TRI_SignalCondition(&LogCondition);
     TRI_UnlockCondition(&LogCondition);
 
+    // ignore all errors here as we cannot log them anywhere...
     TRI_JoinThread(&LoggingThread);
     TRI_DestroyMutex(&LogMessageQueueLock);
     TRI_DestroyVector(&LogMessageQueue);

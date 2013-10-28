@@ -197,7 +197,7 @@ bool TRI_StartThread (TRI_thread_t* thread,
 /// @brief trys to stops a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_StopThread (TRI_thread_t* thread) {
+int TRI_StopThread (TRI_thread_t* thread) {
   pthread_cancel(*thread);
 }
 
@@ -205,15 +205,15 @@ void TRI_StopThread (TRI_thread_t* thread) {
 /// @brief detachs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DetachThread (TRI_thread_t* thread) {
-  pthread_detach(*thread);
+int TRI_DetachThread (TRI_thread_t* thread) {
+  return pthread_detach(*thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_JoinThread (TRI_thread_t* thread) {
+int TRI_JoinThread (TRI_thread_t* thread) {
   pthread_join(*thread, 0);
 }
 

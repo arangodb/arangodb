@@ -828,10 +828,17 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
    
       if (vocbase != 0) {
         vocbase->_state = 2;
-        TRI_JoinThread(&vocbase->_synchroniser);
-        TRI_JoinThread(&vocbase->_compactor);
+
+        int res = TRI_ERROR_NO_ERROR;
+        
+        res |= TRI_JoinThread(&vocbase->_synchroniser);
+        res |= TRI_JoinThread(&vocbase->_compactor);
         vocbase->_state = 3;
-        TRI_JoinThread(&vocbase->_cleanup);
+        res |= TRI_JoinThread(&vocbase->_cleanup);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
+        }
       }
     }
     
