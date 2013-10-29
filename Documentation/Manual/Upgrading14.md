@@ -7,14 +7,63 @@ Upgrading to ArangoDB 1.4 {#Upgrading14}
 Upgrading {#Upgrading14Introduction}
 ====================================
 
-1.4 is currently beta, please do not use in production.
-
 Please read the following sections if you upgrade from a pre-1.4 version of ArangoDB
 to ArangoDB 1.4.
 
 ArangoDB 1.4 comes with a few changes, some of which are not 100% compatible to
 ArangoDB 1.3. The incompatibilies are mainly due to the introduction of the multiple
-databases feature and to some changes inside Foxx.
+databases feature and to some changes inside Foxx. One change also affects AQL user-
+defined functions, so if you use them in ArangoDB, please make sure to read @ref
+Upgrade14AqlFunctions "this" too.
+
+Following is a list of incompatible changes with workarounds. Please read the list
+carefully and adjust any client programs or processes that work with ArangoDB 
+appropriately. Please also make sure to create a full backup of your existing ArangoDB
+installation before performing an update.
+
+The upgrading section is closed with an instruction summary and a list of potential 
+problems and @ref Upgrading14Troubleshooting "troubleshooting options" for them. 
+Please consult that section if you encounter any problems during or after the upgrade.
+
+Database Directory Version Check and Upgrade {#Upgrading14VersionCheck}
+-----------------------------------------------------------------------
+
+ArangoDB will perform a database version check at startup. This has not changed in
+ArangoDB 1.4. When ArangoDB 1.4 encounters a database created with earlier 
+versions of ArangoDB, it will refuse to start. This is intentional.
+The output will then look like this:
+
+    2013-10-29T16:34:02Z [3927] INFO ArangoDB 1.4.0 -- ICU 49.1.2, V8 version 3.16.14.1, SSL engine OpenSSL 1.0.1e 11 Feb 2013
+    2013-10-29T16:34:02Z [3927] ERROR no databases found. Please start the server with the --upgrade option
+    2013-10-29T16:34:02Z [3927] ERROR unable to initialise databases: invalid database directory
+    2013-10-29T16:34:02Z [3927] FATAL cannot start server: invalid database directory
+
+To make ArangoDB 1.4 start with a database directory created with an
+earlier ArangoDB version, you may need to invoke the upgrade procedure once.
+This can be done by running ArangoDB from the command line and supplying
+the `--upgrade` option:
+
+    unix> arangod data --upgrade
+
+where `data` is the database directory. This will run a database version and
+any necessary migrations. As usual, you should create a backup of your database
+directory before performing the upgrade.
+
+The output should be something like this:
+
+    ....
+    2013-10-29T16:35:01Z [3959] INFO In database '_system': starting upgrade from version 1.3 to 1.4.0
+    2013-10-29T16:35:01Z [3959] INFO In database '_system': Found 18 defined task(s), 5 task(s) to run
+    2013-10-29T16:35:01Z [3959] INFO In database '_system': Executing task #1 (moveProductionApps): move Foxx apps into per-database directory
+    2013-10-29T16:35:01Z [3959] INFO In database '_system': Task successful
+    ...
+    2013-10-29T16:35:01Z [3959] INFO In database '_system': Task successful
+    2013-10-29T16:35:01Z [3959] INFO In database '_system': upgrade successfully finished
+    2013-10-29T16:35:01Z [3959] INFO database upgrade passed
+
+Please check the output the `--upgrade` run. It may produce errors, which need to be
+fixed before ArangoDB can be used properly. If no errors are present or they have been
+resolved, you can start ArangoDB 1.4 regularly.
 
 Filesystem layout changes {#Upgrading14FileSystem}
 --------------------------------------------------
@@ -153,11 +202,148 @@ the database name as part of the URLs. Most clients will use just one database m
 time, making it sufficient to set the database name when the connection to the server is
 established and then prefixing all requests with the database name initially set.
 
+Changed Behavior {#Upgrading14ChangedBehavior}
+==============================================
+
+Changed Namespace Separator for AQL user-defined Functions {#Upgrade14AqlFunctions}
+-----------------------------------------------------------------------------------
+
+The namespace resolution operator for AQL user-defined functions has been changed from 
+`:` to `::`.
+
+AQL user-defined functions were introduced in ArangoDB 1.3, and the namespace resolution
+perator for them has been the single colon (`:`) in 1.3. A call to a user-defined function
+in an AQL query looked like this:
+
+    RETURN mygroup:myfunc()
+
+The single colon caused an ambiguity in the AQL grammar, making it indistinguishable from
+named attributes or the ternary operator in some cases, e.g.
+
+    { mygroup:myfunc ? mygroup:myfunc }
+
+To fix this ambiguity, the namespace resolution operator in 1.4 is changed from `:` to `::`, 
+so the above call will in 1.4 look like this:
+
+    RETURN mygroup::myfunc()
+
+Names of existing user-defined AQL functions in the database will automatically be fixed 
+when starting ArangoDB 1.4 with the `--upgrade` option. 
+
+Still any AQL query strings assembled on the client side must be adjusted for use with 1.4 
+if they refer to AQL user-defined functions. If AQL queries stored in Foxx applications or
+other server-side actions use the "old" function name sytanx, they must be adjusted manually,
+too. These change should be simple to carry out (replacing the `:` in names of user-defined 
+functions with `::`) but cannot be done automatically by ArangoDB.
+
+If function names are not changed in AQL queries, referring to a function using the old (`:`)
+namespace operator is likely to cause a query parse error in 1.4.
+
+The return value of the AQL `DOCUMENT` function is also changed in 1.4 when called with a
+single argument (a document id or key) in case the sought document cannot be found. 
+In pre-1.4, the function returned `undefined` in this case. As `undefined` is not part of 
+the JSON type system, 1.4 now returns `null` for the same case. The return value for other
+cases has not changed.
+
+Changed Return Value of REST API method GET `/_api/collection/figures` {#Upgrade14ChangedFigures}
+-------------------------------------------------------------------------------------------------
+
+The value returned by the REST API method GET `/_api/collection/<collection-name>/figures` has
+been extended in version 1.4 to also include the following attributes:
+
+- `compactors`.`count`
+- `compactors`.`fileSize`
+- `shapefiles`.`count`
+- `shapefiles`.`fileSize`
+
+These attributes were not present in the return value in ArangoDB 1.3. Clients which rely on the
+return value structure may need to be adjusted.
+
+Removed Features {#Upgrading14RemovedFeatures}
+==============================================
+
+Removed or Renamed Configuration options {#Upgrading14RemovedConfiguration}
+---------------------------------------------------------------------------
+
+The following changes have been made in ArangoDB 1.4 with respect to
+configuration / command-line options:
+
+- The options `--server.admin-directory` and `--server.disable-admin-interface`
+  have been removed. 
+  
+  In previous versions of ArangoDB, these options controlled where the static 
+  files of the web admin interface were located and if the web admin interface 
+  was accessible via HTTP. 
+  In ArangoDB 1.4, the web admin interface has become a Foxx application and
+  does not require an extra location. 
+
+- The option `--log.filter` was renamed to `--log.source-filter`.
+
+  This is a debugging option that should rarely be used by non-developers.
+
+Other removed Features {#Upgrading14RemovedMisc}
+------------------------------------------------
+
+The action deployment tool available in ArangoDB 1.3 has been removed in 
+version 1.4. Installing actions can now be achieved easier by packaging them
+in a Foxx application and deploying them with the `foxx-manager` binary.
+
+Upgrade Checklist {#Upgrading14Checklist}
+=========================================
+
+Here is a checklist for the required upgrade steps. For more details please 
+consult the more detailed topics and the @ref Upgrading14Troubleshooting sections.
+
+- Upgrade ArangoDB
+  - Stop _arangod_
+  - Create a full backup of your database directory
+  - Upgrade ArangoDB to 1.4 using package manager, homebrew, `git pull` etc.
+  - Adjust configuration file `arangod.conf`:
+    - Add option `--javascript.app-path` if not yet present (otherwise _arangod_ 
+      will refuse to start)
+    - Check if you want to set `--server.default-api-compatibility` to `10300` for 
+      "old" client drivers
+    - Remove now superfluous configuration options `--server.admin-directory` and
+      `--server.disable-admin-interface`
+  - If required, start _arangod_ with the `--upgrade` option once and check the 
+    output/logfile for any errors
+- Upgrade clients/drivers
+  - Upgrade client drivers to a 1.4-compatible version if needed and if available
+  - When using AQL user-defined functions, adjust AQL function namespace separator 
+    in queries/client code
+- Upgrade Foxx applications
+  - When using Foxx application from ArangoDB 1.3, make sure to adjust the manifest
+    and the app/controller JavaScript files
+- Restart _arangod_
+- Check the output of _arangod_ and the server logfile for potential errors.
+
 Troubleshooting {#Upgrading14Troubleshooting}
 =============================================
 
 If you cannot find a solution here, please ask the Google-Group at 
 http://groups.google.com/group/arangodb
+
+Please make sure that you include the currently used ArangoDB version number plus the 
+version from which you upgrade in your post.
+You can retrieve the current version number as follows:
+
+    unix> arangod --version
+
+Problem: Server does not start
+------------------------------
+
+If the server complains about no databases being found at startup like this
+
+    2013-10-29T16:34:02Z [3927] ERROR no databases found. Please start the server with the --upgrade option
+    2013-10-29T16:34:02Z [3927] ERROR unable to initialise databases: invalid database directory
+    2013-10-29T16:34:02Z [3927] FATAL cannot start server: invalid database directory
+
+the problem might be that an ArangoDB 1.4 server was started with database directory
+created with an older version of ArangoDB. In this case it is necessary to start 
+ArangoDB with the `--upgrade` option once. If it still does not start, it may be necessary to 
+specifiy the `--javascript.app-path` option (see next item) when running `--upgrade`.
+In case of errors, please also check ArangoDB's output or logfile for further details about
+the problem.
 
 Problem: Server does not start
 ------------------------------
@@ -199,6 +385,22 @@ the same IP address, so ArangoDB will try to bind to the same address twice
 (which will fail).
 Other obvious bind problems at startup may be caused by ports being used by
 other programs, or IP addresses changing.
+
+Problem: Where can Example Configuration files for ArangoDB be found?
+---------------------------------------------------------------------
+
+Updating ArangoDB will likely not overwrite an existing ArangoDB configuration
+file. If you have a configuration file from a previous ArangoDB version in use
+already, you may need to adjust this file locally.
+
+The most current configuration files for ArangoDB 1.4 can be found on Github
+(look for files with file extension *.conf):
+
+- for Linux & MacOS: https://github.com/triAGENS/ArangoDB/tree/1.4/etc/relative
+- for Windows: https://github.com/triAGENS/ArangoDB/tree/1.4/VS2012/Installer
+
+Please note that all these configuration files use relative paths that may
+need to be adjusted to the absolute paths on your system.
 
 Problem: Server returns different `location` headers than in 1.3
 -----------------------------------------------------------------
@@ -270,79 +472,54 @@ can use a Bash script like this:
 The above script should print out the names of all databases and collections 
 with their corresponding directory names.
 
-Problem: AQL user-functions do not work anymore
------------------------------------------------
+Problem: AQL user-functions from 1.3 do not work anymore
+--------------------------------------------------------
 
 The namespace resolution operator for AQL user-defined functions has changed from `:` 
 to `::`. Names of user-defined function names need to be adjusted in AQL queries.
 Please refer to @ref Upgrading14ChangedBehavior for details.
 
-Changed Behavior {#Upgrading14ChangedBehavior}
-==============================================
+Problem: Foxx Applications from 1.3 are missing in 1.4
+------------------------------------------------------
 
-The namespace resolution operator for AQL user-defined functions has been changed from 
-`:` to `::`.
+The directory layout for Foxx applications got changed between ArangoDB 1.3 and 1.4.
+In ArangoDB 1.4, Foxx applications need to placed in per-database directories which
+were not present in 1.3. ArangoDB 1.4 will automatically move existing Foxx applications
+into the required new structure if you start it with the `--upgrade` option and the
+Foxx application directory `--javascript.app-path`. Please note that specifiying 
+`--javascript.app-path` is required in 1.4 anyway, so it is good to add this option
+to your configuration file if not already done.
 
-AQL user-defined functions were introduced in ArangoDB 1.3, and the namespace resolution
-perator for them has been the single colon (`:`) in 1.3. A call to a user-defined function
-in an AQL query looked like this:
+Please read more about the 1.4 Foxx application directory layout @ref 
+Upgrading14FileSystem "here".
 
-    RETURN mygroup:myfunc()
+Problem: Foxx Applications from 1.3 do not work in 1.4
+------------------------------------------------------
 
-The single colon caused an ambiguity in the AQL grammar, making it indistinguishable from
-named attributes or the ternary operator in some cases, e.g.
+@ref UserManualFoxx "Foxx" was released in an alpha state with ArangoDB 1.3. It got more 
+stable over time, but some its internal APIs changed during the development of ArangoDB 1.4.
 
-    { mygroup:myfunc ? mygroup:myfunc }
+Foxx applications written for ArangoDB 1.3 need some modifications in order to work
+properly with ArangoDB 1.4:
+- in the manifest file of a Foxx application, please rename the `apps` attribute to
+  `controllers`.
+- the `require` directive for the Foxx framework components changed between 1.3 and 1.4.
+  Whereas in 1.3 you could require `Foxx.Application`, in 1.4 you will need to require
+  `Foxx.Controller`:
 
-To fix this ambiguity, the namespace resolution operator in 1.4 is changed from `:` to `::`, 
-so the above call will in 1.4 look like this:
+  Please look out for all places like this in your 1.3 Foxx controller/application 
+  files:
 
-    RETURN mygroup::myfunc()
+      var FoxxApplication = require("org/arangodb/foxx").Application;
+      var app = new FoxxApplication();
 
-Names of existing user-defined AQL functions in the database will automatically be fixed 
-when starting ArangoDB 1.4 with the `--upgrade` option. 
+  and adjust them as follows for 1.4:
 
-Still any AQL query strings assembled on the client side must be adjusted for use with 1.4 
-if they refer to AQL user-defined functions. If AQL queries stored in Foxx applications or
-other server-side actions use the "old" function name sytanx, they must be adjusted manually,
-too. These change should be simple to carry out (replacing the `:` in names of user-defined 
-functions with `::`) but cannot be done automatically by ArangoDB.
+      var FoxxController = require("org/arangodb/foxx").Controller;
+      controller = new FoxxController(applicationContext);
 
-If function names are not changed in AQL queries, referring to a function using the old (`:`)
-namespace operator is likely to cause a query parse error in 1.4.
-
-The return value of the AQL `DOCUMENT` function is also changed in 1.4 when called with a
-single argument (a document id or key) in case the sought document cannot be found. 
-In pre-1.4, the function returned `undefined` in this case. As `undefined` is not part of 
-the JSON type system, 1.4 now returns `null` for the same case. The return value for other
-cases has not changed.
-
-Removed Features {#Upgrading14RemovedFeatures}
-==============================================
-
-Removed or Renamed Configuration options {#Upgrading14RemovedConfiguration}
----------------------------------------------------------------------------
-
-The following changes have been made in ArangoDB 1.4 with respect to
-configuration / command-line options:
-
-- The options `--server.admin-directory` and `--server.disable-admin-interface`
-  have been removed. 
-  
-  In previous versions of ArangoDB, these options controlled where the static 
-  files of the web admin interface were located and if the web admin interface 
-  was accessible via HTTP. 
-  In ArangoDB 1.4, the web admin interface has become a Foxx application and
-  does not require an extra location. 
-
-- The option `--log.filter` was renamed to `--log.source-filter`.
-
-  This is a debugging option that should rarely be used by non-developers.
-
-Other removed Features {#Upgrading14RemovedMisc}
-------------------------------------------------
-
-The action deployment tool available in ArangoDB 1.3 has been removed in 
-version 1.4. Installing actions can now be achieved easier by packaging them
-in a Foxx application and deploying them with the `foxx-manager` binary.
-
+  You may also need to adjust the `setup` and `teardown` scripts if used. To check
+  for any errors after adjusting your Foxx application, you can start ArangoDB 1.4
+  in development mode using the `--javascript.dev-app-path` option. This will 
+  either print or log (depending on configuration) errors occurring in Foxx 
+  applications.
