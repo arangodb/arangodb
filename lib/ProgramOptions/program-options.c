@@ -1498,7 +1498,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
   f = fopen(filename, "r");
 
   if (f == NULL) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    TRI_set_errno(TRI_ERROR_FILE_NOT_FOUND);
     return false;
   }
 
@@ -1510,7 +1510,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
   section = TRI_DuplicateString("");
 
   // regexp for comments
-  regcomp(&re1, "^[ \t]*(#.*)?$", REG_ICASE | REG_EXTENDED | REG_NOSUB);
+  regcomp(&re1, "^[ \t]*([#;].*)?$", REG_ICASE | REG_EXTENDED | REG_NOSUB);
 
   // regexp for section marker
   regcomp(&re2, "^[ \t]*\\[([-_a-z0-9]*)\\][ \t]*$", REG_ICASE | REG_EXTENDED);

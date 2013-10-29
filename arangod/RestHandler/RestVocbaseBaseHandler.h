@@ -32,8 +32,8 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
+#include "BasicsC/logging.h"
 
-#include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/RestTransactionContext.h"

@@ -51,6 +51,7 @@
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/messages.h"
 #include "BasicsC/tri-strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -58,8 +59,6 @@
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpHandlerFactory.h"
-
-#include "Logger/Logger.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
@@ -354,7 +353,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
   if (_applicationServer == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
 
   _applicationServer->setSystemConfigFile("arangod.conf");
@@ -369,7 +368,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
   if (_applicationScheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
   _applicationScheduler->allowMultiScheduler(true);
 
@@ -381,7 +380,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   if (_applicationDispatcher == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
   _applicationServer->addFeature(_applicationDispatcher);
 
@@ -391,7 +390,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationV8 = new ApplicationV8(_server);
   if (_applicationV8 == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
   _applicationServer->addFeature(_applicationV8);
 
@@ -403,7 +402,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationMR = new ApplicationMR(_server);
   if (_applicationMR == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
   _applicationServer->addFeature(_applicationMR);
 
@@ -426,7 +425,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationAdminServer = new ApplicationAdminServer();
   if (_applicationAdminServer == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
 
   _applicationServer->addFeature(_applicationAdminServer);
@@ -549,7 +548,7 @@ void ArangoServer::buildApplicationServer () {
                                                              &SetRequestContext,
                                                              (void*) _server);
   if (_applicationEndpointServer == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
 
   _applicationServer->addFeature(_applicationEndpointServer);
@@ -559,7 +558,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
+    LOG_FATAL_AND_EXIT("cannot parse command line arguments");
   }
   
   // set the temp-path
@@ -594,7 +593,7 @@ void ArangoServer::buildApplicationServer () {
 
   uint32_t optionNonceHashSize = 0; // TODO: add a server option
   if (optionNonceHashSize > 0) {
-    LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );
+    LOG_DEBUG("setting nonce hash size to %d", (int) optionNonceHashSize);
     Nonce::create(optionNonceHashSize);
   }
 
@@ -604,12 +603,12 @@ void ArangoServer::buildApplicationServer () {
 
   // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOGGER_FATAL_AND_EXIT("invalid value for '--database.maximal-journal-size'. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
+    LOG_FATAL_AND_EXIT("invalid value for '--database.maximal-journal-size'. expected at least %d", (int) TRI_JOURNAL_MINIMAL_SIZE);
   }
 
   // validate queue size
   if (_dispatcherQueueSize <= 128) {
-    LOGGER_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
+    LOG_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
   }
 
   // .............................................................................
@@ -619,15 +618,15 @@ void ArangoServer::buildApplicationServer () {
   vector<string> arguments = _applicationServer->programArguments();
 
   if (1 < arguments.size()) {
-    LOGGER_FATAL_AND_EXIT("expected at most one database directory, got " << arguments.size());
+    LOG_FATAL_AND_EXIT("expected at most one database directory, got %d", (int) arguments.size());
   }
   else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
 
   if (_databasePath.empty()) {
-    LOGGER_INFO("please use the '--database.directory' option");
-    LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
+    LOG_INFO("please use the '--database.directory' option");
+    LOG_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
 
   // strip trailing separators
@@ -640,9 +639,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   
   // dump version details
-  LOGGER_INFO(rest::Version::getVerboseVersionString());
+  LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
 
-  LOGGER_INFO("using default language '" << languageName << "'");
+  LOG_INFO("using default language '%s'", languageName.c_str());
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
@@ -679,8 +678,8 @@ void ArangoServer::buildApplicationServer () {
 
   if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
-      LOGGER_INFO("please use the '--pid-file' option");
-      LOGGER_FATAL_AND_EXIT("no pid-file defined, but daemon or supervisor mode was requested");
+      LOG_INFO("please use the '--pid-file' option");
+      LOG_FATAL_AND_EXIT("no pid-file defined, but daemon or supervisor mode was requested");
     }
 
     // make the pid filename absolute
@@ -692,10 +691,10 @@ void ArangoServer::buildApplicationServer () {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
-      LOGGER_DEBUG("using absolute pid file '" << _pidFile << "'");
+      LOG_DEBUG("using absolute pid file '%s'", _pidFile.c_str());
     }
     else {
-      LOGGER_FATAL_AND_EXIT("cannot determine current directory");
+      LOG_FATAL_AND_EXIT("cannot determine current directory");
     }
   }
 }
@@ -790,14 +789,14 @@ int ArangoServer::startupServer () {
   // if the authentication info could not be loaded, but authentication is turned on,
   // then we refuse to start
   if (! vocbase->_authInfoLoaded && ! _disableAuthentication) {
-    LOGGER_FATAL_AND_EXIT("could not load required authentication information");
+    LOG_FATAL_AND_EXIT("could not load required authentication information");
   }
 
   if (_disableAuthentication) {
-    LOGGER_INFO("Authentication is turned off");
+    LOG_INFO("Authentication is turned off");
   }
 
-  LOGGER_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
+  LOG_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
   _applicationServer->wait();
 
@@ -837,7 +836,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == 0) {
-    LOGGER_FATAL_AND_EXIT("cannot start server");
+    LOG_FATAL_AND_EXIT("cannot start server");
   }
 
   // load authentication
@@ -860,7 +859,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   bool ok = _applicationV8->prepare();
 
   if (! ok) {
-    LOGGER_FATAL_AND_EXIT("cannot initialize V8 enigne");
+    LOG_FATAL_AND_EXIT("cannot initialize V8 enigne");
   }
 
   _applicationV8->start();
@@ -880,7 +879,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
     }
     else {
-      LOGGER_INFO(rest::Version::getVerboseVersionString());
+      LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
     }
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
@@ -966,7 +965,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
 
           if (! r) {
-            LOGGER_FATAL_AND_EXIT("cannot load script '" << _scriptFile[i] << ", giving up");
+            LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
           }
         }
 
@@ -990,7 +989,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
 
           if (main.IsEmpty() || main->IsUndefined()) {
-            LOGGER_FATAL_AND_EXIT("no main function defined, giving up");
+            LOG_FATAL_AND_EXIT("no main function defined, giving up");
           }
           else {
             v8::Handle<v8::Value> args[] = { params };
@@ -1178,7 +1177,7 @@ int ArangoServer::executeRubyConsole () {
   bool ok = _applicationMR->prepare();
 
   if (! ok) {
-    LOGGER_FATAL_AND_EXIT("cannot initialize MRuby enigne");
+    LOG_FATAL_AND_EXIT("cannot initialize MRuby enigne");
   }
 
   _applicationMR->start();
@@ -1212,14 +1211,14 @@ int ArangoServer::executeRubyConsole () {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
-      LOGGER_ERROR("failed to compile input");
+      LOG_ERROR("failed to compile input");
       continue;
     }
 
     int n = mrb_generate_code(context->_mrb, p);
 
     if (n < 0) {
-      LOGGER_ERROR("failed to execute Ruby bytecode");
+      LOG_ERROR("failed to execute Ruby bytecode");
       continue;
     }
 
@@ -1228,7 +1227,7 @@ int ArangoServer::executeRubyConsole () {
                                mrb_top_self(context->_mrb));
 
     if (context->_mrb->exc != 0) {
-      LOGGER_ERROR("caught Ruby exception");
+      LOG_ERROR("caught Ruby exception");
       mrb_p(context->_mrb, mrb_obj_value(context->_mrb->exc));
       context->_mrb->exc = 0;
     }
@@ -1303,7 +1302,7 @@ void ArangoServer::closeDatabases () {
   TRI_StopServer(_server);
 
 
-  LOGGER_INFO("ArangoDB has been shut down");
+  LOG_INFO("ArangoDB has been shut down");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

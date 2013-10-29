@@ -29,7 +29,7 @@
 
 #include "Basics/FileUtils.h"
 #include "BasicsC/files.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 
@@ -98,8 +98,10 @@ Handler::status_e RestUploadHandler::execute() {
 
   char* relative = TRI_GetFilename(filename);
 
-  LOGGER_TRACE("saving uploaded file of length " << _request->bodySize() << 
-               " in file '" << filename << "', relative '" << relative << "'");
+  LOG_TRACE("saving uploaded file of length %llu in file '%s', relative '%s'",
+            (unsigned long long) _request->bodySize(),
+            filename,
+            relative);
 
   try {
     FileUtils::spit(string(filename), _request->body(), _request->bodySize());

@@ -34,11 +34,11 @@
 #include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
 #include "BasicsC/json.h"
+#include "BasicsC/logging.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
-#include "Logger/Logger.h"
 #include "Rest/Version.h"
 #include "Scheduler/ApplicationScheduler.h"
 
@@ -173,8 +173,8 @@ bool ApplicationEndpointServer::buildServers () {
   if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
     // check the ssl context
     if (_sslContext == 0) {
-      LOGGER_INFO("please use the --server.keyfile option");
-      LOGGER_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
+      LOG_INFO("please use the --server.keyfile option");
+      LOG_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
     }
 
     // https
@@ -249,7 +249,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   }
 
   if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
-    LOGGER_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN);
+    LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is %d", (int) SOMAXCONN);
   }
 
   if (_httpPort != "") {
@@ -265,12 +265,12 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     bool ok = _endpointList.add((*i), dbNames, _backlogSize);
 
     if (! ok) {
-      LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
+      LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
     }
   }
 
   if (_defaultApiCompatibility < 10300L) {
-    LOGGER_FATAL_AND_EXIT("invalid value for --server.default-api-compatibility. minimum allowed value is 10300");
+    LOG_FATAL_AND_EXIT("invalid value for --server.default-api-compatibility. minimum allowed value is 10300");
   }
 
   // and return
@@ -336,7 +336,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
           saveEndpoints();
         }
         
-        LOGGER_DEBUG("reconfigured endpoint '" << newEndpoint << "'");
+        LOG_DEBUG("reconfigured endpoint '%s'", newEndpoint.c_str());
         // in this case, we updated an existing endpoint and are done
         return true;
       }
@@ -348,11 +348,11 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
         if (save) {
           saveEndpoints();
         }
-        LOGGER_DEBUG("bound to endpoint '" << newEndpoint << "'");
+        LOG_DEBUG("bound to endpoint '%s'", newEndpoint.c_str());
         return true;
       }
       
-      LOGGER_WARNING("failed to bind to endpoint '" << newEndpoint << "'");
+      LOG_WARNING("failed to bind to endpoint '%s'", newEndpoint.c_str());
       return false;
     }
   }
@@ -391,7 +391,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
       bool ok = _endpointList.remove(unified, &endpoint); 
 
       if (! ok) {
-        LOGGER_WARNING("could not remove endpoint '" << oldEndpoint << "'");
+        LOG_WARNING("could not remove endpoint '%s'", oldEndpoint.c_str());
         return false;
       }
 
@@ -401,10 +401,10 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
 
       if (ok) {
         saveEndpoints();
-        LOGGER_DEBUG("removed endpoint '" << oldEndpoint << "'");
+        LOG_DEBUG("removed endpoint '%s'", oldEndpoint.c_str());
       }
       else {
-        LOGGER_WARNING("failed to remove endpoint '" << oldEndpoint << "'");
+        LOG_WARNING("failed to remove endpoint '%s'", oldEndpoint.c_str());
       }
 
       return ok;
@@ -425,7 +425,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
     return false;
   }
 
-  LOGGER_TRACE("loading endpoint list from file '" << filename << "'"); 
+  LOG_TRACE("loading endpoint list from file '%s'", filename.c_str());
 
   TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename.c_str(), 0);
 
@@ -518,7 +518,7 @@ bool ApplicationEndpointServer::saveEndpoints () {
   }
  
   const string filename = getEndpointsFilename();
-  LOGGER_TRACE("saving endpoint list in file '" << filename << "'"); 
+  LOG_TRACE("saving endpoint list in file '%s'", filename.c_str());
   bool ok = TRI_SaveJson(filename.c_str(), json, true);  
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -544,8 +544,8 @@ bool ApplicationEndpointServer::prepare () {
   loadEndpoints();
   
   if (_endpointList.empty()) { 
-    LOGGER_INFO("please use the '--server.endpoint' option");
-    LOGGER_FATAL_AND_EXIT("no endpoints have been specified, giving up");
+    LOG_INFO("please use the '--server.endpoint' option");
+    LOG_FATAL_AND_EXIT("no endpoints have been specified, giving up");
   }
 
   // dump all endpoints for user information
@@ -557,7 +557,7 @@ bool ApplicationEndpointServer::prepare () {
                                            _setContext,
                                            _contextData);
   
-  LOGGER_INFO("using default API compatibility: " << _defaultApiCompatibility);
+  LOG_INFO("using default API compatibility: %ld", (long int) _defaultApiCompatibility);
 
   return true;
 }
@@ -571,7 +571,7 @@ bool ApplicationEndpointServer::prepare2 () {
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
   if (scheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create server");
+    LOG_FATAL_AND_EXIT("no scheduler is known, cannot create server");
 
     return false;
   }
@@ -650,36 +650,38 @@ bool ApplicationEndpointServer::createSslContext () {
 
   // validate protocol
   if (_sslProtocol <= HttpsServer::SSL_UNKNOWN || _sslProtocol >= HttpsServer::SSL_LAST) {
-    LOGGER_ERROR("invalid SSL protocol version specified.");
-    LOGGER_INFO("please use a valid value for --server.ssl-protocol.");
+    LOG_ERROR("invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.");
     return false;
   }
 
-  LOGGER_DEBUG("using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'");
+  LOG_DEBUG("using SSL protocol version '%s'", 
+            HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol).c_str());
 
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
   if (_sslContext == 0) {
-    LOGGER_ERROR("failed to create SSL context, cannot create a HTTPS server");
+    LOG_ERROR("failed to create SSL context, cannot create a HTTPS server");
     return false;
   }
 
   // set cache mode
   SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   if (_sslCache) {
-    LOGGER_TRACE("using SSL session caching");
+    LOG_TRACE("using SSL session caching");
   }
 
   // set options
   SSL_CTX_set_options(_sslContext, (long) _sslOptions);
-  LOGGER_INFO("using SSL options: " << _sslOptions);
+  LOG_INFO("using SSL options: %ld", (long) _sslOptions);
 
   if (_sslCipherList.size() > 0) {
-    LOGGER_INFO("using SSL cipher-list '" << _sslCipherList << "'");
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
-      LOGGER_ERROR("ssl error: " << lastSSLError());
-      LOGGER_FATAL_AND_EXIT("cannot set SSL cipher list '" << _sslCipherList << "'");
+      LOG_ERROR("SSL error: %s", lastSSLError().c_str());
+      LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'", _sslCipherList.c_str());
+    }
+    else {
+      LOG_INFO("using SSL cipher-list '%s'", _sslCipherList.c_str());
     }
   }
 
@@ -690,19 +692,19 @@ bool ApplicationEndpointServer::createSslContext () {
   int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), (int) _rctx.size());
 
   if (res != 1) {
-    LOGGER_ERROR("ssl error: " << lastSSLError());
-    LOGGER_FATAL_AND_EXIT("cannot set SSL session id context '" << _rctx << "'");
+    LOG_ERROR("SSL error: %s", lastSSLError().c_str());
+    LOG_FATAL_AND_EXIT("cannot set SSL session id context '%s'", _rctx.c_str());
   }
 
   // check CA
   if (! _cafile.empty()) {
-    LOGGER_TRACE("trying to load CA certificates from '" << _cafile << "'");
+    LOG_TRACE("trying to load CA certificates from '%s'", _cafile.c_str());
 
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOGGER_ERROR("ssl error: " << lastSSLError());
-      LOGGER_FATAL_AND_EXIT("cannot load CA certificates from '" << _cafile << "'");
+      LOG_ERROR("SSL error: %s", lastSSLError().c_str());
+      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'", _cafile.c_str());
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -710,8 +712,8 @@ bool ApplicationEndpointServer::createSslContext () {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == 0) {
-      LOGGER_ERROR("ssl error: " << lastSSLError());
-      LOGGER_FATAL_AND_EXIT("cannot load CA certificates from '" << _cafile << "'");
+      LOG_ERROR("ssl error: %s", lastSSLError().c_str());
+      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'", _cafile.c_str());
     }
 
     if (TRI_IsTraceLogging(__FILE__)) {
@@ -727,7 +729,7 @@ bool ApplicationEndpointServer::createSslContext () {
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOGGER_TRACE("name: " << string(r, len));
+          LOG_TRACE("name: %s", string(r, len).c_str());
 #endif
         }
       }

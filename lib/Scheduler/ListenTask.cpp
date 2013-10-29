@@ -50,8 +50,8 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/socket-utils.h"
-#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -107,10 +107,10 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   // The problem we have here is that this opening of the fs handle may fail.
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
-  LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
+  LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
   if (_listenSocket.fileHandle < 1) {
-    LOGGER_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
+    LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
     _listenSocket.fileHandle = -1;
     _listenSocket.fileDescriptor = -1;
     return false;
@@ -118,11 +118,13 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   _listenSocket.fileDescriptor = _open_osfhandle (_listenSocket.fileHandle, 0);
   if (_listenSocket.fileDescriptor == -1) {
-    LOGGER_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
+    LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
+
     int res = closesocket(_listenSocket.fileHandle);
+
     if (res != 0) {
       res = WSAGetLastError();
-      LOGGER_ERROR("In ListenTask::setup closesocket(...) failed with error code: " << res);
+      LOG_ERROR("In ListenTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
     _listenSocket.fileHandle = -1;
     _listenSocket.fileDescriptor = -1;
@@ -145,7 +147,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void ListenTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
+    LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
     readWatcher = 0;
     return;
   }
@@ -175,10 +177,10 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       ++acceptFailures;
 
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOGGER_WARNING("accept failed with " << errno << " (" << strerror(errno) << ")");
+        LOG_WARNING("accept failed with %d (%s)", (int) errno, strerror(errno));
       }
       else if (acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOGGER_ERROR("too many accept failures, stopping logging");
+        LOG_ERROR("too many accept failures, stopping logging");
       }
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
@@ -196,7 +198,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     if (res != 0) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
-      LOGGER_WARNING("getsockname failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_WARNING("getsockname failed with %d (%s)", errno, strerror(errno));
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
 

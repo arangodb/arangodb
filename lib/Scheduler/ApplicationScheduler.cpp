@@ -32,8 +32,8 @@
 #include "ApplicationScheduler.h"
 
 #include "Basics/Exceptions.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/process-utils.h"
-#include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
@@ -109,11 +109,11 @@ static SignalTask* localSignalTask;
         TRI_SetProcessTitle(msg.c_str());
 
         if (_seen == 0) {
-          LOGGER_INFO("control-c received, beginning shut down sequence");
+          LOG_INFO("control-c received, beginning shut down sequence");
           _server->beginShutdown();
         }
         else {
-          LOGGER_ERROR("control-c received (again!), terminating");
+          LOG_ERROR("control-c received (again!), terminating");
           _exit(1);
           // TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
@@ -142,9 +142,9 @@ static SignalTask* localSignalTask;
 
     public:
       bool handleSignal () {
-        LOGGER_INFO("hangup received, about to reopen logfile");
+        LOG_INFO("hangup received, about to reopen logfile");
         TRI_ReopenLogging();
-        LOGGER_INFO("hangup received, reopened logfile");
+        LOG_INFO("hangup received, reopened logfile");
         return true;
       }
   };
@@ -158,9 +158,9 @@ static SignalTask* localSignalTask;
 
     public:
       bool handleSignal () {
-        LOGGER_INFO("hangup received, about to reopen logfile");
+        LOG_INFO("hangup received, about to reopen logfile");
         TRI_ReopenLogging();
-        LOGGER_INFO("hangup received, reopened logfile");
+        LOG_INFO("hangup received, reopened logfile");
         return true;
       }
   };
@@ -186,7 +186,7 @@ static SignalTask* localSignalTask;
         if (scheduler != 0) {
           bool isActive = scheduler->isActive();
 
-          LOGGER_INFO("sigusr1 received - setting active flag to " << (! isActive));
+          LOG_INFO("sigusr1 received - setting active flag to %d", (int) (! isActive));
 
           scheduler->setActive(! isActive);
         }
@@ -286,13 +286,13 @@ static SignalTask* localSignalTask;
     } // end of switch statement
 
     if (shutdown == false) {
-      LOGGER_ERROR("Invalid CTRL HANDLER event received - ignoring event");
+      LOG_ERROR("Invalid CTRL HANDLER event received - ignoring event");
       return true;
     }
 
 
     if (ccTask->_seen == 0) {
-      LOGGER_INFO(shutdownMessage << ", beginning shut down sequence");
+      LOG_INFO("%s, beginning shut down sequence", shutdownMessage.c_str());
       ccTask->_server->beginShutdown();
       ++ccTask->_seen;
       return true;
@@ -302,7 +302,7 @@ static SignalTask* localSignalTask;
      // user is desperate to kill the server!
      // ............................................................................
 
-     LOGGER_INFO(shutdownMessage << ", terminating");
+     LOG_INFO("%s, terminating", shutdownMessage.c_str());
      _exit(EXIT_FAILURE); // quick exit for windows
      return true;
   }
@@ -391,7 +391,7 @@ Scheduler* ApplicationScheduler::scheduler () const {
 
 void ApplicationScheduler::installSignalHandler (SignalTask* task) {
   if (_scheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
+    LOG_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
   }
 
   _scheduler->registerTask(task);
@@ -524,7 +524,7 @@ bool ApplicationScheduler::start () {
   bool ok = _scheduler->start(0);
 
   if (! ok) {
-    LOGGER_FATAL_AND_EXIT("the scheduler cannot be started");
+    LOG_FATAL_AND_EXIT("the scheduler cannot be started");
 
     delete _scheduler;
     _scheduler = 0;
@@ -533,7 +533,7 @@ bool ApplicationScheduler::start () {
   }
 
   while (! _scheduler->isStarted()) {
-    LOGGER_DEBUG("waiting for scheduler to start");
+    LOG_DEBUG("waiting for scheduler to start");
     usleep(500 * 1000);
   }
 
@@ -573,7 +573,7 @@ void ApplicationScheduler::stop () {
     _scheduler->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _scheduler->isRunning();  ++count) {
-      LOGGER_TRACE("waiting for scheduler to stop");
+      LOG_TRACE("waiting for scheduler to stop");
       usleep(100000);
     }
 
@@ -604,7 +604,7 @@ void ApplicationScheduler::stop () {
 
 void ApplicationScheduler::buildScheduler () {
   if (_scheduler != 0) {
-    LOGGER_FATAL_AND_EXIT("a scheduler has already been created");
+    LOG_FATAL_AND_EXIT("a scheduler has already been created");
   }
 
   _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
@@ -616,7 +616,7 @@ void ApplicationScheduler::buildScheduler () {
 
 void ApplicationScheduler::buildSchedulerReporter () {
   if (_scheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
+    LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
   if (0.0 < _reportInterval) {
@@ -633,7 +633,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
 
 void ApplicationScheduler::buildControlCHandler () {
   if (_scheduler == 0) {
-    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
+    LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
   // control C handler
@@ -667,15 +667,15 @@ void ApplicationScheduler::adjustFileDescriptors () {
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
     if (res != 0) {
-      LOGGER_FATAL_AND_EXIT("cannot get the file descriptor limit: " << strerror(errno) << "'");
+      LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s", strerror(errno));
     }
 
-    LOGGER_DEBUG("hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur);
+    LOG_DEBUG("hard limit is %d, soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
 
     bool changed = false;
 
     if (rlim.rlim_max < _descriptorMinimum) {
-      LOGGER_DEBUG("hard limit " << rlim.rlim_max << " is too small, trying to raise");
+      LOG_DEBUG("hard limit %d is too small, trying to raise", (int) rlim.rlim_max);
 
       rlim.rlim_max = _descriptorMinimum;
       rlim.rlim_cur = _descriptorMinimum;
@@ -683,20 +683,20 @@ void ApplicationScheduler::adjustFileDescriptors () {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOGGER_FATAL_AND_EXIT("cannot raise the file descriptor limit to " << _descriptorMinimum << ", got '" << strerror(errno) << "'");
+        LOG_FATAL_AND_EXIT("cannot raise the file descriptor limit to %d: %s", (int) _descriptorMinimum, strerror(errno));
       }
 
       changed = true;
     }
     else if (rlim.rlim_cur < _descriptorMinimum) {
-      LOGGER_DEBUG("soft limit " << rlim.rlim_cur << " is too small, trying to raise");
+      LOG_DEBUG("soft limit %d is too small, trying to raise", (int) rlim.rlim_cur);
 
       rlim.rlim_cur = _descriptorMinimum;
 
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOGGER_FATAL_AND_EXIT("cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno));
+        LOG_FATAL_AND_EXIT("cannot raise the file descriptor limit to %d: %s", (int) _descriptorMinimum, strerror(errno));
       }
 
       changed = true;
@@ -706,17 +706,18 @@ void ApplicationScheduler::adjustFileDescriptors () {
       res = getrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res != 0) {
-        LOGGER_FATAL_AND_EXIT("cannot get the file descriptor limit: " << strerror(errno) << "'");
+        LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s", strerror(errno));
       }
 
-      LOGGER_DEBUG("new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur);
+      LOG_DEBUG("new hard limit is %d, new soft limit is %d", (int) rlim.rlim_max, (int) rlim.rlim_cur);
     }
 
     // the select backend has more restrictions
     if (_backend == 1) {
       if (FD_SETSIZE < _descriptorMinimum) {
-        LOGGER_FATAL_AND_EXIT("i/o backend 'select' has been selected, which supports only " << FD_SETSIZE
-                              << " descriptors, but " << _descriptorMinimum << " are required");
+        LOG_FATAL_AND_EXIT("i/o backend 'select' has been selected, which supports only %d descriptors, but %d are required",
+                           (int) FD_SETSIZE, 
+                           (int) _descriptorMinimum);
       }
     }
   }

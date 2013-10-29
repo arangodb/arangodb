@@ -153,7 +153,7 @@ void RestImportHandler::registerError (RestImportResult& result,
 
   result._errors.push_back(errorMsg);
   
-  LOGGER_WARNING(errorMsg);
+  LOG_WARNING("%s", errorMsg.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1024,7 +1024,7 @@ bool RestImportHandler::createFromKeyValueList () {
   }
 
   if (! checkKeys(keys)) {
-    LOGGER_WARNING("no JSON string list in first line found");
+    LOG_WARNING("no JSON string list in first line found");
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string list in first line found");
@@ -1216,7 +1216,7 @@ TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
   TRI_json_t* result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n);
 
   if (result == 0) {
-    LOGGER_ERROR("out of memory");
+    LOG_ERROR("out of memory");
     return 0;
   }
 

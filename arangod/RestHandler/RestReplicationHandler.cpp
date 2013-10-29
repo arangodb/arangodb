@@ -32,7 +32,7 @@
 #include "Basics/JsonHelper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
@@ -2375,8 +2375,10 @@ void RestReplicationHandler::handleCommandDump () {
 
   const TRI_voc_cid_t cid = c->_cid;
 
-  LOGGER_DEBUG("requested collection dump for collection '" << collection << "', "
-               "tickStart: " << tickStart << ", tickEnd: " << tickEnd);
+  LOG_DEBUG("requested collection dump for collection '%s', tickStart: %llu, tickEnd: %llu",
+             collection,
+             (unsigned long long) tickStart,
+             (unsigned long long) tickEnd);
 
   TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
 

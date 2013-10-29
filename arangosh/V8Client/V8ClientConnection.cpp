@@ -85,7 +85,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   if (_client == 0) {
-    LOGGER_FATAL_AND_EXIT("out of memory");
+    LOG_FATAL_AND_EXIT("out of memory");
   }
 
   _client->setLocationRewriter(this, &rewriteLocation);

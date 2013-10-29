@@ -33,8 +33,8 @@
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "V8/v8-conv.h"
@@ -153,7 +153,7 @@ class v8_action_t : public TRI_action_t {
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context->_isolate);
 
       if (i == _callbacks.end()) {
-        LOGGER_WARNING("no callback function for JavaScript action '" << _url.c_str() << "'");
+        LOG_WARNING("no callback function for JavaScript action '%s'", _url.c_str());
 
         GlobalV8Dealer->exitContext(context);
 
@@ -858,11 +858,11 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
       action->createCallback(isolate, callback);
     }
     else {
-      LOGGER_ERROR("cannot create callback for V8 action");
+      LOG_ERROR("cannot create callback for V8 action");
     }
   }
   else {
-    LOGGER_ERROR("cannot define V8 action");
+    LOG_ERROR("cannot define V8 action");
   }
 
   return scope.Close(v8::Undefined());

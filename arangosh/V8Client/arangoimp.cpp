@@ -41,7 +41,6 @@
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "ImportHelper.h"
-#include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/HttpResponse.h"

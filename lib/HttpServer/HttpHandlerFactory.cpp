@@ -31,9 +31,9 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
-#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/MaintenanceCallback.h"
 #include "Rest/SslInterface.h"
@@ -219,7 +219,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOGGER_TRACE("no direct handler found, trying prefixes");
+    LOG_TRACE("no direct handler found, trying prefixes");
 
     // find longest match
     string prefix;
@@ -240,11 +240,11 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
 
     if (prefix.empty()) {
-      LOGGER_TRACE("no prefix handler found, trying catch all");
+      LOG_TRACE("no prefix handler found, trying catch all");
 
       i = ii.find("/");
       if (i != ii.end()) {
-        LOGGER_TRACE("found catch all handler '/'");
+        LOG_TRACE("found catch all handler '/'");
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
@@ -265,7 +265,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
 
     else {
-      LOGGER_TRACE("found prefix match '" << prefix << "'");
+      LOG_TRACE("found prefix match '%s'", prefix.c_str());
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
@@ -296,7 +296,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
       return notFoundHandler;
     }
     else {
-      LOGGER_TRACE("no not-found handler, giving up");
+      LOG_TRACE("no not-found handler, giving up");
       return 0;
     }
   }
@@ -310,7 +310,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     data = j->second;
   }
 
-  LOGGER_TRACE("found handler for path '" << path << "'");
+  LOG_TRACE("found handler for path '%s'", path.c_str());
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);

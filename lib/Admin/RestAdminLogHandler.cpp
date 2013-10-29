@@ -28,7 +28,7 @@
 #include "RestAdminLogHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "Rest/HttpRequest.h"
 
 using namespace triagens;

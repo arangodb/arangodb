@@ -30,7 +30,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 #include "Rest/Endpoint.h"
 
@@ -114,7 +114,9 @@ EndpointIp::~EndpointIp () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTimeout, double requestTimeout) {
+TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, 
+                                        double connectTimeout, 
+                                        double requestTimeout) {
   // set address and port
   char host[NI_MAXHOST];
   char serv[NI_MAXSERV];
@@ -123,7 +125,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
                   host, sizeof(host),
                   serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 
-    LOGGER_TRACE("bind to address '" << string(host) << "' port '" << _port << "'");
+    LOG_TRACE("bind to address '%s', port %d", host, (int) _port);
   }
 
   TRI_socket_t listenSocket;
@@ -131,7 +133,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
   listenSocket.fileHandle = ::socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 
   if (listenSocket.fileHandle == INVALID_SOCKET) {
-    LOGGER_ERROR("socket() failed with " << errno << " (" << strerror(errno) << ")");
+    LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
     listenSocket.fileDescriptor = 0;
     listenSocket.fileHandle = 0;
     return listenSocket;
@@ -141,7 +143,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     // try to reuse address
     int opt = 1;
     if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-      LOGGER_ERROR("setsockopt() failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
 
       TRI_CLOSE_SOCKET(listenSocket);
 
@@ -155,7 +157,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
 
     if (result != 0) {
       // error
-      LOGGER_ERROR("bind() failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
 
       TRI_CLOSE_SOCKET(listenSocket);
 
@@ -165,12 +167,12 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     }
 
     // listen for new connection, executed for server endpoints only
-    LOGGER_TRACE("using backlog size " << _listenBacklog);
+    LOG_TRACE("using backlog size %d", (int) _listenBacklog);
     result = ::listen(listenSocket.fileHandle, _listenBacklog);
 
     if (result == INVALID_SOCKET) {
       // todo: get the correct error code using WSAGetLastError for windows
-      LOGGER_ERROR("listen() failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
       
       TRI_CLOSE_SOCKET(listenSocket);
 
@@ -231,7 +233,8 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
 
 #ifdef _WIN32
 
-TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
+TRI_socket_t EndpointIp::connect (double connectTimeout, 
+                                  double requestTimeout) {
   struct addrinfo* result = 0;
   struct addrinfo* aip;
   struct addrinfo hints;
@@ -240,7 +243,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   listenSocket.fileHandle = 0;
   listenSocket.fileDescriptor = 0;
 
-  LOGGER_DEBUG("connecting to ip endpoint " << _specification);
+  LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
 
   assert(_socket.fileHandle == 0);
   assert(!_connected);
@@ -267,11 +270,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
     switch (lastError) {
       case WSANOTINITIALISED: {
-        LOGGER_ERROR("getaddrinfo for host: " << _host.c_str() << " => WSAStartup was not called or not called successfully.");
+        LOG_ERROR("getaddrinfo for host '%s': WSAStartup was not called or not called successfully.", host);
         break;
       }
       default: {
-        LOGGER_ERROR("getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error));
+        LOG_ERROR("getaddrinfo for host '%s': %s", host, gai_strerror(error));
         break;
       }
     }
@@ -310,7 +313,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   listenSocket.fileHandle = 0;
   listenSocket.fileDescriptor = 0;
 
-  LOGGER_DEBUG("connecting to ip endpoint " << _specification);
+  LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
 
   assert(_socket.fileHandle == 0);
   assert(!_connected);
@@ -325,7 +328,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
 
   if (error != 0) {
-    LOGGER_ERROR("getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error));
+    LOG_ERROR("getaddrinfo for host '%s': %s", _host.c_str(), gai_strerror(error));
 
     if (result != 0) {
       freeaddrinfo(result);
@@ -377,7 +380,7 @@ bool EndpointIp::initIncoming (TRI_socket_t incoming) {
 
   if (res != 0 ) {
     // todo: get correct windows error code
-    LOGGER_WARNING("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
+    LOG_WARNING("setsockopt failed with %d (%s)", errno, strerror(errno));
 
     return false;
   }

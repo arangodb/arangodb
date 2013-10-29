@@ -35,9 +35,9 @@
 #include "BasicsC/socket-utils.h"
 
 #include "Basics/Common.h"
+#include "BasicsC/logging.h"
 
 #include "Basics/StringBuffer.h"
-#include "Logger/Logger.h"
 #include "Scheduler/SocketTask.h"
 
 // -----------------------------------------------------------------------------
@@ -81,7 +81,10 @@ namespace triagens {
 
       public:
 
-        GeneralCommTask (S* server, TRI_socket_t socket, ConnectionInfo const& info, double keepAliveTimeout)
+        GeneralCommTask (S* server, 
+                         TRI_socket_t socket, 
+                         ConnectionInfo const& info, 
+                         double keepAliveTimeout)
           : Task("GeneralCommTask"),
             SocketTask(socket, keepAliveTimeout),
             _server(server),
@@ -99,11 +102,12 @@ namespace triagens {
             _readRequestBody(false),
             _maximalHeaderSize(0),
             _maximalBodySize(0) {
-          LOGGER_TRACE("connection established, client " << socket.fileHandle
-                       << ", server ip " << _connectionInfo.serverAddress
-                       << ", server port " << _connectionInfo.serverPort
-                       << ", client ip " <<  _connectionInfo.clientAddress
-                       << ", client port " <<  _connectionInfo.clientPort);
+          LOG_TRACE("connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
+                    (int) socket.fileHandle,
+                    _connectionInfo.serverAddress.c_str(),
+                    (int) _connectionInfo.serverPort,
+                    _connectionInfo.clientAddress.c_str(),
+                    (int) _connectionInfo.clientPort);
 
 
           pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
@@ -119,7 +123,7 @@ namespace triagens {
       protected:
 
         ~GeneralCommTask () {
-          LOGGER_TRACE("connection closed, client " << _commSocket.fileHandle);
+          LOG_TRACE("connection closed, client %d", (int) _commSocket.fileHandle);
 
           // free write buffers
           for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {

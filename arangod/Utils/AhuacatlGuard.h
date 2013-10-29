@@ -30,7 +30,7 @@
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "BasicsC/json.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "VocBase/vocbase.h"
 
 namespace triagens {
@@ -68,7 +68,7 @@ namespace triagens {
             _context = TRI_CreateContextAql(vocbase, query.c_str(), query.size(), userOptions);
 
             if (_context == 0) {
-              LOGGER_DEBUG("failed to create context for query %s" << query);
+              LOG_DEBUG("failed to create context for query '%s'", query.c_str());
             }
           }
 

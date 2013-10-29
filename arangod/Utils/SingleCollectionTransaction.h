@@ -30,9 +30,9 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/logging.h"
 #include "BasicsC/voc-errors.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Utils/Transaction.h"
 
 #include "VocBase/barrier.h"

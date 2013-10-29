@@ -27,9 +27,9 @@
 
 #include "RestBaseHandler.h"
 
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 

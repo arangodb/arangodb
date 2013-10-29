@@ -36,7 +36,7 @@
 #endif
 
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
@@ -290,10 +290,10 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   SCHEDULER_INIT(&_watcherLock);
 
   // report status
-  LOGGER_TRACE("supported backends: " << ev_supported_backends());
-  LOGGER_TRACE("recommended backends: " << ev_recommended_backends());
-  LOGGER_TRACE("embeddable backends: " << ev_embeddable_backends());
-  LOGGER_TRACE("backend flags: " << backend);
+  LOG_TRACE("supported backends: %d", (int) ev_supported_backends());
+  LOG_TRACE("recommended backends: %d", (int) ev_recommended_backends());
+  LOG_TRACE("embeddable backends: %d", (int) ev_embeddable_backends());
+  LOG_TRACE("backend flags: %d", (int) backend);
 
   // construct the loops
   _loops = new struct ev_loop*[nrThreads];

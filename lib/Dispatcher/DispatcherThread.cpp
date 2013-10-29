@@ -30,10 +30,10 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "BasicsC/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
-#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -139,13 +139,13 @@ void DispatcherThread::run () {
           job->handleError(ex);
         }
         catch (TriagensError const& ex) {
-          LOGGER_WARNING("caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex));
+          LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {
-          LOGGER_WARNING("caught error while handling error: " << ex.what());
+          LOG_WARNING("caught error while handling error: %s", ex.what());
         }
         catch (...) {
-          LOGGER_WARNING("caught error while handling error!");
+          LOG_WARNING("caught error while handling error!");
         }
 
         status = Job::JOB_FAILED;
@@ -157,13 +157,13 @@ void DispatcherThread::run () {
           job->handleError(err);
         }
         catch (TriagensError const& ex) {
-          LOGGER_WARNING("caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex));
+          LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {
-          LOGGER_WARNING("caught error while handling error: " << ex.what());
+          LOG_WARNING("caught error while handling error: %s", ex.what());
         }
         catch (...) {
-          LOGGER_WARNING("caught error while handling error!");
+          LOG_WARNING("caught error while handling error!");
         }
 
         status = Job::JOB_FAILED;
@@ -171,7 +171,7 @@ void DispatcherThread::run () {
       catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
         if (_queue->_stopping != 0) {
-          LOGGER_WARNING("caught cancellation exception during work");
+          LOG_WARNING("caught cancellation exception during work");
           throw;
         }
 #endif
@@ -182,13 +182,13 @@ void DispatcherThread::run () {
           job->handleError(err);
         }
         catch (TriagensError const& ex) {
-          LOGGER_WARNING("caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex));
+          LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {
-          LOGGER_WARNING("caught error while handling error: " << ex.what());
+          LOG_WARNING("caught error while handling error: %s", ex.what());
         }
         catch (...) {
-          LOGGER_WARNING("caught error while handling error!");
+          LOG_WARNING("caught error while handling error!");
         }
 
         status = Job::JOB_FAILED;
@@ -226,12 +226,12 @@ void DispatcherThread::run () {
         catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
           if (_queue->_stopping != 0) {
-            LOGGER_WARNING("caught cancellation exception during cleanup");
+            LOG_WARNING("caught cancellation exception during cleanup");
             throw;
           }
 #endif
 
-          LOGGER_WARNING("caught error while cleaning up!");
+          LOG_WARNING("caught error while cleaning up!");
         }
       }
 
@@ -279,7 +279,7 @@ void DispatcherThread::run () {
 
   _queue->_accessQueue.unlock();
 
-  LOGGER_TRACE("dispatcher thread has finished");
+  LOG_TRACE("dispatcher thread has finished");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

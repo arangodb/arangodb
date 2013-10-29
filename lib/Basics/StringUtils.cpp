@@ -32,10 +32,10 @@
 
 #include <iostream>
 
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
-#include "Logger/Logger.h"
 
 // TODO need to this in another way
 #ifdef GLOBAL_TIMEZONE

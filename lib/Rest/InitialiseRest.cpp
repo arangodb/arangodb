@@ -39,9 +39,9 @@
 #endif
 
 #include "BasicsC/common.h"
+#include "BasicsC/logging.h"
 
 #include "Basics/InitialiseBasics.h"
-#include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "Rest/Url.h"

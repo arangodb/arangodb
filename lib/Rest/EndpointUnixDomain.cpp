@@ -30,7 +30,7 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 #include "Rest/Endpoint.h"
 
@@ -96,22 +96,22 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
   listenSocket.fileDescriptor = 0;
   listenSocket.fileHandle = 0;
 
-  LOGGER_DEBUG("connecting to unix endpoint " << _specification);
+  LOG_DEBUG("connecting to unix endpoint '%s'", _specification.c_str());
 
   assert(_socket.fileHandle == 0);
   assert(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
     // socket file already exists
-    LOGGER_WARNING("socket file '" << _path << "' already exists.");
+    LOG_WARNING("socket file '%s' already exists.", _path.c_str());
 
     int error = 0;
     // delete previously existing socket file
     if (FileUtils::remove(_path, &error)) {
-      LOGGER_WARNING("deleted previously existing socket file '" << _path << "'.");
+      LOG_WARNING("deleted previously existing socket file '%s'", _path.c_str());
     }
     else {
-      LOGGER_ERROR("unable to delete previously existing socket file '" << _path << "'.");
+      LOG_ERROR("unable to delete previously existing socket file '%s'", _path.c_str());
 
       return listenSocket;
     }
@@ -119,7 +119,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
 
   listenSocket.fileHandle = socket(AF_UNIX, SOCK_STREAM, 0);
   if (listenSocket.fileHandle == -1) {
-    LOGGER_ERROR("socket() failed with " << errno << " (" << strerror(errno) << ")");
+    LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
     listenSocket.fileDescriptor = 0;
     listenSocket.fileHandle = 0;
     return listenSocket;
@@ -129,14 +129,14 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
   int opt = 1;
 
   if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-    LOGGER_ERROR("setsockopt() failed with " << errno << " (" << strerror(errno) << ")");
+    LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
 
     TRI_CLOSE_SOCKET(listenSocket);
     listenSocket.fileDescriptor = 0;
     listenSocket.fileHandle = 0;
     return listenSocket;
   }
-  LOGGER_TRACE("reuse address flag set");
+  LOG_TRACE("reuse address flag set");
 
   struct sockaddr_un address;
 
@@ -148,7 +148,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     int result = bind(listenSocket.fileHandle, (struct sockaddr*) &address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      LOGGER_ERROR("bind() failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
       TRI_CLOSE_SOCKET(listenSocket);
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;
@@ -156,11 +156,11 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     }
 
     // listen for new connection, executed for server endpoints only
-    LOGGER_TRACE("using backlog size " << _listenBacklog);
+    LOG_TRACE("using backlog size %d", (int) _listenBacklog);
     result = listen(listenSocket.fileHandle, _listenBacklog);
 
     if (result < 0) {
-      LOGGER_ERROR("listen() failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
       TRI_CLOSE_SOCKET(listenSocket);
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;
@@ -216,7 +216,7 @@ void EndpointUnixDomain::disconnect () {
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
       if (! FileUtils::remove(_path, &error)) {
-        LOGGER_TRACE("unable to remove socket file '" << _path << "'");
+        LOG_TRACE("unable to remove socket file '%s'", _path.c_str());
       }
     }
   }

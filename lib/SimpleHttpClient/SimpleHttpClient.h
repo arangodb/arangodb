@@ -32,7 +32,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/StringBuffer.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "Rest/HttpRequest.h"
 
 namespace triagens {
@@ -141,11 +141,12 @@ namespace triagens {
 /// @brief register and dump an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setErrorMessage (const string& message, bool forceWarn = false) {
+      void setErrorMessage (const string& message, 
+                            bool forceWarn = false) {
         _errorMessage = message;
 
         if (_warn || forceWarn) {
-          LOGGER_WARNING(_errorMessage);
+          LOG_WARNING("%s", _errorMessage.c_str());
         }
       }
 
@@ -153,7 +154,8 @@ namespace triagens {
 /// @brief register an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setErrorMessage (const string& message, int error) {
+      void setErrorMessage (const string& message, 
+                            int error) {
         if (error != 0) {
           _errorMessage = message + ": " + strerror(error);
         }

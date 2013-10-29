@@ -135,6 +135,45 @@ describe ArangoDB do
   
     context "checking simple requests:" do
       
+      it "checks a multipart message assembled manually, broken boundary" do
+        cmd = "/_api/batch"
+        body = "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/version HTTP/1.1\r\n\r\n--NotExistingBoundaryValue--"
+        
+        doc = ArangoDB.log_post("#{prefix}-post-version-manual", cmd, :body => body, :format => :plain)
+
+        doc.code.should eq(400)
+      end
+      
+      it "checks a multipart message assembled manually, no boundary" do
+        cmd = "/_api/batch"
+        body = "Content-Type: application/x-arango-batchpart\r\n\r\nGET /_api/version HTTP/1.1\r\n\r\n"
+        
+        doc = ArangoDB.log_post("#{prefix}-post-version-manual", cmd, :body => body, :format => :plain)
+
+        doc.code.should eq(400)
+      end
+      
+
+      it "checks a multipart message assembled manually" do
+        cmd = "/_api/batch"
+        body = "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/version HTTP/1.1\r\n\r\n--SomeBoundaryValue--"
+        
+        doc = ArangoDB.log_post("#{prefix}-post-version-manual", cmd, :body => body, :format => :plain)
+
+        doc.code.should eq(200)
+      end
+      
+      it "checks a multipart message assembled manually, with 404 URLs" do
+        cmd = "/_api/batch"
+        body = "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/nonexisting1 HTTP/1.1\r\n\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/nonexisting2 HTTP/1.1\r\n\r\n--SomeBoundaryValue--"
+        
+        doc = ArangoDB.log_post("#{prefix}-post-version-manual", cmd, :body => body, :format => :plain)
+
+        doc.code.should eq(200)
+        doc.headers['x-arango-errors'].should eq("2")
+      end
+
+      
       it "checks an empty operation multipart message" do
         cmd = "/_api/batch"
 
@@ -146,7 +185,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true) 
         doc.parsed_response['code'].should eq(400)
       end
-
+      
       it "checks a multipart message with a single operation" do
         cmd = "/_api/batch"
 
@@ -276,7 +315,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
 
         doc.code.should eq(200)
-        doc.headers['X-Arango-Errors'].should be_nil
+        doc.headers['x-arango-errors'].should be_nil
 
         parts = multipart.getParts(multipart.getBoundary, doc.response.body)
 
@@ -343,7 +382,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
 
         doc.code.should eq(200)
-        doc.headers['X-Arango-Errors'].should eq("5")
+        doc.headers['x-arango-errors'].should eq("5")
 
         parts = multipart.getParts(multipart.getBoundary, doc.response.body)
 
@@ -394,7 +433,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
 
         doc.code.should eq(200)
-        doc.headers['X-Arango-Errors'].should eq("10")
+        doc.headers['x-arango-errors'].should eq("10")
 
         parts = multipart.getParts(multipart.getBoundary, doc.response.body)
 

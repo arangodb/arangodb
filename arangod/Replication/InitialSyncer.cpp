@@ -28,10 +28,10 @@
 #include "InitialSyncer.h"
 
 #include "BasicsC/json.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/index.h"

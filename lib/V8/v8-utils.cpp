@@ -512,7 +512,9 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       TRI_V8_SYNTAX_ERROR(scope, "unsupported URL specified");
     }
 
-    LOGGER_TRACE("downloading file. endpoint: " << endpoint << ", relative URL: " << url);
+    LOG_TRACE("downloading file. endpoint: %s, relative URL: %s", 
+              endpoint.c_str(),
+              url.c_str());
 
     Endpoint* ep = Endpoint::clientFactory(endpoint);
     if (ep == 0) {
@@ -2596,14 +2598,12 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
     const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
 
     if (U_FAILURE(erroCode)) {
-      //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
       return scope.Close(v8::String::New(*str, str_len));
     }
 
     UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), erroCode);
 
     if (U_FAILURE(erroCode)) {
-      //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
       return scope.Close(v8::String::New(*str, str_len));
     }
 

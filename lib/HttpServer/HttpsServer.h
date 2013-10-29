@@ -33,7 +33,7 @@
 #include <openssl/ssl.h>
 
 #include "Basics/ssl-helper.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/GeneralHttpServer.h"

@@ -42,9 +42,9 @@
 #endif
 
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 
 namespace triagens {
@@ -97,9 +97,11 @@ namespace triagens {
           if (n < 0) {
             TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-            LOGGER_TRACE("read failed for '" << filename
-                         << "' with " << strerror(errno) << " and result " << n
-                         << " on fd " << fd);
+            LOG_TRACE("read failed for '%s' with %s and result %d on fd %d", 
+                      filename.c_str(),
+                      strerror(errno),
+                      (int) n,
+                      fd);
 
             TRI_CLOSE(fd);
             THROW_FILE_FUNC_ERROR("read", "", errno);
@@ -141,9 +143,11 @@ namespace triagens {
 
           if (n < 0) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("read failed for '" << filename
-                         << "' with " << strerror(errno) << " and result " << n
-                         << " on fd " << fd);
+            LOG_TRACE("read failed for '%s' with %s and result %d on fd %d",
+                      filename.c_str(),
+                      strerror(errno),
+                      (int) n,
+                      fd); 
             THROW_FILE_FUNC_ERROR("read", "", errno);
           }
 
@@ -158,7 +162,7 @@ namespace triagens {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
-          LOGGER_TRACE("open failed for '" << filename << "' with " << strerror(errno));
+          LOG_TRACE("open failed for '%s' with '%s'", filename.c_str(), strerror(errno));
           THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC", errno);
         }
 
@@ -167,9 +171,11 @@ namespace triagens {
 
           if (n < 1) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("write failed for '" << filename
-                         << "' with " << strerror(errno) << " and result " << n
-                         << " on fd " << fd);
+            LOG_TRACE("write failed for '%s' with %s and result %d on %d",
+                      filename.c_str(),
+                      strerror(errno),
+                      (int) n,
+                      fd);
             THROW_FILE_FUNC_ERROR("write", "", errno);
           }
 
@@ -186,7 +192,7 @@ namespace triagens {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
-          LOGGER_TRACE("open failed for '" << filename << "' with " << strerror(errno));
+          LOG_TRACE("open failed for '%s' with %s", filename.c_str(), strerror(errno));
           THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC", errno);
         }
 
@@ -198,9 +204,11 @@ namespace triagens {
 
           if (n < 1) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("write failed for '" << filename
-                         << "' with " << strerror(errno) << " and result " << n
-                         << " on fd " << fd);
+            LOG_TRACE("write failed for '%s' with %s and result %d on %d", 
+                      filename.c_str(),
+                      strerror(errno),
+                      (int) n,
+                      fd);
             THROW_FILE_FUNC_ERROR("write", "", errno);
           }
 
@@ -218,7 +226,7 @@ namespace triagens {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
-          LOGGER_TRACE("open failed for '" << filename << "' with " << strerror(errno));
+          LOG_TRACE("open failed for '%s' with %s", filename.c_str(), strerror(errno));
           THROW_FILE_OPEN_ERROR("open", filename, "O_WRONLY | O_CREAT | O_TRUNC", errno);
         }
 
@@ -230,9 +238,11 @@ namespace triagens {
 
           if (n < 1) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("write failed for '" << filename
-                         << "' with " << strerror(errno) << " and result " << n
-                         << " on fd " << fd);
+            LOG_TRACE("write failed for '%s' with %s and result %d on %d",
+                      filename.c_str(),
+                      strerror(errno),
+                      (int) n,
+                      fd); 
             THROW_FILE_FUNC_ERROR("write", "", errno);
           }
 

@@ -29,9 +29,9 @@
 
 #include "Basics/MutexLocker.h"
 #include "BasicsC/files.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
@@ -82,7 +82,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Handle<v8::Context> con
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOGGER_ERROR("unknown script '" << StringUtils::correctPath(name) << "'");
+    LOG_ERROR("unknown script '%s'", StringUtils::correctPath(name).c_str());
     return scope.Close(v8::Undefined());
   }
 
@@ -113,7 +113,7 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOGGER_ERROR("unknown script '" << StringUtils::correctPath(name) << "'");
+    LOG_ERROR("unknown script '%s'", StringUtils::correctPath(name).c_str());
     return false;
   }
 

@@ -33,8 +33,8 @@
 #include "DispatcherQueue.h"
 
 #include "Basics/ConditionLocker.h"
+#include "BasicsC/logging.h"
 #include "Dispatcher/DispatcherThread.h"
-#include "Logger/Logger.h"
 
 using namespace triagens::rest;
 
@@ -171,7 +171,7 @@ void DispatcherQueue::beginShutdown () {
     return;
   }
 
-  LOGGER_DEBUG("beginning shutdown sequence of dispatcher queue '" << _name <<"'");
+  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%s'", _name.c_str());
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
@@ -182,10 +182,11 @@ void DispatcherQueue::beginShutdown () {
     {
       CONDITION_LOCKER(guard, _accessQueue);
 
-      LOGGER_TRACE("shutdown sequence dispatcher queue '" << _name << "', status: "
-                   << _nrRunning << " running threads, "
-                   << _nrWaiting << " waiting threads, "
-                   << _nrSpecial << " special threads");
+      LOG_TRACE("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads, %d special threads",
+                _name.c_str(), 
+                (int) _nrRunning,
+                (int) _nrWaiting,
+                (int) _nrSpecial);
 
       if (0 == _nrRunning + _nrWaiting) {
         break;
@@ -196,11 +197,12 @@ void DispatcherQueue::beginShutdown () {
 
     usleep(10000);
   }
-
-  LOGGER_DEBUG("shutdown sequence dispatcher queue '" << _name << "', status: "
-               << _nrRunning << " running threads, "
-               << _nrWaiting << " waiting threads, "
-               << _nrSpecial << " special threads");
+      
+  LOG_DEBUG("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads, %d special threads",
+            _name.c_str(), 
+            (int) _nrRunning,
+            (int) _nrWaiting,
+            (int) _nrSpecial);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +210,7 @@ void DispatcherQueue::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::shutdown () {
-  LOGGER_DEBUG("shutting down the dispatcher queue '" << _name << "'");
+  LOG_DEBUG("shutting down the dispatcher queue '%s'", _name.c_str());
 
   // try to stop threads forcefully
   set<DispatcherThread*> threads;
@@ -260,7 +262,7 @@ bool DispatcherQueue::startQueueThread () {
   bool ok = thread->start();
 
   if (! ok) {
-    LOGGER_FATAL_AND_EXIT("cannot start dispatcher thread");
+    LOG_FATAL_AND_EXIT("cannot start dispatcher thread");
   }
   else {
     _nrStarted++;

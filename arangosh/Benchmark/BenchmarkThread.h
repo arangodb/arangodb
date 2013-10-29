@@ -35,6 +35,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "BasicsC/logging.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -148,13 +149,13 @@ namespace triagens {
 
           _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3);
           if (_connection == 0) {
-            LOGGER_FATAL_AND_EXIT("out of memory");
+            LOG_FATAL_AND_EXIT("out of memory");
           }
          
           _client = new SimpleHttpClient(_connection, 10.0, true);
 
           if (_client == 0) {
-            LOGGER_FATAL_AND_EXIT("out of memory");
+            LOG_FATAL_AND_EXIT("out of memory");
           }
   
           _client->setLocationRewriter(this, &rewriteLocation);
@@ -174,7 +175,7 @@ namespace triagens {
               delete result;
             }
 
-            LOGGER_FATAL_AND_EXIT("could not connect to server");
+            LOG_FATAL_AND_EXIT("could not connect to server");
           }
 
           delete result;
@@ -182,7 +183,7 @@ namespace triagens {
           // if we're the first thread, set up the test
           if (_threadNumber == 0) {
             if (! _operation->setUp(_client)) {
-              LOGGER_FATAL_AND_EXIT("could not set up the test");
+              LOG_FATAL_AND_EXIT("could not set up the test");
             }
           }
 
@@ -298,13 +299,13 @@ namespace triagens {
           _headers["Content-Type"] = HttpRequest::getMultipartContentType() +
                                      "; boundary=" + boundary;
 
-          Timing timer(Timing::TI_WALLCLOCK);
+          double start = TRI_microtime();
           SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST,
                                                       "/_api/batch",
                                                       batchPayload.c_str(),
                                                       batchPayload.length(),
                                                       _headers);
-          _time += ((double) timer.time()) / 1000000.0;
+          _time += TRI_microtime() - start;
 
           if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(numOperations);
@@ -319,10 +320,10 @@ namespace triagens {
 
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOGGER_WARNING("batch operation failed with HTTP code " << result->getHttpReturnCode());
+              LOG_WARNING("batch operation failed with HTTP code %d", (int) result->getHttpReturnCode());
             }
             else if (_warningCount == MaxWarnings) {
-              LOGGER_WARNING("...more warnings...");
+              LOG_WARNING("...more warnings...");
             }
           }
           else {
@@ -355,13 +356,13 @@ namespace triagens {
           // std::cout << "thread number #" << _threadNumber << ", threadCounter " << threadCounter << ", globalCounter " << globalCounter << "\n";
           const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
 
-          Timing timer(Timing::TI_WALLCLOCK);
+          double start = TRI_microtime();
           SimpleHttpResult* result = _client->request(type,
                                                       url,
                                                       payload,
                                                       payloadLength,
                                                       _headers);
-          _time += ((double) timer.time()) / 1000000.0;
+          _time += TRI_microtime() - start;
 
           if (mustFree) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
@@ -380,10 +381,10 @@ namespace triagens {
 
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOGGER_WARNING("request for URL " << url << " failed with HTTP code " << result->getHttpReturnCode());
+              LOG_WARNING("request for URL '%s' failed with HTTP code %d", url.c_str(), (int) result->getHttpReturnCode());
             }
             else if (_warningCount == MaxWarnings) {
-              LOGGER_WARNING("...more warnings...");
+              LOG_WARNING("...more warnings...");
             }
           }
           delete result;
