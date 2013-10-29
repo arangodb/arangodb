@@ -1,5 +1,5 @@
-v1.4.0-rc1 (2013-10-29)
------------------------
+v1.4.0 (2013-10-29)
+-------------------
 
 * fixed issue #648: /batch API is missing from Web Interface API Docummentation (Swagger)
 
