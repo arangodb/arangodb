@@ -2034,8 +2034,11 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
     TRI_SignalCondition(&LogCondition);
     TRI_UnlockCondition(&LogCondition);
 
-    // ignore all errors here as we cannot log them anywhere...
-    TRI_JoinThread(&LoggingThread);
+    if (TRI_JoinThread(&LoggingThread) != TRI_ERROR_NO_ERROR) {
+      // ignore all errors for now as we cannot log them anywhere...
+      // TODO: find some means to signal errors on shutdown
+    }
+
     TRI_DestroyMutex(&LogMessageQueueLock);
     TRI_DestroyVector(&LogMessageQueue);
     TRI_DestroyCondition(&LogCondition);
@@ -2048,7 +2051,7 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
   // cleanup prefix
   TRI_LockSpin(&OutputPrefixLock);
 
-  if (OutputPrefix) {
+  if (OutputPrefix != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, OutputPrefix);
     OutputPrefix = NULL;
   }

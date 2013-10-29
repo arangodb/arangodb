@@ -46,13 +46,23 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mark a value as unused
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_GCC_UNUSED
+#define TRI_UNUSED __attribute__ ((unused))
+#else
+#define TRI_UNUSED /* unused */
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief warn if return is unused
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef HAVE_GCC_ATTRIBUTE
-#define WARN_UNUSED __attribute__ ((warn_unused_result))
+#ifdef TRI_HAVE_GCC_ATTRIBUTE
+#define TRI_WARN_UNUSED __attribute__ ((warn_unused_result))
 #else
-#define WARN_UNUSED /* unused */
+#define TRI_WARN_UNUSED /* unused */
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +72,7 @@ extern "C" {
 ///    a        the value
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef HAVE_GCC_BUILTIN
+#ifdef TRI_HAVE_GCC_BUILTIN
 #define EF(a) __builtin_expect(a, false)
 #else
 #define EF(a) a
@@ -75,7 +85,7 @@ extern "C" {
 ///    a        the value
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef HAVE_GCC_BUILTIN
+#ifdef TRI_HAVE_GCC_BUILTIN
 #define ET(a) __builtin_expect(a, true)
 #else
 #define ET(a) a
@@ -88,7 +98,7 @@ extern "C" {
 ///    a        the value to prefetch
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef HAVE_GCC_BUILTIN
+#ifdef TRI_HAVE_GCC_BUILTIN
 #define PR(a) __builtin_prefetch(a, 0, 0)
 #else
 #define PR(a) /* prefetch read */
@@ -101,7 +111,7 @@ extern "C" {
 ///    a        the value to prefetch
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef HAVE_GCC_BUILTIN
+#ifdef TRI_HAVE_GCC_BUILTIN
 #define PW(a) __builtin_prefetch(a, 1, 0)
 #else
 #define PW(a) /* prefetch write */

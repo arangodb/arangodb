@@ -736,6 +736,7 @@ typedef unsigned char bool;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __GNUC__
+#define TRI_HAVE_GCC_UNUSED             1
 #define TRI_HAVE_GCC_ATTRIBUTE          1
 #define TRI_HAVE_GCC_BUILTIN            1
 #endif

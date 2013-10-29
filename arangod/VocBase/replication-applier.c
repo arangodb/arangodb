@@ -803,8 +803,14 @@ int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
     res = TRI_JoinThread(&applier->_thread);
   }
   else {
-    // keep original error code
-    TRI_JoinThread(&applier->_thread);
+    // stop the thread but keep original error code
+    int res2 = TRI_JoinThread(&applier->_thread);
+    
+    if (res2 != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("could not join replication applier for database '%s': %s",
+                applier->_databaseName,
+                TRI_errno_string(res2));
+    }
   }
   
   SetTerminateFlag(applier, false);

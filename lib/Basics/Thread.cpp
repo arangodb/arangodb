@@ -130,12 +130,22 @@ Thread::Thread (std::string const& name)
 ////////////////////////////////////////////////////////////////////////////////
 
 Thread::~Thread () {
+  int res;
+
   if (_running != 0) {
     LOG_WARNING("forcefully shutting down thread '%s'", _name.c_str());
-    TRI_StopThread(&_thread);
+    res = TRI_StopThread(&_thread);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_WARNING("unable to stop thread '%s': %s", _name.c_str(), TRI_errno_string(res));
+    }
   }
 
-  TRI_DetachThread(&_thread);
+  res = TRI_DetachThread(&_thread);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("unable to detached thread '%s': %s", _name.c_str(), TRI_errno_string(res));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

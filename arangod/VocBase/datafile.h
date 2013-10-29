@@ -540,7 +540,7 @@ void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
 int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
                                 TRI_df_marker_t** position,
-                                TRI_voc_size_t maximalJournalSize);
+                                TRI_voc_size_t maximalJournalSize) TRI_WARN_UNUSED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker to the datafile
@@ -551,7 +551,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
-                              bool sync);
+                              bool sync) TRI_WARN_UNUSED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checksums and writes a marker to the datafile
@@ -563,7 +563,7 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  void* position,
                                  TRI_df_marker_t* marker,
                                  TRI_voc_size_t markerSize,
-                                 bool sync);
+                                 bool sync) TRI_WARN_UNUSED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
@@ -598,7 +598,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile);
 /// @brief seals a database, writes a footer, sets it to read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SealDatafile (TRI_datafile_t* datafile);
+int TRI_SealDatafile (TRI_datafile_t* datafile) TRI_WARN_UNUSED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a datafile
