@@ -547,7 +547,7 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
     }
   }
     
-  res = TRI_BeginTransaction(trx, getHint(totalOperations), TRI_TRANSACTION_TOP_LEVEL);
+  res = TRI_BeginTransaction(trx, getHint((const size_t) totalOperations), TRI_TRANSACTION_TOP_LEVEL);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeTransaction(trx);
