@@ -64,6 +64,25 @@
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleep interval used when polling for a loading collection's status
+////////////////////////////////////////////////////////////////////////////////
+
+#define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
@@ -763,7 +782,8 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || 
-           collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+           collection->_status == TRI_VOC_COL_STATUS_UNLOADING ||
+           collection->_status == TRI_VOC_COL_STATUS_LOADING) {
 
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 
@@ -1083,6 +1103,25 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
+  
+  // currently loading
+  if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+    // loop until the status changes
+    while (1) {
+      TRI_vocbase_col_status_e status = collection->_status; 
+
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+      if (status != TRI_VOC_COL_STATUS_LOADING) {
+        break;
+      }
+      usleep(COLLECTION_STATUS_POLL_INTERVAL);
+      
+      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+    }
+
+    return LoadCollectionVocBase(vocbase, collection);
+  }
 
   // unloaded, load collection
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
@@ -1091,7 +1130,22 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
       TRI_document_collection_t* document;
 
+      // set the status to loading
+      collection->_status = TRI_VOC_COL_STATUS_LOADING;
+
+      // release the lock on the collection temporarily
+      // this will allow other threads to check the collection's
+      // status while it is loading (loading may take a long time because of
+      // disk activity)
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
       document = TRI_OpenDocumentCollection(vocbase, collection->_path);
+     
+      // lock again the adjust the status
+      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+
+      // no one else must have changed the status
+      assert(collection->_status == TRI_VOC_COL_STATUS_LOADING);
 
       if (document == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1914,6 +1968,24 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
 
+  // a loading collection
+  if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+    // loop until status changes
+    while (1) {
+      TRI_vocbase_col_status_e status = collection->_status; 
+    
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      if (status != TRI_VOC_COL_STATUS_LOADING) {
+        break;
+      }
+      usleep(COLLECTION_STATUS_POLL_INTERVAL);
+
+      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+    }
+    // if we get here, the status has changed
+    return TRI_UnloadCollectionVocBase(vocbase, collection);
+  }
+
   // a deleted collection is treated as unloaded
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2031,6 +2103,31 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 
     return TRI_ERROR_NO_ERROR;
+  }
+  
+  // .............................................................................
+  // collection is loading
+  // .............................................................................
+
+  else if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+    // loop until status changes
+    while (1) {
+      TRI_vocbase_col_status_e status = collection->_status; 
+
+      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
+
+      if (status != TRI_VOC_COL_STATUS_LOADING) {
+        break;
+      }
+      usleep(COLLECTION_STATUS_POLL_INTERVAL);
+      
+      TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
+      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+    }
+   
+    // try again with changed status
+    return TRI_DropCollectionVocBase(vocbase, collection, generatingServer);
   }
 
   // .............................................................................
