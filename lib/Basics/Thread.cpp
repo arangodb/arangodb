@@ -121,7 +121,8 @@ Thread::Thread (std::string const& name)
     _thread(),
     _finishedCondition(0),
     _started(0),
-    _running(0) {
+    _running(0),
+    _joined(0) {
   TRI_InitThread(&_thread);
 }
 
@@ -141,10 +142,12 @@ Thread::~Thread () {
     }
   }
 
-  res = TRI_DetachThread(&_thread);
+  if (! _joined) {
+    res = TRI_DetachThread(&_thread);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("unable to detached thread '%s': %s", _name.c_str(), TRI_errno_string(res));
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_WARNING("unable to detach thread '%s': %s", _name.c_str(), TRI_errno_string(res));
+    }
   }
 }
 
@@ -218,7 +221,17 @@ int Thread::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Thread::join () {
-  return TRI_JoinThread(&_thread);
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (! _joined) {
+    res = TRI_JoinThread(&_thread);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _joined = 1;
+    }
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,11 +254,11 @@ int Thread::shutdown () {
     int res = TRI_StopThread(&_thread);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to stop thread %s", _name.c_str());
+      LOG_ERROR("unable to stop thread '%s'", _name.c_str());
     }
   }
 
-  return TRI_JoinThread(&_thread);
+  return this->join();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
