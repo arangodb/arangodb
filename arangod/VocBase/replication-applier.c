@@ -798,9 +798,14 @@ int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
   res = StopApplier(applier, resetError);
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
  
-  // join the thread without the status lock (otherwise it would propbably not join) 
-  TRI_JoinThread(&applier->_thread);
-
+  // join the thread without the status lock (otherwise it would probably not join) 
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_JoinThread(&applier->_thread);
+  }
+  else {
+    // keep original error code
+    TRI_JoinThread(&applier->_thread);
+  }
   
   SetTerminateFlag(applier, false);
 
@@ -1169,6 +1174,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_database          = NULL;
   config->_username          = NULL;
   config->_password          = NULL;
+
   config->_requestTimeout    = 300.0;
   config->_connectTimeout    = 10.0;
   config->_maxConnectRetries = 100;

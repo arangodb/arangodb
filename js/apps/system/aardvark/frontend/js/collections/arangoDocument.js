@@ -125,7 +125,7 @@ window.arangoDocument = Backbone.Collection.extend({
         result = true;
       },
       error: function(data) {
-          result = false;
+        result = false;
       }
     });
     return result;
@@ -145,7 +145,7 @@ window.arangoDocument = Backbone.Collection.extend({
         result = true;
       },
       error: function(data) {
-          result = false;
+        result = false;
       }
     });
     return result;

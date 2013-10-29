@@ -20,7 +20,7 @@ window.foxxMountView = Backbone.View.extend({
     return this;
   },
   events: {
-    "hidden #install-foxx"   : "hidden",
+    "hidden #install-foxx"  : "hidden",
     "click #cancel"         : "hideModal",
     "click #install"        : "install"
   },

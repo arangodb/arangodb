@@ -46,8 +46,14 @@ var API = "_api/collection";
 /// @brief return a prefixed URL
 ////////////////////////////////////////////////////////////////////////////////
 
-function databasePrefix (url) {
-  return "/_db/" + arangodb.db._name() + url;
+function databasePrefix (req, url) {
+  if (req.hasOwnProperty('compatibility') && req.compatibility < 10400) {
+    // pre 1.4-style location response (e.g. /_api/collection/xyz)
+    return url;
+  }
+
+  // 1.4-style location response (e.g. /_db/dbname/_api/collection/xyz)
+  return "/_db/" + encodeURIComponent(arangodb.db._name()) + url;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,7 +281,6 @@ function post_api_collection (req, res) {
     }
 
     var result = {};
-    var headers = {};
 
     result.id = collection._id;
     result.name = collection.name();
@@ -286,7 +291,9 @@ function post_api_collection (req, res) {
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;
     
-    headers.location = databasePrefix("/" + API + "/" + result.name);
+    var headers = {
+      location: databasePrefix(req, "/" + API + "/" + result.name)
+    };
 
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
   }
@@ -785,7 +792,9 @@ function get_api_collection (req, res) {
 
   if (req.suffix.length === 1) {
     result = collectionRepresentation(collection, false, false, false);
-    headers = { location : databasePrefix("/" + API + "/" + collection.name()) };
+    headers = { 
+      location : databasePrefix(req, "/" + API + "/" + collection.name()) 
+    };
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     return;
   }
@@ -828,7 +837,9 @@ function get_api_collection (req, res) {
 
     else if (sub === "figures") {
       result = collectionRepresentation(collection, true, true, true);
-      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/figures") };
+      headers = { 
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/figures") 
+      };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
@@ -838,7 +849,9 @@ function get_api_collection (req, res) {
 
     else if (sub === "count") {
       result = collectionRepresentation(collection, true, true, false);
-      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/count") };
+      headers = { 
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/count") 
+      };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
@@ -848,7 +861,9 @@ function get_api_collection (req, res) {
 
     else if (sub === "properties") {
       result = collectionRepresentation(collection, true, false, false);
-      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/properties") };
+      headers = { 
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/properties") 
+      };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
@@ -858,7 +873,9 @@ function get_api_collection (req, res) {
 
     else if (sub === "parameter") {
       result = collectionRepresentation(collection, true, false, false);
-      headers = { location : databasePrefix("/" + API + "/" + collection.name() + "/parameter") };
+      headers = { 
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/parameter") 
+      };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
     

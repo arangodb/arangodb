@@ -7,6 +7,15 @@ Upgrading to ArangoDB 1.4 {#Upgrading14}
 Upgrading {#Upgrading14Introduction}
 ====================================
 
+1.4 is currently beta, please do not use in production.
+
+Please read the following sections if you upgrade from a pre-1.4 version of ArangoDB
+to ArangoDB 1.4.
+
+ArangoDB 1.4 comes with a few changes, some of which are not 100% compatible to
+ArangoDB 1.3. The incompatibilies are mainly due to the introduction of the multiple
+databases feature and to some changes inside Foxx.
+
 Filesystem layout changes {#Upgrading14FileSystem}
 --------------------------------------------------
 
@@ -191,6 +200,52 @@ the same IP address, so ArangoDB will try to bind to the same address twice
 Other obvious bind problems at startup may be caused by ports being used by
 other programs, or IP addresses changing.
 
+Problem: Server returns different `location` headers than in 1.3
+-----------------------------------------------------------------
+
+ArangoDB 1.4 by default will return `location` HTTP headers that contain the
+database name too. This is a consequence of potentially having multiple databases 
+in the same server instance.
+
+For example, when creating a new document, ArangoDB 1.3 returned an HTTP
+response with a `location` header like this:
+
+    location: /_api/document/<collection name>/<document key>
+
+Contrary, ArangoDB 1.4 will return a `location` header like this by default:
+    
+    location: /_db/<database name>/_api/document/<collection name>/<document key>
+
+This may not be compatible to pre-1.4 clients that rely on the old format
+of the `location` header.
+
+Obviously one workaround is to upgrade the used client driver to the newest 
+version. If that cannot be done or if the newest version of the client driver is
+not ready for ArangoDB 1.4, the server provides a startup option that can be
+used to increase compatibility with old clients:
+
+    --server.default-api-compatibility
+
+Not setting this option will make ArangoDB set it to the current server version, and 
+assume all clients are compatible. This will also make it send the new-style
+location headers.
+
+Setting this value to an older version number will make the server try to keep
+the API compatible to older versions where possible. For example, to send the
+old (pre-1.4) style location headers, set the value to `10300` (1.3) as follows:
+    
+    --server.default-api-compatibility 10300
+
+The server will then return the old-style `location` headers.
+
+Another way to fix the `location` header issue is to make the client send API
+compatibility information itself. This can be achieved by sending an extra HTTP
+header `x-arango-version` along with a client request. For example, sending the 
+following header in a request will make ArangoDB return the old style `location`
+headers too:
+
+    x-arango-version: 10300
+
 Problem: Find out the storage location of a database / collection
 -----------------------------------------------------------------
 
@@ -215,8 +270,8 @@ can use a Bash script like this:
 The above script should print out the names of all databases and collections 
 with their corresponding directory names.
 
-Problem: AQL user-function does not work anymore
-------------------------------------------------
+Problem: AQL user-functions do not work anymore
+-----------------------------------------------
 
 The namespace resolution operator for AQL user-defined functions has changed from `:` 
 to `::`. Names of user-defined function names need to be adjusted in AQL queries.

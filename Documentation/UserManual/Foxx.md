@@ -396,6 +396,11 @@ The Request Object
 
 The `request` object inherits several attributes from the underlying Actions:
 
+* `compatibility`: an integer specifying the compatibility version sent by the
+  client (in request header `x-arango-version`). If the client does not send this
+  header, ArangoDB will set this to the minimum compatible version number. The 
+  value is 10000 * major + 100 * minor (e.g. `10400` for ArangoDB version 1.4).
+
 * `user`: the name of the current ArangoDB user. This will be populated only
   if authentication is turned on, and will be `null` otherwise.
 

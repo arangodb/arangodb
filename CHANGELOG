@@ -1,10 +1,69 @@
 v1.4.0-rc1 (2013-10-29)
 -----------------------
 
-* issue #643: Some minor corrections and a link to "Downloads" by @frankmayer
+* fixed issue #648: /batch API is missing from Web Interface API Docummentation (Swagger)
+
+* fixed issue #647: Icon tooltips missing
+
+* fixed issue #646: index creation in web interface
+
+* fixed issue #645: Allow jumping from edge to linked vertices
+
+* merged PR for issue #643: Some minor corrections and a link to "Downloads"
+
+* fixed issue #642: Completion of error handling
+
+* fixed issue #639: compiling v1.4 on maverick produces warnings on -Wstrict-null-sentinel
+
+* fixed issue #634: Web interface bug: Escape does not always propagate
+
+* fixed issue #620: added startup option `--server.default-api-compatibility`
+
+  This adds the following changes to the ArangoDB server and clients:
+  - the server provides a new startup option `--server.default-api-compatibility`.
+    This option can be used to determine the compatibility of (some) server API
+    return values. The value for this parameter is a server version number,
+    calculated as follows: `10000 * major + 100 * minor` (e.g. `10400` for ArangoDB
+    1.3). The default value is `10400` (1.4), the minimum allowed value is `10300`
+    (1.3).
+
+    When setting this option to a value lower than the current server version,
+    the server might respond with old-style results to "old" clients, increasing
+    compatibility with "old" (non-up-to-date) clients.
+
+  - the server will on each incoming request check for an HTTP header 
+    `x-arango-version`. Clients can optionally set this header to the API
+    version number they support. For example, if a client sends the HTTP header
+    `x-arango-version: 10300`, the server will pick this up and might send ArangoDB
+    1.3-style responses in some situations.
+
+    Setting either the startup parameter or using the HTTP header (or both) allows
+    running "old" clients with newer versions of ArangoDB, without having to adjust
+    the clients too much.
+
+  - the `location` headers returned by the server for the APIs `/_api/document/...` 
+    and `/_api/collection/...` will have different values depending on the used API
+    version. If the API compatibility is `10300`, the `location` headers returned
+    will look like this:
+
+        location: /_api/document/....
+
+    whereas when an API compatibility of `10400` or higher is used, the `location`
+    headers will look like this:
+
+        location: /_db/<database name>/_api/document/...
+
+  Please note that even in the presence of this, old API versions still may not 
+  be supported forever by the server. 
+  
+* fixed issue #643: Some minor corrections and a link to "Downloads" by @frankmayer
+
+* started issue #642: Completion of error handling
 
 * fixed issue #639: compiling v1.4 on maverick produces warnings on 
   -Wstrict-null-sentinel 
+
+* fixed issue #621: Standard Config needs to be fixed
 
 * added function to manage indexes (web interface)
 

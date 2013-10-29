@@ -372,7 +372,7 @@ void RestJobHandler::getJob () {
   char const* value = _request->value("count", found);
 
   if (found) {
-    count = StringUtils::uint64(value);
+    count = (size_t) StringUtils::uint64(value);
   }
 
   vector<AsyncJobResult::IdType> ids;

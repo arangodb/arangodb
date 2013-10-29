@@ -59,6 +59,7 @@ static char const* EMPTY_STR = "";
 HttpRequest::HttpRequest (ConnectionInfo const& info, 
                           char const* header, 
                           size_t length,
+                          int32_t defaultApiCompatibility,
                           bool allowMethodOverride)
   : _requestPath(EMPTY_STR),
     _headers(5),
@@ -78,6 +79,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _user(),
     _requestContext(0),
     _isRequestContextOwner(false),
+    _defaultApiCompatibility(defaultApiCompatibility),
     _allowMethodOverride(allowMethodOverride) {
 
   // copy request - we will destroy/rearrange the content to compute the
@@ -90,32 +92,6 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
 
     parseHeader(request, length);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http request constructor
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest::HttpRequest ()
-  : _requestPath(EMPTY_STR),
-    _headers(1),
-    _values(1),
-    _arrayValues(1),
-    _cookies(1),
-    _contentLength(0),
-    _body(0),
-    _bodySize(0),
-    _freeables(),
-    _connectionInfo(),
-    _type(HTTP_REQUEST_ILLEGAL),
-    _prefix(),
-    _suffix(),
-    _version(HTTP_UNKNOWN),
-    _databaseName(),
-    _user(),
-    _requestContext(0),
-    _isRequestContextOwner(false),
-    _allowMethodOverride(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,16 +501,6 @@ int HttpRequest::setBody (char const* newBody,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the request body as TRI_json_t*
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* HttpRequest::toJson (char** errmsg) {
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -566,6 +532,82 @@ void HttpRequest::setHeader (char const* key,
 
     _headers.insert(key, keyLength, value);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the request body as TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* HttpRequest::toJson (char** errmsg) {
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine version compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+int32_t HttpRequest::compatibility () {
+  int32_t result = _defaultApiCompatibility;
+
+  bool found;
+  char const* apiVersion = header("x-arango-version", found);
+
+  if (! found) {
+    return result;
+  }
+
+  static const int32_t minCompatibility = 10300L;
+    
+  char const* p = apiVersion;
+
+  // read major version
+  while (*p >= '0' && *p <= '9') {
+    ++p;
+  }
+
+  if ((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion) {
+    int32_t major = TRI_Int32String2(apiVersion, (p - apiVersion));
+
+    if (major >= 10000) {
+      // version specified as "10400"
+      if (*p == '\0') {
+        result = major;
+
+        if (result < minCompatibility) {
+          result = minCompatibility;
+        }
+        else {
+          // set patch-level to 0
+          result /= 100L;
+          result *= 100L; 
+        }
+
+        return result;
+      }
+    }
+    
+    apiVersion = ++p;
+
+    // read minor version
+    while (*p >= '0' && *p <= '9') {
+      ++p;
+    }
+      
+    if ((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion) {
+      int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
+
+      result = (int32_t) (minor * 100L + major * 10000L);
+    }
+  }
+
+  if (result < minCompatibility) {
+    // minimum value
+    result = minCompatibility;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

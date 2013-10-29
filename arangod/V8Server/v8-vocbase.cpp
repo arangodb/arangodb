@@ -1480,6 +1480,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
 
   if (! err.IsEmpty()) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
   
@@ -1492,6 +1493,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 

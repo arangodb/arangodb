@@ -7,6 +7,10 @@
             "description": "aqlfunction API"
         }, 
         {
+            "path": "api-docs/batch.{format}", 
+            "description": "batch API"
+        }, 
+        {
             "path": "api-docs/collection.{format}", 
             "description": "collection API"
         }, 
