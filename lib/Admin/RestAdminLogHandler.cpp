@@ -357,7 +357,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
         (sortAscending ? LidCompareAsc : LidCompareDesc));
 
   for (size_t i = 0;  i < length;  ++i) {
-    TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(&clean, offset + i);
+    TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(&clean, (size_t) (offset + i));
     uint32_t l = 0;
 
     switch (buf->_level) {

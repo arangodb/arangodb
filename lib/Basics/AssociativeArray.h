@@ -404,7 +404,7 @@ namespace triagens {
             }
 
             for (uint64_t j = 0; j < oldAlloc; j++) {
-              if (!_desc.isEmptyElement(oldTable[j])) {
+              if (! _desc.isEmptyElement(oldTable[j])) {
                 addNewElement(oldTable[j]);
               }
             }
