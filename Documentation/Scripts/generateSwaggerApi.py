@@ -43,6 +43,7 @@ import sys, os, json, string
 
 files = { 
   "js/actions/api-aqlfunction.js" : "aqlfunction",
+  "arangod/RestHandler/RestBatchHandler.cpp" : "batch",
   "js/actions/api-collection.js" : "collection",
   "js/actions/api-cursor.js" : "cursor",
   "js/actions/api-database.js" : "database",

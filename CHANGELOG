@@ -1,6 +1,8 @@
 v1.4.0 (2013-10-28)
 -------------------
 
+* fixed issue #648: /batch API is missing from Web Interface API Docummentation (Swagger)
+
 * fixed issue #647: Icon tooltips missing
 
 * fixed issue #646: index creation in web interface
