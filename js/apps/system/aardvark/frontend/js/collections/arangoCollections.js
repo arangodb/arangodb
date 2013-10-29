@@ -37,6 +37,9 @@ window.arangoCollections = Backbone.Collection.extend({
         else if (status === 5) {
           returnString = 'deleted';
         }
+        else if (status === 6) {
+          returnString = 'loading';
+        }
         return returnString;
       },
       translateTypePicture : function (type) {
