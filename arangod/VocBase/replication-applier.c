@@ -1174,6 +1174,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_database          = NULL;
   config->_username          = NULL;
   config->_password          = NULL;
+
   config->_requestTimeout    = 300.0;
   config->_connectTimeout    = 10.0;
   config->_maxConnectRetries = 100;
