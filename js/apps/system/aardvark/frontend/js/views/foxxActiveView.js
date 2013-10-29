@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, $, window, EJS, _ */
+/*global Backbone, $, window, EJS, arangoHelper, _ */
 
 window.FoxxActiveView = Backbone.View.extend({
   tagName: 'li',
@@ -60,6 +60,7 @@ window.FoxxActiveView = Backbone.View.extend({
     if (this._show) {
       $(this.el).html(this.template.render(this.model));
     }
+
     return $(this.el);
   }
 });
