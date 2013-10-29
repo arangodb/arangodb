@@ -28,7 +28,7 @@
 #include "EndpointList.h"
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -262,7 +262,9 @@ void EndpointList::dump () const {
   for (map<string, pair<Endpoint*, vector<string> > >::const_iterator it = _endpoints.begin(); it != _endpoints.end(); ++it) {
     Endpoint const* ep = (*it).second.first;
 
-    LOGGER_INFO("using endpoint '" << (*it).first << "' for " << getEncryptionName(ep->getEncryption()) << " requests");
+    LOG_INFO("using endpoint '%s' for %s requests",
+             (*it).first.c_str(),
+             getEncryptionName(ep->getEncryption()).c_str());
   }
 }
 

@@ -30,9 +30,8 @@
 #include "BasicsC/init.h"
 #include "BasicsC/error.h"
 #include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-
-#include "Logger/Logger.h"
 #include "Basics/RandomGenerator.h"
 
 #ifdef TRI_BROKEN_CXA_GUARD

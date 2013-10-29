@@ -30,9 +30,9 @@
 #include <fstream>
 
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/mimetypes.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -101,7 +101,7 @@ namespace triagens {
         string const& next = *j;
 
         if (next == ".") {
-          LOGGER_WARNING("file '" << name << "' contains '.'");
+          LOG_WARNING("file '%s' contains '.'", name.c_str());
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '.'");
@@ -109,7 +109,7 @@ namespace triagens {
         }
 
         if (next == "..") {
-          LOGGER_WARNING("file '" << name << "' contains '..'");
+          LOG_WARNING("file '%s' contains '..'", name.c_str());
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '..'");
@@ -119,7 +119,7 @@ namespace triagens {
         string::size_type sc = next.find_first_not_of(allowed);
 
         if (sc != string::npos) {
-          LOGGER_WARNING("file '" << name << "' contains illegal character");
+          LOG_WARNING("file '%s' contains illegal character", name.c_str());
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains illegal character '" + string(1, next[sc]) + "'");
@@ -128,7 +128,7 @@ namespace triagens {
 
         if (! path.empty()) {
           if (! FileUtils::isDirectory(path)) {
-            LOGGER_WARNING("file '" << name << "' not found");
+            LOG_WARNING("file '%s' not found", name.c_str());
 
             _response = createResponse(HttpResponse::NOT_FOUND);
             _response->body().appendText("file not found");
@@ -140,7 +140,7 @@ namespace triagens {
         last = next;
 
         if (! allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
-          LOGGER_WARNING("file '" << name << "' contains symbolic link");
+          LOG_WARNING("file '%s' contains symbolic link", name.c_str());
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("symbolic links are not allowed");
@@ -149,7 +149,7 @@ namespace triagens {
       }
 
       if (! FileUtils::isRegularFile(name)) {
-        LOGGER_WARNING("file '" << name << "' not found");
+        LOG_WARNING("file '%s' not found", name.c_str());
 
         _response = createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not found");
@@ -162,7 +162,7 @@ namespace triagens {
         FileUtils::slurp(name, _response->body());
       }
       catch (...) {
-        LOGGER_WARNING("file '" << name << "' not readable");
+        LOG_WARNING("file '%s' not readable", name.c_str());
 
         _response = createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not readable");
@@ -193,7 +193,7 @@ namespace triagens {
         }
         else {
           // note: changed the log level to debug. an unknown content-type does not justify a warning
-          LOGGER_TRACE("unknown suffix = " << suffix);
+          LOG_TRACE("unknown suffix '%s'", suffix.c_str());
         }
       }
       

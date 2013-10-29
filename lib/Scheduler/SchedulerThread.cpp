@@ -30,9 +30,9 @@
 #include "BasicsC/win-utils.h"
 #endif
 
+#include "BasicsC/logging.h"
 #include "SchedulerThread.h"
 
-#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
@@ -124,7 +124,7 @@ bool SchedulerThread::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::beginShutdown () {
-  LOGGER_TRACE("beginning shutdown sequence of scheduler thread (" << threadId() << ")");
+  LOG_TRACE("beginning shutdown sequence of scheduler thread (%d)", (int) threadId());
 
   _stopping = 1;
   _scheduler->wakeupLoop(_loop);
@@ -144,8 +144,9 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   // same thread, in this case it does not matter if we are inside the loop
   else if (threadId() == currentThreadId()) {
     bool ok = setupTask(task, scheduler, _loop);
-    if (!ok) {
-      LOGGER_WARNING("In SchedulerThread::registerTask setupTask has failed");
+
+    if (! ok) {
+      LOG_WARNING("In SchedulerThread::registerTask setupTask has failed");
       cleanupTask(task);
       deleteTask(task);
     }
@@ -255,7 +256,7 @@ void SchedulerThread::destroyTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::run () {
-  LOGGER_TRACE("scheduler thread started (" << threadId() << ")");
+  LOG_TRACE("scheduler thread started (%d)", (int) threadId());
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -276,16 +277,16 @@ void SchedulerThread::run () {
     catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping != 0) {
-        LOGGER_WARNING("caught cancellation exception during work");
+        LOG_WARNING("caught cancellation exception during work");
         throw;
       }
 #endif
 
-      LOGGER_WARNING("caught exception from ev_loop");
+      LOG_WARNING("caught exception from ev_loop");
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
-    LOGGER_TRACE("left scheduler loop " << threadId());
+    LOG_TRACE("left scheduler loop %d", (int) threadId());
 #endif
 
     if (_hasWork != 0) {
@@ -329,7 +330,7 @@ void SchedulerThread::run () {
     }
   }
 
-  LOGGER_TRACE("scheduler thread stopped (" << threadId() << ")");
+  LOG_TRACE("scheduler thread stopped (%d)", (int) threadId());
 
   _stopped = 1;
 

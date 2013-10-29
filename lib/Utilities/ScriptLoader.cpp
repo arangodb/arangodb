@@ -29,9 +29,9 @@
 
 #include "Basics/MutexLocker.h"
 #include "BasicsC/files.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -154,7 +154,9 @@ string const& ScriptLoader::findScript (string const& name) {
       char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, NULL);
 
       if (result == 0 && (i == parts.size() - 1)) {
-        LOGGER_ERROR("cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error());
+        LOG_ERROR("cannot locate file '%s': %s",
+                  StringUtils::correctPath(name).c_str(),
+                  TRI_last_error());
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);

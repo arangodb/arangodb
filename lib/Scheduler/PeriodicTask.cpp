@@ -28,8 +28,8 @@
 
 #include "PeriodicTask.h"
 
+#include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
-#include "Logger/Logger.h"
 
 using namespace triagens::rest;
 
@@ -79,7 +79,7 @@ bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void PeriodicTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING("In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer");
+    LOG_WARNING("In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;
   }

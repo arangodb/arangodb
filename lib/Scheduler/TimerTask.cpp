@@ -28,8 +28,7 @@
 
 #include "TimerTask.h"
 
-#include "Logger/Logger.h"
-
+#include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -60,7 +59,7 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   if (0.0 < seconds) {
     watcher = scheduler->installTimerEvent(loop, this, seconds);
-    LOGGER_TRACE("armed TimerTask with " << seconds << " seconds");
+    LOG_TRACE("armed TimerTask with %f seconds", seconds);
   }
   else {
     watcher = 0;
@@ -72,7 +71,7 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void TimerTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
+    LOG_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;
   }

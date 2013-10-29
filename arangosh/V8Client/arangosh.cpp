@@ -454,7 +454,7 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
 
   // check module path
   if (StartupModules.empty()) {
-    LOGGER_FATAL_AND_EXIT("module path not known, please use '--javascript.modules-path'");
+    LOG_FATAL_AND_EXIT("module path not known, please use '--javascript.modules-path'");
   }
 
   // turn on paging automatically if "pager" option is set
@@ -1340,7 +1340,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
       if (input == 0) {
-        LOGGER_FATAL_AND_EXIT("out of memory");
+        LOG_FATAL_AND_EXIT("out of memory");
       }
     }
 
@@ -1904,10 +1904,10 @@ int main (int argc, char* argv[]) {
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    LOGGER_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
+    LOG_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
   }
 
-  LOGGER_DEBUG("using JavaScript startup files at '" << StartupPath << "'");
+  LOG_DEBUG("using JavaScript startup files at '%s'", StartupPath.c_str());
   StartupLoader.setDirectory(StartupPath);
 
   TRI_AddGlobalVariableVocbase(context, "ARANGO_QUIET", v8::Boolean::New(BaseClient.quiet()));
@@ -1961,10 +1961,10 @@ int main (int argc, char* argv[]) {
     bool ok = StartupLoader.loadScript(context, files[i]);
 
     if (ok) {
-      LOGGER_TRACE("loaded JavaScript file '" << files[i] << "'");
+      LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
     }
     else {
-      LOGGER_FATAL_AND_EXIT("cannot load JavaScript file '" << files[i] << "'");
+      LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
     }
   }
 

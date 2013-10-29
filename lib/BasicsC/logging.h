@@ -244,25 +244,34 @@ bool TRI_IsInfoLogging (void);
 /// @brief checks if debug logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsDebugLogging (char const* file);
+bool TRI_IsDebugLogging (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if trace logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsTraceLogging (char const* file);
+bool TRI_IsTraceLogging (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI_log_severity_e, char const* fmt, ...);
+void TRI_Log (char const*, 
+              char const*, 
+              int, 
+              TRI_log_level_e, 
+              TRI_log_severity_e,
+              char const*, 
+              ...);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new raw message
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RawLog (TRI_log_level_e, TRI_log_severity_e, char const*, size_t);
+void TRI_RawLog (TRI_log_level_e, 
+                 TRI_log_severity_e, 
+                 char const*, 
+                 size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last log entries
@@ -308,7 +317,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 /// @brief logs fatal errors
 ////////////////////////////////////////////////////////////////////////////////
 
-void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
+void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void); 
 
 #ifdef TRI_ENABLE_LOGGER
 
@@ -325,7 +334,6 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #define LOG_FATAL_AND_EXIT(...)                                                                            \
   do {                                                                                                     \
-    fprintf(stderr, "fatal error. exiting.\n");                                                            \
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
   } while (0)
 

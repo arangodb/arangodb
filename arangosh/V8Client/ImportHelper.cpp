@@ -309,7 +309,7 @@ namespace triagens {
 
       double pct = 100.0 * ((double) totalRead / (double) totalLength);
       if (pct >= nextProgress) {
-        LOGGER_INFO("processed " << totalRead << " bytes (" << std::fixed << std::setprecision(2) << pct << " %) of input file");
+        LOG_INFO("processed %lld bytes (%0.2f%%) of input file", (long long) totalRead, pct);
         nextProgress = pct + ProgressStep;
       }
     }

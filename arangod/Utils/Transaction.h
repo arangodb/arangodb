@@ -37,10 +37,10 @@
 #include "VocBase/voc-shaper.h"
 #include "VocBase/voc-types.h"
 
+#include "BasicsC/logging.h"
 #include "BasicsC/random.h"
 #include "BasicsC/tri-strings.h"
 
-#include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 
@@ -1104,7 +1104,7 @@ namespace triagens {
             
           if (! this->isEmbeddable()) {
             // we are embedded but this is disallowed...
-            LOGGER_WARNING("logic error. invalid nesting of transactions");
+            LOG_WARNING("logic error. invalid nesting of transactions");
 
             return TRI_ERROR_TRANSACTION_NESTED;
           }

@@ -28,9 +28,9 @@
 
 #include "HttpResponse.h"
 
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -106,7 +106,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
 
     // default
     default:
-      LOGGER_WARNING("unknown HTTP response code " << code << " returned");
+      LOG_WARNING("unknown HTTP response code %d returned", (int) code);
       return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
   }
 }

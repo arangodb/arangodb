@@ -31,11 +31,11 @@
 
 #include "Dispatcher/Job.h"
 
-#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "BasicsC/logging.h"
 #include "Rest/Handler.h"
 #include "Scheduler/AsyncTask.h"
 
@@ -199,7 +199,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         status_e work () {
-          LOGGER_TRACE("beginning job " << static_cast<Job*>(this));
+          LOG_TRACE("beginning job %p", (void*) this);
 
           this->RequestStatisticsAgent::transfer(_handler);
 
@@ -211,7 +211,7 @@ namespace triagens {
           Handler::status_e status = _handler->execute();
           RequestStatisticsAgentSetRequestEnd(_handler);
 
-          LOGGER_TRACE("finished job " << static_cast<Job*>(this) << " with status " << status);
+          LOG_TRACE("finished job %p with status %d", (void*) this, (int) status);
 
           switch (status) {
             case Handler::HANDLER_DONE:    return Job::JOB_DONE;
@@ -247,7 +247,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool beginShutdown () {
-          LOGGER_TRACE("shutdown job " << static_cast<Job*>(this));
+          LOG_TRACE("shutdown job %p", (void*) this);
 
           _shutdown = 1;
           return true;

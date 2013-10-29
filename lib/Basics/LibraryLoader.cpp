@@ -44,14 +44,13 @@ namespace triagens {
 #ifdef TRI_HAVE_DLFCN_H
 
       void* loadSharedLibrary (char const* filename, string const& symbol, void*& handle) {
-        LOGGER_DEBUG("trying to use library file '" << (filename ? filename : "self") << "'");
+        LOG_DEBUG("trying to use library file '%s'", (filename ? filename : "self"));
 
         // open library
         handle = dlopen(filename, RTLD_NOW | RTLD_LOCAL);
 
         if (handle == 0) {
-          LOGGER_DEBUG("cannot open library file '" << (filename ? filename : "self") << "'");
-          LOGGER_DEBUG("dlerror: " << dlerror());
+          LOG_DEBUG("cannot open library file '%s': %s", (filename ? filename : "self"), dlerror());
           return 0;
         }
 
@@ -59,7 +58,7 @@ namespace triagens {
         void* init = dlsym(handle, symbol.c_str());
 
         if (init == 0) {
-          LOGGER_DEBUG("cannot find '" << symbol << "' in '" << (filename ? filename : "self") << "'");
+          LOG_DEBUG("cannot find '%s' in '%s'", symbol.c_str(), (filename ? filename : "self"));
           dlclose(handle);
           return 0;
         }

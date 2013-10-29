@@ -180,7 +180,7 @@ namespace triagens {
           _progress = message;
 
           if (_verbose) {
-            LOGGER_INFO("synchronisation progress: " << message);
+            LOG_INFO("synchronisation progress: %s", message.c_str());
           }
         }
 

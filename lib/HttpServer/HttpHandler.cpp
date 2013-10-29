@@ -27,7 +27,7 @@
 
 #include "HttpHandler.h"
 
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Rest/HttpRequest.h"
@@ -131,7 +131,7 @@ Job* HttpHandler::createJob (AsyncJobServer* server,
     return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this, isDetached);
   }
 
-  LOGGER_WARNING("cannot convert AsyncJobServer into a HttpServer");
+  LOG_WARNING("cannot convert AsyncJobServer into a HttpServer");
   return 0;
 }
 

@@ -28,7 +28,7 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 
@@ -103,8 +103,10 @@ RestBatchHandler::~RestBatchHandler () {
 /// for each individual batch part must be `application/x-arango-batchpart`.
 ///
 /// The response sent by the server will be an `HTTP 200` response, with an
-/// error summary header `x-arango-errors`. This header contains the number of 
-/// batch parts that failed with an HTTP error code of at least 400.
+/// optional error summary header `x-arango-errors`. This header contains the 
+/// number of batch part operations that failed with an HTTP error code of at 
+/// least 400. This header is only present in the response if the number of
+/// errors is greater than zero.
 ///
 /// The response sent by the server is a multipart response, too. It contains
 /// the individual HTTP responses for all batch parts, including the full HTTP
@@ -133,7 +135,22 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestBatch1}
+/// Sending a batch request with five batch parts:
+///
+/// - GET /_api/version
+///
+/// - DELETE /_api/collection/products
+///
+/// - POST /_api/collection/products 
+///
+/// - GET /_api/collection/products/figures 
+///
+/// - DELETE /_api/collection/products
+///
+/// The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP 
+/// `Content-Type` HTTP header.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
 ///     var parts = [
 ///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nGET /_api/version HTTP/1.1\r\n",
 ///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n",
@@ -150,6 +167,27 @@ RestBatchHandler::~RestBatchHandler () {
 ///     var response = logCurlRequestRaw('POST', '/_api/batch', body, headers);
 ///
 ///     assert(response.code === 200);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Sending a batch request, setting the boundary implicitly (the server will
+/// in this case try to find the boundary at the beginning of the request body).
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
+///     var parts = [
+///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE /_api/collection/notexisting2 HTTP/1.1\r\n"
+///     ];
+///     var boundary = "SomeBoundaryValue";
+///     var body = "--" + boundary + "\r\n" +  
+///                parts.join("\r\n" + "--" + boundary + "\r\n") +
+///                "--" + boundary + "--\r\n";
+///
+///     var response = logCurlRequestRaw('POST', '/_api/batch', body);
+///
+///     assert(response.code === 200);
+///     assert(response.headers['x-arango-errors'] == 2);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -172,6 +210,8 @@ Handler::status_e RestBatchHandler::execute() {
 
     return Handler::HANDLER_FAILED;
   }
+  
+  LOG_TRACE("boundary of multipart-message is '%s'", boundary.c_str());
 
   size_t errors = 0;
 
@@ -183,7 +223,10 @@ Handler::status_e RestBatchHandler::execute() {
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
-  MultipartMessage message(boundary.c_str(), boundary.size(), _request->body(), _request->body() + _request->bodySize());
+  MultipartMessage message(boundary.c_str(), 
+                           boundary.size(), 
+                           _request->body(), 
+                           _request->body() + _request->bodySize());
 
   SearchHelper helper;
   helper.message = &message;
@@ -195,7 +238,7 @@ Handler::status_e RestBatchHandler::execute() {
     if (! extractPart(&helper)) {
       // error
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
-      LOGGER_WARNING("received a corrupted multipart message");
+      LOG_WARNING("received a corrupted multipart message");
 
       return Handler::HANDLER_FAILED;
     }
@@ -234,7 +277,7 @@ Handler::status_e RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOGGER_TRACE("part header is " << string(headerStart, headerLength));
+    LOG_TRACE("part header is: %s", string(headerStart, headerLength).c_str());
     HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength, _request->compatibility(), false);
 
     if (request == 0) {
@@ -249,7 +292,7 @@ Handler::status_e RestBatchHandler::execute() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOGGER_TRACE("part body is " << string(bodyStart, bodyLength));
+      LOG_TRACE("part body is '%s'", string(bodyStart, bodyLength).c_str());
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -355,18 +398,58 @@ Handler::status_e RestBatchHandler::execute() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary of a multipart message
+/// @brief extract the boundary from the body of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundary (string* result) {
-  assert(_request);
+bool RestBatchHandler::getBoundaryBody (string* result) {
+  char const* p = _request->body();
+  char const* e = p + _request->bodySize();
+  
+  // skip whitespace
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') {
+    ++p;
+  }
 
+  if (p + 10 > e) {
+    return false;
+  }
+
+  if (p[0] != '-' || p[1] != '-') {
+    // boundary must start with "--"
+    return false;
+  }
+
+  const char* q = p;
+
+  while (q < e && 
+         *q && 
+         *q != ' ' && *q != '\t' && *q != '\r' && *q != '\n') {
+    ++q;
+  }
+  
+  if ((q - p) < 5) {
+    // 3 bytes is min length for boundary (without "--")
+    return false;
+  }
+
+  string boundary(p, (q - p));
+
+  *result = boundary;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the boundary from the HTTP header of a multipart message
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestBatchHandler::getBoundaryHeader (string* result) {
   // extract content type
   string contentType = StringUtils::trim(_request->header("content-type"));
 
   // content type is expect to contain a boundary like this:
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   vector<string> parts = StringUtils::split(contentType, ';');
+
   if (parts.size() != 2 || parts[0] != HttpRequest::getMultipartContentType().c_str()) {
     // content-type is not formatted as expected
     return false;
@@ -384,15 +467,30 @@ bool RestBatchHandler::getBoundary (string* result) {
   }
 
   string boundary = "--" + parts[1].substr(boundaryLength);
+
   if (boundary.size() < 5) {
     // 3 bytes is min length for boundary (without "--")
     return false;
   }
 
-  LOGGER_TRACE("boundary of multipart-message is " << boundary);
-
   *result = boundary;
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the boundary of a multipart message
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestBatchHandler::getBoundary (string* result) {
+  assert(_request);
+
+  // try peeking at header first
+  if (getBoundaryHeader(result)) {
+    return true;
+  }
+
+  // boundary not found in header, now peek in body
+  return getBoundaryBody(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -418,6 +516,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
   // search for boundary
   char* found = strstr(helper->searchStart, helper->message->boundary);
+
   if (found == NULL) {
     // not contained. this is an error
     return false;
@@ -429,6 +528,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   }
 
   found += helper->message->boundaryLength;
+
   if (found + 1 >= searchEnd) {
     // we're outside the buffer. this is an error
     return false;
@@ -456,6 +556,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
   while (found < searchEnd) {
     char* eol = strstr(found, "\r\n");
+
     if (0 == eol || eol == found) {
       break;
     }
@@ -501,7 +602,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
   found += 2; // for 2nd \r\n
 
-  if (!hasTypeHeader) {
+  if (! hasTypeHeader) {
     // no Content-Type header. this is an error
     return false;
   }
@@ -511,6 +612,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
   // search for the end of the boundary
   found = strstr(helper->foundStart, helper->message->boundary);
+
   if (found == NULL || found >= searchEnd) {
     // did not find the end. this is an error
     return false;
@@ -519,7 +621,8 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   helper->foundLength = found - helper->foundStart;
 
   char* p = found + helper->message->boundaryLength;
-  if (p + 2 >= searchEnd) {
+
+  if (p + 2 > searchEnd) {
     // end of boundary is outside the buffer
     return false;
   }

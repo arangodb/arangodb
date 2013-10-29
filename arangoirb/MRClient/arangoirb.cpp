@@ -48,7 +48,6 @@
 #include "BasicsC/shell-colors.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
-#include "Logger/Logger.h"
 #include "MRClient/MRubyClientConnection.h"
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
@@ -207,7 +206,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   // check module path
   if (StartupModules.empty()) {
-    LOGGER_FATAL_AND_EXIT("module path not known, please use '--ruby.modules-path'");
+    LOG_FATAL_AND_EXIT("module path not known, please use '--ruby.modules-path'");
   }
 }
 
@@ -350,7 +349,7 @@ int main (int argc, char* argv[]) {
     BaseClient.createEndpoint();
 
     if (BaseClient.endpointServer() == 0) {
-      LOGGER_FATAL_AND_EXIT("invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')");
+      LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')", BaseClient.endpointString().c_str());
     }
 
     ClientConnection = createConnection(mrb);
@@ -417,7 +416,7 @@ int main (int argc, char* argv[]) {
     StartupLoader.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
   }
   else {
-    LOGGER_DEBUG("using Ruby startup files at '" << StartupPath << "'");
+    LOG_DEBUG("using Ruby startup files at '%s'", StartupPath.c_str());
     StartupLoader.setDirectory(StartupPath);
   }
 
@@ -430,10 +429,10 @@ int main (int argc, char* argv[]) {
     bool ok = StartupLoader.loadScript(mrb, files[i]);
 
     if (ok) {
-      LOGGER_TRACE("loaded ruby file '" << files[i] << "'");
+      LOG_TRACE("loaded ruby file '%s'", files[i]);
     }
     else {
-      LOGGER_FATAL_AND_EXIT("cannot load ruby file '" << files[i] << "'");
+      LOG_FATAL_AND_EXIT("cannot load ruby file '%s'", files[i]);
     }
   }
 

@@ -29,11 +29,11 @@
 #include "HttpRequest.h"
 
 #include "BasicsC/conversions.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -1337,7 +1337,7 @@ string HttpRequest::translateMethod (const HttpRequestType method) {
     return "PUT";
   }
 
-  LOGGER_WARNING("illegal http request method encountered in switch");
+  LOG_WARNING("illegal http request method encountered in switch");
   return "UNKNOWN";
 }
 

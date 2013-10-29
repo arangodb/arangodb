@@ -31,7 +31,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 namespace triagens {
   namespace rest {
@@ -71,7 +71,7 @@ namespace triagens {
       template<typename F>
       void processDirectory (string const& pathname, string const& symbol, F& obj) {
         if (! basics::FileUtils::isDirectory(pathname)) {
-          LOGGER_ERROR("database directory '" << pathname << "' is no directory");
+          LOG_ERROR("database directory '%s' is not a directory", pathname.c_str());
           return;
         }
 
@@ -102,7 +102,7 @@ namespace triagens {
       template<typename F>
       void processFile (string const& filename, string const& symbol, F& obj) {
         if (basics::FileUtils::isDirectory(filename)) {
-          LOGGER_DEBUG("skipping directory '" << filename << "'");
+          LOG_DEBUG("skipping directory '%s'", filename.c_str());
         }
         else {
           if (filename.empty()) {
@@ -110,7 +110,7 @@ namespace triagens {
           }
 
           if (filename.size() < 3 || filename.substr(filename.size() - 3) != ".so") {
-            LOGGER_DEBUG("skipping non .so file '" << filename << "'");
+            LOG_DEBUG("skipping non .so file '%s'", filename.c_str());
           }
           else {
             processPrivate(filename.c_str(), symbol, obj);

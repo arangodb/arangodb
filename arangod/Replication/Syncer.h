@@ -29,8 +29,7 @@
 #define TRIAGENS_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server.h"

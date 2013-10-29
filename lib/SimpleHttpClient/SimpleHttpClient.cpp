@@ -33,7 +33,7 @@
 #include <errno.h>
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 #include "GeneralClientConnection.h"
 #include "SimpleHttpResult.h"
@@ -342,7 +342,7 @@ namespace triagens {
       }
       _writeBuffer.appendText(body, bodyLength);
 
-      LOGGER_TRACE("Request: " << _writeBuffer.c_str());
+      LOG_TRACE("Request: %s", _writeBuffer.c_str());
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -1878,7 +1878,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name,
   log_appender_syslog_t* appender;
   int value;
 
-  assert(facility);
+  assert(facility != NULL);
   assert(*facility != '\0');
 
   // no logging

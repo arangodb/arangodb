@@ -202,7 +202,7 @@ namespace triagens {
 
 
             if (headerLength > this->_maximalHeaderSize) {
-              LOGGER_WARNING("maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength);
+              LOG_WARNING("maximal header size is %d, request header size is %d", (int) this->_maximalHeaderSize, (int) headerLength);
               // header is too large
               HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE);
               this->handleResponse(&response);
@@ -213,8 +213,7 @@ namespace triagens {
             if (ptr < end) {
               this->_readPosition = ptr - this->_readBuffer->c_str() + 4;
 
-              LOGGER_TRACE("HTTP READ FOR " << static_cast<Task*>(this) << ":\n"
-                           << string(this->_readBuffer->c_str(), this->_readPosition));
+              LOG_TRACE("HTTP READ FOR %p: %s", (void*) this, string(this->_readBuffer->c_str(), this->_readPosition).c_str());
 
               // check that we know, how to serve this request
               // and update the connection information, i. e. client and server addresses and ports
@@ -222,7 +221,7 @@ namespace triagens {
               this->_request = this->_server->getHandlerFactory()->createRequest(this->_connectionInfo, this->_readBuffer->c_str(), this->_readPosition);
 
               if (this->_request == 0) {
-                LOGGER_ERROR("cannot generate request");
+                LOG_ERROR("cannot generate request");
                 // internal server error
                 HttpResponse response(HttpResponse::SERVER_ERROR);
                 this->handleResponse(&response);
@@ -258,7 +257,9 @@ namespace triagens {
               this->_request->setProtocol(S::protocol());
 
 
-              LOGGER_TRACE("server port = " << this->_connectionInfo.serverPort << ", client port = " << this->_connectionInfo.clientPort);
+              LOG_TRACE("server port %d, client port %d", 
+                        (int) this->_connectionInfo.serverPort, 
+                        (int) this->_connectionInfo.clientPort);
 
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
@@ -308,7 +309,8 @@ namespace triagens {
                 }
 
                 default: {
-                  LOGGER_WARNING("got corrupted HTTP request '" << string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)) << "'");
+                  LOG_WARNING("got corrupted HTTP request '%s'",
+                              string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)).c_str());
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
                   this->handleResponse(&response);
@@ -326,7 +328,7 @@ namespace triagens {
 
               if (scheduler != 0 && ! scheduler->isActive()) {
                 // server is inactive and will intentionally respond with HTTP 503
-                LOGGER_TRACE("cannot serve request - server is inactive");
+                LOG_TRACE("cannot serve request - server is inactive");
                 HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE);
                 this->handleResponse(&response);
                 this->resetState();
@@ -340,7 +342,7 @@ namespace triagens {
                 string const& expect = this->_request->header("expect", found);
 
                 if (found && triagens::basics::StringUtils::trim(expect) == "100-continue") {
-                  LOGGER_TRACE("received a 100-continue request");
+                  LOG_TRACE("received a 100-continue request");
 
                   triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
                   buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
@@ -366,7 +368,9 @@ namespace triagens {
           if (this->_readRequestBody) {
             if (this->_bodyLength > this->_maximalBodySize) {
               // request entity too large
-              LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength);
+              LOG_WARNING("maximal body size is %d, request body size is %d", 
+                          (int) this->_maximalBodySize,
+                          (int) this->_bodyLength);
 
               HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
               this->handleResponse(&response);
@@ -381,7 +385,7 @@ namespace triagens {
               SocketTask* socketTask = dynamic_cast<SocketTask*>(this);
               if (socketTask) {
                 // set read request time-out
-                LOGGER_TRACE("waiting for rest of body to be received. request timeout set to 60 s");
+                LOG_TRACE("waiting for rest of body to be received. request timeout set to 60 s");
 
                 socketTask->setKeepAliveTimeout(60.0);
               }
@@ -393,7 +397,7 @@ namespace triagens {
             // read "bodyLength" from read buffer and add this body to "httpRequest"
             this->_request->setBody(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength);
 
-            LOGGER_TRACE(string(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength));
+            LOG_TRACE("%s", string(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength).c_str());
 
             // remove body from read buffer and reset read position
             this->_readRequestBody = false;
@@ -419,7 +423,7 @@ namespace triagens {
               while (p < e) {
                 const char c = *(p++);
                 if (c != '\n' && c != '\r' && c != ' ' && c != '\t' && c != '\0') {
-                  LOGGER_WARNING("read buffer is not empty. probably got a wrong Content-Length header?");
+                  LOG_WARNING("read buffer is not empty. probably got a wrong Content-Length header?");
 
                   HttpResponse response(HttpResponse::BAD);
                   this->handleResponse(&response);
@@ -440,18 +444,18 @@ namespace triagens {
 
             if (connectionType == "close") {
               // client has sent an explicit "Connection: Close" header. we should close the connection
-              LOGGER_DEBUG("connection close requested by client");
+              LOG_DEBUG("connection close requested by client");
               this->_closeRequested = true;
             }
             else if (this->_request->isHttp10() && connectionType != "keep-alive") {
               // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
               // we should close the connection
-              LOGGER_DEBUG("no keep-alive, connection close requested by client");
+              LOG_DEBUG("no keep-alive, connection close requested by client");
               this->_closeRequested = true;
             }
             else if (this->_keepAliveTimeout <= 0.0) {
               // if keepAliveTimeout was set to 0.0, we'll close even keep-alive connections immediately
-              LOGGER_DEBUG("keep-alive disabled by admin");
+              LOG_DEBUG("keep-alive disabled by admin");
               this->_closeRequested = true;
             }
             // we keep the connection open in all other cases (HTTP 1.1 or Keep-Alive header sent)
@@ -479,7 +483,7 @@ namespace triagens {
                 response.setHeader("allow", strlen("allow"), allowedMethods);
 
                 if (this->_origin.size() > 0) {
-                  LOGGER_TRACE("got CORS preflight request");
+                  LOG_TRACE("got CORS preflight request");
                   const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
 
                   // send back which HTTP methods are allowed for the resource
@@ -492,7 +496,7 @@ namespace triagens {
                     // sends some broken headers and then later cannot access the data on the
                     // server. that's a client problem.
                     response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
-                    LOGGER_TRACE("client requested validation of the following headers " << allowHeaders);
+                    LOG_TRACE("client requested validation of the following headers: %s", allowHeaders.c_str());
                   }
                   // set caching time (hard-coded value)
                   response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
@@ -513,7 +517,7 @@ namespace triagens {
               bool ok = false;
 
               if (handler == 0) {
-                LOGGER_TRACE("no handler is known, giving up");
+                LOG_TRACE("no handler is known, giving up");
                 HttpResponse response(HttpResponse::NOT_FOUND);
                 this->handleResponse(&response);
 
@@ -617,7 +621,7 @@ namespace triagens {
           if (this->_origin.size() > 0) {
             // the request contained an Origin header. We have to send back the
             // access-control-allow-origin header now
-            LOGGER_TRACE("handling CORS response");
+            LOG_TRACE("handling CORS response");
 
             // send back original value of "Origin" header
             response->setHeader("access-control-allow-origin", strlen("access-control-allow-origin"), this->_origin);
@@ -676,16 +680,17 @@ namespace triagens {
 
 #endif
 
-          LOGGER_TRACE("HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str());
+          LOG_TRACE("HTTP WRITE FOR %p: %s", (void*) this, buffer->c_str());
 
           // disable the following statement to prevent excessive logging of incoming requests
-          LOGGER_USAGE(",\"http-request\",\"" << this->_connectionInfo.clientAddress << "\",\"" << 
-                       HttpRequest::translateMethod(this->_requestType) << "\",\"" <<
-                       HttpRequest::translateVersion(this->_httpVersion) << "\"," << 
-                       response->responseCode() << "," <<
-                       this->_bodyLength << "," << 
-                       responseBodyLength << ",\"" <<
-                       this->_fullUrl << "\"");
+          LOG_USAGE(",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\"",
+                    this->_connectionInfo.clientAddress.c_str(),
+                    HttpRequest::translateMethod(this->_requestType).c_str(),
+                    HttpRequest::translateVersion(this->_httpVersion).c_str(),
+                    (int) response->responseCode(),
+                    (unsigned long long) this->_bodyLength,
+                    (unsigned long long) responseBodyLength,
+                    this->_fullUrl.c_str());
 
           // clear body
           response->body().clear();
@@ -712,12 +717,12 @@ namespace triagens {
           if (! expectContentLength && bodyLength > 0) {
             // content-length header was sent but the request method does not support that
             // we'll warn but read the body anyway
-            LOGGER_WARNING("received HTTP GET/HEAD request with content-length, this should not happen");
+            LOG_WARNING("received HTTP GET/HEAD request with content-length, this should not happen");
           }
 
           if ((size_t) bodyLength > this->_maximalBodySize) {
             // request entity too large
-            LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << bodyLength);
+            LOG_WARNING("maximal body size is %d, request body size is %d", (int) this->_maximalBodySize, (int) bodyLength);
             HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
             this->handleResponse(&response);
 

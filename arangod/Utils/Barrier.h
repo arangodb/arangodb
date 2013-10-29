@@ -28,7 +28,6 @@
 #ifndef TRIAGENS_UTILS_BARRIER_H
 #define TRIAGENS_UTILS_BARRIER_H 1
 
-#include "Logger/Logger.h"
 #include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
 

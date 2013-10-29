@@ -210,13 +210,14 @@ void ContinuousSyncer::setProgress (char const* msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::saveApplierState () {
-  LOGGER_TRACE("saving replication applier state. "
-               "last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick);
+  LOG_TRACE("saving replication applier state. last applied continuous tick: %llu",
+            (unsigned long long) _applier->_state._lastAppliedContinuousTick);
 
   int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
         
   if (res != TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING("unable to save replication applier state: " << TRI_errno_string(res));
+    LOG_WARNING("unable to save replication applier state: %s",
+                TRI_errno_string(res));
   }
 
   return res;
@@ -272,7 +273,8 @@ int ContinuousSyncer::getLocalState (string& errorMsg) {
 
 void ContinuousSyncer::abortOngoingTransaction () {
   if (_transactionState._trx != 0) {
-    LOGGER_TRACE("aborting replication transaction " << _transactionState._externalTid); 
+    LOG_TRACE("aborting replication transaction %llu",
+              (unsigned long long) _transactionState._externalTid); 
 
     TRI_FreeTransaction(_transactionState._trx);
     _transactionState._trx = 0;
@@ -485,7 +487,7 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  LOGGER_TRACE("starting replication transaction " << tid); 
+  LOG_TRACE("starting replication transaction %llu", (unsigned long long) tid); 
   TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase, 
                                                  _masterInfo._serverId,
                                                  false, 
@@ -588,7 +590,7 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION; 
   }
   
-  LOGGER_TRACE("committing replication transaction " << tid); 
+  LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid); 
 
   int res = TRI_CommitTransaction(_transactionState._trx, TRI_TRANSACTION_TOP_LEVEL);
 
@@ -667,9 +669,9 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
       _applier->_state._lastProcessedContinuousTick = newTick;
     }
     else {
-      LOGGER_WARNING("replication marker tick value " << newTick << 
-                     " is lower than last processed tick value " <<
-                     _applier->_state._lastProcessedContinuousTick);
+      LOG_WARNING("replication marker tick value %llu is lower than last processed tick value %llu",
+                  (unsigned long long) newTick,
+                  (unsigned long long) _applier->_state._lastProcessedContinuousTick);
     }
     TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
   }
@@ -801,8 +803,9 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       }
       else {
         ignoreCount--;
-        LOGGER_WARNING("ignoring replication error for database '" << 
-                       _applier->_databaseName << "': " << errorMsg);
+        LOG_WARNING("ignoring replication error for database '%s': %s",
+                    _applier->_databaseName,
+                    errorMsg.c_str()); 
         errorMsg = "";
       }
     }
@@ -924,9 +927,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       }
     }
 
-    LOGGER_TRACE("master active: " << (int) masterActive << ", " << 
-                 "worked: " << (int) worked << ", " << 
-                 "sleepTime: " << sleepTime); 
+    LOG_TRACE("master active: %d, worked: %d, sleepTime: %llu",
+              (int) masterActive,
+              (int) worked,
+              (unsigned long long) sleepTime);
 
     // this will make the applier thread sleep if there is nothing to do, 
     // but will also check for cancellation
@@ -958,7 +962,9 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                      "&from=" + tickString +
                      "&serverId=" + _localServerIdString;
   
-  LOGGER_TRACE("running continuous replication request with tick " << fromTick << ", url " << url);
+  LOG_TRACE("running continuous replication request with tick %llu, url %s",
+            (unsigned long long) fromTick,
+            url.c_str());
 
   // send request
   const string progress = "fetching master log from offset " + tickString;

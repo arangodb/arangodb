@@ -31,8 +31,8 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-#include "Logger/Logger.h"
 #include "MRServer/ApplicationMR.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -138,7 +138,7 @@ class mr_action_t : public TRI_action_t {
       map< mrb_state*, mrb_value >::iterator i = _callbacks.find(mrb);
 
       if (i == _callbacks.end()) {
-        LOGGER_WARNING("no callback function for Ruby action '" << _url.c_str() << "'");
+        LOG_WARNING("no callback function for Ruby action '%s'", _url.c_str());
         return new HttpResponse(HttpResponse::NOT_FOUND);
       }
 
@@ -441,12 +441,12 @@ static mrb_value MR_Mount (mrb_state* mrb, mrb_value self) {
       return mrb_false_value();
     }
     else {
-      LOGGER_ERROR("cannot create callback for MRuby action");
+      LOG_ERROR("cannot create callback for MRuby action");
       return mrb_true_value();
     }
   }
   else {
-    LOGGER_ERROR("cannot define MRuby action");
+    LOG_ERROR("cannot define MRuby action");
     return mrb_false_value();
   }
 }

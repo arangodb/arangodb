@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/delete_object.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "Rest/HttpRequest.h"
 
 using namespace std;
@@ -104,8 +104,10 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
       TRI_action_t* oldAction = PrefixActions[url];
 
       if (oldAction->_type != action->_type) {
-        LOGGER_ERROR("trying to define two incompatible actions of type '" << oldAction->_type
-                     << "' and '" << action->_type << "' for prefix url '" << action->_url << "'");
+        LOG_ERROR("trying to define two incompatible actions of type '%s' and '%s' for prefix url '%s'",
+                  oldAction->_type.c_str(),
+                  action->_type.c_str(),
+                  action->_url.c_str());
 
         delete oldAction;
       }
@@ -123,8 +125,10 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOGGER_ERROR("trying to define two incompatible actions of type '" << oldAction->_type
-                     << "' and '" << action->_type << "' for url '" << action->_url << "'");
+        LOG_ERROR("trying to define two incompatible actions of type '%s' and type '%s' for url '%s'", 
+                  oldAction->_type.c_str(),
+                  action->_type.c_str(),
+                  action->_url.c_str());
 
         delete oldAction;
       }
@@ -136,9 +140,10 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   }
 
   // some debug output
-  LOGGER_DEBUG("created " << action->_type << " "
-               << (action->_isPrefix ? "prefix " : "")
-               << "action '" << url.c_str() << "'");
+  LOG_DEBUG("created %s %saction '%s'", 
+            action->_type.c_str(), 
+            (action->_isPrefix ? "prefix " : ""),
+            url.c_str());
 
   // return old or new action description
   return action;

@@ -30,7 +30,7 @@
 
 #include <math.h>
 
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
@@ -144,7 +144,7 @@ namespace triagens {
         MUTEX_LOCKER(MutexNonce);
 
         if (TimestampNonces == 0) {
-          LOGGER_INFO("setting nonce hash size to '" << SizeNonces << "'" );
+          LOG_INFO("setting nonce hash size to %d", (int) SizeNonces);
           create(SizeNonces);
         }
 
@@ -184,7 +184,10 @@ namespace triagens {
           age >>= 1;
         }
 
-        LOGGER_TRACE( "age of timestamp " << timestamp << " is " << age << " (log " << l2age << ")" );
+        LOG_TRACE("age of timestamp %ld is %ld (log %ld)", 
+                  (unsigned long) timestamp,
+                  (unsigned long) age,
+                  (unsigned long) l2age);
 
         StatisticsNonces[l2age][proofs]++;
 

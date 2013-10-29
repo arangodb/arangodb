@@ -36,9 +36,9 @@
 
 #include "Basics/ssl-helper.h"
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
+#include "BasicsC/logging.h"
 
 
 namespace triagens {
@@ -93,7 +93,7 @@ namespace triagens {
           }
 
           if (! ok) {
-            LOGGER_WARNING("cannot complete SSL shutdown");
+            LOG_WARNING("cannot complete SSL shutdown");
           }
 
           SSL_free(ssl); // this will free bio as well
@@ -126,7 +126,7 @@ namespace triagens {
           // is the handshake already done?
           if (! accepted) {
             if (! trySSLAccept()) {
-              LOGGER_DEBUG("failed to establish SSL connection");
+              LOG_DEBUG("failed to establish SSL connection");
               return false;
             }
 
@@ -150,7 +150,7 @@ namespace triagens {
           // is the handshake already done?
           if (! accepted) {
             if (! trySSLAccept()) {
-              LOGGER_DEBUG("failed to establish SSL connection");
+              LOG_DEBUG("failed to establish SSL connection");
               return false;
             }
 
@@ -176,15 +176,14 @@ namespace triagens {
 
           // accept successful
           if (res == 1) {
-            LOGGER_DEBUG("established SSL connection");
+            LOG_DEBUG("established SSL connection");
             accepted = true;
             return true;
           }
 
           // shutdown of connection
           else if (res == 0) {
-            LOGGER_DEBUG("SSL_accept failed");
-            LOGGER_DEBUG(triagens::basics::lastSSLError());
+            LOG_DEBUG("SSL_accept failed: %s", triagens::basics::lastSSLError().c_str());
             return false;
           }
 
@@ -196,8 +195,7 @@ namespace triagens {
               return true;
             }
             else {
-              LOGGER_WARNING("error in SSL handshake");
-              LOGGER_WARNING(triagens::basics::lastSSLError());
+              LOG_WARNING("error in SSL handshake: %s", triagens::basics::lastSSLError().c_str());
               return false;
             }
           }
@@ -216,7 +214,7 @@ again:
 
             switch (res) {
               case SSL_ERROR_NONE:
-                LOGGER_WARNING("unknown error in SSL_read");
+                LOG_WARNING("unknown error in SSL_read");
                 return false;
 
               case SSL_ERROR_ZERO_RETURN:
@@ -233,11 +231,11 @@ again:
                 break;
 
               case SSL_ERROR_WANT_CONNECT:
-                LOGGER_WARNING("received SSL_ERROR_WANT_CONNECT");
+                LOG_WARNING("received SSL_ERROR_WANT_CONNECT");
                 break;
 
               case SSL_ERROR_WANT_ACCEPT:
-                LOGGER_WARNING("received SSL_ERROR_WANT_ACCEPT");
+                LOG_WARNING("received SSL_ERROR_WANT_ACCEPT");
                 break;
 
               case SSL_ERROR_SYSCALL:
@@ -245,20 +243,20 @@ again:
                   unsigned long err = ERR_peek_error();
 
                   if (err != 0) {
-                    LOGGER_DEBUG("SSL_read returned syscall error with: " << triagens::basics::lastSSLError());
+                    LOG_DEBUG("SSL_read returned syscall error with: %s", triagens::basics::lastSSLError().c_str());
                   }
                   else if (nr == 0) {
-                    LOGGER_DEBUG("SSL_read returned syscall error because an EOF was received");
+                    LOG_DEBUG("SSL_read returned syscall error because an EOF was received");
                   }
                   else {
-                    LOGGER_DEBUG("SSL_read return syscall error: " << errno << ", " << strerror(errno));
+                    LOG_DEBUG("SSL_read return syscall error: %d: %s", (int) errno, strerror(errno));
                   }
 
                   return false;
                 }
 
               default:
-                LOGGER_DEBUG("received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError());
+                LOG_DEBUG("received error with %d and %d: %s", res, nr, triagens::basics::lastSSLError().c_str());
                 return false;
             }
           }
@@ -302,7 +300,7 @@ again:
 
                 switch (res) {
                   case SSL_ERROR_NONE:
-                    LOGGER_WARNING("unknown error in SSL_write");
+                    LOG_WARNING("unknown error in SSL_write");
                     break;
 
                   case SSL_ERROR_ZERO_RETURN:
@@ -312,11 +310,11 @@ again:
                     break;
 
                   case SSL_ERROR_WANT_CONNECT:
-                    LOGGER_WARNING("received SSL_ERROR_WANT_CONNECT");
+                    LOG_WARNING("received SSL_ERROR_WANT_CONNECT");
                     break;
 
                   case SSL_ERROR_WANT_ACCEPT:
-                    LOGGER_WARNING("received SSL_ERROR_WANT_ACCEPT");
+                    LOG_WARNING("received SSL_ERROR_WANT_ACCEPT");
                     break;
 
                   case SSL_ERROR_WANT_WRITE:
@@ -331,20 +329,20 @@ again:
                       unsigned long err = ERR_peek_error();
 
                       if (err != 0) {
-                        LOGGER_DEBUG("SSL_read returned syscall error with: " << triagens::basics::lastSSLError());
+                        LOG_DEBUG("SSL_read returned syscall error with: %s", triagens::basics::lastSSLError().c_str());
                       }
                       else if (nr == 0) {
-                        LOGGER_DEBUG("SSL_read returned syscall error because an EOF was received");
+                        LOG_DEBUG("SSL_read returned syscall error because an EOF was received");
                       }
                       else {
-                        LOGGER_DEBUG("SSL_read return syscall error: " << errno << ", " << strerror(errno));
+                        LOG_DEBUG("SSL_read return syscall error: %d: %s", errno, strerror(errno));
                       }
 
                       return false;
                     }
 
                   default:
-                    LOGGER_DEBUG("received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError());
+                    LOG_DEBUG("received error with %d and %d: %s", res, nr, triagens::basics::lastSSLError().c_str());
                     return false;
                 }
               }

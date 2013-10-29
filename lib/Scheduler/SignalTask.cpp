@@ -28,8 +28,8 @@
 
 #include "SignalTask.h"
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "BasicsC/logging.h"
 
 #include "Scheduler/Scheduler.h"
 
@@ -60,7 +60,7 @@ bool SignalTask::addSignal (int signal) {
   MUTEX_LOCKER(changeLock);
 
   if (signals.size() >= MAX_SIGNALS) {
-    LOGGER_ERROR("maximal number of signals reached");
+    LOG_ERROR("maximal number of signals reached");
     return false;
   }
   else {
@@ -98,7 +98,7 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void SignalTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING("In SignalTask::cleanup the scheduler has disappeared -- invalid pointer");
+    LOG_WARNING("In SignalTask::cleanup the scheduler has disappeared -- invalid pointer");
   }
   for (size_t pos = 0;  pos < signals.size() && pos < MAX_SIGNALS;  ++pos) {
     if (scheduler != 0) {

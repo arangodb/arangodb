@@ -29,7 +29,6 @@
 
 #include "BasicsC/common.h"
 
-#include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-context.h"

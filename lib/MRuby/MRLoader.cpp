@@ -30,8 +30,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-#include "Logger/Logger.h"
 #include "MRuby/mr-utils.h"
 
 using namespace std;
@@ -77,7 +77,7 @@ bool MRLoader::loadScript (mrb_state* mrb, string const& name) {
   map<string, string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
-    LOGGER_ERROR("unknown script '" << name << "'");
+    LOG_ERROR("unknown script '%s'", name.c_str());
     return false;
   }
 

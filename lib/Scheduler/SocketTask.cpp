@@ -32,9 +32,9 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "Logger/Logger.h"
-#include "Scheduler/Scheduler.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/socket-utils.h"
+#include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -153,7 +153,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
     // out of memory
-    LOGGER_TRACE("out of memory");
+    LOG_TRACE("out of memory");
 
     return false;
   }
@@ -168,7 +168,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   else if (nr == 0) {
     closed = true;
 
-    LOGGER_TRACE("read returned 0");
+    LOG_TRACE("read returned 0");
 
     return false;
   }
@@ -178,12 +178,12 @@ bool SocketTask::fillReadBuffer (bool& closed) {
       return fillReadBuffer(closed);
     }
     else if (errno != EWOULDBLOCK) {
-      LOGGER_TRACE("read failed with " << errno << " (" << strerror(errno) << ")");
+      LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
 
       return false;
     }
     else {
-      LOGGER_TRACE("read would block with " << errno << " (" << strerror(errno) << ")");
+      LOG_TRACE("read would block with %d: %s", (int) errno, strerror(errno));
 
       return true;
     }
@@ -221,7 +221,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
           return handleWrite(closed, noWrite);
         }
         else if (errno != EWOULDBLOCK) {
-          LOGGER_DEBUG("write failed with " << errno << " (" << strerror(errno) << ")");
+          LOG_DEBUG("write failed with %d: %s", (int) errno, strerror(errno));
 
           return false;
         }
@@ -423,10 +423,10 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // The problem we have here is that this opening of the fs handle may fail.
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
-  LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
+  LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
   if (_commSocket.fileHandle < 1) {
-    LOGGER_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
+    LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
     _commSocket.fileHandle = -1;
     _commSocket.fileDescriptor = -1;
     return false;
@@ -434,11 +434,12 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   _commSocket.fileDescriptor = _open_osfhandle (_commSocket.fileHandle, 0);
   if (_commSocket.fileDescriptor == -1) {
-    LOGGER_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
+    LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
     int res = closesocket(_commSocket.fileHandle);
+
     if (res != 0) {
       res = WSAGetLastError();
-      LOGGER_ERROR("In SocketTask::setup closesocket(...) failed with error code: " << res);
+      LOG_ERROR("In SocketTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
     _commSocket.fileHandle = -1;
     _commSocket.fileDescriptor = -1;
@@ -473,7 +474,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 void SocketTask::cleanup () {
 
   if (scheduler == 0) {
-    LOGGER_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
+    LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     keepAliveWatcher = 0;
     readWatcher = 0;
@@ -504,7 +505,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
   if (token == keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
-    LOGGER_TRACE("got keep-alive timeout signal, closing connection");
+    LOG_TRACE("got keep-alive timeout signal, closing connection");
 
     // TODO: do we need some lock before we modify the scheduler?
     scheduler->clearTimer(token);

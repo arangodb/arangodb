@@ -33,10 +33,10 @@
 
 #include "BasicsC/common.h"
 #include "BasicsC/conversions.h"
-#include "Basics/Common.h"
-#include "Basics/Utf8Helper.h"
 #include "BasicsC/json.h"
-#include "HttpServer/ApplicationEndpointServer.h"
+#include "Basics/Common.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 
 
 #include <v8.h>
@@ -76,6 +76,7 @@ void Version::initialise () {
   Values["env"] = getConfigureEnvironment();
   Values["build-date"] = getBuildDate();
   Values["repository-version"] = getRepositoryVersion();
+  Values["sizeof int"] = triagens::basics::StringUtils::itoa(sizeof(int));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

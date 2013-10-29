@@ -41,8 +41,8 @@
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/safe_cast.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/process-utils.h"
-#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens;
@@ -66,7 +66,7 @@ static void WritePidFile (string const& pidFile, int pid) {
   ofstream out(pidFile.c_str(), ios::trunc);
 
   if (! out) {
-    LOGGER_FATAL_AND_EXIT("cannot write pid-file \"" << pidFile << "\"");
+    LOG_FATAL_AND_EXIT("cannot write pid-file '%s'", pidFile.c_str());
   }
 
   out << pid;
@@ -81,10 +81,10 @@ static void CheckPidFile (string const& pidFile) {
   // check if the pid-file exists
   if (! pidFile.empty()) {
     if (FileUtils::isDirectory(pidFile)) {
-      LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' is a directory");
+      LOG_FATAL_AND_EXIT("pid-file '%s' is a directory", pidFile.c_str());
     }
     else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOGGER_INFO("pid-file '" << pidFile << "' already exists, verifying pid");
+      LOG_INFO("pid-file '%s' already exists, verifying pid", pidFile.c_str());
 
       ifstream f(pidFile.c_str());
 
@@ -95,10 +95,10 @@ static void CheckPidFile (string const& pidFile) {
         f >> oldPid;
 
         if (oldPid == 0) {
-          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' is unreadable");
+          LOG_FATAL_AND_EXIT("pid-file '%s' is unreadable", pidFile.c_str());
         }
 
-        LOGGER_DEBUG("found old pid: " << oldPid);
+        LOG_DEBUG("found old pid: %d", (int) oldPid);
 
 #ifdef TRI_HAVE_FORK
         int r = kill(oldPid, 0);
@@ -107,32 +107,32 @@ static void CheckPidFile (string const& pidFile) {
 #endif
 
         if (r == 0) {
-          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running");
+          LOG_FATAL_AND_EXIT("pid-file '%s' exists and process with pid %d is still running", pidFile.c_str(), (int) oldPid);
         }
         else if (errno == EPERM) {
-          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running");
+          LOG_FATAL_AND_EXIT("pid-file '%s' exists and process with pid %d is still running", pidFile.c_str(), (int) oldPid);
         }
         else if (errno == ESRCH) {
-          LOGGER_ERROR("pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists");
+          LOG_ERROR("pid-file '%s exists, but no process with pid %d exists", pidFile.c_str(), (int) oldPid);
 
           if (! FileUtils::remove(pidFile)) {
-            LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed");
+            LOG_FATAL_AND_EXIT("pid-file '%s' exists, no process with pid %d exists, but pid-file cannot be removed", pidFile.c_str(), (int) oldPid);
           }
 
-          LOGGER_INFO("removed stale pid-file '" << pidFile << "'");
+          LOG_INFO("removed stale pid-file '%s'", pidFile.c_str());
         }
         else {
-          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists and kill " << oldPid << " failed");
+          LOG_FATAL_AND_EXIT("pid-file '%s' exists and kill %d failed", pidFile.c_str(), (int) oldPid);
         }
       }
 
       // failed to open file
       else {
-        LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists, but cannot be opened");
+        LOG_FATAL_AND_EXIT("pid-file '%s' exists, but cannot be opened", pidFile.c_str());
       }
     }
 
-    LOGGER_DEBUG("using pid-file '" << pidFile << "'");
+    LOG_DEBUG("using pid-file '%s'", pidFile.c_str());
   }
 }
 
@@ -148,7 +148,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
   TRI_pid_t pid = fork();
 
   if (pid < 0) {
-    LOGGER_FATAL_AND_EXIT("cannot fork");
+    LOG_FATAL_AND_EXIT("cannot fork");
   }
 
   // Upon successful completion, fork() shall return 0 to the child process and
@@ -156,7 +156,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
-    LOGGER_DEBUG("started child process with pid " << pid);
+    LOG_DEBUG("started child process with pid %d", (int) pid);
     return pid;
   }
 
@@ -167,7 +167,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
   TRI_pid_t sid = setsid();
 
   if (sid < 0) {
-    LOGGER_FATAL_AND_EXIT("cannot create sid");
+    LOG_FATAL_AND_EXIT("cannot create sid");
   }
 
   // store current working directory
@@ -175,16 +175,16 @@ static int forkProcess (string const& workingDirectory, string& current) {
   current = FileUtils::currentDirectory(&err);
 
   if (err != 0) {
-    LOGGER_FATAL_AND_EXIT("cannot get current directory");
+    LOG_FATAL_AND_EXIT("cannot get current directory");
   }
 
   // change the current working directory (TODO must be configurable)
   if (! workingDirectory.empty()) {
     if (! FileUtils::changeDirectory(workingDirectory)) {
-      LOGGER_FATAL_AND_EXIT("cannot change into working directory '" << workingDirectory << "'");
+      LOG_FATAL_AND_EXIT("cannot change into working directory '%s'", workingDirectory.c_str());
     }
     else {
-      LOGGER_INFO("changed working directory for child process to '" << workingDirectory << "'");
+      LOG_INFO("changed working directory for child process to '%s'", workingDirectory.c_str());
     }
   }
 
@@ -225,7 +225,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
   TRI_pid_t pid = -1; // fork();
 
   if (pid < 0) {
-    LOGGER_FATAL_AND_EXIT("cannot fork");
+    LOG_FATAL_AND_EXIT("cannot fork");
   }
 
   return 0;
@@ -308,7 +308,7 @@ int AnyServer::start () {
 
     if (! _pidFile.empty()) {
       if (! FileUtils::remove(_pidFile)) {
-        LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
+        LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
       }
     }
 
@@ -358,7 +358,7 @@ void AnyServer::prepareServer () {
 int AnyServer::startupSupervisor () {
   static time_t MIN_TIME_ALIVE_IN_SEC = 30;
 
-  LOGGER_INFO("starting up in supervisor mode");
+  LOG_INFO("starting up in supervisor mode");
 
   CheckPidFile(_pidFile);
 
@@ -401,18 +401,18 @@ int AnyServer::startupSupervisor () {
 
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
-            LOGGER_INFO("child " << pid << " died of natural causes");
+            LOG_INFO("child %d died of natural causes", (int) pid);
             done = true;
             horrible = false;
           }
           else {
             t = time(0) - startTime;
 
-            LOGGER_ERROR("child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status));
+            LOG_ERROR("child %d died a horrible death, exit status %d", (int) pid, (int) WEXITSTATUS(status));
 
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
-              LOGGER_ERROR("child only survived for " << t << " seconds, this will not work - please fix the error first");
+              LOG_ERROR("child only survived for %d seconds, this will not work - please fix the error first", (int) t);
               done = true;
             }
             else {
@@ -425,7 +425,7 @@ int AnyServer::startupSupervisor () {
             case 2:
             case 9:
             case 15:
-              LOGGER_INFO("child " << pid << " died of natural causes " << WTERMSIG(status));
+              LOG_INFO("child %d died of natural causes, exit status %d", (int) pid, (int) WTERMSIG(status));
               done = true;
               horrible = false;
               break;
@@ -433,10 +433,10 @@ int AnyServer::startupSupervisor () {
             default:
               t = time(0) - startTime;
 
-              LOGGER_ERROR("child " << pid << " died a horrible death, signal " << WTERMSIG(status));
+              LOG_ERROR("child %d died a horrible death, signal %d", (int) pid, (int) WTERMSIG(status));
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
-                LOGGER_ERROR("child only survived for " << t << " seconds, this will not work - please fix the error first");
+                LOG_ERROR("child only survived for %d seconds, this will not work - please fix the error first", (int) t);
                 done = true;
               }
               else {
@@ -447,14 +447,14 @@ int AnyServer::startupSupervisor () {
           }
         }
         else {
-          LOGGER_ERROR("child " << pid << " died a horrible death, unknown cause");
+          LOG_ERROR("child %d died a horrible death, unknown cause", (int) pid);
           done = false;
         }
 
         // remove pid file
         if (horrible) {
           if (! FileUtils::remove(_pidFile)) {
-            LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
+            LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
           }
         }
       }
@@ -477,7 +477,7 @@ int AnyServer::startupSupervisor () {
 
         // remove pid file
         if (! FileUtils::remove(_pidFile)) {
-          LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
+          LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
         }
 
         // and stop
@@ -494,7 +494,7 @@ int AnyServer::startupSupervisor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::startupDaemon () {
-  LOGGER_INFO("starting up in daemon mode");
+  LOG_INFO("starting up in daemon mode");
 
   CheckPidFile(_pidFile);
 
@@ -522,7 +522,7 @@ int AnyServer::startupDaemon () {
 
     // remove pid file
     if (! FileUtils::remove(_pidFile)) {
-      LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
+      LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
     }
   }
 

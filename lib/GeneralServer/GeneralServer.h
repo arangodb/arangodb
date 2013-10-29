@@ -58,11 +58,11 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "BasicsC/logging.h"
 #include "GeneralServer/EndpointServer.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/SpecificCommTask.h"
-#include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
 #include "Rest/EndpointList.h"
 #include "Rest/Handler.h"
@@ -187,15 +187,15 @@ namespace triagens {
           map<string, Endpoint*> endpoints = _endpointList->getByPrefix(this->getEncryption());
 
           for (map<string, Endpoint*>::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-            LOGGER_TRACE("trying to bind to endpoint '" << (*i).first << "' for requests");
+            LOG_TRACE("trying to bind to endpoint '%s' for requests", (*i).first.c_str());
 
             bool ok = openEndpoint((*i).second);
 
             if (ok) {
-              LOGGER_DEBUG("bound to endpoint '" << (*i).first << "'");
+              LOG_DEBUG("bound to endpoint '%s'", (*i).first.c_str());
             }
             else {
-              LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i).first << "'. Please review your endpoints configuration.");
+              LOG_FATAL_AND_EXIT("failed to bind to endpoint '%s'. Please review your endpoints configuration.", (*i).first.c_str());
             }
           }
         }
@@ -209,7 +209,7 @@ namespace triagens {
           bool ok = openEndpoint(endpoint);
 
           if (ok) {
-            LOGGER_INFO("added endpoint '" << endpoint->getSpecification() << "'");
+            LOG_INFO("added endpoint '%s'", endpoint->getSpecification().c_str());
           }
 
           return ok;
@@ -230,7 +230,7 @@ namespace triagens {
               _scheduler->destroyTask(task);
               _listenTasks.erase(i);
 
-              LOGGER_INFO("removed endpoint '" << endpoint->getSpecification() << "'");
+              LOG_INFO("removed endpoint '%s'", endpoint->getSpecification().c_str());
               return true;
             }
           }
@@ -524,23 +524,23 @@ namespace triagens {
               task->handleResponse(response);
             }
             else {
-              LOGGER_ERROR("cannot get any response");
+              LOG_ERROR("cannot get any response");
             }
           }
           catch (basics::TriagensError const& ex) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOGGER_ERROR("caught exception: " << DIAGNOSTIC_INFORMATION(ex));
+            LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
           }
           catch (std::exception const& ex) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOGGER_ERROR("caught exception: " << ex.what());
+            LOG_ERROR("caught exception: %s", ex.what());
           }
           catch (...) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOGGER_ERROR("caught exception");
+            LOG_ERROR("caught exception");
           }
 
           return status;
@@ -575,7 +575,7 @@ namespace triagens {
           handler_task_job_t element = _task2handler.removeKey(task);
 
           if (element._task != task) {
-            LOGGER_DEBUG("shutdownHandler called, but no handler is known for task");
+            LOG_DEBUG("shutdownHandler called, but no handler is known for task");
 
             GENERAL_SERVER_UNLOCK(&_mappingLock);
             return;

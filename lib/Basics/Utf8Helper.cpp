@@ -33,7 +33,7 @@
 #include "unicode/brkiter.h"
 #include "unicode/ustdio.h"
 
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 
@@ -68,14 +68,14 @@ Utf8Helper::~Utf8Helper () {
 
 int Utf8Helper::compareUtf8 (const char* left, const char* right) {
   if (!_coll) {
-    LOGGER_ERROR("no Collator in Utf8Helper::compareUtf8()!");
+    LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
   }
 
   UErrorCode status = U_ZERO_ERROR;
   int result = _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
   if(U_FAILURE(status)) {
-    LOGGER_ERROR("error in Collator::compareUTF8(...): " << u_errorName(status));
+    LOG_ERROR("error in Collator::compareUTF8(...): %s", u_errorName(status));
     return (strcmp(left, right));
   }
 
@@ -84,7 +84,7 @@ int Utf8Helper::compareUtf8 (const char* left, const char* right) {
 
 int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {
   if (!_coll) {
-    LOGGER_ERROR("no Collator in Utf8Helper::compareUtf16()!");
+    LOG_ERROR("no Collator in Utf8Helper::compareUtf16()!");
 
     if (leftLength == rightLength) {
       return memcmp((const void*)left, (const void*)right, leftLength * 2);
@@ -117,7 +117,7 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
     const Locale& locale = _coll->getLocale(type, status);
 
     if(U_FAILURE(status)) {
-      LOGGER_ERROR("error in Collator::getLocale(...): " << u_errorName(status));
+      LOG_ERROR("error in Collator::getLocale(...): %s", u_errorName(status));
       return;
     }
     if (lang == locale.getName()) {
@@ -136,7 +136,7 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
   }
 
   if(U_FAILURE(status)) {
-    LOGGER_ERROR("error in Collator::createInstance(): " << u_errorName(status));
+    LOG_ERROR("error in Collator::createInstance(): %s", u_errorName(status));
     if (coll) {
       delete coll;
     }
@@ -149,7 +149,7 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
   coll->setAttribute(UCOL_STRENGTH, UCOL_IDENTICAL, status);      // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if(U_FAILURE(status)) {
-    LOGGER_ERROR("error in Collator::setAttribute(...): " << u_errorName(status));
+    LOG_ERROR("error in Collator::setAttribute(...): %s", u_errorName(status));
     delete coll;
     return;
   }
@@ -168,7 +168,7 @@ string Utf8Helper::getCollatorLanguage () {
     const Locale& locale = _coll->getLocale(type, status);
 
     if(U_FAILURE(status)) {
-      LOGGER_ERROR("error in Collator::getLocale(...): " << u_errorName(status));
+      LOG_ERROR("error in Collator::getLocale(...): %s", u_errorName(status));
       return "";
     }
     return locale.getLanguage();
@@ -183,7 +183,7 @@ string Utf8Helper::getCollatorCountry () {
     const Locale& locale = _coll->getLocale(type, status);
 
     if(U_FAILURE(status)) {
-      LOGGER_ERROR("error in Collator::getLocale(...): " << u_errorName(status));
+      LOG_ERROR("error in Collator::getLocale(...): %s", u_errorName(status));
       return "";
     }
     return locale.getCountry();
@@ -230,7 +230,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOGGER_ERROR("error in ucasemap_open(...): " << u_errorName(status));
+    LOG_ERROR("error in ucasemap_open(...): %s", u_errorName(status));
   }
   else {
     utf8_dest = (char*) TRI_Allocate(zone, (srcLength + 1) * sizeof(char), false);
@@ -262,7 +262,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
     }
 
     if (U_FAILURE(status)) {
-      LOGGER_ERROR("error in ucasemap_utf8ToLower(...): " << u_errorName(status));
+      LOG_ERROR("error in ucasemap_utf8ToLower(...): %s", u_errorName(status));
       TRI_Free(zone, utf8_dest);
     }
     else {
@@ -316,7 +316,7 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOGGER_ERROR("error in ucasemap_open(...): " << u_errorName(status));
+    LOG_ERROR("error in ucasemap_open(...): %s", u_errorName(status));
   }
   else {
     utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
@@ -348,7 +348,7 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
     }
 
     if (U_FAILURE(status)) {
-      LOGGER_ERROR("error in ucasemap_utf8ToUpper(...): " << u_errorName(status));
+      LOG_ERROR("error in ucasemap_utf8ToUpper(...): %s", u_errorName(status));
       TRI_Free(zone, utf8_dest);
     }
     else {
@@ -420,7 +420,7 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
 
   if (U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    LOGGER_ERROR("error in Collator::getLocale(...): " << u_errorName(status));
+    LOG_ERROR("error in Collator::getLocale(...): %s", u_errorName(status));
     return NULL;
   }
 

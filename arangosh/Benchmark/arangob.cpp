@@ -41,7 +41,6 @@
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/terminal-utils.h"
-#include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/InitialiseRest.h"
@@ -262,13 +261,13 @@ int main (int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == 0) {
-    LOGGER_FATAL_AND_EXIT("invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')");
+    LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')", BaseClient.endpointString().c_str());
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);
 
   if (testCase == 0) {
-    LOGGER_FATAL_AND_EXIT("invalid test case name " << TestCase);
+    LOG_FATAL_AND_EXIT("invalid test case name '%s'", TestCase.c_str());
     return EXIT_FAILURE; // will not be reached
   }
 
@@ -328,7 +327,7 @@ int main (int argc, char* argv[]) {
   }
   Status("executing tests...");
 
-  Timing timer(Timing::TI_WALLCLOCK);
+  double start = TRI_microtime();
 
   // broadcast the start signal to all threads
   {
@@ -351,14 +350,14 @@ int main (int argc, char* argv[]) {
     }
 
     if (Progress && numOperations >= nextReportValue) {
-      LOGGER_INFO("number of operations: " << nextReportValue);
+      LOG_INFO("number of operations: %d", (int) nextReportValue);
       nextReportValue += stepValue;
     }
 
     usleep(20000);
   }
 
-  double time = ((double) timer.time()) / 1000000.0;
+  double time = TRI_microtime() - start;
   double requestTime = 0.0;
 
   for (int i = 0; i < Concurrency; ++i) {

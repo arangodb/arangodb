@@ -35,7 +35,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/ProgramOptions.h"
-#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -259,7 +258,7 @@ void ArangoClient::parse (ProgramOptions& options,
                           char* argv[],
                           string const& initFilename) {
   if (! options.parse(description, argc, argv)) {
-    LOGGER_FATAL_AND_EXIT(options.lastError());
+    LOG_FATAL_AND_EXIT("%s", options.lastError().c_str());
   }
 
   // check for help
@@ -281,7 +280,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! _configFile.empty()) {
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOGGER_DEBUG("using no init file at all");
+      LOG_DEBUG("using no init file at all");
     }
     else {
       configFile = _configFile;
@@ -307,17 +306,17 @@ void ArangoClient::parse (ProgramOptions& options,
         configFile = sysDir;
       }
       else {
-        LOGGER_DEBUG("no system init file '" << sysDir << "'");
+        LOG_DEBUG("no system init file '%s'", sysDir.c_str());
       }
     }
   }
 #endif
 
   if (! configFile.empty()) {
-    LOGGER_DEBUG("using init file '" << configFile << "'");
+    LOG_DEBUG("using init file '%s'", configFile.c_str());
 
     if (! options.parse(description, configFile)) {
-      LOGGER_FATAL_AND_EXIT("cannot parse config file '" << configFile << "': " << options.lastError());
+      LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s", configFile.c_str(), options.lastError().c_str());
     }
   }
 
@@ -377,16 +376,16 @@ void ArangoClient::parse (ProgramOptions& options,
 
     // check connection args
     if (_connectTimeout <= 0) {
-      LOGGER_FATAL_AND_EXIT("invalid value for --server.connect-timeout, must be positive");
+      LOG_FATAL_AND_EXIT("invalid value for --server.connect-timeout, must be positive");
     }
 
     if (_requestTimeout <= 0) {
-      LOGGER_FATAL_AND_EXIT("invalid value for --server.request-timeout, must be positive");
+      LOG_FATAL_AND_EXIT("invalid value for --server.request-timeout, must be positive");
     }
 
     // must specify a user name
     if (_username.size() == 0) {
-      LOGGER_FATAL_AND_EXIT("no value specified for --server.username");
+      LOG_FATAL_AND_EXIT("no value specified for --server.username");
     }
 
     // no password given on command-line

@@ -31,8 +31,8 @@
 
 #include "ApplicationDispatcher.h"
 
+#include "BasicsC/logging.h"
 #include "Dispatcher/Dispatcher.h"
-#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"
 
@@ -139,10 +139,10 @@ Dispatcher* ApplicationDispatcher::dispatcher () const {
 void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
                                                 size_t maxSize) {
   if (_dispatcher == 0) {
-    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOGGER_TRACE("setting up a standard queue with " << nrThreads << " threads ");
+  LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
 
   _dispatcher->addQueue("STANDARD", nrThreads, maxSize);
 }
@@ -155,10 +155,10 @@ void ApplicationDispatcher::buildNamedQueue (string const& name,
                                              size_t nrThreads,
                                              size_t maxSize) {
   if (_dispatcher == 0) {
-    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOGGER_TRACE("setting up a named queue '" << name << "' with " << nrThreads << " threads ");
+  LOG_TRACE("setting up a named queue '%s' with %d threads", name.c_str(), (int) nrThreads);
 
   _dispatcher->addQueue(name, nrThreads, maxSize);
 }
@@ -207,11 +207,11 @@ bool ApplicationDispatcher::start () {
   bool ok = _dispatcher->start();
 
   if (! ok) {
-    LOGGER_FATAL_AND_EXIT("cannot start dispatcher");
+    LOG_FATAL_AND_EXIT("cannot start dispatcher");
   }
 
   while (! _dispatcher->isStarted()) {
-    LOGGER_DEBUG("waiting for dispatcher to start");
+    LOG_DEBUG("waiting for dispatcher to start");
     usleep(500 * 1000);
   }
 
@@ -241,13 +241,13 @@ void ApplicationDispatcher::stop () {
   }
 
   if (_dispatcher != 0) {
-    static size_t const MAX_TRIES = 10;
+    static size_t const MAX_TRIES = 50; // 10 seconds (50 * 200 ms)
 
     _dispatcher->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
-      LOGGER_TRACE("waiting for dispatcher to stop");
-      sleep(1);
+      LOG_TRACE("waiting for dispatcher to stop");
+      usleep(200 * 1000);
     }
 
     _dispatcher->shutdown();
@@ -276,7 +276,7 @@ void ApplicationDispatcher::stop () {
 
 void ApplicationDispatcher::buildDispatcher () {
   if (_dispatcher != 0) {
-    LOGGER_FATAL_AND_EXIT("a dispatcher has already been created");
+    LOG_FATAL_AND_EXIT("a dispatcher has already been created");
   }
 
   _dispatcher = new Dispatcher();
@@ -288,7 +288,7 @@ void ApplicationDispatcher::buildDispatcher () {
 
 void ApplicationDispatcher::buildDispatcherReporter () {
   if (_dispatcher == 0) {
-    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
+    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
   }
 
   if (0.0 < _reportInterval) {

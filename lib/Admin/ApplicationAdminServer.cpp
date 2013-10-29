@@ -33,9 +33,9 @@
 #include "Admin/RestJobHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/ProgramOptionsDescription.h"
+#include "BasicsC/logging.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
-#include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 
 using namespace std;
@@ -187,11 +187,11 @@ bool ApplicationAdminServer::prepare () {
 
 bool ApplicationAdminServer::parsePhase2 (ProgramOptions& options) {
   if (options.has("server.admin-directory")) {
-    LOGGER_WARNING("usage of obsolete option --server.admin-directory");
+    LOG_WARNING("usage of obsolete option --server.admin-directory");
   }
 
   if (options.has("server.disable-admin-interface")) {
-    LOGGER_WARNING("usage of obsolete option --server.disable-admin-interface");
+    LOG_WARNING("usage of obsolete option --server.disable-admin-interface");
   }
   
   return true;

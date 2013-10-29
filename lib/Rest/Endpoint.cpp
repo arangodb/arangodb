@@ -27,10 +27,10 @@
 
 #include "Endpoint.h"
 
+#include "BasicsC/logging.h"
 #include "BasicsC/socket-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 
 #if TRI_HAVE_LINUX_SOCKETS
 #include "Rest/EndpointUnixDomain.h"
@@ -345,16 +345,18 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
 
   // set to non-blocking, executed for both client and server endpoints
   bool ok = TRI_SetNonBlockingSocket(s);
-  if (!ok) {
-    LOGGER_ERROR("cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")");
+
+  if (! ok) {
+    LOG_ERROR("cannot switch to non-blocking: %d (%s)", errno, strerror(errno));
 
     return false;
   }
 
   // set close-on-exec flag, executed for both client and server endpoints
   ok = TRI_SetCloseOnExitSocket(s);
-  if (!ok) {
-    LOGGER_ERROR("cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")");
+
+  if (! ok) {
+    LOG_ERROR("cannot set close-on-exit: %d (%s)", errno, strerror(errno));
 
     return false;
   }
