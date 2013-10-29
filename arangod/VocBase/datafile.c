@@ -394,8 +394,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
 
-  TRI_SealDatafile(datafile);
-  return TRI_ERROR_NO_ERROR;
+  return TRI_SealDatafile(datafile);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
