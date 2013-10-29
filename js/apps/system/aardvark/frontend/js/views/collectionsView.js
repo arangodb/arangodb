@@ -42,7 +42,8 @@ var collectionsView = Backbone.View.extend({
 
     //append info icon for loaded collections
     $('.loaded').parent().prev().append(
-      '<span class="glyphicon glyphicon-info-sign spanInfo ICON" title="Show collection properties"</span>'
+      '<span class="glyphicon glyphicon-info-sign spanInfo ICON" ' + 
+      'title="Show collection properties"</span>'
     );
     $('.unloaded').parent().prev().append(
       '<span class="glyphicon glyphicon-info-sign spanDisabled ICON" alt="disabled"</span>'
