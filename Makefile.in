@@ -7608,7 +7608,7 @@ start-slave:
 .PHONY: curl-request-get
 
 curl-request-get:
-	@declare -x ACTUAL=$$(curl --dump - -X GET "$(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL)" 2> /dev/null | head -n 1 | sed -e 's/^HTTP\/1\.1 \([0-9]\+\).*/\1/g'); if [ "x$$ACTUAL" != "x$(EXPECTED)" ]; then echo "request to $(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL) returned $$ACTUAL, expected: $(EXPECTED)"; false; else true; fi
+	@declare -x ACTUAL=$$(curl --dump - -X GET "$(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL)" 2> /dev/null | head -n 1 | tr "\r" " " | sed -e 's/^HTTP\/1\.1 \([0-9]*\).*$$/\1/g'); if [ "x$$ACTUAL" != "x$(EXPECTED)" ]; then echo "request to $(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL) returned $$ACTUAL, expected: $(EXPECTED)"; false; else true; fi
 
 ################################################################################
 ### @brief COMMON MAKE-RELATED TESTS
