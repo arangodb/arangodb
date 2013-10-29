@@ -396,8 +396,10 @@ already, you may need to adjust this file locally.
 The most current configuration files for ArangoDB 1.4 can be found on Github
 (look for files with file extension *.conf):
 
-- for Linux & MacOS: https://github.com/triAGENS/ArangoDB/tree/1.4/etc/relative
-- for Windows: https://github.com/triAGENS/ArangoDB/tree/1.4/VS2012/Installer
+* for Linux & MacOS: @S_EXTREF{https://github.com/triAGENS/ArangoDB/tree/1.4/etc/relative,https://github.com/triAGENS/ArangoDB/tree/1.4/etc/relative}
+
+* for Windows: @S_EXTREF{https://github.com/triAGENS/ArangoDB/tree/1.4/VS2012/Installer,https://github.com/triAGENS/ArangoDB/tree/1.4/VS2012/Installer}
+
 
 Please note that all these configuration files use relative paths that may
 need to be adjusted to the absolute paths on your system.
