@@ -5,6 +5,8 @@ v1.4.0 (2013-10-28)
 
 * fixed issue #646: index creation in web interface
 
+* fixed issue #645: Allow jumping from edge to linked vertices
+
 * merged PR for issue #643: Some minor corrections and a link to "Downloads"
 
 * fixed issue #642: Completion of error handling

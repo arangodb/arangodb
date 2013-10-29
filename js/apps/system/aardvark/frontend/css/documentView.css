@@ -18,6 +18,15 @@
   cursor: default !important;
 }
 
+.docLink {
+}
+
+.docPreview {
+  text-align: right;
+  float: right;
+  margin-right: -17px !important; 
+}
+
 #collectionPrev, #collectionNext{
   cursor: pointer;
 }
