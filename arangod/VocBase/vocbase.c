@@ -1454,6 +1454,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t collections;
+  int res;
   size_t i;
   
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
@@ -1484,17 +1485,30 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
 #ifdef TRI_SKIPLIST_EX
   // wait for the index garbage collector to finish what ever it is doing
-  TRI_JoinThread(&vocbase->_indexGC);
+  res = TRI_JoinThread(&vocbase->_indexGC);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to join indexgc thread: %s", TRI_errno_string(res));
+  }
 #endif  
   
   
   // wait until synchroniser and compactor are finished
-  TRI_JoinThread(&vocbase->_synchroniser);
+  res = TRI_JoinThread(&vocbase->_synchroniser);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to join synchroniser thread: %s", TRI_errno_string(res));
+  }
   
   TRI_LockCondition(&vocbase->_compactorCondition);
   TRI_SignalCondition(&vocbase->_compactorCondition);
   TRI_UnlockCondition(&vocbase->_compactorCondition);
-  TRI_JoinThread(&vocbase->_compactor);
+
+  res = TRI_JoinThread(&vocbase->_compactor);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to join compactor thread: %s", TRI_errno_string(res));
+  }
 
   // this will signal the cleanup thread to do one last iteration
   vocbase->_state = 3;
@@ -1502,7 +1516,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_LockCondition(&vocbase->_cleanupCondition);
   TRI_SignalCondition(&vocbase->_cleanupCondition);
   TRI_UnlockCondition(&vocbase->_cleanupCondition);
-  TRI_JoinThread(&vocbase->_cleanup);
+
+  res = TRI_JoinThread(&vocbase->_cleanup);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to join cleanup thread: %s", TRI_errno_string(res));
+  }
 
   // free replication  
   TRI_FreeReplicationApplier(vocbase->_replicationApplier);

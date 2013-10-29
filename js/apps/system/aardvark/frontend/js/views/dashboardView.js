@@ -209,6 +209,8 @@ var dashboardView = Backbone.View.extend({
     self.updateNOW = true;
     $(this.el).html(this.template.text);
     this.getReplicationStatus();
+    
+    arangoHelper.fixTooltips(".glyphicon", "top");
 
     var counter = 1;
 
@@ -634,10 +636,10 @@ var dashboardView = Backbone.View.extend({
       '<li class="statClient" id="' + figure.identifier + '">' +
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
       '</h6>'+
-      '<i class="icon-remove db-hide" value="'+figure.identifier+'"></i>' +
-      '<i class="icon-info-sign db-info" value="'+figure.identifier+
-      '" title="'+figure.description+'"></i>' +
-      '<i class="icon-zoom-in db-zoom" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-remove db-hide" value="' + figure.identifier + '"></i>' +
+      '<i class="icon-info-sign db-info" value="' + figure.identifier +
+      '" title="' + figure.description + '"></i>' +
+      '<i class="icon-zoom-in db-zoom" value="' + figure.identifier + '"></i>' +
       '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
@@ -650,10 +652,7 @@ var dashboardView = Backbone.View.extend({
       figure.name + '</label></a></li>'
     );
     //tooltips small charts
-    $('.db-info').tooltip({
-      placement: "top",
-      delay: {show: 100, hide: 100}
-    });
+    arangoHelper.fixTooltips(".db-info", "top");
   }
 
 });

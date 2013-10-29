@@ -28,8 +28,7 @@
 #ifndef TRIAGENS_REST_VERSION_H
 #define TRIAGENS_REST_VERSION_H 1
 
-#include <string>
-#include <map>
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -87,6 +86,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static void initialise ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get numeric server version
+////////////////////////////////////////////////////////////////////////////////
+
+        static int32_t getNumericServerVersion ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get server version

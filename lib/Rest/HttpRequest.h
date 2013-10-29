@@ -100,15 +100,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http request constructor
 ///
-/// Constructs a http request given nothing. You can add the values, the header
-/// information, and path information afterwards.
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http request constructor
-///
 /// Constructs a http request given the header string. A client request
 /// consists of two parts: the header and the body. For a GET request the
 /// body is always empty and all information about the request is delivered
@@ -120,6 +111,7 @@ namespace triagens {
         HttpRequest (ConnectionInfo const&, 
                      char const*, 
                      size_t,
+                     int32_t,
                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,12 +125,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the request body as TRI_json_t*
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_json_t* toJson (char**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the protocol
@@ -460,6 +446,18 @@ namespace triagens {
 
         void setHeader (char const* key, size_t keyLength, char const* value);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine version compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+        int32_t compatibility ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the request body as TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* toJson (char**);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
@@ -688,6 +686,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         bool _isRequestContextOwner;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default API compatibility 
+/// the value is an ArangoDB version number in the following format:
+/// 10000 * major + 100 * minor (e.g. 10400 for ArangoDB 1.4)
+////////////////////////////////////////////////////////////////////////////////
+
+        int32_t _defaultApiCompatibility;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not overriding the HTTP method via custom headers

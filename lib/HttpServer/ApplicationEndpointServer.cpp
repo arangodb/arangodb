@@ -39,7 +39,7 @@
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Logger/Logger.h"
-#include "Rest/OperationMode.h"
+#include "Rest/Version.h"
 #include "Scheduler/ApplicationScheduler.h"
 
 using namespace triagens::basics;
@@ -101,6 +101,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _httpPort(),
     _endpoints(),
     _keepAliveTimeout(300.0),
+    _defaultApiCompatibility(0),
     _allowMethodOverride(false),
     _backlogSize(10),
     _httpsKeyfile(),
@@ -111,6 +112,8 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _sslCipherList(""),
     _sslContext(0),
     _rctx() {
+
+  _defaultApiCompatibility = Version::getNumericServerVersion();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,8 +221,9 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.allow-method-override", &_allowMethodOverride, "allow HTTP method override using special headers")
-    ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
     ("server.backlog-size", &_backlogSize, "listen backlog size")
+    ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version (e.g. 10300)")
+    ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
   ;
 
   options[ApplicationServer::OPTIONS_SSL]
@@ -265,6 +269,9 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     }
   }
 
+  if (_defaultApiCompatibility < 10300L) {
+    LOGGER_FATAL_AND_EXIT("invalid value for --server.default-api-compatibility. minimum allowed value is 10300");
+  }
 
   // and return
   return true;
@@ -545,9 +552,12 @@ bool ApplicationEndpointServer::prepare () {
   _endpointList.dump();
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
+                                           _defaultApiCompatibility,
                                            _allowMethodOverride,
                                            _setContext,
                                            _contextData);
+  
+  LOGGER_INFO("using default API compatibility: " << _defaultApiCompatibility);
 
   return true;
 }

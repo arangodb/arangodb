@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, window, setTimeout, clearTimeout, $*/
+/*global require, exports, Backbone, EJS, window, setTimeout, clearTimeout, arangoHelper, $*/
 
 var collectionsView = Backbone.View.extend({
   el: '#content',
@@ -41,17 +41,9 @@ var collectionsView = Backbone.View.extend({
     }, this);
 
     //append info icon for loaded collections
-    /*
     $('.loaded').parent().prev().append(
-      '<i class="icon-info-sign show-info-view" alt="Show collection properties"'+
-      'title="Show collection properties"></i>'
-    );
-    $('.unloaded').parent().prev().append(
-      '<i class="icon-info-sign disabled-info-view" alt="disabled"'+
-      'title="disabled"></i>'
-    );*/
-    $('.loaded').parent().prev().append(
-      '<span class="glyphicon glyphicon-info-sign spanInfo ICON" alt="Collection properties"</span>'
+      '<span class="glyphicon glyphicon-info-sign spanInfo ICON" ' + 
+      'title="Show collection properties"</span>'
     );
     $('.unloaded').parent().prev().append(
       '<span class="glyphicon glyphicon-info-sign spanDisabled ICON" alt="disabled"</span>'
@@ -63,6 +55,7 @@ var collectionsView = Backbone.View.extend({
     $('#searchInput').val('');
     $('#searchInput').val(val);
 
+    arangoHelper.fixTooltips(".glyphicon, .arangoicon", "left");
 
     return this;
   },

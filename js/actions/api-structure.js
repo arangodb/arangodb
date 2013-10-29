@@ -463,6 +463,11 @@ function saveDocument(req, res, collection, document)  {
     "Etag" :  doc._rev,
     "location" : "/_api/structure/" + doc._id
   };
+  
+  if (req.hasOwnProperty('compatibility') && req.compatibility >= 10400) {
+    // 1.4+ style location header
+    headers.location = "/_db/" + encodeURIComponent(arangodb.db._name()) + headers.location;
+  }
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
   
@@ -480,9 +485,9 @@ function replaceDocument(req, res, collection, oldDocument, newDocument)  {
   var waitForSync = getWaitForSync(req, collection);
   var overwrite = getOverwritePolicy(req);
   
-  if (!overwrite && 
-      undefined !== newDocument._rev && 
-      oldDocument._rev !== newDocument._rev) {
+  if (! overwrite && 
+       undefined !== newDocument._rev && 
+       oldDocument._rev !== newDocument._rev) {
     resultError(req, res, actions.HTTP_BAD, 
         arangodb.ERROR_FAILED, 
         "wrong version");

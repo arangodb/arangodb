@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, _ */
+/*global Backbone, EJS, $, window, arangoHelper, _ */
 
 window.ApplicationsView = Backbone.View.extend({
   el: '#content',
@@ -120,6 +120,8 @@ window.ApplicationsView = Backbone.View.extend({
       v.toggle("active", self._showActive);
       v.toggle("inactive", self._showInactive);
     });
+  
+    arangoHelper.fixTooltips(".glyphicon", "left");
     return this;
   }
 });

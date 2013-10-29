@@ -188,7 +188,28 @@ static int forkProcess (string const& workingDirectory, string& current) {
     }
   }
 
-  // DO NOT close the standard file descriptors
+  // we're a daemon so there won't be a terminal attached
+  // close the standard file descriptors and re-open them mapped to /dev/null
+  int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
+
+  if (fd < 0) {
+    LOG_FATAL_AND_EXIT("cannot open /dev/null");
+  }
+
+  if (dup2(fd, STDIN_FILENO) < 0) {
+    LOG_FATAL_AND_EXIT("cannot re-map stdin to /dev/null");
+  }
+  
+  if (dup2(fd, STDOUT_FILENO) < 0) {
+    LOG_FATAL_AND_EXIT("cannot re-map stdout to /dev/null");
+  }
+  
+  if (dup2(fd, STDERR_FILENO) < 0) {
+    LOG_FATAL_AND_EXIT("cannot re-map stderr to /dev/null");
+  }
+  
+  close(fd);  
+
   return 0;
 }
 

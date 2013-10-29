@@ -3,7 +3,6 @@
 
 var FoxxInstalledListView = Backbone.View.extend({
   el: '#content',
-  //template: new EJS({url: 'js/templates/foxxListView.ejs'}),
   template: new EJS({url: 'js/templates/applicationsView.ejs'}),
   
   events: {

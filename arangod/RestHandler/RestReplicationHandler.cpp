@@ -2862,10 +2862,12 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   }
   
   value = JsonHelper::getArrayElement(json, "database");
+  if (config._database != 0) {
+    // free old value
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
+  }
+
   if (JsonHelper::isString(value)) {
-    if (config._database != 0) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
-    }
     config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
   else {

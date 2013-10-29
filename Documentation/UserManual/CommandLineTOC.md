@@ -20,6 +20,8 @@ TOC {#CommandLineTOC}
     - @ref CommandLineArangoDisableAuthentication "server.disable-authentication"
     - @ref CommandLineArangoAuthenticateSystemOnly "server.authenticate-system-only"
     - @ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"
+    - @ref CommandLineArangoDefaultApiCompatibility "server.default-api-compatibility"
+    - @ref CommandLineArangoAllowMethodOverride "server.allow-method-override"
     - @ref CommandLineArangoDisableReplicationLogger "server.disable-replication-logger"
     - @ref CommandLineArangoDisableReplicationApplier "server.disable-replication-applier"
     - @ref CommandLineArangoKeyFile "server.keyfile"

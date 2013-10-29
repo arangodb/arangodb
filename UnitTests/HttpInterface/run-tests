@@ -2,6 +2,7 @@
 test -d logs || mkdir logs
 
 rspec --color --format d \
+	api-compatibility-spec.rb \
 	api-http-spec.rb \
 	api-admin-spec.rb \
 	api-aqlfunction-spec.rb \

@@ -194,26 +194,28 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 /// @brief stops the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void Thread::stop () {
+int Thread::stop () {
   if (_running != 0) {
     LOG_TRACE("trying to cancel (aka stop) the thread '%s'", _name.c_str());
-    TRI_StopThread(&_thread);
+    return TRI_StopThread(&_thread);
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief joins the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void Thread::join () {
-  TRI_JoinThread(&_thread);
+int Thread::join () {
+  return TRI_JoinThread(&_thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops and joins the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void Thread::shutdown () {
+int Thread::shutdown () {
   size_t const MAX_TRIES = 10;
   size_t const WAIT = 10000;
 
@@ -226,11 +228,14 @@ void Thread::shutdown () {
   }
 
   if (_running != 0) {
-    LOG_TRACE("trying to cancel (aka stop) the thread '%s'", _name.c_str());
-    TRI_StopThread(&_thread);
+    int res = TRI_StopThread(&_thread);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to stop thread %s", _name.c_str());
+    }
   }
 
-  TRI_JoinThread(&_thread);
+  return TRI_JoinThread(&_thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -675,6 +675,33 @@ function DOCUMENT (collection, id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a document by its unique id or their unique ids
+////////////////////////////////////////////////////////////////////////////////
+
+function DOCUMENT_HANDLE (id) {
+  "use strict";
+
+  if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
+    var result = [ ], i;
+    for (i = 0; i < id.length; ++i) {
+      try {
+        result.push(INTERNAL.db._document(id[i]));
+      }
+      catch (e1) {
+      }
+    }
+    return result;
+  }
+
+  try {
+    return INTERNAL.db._document(id);
+  }
+  catch (e2) {
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3923,6 +3950,7 @@ exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.LIST = LIST;
 exports.DOCUMENT = DOCUMENT;
+exports.DOCUMENT_HANDLE = DOCUMENT_HANDLE;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
 exports.GET_DOCUMENTS_INCREMENTAL_INIT = GET_DOCUMENTS_INCREMENTAL_INIT;
 exports.GET_DOCUMENTS_INCREMENTAL_CONT = GET_DOCUMENTS_INCREMENTAL_CONT;

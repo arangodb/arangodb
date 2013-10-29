@@ -101,7 +101,40 @@ describe ArangoDB do
       it "creating a new document" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new document, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -134,7 +167,47 @@ describe ArangoDB do
       it "creating a new document complex body" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
-        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        cmd = "/_api/document/#{did}"
+        doc = ArangoDB.log_get("#{prefix}-complex", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['Hallo'].should eq('Wo"rld')
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new document complex body, setting compatibility header " do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -174,7 +247,53 @@ describe ArangoDB do
       it "creating a new umlaut document" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
-        doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        cmd = "/_api/document/#{did}"
+        doc = ArangoDB.log_get("#{prefix}-umlaut", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        newBody = doc.body()
+        newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
+
+        newBody.should eq("\\u00F6\\u00E4\\u00FC\\u00D6\\u00C4\\u00DC\\u00DF\\u3042\\u5BFF\\u53F8")
+
+        doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
+        
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new umlaut document, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
+        doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -220,7 +339,53 @@ describe ArangoDB do
       it "creating a new not normalized umlaut document" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Gru\\u0308\\u00DF Gott.\" }"
-        doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        cmd = "/_api/document/#{did}"
+        doc = ArangoDB.log_get("#{prefix}-umlaut", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        newBody = doc.body()
+        newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
+
+        newBody.should eq("Gr\\u00FC\\u00DF Gott.")
+
+        doc.parsed_response['Hallo'].should eq('Grüß Gott.')
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new not normalized umlaut document, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"Gru\\u0308\\u00DF Gott.\" }"
+        doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -263,7 +428,6 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      
       it "creating a document with an existing id" do
         @key = "a_new_key"
 
@@ -271,7 +435,42 @@ describe ArangoDB do
 
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"some stuff\" : \"goes here\", \"_key\" : \"#{@key}\" }"
-        doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        did.should eq("#{@cn}/#{@key}")
+  
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
+      end
+      
+      it "creating a document with an existing id, setting compatibility header" do
+        @key = "a_new_key"
+
+        ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
+
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"some stuff\" : \"goes here\", \"_key\" : \"#{@key}\" }"
+        doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -338,7 +537,40 @@ describe ArangoDB do
       it "creating a new document" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(202)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new document, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(202)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -371,7 +603,40 @@ describe ArangoDB do
       it "creating a new document, waitForSync URL param = false" do
         cmd = "/_api/document?collection=#{@cn}&waitForSync=false"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}-accept-sync-false", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-accept-sync-false", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(202)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new document, waitForSync URL param = false, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}&waitForSync=false"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-accept-sync-false", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(202)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -404,7 +669,40 @@ describe ArangoDB do
       it "creating a new document, waitForSync URL param = true" do
         cmd = "/_api/document?collection=#{@cn}&waitForSync=true"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}-accept-sync-true", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-accept-sync-true", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+      
+      it "creating a new document, waitForSync URL param = true, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}&waitForSync=true"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-accept-sync-true", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -448,11 +746,44 @@ describe ArangoDB do
       after do
         ArangoDB.drop_collection(@cn)
       end
-
+      
       it "creating a new document" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}-named-collection", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-named-collection", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+
+      it "creating a new document, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-named-collection", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -499,7 +830,7 @@ describe ArangoDB do
       it "returns an error if collection is unknown" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}-unknown-collection-name", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -507,11 +838,40 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
-
+      
       it "create the collection and the document" do
         cmd = "/_api/document?collection=#{@cn}&createCollection=true"
         body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-create-collection", cmd, :body => body, :headers => { "x-arango-version" => "1.3" })
+
+        doc.code.should eq(202)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_api/document/#{did}")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+
+      it "create the collection and the document, setting compatibility header" do
+        cmd = "/_api/document?collection=#{@cn}&createCollection=true"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-create-collection", cmd, :body => body, :headers => { "x-arango-version" => "1.4" })
 
         doc.code.should eq(202)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")

@@ -3,7 +3,6 @@
 
 var collectionInfoView = Backbone.View.extend({
   el: '#modalPlaceholder',
-  chart: null,
 
   initialize: function () {
   },
@@ -22,17 +21,13 @@ var collectionInfoView = Backbone.View.extend({
     $('#infoTab a').click(function (e) {
       e.preventDefault();
       $(this).tab('show');
+      $(this).focus();
     });
 
     return this;
   },
   events: {
     "hidden #show-collection" : "hidden"
-  },
-  listenKey: function(e) {
-    if (e.keyCode === 13) {
-      this.saveModifiedCollection();
-    }
   },
   hidden: function () {
     window.App.navigate("#collections", {trigger: true});
@@ -47,7 +42,7 @@ var collectionInfoView = Backbone.View.extend({
       return;
     }
 
-    $('#show-collection-name').text("Collection: "+this.myCollection.name);
+    $('#show-collection-name').text("Collection: " + this.myCollection.name);
     $('#show-collection-id').text(this.myCollection.id);
     $('#show-collection-type').text(this.myCollection.type);
     $('#show-collection-status').text(this.myCollection.status);
@@ -59,51 +54,12 @@ var collectionInfoView = Backbone.View.extend({
       //remove 
       this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
       this.fillLoadedModal(this.data);
-      //this.convertFigures(this.data);
-      //this.renderFigures();
     }
-  },
-  renderFigures: function () {
-    var self = this;
-
-    // prevent some d3-internal races with a timeout
-    window.setTimeout(function () {
-      var chart = nv.models.pieChart()
-      .x(function(d) { return d.label; })
-      .y(function(d) { return d.value; })
-      .showLabels(true);
-      nv.addGraph(function() {
-        d3.select(".modal-body-right svg")
-        .datum(self.convertFigures())
-        .transition().duration(1200)
-        .call(chart);
-        return chart;
-      });
-
-      return chart;
-    }, 500);
-  },
-  convertFigures: function () {
-    var self = this;
-    var collValues = [];
-    if (self.data && self.data.figures) {
-      $.each(self.data.figures, function(k,v) {
-        collValues.push({
-          "label" : k,
-          "value" : v.count
-        });
-      });
-    }
-
-    return [{
-      key: "Collections Status",
-      values: collValues
-    }];
   },
   roundNumber: function(number, n) {
-    var faktor;
-    faktor = Math.pow(10,n);
-    var returnVal = (Math.round(number * faktor) / faktor);
+    var factor;
+    factor = Math.pow(10,n);
+    var returnVal = (Math.round(number * factor) / factor);
     return returnVal;
   },
   appendFigures: function () {
@@ -122,7 +78,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="'+cssClass+'">Datafiles</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.datafiles.count+'</th>'+
             '<th class="'+cssClass+'">'+
-              this.roundNumber(this.data.figures.datafiles.fileSize / 1024 / 1024 , 2)+
+              this.roundNumber(this.data.figures.datafiles.fileSize / 1024 / 1024, 2)+
             '</th>'+
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="Number of active datafiles.">'+
@@ -133,7 +89,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="'+cssClass+'">Journals</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.journals.count+'</th>'+
             '<th class="'+cssClass+'">'+
-              this.roundNumber(this.data.figures.journals.fileSize / 1024 / 1024 , 2)+
+              this.roundNumber(this.data.figures.journals.fileSize / 1024 / 1024, 2)+
             '</th>'+
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="Number of journal files.">'+
@@ -144,7 +100,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="'+cssClass+'">Compactors</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.compactors.count+'</th>'+
             '<th class="'+cssClass+'">'+
-              this.roundNumber(this.data.figures.compactors.fileSize / 1024 / 1024 , 2)+
+              this.roundNumber(this.data.figures.compactors.fileSize / 1024 / 1024, 2)+
             '</th>'+
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="Number of compactor files.">'+
@@ -155,7 +111,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="'+cssClass+'">Shape files</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.shapefiles.count+'</th>'+
             '<th class="'+cssClass+'">'+
-              this.roundNumber(this.data.figures.shapefiles.fileSize / 1024 / 1024 , 2)+
+              this.roundNumber(this.data.figures.shapefiles.fileSize / 1024 / 1024, 2)+
             '</th>'+
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="Number of shape files.">'+
@@ -267,7 +223,7 @@ var collectionInfoView = Backbone.View.extend({
       $('#show-collection-sync').text('true');
     }
     var calculatedSize = data.journalSize / 1024 / 1024;
-    $('#show-collection-size').text(this.roundNumber(calculatedSize,2));
+    $('#show-collection-size').text(this.roundNumber(calculatedSize, 2));
     $('#show-collection-rev').text(this.revision.revision);
 
     this.appendIndex();
