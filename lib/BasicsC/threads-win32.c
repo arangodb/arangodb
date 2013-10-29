@@ -74,7 +74,7 @@ thread_data_t;
 static DWORD __stdcall ThreadStarter (void* data) {
   thread_data_t* d;
 
-  d = data;
+  d = (thread_data_t*) data;
   d->starter(d->_data);
 
   TRI_Free(TRI_CORE_MEM_ZONE, d);
@@ -148,7 +148,11 @@ bool TRI_StartThread (TRI_thread_t* thread,  const char* name, void (*starter)(v
   DWORD threadId;
   thread_data_t* d;
 
-  d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
+  d = (thread_data_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
+
+  if (d == NULL) {
+	return false;
+  }
 
   d->starter = starter;
   d->_data = data;
