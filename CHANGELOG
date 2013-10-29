@@ -1,6 +1,23 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* simplified usage of ArangoDB batch API
+
+  It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`
+  header. Previously, the batch API expected the client to send a Content-Type header
+  of`multipart/form-data; boundary=<some boundary value>`. This is still supported in
+  ArangoDB 1.5, but clients can now also omit this header. If the header is not 
+  present in a client request, ArangoDB will ignore the request content type and
+  read the MIME boundary from the beginning of the request body.
+
+  This also allows using the batch API with the Swagger "Try it out" feature (which is
+  not too good at sending a different or even dynamic content-type request header).
+
+* removed C++ logger implementation
+
+  Logging inside ArangoDB is now done using the LOG_XXX() macros. The LOGGER_XXX()
+  macros are gone.
+
 * added collection status "loading"
 
 v1.4.0 (2013-10-29)
