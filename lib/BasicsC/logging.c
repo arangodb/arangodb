@@ -624,33 +624,6 @@ static void OutputMessage (TRI_log_level_e level,
                            bool copy) {
   assert(message != NULL);
 
-  if (level == TRI_LOG_LEVEL_FATAL ) {
-    // a fatal error. always print this on stderr, too.
-    if (LoggingActive) {
-      size_t i;
-
-      fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", message);
-
-      TRI_LockSpin(&AppendersLock);
-
-      for (i = 0;  i < Appenders._length;  ++i) {
-        TRI_log_appender_t* appender;
-        char* details;
-
-        appender = Appenders._buffer[i];
-    
-        details = appender->details(appender);
-
-        if (details != NULL) {
-          fprintf(stderr, "%s\n", details);
-          TRI_Free(TRI_CORE_MEM_ZONE, details);
-        }
-      }
-
-      TRI_UnlockSpin(&AppendersLock);
-    }
-  }
-
   if (! LoggingActive) {
     WriteStderr(message, (ssize_t) length);
 
@@ -1505,14 +1478,34 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
     return;
   }
   
-  if (level == TRI_LOG_LEVEL_FATAL && 
-      self->_filename == NULL &&
-      (fd == STDOUT_FILENO || fd == STDERR_FILENO)) {
-    // fatal errors are caught somewhere else already. no need to print them again to 
-    // stderr / stdout
-    return;
-  }
+  if (level == TRI_LOG_LEVEL_FATAL) {
+    // a fatal error. always print this on stderr, too.
+    size_t i;
 
+    fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", msg);
+
+    // this function is already called when the appenders lock is held
+    // no need to lock it again
+    for (i = 0;  i < Appenders._length;  ++i) {
+      TRI_log_appender_t* a;
+      char* details;
+
+      a = Appenders._buffer[i];
+    
+      details = a->details(appender);
+
+      if (details != NULL) {
+        fprintf(stderr, "%s\n", details);
+        TRI_Free(TRI_CORE_MEM_ZONE, details);
+      }
+    }
+      
+    if (self->_filename == NULL &&
+        (fd == STDOUT_FILENO || fd == STDERR_FILENO)) {
+      // the logfile is either stdout or stderr. no need to print the message again
+      return;
+    }
+  }
 
   escaped = TRI_EscapeControlsCString(TRI_UNKNOWN_MEM_ZONE, msg, length, &escapedLength, true);
 
