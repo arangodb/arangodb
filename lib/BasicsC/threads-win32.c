@@ -192,7 +192,7 @@ int TRI_StopThread (TRI_thread_t* thread) {
 
 int TRI_DetachThread (TRI_thread_t* thread) {
   // TODO: no native implementation
-  return TRI_ERROR_NO_ERROR
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
