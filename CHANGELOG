@@ -1,6 +1,11 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* removed command-line option `--log.format`
+
+  In previous versions, this option did not have an effect for most log messages, so
+  it got removed.
+
 * simplified usage of ArangoDB batch API
 
   It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`

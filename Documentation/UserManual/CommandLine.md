@@ -309,10 +309,6 @@ Machine Readable Logging {#CommandLineLoggingMachine}
 @copydetails triagens::rest::ApplicationServer::_logFacility
 
 @CLEARPAGE
-@anchor CommandLineLoggingLogFormat
-@copydetails triagens::rest::ApplicationServer::_logFormat
-
-@CLEARPAGE
 @anchor CommandLineLoggingLogHostName
 @copydetails triagens::rest::ApplicationServer::_logHostName
 
