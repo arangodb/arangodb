@@ -60,9 +60,9 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_GCC_ATTRIBUTE
-#define TRI_WARN_UNUSED __attribute__ ((warn_unused_result))
+#define TRI_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
 #else
-#define TRI_WARN_UNUSED /* unused */
+#define TRI_WARN_UNUSED_RESULT /* unused */
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
