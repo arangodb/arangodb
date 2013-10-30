@@ -1740,12 +1740,24 @@ function ahuacatlFunctionsTestSuite () {
 
       var expected, actual;
 
+      // test with two parameters
       expected = [ { title: "123", value : 456 } ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")");
       assertEqual(expected, actual);
       
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._key + "\")");
+      assertEqual(expected, actual);
+      
       expected = [ { title: "nada", value : 123 } ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._key + "\")");
+      assertEqual(expected, actual);
+      
+      // test with one parameter
+      expected = [ { title: "nada", value : 123 } ];
+      actual = getQueryResults("RETURN DOCUMENT(\"" + d2._id + "\")");
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
@@ -1765,14 +1777,30 @@ function ahuacatlFunctionsTestSuite () {
 
       var expected, actual;
 
+      // test with two parameters
       expected = [ { title: "123", value : 456, zxy: 1 } ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._id });
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._key });
       assertEqual(expected, actual);
       
       expected = [ { title: "nada", value : 123, zzzz : false } ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._id });
       assertEqual(expected, actual);
       
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._key });
+      assertEqual(expected, actual);
+      
+      // test with one parameter
+      expected = [ { title: "123", value : 456, zxy: 1 } ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : d1._id });
+      assertEqual(expected, actual);
+      
+      expected = [ { title: "nada", value : 123, zzzz : false } ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : d2._id });
+      assertEqual(expected, actual);
+
       internal.db._drop(cn);
     },
 
@@ -1791,6 +1819,7 @@ function ahuacatlFunctionsTestSuite () {
 
       var expected, actual;
 
+      // test with two parameters
       expected = [ [
         { title: "123", value : 456, zxy : 1 },
         { title: "nada", value : 123, zzzz : false },
@@ -1803,11 +1832,21 @@ function ahuacatlFunctionsTestSuite () {
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id ] }, true);
       assertEqual(expected, actual);
+      
+      // test with one parameter
+      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : [ d2._id ] }, true);
+      assertEqual(expected, actual);
+
 
       cx.remove(d3);
       
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id, d3._id, "abc/def" ] }, true);
+      assertEqual(expected, actual);
+      
+      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : [ d2._id, d3._id, "abc/def" ] }, true);
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
