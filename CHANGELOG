@@ -1,6 +1,21 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* made AQL `DOCUMENT()` function polymorphic and work with just one parameter.
+
+  This allows using the `DOCUMENT` function like this:
+
+      DOCUMENT('users/john') 
+      DOCUMENT([ 'users/john', 'users/amy' ]) 
+
+  in addition to the existing use cases:
+
+      DOCUMENT(users, 'users/john')
+      DOCUMENT(users, 'john')
+      DOCUMENT(users, [ 'users/john' ])
+      DOCUMENT(users, [ 'users/john', 'users/amy' ])
+      DOCUMENT(users, [ 'john', 'amy' ])
+
 * issue #424: Documentation about IDs needs to be upgraded
 
 * removed command-line option `--log.format`
