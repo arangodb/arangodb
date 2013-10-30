@@ -19,10 +19,20 @@ please continue.
 Overview
 ========
 
+An application built with Foxx is written in JavaScript and deployed to 
+ArangoDB directly. ArangoDB serves this application, you do not need a 
+separate application server.
+
+Think of an Foxx app as a typical web app similar to any other web app using
+other technologies. A Foxx app provides one or more URLs, which can either
+be accessed directly from the browser or from a backend application written e.g. in
+Ruby or C#. A Foxx app has a routing, accesses data (in ArangoDB), manipulates data,
+it can deliver static HTML pages, CSS, Images and much more. 
+
 The typical request to a Foxx application will work as follows (only conceptually,
 a lot of the steps are cached in reality):
 
-1. The request is routed to a Foxx application depending on the mount point
+1. The request is routed to a Foxx application depending on the mount point 
 2. The according controller of this application is determined (via something called the manifest file)
 3. The request is then routed to a specific handler in this controller
 
@@ -43,13 +53,8 @@ methods.
 Your first Foxx app in 5 minutes - a step-by-step tutorial 
 ==========================================================
 
-An application built with Foxx is written in JavaScript and deployed to 
-ArangoDB directly. ArangoDB serves this application, you do not need a 
-separate application server.
-
-So given you want to build an application that sends a plain-text response 
+Let's build an application that sends a plain-text response 
 "Hello YourName!" for all requests to `/dev/my_app/hello/YourName`. 
-How would you achieve that with Foxx?
 
 First, create a directory `apps` somewhere in your filesystem. This will be
 the Foxx application base directory for your database instance. Let's assume 
