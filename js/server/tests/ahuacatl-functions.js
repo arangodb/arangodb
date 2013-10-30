@@ -1760,6 +1760,16 @@ function ahuacatlFunctionsTestSuite () {
       actual = getQueryResults("RETURN DOCUMENT(\"" + d2._id + "\")");
       assertEqual(expected, actual);
       
+      // test with bind parameter
+      expected = [ { title: "nada", value : 123 } ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { id: d2._id });
+      assertEqual(expected, actual);
+      
+      // test dynamic parameter
+      expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 } ];
+      actual = getQueryResults("FOR d IN @@cn SORT d.value RETURN DOCUMENT(d._id)", { "@cn" : cn });
+      assertEqual(expected, actual);
+      
       internal.db._drop(cn);
     },
 
