@@ -792,26 +792,49 @@ includes Foxx applications. The global authentication can be toggled
 via the configuration option @ref CommandLineArangoDisableAuthentication 
 "server.disable-authentication".
 
+If global HTTP authentication is turned on, requests to Foxx applications will 
+require HTTP authentication too, and only valid users present in the `_users`
+system collection are allowed to use the applications.
+
 Since ArangoDB 1.4, there is an extra option to restrict the authentication to 
 just system API calls, such as `/_api/...` and `/_admin/...`. This option can be 
 turned on using the @ref CommandLineArangoAuthenticateSystemOnly 
 "server.authenticate-system-only" configuration option. If it is turned on, 
 then only system API requests need authentication whereas all requests to Foxx 
-applications and routes will not require authentication. This is recommended if
-you want your frontend to directly talk to your Foxx application. The other
-option is to turn of the admin and system API completely.
+applications and routes will not require authentication. 
+
+This is recommended if you want to disable HTTP authentication for Foxx applications
+but still want the general database APIs to be protected with HTTP authentication.
 
 If you need more fine grained control over the access to your Foxx application,
-we built an authentication system you can use (but you can of course roll your
-own if you want). Deactivate ArangoDB's authentication for your Foxx apps and
-then use Foxx.Authentication.
+we built an authentication system you can use. Currently we only support cookie-based 
+authentication, but we will add the possibility to use Auth Tokens and external OAuth 
+providers in the near future. Of course you can roll your own authentication mechanism
+if you want to, and you can do it in an application-specific way if required.
 
-Currently we only support cookie-based authentication, but we will add the
-possibility to use Auth Tokens and external OAuth providers in the near future.
-We also built a small [demo application](https://github.com/arangodb/foxx-authentication)
-for the authentication functionality.
+To use the per-application authentication, you should first turn off the global
+HTTP authentication (or at least restrict it to system API calls as mentioned above). 
+Otherwise clients will need HTTP authentication and need additional authentication by
+your Foxx application. 
 
-To use the authentication in your app, first activate it:
+To have global HTTP authentication turned on for system APIs but turned off for Foxx,
+your server startup parameters should look like this:
+
+    --server.disable-authentication false --server.authenticate-system-only true
+
+Note: during development, you may even turn off HTTP authentication completely:
+    
+    --server.disable-authentication true --server.authenticate-system-only true
+ 
+Please keep in mind that turning HTTP authentication off completely will allow 
+unauthenticated access by anyone to all API functions, so do not use this is production.
+
+Now it's time to configure the application-specific authentication. We built a small 
+[demo application](https://github.com/arangodb/foxx-authentication) to demonstrate how
+this works. 
+
+To use the application-specific authentication in your own app, first activate it in
+your controller:
 
 @copydetails JSF_foxx_controller_activateAuthentication
 
