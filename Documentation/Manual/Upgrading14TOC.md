@@ -6,4 +6,5 @@ TOC {#Upgrading14TOC}
 - @ref Upgrading14Databases
 - @ref Upgrading14ChangedBehavior
 - @ref Upgrading14RemovedFeatures
+- @ref Upgrading14Checklist
 - @ref Upgrading14Troubleshooting
