@@ -588,31 +588,17 @@ static int GenerateMessage (char* buffer,
 /// @brief write to stderr
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool WriteStderr (char const* line, ssize_t len) {
-  ssize_t n;
-
-  while (0 < len) {
-    n = TRI_WRITE(STDERR_FILENO, line, len);
-
-    if (n <= 0) {
-      return false;
-    }
-
-    line += n;
-    len -= n;
+static void WriteStderr (TRI_log_level_e level,
+                         char const* msg) {
+  if (level == TRI_LOG_LEVEL_FATAL) {
+    fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", msg);
   }
-
-  // if write() fails, we do not care
-  n = TRI_WRITE(STDERR_FILENO, "\n", 1);
-
-  if (n <= 0) {
-    return false;
+  else {
+    fprintf(stderr, "%s\n", msg);
   }
-
-  return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs a message string to all appenders
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -625,7 +611,7 @@ static void OutputMessage (TRI_log_level_e level,
   assert(message != NULL);
 
   if (! LoggingActive) {
-    WriteStderr(message, (ssize_t) length);
+    WriteStderr(level, message);
 
     if (! copy) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, message);
@@ -645,7 +631,7 @@ static void OutputMessage (TRI_log_level_e level,
   TRI_LockSpin(&AppendersLock);
 
   if (Appenders._length == 0) {
-    WriteStderr(message, (ssize_t) length);
+    WriteStderr(level, message);
     
     TRI_UnlockSpin(&AppendersLock);
 
@@ -1482,7 +1468,7 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
     // a fatal error. always print this on stderr, too.
     size_t i;
 
-    fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", msg);
+    WriteStderr(level, msg);
 
     // this function is already called when the appenders lock is held
     // no need to lock it again
@@ -1495,7 +1481,7 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
       details = a->details(appender);
 
       if (details != NULL) {
-        fprintf(stderr, "%s\n", details);
+        WriteStderr(TRI_LOG_LEVEL_INFO, details);
         TRI_Free(TRI_CORE_MEM_ZONE, details);
       }
     }
