@@ -567,10 +567,15 @@ static int CreateApplicationDirectory (char const* name,
       res = TRI_CreateDirectory(path);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        LOG_INFO("created application directory '%s' for database '%s'", path, name);
+        LOG_INFO("created application directory '%s' for database '%s'", 
+                 path, 
+                 name);
       }
       else {
-        LOG_ERROR("unable to create application directory '%s' for database '%s'", path, name);
+        LOG_ERROR("unable to create application directory '%s' for database '%s': %s", 
+                  path, 
+                  name, 
+                  TRI_errno_string(res));
       }
     }
 
