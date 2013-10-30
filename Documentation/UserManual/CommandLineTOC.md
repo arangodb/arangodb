@@ -59,7 +59,6 @@ TOC {#CommandLineTOC}
     - @ref CommandLineLoggingMachine
       - @ref CommandLineLoggingLogApplication "log.application"
       - @ref CommandLineLoggingLogFacility "log.facility"
-      - @ref CommandLineLoggingLogFormat "log.format"
       - @ref CommandLineLoggingLogHostName "log.hostname"
   - @ref CommandLineScheduler
     - @ref CommandLineSchedulerThreads "scheduler.threads"
