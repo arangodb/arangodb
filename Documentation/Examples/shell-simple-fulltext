@@ -1,2 +1,2 @@
-arango> db.emails.FULLTEXT("1632354/1632537", "word");
-[ { "_id" : "1632354/1721603", "_rev" : "1721603", "text" : "this document contains a word" } ] 
+arango> db.emails.FULLTEXT("emails/1632537", "word");
+[ { "_id" : "emails/1721603", "_key" : "1721603", "_rev" : "1721603", "text" : "this document contains a word" } ] 

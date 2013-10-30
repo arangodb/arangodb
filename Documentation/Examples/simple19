@@ -1,4 +1,4 @@
-arango> var a = db.users.select( {"name" : "Peter" } );
+arango> var a = db.users.byExample( {"name" : "Peter" } );
 arango> while (a.hasNext()) print(a.next());
-{ "id" : 323, "name" : "Peter", "_id" : "553063885/554702285" } 
-{ "id" : 535, "name" : "Peter", "_id" : "553063885/554636749" }
+{ "id" : 323, "name" : "Peter", "_id" : "users/554702285", "_key" : "554702285", "_rev" : "554702285" } 
+{ "id" : 535, "name" : "Peter", "_id" : "users/554636749", "_key" : "554636749", "_rev" : "554636749" }

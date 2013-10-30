@@ -1,5 +1,5 @@
 arango> db.geo.ensureGeoIndex("loc");
-{ "id" : "127629/47772301", "type" : "geo1", "geoJson" : false, "fields" : ["loc"], "isNewlyCreated" : true }
+{ "id" : "geo/47772301", "type" : "geo1", "geoJson" : false, "fields" : ["loc"], "isNewlyCreated" : true }
 
 arango> for (i = -90;  i <= 90;  i += 10) {
 .......>   for (j = -180; j <= 180; j += 10) {
@@ -12,9 +12,9 @@ arango> db.geo.count();
 703
 
 arango> db.geo.near(0,0).limit(3).toArray();
-[ { "_id" : "154092/24861164", "_rev" : "24861164", "name" : "Name/0/0", "loc" : [0, 0]},
-  { "_id" : "154092/24926700", "_rev" : "24926700", "name" : "Name/0/10", "loc" : [0, 10]},
-  { "_id" : "154092/22436332", "_rev" : "22436332", "name" : "Name/-10/0", "loc" : [-10, 0]}]
+[ { "_id" : "geo/24861164", "_key" : "24861164", "_rev" : "24861164", "name" : "Name/0/0", "loc" : [ 0, 0 ]},
+  { "_id" : "geo/24926700", "_key" : "24926700", "_rev" : "24926700", "name" : "Name/0/10", "loc" : [ 0, 10 ]},
+  { "_id" : "geo/22436332", "_key" : "22436332", "_rev" : "22436332", "name" : "Name/-10/0", "loc" : [ -10, 0 ]}]
 
 arango> db.geo.near(0,0).count();
 100

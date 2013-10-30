@@ -1,2 +1,2 @@
-arango> db._document("1432124/3053939");
-{ "_id" : "1432124/3053939", "_rev" : "3053939", "Hello" : "World" }
+arango> db._document("example/3053939");
+{ "_id" : "example/3053939", "_key" : "3053939", "_rev" : "3053939", "Hello" : "World" }
