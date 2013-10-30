@@ -649,35 +649,6 @@ function LIST (value) {
 /// @brief get a document by its unique id or their unique ids
 ////////////////////////////////////////////////////////////////////////////////
 
-function DOCUMENT (collection, id) {
-  "use strict";
-
-  if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
-    var c = COLLECTION(collection);
-
-    var result = [ ], i;
-    for (i = 0; i < id.length; ++i) {
-      try {
-        result.push(c.document(id[i]));
-      }
-      catch (e1) {
-      }
-    }
-    return result;
-  }
-
-  try {
-    return COLLECTION(collection).document(id);
-  }
-  catch (e2) {
-    return null;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document by its unique id or their unique ids
-////////////////////////////////////////////////////////////////////////////////
-
 function DOCUMENT_HANDLE (id) {
   "use strict";
 
@@ -695,6 +666,45 @@ function DOCUMENT_HANDLE (id) {
 
   try {
     return INTERNAL.db._document(id);
+  }
+  catch (e2) {
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a document by its unique id or their unique ids
+////////////////////////////////////////////////////////////////////////////////
+
+function DOCUMENT (collection, id) {
+  "use strict";
+
+  // we're polymorphic
+  if (id === undefined) {
+    // called with a single parameter
+    var weight = TYPEWEIGHT(collection);
+
+    if (weight === TYPEWEIGHT_STRING || weight === TYPEWEIGHT_LIST) {
+      return DOCUMENT_HANDLE(collection);
+    }
+  }
+
+  if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
+    var c = COLLECTION(collection);
+
+    var result = [ ], i;
+    for (i = 0; i < id.length; ++i) {
+      try {
+        result.push(c.document(id[i]));
+      }
+      catch (e1) {
+      }
+    }
+    return result;
+  }
+
+  try {
+    return COLLECTION(collection).document(id);
   }
   catch (e2) {
     return null;
@@ -3950,7 +3960,6 @@ exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.LIST = LIST;
 exports.DOCUMENT = DOCUMENT;
-exports.DOCUMENT_HANDLE = DOCUMENT_HANDLE;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
 exports.GET_DOCUMENTS_INCREMENTAL_INIT = GET_DOCUMENTS_INCREMENTAL_INIT;
 exports.GET_DOCUMENTS_INCREMENTAL_CONT = GET_DOCUMENTS_INCREMENTAL_CONT;

@@ -669,8 +669,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("ATTRIBUTES", "ATTRIBUTES", true, false, "a|b,b", NULL);
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
-  REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h,sl", NULL);
-  REGISTER_FUNCTION("DOCUMENT_HANDLE", "DOCUMENT_HANDLE", false, false, "sl", NULL);
+  REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "hsl|sl", NULL);
   REGISTER_FUNCTION("MATCHES", "MATCHES", true, false, ".,l|b", NULL);
   REGISTER_FUNCTION("UNSET", "UNSET", true, false, "a,sl|+", NULL);
   REGISTER_FUNCTION("KEEP", "KEEP", true, false, "a,sl|+", NULL);

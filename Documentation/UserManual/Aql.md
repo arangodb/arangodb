@@ -1515,13 +1515,30 @@ function categories:
 - @FN{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
   with attributes `name` and `_id`.
 
-- @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document that id uniquely identified by
+- @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document which is uniquely identified by
   the @FA{id}. ArangoDB will try to find the document using the `_id` value of the document
   in the specified collection. If there is a mismatch between the @FA{collection} passed and
   the collection specified in @FA{id}, then `null` will be returned. Additionally, if the
   @FA{collection} matches the collection value specified in @FA{id} but the document cannot be
   found, `null` will be returned. This function also allows @FA{id} to be a list of ids.
   In this case, the function will return a list of all documents that could be found. 
+
+  Examples:
+      
+      DOCUMENT(users, "users/john")
+      DOCUMENT(users, "john")
+
+      DOCUMENT(users, [ "users/john", "users/amy" ])
+      DOCUMENT(users, [ "john", "amy" ])
+
+  Note: the @FN{DOCUMENT} function is polymorphic since ArangoDB 1.4. It can now be used with
+  a single parameter @FA{id} as follows:
+
+- @FN{DOCUMENT(@FA{id})}: in this case, @FA{id} must either be a document handle string
+  (consisting of collection name and document key) or a list of document handle strings, e.g.
+
+      DOCUMENT("users/john")
+      DOCUMENT([ "users/john", "users/amy" ])
 
 High-level operations {#AqlOperations}
 ======================================
