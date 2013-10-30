@@ -65,6 +65,10 @@ Configuration file:
 
 Start ArangoDB shell client:
   > ${bindir}/arangosh
+
+Use the ArangoDB web interface:
+  http://localhost:8529/
+
 "
 
 # message for systems with systemd
