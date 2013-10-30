@@ -1,11 +1,11 @@
 arango> db.example.save({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
-{ error : false, _id : "17170323/20774803", _rev : "20774803" }
-arango> db.example.update("17170323/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
-{ error : false, _id : "17170323/20774803", _rev : "21168019" }
-arango> db.example.document("17170323/20774803");
-{ a : { one : 1, two : 2, three : 3, four : 4 }, b : { b1 : 1 }, _id : "17170323/20774803", _rev : "21168019" }
+{ "error" : false, "_id" : "example/20774803", "_key" : "20774803", "_rev" : "20774803" }
+arango> db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
+{ "error" : false, "_id" : "example/20774803", "_key" : "20774803", "_rev" : "21168019" }
+arango> db.example.document("example/20774803");
+{ "a" : { "one" : 1, "two" : 2, "three" : 3, "four" : 4 }, "b" : { "b1" : 1 }, "_id" : "example/20774803", "_key" : "20774803", "_rev" : "21168019" }
 
-arango> db.example.update("17170323/20774803", {"a" : { "one" : null }, "b" : null }, false, false);
-{ error : false, _id : "17170323/20774803", _rev : "21364627" }
-arango> db.example.document("17170323/20774803");
-{ a : { two : 2, three : 3, four : 4 }, _id : "17170323/20774803", _rev : "21364627" }
+arango> db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null }, false, false);
+{ "error" : false, "_id" : "example/20774803", "_key" : "20774803", "_rev" : "21364627" }
+arango> db.example.document("example/20774803");
+{ "a" : { "two" : 2, "three" : 3, "four" : 4 }, "_id" : "example/20774803", "_key" : "20774803", "_rev" : "21364627" }

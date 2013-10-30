@@ -19,5 +19,5 @@ content-type: application/json; charset=utf-8
 etag: "9841979"
 content-length: 53
 
-{"error":false,"_id":"101059/9841979","_rev":"9841979"}
+{"error":false,"_id":"xyz/9841979","_key":"9841979","_rev":"9841979"}
 --XXXsubpartXXX--

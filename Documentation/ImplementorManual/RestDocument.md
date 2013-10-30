@@ -11,9 +11,24 @@ This is an introduction to ArangoDB's REST interface for documents.
 
 @copydoc GlossaryDocument
 
-For example:
+An example document:
 
-@verbinclude document1
+    {
+      "_id" : "myusers/2345678",
+      "_key" : "3456789",
+      "_rev" : "3456789",
+      "firstName" : "Hugo",
+      "lastName" : "Schlonz",
+      "address" : {
+        "street" : "Street of Happiness",
+        "city" : "Heretown"
+      },
+      "hobbies" : [
+        "swimming",
+        "biking",
+        "programming"
+      ]
+    }
 
 All documents contain special attributes: the document handle in `_id`, the
 document's unique key in `_key` and and the etag aka document revision in

@@ -1,6 +1,8 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* issue #424: Documentation about IDs needs to be upgraded
+
 * removed command-line option `--log.format`
 
   In previous versions, this option did not have an effect for most log messages, so

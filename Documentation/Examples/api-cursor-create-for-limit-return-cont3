@@ -1,11 +1,11 @@
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
-HTTP/1.1 400 Bad Request
+HTTP/1.1 404 Not Found
 content-type: application/json
 
 {
   "errorNum": 1600,
   "errorMessage": "cursor not found: disposed or unknown cursor",
   "error": true,
-  "code": 400
+  "code": 404
 }

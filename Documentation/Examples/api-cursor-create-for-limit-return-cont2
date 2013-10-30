@@ -4,15 +4,16 @@ HTTP/1.1 200 OK
 content-type: application/json
 
 {
-  "hasMore": false,
-  "error": false,
-  "result": [
+  "hasMore" : false,
+  "error" : false,
+  "result" : [
     {
-      "n": 4,
-      "_rev": "25880119",
-      "_id": "23914039/25880119"
+      "name" : "user5",
+      "_rev" : "258801195",
+      "_key" : "258801195",
+      "_id" : "users/258801195"
     }
   ],
-  "code": 200,
-  "count": 5
+  "code" : 200,
+  "count" : 5
 }

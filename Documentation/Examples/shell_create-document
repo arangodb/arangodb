@@ -1,5 +1,5 @@
 arango> db.example.save({ Hello : "World" })
-{ "_id" : "1432124/3175486", "_rev" : "3175486" }
+{ "_id" : "example/3175486", "_key" : "3175486", "_rev" : "3175486" }
 
 arango> db.example.save({ Hello : "World" }, true)
-{ "_id" : "1432124/3179437", "_rev" : "3179437" }
+{ "_id" : "example/3179437", "_key" : "3179437", "_rev" : "3179437" }

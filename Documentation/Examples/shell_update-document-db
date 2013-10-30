@@ -1,10 +1,10 @@
 arango> a1 = db.example.save({ a : 1 });
-{ error : false, _id : "17170323/19660691", _rev : "19660691" }
+{ "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19660691" }
 arango> a2 = db._update(a1, { b : 2 });
-{ error : false, _id : "17170323/19660691", _rev : "19791763" }
+{ "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19791763" }
 arango> a3 = db._update(a1, { c : 3 });
 JavaScript exception in file 'client/client.js' at 2364,13: [ArangoError 1200: precondition failed]
 !      throw new ArangoError(requestResult);
 !            ^
 arango> a4 = db.example.update(a1, { c : 3 }, true);
-{ error : false, _id : "17170323/19660691", _rev : "19857299" }
+{ "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19857299" }
