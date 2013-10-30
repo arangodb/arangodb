@@ -1873,6 +1873,10 @@ function STRING_SUBSTRING (value, offset, count) {
   ARG_CHECK(value, TYPEWEIGHT_STRING, "SUBSTRING");
   ARG_CHECK(offset, TYPEWEIGHT_NUMBER, "SUBSTRING");
 
+  if (count !== undefined) {
+    ARG_CHECK(count, TYPEWEIGHT_NUMBER, "SUBSTRING");
+  }
+
   return value.substr(offset, count);
 }
 
@@ -1887,6 +1891,11 @@ function STRING_CONTAINS (value, search, returnIndex) {
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CONTAINS");
   ARG_CHECK(search, TYPEWEIGHT_STRING, "CONTAINS");
+
+  if (returnIndex !== undefined) {
+    ARG_CHECK(returnIndex, TYPEWEIGHT_BOOL, "CONTAINS");
+  }
+    
 
   var result;
   if (search.length === 0) {
