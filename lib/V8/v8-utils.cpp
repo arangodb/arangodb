@@ -2500,8 +2500,8 @@ bool TRI_ExecuteLocalJavaScriptDirectory (char const* path) {
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile (char const* path) {
-  return LoadJavaScriptDirectory(path, false, false);
+bool TRI_ParseJavaScriptFile (char const* filename) {
+  return LoadJavaScriptFile(filename, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

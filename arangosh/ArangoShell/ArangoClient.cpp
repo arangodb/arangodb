@@ -480,9 +480,6 @@ void ArangoClient::startPager () {
 
 void ArangoClient::stopPager () {
   // not supported
-  if (!_usePager || _usePager) {
-    return;
-  }
 }
 
 #else
