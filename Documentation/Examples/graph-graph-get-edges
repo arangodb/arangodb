@@ -5,4 +5,4 @@ arango> f.hasNext();
 true
 
 arango> e = f.next();
-Edge(<graph>, "2141724:4636053")
+Edge("4636053")
