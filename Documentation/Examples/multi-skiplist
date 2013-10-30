@@ -1,13 +1,13 @@
 arangod> db.names.ensureSkiplist("first");
-{ "id" : "41349252/42725508", "unique" : false, "type" : "skiplist", "fields" : ["first"], "isNewlyCreated" : true }
+{ "id" : "names/42725508", "unique" : false, "type" : "skiplist", "fields" : ["first"], "isNewlyCreated" : true }
 
 arangod> db.names.save({ "first" : "Tim" });
-{ "_id" : "41349252/42856580", "_rev" : "42856580" }
+{ "_id" : "names/42856580", "_key" : "42856580", "_rev" : "42856580" }
 arangod> db.names.save({ "first" : "Tom" });
-{ "_id" : "41349252/42922116", "_rev" : "42922116" }
+{ "_id" : "names/42922116", "_key" : "42922116", "_rev" : "42922116" }
 arangod> db.names.save({ "first" : "John" });
-{ "_id" : "41349252/42987652", "_rev" : "42987652" }
+{ "_id" : "names/42987652", "_key" : "42987652", "_rev" : "42987652" }
 arangod> db.names.save({ "first" : "Tim" });
-{ "_id" : "41349252/43053188", "_rev" : "43053188" }
+{ "_id" : "names/43053188", "_key" : "43053188", "_rev" : "43053188" }
 arangod> db.names.save({ "first" : "Tom" });
-{ "_id" : "41349252/43118724", "_rev" : "43118724" }
+{ "_id" : "names/43118724", "_key" : "43118724", "_rev" : "43118724" }

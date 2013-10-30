@@ -1,13 +1,13 @@
-arango> db.relation.outEdges("86294/1528086");
+arango> db.relation.outEdges("vertex/1528086");
 [
   {
-    "_id" : "1659158/3100950",
+    "_id" : "relation/3100950",
+    "_key" : "3100950",
     "_rev" : "3100950",
-    "_from" : "86294/1528086",
-    "_to" : "86294/1593622",
-    "label" :
-    "knows"
+    "_from" : "vertex/1528086",
+    "_to" : "vertex/1593622",
+    "label" : "knows"
   }
 ]
-arango> db.relation.outEdges("86294/1593622");
+arango> db.relation.outEdges("vertex/1593622");
 [ ]

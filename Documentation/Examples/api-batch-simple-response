@@ -12,7 +12,7 @@ content-type: application/json; charset=utf-8
 etag: "9514299"
 content-length: 53
 
-{"error":false,"_id":"101059/9514299","_rev":"9514299"}
+{"error":false,"_id":"xyz/9514299","_key":"9514299","_rev":"9514299"}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
 Content-Id: 2
@@ -22,7 +22,7 @@ content-type: application/json; charset=utf-8
 etag: "9579835"
 content-length: 53
 
-{"error":false,"_id":"101059/9579835","_rev":"9579835"}
+{"error":false,"_id":"xyz/9579835","_key":"9579835","_rev":"9579835"}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
 Content-Id: 3
@@ -32,5 +32,5 @@ content-type: application/json; charset=utf-8
 etag: "9645371"
 content-length: 53
 
-{"error":false,"_id":"101059/9645371","_rev":"9645371"}
+{"error":false,"_id":"xyz/9645371","_key":"9645371","_rev":"9645371"}
 --XXXsubpartXXX--

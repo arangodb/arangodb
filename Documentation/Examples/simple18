@@ -1,14 +1,14 @@
 arango> db.users.all().toArray();
-[ { "_id" : "553063885/554702285", "_rev" : "554702285", "id" : 323, "name" : "Peter" }, 
-  { "_id" : "553063885/554636749", "_rev" : "554636749", "id" : 535, "name" : "Peter" }, 
-  { "_id" : "553063885/554833357", "_rev" : "554833357", "id" : 25, "name" : "Vladimir" } ]
+[ { "_id" : "users/554702285", "_key" : "554702285", "_rev" : "554702285", "id" : 323, "name" : "Peter" }, 
+  { "_id" : "users/554636749", "_key" : "554636749", "_rev" : "554636749", "id" : 535, "name" : "Peter" }, 
+  { "_id" : "users/554833357", "_key" : "554833357", "_rev" : "554833357", "id" : 25, "name" : "Vladimir" } ]
 
 arango> db.users.byExample({ "id" : 323 }).toArray();
-[ { "id" : 323, "name" : "Peter", "_id" : "553063885/554702285" } ]
+[ { "id" : 323, "name" : "Peter", "_id" : "users/554702285", "_key" : "554702285", "_rev" : "554702285" } ]
 
 arango> db.users.byExample({ "name" : "Peter" }).toArray();
-[ { "id" : 323, "name" : "Peter", "_id" : "553063885/554702285" }, 
-  { "id" : 535, "name" : "Peter", "_id" : "553063885/554636749" } ]
+[ { "id" : 323, "name" : "Peter", "_id" : "users/554702285", "_key" : "554702285", "_rev" : "554702285" }, 
+  { "id" : 535, "name" : "Peter", "_id" : "users/554636749", "_key" : "554636749", "_rev" : "554636749" } ]
 
 arango> db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
-[ { "id" : 535, "name" : "Peter", "_id" : "553063885/554636749" } ]
+[ { "id" : 535, "name" : "Peter", "_id" : "users/554636749", "_key" : "554636749", "_rev" : "554636749" } ]

@@ -1,25 +1,26 @@
 arango> db.demo.getIndexes()
 [
-  { "id" : "demo/0", 
+  { 
+    "id" : "demo/0", 
     "type" : "primary",
-    "fields" : ["_id"]
+    "fields" : [ "_id" ]
   }, 
   { 
     "id" : "demo/2290971", 
     "unique" : true, 
     "type" : "hash", 
-    "fields" : ["a"] 
+    "fields" : [ "a" ] 
   }, 
   { 
     "id" : "demo/2946331",
     "unique" : false, 
     "type" : "hash", 
-    "fields" : ["b"] 
+    "fields" : [ "b" ] 
   },
   { 
     "id" : "demo/3077403", 
     "unique" : false, 
     "type" : "skiplist", 
-    "fields" : ["c"]
+    "fields" : [ "c" ]
   }
 ]

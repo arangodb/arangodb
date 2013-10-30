@@ -1,3 +1,5 @@
 arango> db.geo.near(0,0).distance().limit(2).toArray();
-[ { _id : 131840:24773376, _rev : "24773376", distance : 0, name : Name/0/0, loc : [ 0, 0 ] },
-  { _id : 131840:22348544, _rev : "22348544", distance : 1111949.3, name : Name/-10/0, loc : [ -10, 0 ] } ]
+[ 
+  { "_id" : geo/24773376", "_key" : "24773376", "_rev" : "24773376", "distance" : 0, "name" : "Name/0/0", "loc" : [ 0, 0 ] },
+  { "_id" : geo/22348544", "_key" : "22348544", "_rev" : "22348544", "distance" : 1111949.3, "name" : "Name/-10/0", "loc" : [ -10, 0 ] } 
+]

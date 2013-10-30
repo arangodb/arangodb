@@ -1,8 +1,8 @@
 arango> db.four.ensureUniqueConstraint("a", "b.c");
-{ "id" : "164405/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
+{ "id" : "four/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
 
 arango> db.four.save({ a : 1, b : { c : 1 } });
-{ "_id" : "164405/1868341", "_rev" : "1868341" }
+{ "_id" : "four/1868341", "_key" : "1868341", "_rev" : "1868341" }
 
 arango> db.four.save({ a : 1, b : { c : 1 } });
 JavaScript exception in file '(arango)' at 1,9: [ArangoError 1210: cannot save document]
@@ -12,7 +12,7 @@ stacktrace: [ArangoError 1210: cannot save document]
     at (arango):1:9
 
 arango> db.four.save({ a : 1, b : { c : null } });
-{ "_id" : "164405/2196021", "_rev" : "2196021" }
+{ "_id" : "four/2196021", "_key" : "2196021", "_rev" : "2196021" }
 
 arango> db.four.save({ a : 1 });
-{ "_id" : "164405/2196023", "_rev" : "2196023" }
+{ "_id" : "four/2196023", "_key" : "2196023", "_rev" : "2196023" }
