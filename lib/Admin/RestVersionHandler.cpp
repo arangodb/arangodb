@@ -100,7 +100,7 @@ string const& RestVersionHandler::queue () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server version
+/// @brief returns the server version number
 ///
 /// @RESTHEADER{GET /_api/version,returns the server version}
 ///
@@ -130,6 +130,28 @@ string const& RestVersionHandler::queue () const {
 ///
 /// @RESTRETURNCODE{200}
 /// is returned in all cases.
+///
+/// @EXAMPLES
+///
+/// Returns the version information.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestVersion}
+///     var response = logCurlRequest('GET', '/_api/version');
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Returns the version information with details.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestVersionDetails}
+///     var response = logCurlRequest('GET', '/_api/version?details=true');
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestVersionHandler::execute () {

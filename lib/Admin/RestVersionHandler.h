@@ -100,29 +100,6 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server version number
-///
-/// @RESTHEADER{GET /_admin/version,returns the server version number}
-///
-/// @REST{GET /_admin/version}
-///
-/// Returns an object containing the server name in the @LIT{server} attribute,
-/// and the current server version in the @LIT{version} attribute.
-///
-/// @EXAMPLES
-///
-/// @verbinclude rest-version
-///
-/// @REST{GET /_admin/version?details=true}
-///
-/// If the optional URL parameter @LIT{details} is set to @LIT{true}, then more
-/// server version details are returned in the @LIT{details} attribute. The
-/// details are returned as pairs of attribute name and value, which are all
-/// strings. The number of attributes may vary, depending on the server built
-/// and configuration.
-///
-/// @EXAMPLES
-///
-/// @verbinclude rest-version-details
 ////////////////////////////////////////////////////////////////////////////////
 
         status_e execute ();
