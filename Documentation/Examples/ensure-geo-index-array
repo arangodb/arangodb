@@ -10,21 +10,26 @@ arango> for (i = -90;  i <= 90;  i += 10) {
 .......> }
 
 arango> db.geo2.near(0,0).limit(3).toArray();
-[{
-   "_id" : "geo2/72964588",
-   "_rev" : "72964588", 
-   "location" : { "latitude" : 0, "longitude" : 0}, 
-   "name" : "Name/0/0"
- },
- {
-   "_id" : "geo2/73030124",
-   "_rev" : "73030124", 
-   "location" : { "latitude" : 0, "longitude" : 10}, 
-   "name" : "Name/0/10"
- },
- {
-   "_id" : "geo2/70539756",
-   "_rev" : "70539756",
-   "location" : { "latitude" : -10, "longitude" : 0},
-   "name" : "Name/-10/0"
- }]
+[
+  {
+    "_id" : "geo2/72964588",
+    "_key" : "72964588",
+    "_rev" : "72964588", 
+    "location" : { "latitude" : 0, "longitude" : 0 }, 
+    "name" : "Name/0/0"
+  },
+  {
+    "_id" : "geo2/73030124",
+    "_key" : "73030124",
+    "_rev" : "73030124", 
+    "location" : { "latitude" : 0, "longitude" : 10 }, 
+    "name" : "Name/0/10"
+  },
+  {
+    "_id" : "geo2/70539756",
+    "_key" : "70539756",
+    "_rev" : "70539756",
+    "location" : { "latitude" : -10, "longitude" : 0 },
+    "name" : "Name/-10/0"
+  }
+]

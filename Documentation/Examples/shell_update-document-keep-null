@@ -1,15 +1,15 @@
 arango> db.example.save({"a" : 1});
-{ error : false, _id : "17170323/19988371", _rev : "19988371" }
-arango> db.example.update("17170323/19988371", { "b" : null, "c" : null, "d" : 3 });
-{ error : false, _id : "17170323/19988371", _rev : "20119443" }
-arango> db.example.document("17170323/19988371");
-{ b : null, c : null, a : 1, d : 3, _id : "17170323/19988371", _rev : "20119443" }
+{ "error" : false, "_id" : "example/19988371", "_key" : "19988371", "_rev" : "19988371" }
+arango> db.example.update("example/19988371", { "b" : null, "c" : null, "d" : 3 });
+{ "error" : false, "_id" : "example/19988371", "_key" : "19988371", "_rev" : "20119443" }
+arango> db.example.document("example/19988371");
+{ "b" : null, "c" : null, "a" : 1, "d" : 3, "_id" : "example/19988371", "_key" : "19988371", "_rev" : "20119443" }
 
-arango> db.example.update("17170323/19988371", { "a" : null }, false, false);
-{ error : false, _id : "17170323/19988371", _rev : "20250515" }
-arango> db.example.document("17170323/19988371");
-{ b : null, c : null, d : 3, _id : "17170323/19988371", _rev : "20250515" }
-arango> db.example.update("17170323/19988371", { "b" : null, "c": null, "d": null }, false, false);
-{ error : false, _id : "17170323/19988371", _rev : "20381587" }
-arango> db.example.document("17170323/19988371");
-{ _id : "17170323/19988371", _rev : "20381587" }
+arango> db.example.update("example/19988371", { "a" : null }, false, false);
+{ "error" : false, "_id" : "example/19988371", "_key" : "19988371", "_rev" : "20250515" }
+arango> db.example.document("example/19988371");
+{ "b" : null, "c" : null, "d" : 3, "_id" : "example/19988371", "_key" : "19988371", "_rev" : "20250515" }
+arango> db.example.update("example/19988371", { "b" : null, "c": null, "d" : null }, false, false);
+{ "error" : false, "_id" : "example/19988371", "_key" : "19988371", "_rev" : "20381587" }
+arango> db.example.document("example/19988371");
+{ "_id" : "example/19988371", "_key" : "19988371", "_rev" : "20381587" }

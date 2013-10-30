@@ -5,20 +5,22 @@ HTTP/1.1 201 Created
 content-type: application/json
 
 {
-  "hasMore": false,
-  "error": false,
-  "result": [
+  "hasMore" : false,
+  "error" : false,
+  "result" : [
     {
-      "n": 0,
-      "_rev": "21030455",
-      "_id": "19588663/21030455"
+      "name" : "user1",
+      "_rev" : "210304551",
+      "_key" : "210304551",
+      "_id" : "users/210304551"
     },
     {
-      "n": 1,
-      "_rev": "21030455",
-      "_id": "19588663/21030455"
+      "name" : "user2",
+      "_rev" : "210304552",
+      "_key" : "210304552",
+      "_id" : "users/210304552"
     }
   ],
-  "code": 201,
-  "count": 2
+  "code" : 201,
+  "count" : 2
 }

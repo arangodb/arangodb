@@ -2,7 +2,8 @@ arango> db.geo2.drop();
 true
 
 arango> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
-23735273
+{ "id" : "geo2/23735273", "type" : "geo2", "unique" : false, "constraint" : false, "fields" : [ "location.latitude", "location.longitude" ], "isNewlyCreated" : true }
+
 
 arango> for (i = -90;  i <= 90;  i += 10) 
 .......>   for (j = -180; j <= 180; j += 10)
@@ -10,19 +11,11 @@ arango> for (i = -90;  i <= 90;  i += 10)
 .......>                    location: { latitude : i,
 .......>                                longitude : j } });
 
-arango> db.geo2.near(0,0);
-{ "location" : { "latitude" : 0, "longitude" : 0 },
-  "name" : "Name0-0", 
-  "_id" : "geo2/73466820" }
-{ "location" : { "latitude" : 0, "longitude" : -10 },
-  "name" : "Name0--10",
-  "_id" : "geo2/73401284" }
+arango> db.geo2.near(0, 0);
+{ "location" : { "latitude" : 0, "longitude" : 0 }, "name" : "Name0-0", "_id" : "geo2/73466820", "_key" : "73466820" }
+{ "location" : { "latitude" : 0, "longitude" : -10 }, "name" : "Name0--10", "_id" : "geo2/73401284", "_key" : "73401284" }
 .
 .
-{ "location" : { "latitude" : 20, "longitude" : -10 },
-  "name" : "Name20--10",
-  "_id" : "geo2/75891652" }
-{ "location" : { "latitude" : 10, "longitude" : 20 },
-  "name" : "Name10-20",
-  "_id" : "geo2/74843076" }
+{ "location" : { "latitude" : 20, "longitude" : -10 }, "name" : "Name20--10", "_id" : "geo2/75891652", "_key" : "75891652" }
+{ "location" : { "latitude" : 10, "longitude" : 20 }, "name" : "Name10-20", "_id" : "geo2/74843076", "_key" : "74843076" }
 ...more results...

@@ -1,10 +1,10 @@
 arango> a1 = db.example.save({ a : 1 });
-{ "_id" : "116308/1717678", "_rev" : "1717678" }
+{ "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1717678" }
 arango> a2 = db._replace(a1, { a : 2 });
-{ "_id" : "116308/1717678", "_rev" : "1783214", "_oldRev" : 1717678 }
+{ "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1783214", "_oldRev" : "1717678" }
 arango> a3 = db._replace(a1, { a : 3 });
 JavaScript exception in file '(arango)' at 1,9: [ArangoError 1200: conflict: cannot replace document]
 !a3 = db._replace(a1, { a : 3 });
 !        ^
 arango> a4 = db.example.replace(a1, { a : 4 }, true);
-{ "_id" : "116308/1717678", "_rev" : "1848750", "_oldRev" : 1783214 }
+{ "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1848750", "_oldRev" : "1783214" }

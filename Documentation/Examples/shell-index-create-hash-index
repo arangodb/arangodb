@@ -1,11 +1,11 @@
 arango> db.test.ensureHashIndex("a");
-{ "id" : "4873815/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
+{ "id" : "test/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
 
 arango> db.test.save({ a : 1 });
-{ "_id" : "4873815/6381143", "_rev" : "6381143" }
+{ "_id" : "test/6381143", "_key" : "6381143", "_rev" : "6381143" }
 
 arango> db.test.save({ a : 1 });
-{ "_id" : "4873815/6446679", "_rev" : "6446679" }
+{ "_id" : "test/6446679", "_key" : "6446679", "_rev" : "6446679" }
 
 arango> db.test.save({ a : null });
-{ "_id" : "4873815/6708823", "_rev" : "6708823" }
+{ "_id" : "test/6708823", "_key" : "6708823", "_rev" : "6708823" }

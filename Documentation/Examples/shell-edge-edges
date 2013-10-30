@@ -1,10 +1,11 @@
-arango> db.relation.edges("86294/1593622");
+arango> db.relation.edges("vertex/1593622");
 [
   {
-    "_id" : "1659158/3100950", 
+    "_id" : "relation/3100950", 
+    "_key" : "3100950", 
     "_rev" : "3100950", 
-    "_from" : "86294/1528086",
-    "_to" : "86294/1593622", 
+    "_from" : "vertex/1528086",
+    "_to" : "vertex/1593622", 
     "label" : "knows"
   }
 ]

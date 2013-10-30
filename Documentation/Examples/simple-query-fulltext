@@ -1,3 +1,3 @@
 arango> db.emails.fulltext("text", "word").toArray();
-[ { "_id" : "emails/1721603", "_rev" : "1721603", "text" : "this document contains a word" },  
-  { "_id" : "emails/1783231", "_rev" : "1783231", "text" : "this document also contains a word" } ] 
+[ { "_id" : "emails/1721603", "_key" : "1721603", "_rev" : "1721603", "text" : "this document contains a word" },  
+  { "_id" : "emails/1783231", "_key" : "1783231", "_rev" : "1783231", "text" : "this document also contains a word" } ] 
