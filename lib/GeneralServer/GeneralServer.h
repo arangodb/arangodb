@@ -195,7 +195,7 @@ namespace triagens {
               LOG_DEBUG("bound to endpoint '%s'", (*i).first.c_str());
             }
             else {
-              LOG_FATAL_AND_EXIT("failed to bind to endpoint '%s'. Please review your endpoints configuration.", (*i).first.c_str());
+              LOG_FATAL_AND_EXIT("failed to bind to endpoint '%s'. Please check whether another instance is already running or review your endpoints configuration.", (*i).first.c_str());
             }
           }
         }
