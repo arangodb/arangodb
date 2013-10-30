@@ -146,7 +146,7 @@ static const char* NormalizeName (const TRI_aql_function_t* const function) {
 /// @brief check the type of an argument for a function call
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckArgumentType (TRI_aql_node_t* parameter,
+static bool CheckArgumentType (TRI_aql_node_t const* parameter,
                                const param_t* const allowed) {
   param_t found = InitParam();
 
@@ -199,6 +199,16 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
     // actual parameter is a collection
     found._collection = true;
     found._list       = true; // a collection is a list of documents
+  }
+  else if (parameter->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS ||
+           parameter->_type == TRI_AQL_NODE_INDEXED) {
+    // value.attribute or value[index]
+    found._null   = true;
+    found._bool   = true;
+    found._number = true;
+    found._string = true;
+    found._list   = true;
+    found._array  = true;
   }
   else {
     // we cannot yet determine the type of the parameter
@@ -669,7 +679,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("ATTRIBUTES", "ATTRIBUTES", true, false, "a|b,b", NULL);
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
-  REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "hsl|sl", NULL);
+  REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h.|.", NULL);
   REGISTER_FUNCTION("MATCHES", "MATCHES", true, false, ".,l|b", NULL);
   REGISTER_FUNCTION("UNSET", "UNSET", true, false, "a,sl|+", NULL);
   REGISTER_FUNCTION("KEEP", "KEEP", true, false, "a,sl|+", NULL);
@@ -840,10 +850,11 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
   size_t i;
   bool foundArg = false;
 
-  assert(function);
+  assert(function != NULL);
 
   i = 0;
   pattern = function->_argPattern;
+
   while ((c = *pattern++)) {
     switch (c) {
       case '|':
