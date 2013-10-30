@@ -62,6 +62,7 @@ namespace triagens {
       _maxUploadSize(maxUploadSize),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
+
       _quote = "\"";
       _separator = ",";
       _createCollection = false;
@@ -308,8 +309,9 @@ namespace triagens {
       }
 
       double pct = 100.0 * ((double) totalRead / (double) totalLength);
-      if (pct >= nextProgress) {
+      if (pct >= nextProgress && totalLength >= 1024) {
         LOGGER_INFO("processed " << totalRead << " bytes (" << std::fixed << std::setprecision(2) << pct << " %) of input file");
+
         nextProgress = pct + ProgressStep;
       }
     }
@@ -471,7 +473,7 @@ namespace triagens {
       }
 
       map<string, string> headerFields;
-      string url("/_api/import?" + getCollectionUrlPart() + "&line=" + StringUtils::itoa(_rowOffset));
+      string url("/_api/import?" + getCollectionUrlPart() + "&line=" + StringUtils::itoa(_rowOffset) + "&details=true");
       SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
 
       handleResult(result);
@@ -488,17 +490,17 @@ namespace triagens {
       map<string, string> headerFields;
       SimpleHttpResult* result;
       if (isArray) {
-        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=array&" + getCollectionUrlPart(), str, len, headerFields);
+        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=array&" + getCollectionUrlPart() + "&details=true", str, len, headerFields);
       }
       else {
-        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
+        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart() + "&details=true", str, len, headerFields);
       }
 
       handleResult(result);
     }
 
     void ImportHelper::handleResult (SimpleHttpResult* result) {
-      if (! result) {
+      if (result == 0) {
         return;
       }
 
@@ -506,39 +508,51 @@ namespace triagens {
 
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, r.str().c_str());
 
-      if (json) {
-        // get the "error" flag. This returns a pointer, not a copy
-        TRI_json_t* error = TRI_LookupArrayJson(json, "error");
+      if (json != 0) {
+        // error details
+        TRI_json_t const* details = TRI_LookupArrayJson(json, "details");
 
-        if (error) {
-          if (error->_type == TRI_JSON_BOOLEAN && error->_value._boolean) {
-            _hasError = true;
+        if (TRI_IsListJson(details)) {
+          const size_t n = details->_value._objects._length;
 
-            // get the error message. This returns a pointer, not a copy
-            TRI_json_t* errorMessage = TRI_LookupArrayJson(json, "errorMessage");
+          for (size_t i = 0; i < n; ++i) {
+            TRI_json_t const* detail = (TRI_json_t const*) TRI_AtVector(&details->_value._objects, i);
 
-            if (TRI_IsStringJson(errorMessage)) {
-              _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length);
+            if (TRI_IsStringJson(detail)) {
+              LOG_WARNING("%s", detail->_value._string.data);
             }
           }
         }
 
-        TRI_json_t* importResult;
+        // get the "error" flag. This returns a pointer, not a copy
+        TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
 
-        // look up the "created" flag. This returns a pointer, not a copy
-        importResult= TRI_LookupArrayJson(json, "created");
-        if (importResult) {
-          if (importResult->_type == TRI_JSON_NUMBER) {
-            _numberOk += (size_t) importResult->_value._number;
+        if (TRI_IsBooleanJson(error) && 
+            error->_value._boolean) {
+          _hasError = true;
+
+          // get the error message. This returns a pointer, not a copy
+          TRI_json_t const* errorMessage = TRI_LookupArrayJson(json, "errorMessage");
+
+          if (TRI_IsStringJson(errorMessage)) {
+            _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length - 1);
           }
         }
 
+        TRI_json_t const* importResult;
+
+        // look up the "created" flag. This returns a pointer, not a copy
+        importResult = TRI_LookupArrayJson(json, "created");
+
+        if (TRI_IsNumberJson(importResult)) {
+          _numberOk += (size_t) importResult->_value._number;
+        }
+
         // look up the "errors" flag. This returns a pointer, not a copy
-        importResult= TRI_LookupArrayJson(json, "errors");
-        if (importResult) {
-          if (importResult->_type == TRI_JSON_NUMBER) {
-            _numberError += (size_t) importResult->_value._number;
-          }
+        importResult = TRI_LookupArrayJson(json, "errors");
+
+        if (TRI_IsNumberJson(importResult)) {
+          _numberError += (size_t) importResult->_value._number;
         }
 
         // this will free the json struct will a sub-elements
