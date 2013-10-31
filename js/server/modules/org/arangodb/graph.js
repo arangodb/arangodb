@@ -595,6 +595,22 @@ Graph.prototype._saveVertex = function (id, shallow, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a vertex to the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._replaceVertex = function (vertex_id, data) {
+  var result = this._vertices.replace(vertex_id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an edge in the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._replaceEdge = function (edge_id, data) {
+  var result = this._edges.replace(edge_id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a vertex given its id
 ///
 /// @FUN{@FA{graph}.getVertex(@FA{id})}
@@ -825,17 +841,18 @@ Graph.prototype.setCachedPredecessors = function (target, source, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructVertex = function (data) {
-  var id;
+  var id, rev;
 
   if (typeof data === "string") {
     id = data;
   } else {
     id = data._id;
+    rev = data._rev;
   }
 
   var vertex = this._verticesCache[id];
 
-  if (vertex === undefined) {
+  if (vertex === undefined || vertex._rev !== rev) {
     var properties = this._vertices.document(id);
 
     if (! properties) {
@@ -859,11 +876,12 @@ Graph.prototype.constructEdge = function (data) {
     id = data;
   } else {
     id = data._id;
+    rev = data._rev;
   }
 
   edge = this._edgesCache[id];
 
-  if (edge === undefined) {
+  if (edge === undefined || edge._rev !== rev) {
     properties = this._edges.document(id);
 
     if (!properties) {
