@@ -794,6 +794,18 @@ Graph.prototype.replaceVertex = function (id, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an existing edge by ID
+///
+/// @FUN{@FA{graph}.replaceEdge(@FA{id}, @FA{data})}
+///
+/// Replaces an existing edge by ID
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.replaceEdge = function (id, data) {
+  this._replaceEdge(id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of vertices
 ///
 /// @FUN{@FA{graph}.order()}

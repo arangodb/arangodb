@@ -239,6 +239,22 @@ function GraphBasicsSuite() {
       assertEqual(edge._properties._key, edge.getId());
     },
 
+    testReplaceEdge : function () {
+      var v1,
+        v2,
+        edge;
+
+      v1 = graph.addVertex("vertex1");
+      v2 = graph.addVertex("vertex2");
+
+      graph.addEdge(v1, v2, "my-edge");
+
+      graph.replaceEdge("my-edge", { weight: 2 });
+      edge = graph.getEdge("my-edge");
+
+      assertEqual(2, edge.getProperty("weight"));
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
