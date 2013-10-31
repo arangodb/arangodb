@@ -1360,7 +1360,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       // command failed
       string exception(TRI_StringifyV8Exception(&tryCatch));
 
-	  BaseClient.printErrLine(exception);
+      BaseClient.printErrLine(exception);
       BaseClient.log("%s", exception.c_str());
 
       // this will change the prompt for the next round
@@ -1368,7 +1368,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     }
 
     BaseClient.stopPager();
-	BaseClient.printLine("");
+    BaseClient.printLine("");
 
     BaseClient.log("%s\n", "");
     // make sure the last command result makes it into the log file
