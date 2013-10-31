@@ -225,7 +225,6 @@ $(document).ready(function() {
       }
       if (this.statistics === undefined) {
         this.statisticsCollection = new window.StatisticsCollection();
-        //this.statisticsCollection.fetch();
       }
       if (this.dashboardView === undefined) {
         this.dashboardView = new dashboardView({
