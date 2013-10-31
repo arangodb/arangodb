@@ -728,7 +728,11 @@ Graph.prototype.getOrAddVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
-  return this._saveEdge(id, out_vertex, in_vertex, this._prepareEdgeData(data, label), waitForSync);
+  return this._saveEdge(id,
+                        out_vertex,
+                        in_vertex,
+                        this._prepareEdgeData(data, label),
+                        waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
