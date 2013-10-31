@@ -257,8 +257,8 @@ Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
   var results;
 
   params._key = id;
-  params._from = out_vertex._properties._key;
-  params._to = in_vertex._properties._key;
+  params._from = out_vertex._properties._id;
+  params._to = in_vertex._properties._id;
 
   results = GraphAPI.postEdge(this._properties._key, params);
   return new Edge(this, results.edge);
