@@ -704,21 +704,25 @@ Graph.prototype.getOrAddVertex = function (id) {
 ///
 /// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
 /// identifier @FA{id} must be a unique identifier or null.
+/// out and in can either be vertices or their IDs
 ///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
 ///
 /// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
 /// edge object.
+/// out and in can either be vertices or their IDs
 ///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge contains the
 /// properties defined in @FA{data}.
+/// out and in can either be vertices or their IDs
 ///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge has the
 /// label @FA{label} and contains the properties defined in @FA{data}.
+/// out and in can either be vertices or their IDs
 ///
 /// @EXAMPLES
 ///
@@ -728,7 +732,25 @@ Graph.prototype.getOrAddVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
-  return this._saveEdge(id, out_vertex, in_vertex, this._prepareEdgeData(data, label), waitForSync);
+  var out_vertex_id, in_vertex_id;
+
+  if (is.string(out_vertex)) {
+    out_vertex_id = out_vertex;
+  } else {
+    out_vertex_id = out_vertex._properties._id;
+  }
+
+  if (is.string(in_vertex)) {
+    in_vertex_id = in_vertex;
+  } else {
+    in_vertex_id = in_vertex._properties._id;
+  }
+
+  return this._saveEdge(id,
+                        out_vertex_id,
+                        in_vertex_id,
+                        this._prepareEdgeData(data, label),
+                        waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
