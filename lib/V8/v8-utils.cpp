@@ -2215,9 +2215,12 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   StatisticsCounter httpConnections;
+  StatisticsCounter totalRequests;
+  vector<StatisticsCounter> methodRequests;
+  StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  TRI_FillConnectionStatistics(httpConnections, connectionTime);
+  TRI_FillConnectionStatistics(httpConnections, totalRequests, methodRequests, asyncRequests, connectionTime);
 
   result->Set(v8::String::New("httpConnections"), v8::Number::New(httpConnections._count));
   FillDistribution(result, "connectionTime", connectionTime);
@@ -2236,6 +2239,18 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
   
+  // request counters
+  result->Set(v8::String::New("requestsTotal"), v8::Number::New(totalRequests._count));
+  result->Set(v8::String::New("requestsAsync"), v8::Number::New(asyncRequests._count));
+  result->Set(v8::String::New("requestsGet"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_GET]._count));
+  result->Set(v8::String::New("requestsHead"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_HEAD]._count));
+  result->Set(v8::String::New("requestsPost"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_POST]._count));
+  result->Set(v8::String::New("requestsPut"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_PUT]._count));
+  result->Set(v8::String::New("requestsPatch"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_PATCH]._count));
+  result->Set(v8::String::New("requestsDelete"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_DELETE]._count));
+  result->Set(v8::String::New("requestsOptions"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_OPTIONS]._count));
+  result->Set(v8::String::New("requestsOther"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_ILLEGAL]._count));
+
   return scope.Close(result);
 }
 

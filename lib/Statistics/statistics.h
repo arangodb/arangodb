@@ -29,6 +29,8 @@
 #define TRIAGENS_STATISTICS_STATISTICS_H 1
 
 #include "BasicsC/common.h"
+#include "Basics/Common.h"
+#include "Rest/HttpRequest.h"
 #include "Statistics/figures.h"
 
 // -----------------------------------------------------------------------------
@@ -68,22 +70,25 @@ TRI_statistics_list_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_request_statistics_s {
-  void* _next;
+  void*   _next;
 
-  double _readStart;
-  double _readEnd;
-  double _queueStart;
-  double _queueEnd;
-  double _requestStart;
-  double _requestEnd;
-  double _writeStart;
-  double _writeEnd;
+  double  _readStart;
+  double  _readEnd;
+  double  _queueStart;
+  double  _queueEnd;
+  double  _requestStart;
+  double  _requestEnd;
+  double  _writeStart;
+  double  _writeEnd;
 
-  double _receivedBytes;
-  double _sentBytes;
+  double  _receivedBytes;
+  double  _sentBytes;
 
-  bool _tooLarge;
-  bool _executeError;
+  triagens::rest::HttpRequest::HttpRequestType _requestType;
+
+  bool    _async;
+  bool    _tooLarge;
+  bool    _executeError;
 }
 TRI_request_statistics_t;
 
@@ -92,14 +97,13 @@ TRI_request_statistics_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_connection_statistics_s {
-  void* _next;
-
-  bool _http;
+  void*  _next;
 
   double _connStart;
   double _connEnd;
 
-  bool _error;
+  bool   _http;
+  bool   _error;
 }
 TRI_connection_statistics_t;
 
@@ -178,6 +182,9 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FillConnectionStatistics (triagens::basics::StatisticsCounter& httpConnections,
+                                   triagens::basics::StatisticsCounter& totalRequests,
+                                   std::vector<triagens::basics::StatisticsCounter>& methodRequests,
+                                   triagens::basics::StatisticsCounter& asyncRequests,
                                    triagens::basics::StatisticsDistribution& connectionTime);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,10 +226,28 @@ TRI_server_statistics_t TRI_GetServerStatistics ();
 extern bool TRI_ENABLE_STATISTICS;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of http conntections
+/// @brief number of http connections
 ////////////////////////////////////////////////////////////////////////////////
 
 extern triagens::basics::StatisticsCounter HttpConnections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of requests
+////////////////////////////////////////////////////////////////////////////////
+
+extern triagens::basics::StatisticsCounter TotalRequests;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of requests by HTTP method
+////////////////////////////////////////////////////////////////////////////////
+
+extern std::vector<triagens::basics::StatisticsCounter> MethodRequests;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of async requests
+////////////////////////////////////////////////////////////////////////////////
+
+extern triagens::basics::StatisticsCounter AsyncRequests;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection time distribution vector

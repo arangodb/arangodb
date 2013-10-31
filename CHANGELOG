@@ -1,6 +1,11 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* added more detailed request statistics 
+
+  This adds the number of async-executed HTTP requests plus the number of HTTP
+  requests per individual HTTP method type.
+
 * fixed issue #650: Randonmess of any() should be improved
 
 * made AQL `DOCUMENT()` function polymorphic and work with just one parameter.
