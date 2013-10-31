@@ -19,6 +19,7 @@ $(document).ready(function() {
       "logs"                                : "logs",
       "about"                               : "about",
       "api"                                 : "api",
+      "databases"                           : "databases",
       "application/installed/:key"          : "applicationEdit",
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
@@ -30,6 +31,8 @@ $(document).ready(function() {
 
     initialize: function () {
       window.activeSession = new window.ArangoSession();
+
+      window.arangoDatabase = new window.ArangoDatabase();
 
       window.arangoCollectionsStore = new window.arangoCollections();
       window.arangoDocumentsStore = new window.arangoDocuments();
@@ -187,6 +190,16 @@ $(document).ready(function() {
       }
       this.apiView.render();
       this.naviView.selectMenuItem('api-menu');
+    },
+
+    databases: function() {
+      if (!this.databaseView) {
+        this.databaseView = new window.databaseView({
+          collection: arangoDatabase
+        });
+      }
+      this.databaseView.render();
+      this.naviView.selectMenuItem('database-menu');
     },
 
     about: function() {
