@@ -480,7 +480,7 @@ namespace triagens {
             void** beg = primary->_primaryIndex._table;
 
             while (beg[pos] == 0) {
-              pos = (pos + 1) % total;
+              pos = TRI_UInt32Random() % total;
             }
 
             *mptr = *((TRI_doc_mptr_t*) beg[pos]);
