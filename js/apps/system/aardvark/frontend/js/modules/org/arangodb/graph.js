@@ -254,12 +254,12 @@ Graph.prototype.drop = function () {
 /// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
+Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, params) {
   var results;
 
   params._key = id;
-  params._from = out_vertex._properties._key;
-  params._to = in_vertex._properties._key;
+  params._from = out_vertex_id;
+  params._to = in_vertex_id;
 
   results = GraphAPI.postEdge(this._properties._key, params);
   return new Edge(this, results.edge);
