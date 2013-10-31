@@ -68,6 +68,21 @@ function GraphCreationSuite() {
       graph.drop();
     },
 
+    testDroppingIfVertexCollectionIsUsedTwice : function () {
+      var Graph = require("org/arangodb/graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        other_graph_name = "UnitTestsCollectionOtherGraph",
+        vertex = "UnitTestsCollectionVertex",
+        edges = "UnitTestsCollectionEdge",
+        other_edges = "UnitTestsCollectionOtherEdges",
+        graph = new Graph(graph_name, vertex, edges),
+        other_graph = new Graph(other_graph_name, vertex, other_edges);
+
+      graph.drop();
+      assertTrue(arangodb.db._collection("UnitTestsCollectionVertex") !== null);
+      other_graph.drop();
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Find Graph
 ////////////////////////////////////////////////////////////////////////////////
