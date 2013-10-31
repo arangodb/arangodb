@@ -280,6 +280,10 @@ namespace triagens {
               // (original request object gets deleted before responding)
               this->_requestType = this->_request->requestType();
 
+#ifdef TRI_ENABLE_FIGURES
+
+              RequestStatisticsAgentSetRequestType(this, this->_requestType);
+#endif
 
               // handle different HTTP methods
               switch (this->_requestType) {
@@ -520,8 +524,6 @@ namespace triagens {
                 this->resetState();
               }
               else {
-                this->RequestStatisticsAgent::transfer(handler);
-              
                 bool found;
                 string const& acceptEncoding = this->_request->header("accept-encoding", found);
                 if (found) {
@@ -532,8 +534,17 @@ namespace triagens {
 
                 // check for an async request
                 string const& asyncExecution = this->_request->header("x-arango-async", found);
+
                 if (found && (asyncExecution == "true" || asyncExecution == "store")) {
                   // we have an async request
+
+#ifdef TRI_ENABLE_FIGURES
+
+                  RequestStatisticsAgentSetAsync(this);
+#endif
+                  
+                  this->RequestStatisticsAgent::transfer(handler);
+                
                   this->_request = 0;
 
                   uint64_t jobId = 0;
@@ -561,6 +572,8 @@ namespace triagens {
                 }
                 else {
                   // synchronous request
+                  this->RequestStatisticsAgent::transfer(handler);
+
                   this->_request = 0;
 
                   ok = this->_server->handleRequest(this, handler);
