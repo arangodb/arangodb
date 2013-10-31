@@ -563,17 +563,17 @@ Graph.prototype.drop = function (waitForSync) {
 /// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitForSync) {
+Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, shallow, waitForSync) {
   this.emptyCachedPredecessors();
 
   if (id !== undefined && id !== null) {
     shallow._key = String(id);
   }
 
-  var ref = this._edges.save(out_vertex._properties._id,
-    in_vertex._properties._id,
-    shallow,
-    waitForSync);
+  var ref = this._edges.save(out_vertex_id,
+                             in_vertex_id,
+                             shallow,
+                             waitForSync);
 
   return this.constructEdge(ref._id);
 };

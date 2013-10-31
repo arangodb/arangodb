@@ -250,6 +250,25 @@ function GraphBasicsSuite() {
       assertEqual("testValue", edge.getProperty("testProperty"));
     },
 
+    testAddEdgeViaId : function () {
+      var v1,
+        v2,
+        edge;
+
+      v1 = graph.addVertex("vertex1");
+      v2 = graph.addVertex("vertex2");
+
+      edge = graph.addEdge(v1._properties._id,
+        v2._properties._id,
+        "edge1",
+        "label",
+        { testProperty: "testValue" });
+
+      assertEqual("edge1", edge.getId());
+      assertEqual("label", edge.getLabel());
+      assertEqual("testValue", edge.getProperty("testProperty"));
+    },
+
     testAddEdgeWithLabelSetViaData : function () {
       var v1,
         v2,
