@@ -643,10 +643,10 @@ Graph.prototype.getVertex = function (id) {
 
 Graph.prototype.getVertices = function () {
   var all = this._vertices.all(),
-    graph = this,
-    wrapper = function(object) {
-        return graph.constructVertex(object);
-    };
+  graph = this,
+  wrapper = function(object) {
+    return graph.constructVertex(object);
+  };
   return new Iterator(wrapper, graph.constructVertex, "[edge iterator]");
 };
 
@@ -699,10 +699,10 @@ Graph.prototype.getEdge = function (id) {
 
 Graph.prototype.getEdges = function () {
   var all = this._edges.all(),
-    graph = this,
-    wrapper = function(object) {
-        return graph.constructEdge(object);
-    };
+  graph = this,
+  wrapper = function(object) {
+    return graph.constructEdge(object);
+  };
   return new Iterator(wrapper, all, "[edge iterator]");
 };
 
