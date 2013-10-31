@@ -1,6 +1,11 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* added more detailed request statistics 
+
+  This adds the number of async-executed HTTP requests plus the number of HTTP
+  requests per individual HTTP method type.
+
 * added `--force` option for arangorestore
   this option allows continuing a restore operation even if the server reports errors
   in the middle of the restore operation
