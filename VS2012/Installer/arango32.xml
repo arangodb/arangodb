@@ -25,19 +25,22 @@
         
         <Component Id='MainExecutable' Guid='{D7363040-5D54-4C08-B777-0119BCD0E15E}'>  
           <File Id='arangodEXE' Name='arangod.exe' Source='arangod32.exe' Vital='yes' />  
-          <File Id='arangodICO' Name='arangod.ico' Source='arango.ico' Vital='yes' />  
-          <File Id='arangodReadme' Name='readme.txt' Source='readme.txt' Vital='yes' />  
-          <File Id='arangodServerSample' Name='arangod.bat' Source='arangod.bat' Vital='yes' />  
-          <File Id='arangodConsoleSample' Name='console.bat' Source='console.bat' Vital='yes' />  
-          <File Id='arangodUpgradeSample' Name='upgrade.bat' Source='upgrade.bat' Vital='yes' />  
-          <File Id='arangodFoxxManagerSample' Name='foxx-manager.bat' Source='foxx-manager.bat' Vital='yes' />  
           <File Id='arangoShellEXE' Name='arangosh.exe' Source='arangosh32.exe' Vital='yes' />  
-          <File Id='arangoShellSample' Name='arangosh.bat' Source='arangosh.bat' Vital='yes' />  
           <File Id='arangodImportEXE' Name='arangoimp.exe' Source='arangoimp32.exe' Vital='yes' />  
           <File Id='arangodRestoreEXE' Name='arangorestore.exe' Source='arangorestore32.exe' Vital='yes' />  
           <File Id='arangodDumpEXE' Name='arangodump.exe' Source='arangodump32.exe' Vital='yes' />  
           <File Id='arangodBenchEXE' Name='arangob.exe' Source='arangob32.exe' Vital='yes' />  
+
+          <File Id='arangodICO' Name='arangod.ico' Source='arango.ico' Vital='yes' />  
+          <File Id='arangodReadme' Name='readme.txt' Source='readme.txt' Vital='yes' />  
           <File Id='serverPem' Name='server.pem' Source='server.pem' Vital='yes' />  
+
+          <File Id='arangodServerSample' Name='arangod.bat' Source='arangod.bat' Vital='yes' />  
+          <File Id='arangodConsoleSample' Name='console.bat' Source='console.bat' Vital='yes' />  
+          <File Id='arangodUpgradeSample' Name='upgrade.bat' Source='upgrade.bat' Vital='yes' />  
+          <File Id='arangodFoxxManagerSample' Name='foxx-manager.bat' Source='foxx-manager.bat' Vital='yes' />  
+          <File Id='arangoShellSample' Name='arangosh.bat' Source='arangosh.bat' Vital='yes' />  
+
           <RemoveFolder Id="INSTALLDIR" On="uninstall" />  
         </Component>  
 
