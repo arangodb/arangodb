@@ -195,6 +195,18 @@ function GraphBasicsSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceVertex : function () {
+      var v = graph.addVertex("vertex_to_replace", { age : 23 });
+      graph.replaceVertex("vertex_to_replace", { age: 24 });
+      v = graph.getVertex("vertex_to_replace");
+
+      assertEqual(24, v.getProperty("age"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -225,6 +237,22 @@ function GraphBasicsSuite() {
       edge = graph.addEdge(v1, v2);
 
       assertEqual(edge._properties._key, edge.getId());
+    },
+
+    testReplaceEdge : function () {
+      var v1,
+        v2,
+        edge;
+
+      v1 = graph.addVertex("vertex1");
+      v2 = graph.addVertex("vertex2");
+
+      graph.addEdge(v1, v2, "my-edge");
+
+      graph.replaceEdge("my-edge", { weight: 2 });
+      edge = graph.getEdge("my-edge");
+
+      assertEqual(2, edge.getProperty("weight"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
