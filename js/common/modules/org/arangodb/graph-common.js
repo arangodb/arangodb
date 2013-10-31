@@ -782,6 +782,18 @@ Graph.prototype.addVertex = function (id, data, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an existing vertex by ID
+///
+/// @FUN{@FA{graph}.replaceVertex(@FA{id}, @FA{data})}
+///
+/// Replaces an existing vertex by ID
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.replaceVertex = function (id, data) {
+  this._replaceVertex(id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of vertices
 ///
 /// @FUN{@FA{graph}.order()}
