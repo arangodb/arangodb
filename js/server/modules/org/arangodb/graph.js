@@ -555,7 +555,10 @@ Graph.prototype.drop = function (waitForSync) {
 
   gdb.remove(this._properties, true, waitForSync);
 
-  this._vertices.drop();
+  if (gdb.byExample({vertices: this._vertices.name()}).count() === 0) {
+    this._vertices.drop();
+  }
+
   this._edges.drop();
 };
 
