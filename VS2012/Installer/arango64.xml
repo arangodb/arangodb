@@ -29,6 +29,12 @@
           <File Id='arangodRestoreEXE' Name='arangorestore.exe' Source='arangorestore64.exe' Vital='yes' />  
           <File Id='arangodDumpEXE' Name='arangodump.exe' Source='arangodump64.exe' Vital='yes' />  
 
+          <File Id='arangodConf' Name='arangod.conf' Source='arangod.conf' Vital='yes' />  
+          <File Id='arangoShellConf' Name='arangosh.conf' Source='arangosh.conf' Vital='yes' />  
+          <File Id='arangoImportConf' Name='arangoimp.conf' Source='arangoimp.conf' Vital='yes' />  
+          <File Id='arangoRestoreConf' Name='arangorestore.conf' Source='arangorestore.conf' Vital='yes' />  
+          <File Id='arangoDumpConf' Name='arangodump.conf' Source='arangodump.conf' Vital='yes' />  
+
           <File Id='arangodICO' Name='arangod.ico' Source='arango.ico' Vital='yes' />  
           <File Id='arangodReadme' Name='readme.txt' Source='readme.txt' Vital='yes' />  
           <File Id='serverPem' Name='server.pem' Source='server.pem' Vital='yes' />  
