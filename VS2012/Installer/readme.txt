@@ -37,7 +37,7 @@
    not already done so, then open up your web browser and point it to the page:
    http://127.0.0.1:8529/
    To check if your installation was successful, on the right hand side of the web page 
-   click the "Filter" drop down and select the "System" TYPE. If the installation was 
+   click the "Filter" drop down and select the "System" type. If the installation was 
    successful, then the page should display a few system collections.
 
    Try to add a new collection and then add some documents to this new collection.

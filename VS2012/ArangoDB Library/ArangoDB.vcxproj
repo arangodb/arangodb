@@ -225,11 +225,6 @@
     <ClInclude Include="..\..\lib\Basics\Utf8Helper.h" />
     <ClInclude Include="..\..\lib\Basics\WriteLocker.h" />
     <ClInclude Include="..\..\lib\Basics\WriteUnlocker.h" />
-    <ClInclude Include="..\..\lib\Logger\Logger.h" />
-    <ClInclude Include="..\..\lib\Logger\LoggerData.h" />
-    <ClInclude Include="..\..\lib\Logger\LoggerInfo.h" />
-    <ClInclude Include="..\..\lib\Logger\LoggerStream.h" />
-    <ClInclude Include="..\..\lib\Logger\LoggerTiming.h" />
     <ClInclude Include="..\..\lib\ProgramOptions\program-options.h" />
     <ClInclude Include="..\..\lib\Rest\AnyServer.h" />
     <ClInclude Include="..\..\lib\Rest\AsyncJobServer.h" />
@@ -323,11 +318,6 @@
     <ClCompile Include="..\..\lib\Basics\WriteLocker.cpp" />
     <ClCompile Include="..\..\lib\Basics\WriteUnlocker.cpp" />
     <ClCompile Include="..\..\lib\JsonParser\json-parser.c" />
-    <ClCompile Include="..\..\lib\Logger\Logger.cpp" />
-    <ClCompile Include="..\..\lib\Logger\LoggerData.cpp" />
-    <ClCompile Include="..\..\lib\Logger\LoggerInfo.cpp" />
-    <ClCompile Include="..\..\lib\Logger\LoggerStream.cpp" />
-    <ClCompile Include="..\..\lib\Logger\LoggerTiming.cpp" />
     <ClCompile Include="..\..\lib\ProgramOptions\program-options.c" />
     <ClCompile Include="..\..\lib\Rest\AnyServer.cpp" />
     <ClCompile Include="..\..\lib\Rest\Endpoint.cpp" />

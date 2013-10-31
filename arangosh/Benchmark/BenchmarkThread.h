@@ -145,9 +145,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void run () {
-          allowAsynchronousCancelation();
-
           _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3);
+
           if (_connection == 0) {
             LOG_FATAL_AND_EXIT("out of memory");
           }

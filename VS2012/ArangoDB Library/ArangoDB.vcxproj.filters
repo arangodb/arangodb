@@ -20,12 +20,6 @@
     <Filter Include="JsonParserSource">
       <UniqueIdentifier>{28ae53c5-3ac5-49b5-abf4-ec2321f41c8f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="LoggerHeader">
-      <UniqueIdentifier>{cf6ecca5-a2ef-47fe-b9fc-c17a52da9e04}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="LoggerSource">
-      <UniqueIdentifier>{27c91776-4c83-4e65-8895-6ce7201ec139}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ProgramOptionsHeader">
       <UniqueIdentifier>{56012718-9628-4580-bc19-92871477432f}</UniqueIdentifier>
     </Filter>
@@ -234,21 +228,6 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\Basics\ssl-helper.h">
       <Filter>BasicsHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Logger\Logger.h">
-      <Filter>LoggerHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Logger\LoggerData.h">
-      <Filter>LoggerHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Logger\LoggerInfo.h">
-      <Filter>LoggerHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Logger\LoggerStream.h">
-      <Filter>LoggerHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Logger\LoggerTiming.h">
-      <Filter>LoggerHeader</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\ProgramOptions\program-options.h">
       <Filter>ProgramOptionsHeader</Filter>
@@ -527,21 +506,6 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\JsonParser\json-parser.c">
       <Filter>JsonParserSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Logger\Logger.cpp">
-      <Filter>LoggerSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Logger\LoggerData.cpp">
-      <Filter>LoggerSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Logger\LoggerInfo.cpp">
-      <Filter>LoggerSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Logger\LoggerStream.cpp">
-      <Filter>LoggerSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Logger\LoggerTiming.cpp">
-      <Filter>LoggerSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\ProgramOptions\program-options.c">
       <Filter>ProgramOptionsSource</Filter>

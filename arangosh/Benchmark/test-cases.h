@@ -156,7 +156,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     const size_t mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
-      const size_t n = Complexity;
+      const uint64_t n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -167,9 +167,9 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
-      for (size_t i = 1; i <= n; ++i) {
+      for (uint64_t i = 1; i <= n; ++i) {
         TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
+        TRI_AppendUInt64StringBuffer(buffer, i);
         if (mod == 0) {
           TRI_AppendStringStringBuffer(buffer, "\":true");
         }
@@ -271,7 +271,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
     const size_t mod = globalCounter % 5;
 
     if (mod == 0 || mod == 2) {
-      const size_t n = Complexity;
+      const uint64_t n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -282,9 +282,9 @@ struct DocumentCrudTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
-      for (size_t i = 1; i <= n; ++i) {
+      for (uint64_t i = 1; i <= n; ++i) {
         TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
+        TRI_AppendUInt64StringBuffer(buffer, i);
         if (mod == 0) {
           TRI_AppendStringStringBuffer(buffer, "\":true");
         }
@@ -388,7 +388,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
     const size_t mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
-      const size_t n = Complexity;
+      const uint64_t n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -399,9 +399,9 @@ struct EdgeCrudTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
-      for (size_t i = 1; i <= n; ++i) {
+      for (uint64_t i = 1; i <= n; ++i) {
         TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
+        TRI_AppendUInt64StringBuffer(buffer, i);
         if (mod == 0) {
           TRI_AppendStringStringBuffer(buffer, "\":true");
         }
@@ -658,14 +658,14 @@ struct DocumentCreationTest : public BenchmarkOperation {
       _buffer(0) {
     _url = "/_api/document?collection=" + Collection;
 
-    const size_t n = Complexity;
+    const uint64_t n = Complexity;
 
     _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
     TRI_AppendCharStringBuffer(_buffer, '{');
 
-    for (size_t i = 1; i <= n; ++i) {
+    for (uint64_t i = 1; i <= n; ++i) {
       TRI_AppendStringStringBuffer(_buffer, "\"test");
-      TRI_AppendUInt32StringBuffer(_buffer, (uint32_t) i);
+      TRI_AppendUInt64StringBuffer(_buffer, i);
       TRI_AppendStringStringBuffer(_buffer, "\":\"some test value\"");
       if (i != n) {
         TRI_AppendCharStringBuffer(_buffer, ',');
