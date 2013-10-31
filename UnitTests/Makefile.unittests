@@ -63,6 +63,12 @@ unittests-verbose:
 	@sleep 1
 
 ################################################################################
+### @brief single test
+################################################################################
+
+TEST := $(shell echo $$TEST)
+
+################################################################################
 ### @brief arango server configuration
 ################################################################################
 
@@ -275,6 +281,46 @@ unittests-boost:
 
 	@echo
 endif
+
+################################################################################
+### @brief CONVENIENCE TARGET TO EXECUTE A SINGLE TEST ON SERVER AND CLIENT
+################################################################################
+
+.PHONY: unittests-single
+
+unittests-single:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SERVER TEST ($(TEST))"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL CLIENT TEST ($(TEST))"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+	@echo
 
 ################################################################################
 ### @brief SHELL TESTS COMMON (BASICS)
