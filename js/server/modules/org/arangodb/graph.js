@@ -870,7 +870,7 @@ Graph.prototype.constructVertex = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function (data) {
-  var id, edge, properties;
+  var id, rev, edge, properties;
 
   if (typeof data === "string") {
     id = data;
