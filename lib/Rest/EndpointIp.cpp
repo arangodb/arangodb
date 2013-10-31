@@ -270,11 +270,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
 
     switch (lastError) {
       case WSANOTINITIALISED: {
-        LOG_ERROR("getaddrinfo for host '%s': WSAStartup was not called or not called successfully.", host);
+        LOG_ERROR("getaddrinfo for host '%s': WSAStartup was not called or not called successfully.", _host.c_str());
         break;
       }
       default: {
-        LOG_ERROR("getaddrinfo for host '%s': %s", host, gai_strerror(error));
+        LOG_ERROR("getaddrinfo for host '%s': %s", _host.c_str(), gai_strerror(error));
         break;
       }
     }
