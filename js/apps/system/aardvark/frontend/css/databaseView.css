@@ -1,19 +1,71 @@
 #databaseDiv {
-  min-height: 300px;
   background-color: rgba(0,0,0,0.15);
   padding: 5px;
 }
 
 .databaseButtons {
   clear:both;
+  width: 100%;
 }
 
-.databaseRight {
-  width: 70%;
-  float:left;
+.databaseButtons #createDatabase {
+  margin-left: 0;
 }
 
-.databaseLeft {
-  width: 30%;
-  float:left;
+.databaseButtons {
+  margin-bottom: 10px;
+}
+
+#databaseTable thead {
+  text-align: left;
+}
+
+#databaseTable thead tr {
+  border-bottom: 1px solid #C2C2C2;
+  background-color: #FFFFFF !important;
+}
+
+#databaseTable {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+#databaseTable .dbThFirst {
+  width: 90%;
+}
+
+#databaseTable .dbThSecond {
+  width: 10%;
+}
+
+#databaseTable td span {
+  float: right;
+  color: #B30000;
+  font-size: 18px;
+}
+
+#databaseTable td {
+    padding:12px 18px;
+}
+
+#databaseTable tr:nth-child(odd) { 
+  background-color: #F1F0EE;
+}
+
+#databaseTable tr:nth-child(even) {
+  background-color: #FFFFFF;
+}
+
+#createDatabaseModal table {
+  width: 100%;
+}
+
+#databaseTable .collectionThSec {
+  width: 80%;
+  margin-right: 0;
+}
+
+#databaseTable .collectionTh {
+  width: 5%;
+  margin-right: 0;
 }
