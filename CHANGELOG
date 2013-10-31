@@ -1,6 +1,8 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* fixed issue #650: Randonmess of any() should be improved
+
 * made AQL `DOCUMENT()` function polymorphic and work with just one parameter.
 
   This allows using the `DOCUMENT` function like this:
@@ -149,6 +151,12 @@ v1.4.0 (2013-10-29)
 
 v1.4.0-beta2 (2013-10-14)
 -------------------------
+
+* fixed compaction on Windows 
+
+  The compaction on Windows did not ftruncate the cleaned datafiles to a smaller size.
+  This has been fixed so not only the content of the files is cleaned but also files
+  are re-created with potentially smaller sizes.
 
 * only the following system collections will be excluded from replication from now on:
   - `_replication`
