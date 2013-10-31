@@ -1,0 +1,19 @@
+#databaseDiv {
+  min-height: 300px;
+  background-color: rgba(0,0,0,0.15);
+  padding: 5px;
+}
+
+.databaseButtons {
+  clear:both;
+}
+
+.databaseRight {
+  width: 70%;
+  float:left;
+}
+
+.databaseLeft {
+  width: 30%;
+  float:left;
+}
