@@ -555,7 +555,10 @@ Graph.prototype.drop = function (waitForSync) {
 
   gdb.remove(this._properties, true, waitForSync);
 
-  this._vertices.drop();
+  if (gdb.byExample({vertices: this._vertices.name()}).count() === 0) {
+    this._vertices.drop();
+  }
+
   this._edges.drop();
 };
 
@@ -870,7 +873,7 @@ Graph.prototype.constructVertex = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function (data) {
-  var id, edge, properties;
+  var id, rev, edge, properties;
 
   if (typeof data === "string") {
     id = data;

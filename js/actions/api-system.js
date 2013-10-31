@@ -391,7 +391,7 @@ actions.defineHttp({
 /// - `group`: The identifier of the group to which this figure belongs.
 /// - `identifier`: The identifier of the figure. It is unique within the group.
 /// - `name`: The name of the figure.
-/// - `description`: A description of the group.
+/// - `description`: A description of the figure.
 /// - `type`: Either `current`, `accumulated`, or `distribution`.
 /// - `cuts`: The distribution vector.
 /// - `units`: Units in which the figure is measured.
@@ -432,10 +432,10 @@ actions.defineHttp({
 
           {
             group: "client",
-            name: "Client Statistics",
-            description: "Statistics about the clients connecting to the server."
+            name: "Client and Request Statistics",
+            description: "Statistics about the HTTP requests and clients connecting."
           },
-
+          
           {
             group: "server",
             name: "Server Statistics",
@@ -562,7 +562,7 @@ actions.defineHttp({
             cuts: internal.requestTimeDistribution,
             units: "seconds"
           },
-
+          
           {
             group: "client",
             identifier: "bytesSent",
@@ -591,6 +591,87 @@ actions.defineHttp({
             type: "distribution",
             cuts: internal.connectionTimeDistribution,
             units: "seconds"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsTotal",
+            name: "Total requests",
+            description: "Total number of HTTP requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsAsync",
+            name: "Async requests",
+            description: "Number of asynchronously executed HTTP requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsGet",
+            name: "HTTP GET requests",
+            description: "Number of HTTP GET requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsHead",
+            name: "HTTP HEAD requests",
+            description: "Number of HTTP HEAD requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsPost",
+            name: "HTTP POST requests",
+            description: "Number of HTTP POST requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsPut",
+            name: "HTTP PUT requests",
+            description: "Number of HTTP PUT requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsPatch",
+            name: "HTTP PATCH requests",
+            description: "Number of HTTP PATCH requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsDelete",
+            name: "HTTP DELETE requests",
+            description: "Number of HTTP DELETE requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "client",
+            identifier: "requestsOptions",
+            name: "HTTP OPTIONS requests",
+            description: "Number of HTTP OPTIONS requests.",
+            type: "accumulated",
+            units: "number"
           },
 
           // .............................................................................
