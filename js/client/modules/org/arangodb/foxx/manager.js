@@ -246,7 +246,7 @@ function repackZipFile (source) {
   }
 
   if (typeof found === "undefined") {
-    throwFileNotFound("Cannot find manifest file '" + filename + "'");
+    throwFileNotFound("Cannot find manifest file in zip file '" + filename + "'");
   }
 
   var mp;
