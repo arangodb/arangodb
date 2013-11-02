@@ -285,8 +285,9 @@ add_subdirectory(UnitTests)
 
 set(CPACK_SET_DESTDIR ON)
 
-set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-set(CPACK_PACKAGE_VENDOR "triAGENS GmbH")
+set(CPACK_PACKAGE_NAME    "ArangoDB-CLI")
+set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
+set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
 
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
 set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
