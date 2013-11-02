@@ -294,7 +294,7 @@ var documentsView = Backbone.View.extend({
                               '" type="text" placeholder="Attribute value" ' + 
                               'class="filterValue">'+
                               ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                              '<i class="icon icon-minus icon-white"></i></a>'+
+                              '<i class="icon icon-minus"></i></a>'+
                               ' <span>AND</span></div>');
     this.filters[num] = true;
   },

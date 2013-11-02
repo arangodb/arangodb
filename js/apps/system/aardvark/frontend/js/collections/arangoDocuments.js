@@ -73,7 +73,8 @@ window.arangoDocuments = Backbone.Collection.extend({
 
         if (this.documentsCount <= sortCount) {
           //sorted
-          myQueryVal = "FOR x in @@collection SORT x._key LIMIT @offset, @count RETURN x";
+          myQueryVal = "FOR x in @@collection SORT TO_NUMBER(x._key) == 0 ? " + 
+                       "x._key : TO_NUMBER(x._key) LIMIT @offset, @count RETURN x";
         }
         else {
           //not sorted
@@ -132,23 +133,38 @@ window.arangoDocuments = Backbone.Collection.extend({
         } else {
           filterString = ' FILTER' + filter.join(' && ');
         }
-        var body = {
-          //temp solution, waiting for api with paging possibility
-          query: "FOR u IN " + this.collectionID + 
-                 filterString + 
-                 " LIMIT 0," + self.documentsPerPage + 
-                 " RETURN u",
-          bindVars: bindValues,
-          options: { 
+
+        var sortCount = 10000;
+
+        var sortString = '';
+        if (this.documentsCount <= sortCount) {
+          //sorted
+          sortString = " SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)";
+        }
+        var myQueryVal = "FOR u in @@collection" + filterString + sortString + 
+          " LIMIT 0, @count RETURN u";
+
+        var myQuery = {
+          query: myQueryVal,
+          bindVars: {
+            "@collection": this.collectionID,
+            "count": this.documentsPerPage
+          },
+          options: {
             fullCount: true
-          } 
+          }
         };
+
+        $.each(bindValues, function(k,v) {
+          myQuery.bindVars[k] = v;
+        });
+
         $.ajax({
           cache: false,
           type: 'POST',
           async: false,
           url: '/_api/cursor',
-          data: JSON.stringify(body),
+          data: JSON.stringify(myQuery),
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();

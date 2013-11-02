@@ -264,6 +264,52 @@ There are two options for deploying local changes to an existing application:
   to be already installed under the `/hello` mount point. The application's
   setup function will be called when invoking `replace` but not `teardown`.
 
+Installing an application from your own Github repository
+---------------------------------------------------------
+
+So far we have installed Foxx applications from the central Github repository 
+"arangodb/foxx-apps". It is also possible to install an application from another
+repository. This can achieved by using the `fetch` and `mount` commands as 
+follows:
+      
+    unix> foxx-manager fetch github <username>/<repository>
+    unix> foxx-manager mount <app-id> <mount>
+
+Example:
+
+    unix> foxx-manager fetch github arangodb/fugu
+    unix> foxx-manager mount fugu /fugu
+
+Installing an application from a local directory
+------------------------------------------------
+
+You may also install Foxx applications which are already located in the 
+filesystem. Again, you can use the `fetch` command, but with the `directory`
+type. Note that the directory location must be a directory accessible by
+the foxx-manager.
+
+Example:
+
+    unix> foxx-manager fetch directory /home/developer/apps/myapp
+    unix> foxx-manager mount myapp /myapp
+
+Installing an application from a zip file
+-----------------------------------------
+
+It is also possible to install an application contained in a zip file.
+You can use the `fetch` command again, with the `zip` type. Note that 
+the zip file must be accessible by the foxx-manager.
+
+Let's first fetch a zip file. We'll be downloading the fugu application
+from Github and store it in file `fugu.zip` locally:
+
+    unix> wget -O fugu.zip "https://github.com/arangodb/fugu/archive/master.zip"
+
+Now we can install the application from the zip file:
+
+    unix> foxx-manager fetch zip ./fugu.zip
+    unix> foxx-manager mount fugu /fugu
+
 Using Multiple Databases {#UserManualFoxxManagerDatabases}
 ==========================================================
 

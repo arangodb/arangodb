@@ -495,34 +495,59 @@ void ArangoClient::stopPager () {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief strip binary data from string
+/// this is done before sending the string to a pager or writing it to the log
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string StripBinary (const char* value) {
+  string result;
+
+  char const* p = value;
+  bool inBinary = false;
+
+  while (*p) {
+    if (inBinary) {
+      if (*p == 'm') {
+        inBinary = false;
+      }
+    }
+    else {
+      if (*p == '\x1b') {
+        inBinary = true;
+      }
+      else {
+        result.push_back(*p);
+      }
+    }
+    ++p;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief print to pager
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::internalPrint (const char* format, const char* str) {
-  if (str) {
-    if (*str == '\x1b') {
-      // terminal escape sequence
-      if (_pager == stdout) {
-        fprintf(_pager, format, str);
-      }
-    }
-    else {
-      // regular string value
-      fprintf(_pager, format, str);
-      log(format, str);
+  if (str == 0) {
+    str = format;
+    format = "%s";
+  }
+
+  if (_pager == stdout) {
+    fprintf(_pager, format, str);
+    if (_log) {
+      string sanitised = StripBinary(str);
+      log(format, sanitised.c_str());
     }
   }
   else {
-    if (*format == '\x1b') {
-      // terminal escape sequence
-      if (_pager == stdout) {
-        fprintf(_pager, "%s", format);
-      }
-    }
-    else {
-      // regular string value
-      fprintf(_pager, "%s", format);
-      log("%s", format);
+    string sanitised = StripBinary(str);
+
+    if (! sanitised.empty()) {
+      fprintf(_pager, format, sanitised.c_str());
+      log(format, sanitised.c_str());
     }
   }
 }
@@ -535,7 +560,7 @@ void ArangoClient::openLog () {
   if (! _logFile.empty()) {
     _log = fopen(_logFile.c_str(), "w");
 
-	ostringstream s;
+    ostringstream s;
     if (_log == 0) {
       s << "Cannot open file '" << _logFile << "' for logging.";
 	  printErrLine(s.str());
@@ -593,9 +618,11 @@ void ArangoClient::printByeBye () {
 void ArangoClient::log (const char* format, 
                         const char* str) {
   if (_log) {
-    if (*str != '\x1b') {
+    string sanitised = StripBinary(str);
+    
+    if (! sanitised.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, str);
+      fprintf(_log, format, sanitised.c_str());
     }
   }
 }
@@ -608,9 +635,11 @@ void ArangoClient::log (const char* format,
                         const char* prompt, 
                         const char* str) {
   if (_log) {
-    if (*str != '\x1b') {
+    string sanitised = StripBinary(str);
+    
+    if (! sanitised.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, prompt, str);
+      fprintf(_log, format, prompt, sanitised.c_str());
     }
   }
 }
