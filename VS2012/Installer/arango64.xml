@@ -24,15 +24,27 @@
         
         <Component Id='MainExecutable' Guid='{D7363040-5D54-4C08-B777-0119BCD0E15E}'>  
           <File Id='arangodEXE' Name='arangod.exe' Source='arangod64.exe' Vital='yes' />  
+          <File Id='arangoShellEXE' Name='arangosh.exe' Source='arangosh64.exe' Vital='yes' />  
+          <File Id='arangodImportEXE' Name='arangoimp.exe' Source='arangoimp64.exe' Vital='yes' />  
+          <File Id='arangodRestoreEXE' Name='arangorestore.exe' Source='arangorestore64.exe' Vital='yes' />  
+          <File Id='arangodDumpEXE' Name='arangodump.exe' Source='arangodump64.exe' Vital='yes' />  
+
+          <File Id='arangodConf' Name='arangod.conf' Source='arangod.conf' Vital='yes' />  
+          <File Id='arangoShellConf' Name='arangosh.conf' Source='arangosh.conf' Vital='yes' />  
+          <File Id='arangoImportConf' Name='arangoimp.conf' Source='arangoimp.conf' Vital='yes' />  
+          <File Id='arangoRestoreConf' Name='arangorestore.conf' Source='arangorestore.conf' Vital='yes' />  
+          <File Id='arangoDumpConf' Name='arangodump.conf' Source='arangodump.conf' Vital='yes' />  
+
           <File Id='arangodICO' Name='arangod.ico' Source='arango.ico' Vital='yes' />  
           <File Id='arangodReadme' Name='readme.txt' Source='readme.txt' Vital='yes' />  
-          <File Id='arangodServerSample' Name='serverExample.bat' Source='serverExample.bat' Vital='yes' />  
-          <File Id='arangodConsoleSample' Name='consoleExample.bat' Source='consoleExample.bat' Vital='yes' />  
-          <File Id='arangodUpgradeSample' Name='upgradeExample.bat' Source='upgradeExample.bat' Vital='yes' />  
-          <File Id='arangoShellEXE' Name='arangosh.exe' Source='arangosh64.exe' Vital='yes' />  
-          <File Id='arangoShellSample' Name='shellExample.bat' Source='shellExample.bat' Vital='yes' />  
-          <File Id='arangodImportEXE' Name='arangoimp.exe' Source='arangoimp64.exe' Vital='yes' />  
           <File Id='serverPem' Name='server.pem' Source='server.pem' Vital='yes' />  
+
+          <File Id='arangodServerSample' Name='arangod.bat' Source='arangod.bat' Vital='yes' />  
+          <File Id='arangodConsoleSample' Name='console.bat' Source='console.bat' Vital='yes' />  
+          <File Id='arangodUpgradeSample' Name='upgrade.bat' Source='upgrade.bat' Vital='yes' />  
+          <File Id='arangodFoxxManagerSample' Name='foxx-manager.bat' Source='foxx-manager.bat' Vital='yes' />  
+          <File Id='arangoShellSample' Name='arangosh.bat' Source='arangosh.bat' Vital='yes' />  
+
           <RemoveFolder Id="INSTALLDIR" On="uninstall" />  
         </Component>  
 
