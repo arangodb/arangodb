@@ -1,0 +1,86 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          arangodb
+# Required-Start:    
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: arangodb
+# Description:       arango database server 
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+DAEMON=/usr/sbin/arangod
+DESC="arango database server"
+NAME="arangod"
+PIDDIR=/var/run/arangodb
+PIDFILE=/var/run/arangodb/arangod.pid
+CONF=/etc/arangodb/arangod.conf
+
+test -x $DAEMON || exit 0
+
+start () {
+    test -d $PIDDIR || mkdir $PIDDIR
+    chown arangodb $PIDDIR
+
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
+    RETVAL=$?
+
+    log_end_msg $RETVAL
+
+    return $RETVAL
+}
+
+case "$1" in
+  start)
+    log_daemon_msg "Starting $DESC" "$NAME"
+
+    start
+    exit $?
+    ;;
+
+  stop)
+    log_begin_msg "Stopping $DESC" "$NAME"
+
+    start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
+    RETVAL=$?
+    log_end_msg $RETVAL
+
+    test -f $PIDFILE && rm -f $PIDFILE
+    exit $RETVAL
+    ;;
+
+  restart)
+    $0 stop
+    sleep 3
+    $0 start
+    exit $?
+    ;;
+
+  force-reload)
+    $0 restart
+    exit $?
+    ;;
+
+  status)
+    status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+    ;;
+
+  upgrade)
+    log_daemon_msg "Upgrading $DESC" "$NAME"
+
+    start --upgrade
+    exit $?
+    ;;
+
+  *)
+    log_success_msg "Usage: /etc/init.d/arangodb {start|stop|restart|force-reload|status|upgrade}"
+    exit 1
+    ;;
+esac
+
+exit 0
+
