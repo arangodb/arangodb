@@ -531,12 +531,12 @@ pack-dmg:
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
 
 ################################################################################
-### @brief debian package
+### @brief debian arm package
 ################################################################################
 
-.PHONY: pack-deb
+.PHONY: pack-arm
 
-pack-deb:
+pack-arm:
 	rm -rf Build && mkdir Build
 
 	./configure \
@@ -555,6 +555,9 @@ pack-deb:
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+                -D "V8_LIB_PATH=`pwd`/3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
+                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
 
 	cd Build && cpack \
