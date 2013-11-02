@@ -1759,7 +1759,6 @@ CLIENT_OPT := \
 ################################################################################
 SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-require.js \
-               @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
@@ -1773,6 +1772,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
                @top_srcdir@/js/common/tests/shell-index.js \
@@ -1791,6 +1791,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/compaction.js \
                @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/common/tests/shell-bitarray-index.js \
                @top_srcdir@/js/server/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
@@ -8657,6 +8658,10 @@ clean-zlib:
 ### @brief ICU
 ################################################################################
 
+################################################################################
+### @brief MacOSX bundle
+################################################################################
+
 .PHONY: pack-dmg
 
 pack-dmg:
@@ -8670,9 +8675,11 @@ pack-dmg:
 		--enable-mruby
 
 	cd Build && cmake \
+		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
+		-D "ARANGODB_VERSION=@VERSION@" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
@@ -8681,6 +8688,36 @@ pack-dmg:
 	cd Build && cpack \
 		-G Bundle \
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
+
+################################################################################
+### @brief debian package
+################################################################################
+
+.PHONY: pack-deb
+
+pack-deb:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--disable-mruby
+
+	cd Build && cmake \
+		-D "CMAKE_INSTALL_PREFIX=/usr" \
+		-D "ETCDIR=/etc" \
+		-D "VARDIR=/var" \
+		-D "USE_MRUBY=OFF" \
+		-D "USE_RAW_CONFIG=OFF" \
+		-D "ARANGODB_VERSION=@VERSION@" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		..
+
+	cd Build && cpack \
+		-G DEB
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

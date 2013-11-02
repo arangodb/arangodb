@@ -152,17 +152,17 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
-    DESTINATION ${ARANGODB_CONF_DIR}
+    DESTINATION ${ETCDIR_NATIVE}
     RENAME arangod-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
-  DESTINATION ${ARANGODB_CONF_DIR})
+  DESTINATION ${ETCDIR_NATIVE})
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
-  DESTINATION ${ARANGODB_CONF_DIR})
+  DESTINATION ${ETCDIR_NATIVE})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
@@ -189,11 +189,11 @@ install(
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
-  DESTINATION var/log)
+  DESTINATION ${VARDIR_NATIVE}/log)
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
-  DESTINATION var/lib)
+  DESTINATION ${VARDIR_NATIVE}/lib)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
