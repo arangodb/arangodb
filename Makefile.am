@@ -555,7 +555,7 @@ pack-arm:
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-                -D "V8_LIB_PATH=`pwd`/3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
+                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
                 -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
                 -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
