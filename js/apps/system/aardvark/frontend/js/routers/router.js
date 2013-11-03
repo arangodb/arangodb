@@ -193,13 +193,21 @@ $(document).ready(function() {
     },
 
     databases: function() {
-      if (!this.databaseView) {
-        this.databaseView = new window.databaseView({
-          collection: arangoDatabase
-        });
+      if (arangoHelper.databaseAllowed(window.location.pathname) === true) {
+        if (!this.databaseView) {
+          this.databaseView = new window.databaseView({
+            collection: arangoDatabase
+          });
+        }
+        this.databaseView.render();
+        this.naviView.selectMenuItem('databases-menu');
       }
-      this.databaseView.render();
-      this.naviView.selectMenuItem('database-menu');
+      else {
+        window.App.navigate("#", {trigger: true});
+        this.naviView.selectMenuItem('dashboard-menu');
+        $('#databaseNavi').css('display','none');
+        $('#databaseNaviSelect').css('display','none');
+      }
     },
 
     about: function() {
@@ -214,7 +222,7 @@ $(document).ready(function() {
       if (! this.logsAllowed()) {
         return;
       }
-          
+
       var self = this;
       window.arangoLogsStore.fetch({
         success: function () {

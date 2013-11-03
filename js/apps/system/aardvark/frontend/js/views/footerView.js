@@ -46,7 +46,7 @@ var footerView = Backbone.View.extend({
         arangoHelper.arangoError("Server is offline");
       }
     });
-    
+
     if (! self.system.hasOwnProperty('database')) {
       $.ajax({
         type: "GET",
@@ -62,6 +62,9 @@ var footerView = Backbone.View.extend({
           if (name === '_system') {
             // show "logs" button
             $('.logs-menu').css('visibility', 'visible');
+            // show dbs menues
+            $('#databaseNavi').css('display','inline');
+            $('#databaseNaviSelect').css('display','inline');
           }
           else {
             // hide "logs" button
@@ -77,7 +80,7 @@ var footerView = Backbone.View.extend({
   renderVersion: function () {
     if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
       var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
-                ', Database: ' + this.system.database;
+        ', Database: ' + this.system.database;
       $('.footer-right p').html(tag);
     }
   },
