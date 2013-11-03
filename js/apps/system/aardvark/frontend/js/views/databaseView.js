@@ -6,10 +6,14 @@ window.databaseView = Backbone.View.extend({
 
   template: new EJS({url: 'js/templates/databaseView.ejs'}),
 
+  currentDB: "",
+
   events: {
-    "click #createDatabase" : "createDatabase",
-    "click #removeDatabase" : "removeDatabase",
-    "click #selectDatabase" : "updateDatabase"
+    "click #createDatabase"       : "createDatabase",
+    "click #submitCreateDatabase" : "submitCreateDatabase",
+    "click #selectDatabase"       : "updateDatabase",
+    "click #databaseTable .glyphicon-minus-sign" : "removeDatabase",
+    "click #submitDeleteDatabase" : "submitRemoveDatabase"
   },
 
   initialize: function() {
@@ -19,13 +23,16 @@ window.databaseView = Backbone.View.extend({
 
   render: function(){
     $(this.el).html(this.template.render({}));
-    this.renderOptions();
+    this.renderTable();
     return this;
   },
 
-  renderOptions: function () {
+  renderTable: function () {
     this.collection.map(function(dbs) {
-      $('#selectDatabases').append( new Option(dbs.get("name"),dbs.get("name")) );
+      $("#databaseTable tbody").append(
+        '<tr><td>' + dbs.get("name") + '</td>' +
+        '<td><span class="glyphicon glyphicon-minus-sign"></span></td></tr>'
+      );
     });
   },
 
@@ -33,18 +40,39 @@ window.databaseView = Backbone.View.extend({
     return $('#selectDatabases').val();
   },
 
-  createDatabase: function() {
-    this.collection.create({name:"helloworld"});
-  },
-
-  removeDatabase: function() {
-    var toDelete = this.collection.where({name: this.selectedDatabase()});
-    console.log(toDelete[0]);
-    toDelete[0].destroy({wait: true});
+  submitCreateDatabase: function() {
+    this.collection.create({name: $('#newDatabaseName').val()}, {wait:true});
+    this.hideModal();
     this.updateDatabases();
   },
 
+  hideModal: function() {
+    $('#createDatabaseModal').modal('hide');
+  },
+
+  showModal: function() {
+    $('#createDatabaseModal').modal('show');
+  },
+
+  createDatabase: function() {
+    this.showModal();
+  },
+
+  submitRemoveDatabase: function(e) {
+    var toDelete = this.collection.where({name: this.dbToDelete});
+    toDelete[0].destroy({wait: true, url:"/_api/database/"+this.dbToDelete});
+    this.dbToDelete = '';
+    $('#deleteDatabaseModal').modal('hide');
+    this.updateDatabases();
+  },
+
+  removeDatabase: function(e) {
+    this.dbToDelete = $(e.currentTarget).parent().parent().children().first().text();
+    $('#deleteDatabaseModal').modal('show');
+  },
+
   selectDatabase: function() {
+    this.currentDB = this.collection.getCurrentDatabase();
 
   },
 

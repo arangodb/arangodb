@@ -5,16 +5,59 @@
 </ul>
 
 <div id="databaseDiv">
-  <div class="databaseLeft">
-    <select id="selectDatabases" name="databases" size="10"/>
-  </div>
+  <table id="databaseTable">
+    <thead>
+      <tr>
+        <td class="dbThFirst">Name</td>
+        <td class="dbThSecond"></td>
+      </tr>
+    </thead>
+    <tbody id="databaseTableBody">
+    </tbody>
+  </table>
 
-  <div class="databaseRight">
-  </div>
 
   <div class="databaseButtons">
-    <button id="removeDatabase" class="btn btn-danger">Delete</button>
     <button id="createDatabase" class="btn btn-success">Create</button>
-    <button id="selectDatabase" class="btn">Select</button>
+  </div>
+</div>
+
+<div id="createDatabaseModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">New Database</a>
+  </div>
+
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th>Name:</th>
+        <th><input type="text" id="newDatabaseName" name="name" value=""/></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="submitCreateDatabase" class="btn btn-success pull-right">Save</button>
+  </div>
+</div>
+
+<div id="deleteDatabaseModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Delete Database</a>
+  </div>
+
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th>Really delete?</th>
+        <th></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="submitDeleteDatabase" class="btn btn-danger pull-right">Delete</button>
   </div>
 </div>

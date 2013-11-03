@@ -10,22 +10,15 @@ window.Database = Backbone.Model.extend({
     'use strict';
     return false;
   },
+  sync: function(method, model, options) {
+    'use strict';
+    if (method === "update") {
+      method = "create";
+    }
+    return Backbone.sync(method, model, options);
+  },
 
   url: "/_api/database/",
-
-  methodToURL: {
-    'read': '/_api/database/',
-    'create': '/_api/database/',
-    'update': '/_api/databse/',
-    'delete': '/_api/database/' + console.log(this)
-  },
-
-  sync: function(method, model, options) {
-    options = options || {};
-    options.url = model.methodToURL[method.toLowerCase()];
-
-    return Backbone.sync.apply(this, arguments);
-  },
 
   defaults: {
   }
