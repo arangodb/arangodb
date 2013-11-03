@@ -193,7 +193,7 @@ $(document).ready(function() {
     },
 
     databases: function() {
-      if (arangoHelper.databaseAllowed(window.location.pathname) === true) {
+      if (arangoHelper.databaseAllowed() === true) {
         if (!this.databaseView) {
           this.databaseView = new window.databaseView({
             collection: arangoDatabase

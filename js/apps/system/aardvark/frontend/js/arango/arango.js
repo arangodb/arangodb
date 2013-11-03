@@ -26,8 +26,27 @@ window.arangoHelper = {
     });
   },
 
+  currentDatabase: function () {
+    var returnVal = false;
+    $.ajax({
+      type: "GET",
+      cache: false,
+      url: "/_api/database/current",
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        returnVal = data.result.name;
+      },
+      error: function(data) {
+        returnVal = false;
+      }
+    });
+    return returnVal;
+  },
+
   databaseAllowed: function () {
-    var currentDB = $('#databaseName').text();
+    var currentDB = this.currentDatabase();
     returnVal = false;
     $.ajax({
       type: "GET",
