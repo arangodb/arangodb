@@ -56,7 +56,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   margin-right: 15px;
 }
 
-@media (max-width: 1060px) {
+@media (max-width: 1284px) {
   #arangoCollectionUl { display: none; }
   #collectionsDropdown ul { width: auto !important; }
   #arangoCollectionSelect { display: inline-block; }
