@@ -19,7 +19,7 @@ window.databaseView = Backbone.View.extend({
 
   initialize: function() {
     var self = this;
-    this.collection.fetch();
+    this.collection.fetch({async:false});
   },
 
   render: function(){
@@ -87,7 +87,7 @@ window.databaseView = Backbone.View.extend({
   changeDatabase: function(e) {
     var dbname = $(e.currentTarget).text();
     var route =  '/_db/' + encodeURIComponent(dbname) + '/_admin/aardvark/index.html#databases';
-    window.location.pathname = route;
+    window.location = "http://"+window.location.host + route;
   },
 
   updateDatabases: function() {
