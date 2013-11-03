@@ -69,3 +69,26 @@
   width: 5%;
   margin-right: 0;
 }
+
+.databaseActive {
+  background-color: #BDCC92 !important;
+  font-weight: 400;
+}
+
+.databaseActive a {
+  color: black !important;
+}
+
+.databaseActive span {
+  display:none;
+}
+
+.databaseInactive a {
+  color: black !important;
+}
+
+.databaseInactive a:hover {
+  font-weight: 400;
+  color: black !important;
+  cursor: pointer;
+}

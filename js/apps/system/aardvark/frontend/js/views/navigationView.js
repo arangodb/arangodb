@@ -17,13 +17,14 @@ var navigationView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     this.handleResize();
     this.handleSelectNavigation();
+
     return this;
   },
 
   handleSelectNavigation: function () {
     $("#arangoCollectionSelect").change(function() {
-        var navigateTo = $(this).find("option:selected").val();
-        window.App.navigate(navigateTo, {trigger: true});
+      var navigateTo = $(this).find("option:selected").val();
+      window.App.navigate(navigateTo, {trigger: true});
     });
   },
 
@@ -37,8 +38,8 @@ var navigationView = Backbone.View.extend({
     var newWidth = roundDiv*spanWidth -2;
     var marginWidth = ((containerWidth+30) - newWidth)/2;
     $('#content').width(newWidth)
-      .css('margin-left', marginWidth)
-      .css('margin-right', marginWidth);
+    .css('margin-left', marginWidth)
+    .css('margin-right', marginWidth);
     $('.arango-logo').css('margin-left', marginWidth - 17);
     $('.footer-right p').css('margin-right', marginWidth + 20);
     $('.footer-left p').css('margin-left', marginWidth + 20);

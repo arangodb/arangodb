@@ -13,7 +13,8 @@ window.databaseView = Backbone.View.extend({
     "click #submitCreateDatabase" : "submitCreateDatabase",
     "click #selectDatabase"       : "updateDatabase",
     "click #databaseTable .glyphicon-minus-sign" : "removeDatabase",
-    "click #submitDeleteDatabase" : "submitRemoveDatabase"
+    "click #submitDeleteDatabase" : "submitRemoveDatabase",
+    "click .databaseInactive a" : "changeDatabase"
   },
 
   initialize: function() {
@@ -22,15 +23,17 @@ window.databaseView = Backbone.View.extend({
   },
 
   render: function(){
+    this.currentDatabase();
     $(this.el).html(this.template.render({}));
     this.renderTable();
+    this.selectCurrentDatabase();
     return this;
   },
 
   renderTable: function () {
     this.collection.map(function(dbs) {
       $("#databaseTable tbody").append(
-        '<tr><td>' + dbs.get("name") + '</td>' +
+        '<tr><td><a>' + dbs.get("name") + '</a></td>' +
         '<td><span class="glyphicon glyphicon-minus-sign"></span></td></tr>'
       );
     });
@@ -71,9 +74,20 @@ window.databaseView = Backbone.View.extend({
     $('#deleteDatabaseModal').modal('show');
   },
 
-  selectDatabase: function() {
+  currentDatabase: function() {
     this.currentDB = this.collection.getCurrentDatabase();
+  },
 
+  selectCurrentDatabase: function() {
+    $('#databaseTableBody tr').addClass('databaseInactive');
+    var tr = $('#databaseTableBody td:contains('+this.currentDB.result.name+')').parent();
+    $(tr).removeClass('databaseInactive').addClass('databaseActive');
+  },
+
+  changeDatabase: function(e) {
+    var dbname = $(e.currentTarget).text();
+    var route =  '/_db/' + encodeURIComponent(dbname) + '/_admin/aardvark/index.html#databases';
+    window.location.pathname = route;
   },
 
   updateDatabases: function() {
