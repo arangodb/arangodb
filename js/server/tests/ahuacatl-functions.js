@@ -307,6 +307,149 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test position function
+////////////////////////////////////////////////////////////////////////////////
+
+    testPosition : function () {
+      var list = [ "foo", "bar", null, "baz", true, 42, [ "BORK" ], { code: "foo", name: "test" }, false, 0, "" ];
+
+      var data = [
+        [ "foo", 0 ],
+        [ "bar", 1 ],
+        [ null, 2 ],
+        [ "baz", 3 ],
+        [ true, 4 ],
+        [ 42, 5 ],
+        [ [ "BORK" ], 6 ],
+        [ { code: "foo", name: "test" }, 7 ],
+        [ false, 8 ],
+        [ 0, 9 ],
+        [ "", 10 ]
+      ];
+
+      data.forEach(function (d) {
+        var search = d[0];
+        var expected = d[1];
+        
+        // find if element is contained in list (should be true)
+        var actual = getQueryResults("RETURN POSITION(@list, @search, false)", { list: list, search: search });
+        assertTrue(actual[0]);
+
+        // find position of element in list
+        actual = getQueryResults("RETURN POSITION(@list, @search, true)", { list: list, search: search });
+        assertEqual(expected, actual[0]);
+        
+        // look up the element using the position
+        actual = getQueryResults("RETURN NTH(@list, @position)", { list: list, position: actual[0] });
+        assertEqual(search, actual[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test position function
+////////////////////////////////////////////////////////////////////////////////
+
+    testPositionNotThere : function () {
+      var list = [ "foo", "bar", null, "baz", true, 42, [ "BORK" ], { code: "foo", name: "test" }, false, 0, "" ];
+
+      var data = [ "foot", "barz", 43, 1, -42, { code: "foo", name: "test", bar: "baz" }, " ", " foo", "FOO", "bazt", 0.1, [ ], [ "bork" ] ];
+
+      data.forEach(function (d) {
+        var actual = getQueryResults("RETURN POSITION(@list, @search, false)", { list: list, search: d });
+        assertFalse(actual[0]);
+
+        actual = getQueryResults("RETURN POSITION(@list, @search, true)", { list: list, search: d });
+        assertEqual(-1, actual[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test position function
+////////////////////////////////////////////////////////////////////////////////
+
+    testPositionInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POSITION()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POSITION([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN POSITION(null, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN POSITION(true, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN POSITION(4, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN POSITION(\"yes\", 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN POSITION({ }, 'foo')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test nth function
+////////////////////////////////////////////////////////////////////////////////
+
+    testNthEmpty : function () {
+      var i;
+
+      for (i = -3; i <= 3; ++i) {                         
+        var actual = getQueryResults("RETURN NTH([ ], @pos)", { pos: i });
+        assertNull(actual[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test nth function
+////////////////////////////////////////////////////////////////////////////////
+
+    testNthNegative : function () {
+      var i;
+
+      for (i = -3; i <= 3; ++i) {                         
+        var actual = getQueryResults("RETURN NTH([ 1, 2, 3, 4 ], @pos)", { pos: i });
+        if (i < 0) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(i + 1, actual[0]);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test nth function
+////////////////////////////////////////////////////////////////////////////////
+
+    testNthBounds : function () {
+      var i;
+
+      for (i = 0; i <= 10; ++i) {                         
+        var actual = getQueryResults("RETURN NTH([ 'a1', 'a2', 'a3', 'a4', 'a5' ], @pos)", { pos: i });
+        if (i < 5) {
+          assertEqual('a' + (i + 1), actual[0]);
+        }
+        else {
+          assertNull(actual[0]);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test nth function
+////////////////////////////////////////////////////////////////////////////////
+
+    testNthInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NTH()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NTH([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH(null, 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH(true, 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH(4, 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH(\"yes\", 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH({ }, 1)"); 
+      
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], '')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], '1234')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], { \"foo\": true})"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NTH([ ], { })"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test reverse function
 ////////////////////////////////////////////////////////////////////////////////
 

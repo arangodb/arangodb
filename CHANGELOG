@@ -1,6 +1,8 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* added AQL functions `NTH` and `POSITION`
+
 * added signal handler for arangosh to save last command in more cases
 
 * added extra prompt placeholders for arangosh:
