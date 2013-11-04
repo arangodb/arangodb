@@ -49,7 +49,7 @@ var API = "_api/database";
 /// @RESTHEADER{GET /_api/database,retrieves a list of all existing databases}
 ///
 /// @RESTDESCRIPTION
-/// Retrieves a list of all existing databases
+/// Retrieves the list of all existing databases
 ///
 /// Note: retrieving the list of databases is only possible from within the `_system` database.
 ///
@@ -64,13 +64,40 @@ var API = "_api/database";
 /// @RESTRETURNCODE{403}
 /// is returned if the request was not executed in the `_system` database.
 ///
-/// @RESTRETURNCODE{404}
-/// is returned if the database could not be found.
-///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGet}
 ///     var url = "/_api/database";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_get_api_database_user
+/// @brief retrieves a list of all databases the current user can access
+///
+/// @RESTHEADER{GET /_api/database/user,retrieves a list of all databases the current user can access}
+///
+/// @RESTDESCRIPTION
+/// Retrieves the list of all databases the current user can access without 
+/// specifying a different username or password.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the list of database was compiled successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the request is invalid.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGetUser}
+///     var url = "/_api/database/user";
 ///     var response = logCurlRequest('GET', url);
 /// 
 ///     assert(response.code === 200);
@@ -127,7 +154,7 @@ function get_api_database (req, res) {
     return;
   }
   
-  if (req.suffix.length === 1 && req.suffix[0] !== 'current') {
+  if (req.suffix.length > 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -138,13 +165,36 @@ function get_api_database (req, res) {
     result = arangodb.db._listDatabases();
   }
   else {
-    // information about the current database
-    result = {
-      name: arangodb.db._name(),
-      id: arangodb.db._id(),
-      path: arangodb.db._path(),
-      isSystem: arangodb.db._isSystem()
-    };
+    if (req.suffix[0] === 'user') {
+      // return all databases for current user
+      var username = '', password = '';
+
+      if (req.headers.hasOwnProperty('authorization')) {
+        var header = req.headers.authorization.replace(/^Basic\s+/i, '');
+        var decoded = require("internal").base64Decode(header);
+        var pos = decoded.indexOf(':');
+
+        if (pos >= 0) {
+          username = decoded.substr(0, pos);
+          password = decoded.substr(pos + 1, decoded.length - pos - 1);
+        }
+      }
+
+      result = arangodb.db._listDatabases(username, password);
+    }
+    else if (req.suffix[0] === 'current') {
+      // information about the current database
+      result = {
+        name: arangodb.db._name(),
+        id: arangodb.db._id(),
+        path: arangodb.db._path(),
+        isSystem: arangodb.db._isSystem()
+      };
+    }
+    else {
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      return;
+    }
   }
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });

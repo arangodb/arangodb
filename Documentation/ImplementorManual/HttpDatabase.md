@@ -83,6 +83,10 @@ Managing Databases using HTTP {#HttpDatabaseHttp}
 @copydetails JSF_get_api_database_current
 
 @CLEARPAGE
+@anchor HttpDatabaseUser
+@copydetails JSF_get_api_database_user
+
+@CLEARPAGE
 @anchor HttpDatabaseList
 @copydetails JSF_get_api_database_list
 
