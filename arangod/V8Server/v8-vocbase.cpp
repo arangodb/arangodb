@@ -7866,7 +7866,8 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 0) {
+  const uint32_t argc = argv.Length();
+  if (argc != 0 && argc != 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "db._listDatabases()");
   }
   
@@ -7876,7 +7877,8 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
-  if (! TRI_IsSystemVocBase(vocbase)) {
+  if (argc == 0 && 
+      ! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
   
@@ -7884,7 +7886,19 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   
   TRI_vector_string_t names;
   TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
-  int res = TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
+
+  int res;
+
+  if (argc == 0) {
+    // return all databases
+    res = TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
+  }
+  else {
+    // return all databases for a specific user
+    string username = TRI_ObjectToString(argv[0]);
+    string password = TRI_ObjectToString(argv[1]);
+    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), password.c_str(), &names);
+  }
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorString(&names);
