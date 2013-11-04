@@ -90,7 +90,8 @@ static bool IsExactCandidate (const TRI_aql_field_access_t* const candidate) {
   }
 
   if (candidate->_type == TRI_AQL_ACCESS_REFERENCE &&
-      candidate->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
+      (candidate->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+       candidate->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN)) {
     // == ref
     return true;
   }
@@ -349,6 +350,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       size_t k;
 
       indexedFieldName = idx->_fields._buffer[j];
+
       if (indexedFieldName == NULL) {
         continue;
       }

@@ -425,6 +425,7 @@ unittests-shell-server-only:
 
 SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-in.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-limit.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-sort.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-ref.js \
