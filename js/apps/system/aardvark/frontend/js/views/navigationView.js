@@ -11,7 +11,7 @@ var navigationView = Backbone.View.extend({
     this.handleResize();
   },
 
-  template: new EJS({url: 'js/templates/navigationView.ejs'}),
+  template: templateEngine.createTemplate("navigationView.ejs"),
 
   render: function() {
     $(this.el).html(this.template.text);

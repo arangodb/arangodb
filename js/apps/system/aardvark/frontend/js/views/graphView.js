@@ -8,7 +8,7 @@ window.graphView = Backbone.View.extend({
 
   initialize: function () {
     var self = this;
-    this.newLineTmpl = new EJS({url: "js/templates/graphViewGroupByEntry.ejs"});
+    this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
     this.graphs = [];
     this.i = 1;
   },
