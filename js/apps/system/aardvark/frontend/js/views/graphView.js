@@ -4,7 +4,7 @@
 window.graphView = Backbone.View.extend({
   el: '#content',
 
-  template: new EJS({url: 'js/templates/graphView.ejs'}),
+  template: templateEngine.createTemplate("graphView.ejs"),
 
   initialize: function () {
     var self = this;
