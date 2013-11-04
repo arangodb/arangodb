@@ -2,6 +2,9 @@
 /*global require, window, Backbone */
 
 window.Database = Backbone.Model.extend({
+
+  idAttribute: "name",
+
   initialize: function () {
     'use strict';
   },
@@ -18,7 +21,7 @@ window.Database = Backbone.Model.extend({
     return Backbone.sync(method, model, options);
   },
 
-  url: "/_api/database/",
+  url: "/_api/database",
 
   defaults: {
   }

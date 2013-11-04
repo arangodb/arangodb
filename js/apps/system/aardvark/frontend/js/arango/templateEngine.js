@@ -4,7 +4,6 @@
     prefix = prefix || "";
     var exports = {};
     exports.createTemplate = function(path) {
-      console.log(path);
       var param = {
         url: prefix + path
       };

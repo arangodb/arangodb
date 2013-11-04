@@ -74,9 +74,19 @@ $(document).ready(function() {
       this.naviView = new window.navigationView();
       this.footerView.render();
       this.naviView.render();
+      this.dbSelectionView = new window.DBSelectionView({
+        collection: arangoDatabase
+      });
       this.graphView = new window.graphView({
         collection: window.arangoCollectionsStore
       });
+
+
+      var self = this;
+      $(window).resize(function() {
+        self.handleResize();
+      });
+      this.handleResize();
     },
 
     logsAllowed: function () {
@@ -348,6 +358,30 @@ $(document).ready(function() {
       var docuView = new window.AppDocumentationView({key: key});
       docuView.render();
       this.naviView.selectMenuItem('applications-menu');
+    },
+
+    handleResize: function () {
+                    console.log("Handle!");
+      var oldWidth = $('#content').width();
+      var containerWidth = $(window).width() - 70;
+      /*var spanWidth = 242;*/
+      var spanWidth = 243;
+      var divider = containerWidth / spanWidth;
+      var roundDiv = parseInt(divider, 10);
+      var newWidth = roundDiv*spanWidth -2;
+      var marginWidth = ((containerWidth+30) - newWidth)/2;
+      $('#content').width(newWidth)
+      .css('margin-left', marginWidth)
+      .css('margin-right', marginWidth);
+      $('.arango-logo').css('margin-left', marginWidth - 17);
+      console.log(this.footerView);
+      this.footerView.handleResize(marginWidth + 20);
+      //$('.footer-right p').css('margin-right', marginWidth + 20);
+      //$('.footer-left p').css('margin-left', marginWidth + 20);
+      $('.nav-collapse').css('margin-right', marginWidth - 10);
+      if (newWidth !== oldWidth && window.App) {
+        window.App.graphView.handleResize(newWidth);
+      }
     }
 
   });

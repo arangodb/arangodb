@@ -79,14 +79,29 @@ var footerView = Backbone.View.extend({
 
   renderVersion: function () {
     if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
-      var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
+      $(this.el).html(this.template.render({
+        name: this.system.name,
+        version: this.system.version,
+        database: this.system.database,
+        margin: this.resizeMargin
+      }));
+     /* 
+          var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
         ', Database: ' + this.system.database;
       $('.footer-right p').html(tag);
+      */
     }
   },
 
+  handleResize: function(newMargin) {
+    this.resizeMargin = newMargin;
+    this.render();
+  },
+
   render: function () {
-    $(this.el).html(this.template.text);
+    $(this.el).html(this.template.render({
+      margin: this.resizeMargin
+    }));
     this.getVersion();
 
     // only fill in version if we have a version number...
