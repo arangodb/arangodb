@@ -11,7 +11,7 @@ var collectionsView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: 'js/templates/collectionsView.ejs'}),
+  template: templateEngine.createTemplate("collectionsView.ejs"),
 
   render: function () {
     var dropdownVisible = false; 

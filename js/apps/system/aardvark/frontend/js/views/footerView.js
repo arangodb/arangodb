@@ -15,7 +15,7 @@ var footerView = Backbone.View.extend({
     self.getVersion();
   },
 
-  template: new EJS({url: 'js/templates/footerView.ejs'}),
+  template: templateEngine.createTemplate("footerView.ejs"),
 
   getVersion: function () {
     var self = this;
