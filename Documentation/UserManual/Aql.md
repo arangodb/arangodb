@@ -1103,6 +1103,16 @@ AQL supports the following functions to operate on list values:
 - @FN{LAST(@FA{list})}: returns the last element in @FA{list} or `null` if the
   list is empty.
 
+- @FN{NTH(@FA{list}, @FA{position})}: returns the list element at position @FA{position}.
+  Positions start at 0. If @FA{position} is negative or beyond the upper bound of the list
+  specified by @FA{list}, then `null` will be returned.
+
+- @FN{POSITION(@FA{list}, @FA{search}, @FA{return-index})}: returns the position of the
+  element @FA{search} in list @FA{list}. Positions start at 0. If the element is not 
+  found, then `-1` is returned. If @FA{return-index} is `false`, then instead of the
+  position only `true` or `false` are returned, depending on whether the sought element
+  is contained in the list.
+
 - @FN{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
   Calling this function might return the unique elements in any order.

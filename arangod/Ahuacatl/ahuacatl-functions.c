@@ -673,6 +673,8 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "ls", NULL);
   REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l", NULL);
   REGISTER_FUNCTION("LAST", "LAST", true, false, "l", NULL);
+  REGISTER_FUNCTION("NTH", "NTH", true, false, "l,n", NULL);
+  REGISTER_FUNCTION("POSITION", "POSITION", true, false, "l,.|b", NULL);
 
   // document functions
   REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s", NULL);
