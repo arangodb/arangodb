@@ -1,6 +1,18 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* added API method GET `/_api/database/user` 
+
+  This returns the list of databases a specific user can see without changing the
+  username/passwd.
+
+* fixed issue #656: Cannot create unique index through web interface
+
+* fixed issue #654: bitarray index makes server down
+
+* fixed issue #651: Allow addEdge() to take vertex ids in the JS library
+
+
 * added more detailed request statistics 
 
   This adds the number of async-executed HTTP requests plus the number of HTTP
