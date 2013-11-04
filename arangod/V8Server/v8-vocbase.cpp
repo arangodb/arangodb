@@ -8005,6 +8005,9 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     // version check failed
     // TODO: report an error
   }
+
+  // populate the authentication cache. otherwise no one can access the new database
+  TRI_ReloadAuthInfo(database);
  
   // finally decrease the reference-counter 
   TRI_ReleaseVocBase(database);
