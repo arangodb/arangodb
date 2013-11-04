@@ -567,7 +567,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
 
-  if (res) {
+  if (res && hash != NULL) {
     // insert item into the cache
     TRI_vocbase_auth_cache_t* cached;
 
