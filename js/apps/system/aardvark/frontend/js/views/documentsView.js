@@ -788,8 +788,7 @@ var documentsView = Backbone.View.extend({
     $('#newIndexType'+type).show();
   },
   checkboxToValue: function (id) {
-    var checked = $(id).is('checked');
-    return checked;
+    return $(id).prop('checked');
   },
   getIndex: function () {
     this.index = window.arangoCollectionsStore.getIndex(this.collectionID, true);
