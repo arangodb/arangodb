@@ -2483,6 +2483,44 @@ function LAST (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the position of an element in a list
+////////////////////////////////////////////////////////////////////////////////
+
+function POSITION (value, search, returnIndex) {
+  "use strict";
+
+  LIST(value);
+  returnIndex = returnIndex || false;
+
+  var i, n = value.length;
+
+  if (n > 0) {
+    for (i = 0; i < n; ++i) {
+      if (RELATIONAL_EQUAL(value[i], search)) {
+        return returnIndex ? i : true;
+      }
+    }
+  }
+
+  return returnIndex ? -1 : false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the nth element in a list, or null if the item does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+function NTH (value, position) {
+  "use strict";
+
+  LIST(value);
+  if (position < 0 || position >= value.length) {
+    return null;
+  }
+
+  return value[position];
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reverse the elements in a list or in a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4035,6 +4073,8 @@ exports.LIMIT = LIMIT;
 exports.LENGTH = LENGTH;
 exports.FIRST = FIRST;
 exports.LAST = LAST;
+exports.POSITION = POSITION;
+exports.NTH = NTH;
 exports.REVERSE = REVERSE;
 exports.RANGE = RANGE;
 exports.UNIQUE = UNIQUE;
