@@ -284,6 +284,62 @@ static void FillDistribution (v8::Handle<v8::Object> list,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief decode a base64-encoded string
+///
+/// @FUN{internal.base64Decode(@FA{value})}
+///
+/// Base64-decodes the string @FA{value}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "base64Decode(<value>)");
+  }
+
+  string base64;
+
+  try {
+    string value = TRI_ObjectToString(argv[0]);
+    base64 = StringUtils::decodeBase64(value);
+  }
+  catch (...) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
+  }
+
+  return scope.Close(v8::String::New(base64.c_str(), base64.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base64-encode a string
+///
+/// @FUN{internal.base64Encode(@FA{value})}
+///
+/// Base64-encodes the string @FA{value}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "base64Encode(<value>)");
+  }
+
+  string base64;
+
+  try {
+    string value = TRI_ObjectToString(argv[0]);
+    base64 = StringUtils::encodeBase64(value);
+  }
+  catch (...) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
+  }
+
+  return scope.Close(v8::String::New(base64.c_str(), base64.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a Javascript snippet, but do not execute it
 ///
 /// @FUN{internal.parse(@FA{script})}
@@ -1711,7 +1767,7 @@ static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str()));
+  return scope.Close(v8::String::New(base64.c_str(), base64.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2715,6 +2771,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_UNZIP_FILE", JS_UnzipFile);
   TRI_AddGlobalFunctionVocbase(context, "FS_ZIP_FILE", JS_ZipFile);
 
+  TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64DECODE", JS_Base64Decode);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64ENCODE", JS_Base64Encode);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
