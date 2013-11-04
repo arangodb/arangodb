@@ -154,7 +154,19 @@ static vector<string> JsLint;
 /// @brief command prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-static string Prompt = "arangosh [%d]> ";
+static string Prompt = "arangosh [%u@%d]> ";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief garbage collection interval
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GcInterval = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief console object
+////////////////////////////////////////////////////////////////////////////////
+      
+static V8LineEditor* _console = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              JavaScript functions
@@ -413,6 +425,7 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("javascript.execute", &ExecuteScripts, "execute Javascript code from file")
     ("javascript.execute-string", &ExecuteString, "execute Javascript code from string")
     ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
+    ("javascript.gc-interval", &GcInterval, "JavaScript request-based garbage collection interval (each x commands)")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by semi-colons")
     ("javascript.package-path", &StartupPackages, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files")
@@ -1247,6 +1260,75 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dynamically replace %d, %e, %u in the prompt
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string BuildPrompt () {
+  string result;
+
+  char const* p = Prompt.c_str();
+  bool esc = false;
+
+  while (true) {
+    const char c = *p;
+
+    if (c == '\0') {
+      break;
+    }
+
+    if (esc) {
+      if (c == '%') {
+        result.push_back(c);
+      }
+      else if (c == 'd') {
+        result.append(BaseClient.databaseName());
+      }
+      else if (c == 'e') {
+        result.append(BaseClient.endpointString());
+      }
+      else if (c == 'u') {
+        result.append(BaseClient.username());
+      }
+      
+      esc = false;
+    }
+    else {
+      if (c == '%') {
+        esc = true;
+      }
+      else {
+        result.push_back(c);
+      }
+    }
+
+    ++p;
+  }
+
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal handler for CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+  // TODO
+
+#else
+
+static void SignalHandler (int signal) {
+  if (_console != 0) {
+    _console->writeHistory();
+    _console = 0;
+  }
+  printf("\n");
+
+  TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1254,17 +1336,33 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor console(context, ".arangosh.history");
+  _console = new V8LineEditor(context, ".arangosh.history");
+  _console->open(BaseClient.autoComplete());
 
-  console.open(BaseClient.autoComplete());
+  // install signal handler for CTRL-C
+#ifdef _WIN32
+  // TODO
 
-  BaseClient.printLine("");
+#else 
+  struct sigaction sa;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_handler = &SignalHandler;
+          
+  int res = sigaction(SIGINT, &sa, 0);
+        
+  if (res != 0) {
+    LOG_ERROR("unable to install signal handler");
+  }
+#endif 
+
+  uint64_t nrCommands = 0;
 
   while (true) {
     // set up prompts
     string dynamicPrompt;
     if (ClientConnection != 0) {
-      dynamicPrompt = StringUtils::replace(Prompt, "%d", ClientConnection->getDatabaseName());
+      dynamicPrompt = BuildPrompt();
     }
     else {
       dynamicPrompt = "-";
@@ -1311,11 +1409,15 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 #endif
 
     // gc
-    v8::V8::LowMemoryNotification();
-    while (! v8::V8::IdleNotification()) {
+    if (++nrCommands >= GcInterval) {
+      nrCommands = 0;
+
+      v8::V8::LowMemoryNotification();
+      while (! v8::V8::IdleNotification()) {
+      }
     }
 
-    char* input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
+    char* input = _console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
     if (input == 0) {
       break;
@@ -1344,7 +1446,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       }
     }
 
-    console.addHistory(input);
+    _console->addHistory(input);
 
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
@@ -1375,7 +1477,9 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     BaseClient.flushLog();
   }
 
-  console.close();
+  _console->close();
+  delete _console;
+  _console = 0;
 
   BaseClient.printLine("");
 
@@ -1658,7 +1762,7 @@ int main (int argc, char* argv[]) {
 
 	  BaseClient.printErrLine(s.str());
 
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }
 
     ClientConnection = CreateConnection();
@@ -1680,7 +1784,7 @@ int main (int argc, char* argv[]) {
 
   if (context.IsEmpty()) {
     BaseClient.printErrLine("cannot initialize V8 engine");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   context->Enter();
@@ -1872,16 +1976,16 @@ int main (int argc, char* argv[]) {
 
     if (useServer) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
-		ostringstream is;
-		is << "Connected to ArangoDB '" << BaseClient.endpointString()
+        ostringstream is;
+        is << "Connected to ArangoDB '" << BaseClient.endpointString()
            << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
            << "', username: '" << BaseClient.username() << "'";
 
-		BaseClient.printLine(is.str());
+        BaseClient.printLine(is.str());
       }
       else {
         ostringstream is;
-		is << "Could not connect to endpoint '" << BaseClient.endpointString() 
+        is << "Could not connect to endpoint '" << BaseClient.endpointString() 
            << "', database: '" << BaseClient.databaseName() 
            << "', username: '" << BaseClient.username() << "'";
 	    BaseClient.printErrLine(is.str());
@@ -1889,7 +1993,7 @@ int main (int argc, char* argv[]) {
         if (ClientConnection->getErrorMessage() != "") {
           ostringstream is2;
           is2 << "Error message '" << ClientConnection->getErrorMessage() << "'";
-	      BaseClient.printErrLine(is2.str());
+          BaseClient.printErrLine(is2.str());
         }
         promptError = true;
       }

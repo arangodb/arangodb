@@ -1,6 +1,15 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* added signal handler for arangosh to save last command in more cases
+
+* added extra prompt placeholders for arangosh:
+  - `%e`: current endpoint
+  - `%u`: current user
+
+* added arangosh option `--javascript.gc-interval` to control amount of 
+  garbage collection performed by arangosh
+
 * added API method GET `/_api/database/user` 
 
   This returns the list of databases a specific user can see without changing the
