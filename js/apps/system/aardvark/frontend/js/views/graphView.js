@@ -17,6 +17,7 @@ window.graphView = Backbone.View.extend({
     "click input[type='radio'][name='loadtype']": "toggleLoadtypeDisplay",
     "click #createViewer": "createViewer",
     "click #add_group_by": "insertNewAttrLine",
+    "click input[type='radio'][name='colour']": "toggleColourDisplay",
     "click .gv_internal_remove_line": "removeAttrLine"
   },
 
@@ -46,6 +47,15 @@ window.graphView = Backbone.View.extend({
     }
   },
 
+  toggleColourDisplay: function() {
+    var selected = $("input[type='radio'][name='colour']:checked").attr("id");
+    if (selected === "samecolour") {
+      $("#colourAttribute_config").css("display", "none");
+      return;
+    }
+    $("#colourAttribute_config").css("display", "block");
+  },
+
   createViewer: function() {
     var ecol,
       ncol,
@@ -58,12 +68,18 @@ window.graphView = Backbone.View.extend({
       color,
       config,
       ui,
+      sameColor,
       width,
       self = this;
 
     undirected = !!$("#undirected").attr("checked");
     label = $("#nodeLabel").val();
-    color = $("#nodeColor").val();
+    sameColor = $("input[type='radio'][name='colour']:checked").attr("id") === "samecolour";
+    if (sameColor) {
+      color = label;
+    } else {
+      color = $("#nodeColor").val();
+    }
     randomStart = !!$("#randomStart").attr("checked");
     
     var graphName;
