@@ -382,7 +382,7 @@ void ApplicationV8::addGlobalContextMethod (string const& method) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
-  size_t n = _freeContexts.size();
+  const size_t n = _freeContexts.size();
 
   if (n == 0) {
     // this is easy...

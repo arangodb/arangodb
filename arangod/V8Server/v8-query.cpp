@@ -1047,7 +1047,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   trx.lockRead();
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1246,7 +1246,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // .............................................................................
 
   v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -2068,7 +2068,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   result->Set(v8::String::New("documents"), documents);
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2567,7 +2567,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2848,7 +2848,7 @@ static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2979,7 +2979,7 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
   
   if (idx == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -3044,7 +3044,7 @@ static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
