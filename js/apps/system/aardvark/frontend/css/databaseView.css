@@ -38,6 +38,10 @@
   width: 10%;
 }
 
+#databaseTable td.dbThSecond span {
+  color: #8AA050;
+}
+
 #databaseTable td span {
   float: right;
   color: #B30000;
