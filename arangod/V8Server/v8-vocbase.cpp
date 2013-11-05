@@ -4989,7 +4989,6 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
-
   v8::HandleScope scope;
   bool ok;
   string errorString;
@@ -5163,13 +5162,15 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   // .............................................................................
 
   for (size_t j = 0; j < attributes._length; ++j) {
-    char* attribute = (char*)(TRI_AtVectorPointer(&attributes, j));
-    TRI_json_t* value = (TRI_json_t*)(TRI_AtVectorPointer(&values, j));
+    char* attribute = (char*) TRI_AtVectorPointer(&attributes, j);
     TRI_Free(TRI_CORE_MEM_ZONE, attribute);
-    TRI_FreeJson (TRI_UNKNOWN_MEM_ZONE, value);
   }
-
   TRI_DestroyVectorPointer(&attributes);
+  
+  for (size_t j = 0; j < values._length; ++j) {
+    TRI_json_t* value = (TRI_json_t*) TRI_AtVectorPointer(&values, j);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
+  }
   TRI_DestroyVectorPointer(&values);
 
 
