@@ -2972,7 +2972,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   // then the shape collection
-  waitForSync = (vocbase->_settings.forceSyncShapes || parameter->_waitForSync);
+  waitForSync = parameter->_waitForSync;
   isVolatile  = parameter->_isVolatile;
 
   // if the collection has the _volatile flag, the shapes collection is also volatile.
@@ -3432,7 +3432,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   shapeCollection = TRI_CollectionVocShaper(shaper);
 
   if (shapeCollection != NULL) {
-    bool syncShapes = (vocbase->_settings.forceSyncShapes || collection->_info._waitForSync);
+    bool syncShapes = collection->_info._waitForSync;
 
     shapeCollection->base._info._waitForSync = syncShapes;
   }

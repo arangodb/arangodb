@@ -1536,7 +1536,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
       if (shapeCollection != NULL) {
         // adjust wait for sync value of underlying shape collection
-        shapeCollection->base._info._waitForSync = (vocbase->_settings.forceSyncShapes || collection->_info._waitForSync);
+        shapeCollection->base._info._waitForSync = collection->_info._waitForSync;
       }
     }
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
