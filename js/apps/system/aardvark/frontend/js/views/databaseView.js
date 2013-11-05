@@ -34,7 +34,7 @@ window.databaseView = Backbone.View.extend({
     this.collection.map(function(dbs) {
       $("#databaseTable tbody").append(
         '<tr><td><a>' + dbs.get("name") + '</a></td>' +
-        '<td><span class="glyphicon glyphicon-minus-sign"></span></td></tr>'
+        '<td><span class="glyphicon glyphicon-minus-sign" data-original-title="Delete database"></span></td></tr>'
       );
     });
   },
@@ -80,7 +80,7 @@ window.databaseView = Backbone.View.extend({
 
   selectCurrentDatabase: function() {
     $('#databaseTableBody tr').addClass('databaseInactive');
-    var tr = $('#databaseTableBody td:contains('+this.currentDB.result.name+')').parent();
+    var tr = $('#databaseTableBody td:contains('+this.currentDB+')').parent();
     $(tr).removeClass('databaseInactive').addClass('databaseActive');
   },
 

@@ -117,6 +117,7 @@
         "frontend/css/foxxView.css",
         "frontend/css/graphView.css",
         "frontend/css/loginView.css",
+        "frontend/css/dbSelectionView.css",
         "frontend/css/jquery.snippet.css",
         "frontend/css/jquery.gritter.css",
         "frontend/css/modal.css",
