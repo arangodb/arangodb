@@ -180,7 +180,8 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/apps
-  DESTINATION share/arangodb/js)
+  DESTINATION share/arangodb/js
+  PATTERN "databases" EXCLUDE)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
