@@ -126,7 +126,8 @@ static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
   }
 
   json = TRI_JsonShapedJson(shaper, &shaped);
-  if (json == 0) {
+
+  if (json == NULL) {
     return NULL;
   }
 
