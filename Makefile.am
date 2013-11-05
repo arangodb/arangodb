@@ -546,6 +546,7 @@ pack-arm:
 		--disable-mruby
 
 	cd Build && cmake \
+		-D "BUILD_PACKAGE=debian" \
 		-D "CMAKE_INSTALL_PREFIX=/usr" \
 		-D "ETCDIR=/etc" \
 		-D "VARDIR=/var" \
