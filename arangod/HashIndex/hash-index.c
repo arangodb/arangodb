@@ -145,7 +145,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
     // field not part of the object
     if (acc == NULL || acc->_shape == NULL) {
-      shapedSub._sid = shaper->_sidNull;
+      shapedSub._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
       shapedSub._length = 0;
       shapedSub._offset = 0;
 
@@ -159,7 +159,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
         return TRI_ERROR_INTERNAL;
       }
 
-      if (shapedObject._sid == shaper->_sidNull) {
+      if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
         res = TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
       }
 

@@ -616,7 +616,8 @@ static bool EqualElementShape (TRI_associative_synced_t* array, void const* left
 /// to create it. The value must then be freed by the caller
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
+static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, 
+                                     TRI_shape_t* shape) {
   char* mem;
   TRI_df_marker_t* result;
   TRI_df_shape_marker_t* marker;
@@ -628,10 +629,15 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   void* f;
 
   s = (voc_shaper_t*) shaper;
-  found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
+
+  found = TRI_LookupBasicShapeShaper(shape);
+
+  if (found == NULL) {
+    found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
+  }
 
   // shape found, free argument and return
-  if (found != 0) {
+  if (found != NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
     return found;
@@ -938,10 +944,16 @@ static bool EqualKeyShapeId (TRI_associative_synced_t* array, void const* key, v
 /// @brief looks up a shape by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t sid) {
-  voc_shaper_t* s = (voc_shaper_t*) shaper;
+static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, 
+                                         TRI_shape_sid_t sid) {
+  TRI_shape_t const* shape = TRI_LookupSidBasicShapeShaper(sid);
 
-  return TRI_LookupByKeyAssociativeSynced(&s->_shapeIds, &sid);
+  if (shape == NULL) {
+    voc_shaper_t* s = (voc_shaper_t*) shaper;
+    shape = TRI_LookupByKeyAssociativeSynced(&s->_shapeIds, &sid);
+  }
+
+  return shape;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1215,7 +1227,7 @@ static int InitStep2VocShaper (voc_shaper_t* shaper,
   TRI_InitMutex(&shaper->_accessorLock);
 
   shaper->_nextAid = 1;
-  shaper->_nextSid = 1;
+  shaper->_nextSid = 7; // TODO!!!!!!!!!!!!!!!!!
   shaper->_collection = collection;
 
   // ..........................................................................
@@ -1264,7 +1276,6 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   TRI_shape_collection_t* collection;
   TRI_col_info_t parameter;
   int res;
-  bool ok;
 
   TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, TRI_SHAPER_DATAFILE_SIZE, 0);
   // set waitForSync and isVolatile for shapes collection
@@ -1312,25 +1323,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // handle basics
-  ok = TRI_InsertBasicTypesShaper(&shaper->base);
-
-  if (! ok) {
-    TRI_FreeVocShaper(&shaper->base);
-
-    return NULL;
-  }
-  
   collection->_initialised = true;
-
-  res = TRI_SyncShapeCollection(collection);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot sync shape collection: %s", TRI_last_error());
-    TRI_FreeVocShaper(&shaper->base);
-
-    return NULL;
-  }
 
   res = TRI_SaveCollectionInfo(collection->base._directory, &parameter, vocbase->_settings.forceSyncProperties);
 
@@ -1434,7 +1427,6 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
   voc_shaper_t* shaper;
   TRI_shape_collection_t* collection;
   int res;
-  bool ok;
 
   collection = TRI_OpenShapeCollection(vocbase, filename);
 
@@ -1495,15 +1487,6 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   fullSetAttributeWeight(shaper);
-
-  // handle basics
-  ok = TRI_InsertBasicTypesShaper(&shaper->base);
-
-  if (! ok) {
-    TRI_FreeVocShaper(&shaper->base);
-
-    return NULL;
-  }
 
   return &shaper->base;
 }
