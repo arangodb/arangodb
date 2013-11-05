@@ -191,10 +191,6 @@ the option `--disable-figures`.
 @copydetails triagens::arango::ArangoServer::_forceSyncProperties
 
 @CLEARPAGE
-@anchor CommandLineArangoForceSyncShapes
-@copydetails triagens::arango::ArangoServer::_forceSyncShapes
-
-@CLEARPAGE
 @anchor CommandLineArangoRemoveOnDrop
 @copydetails triagens::arango::ArangoServer::_removeOnDrop
 
