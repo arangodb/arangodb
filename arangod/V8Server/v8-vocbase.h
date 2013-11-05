@@ -67,8 +67,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const triagens::arango:
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (const triagens::arango::CollectionNameResolver&,
-                                      TRI_vocbase_col_t const*,
+TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const*,
                                       v8::Handle<v8::Value>,
                                       bool,
                                       v8::Handle<v8::Object>*);

@@ -308,7 +308,7 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), base64.size()));
+  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,7 +336,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), base64.size()));
+  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -661,7 +661,8 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
           }
           else {
             // set "body" attribute in result
-            result->Set(v8::String::New("body"), v8::String::New(response->getBody().str().c_str(), response->getBody().str().length()));
+            const string s = response->getBody().str();
+            result->Set(v8::String::New("body"), v8::String::New(s.c_str(), (int) s.size()));
           }
         }
         catch (...) {
@@ -703,7 +704,6 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  size_t i;
 
   // extract arguments
   if (argv.Length() != 3) {
@@ -732,7 +732,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
     // copy sandbox into context
     v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
 
-    for (i = 0; i < keys->Length(); i++) {
+    for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
@@ -781,7 +781,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   if (useSandbox) {
     v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames();
 
-    for (i = 0; i < keys->Length(); i++) {
+    for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
@@ -883,7 +883,7 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
   string line;
   getline(cin, line);
 
-  return scope.Close(v8::String::New(line.c_str(), line.size()));
+  return scope.Close(v8::String::New(line.c_str(), (int) line.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -954,7 +954,7 @@ static v8::Handle<v8::Value> JS_GetTempFile (v8::Arguments const& argv) {
   TRI_Free(TRI_CORE_MEM_ZONE, result);
 
   // return result
-  return scope.Close(v8::String::New(tempfile.c_str(), tempfile.size()));
+  return scope.Close(v8::String::New(tempfile.c_str(), (int) tempfile.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1440,7 +1440,7 @@ static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
   int length = (int) TRI_ObjectToInt64(argv[0]);
 
   string str = JSNumGenerator.random(length);
-  return scope.Close(v8::String::New(str.c_str(), str.length()));
+  return scope.Close(v8::String::New(str.c_str(), (int) str.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1461,7 +1461,7 @@ static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
   int length = (int) TRI_ObjectToInt64(argv[0]);
 
   string str = JSAlphaNumGenerator.random(length);
-  return scope.Close(v8::String::New(str.c_str(), str.length()));
+  return scope.Close(v8::String::New(str.c_str(), (int) str.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1480,7 +1480,7 @@ static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {
   }
 
   string str = JSSaltGenerator.random(8);
-  return scope.Close(v8::String::New(str.c_str(), str.length()));
+  return scope.Close(v8::String::New(str.c_str(), (int) str.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1500,7 +1500,7 @@ static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {
 
   string str =  Nonce::createNonce();
 
-  return scope.Close(v8::String::New(str.c_str(), str.length()));
+  return scope.Close(v8::String::New(str.c_str(), (int) str.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1767,7 +1767,7 @@ static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), base64.size()));
+  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2114,7 +2114,7 @@ static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
   delete[] hash;
 
   // and return
-  v8::Handle<v8::String> hashStr = v8::String::New(hex, hexLen);
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, (int) hexLen);
 
   delete[] hex;
 
@@ -2665,17 +2665,17 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
   v8::String::Value str(obj);
   size_t str_len = str.length();
   if (str_len > 0) {
-    UErrorCode erroCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
+    UErrorCode errorCode = U_ZERO_ERROR;
+    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,errorCode);
 
-    if (U_FAILURE(erroCode)) {
-      return scope.Close(v8::String::New(*str, str_len));
+    if (U_FAILURE(errorCode)) {
+      return scope.Close(v8::String::New(*str, (int) str_len));
     }
 
-    UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), erroCode);
+    UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), errorCode);
 
-    if (U_FAILURE(erroCode)) {
-      return scope.Close(v8::String::New(*str, str_len));
+    if (U_FAILURE(errorCode)) {
+      return scope.Close(v8::String::New(*str, (int) str_len));
     }
 
     // ..........................................................................
@@ -2684,7 +2684,7 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
     // compilers. v8 expects uint16_t (2 bytes)
     // ..........................................................................
 
-    return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length()));
+    return scope.Close(v8::String::New((const uint16_t*) result.getBuffer(), (int) result.length()));
   }
   else {
     return scope.Close(v8::String::New(""));

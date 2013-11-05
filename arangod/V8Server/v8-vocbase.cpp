@@ -4825,8 +4825,6 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     return scope.Close(v8::ThrowException(err));
   }
   
-  CollectionNameResolver resolver(collection->_vocbase);
-
   TRI_primary_collection_t* primary = collection->_collection;
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
@@ -4841,7 +4839,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
   }
 
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], true, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], true, &err);
 
   if (idx == 0) {
     if (err.IsEmpty()) {
@@ -8638,8 +8636,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
-                                      TRI_vocbase_col_t const* collection,
+TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
                                       v8::Handle<v8::Value> val,
                                       bool ignoreNotFound,
                                       v8::Handle<v8::Object>* err) {
