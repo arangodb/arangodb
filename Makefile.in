@@ -1767,6 +1767,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-require.js \
                @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
+               @top_srcdir@/js/common/tests/shell-base64.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
