@@ -156,13 +156,23 @@ if (USE_RAW_CONFIG)
     RENAME arangod-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
-  DESTINATION ${ETCDIR_NATIVE})
+if (BUILD_PACKAGE STREQUAL "raspbian")
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
+    DESTINATION ${ETCDIR_NATIVE})
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
-  DESTINATION ${ETCDIR_NATIVE})
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
+    DESTINATION ${ETCDIR_NATIVE})
+else ()
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
+    DESTINATION ${ETCDIR_NATIVE})
+
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
+    DESTINATION ${ETCDIR_NATIVE})
+endif ()
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
