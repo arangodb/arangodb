@@ -1,0 +1,20 @@
+span.selectDB > select {
+  width: 150px;
+  line-height: 20px;
+  height: 20px;
+  margin: -3px 0px 2px 0px;
+  border-radius: 0 !important;
+  border: 1px solid;
+}
+
+span.selectDB2 {
+  top: 6px;
+  left: 210px;
+  position: absolute;
+}
+
+span.selectDB2 > select {
+  line-height: 20px;
+  height: 20px;
+  width: 150px;
+}
