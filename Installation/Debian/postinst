@@ -1,0 +1,27 @@
+#!/bin/sh
+update-rc.d arangodb start 99 2 3 4 5 . stop 00 0 1 6 . >/dev/null
+/etc/init.d/arangodb start
+
+echo "
+ArangoDB (http://www.arangodb.org)
+  A multi-purpose open-source database with a flexible data model for documents,
+  graphs, and key-values.
+
+First Steps with ArangoDB:
+  http:/www.arangodb.org/quickstart
+
+Upgrading ArangoDB:
+  http://www.arangodb.org/manuals/current/Upgrading.html
+
+Upgrading ArangoDB database files:
+  > /etc/init.d/arangodb upgrade
+
+Configuration file:
+  /etc/arangodb/arangod.conf
+
+Start ArangoDB shell client:
+  > /usr/bin/arangosh
+
+Start ArangoDB service:
+  > /etc/init.d/arangodb start
+"
