@@ -7915,7 +7915,7 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ///
-/// @FUN{@FA{db}._createDatabase(@FA{name})}
+/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options})}
 ///
 /// Creates a new database with the name specified by @FA{name}. 
 /// There are restrictions for database names (see @ref DatabaseNames}.
@@ -7931,8 +7931,8 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>)");
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>, <users>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -8007,6 +8007,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   }
 
   assert(database != 0);
+
+  // copy users into context
+  if (argv.Length() >= 3 && argv[2]->IsArray()) {
+    v8::Handle<v8::Object> users = v8::Object::New();
+    users->Set(v8::String::New("users"), argv[2]);
+
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), users);
+  }
+  else {
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+  }
 
   if (TRI_V8RunVersionCheck(database, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
     // version check ok

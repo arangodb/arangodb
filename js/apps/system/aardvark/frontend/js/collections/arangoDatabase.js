@@ -65,7 +65,6 @@
       if (hash) {
         url += hash;
       }
-      console.log(url);
       return url;
     },
 

@@ -5,6 +5,7 @@ var footerView = Backbone.View.extend({
   el: '.footer',
   system: {},
   isOffline: true,
+  dbSelectionView: null,
 
   initialize: function () {
     //also server online check
@@ -12,11 +13,11 @@ var footerView = Backbone.View.extend({
     window.setInterval(function(){
       self.getVersion();
     }, 15000);
-    self.getVersion();
     this.dbSelectionView = new window.DBSelectionView({
       collection: arangoDatabase
     });
     
+    self.getVersion();
   },
 
   template: templateEngine.createTemplate("footerView.ejs"),
