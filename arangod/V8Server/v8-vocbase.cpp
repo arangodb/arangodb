@@ -5843,11 +5843,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> shapes = v8::Object::New();
   result->Set(v8::String::New("shapes"), shapes);
   shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
+  shapes->Set(v8::String::New("size"), v8::Number::New(info->_sizeShapes));
   
   // attributes info
   v8::Handle<v8::Object> attributes = v8::Object::New();
   result->Set(v8::String::New("attributes"), attributes);
   attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
+  attributes->Set(v8::String::New("size"), v8::Number::New(info->_sizeAttributes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 

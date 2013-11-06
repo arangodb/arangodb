@@ -221,7 +221,7 @@ typedef struct TRI_document_collection_s {
   TRI_condition_t          _journalsCondition;
 
   // whether or not there was a request to create a(nother) journal for the collection
-  bool                     _journalRequested;
+  TRI_voc_size_t           _requestedJournalSize;
   bool                     _rotateRequested;
   
   // whether or not any of the indexes may need to be garbage-collected
@@ -335,13 +335,15 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t*,
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*);
+TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*,
+                                                     TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*, size_t);
+bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*, 
+                                         size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection

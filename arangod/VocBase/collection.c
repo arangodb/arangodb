@@ -36,7 +36,6 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
-#include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -1529,16 +1528,6 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
   }
 
   if (TRI_IS_DOCUMENT_COLLECTION(collection->_info._type)) {
-    TRI_document_collection_t* docCollection = (TRI_document_collection_t*) collection;
-
-    if (docCollection->base._shaper != NULL) {
-      TRI_shape_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_document_collection_t*) collection)->base._shaper);
-
-      if (shapeCollection != NULL) {
-        // adjust wait for sync value of underlying shape collection
-        shapeCollection->base._info._waitForSync = collection->_info._waitForSync;
-      }
-    }
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 

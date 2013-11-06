@@ -89,6 +89,21 @@ static int PriorityQueueFromJson (TRI_document_collection_t*,
                                   TRI_index_t**);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#define MAX_DOCUMENT_SIZE (1024 * 1024 * 512)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
 
@@ -645,24 +660,32 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
                                       TRI_voc_size_t size,
                                       TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
-  TRI_collection_t* base;
+  TRI_collection_t* collection;
+  TRI_voc_size_t targetSize;
   int res;
   size_t i;
   size_t n;
 
-  base = &document->base.base;
+  collection = &document->base.base;
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+  targetSize = document->base.base._info._maximalSize;
 
-  while (base->_state == TRI_COL_STATE_WRITE) {
-    n = base->_journals._length;
+  while (collection->_state == TRI_COL_STATE_WRITE) {
+    n = collection->_journals._length;
 
     for (i = 0;  i < n;  ++i) {
       // select datafile
-      datafile = base->_journals._buffer[i];
+      datafile = collection->_journals._buffer[i];
 
       // try to reserve space
-      res = TRI_ReserveElementDatafile(datafile, size, result, document->base.base._info._maximalSize);
+      // make sure that the document fits
+      while (targetSize - 256 < size && targetSize < MAX_DOCUMENT_SIZE) {
+        targetSize *= 2;
+      }
+  
+      assert(targetSize >= size);
+      res = TRI_ReserveElementDatafile(datafile, size, result, targetSize);
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
@@ -680,11 +703,11 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       }
     }
 
-    document->_journalRequested = true;
+    document->_requestedJournalSize = targetSize;
 
-    TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
+    TRI_INC_SYNCHRONISER_WAITER_VOCBASE(collection->_vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-    TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
+    TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(collection->_vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -902,7 +925,7 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
 
     if (dfi != NULL) {
       dfi->_numberAlive++;
-      dfi->_sizeAlive += (int64_t) marker->base._size;
+      dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->base._size);
     }
   
     // update tick
@@ -1042,10 +1065,10 @@ static int WriteRemoveMarker (TRI_document_collection_t* document,
       size = (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= size;
+      dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
 
       dfi->_numberDead++;
-      dfi->_sizeDead += size;
+      dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
 
     if (header->_fid != fid) {
@@ -1216,7 +1239,7 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
 
     if (dfi != NULL) {
       dfi->_numberAlive++;
-      dfi->_sizeAlive += (int64_t) marker->base._size;
+      dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->base._size);
     }
 
     if (oldHeader->_fid != fid) {
@@ -1227,9 +1250,9 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
       int64_t size = (int64_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= size;
+      dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
       dfi->_numberDead++;
-      dfi->_sizeDead += size;
+      dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
     
     // update tick
@@ -2096,7 +2119,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // update the datafile info
     if (state->_dfi != NULL) {
       state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += (int64_t) marker->_size;
+      state->_dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
   }
 
@@ -2131,15 +2154,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       size = (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= size;
+      dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
 
       dfi->_numberDead++;
-      dfi->_sizeDead += size;
+      dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
 
     if (state->_dfi != NULL) {
       state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += (int64_t) marker->_size;
+      state->_dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
   }
 
@@ -2149,7 +2172,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       state->_dfi->_numberDead++;
-      state->_dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
+      state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->_data)->_size);
     }
   }
 
@@ -2226,10 +2249,10 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
       size = (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= size;
+      dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
 
       dfi->_numberDead++;
-      dfi->_sizeDead += size;
+      dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
 
     if (state->_dfi != NULL) {
@@ -2512,6 +2535,62 @@ static int OpenIteratorHandleDeletionMarker (TRI_df_marker_t const* marker,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process a shape marker when opening a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
+                                          TRI_datafile_t* datafile,
+                                          open_iterator_state_t* state) {
+  TRI_primary_collection_t* primary;
+  int res;
+
+  primary = &state->_document->base;
+  res = TRI_InsertShapeVocShaper(primary->_shaper, marker);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (state->_fid != datafile->_fid) {
+      state->_fid = datafile->_fid;
+      state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, state->_fid, true);
+    }
+
+    if (state->_dfi != NULL) {
+      state->_dfi->_numberShapes++;
+      state->_dfi->_sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process an attribute marker when opening a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
+                                              TRI_datafile_t* datafile,
+                                              open_iterator_state_t* state) {
+  TRI_primary_collection_t* primary;
+  int res;
+
+  primary = &state->_document->base;
+  res = TRI_InsertAttributeVocShaper(primary->_shaper, marker); 
+
+  if (res == TRI_ERROR_NO_ERROR) { 
+    if (state->_fid != datafile->_fid) {
+      state->_fid = datafile->_fid;
+      state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, state->_fid, true);
+    }
+
+    if (state->_dfi != NULL) {
+      state->_dfi->_numberAttributes++;
+      state->_dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+    }
+  }
+
+  return res;
+}
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process a "begin transaction" marker when opening a collection
@@ -2637,6 +2716,12 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
   }
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, (open_iterator_state_t*) data);
+  }
+  else if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    res = OpenIteratorHandleShapeMarker(marker, datafile, (open_iterator_state_t*) data);
+  }
+  else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    res = OpenIteratorHandleAttributeMarker(marker, datafile, (open_iterator_state_t*) data);
   }
   else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION) {
     res = OpenIteratorHandleBeginMarker(marker, datafile, (open_iterator_state_t*) data);
@@ -2844,7 +2929,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->base.remove            = RemoveShapedJson;
 
   // we do not require an initial journal
-  document->_journalRequested      = false;
+  document->_requestedJournalSize  = 0;
   document->_rotateRequested       = false;
   document->cleanupIndexes         = CleanupIndexes;
 #if 0  
@@ -2914,8 +2999,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_document_collection_t* document;
   TRI_key_generator_t* keyGenerator;
   int res;
-  bool waitForSync;
-  bool isVolatile;
 
   if (cid > 0) {
     TRI_UpdateTickServer(cid);
@@ -2971,15 +3054,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // then the shape collection
-  waitForSync = parameter->_waitForSync;
-  isVolatile  = parameter->_isVolatile;
-
-  // if the collection has the _volatile flag, the shapes collection is also volatile.
-  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync, isVolatile);
+  shaper = TRI_CreateVocShaper(vocbase, document);
 
   if (shaper == NULL) {
-    LOG_ERROR("cannot create shapes collection");
+    LOG_ERROR("cannot create shaper");
 
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_FreeKeyGenerator(keyGenerator);
@@ -3003,7 +3081,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   document->base._keyGenerator = keyGenerator;
-
+  
   // save the parameter block (within create, no need to lock)
   res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_settings.forceSyncProperties);
 
@@ -3018,6 +3096,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
+  assert(document->base._shaper != NULL);
 
   return document;
 }
@@ -3326,17 +3405,18 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* collection) {
-  return TRI_CreateJournalPrimaryCollection(&collection->base);
+TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* document,
+                                                     TRI_voc_size_t size) {
+  return TRI_CreateJournalPrimaryCollection(&document->base, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t* collection,
+bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t* document,
                                          size_t position) {
-  return TRI_CloseJournalPrimaryCollection(&collection->base, position);
+  return TRI_CloseJournalPrimaryCollection(&document->base, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3348,9 +3428,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
-  TRI_shape_collection_t* shapeCollection;
   TRI_key_generator_t* keyGenerator;
-  char* shapes;
   int res;
 
   // first open the document collection
@@ -3380,25 +3458,14 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // then the shape collection
-  shapes = TRI_Concatenate2File(collection->_directory, "SHAPES");
-
-  if (shapes == NULL) {
-    TRI_DestroyVector(&document->_failedTransactions);
-    TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection);
-
-    return NULL;
-  }
-
-  shaper = TRI_OpenVocShaper(vocbase, shapes);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, shapes);
+  shaper = TRI_CreateVocShaper(vocbase, document);
 
   if (shaper == NULL) {
+    LOG_ERROR("cannot create shaper");
+
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    LOG_ERROR("cannot open shapes collection");
 
     return NULL;
   }
@@ -3429,14 +3496,6 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT_MAINTAINER(keyGenerator != NULL);
   document->base._keyGenerator = keyGenerator;
 
-  shapeCollection = TRI_CollectionVocShaper(shaper);
-
-  if (shapeCollection != NULL) {
-    bool syncShapes = collection->_info._waitForSync;
-
-    shapeCollection->base._info._waitForSync = syncShapes;
-  }
-
   // iterate over all markers of the collection
   res = IterateMarkersCollection(collection);
 
@@ -3444,13 +3503,16 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    TRI_FreeShapeCollection(shapeCollection);
     
     LOG_ERROR("cannot iterate data of document collection");
     TRI_set_errno(res);
 
     return NULL;
   }
+
+  assert(document->base._shaper != NULL);
+
+  TRI_InitVocShaper(document->base._shaper);
 
   // fill internal indexes (this is, the edges index at the moment) 
   FillInternalIndexes(document);
@@ -3481,13 +3543,6 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* collection) {
     return res;
   }
 
-  res = TRI_CloseVocShaper(collection->base._shaper);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // this does also destroy the shaper's underlying blob collection
   TRI_FreeVocShaper(collection->base._shaper);
 
   collection->base._shaper = NULL;
