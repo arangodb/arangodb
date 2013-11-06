@@ -704,8 +704,8 @@ function CollectionSuite () {
       var f = c1.figures();
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.compactors.count);
-      assertEqual(1, f.shapefiles.count);
-      assertTrue(f.shapefiles.fileSize > 0);
+      assertEqual(0, f.shapefiles.count);
+      assertEqual(0, f.shapefiles.fileSize);
       assertEqual(0, f.alive.count);
       assertEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -721,8 +721,8 @@ function CollectionSuite () {
       assertEqual(1, f.journals.count);
       assertTrue(f.journals.fileSize > 0);
       assertEqual(0, f.compactors.count);
-      assertEqual(1, f.shapefiles.count);
-      assertTrue(f.shapefiles.fileSize > 0);
+      assertEqual(0, f.shapefiles.count);
+      assertEqual(0, f.shapefiles.fileSize);
       assertEqual(1, f.alive.count);
       assertNotEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);

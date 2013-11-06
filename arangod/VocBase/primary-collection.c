@@ -531,9 +531,9 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     ++info->_numberCompactorfiles;
   }
 
-  // get information about shape files
-  primary->_shaper->shapefileStats(primary->_shaper, &i, &info->_shapefileSize);
-  info->_numberShapefiles = (TRI_voc_ssize_t) i;
+  // get information about shape files (hard-coded to 0)
+  info->_shapefileSize    = 0;
+  info->_numberShapefiles = 0;
 
   // get number of registered shapes
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
