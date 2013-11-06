@@ -516,7 +516,7 @@ endif
 ### @brief MacOSX bundle
 ################################################################################
 
-.PHONY: pack-dmg
+.PHONY: pack-dmg pack-dmg-cmake
 
 DMG_NAME := ArangoDB-CLI.app
 
@@ -530,6 +530,9 @@ pack-dmg:
 		--enable-all-in-one-libev \
 		--enable-mruby
 
+	${MAKE} pack-dmg-cmake
+
+pack-dmg-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
@@ -551,7 +554,7 @@ pack-dmg:
 ### @brief debian arm package
 ################################################################################
 
-.PHONY: pack-arm
+.PHONY: pack-arm pack-arm-cmake
 
 pack-arm:
 	rm -rf Build && mkdir Build
@@ -565,6 +568,9 @@ pack-arm:
 		--enable-all-in-one-libev \
 		--disable-mruby
 
+	${MAKE} pack-arm-cmake
+
+pack-arm-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=debian" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
