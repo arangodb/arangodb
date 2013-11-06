@@ -47,6 +47,16 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief auxilliary struct for shape file iteration
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  int      _fdout;
+  ssize_t* _written;
+}
+shape_iterator_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief old-style master pointer (deprecated)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -200,6 +210,28 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
       newHeader->_data    = marker;
       newHeader->_key     = key;
     }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback for shape iteration
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UpgradeShapeIterator (TRI_df_marker_t const* marker, 
+                                  void* data, 
+                                  TRI_datafile_t* datafile, 
+                                  bool journal) {
+  shape_iterator_t* si = data;
+  ssize_t* written = si->_written;
+
+  // new or updated document
+  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    *written = *written + TRI_WRITE(si->_fdout, marker, TRI_DF_ALIGN_BLOCK(marker->_size));
+  }
+  else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    *written = *written + TRI_WRITE(si->_fdout, marker, TRI_DF_ALIGN_BLOCK(marker->_size));
   }
 
   return true;
@@ -903,7 +935,7 @@ static bool IterateFiles (TRI_vector_string_t* vector,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a collection parameter block
 /// (options are added to the TRI_col_info_t* and have to be freed by the
-///  TRI_FreeCollectionInfoOptions() function)
+/// TRI_FreeCollectionInfoOptions() function)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
@@ -996,12 +1028,8 @@ char* TRI_GetDirectoryCollection (char const* path,
   assert(path);
   assert(name);
 
-  // shape collections use just the name, e.g. path/SHAPES
-  if (type == TRI_COL_TYPE_SHAPE) {
-    filename = TRI_Concatenate2File(path, name);
-  }
   // other collections use the collection identifier
-  else if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+  if (TRI_IS_DOCUMENT_COLLECTION(type)) {
     char* tmp1;
     char* tmp2;
 
@@ -1452,12 +1480,11 @@ int TRI_LoadCollectionInfo (char const* path,
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   // warn about wrong version of the collection
-  if (versionWarning &&
-      parameter->_type != TRI_COL_TYPE_SHAPE &&
-      parameter->_version < TRI_COL_VERSION) {
+  if (versionWarning && parameter->_version < TRI_COL_VERSION_15) {
     if (parameter->_name[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's not a shape collection
-      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.", parameter->_name);
+      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.", 
+                  parameter->_name);
     }
   }
 
@@ -1758,10 +1785,10 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade a collection
+/// @brief upgrade a collection to ArangoDB 1.3+ format
 ///
 /// this is called when starting the database for all collections that have a
-/// too low (< TRI_COL_VERSION) "version" attribute. 
+/// too low (< TRI_COL_VERSION_13) "version" attribute. 
 /// For now, the upgrade procedure will grab all existing journals, datafiles,
 /// and compactors files and read them into memory, into a temporary index.
 /// It will use the UpgradeOpenIterator function callback for that.
@@ -1774,13 +1801,15 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 /// is active.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpgradeCollection (TRI_vocbase_t* vocbase, 
-                           const char* const path,
-                           TRI_col_info_t* info) {
+int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase, 
+                             const char* const path,
+                             TRI_col_info_t* info) {
   TRI_vector_string_t files;
   regex_t re;
   size_t i, n;
   int res;
+  
+  TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION_13);
   
   if (regcomp(&re, "^.*\\.new$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -1790,8 +1819,6 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
 
   res = TRI_ERROR_NO_ERROR;
             
-  TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION);
-
   // find all files in the collection directory
   files = TRI_FilesDirectory(path);
   n = files._length;
@@ -1811,7 +1838,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
       r = TRI_UnlinkFile(fqn);
 
       if (r != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("could not remove previous temporary file '%s': '%s'", fqn, TRI_errno_string(r));
+        LOG_WARNING("could not remove previous temporary file '%s': %s", fqn, TRI_errno_string(r));
       }
       
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
@@ -1890,8 +1917,8 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         // calculate the length for the new datafile
         markers = 0;
         neededSize = sizeof(TRI_df_header_marker_t) + 
-                    sizeof(TRI_col_header_marker_t) + 
-                    sizeof(TRI_df_footer_marker_t);
+                     sizeof(TRI_col_header_marker_t) + 
+                     sizeof(TRI_df_footer_marker_t);
 
         // go over all documents in the index and calculate the total length
         for (i = 0; i < primaryIndex._nrAlloc; ++i) {
@@ -1925,10 +1952,10 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         }
 
         LOG_INFO("migrating data for collection '%s' (id: %llu, %llu documents) into new datafile '%s'", 
-            info->_name, 
-            (unsigned long long) info->_cid,
-            (unsigned long long) markers,
-            outfile);
+                 info->_name, 
+                 (unsigned long long) info->_cid,
+                 (unsigned long long) markers,
+                 outfile);
 
         // create the outfile
         fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
@@ -1977,7 +2004,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
                 ssize_t w;
                 
                 assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-                      marker->_type == TRI_DOC_MARKER_KEY_EDGE);
+                       marker->_type == TRI_DOC_MARKER_KEY_EDGE);
 
                 tick = TRI_NewTickServer();
 
@@ -2062,7 +2089,6 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
 
       TRI_DestroyVectorPointer(&datafiles);
     }
-
   }
 
 
@@ -2070,10 +2096,170 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
 
   if (res == TRI_ERROR_NO_ERROR) {
     // when no error occurred, we'll bump the version number in the collection parameters file.
-    info->_version = TRI_COL_VERSION;
+    info->_version = TRI_COL_VERSION_13;
     res = TRI_SaveCollectionInfo(path, info, true); 
   }
 
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrade a collection to ArangoDB 1.5+ format
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase, 
+                             const char* const path,
+                             TRI_col_info_t* info) {
+  
+  regex_t re;
+  TRI_vector_string_t files;
+  char* shapes;
+  char* outfile;
+  ssize_t written;
+  int fdout;
+  size_t i, n;
+  int res;
+  
+  TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION_15);
+ 
+  if (regcomp(&re, "^journal|datafile-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  shapes = TRI_Concatenate2File(path, "SHAPES");
+
+  if (shapes == NULL) {
+    regfree(&re);
+    
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  outfile = TRI_Concatenate2File(path, "datafile-1.db");
+
+  if (outfile == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, shapes);
+    regfree(&re);
+    
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  // find all files in the collection directory
+  files = TRI_FilesDirectory(shapes);
+  n = files._length;
+  fdout = 0;
+
+  for (i = 0;  i < n;  ++i) {
+    regmatch_t matches[1];
+    char const* file = files._buffer[i];
+
+    if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      TRI_datafile_t* datafile;
+      char* fqn;
+      
+      fqn = TRI_Concatenate2File(shapes, file);
+      
+      if (fqn == NULL) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
+
+      // create the shape datafile
+      if (fdout == 0) {
+        TRI_df_header_marker_t header;
+        TRI_col_header_marker_t cm;
+        TRI_voc_tick_t tick;
+
+        if (TRI_ExistsFile(outfile)) {
+          TRI_UnlinkFile(outfile);
+        }
+
+        fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+        if (fdout < 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, fqn);
+          LOG_ERROR("cannot create new datafile '%s'", outfile);
+          res = TRI_ERROR_CANNOT_WRITE_FILE;
+          break;
+        }
+
+        tick = TRI_NewTickServer();
+
+        // datafile header
+        TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+        header._version     = TRI_DF_VERSION;
+        header._maximalSize = 0; // TODO: check if this is ok 
+        header._fid         = tick;
+        header.base._tick   = tick;
+        header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
+
+        written += TRI_WRITE(fdout, &header.base, header.base._size);
+
+        // col header
+        TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+        cm._type      = (TRI_col_type_t) info->_type;
+        cm._cid       = info->_cid;
+        cm.base._tick = tick;
+        cm.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
+
+        written += TRI_WRITE(fdout, &cm.base, cm.base._size);
+      }
+      
+      // open the datafile, and push it into a vector of datafiles
+      datafile = TRI_OpenDatafile(fqn);
+
+      if (datafile == NULL) {
+        res = TRI_errno();
+        TRI_Free(TRI_CORE_MEM_ZONE, fqn);
+        break;
+      }
+      else {
+        shape_iterator_t si;
+        si._fdout = fdout;
+        si._written = &written;
+        
+        TRI_IterateDatafile(datafile, UpgradeShapeIterator, &si, false, false);
+      }
+
+      TRI_Free(TRI_CORE_MEM_ZONE, fqn);
+    }
+  }
+      
+  if (fdout > 0) {
+    if (res == TRI_ERROR_NO_ERROR) {
+      // datafile footer
+      TRI_df_footer_marker_t footer;
+      TRI_voc_tick_t tick;
+
+      tick = TRI_NewTickServer();
+      TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+      footer.base._tick   = tick;
+      footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
+          
+      written += TRI_WRITE(fdout, &footer.base, footer.base._size);
+    
+      TRI_CLOSE(fdout);
+    }
+    else {
+      TRI_CLOSE(fdout);
+      TRI_UnlinkFile(outfile);
+    }
+  }
+  
+  TRI_DestroyVectorString(&files);
+  TRI_Free(TRI_CORE_MEM_ZONE, outfile);
+  TRI_Free(TRI_CORE_MEM_ZONE, shapes);
+  regfree(&re);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    // when no error occurred, we'll bump the version number in the collection parameters file.
+    info->_version = TRI_COL_VERSION_15;
+    res = TRI_SaveCollectionInfo(path, info, true); 
+  }
+  
   return res;
 }
 
@@ -2172,8 +2358,8 @@ char* TRI_TypeNameCollection (const TRI_col_type_e type) {
       return "document";
     case TRI_COL_TYPE_EDGE:
       return "edge";
-    case TRI_COL_TYPE_SHAPE:
-      return "shape";
+    case TRI_COL_TYPE_SHAPE_DEPRECATED:
+      return "shape (deprecated)";
   }
 
   return "unknown";
