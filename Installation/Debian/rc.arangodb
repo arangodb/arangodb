@@ -26,7 +26,12 @@ start () {
     test -d $PIDDIR || mkdir $PIDDIR
     chown arangodb $PIDDIR
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
+    if [ "$1" == "--upgrade" ]; then
+      $DAEMON -c $CONF $@
+    else
+      $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
+    fi
+
     RETVAL=$?
 
     log_end_msg $RETVAL
