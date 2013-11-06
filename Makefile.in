@@ -1129,17 +1129,23 @@ VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 ################################################################################
 
 ################################################################################
+### @brief configuration files
+################################################################################
+
+################################################################################
 ### @brief sets up the directories
 ################################################################################
 BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
-	etc/arangodb/arangob.conf etc/arangodb/arangod.conf \
-	etc/arangodb/arangodump.conf etc/arangodb/arangoimp.conf \
-	etc/arangodb/arangoirb.conf etc/arangodb/arangorestore.conf \
-	etc/arangodb/arangosh.conf $(am__append_12) \
-	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
-	@builddir@/.setup-js-directories $(am__append_13) \
-	$(am__append_15) $(am__append_16) @ZLIB_LIBS@ $(am__append_17) \
-	$(am__append_19) $(am__append_21) $(am__append_23)
+	etc/arangodb/arangod-arm.conf \
+	etc/arangodb/arangod-uid-arm.conf etc/arangodb/arangob.conf \
+	etc/arangodb/arangod.conf etc/arangodb/arangodump.conf \
+	etc/arangodb/arangoimp.conf etc/arangodb/arangoirb.conf \
+	etc/arangodb/arangorestore.conf etc/arangodb/arangosh.conf \
+	$(am__append_12) Doxygen/.setup-directories \
+	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
+	$(am__append_13) $(am__append_15) $(am__append_16) @ZLIB_LIBS@ \
+	$(am__append_17) $(am__append_19) $(am__append_21) \
+	$(am__append_23)
 
 ################################################################################
 ### @brief man pages to install
@@ -7440,7 +7446,14 @@ uninstall-man: uninstall-man1 uninstall-man8
 
 
 etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:# \([ug]id\):\1:' $< > $@
+	sed -e 's:^# \([ug]id\):\1:' $< > $@
+
+etc/arangodb/arangod-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' $< > $@
+
+etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:^# \([ug]id\):\1:' $< \
+      | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
 
 ################################################################################
 ### @brief /var data
@@ -8676,7 +8689,9 @@ pack-dmg:
 
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
 		-D "ARANGODB_VERSION=@VERSION@" \
@@ -8699,6 +8714,9 @@ pack-arm:
 	rm -rf Build && mkdir Build
 
 	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
 		--enable-all-in-one-icu \
 		--enable-all-in-one-v8 \
 		--enable-all-in-one-libev \
@@ -8706,9 +8724,9 @@ pack-arm:
 
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=debian" \
-		-D "CMAKE_INSTALL_PREFIX=/usr" \
-		-D "ETCDIR=/etc" \
-		-D "VARDIR=/var" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=OFF" \
 		-D "USE_RAW_CONFIG=OFF" \
 		-D "ARANGODB_VERSION=@VERSION@" \
