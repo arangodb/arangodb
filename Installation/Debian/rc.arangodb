@@ -1,12 +1,12 @@
 #! /bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          arangod
+# Provides:          arangodb
 # Required-Start:    
 # Required-Stop:     
-# Default-Start:     S 2 3 4 5
+# Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: arangod
+# Short-Description: arangodb
 # Description:       arango database server 
 ### END INIT INFO
 
@@ -16,51 +16,58 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/arangod
 DESC="arango database server"
 NAME="arangod"
+PIDDIR=/var/run/arangodb
 PIDFILE=/var/run/arangodb/arangod.pid
 CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
 start () {
-    pid=$( pidofproc -p $PIDFILE $DAEMON )
+    test -d $PIDDIR || mkdir $PIDDIR
+    chown arangodb $PIDDIR
 
-    if [ -n "$pid" ] ; then
-      log_begin_msg "Already running."
-      log_end_msg 0
-      exit 0
+    if [ "$1" == "--upgrade" ]; then
+      $DAEMON -c $CONF $@
+    else
+      $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
     fi
 
-    ARANGO_PIDDIR=`dirname $PIDFILE`
-    test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
+    RETVAL=$?
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
-    log_end_msg $?
+    log_end_msg $RETVAL
+
+    return $RETVAL
 }
 
 case "$1" in
   start)
-    log_begin_msg "Starting $DESC" "$NAME"
+    log_daemon_msg "Starting $DESC" "$NAME"
 
     start
+    exit $?
     ;;
 
   stop)
     log_begin_msg "Stopping $DESC" "$NAME"
 
     start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
-    log_end_msg $?
+    RETVAL=$?
+    log_end_msg $RETVAL
 
     test -f $PIDFILE && rm -f $PIDFILE
+    exit $RETVAL
     ;;
 
   restart)
     $0 stop
     sleep 3
     $0 start
+    exit $?
     ;;
 
   force-reload)
     $0 restart
+    exit $?
     ;;
 
   status)
@@ -68,15 +75,17 @@ case "$1" in
     ;;
 
   upgrade)
-    log_begin_msg "Upgrading $DESC" "$NAME"
+    log_daemon_msg "Upgrading $DESC" "$NAME"
 
     start --upgrade
+    exit $?
     ;;
 
   *)
-    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status|upgrade}"
+    log_success_msg "Usage: /etc/init.d/arangodb {start|stop|restart|force-reload|status|upgrade}"
     exit 1
     ;;
 esac
 
 exit 0
+

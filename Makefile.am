@@ -497,6 +497,10 @@ endif
 ## --SECTION--                                                     CMAKE & CPACK
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief MacOSX bundle
+################################################################################
+
 .PHONY: pack-dmg
 
 DMG_NAME := ArangoDB-CLI.app
@@ -512,9 +516,11 @@ pack-dmg:
 		--enable-mruby
 
 	cd Build && cmake \
+		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
+		-D "ARANGODB_VERSION=@VERSION@" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
@@ -523,6 +529,40 @@ pack-dmg:
 	cd Build && cpack \
 		-G Bundle \
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
+
+################################################################################
+### @brief debian arm package
+################################################################################
+
+.PHONY: pack-arm
+
+pack-arm:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--disable-mruby
+
+	cd Build && cmake \
+		-D "BUILD_PACKAGE=debian" \
+		-D "CMAKE_INSTALL_PREFIX=/usr" \
+		-D "ETCDIR=/etc" \
+		-D "VARDIR=/var" \
+		-D "USE_MRUBY=OFF" \
+		-D "USE_RAW_CONFIG=OFF" \
+		-D "ARANGODB_VERSION=@VERSION@" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
+                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		..
+
+	cd Build && cpack \
+		-G DEB
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
