@@ -378,6 +378,10 @@ endif ()
 ################################################################################
 
 if ((BUILD_PACKAGE STREQUAL "debian") OR (BUILD_PACKAGE STREQUAL "raspbian"))
+  if (BUILD_PACKAGE STREQUAL "raspbian")
+    set(CPACK_SYSTEM_NAME "raspbian")
+  endif ()
+
   set(CPACK_DEBIAN_PACKAGE_SECTION "database")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
     "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
