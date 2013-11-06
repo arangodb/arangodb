@@ -108,10 +108,22 @@ struct TRI_vocbase_col_s;
 #define TRI_COL_NAME_REGEX      "[a-zA-Z_][0-9a-zA-Z_-]*"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection version
+/// @brief collection version for ArangoDB >= 1.3
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_VERSION         (4)
+#define TRI_COL_VERSION_13      (4)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection version for ArangoDB >= 1.5
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COL_VERSION_15      (5)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current collection version
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COL_VERSION TRI_COL_VERSION_15
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief predefined system collection name for replication
@@ -200,9 +212,9 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_TYPE_SHAPE    = 1,
-  TRI_COL_TYPE_DOCUMENT = 2,
-  TRI_COL_TYPE_EDGE     = 3
+  TRI_COL_TYPE_SHAPE_DEPRECATED = 1, // not used since ArangoDB 1.5
+  TRI_COL_TYPE_DOCUMENT         = 2,
+  TRI_COL_TYPE_EDGE             = 3
 }
 TRI_col_type_e;
 
@@ -475,12 +487,20 @@ TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const*);
 void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade a collection
+/// @brief upgrade a collection to ArangoDB 1.3+ format
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpgradeCollection (TRI_vocbase_t*,
-                           const char* const,
-                           TRI_col_info_t*);
+int TRI_UpgradeCollection13 (TRI_vocbase_t*,
+                             const char* const,
+                             TRI_col_info_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrade a collection to ArangoDB 1.5+ format
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UpgradeCollection15 (TRI_vocbase_t*,
+                             const char* const,
+                             TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers in the collection's journals 

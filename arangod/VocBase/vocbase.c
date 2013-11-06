@@ -965,7 +965,15 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           if (info._version < TRI_COL_VERSION) {
             LOG_INFO("upgrading collection '%s'", info._name);
 
-            res = TRI_UpgradeCollection(vocbase, file, &info);
+            res = TRI_ERROR_NO_ERROR;
+
+            if (info._version < TRI_COL_VERSION_13) {
+              res = TRI_UpgradeCollection13(vocbase, file, &info);
+            }
+            
+            if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_15) {
+              res = TRI_UpgradeCollection15(vocbase, file, &info);
+            }
 
             if (res != TRI_ERROR_NO_ERROR) {
               LOG_ERROR("upgrading collection '%s' failed.", info._name);
