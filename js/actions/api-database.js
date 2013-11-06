@@ -277,7 +277,25 @@ function post_api_database (req, res) {
     return;
   }
 
-  var result = arangodb.db._createDatabase(json.name || "", options);
+  var users = json.users;
+  
+  if (users === undefined) {
+    users = [ ];
+  }
+  else if (! Array.isArray(users)) {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  var i;
+  for (i = 0; i < users.length; ++i) {
+    if (typeof users[i] !== 'object' || ! users[i].hasOwnProperty('username')) {
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      return;
+    }
+  }
+
+  var result = arangodb.db._createDatabase(json.name || "", options, users);
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
