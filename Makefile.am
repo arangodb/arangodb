@@ -64,6 +64,26 @@ BISON_FILES =
 
 BISONXX_FILES = 
 
+################################################################################
+### @brief configuration files
+################################################################################
+
+BUILT_SOURCES += etc/arangodb/arangod-uid.conf
+
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:^# \([ug]id\):\1:' $< > $@
+
+BUILT_SOURCES += etc/arangodb/arangod-arm.conf
+
+etc/arangodb/arangod-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' $< > $@
+
+BUILT_SOURCES += etc/arangodb/arangod-uid-arm.conf
+
+etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:^# \([ug]id\):\1:' $< \
+      | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
 ## -----------------------------------------------------------------------------
@@ -85,11 +105,6 @@ TRI_SBINDIR = ${sbindir}
 TRI_BINDIR = ${bindir}
 
 endif
-
-BUILT_SOURCES += etc/arangodb/arangod-uid.conf
-
-etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:# \([ug]id\):\1:' $< > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FLAGS
@@ -517,7 +532,9 @@ pack-dmg:
 
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
 		-D "ARANGODB_VERSION=@VERSION@" \
@@ -540,6 +557,9 @@ pack-arm:
 	rm -rf Build && mkdir Build
 
 	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
 		--enable-all-in-one-icu \
 		--enable-all-in-one-v8 \
 		--enable-all-in-one-libev \
@@ -547,9 +567,9 @@ pack-arm:
 
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=debian" \
-		-D "CMAKE_INSTALL_PREFIX=/usr" \
-		-D "ETCDIR=/etc" \
-		-D "VARDIR=/var" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=OFF" \
 		-D "USE_RAW_CONFIG=OFF" \
 		-D "ARANGODB_VERSION=@VERSION@" \

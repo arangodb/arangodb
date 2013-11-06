@@ -82,6 +82,7 @@ set(ARANGODB_VERSION "1.x.y-rc1" CACHE path "ArangoDB version")
 ### Posible options are:
 ### - dmg-cli: Mac OS X shell client application
 ### - debian: debian package
+### - raspbian: raspberry debian package
 ################################################################################
 
 set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
@@ -350,6 +351,8 @@ set(CPACK_SET_DESTDIR ON)
 
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
+elseif (BUILD_PACKAGE STREQUAL "raspbian")
+  set(CPACK_PACKAGE_NAME "arangodb")
 elseif (BUILD_PACKAGE STREQUAL "debian")
   set(CPACK_PACKAGE_NAME "arangodb")
 endif ()
@@ -374,7 +377,7 @@ endif ()
 ### @brief debian package
 ################################################################################
 
-if (BUILD_PACKAGE STREQUAL "debian")
+if (BUILD_PACKAGE STREQUAL "debian" or BUILD_PACKAGE STREQUAL "raspbian")
   set(CPACK_DEBIAN_PACKAGE_SECTION "database")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
     "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
