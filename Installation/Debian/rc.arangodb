@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 ### BEGIN INIT INFO
 # Provides:          arangodb
@@ -26,7 +26,7 @@ start () {
     test -d $PIDDIR || mkdir $PIDDIR
     chown arangodb $PIDDIR
 
-    if [ "$1" == "--upgrade" ]; then
+    if [ "x$1" == "x--upgrade" ]; then
       $DAEMON -c $CONF $@
     else
       $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
