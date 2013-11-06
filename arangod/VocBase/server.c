@@ -43,6 +43,7 @@
 #include "BasicsC/random.h"
 #include "BasicsC/tri-strings.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
+#include "VocBase/auth.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
@@ -474,8 +475,38 @@ static int WriteShutdownInfo (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick value, without using a lock
+/// @brief check if a user can see a database
 ////////////////////////////////////////////////////////////////////////////////
+
+static bool CanUseDatabase (TRI_vocbase_t* vocbase,
+                            char const* username,
+                            char const* password) {
+  if (! vocbase->_settings.requireAuthentication) {
+    // authentication is turned off
+    return true;
+  }
+
+  return TRI_CheckAuthenticationAuthInfo(vocbase, NULL, username, password);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator for database names
+////////////////////////////////////////////////////////////////////////////////
+
+static int DatabaseNameComparator (const void* lhs, const void* rhs) {
+  const char* l = *((char**) lhs);
+  const char* r = *((char**) rhs);
+  
+  return strcmp(l, r);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort a list of database names
+////////////////////////////////////////////////////////////////////////////////
+
+static void SortDatabaseNames (TRI_vector_string_t* names) {
+  qsort(names->_buffer, names->_length, sizeof(char*), &DatabaseNameComparator); 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -498,7 +529,7 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 /// the filename. this is used to sort database filenames on startup 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int NameComparator (const void* lhs, const void* rhs) {
+static int DatabaseIdComparator (const void* lhs, const void* rhs) {
   const char* l = *((char**) lhs);
   const char* r = *((char**) rhs);
 
@@ -600,7 +631,7 @@ static int OpenDatabases (TRI_server_t* server) {
  
   // open databases in defined order
   if (n > 1) {
-    qsort(files._buffer, n, sizeof(char**), &NameComparator);
+    qsort(files._buffer, n, sizeof(char**), &DatabaseIdComparator);
   }
 
   for (i = 0;  i < n;  ++i) {
@@ -914,7 +945,7 @@ static int GetDatabases (TRI_server_t* server,
   regfree(&re);
  
   // sort by id 
-  qsort(databases->_buffer, databases->_length, sizeof(char*), &NameComparator);
+  qsort(databases->_buffer, databases->_length, sizeof(char*), &DatabaseIdComparator);
 
   return res;
 }
@@ -2179,6 +2210,58 @@ void TRI_ReleaseDatabaseServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of all databases a user can see 
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_GetUserDatabasesServer (TRI_server_t* server,
+                                char const* username,
+                                char const* password,
+                                TRI_vector_string_t* names) {
+
+  size_t i, n;
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+
+  TRI_ReadLockReadWriteLock(&server->_databasesLock);
+  n = server->_databases._nrAlloc;
+
+  for (i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = server->_databases._table[i];
+
+    if (vocbase != NULL) {
+      char* copy;
+
+      assert(vocbase->_name != NULL);
+
+      if (! CanUseDatabase(vocbase, username, password)) {
+        // user cannot see database
+        continue;
+      }
+
+      copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
+
+      if (copy == NULL) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
+
+      if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
+        // insertion failed.
+        TRI_Free(names->_memoryZone, copy);
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
+    }
+  }
+  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+
+  SortDatabaseNames(names);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all database names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2217,6 +2300,8 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
     }
   }
   TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+  
+  SortDatabaseNames(names);
 
   return res;
 }
