@@ -23,6 +23,19 @@ describe ArangoDB do
     end
 
 ################################################################################
+## retrieving the list of databases for the current user
+################################################################################
+
+    it "retrieves the list of user-specific databases" do
+      doc = ArangoDB.log_get("#{prefix}-list-user", api + "/user")
+
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+
+      result.should include("_system")
+    end
+
+################################################################################
 ## checking information about current database
 ################################################################################
 

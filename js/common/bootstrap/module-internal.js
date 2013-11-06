@@ -5,6 +5,7 @@
   REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
   REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE,
   REPLICATION_SYNCHRONISE, REPLICATION_SERVER_ID, CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
+  SYS_BASE64DECODE, SYS_BASE64ENCODE,
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
@@ -354,6 +355,24 @@
   if (typeof LIST_ENDPOINTS !== "undefined") {
     exports.listEndpoints = LIST_ENDPOINTS;
     delete LIST_ENDPOINTS;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base64Decode
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_BASE64DECODE !== "undefined") {
+    exports.base64Decode = SYS_BASE64DECODE;
+    delete SYS_BASE64DECODE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base64Encode
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_BASE64ENCODE !== "undefined") {
+    exports.base64Encode = SYS_BASE64ENCODE;
+    delete SYS_BASE64ENCODE;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
