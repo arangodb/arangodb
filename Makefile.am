@@ -572,7 +572,7 @@ pack-arm:
 
 pack-arm-cmake:
 	cd Build && cmake \
-		-D "BUILD_PACKAGE=debian" \
+		-D "BUILD_PACKAGE=raspbian" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
