@@ -47,7 +47,11 @@ start () {
     ARANGO_PIDDIR=`dirname $ARANGO_PIDFILE`
     test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
  
-    startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor $@ 
+    if [ "$1" == "--upgrade" ];  then
+      $ARANGO_BIN -c $ARANGO_SYSCONFIG $@ 
+    else
+      startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor $@ 
+    fi
 
     # Remember status and be verbose
     rc_status -v
