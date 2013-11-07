@@ -250,6 +250,9 @@ function get_api_database (req, res) {
 /// @RESTRETURNCODE{403}
 /// is returned if the request was not executed in the `_system` database.
 ///
+/// @RESTRETURNCODE{409}
+/// is returned if a database with the specified name already exists.
+///
 /// @EXAMPLES
 ///
 /// Creating a database named `example`.
