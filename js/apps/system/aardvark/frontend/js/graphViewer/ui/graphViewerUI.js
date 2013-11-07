@@ -174,7 +174,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       var toolbox = document.createElement("div"),
         dispatcherUI = new EventDispatcherControls(
           toolbox,
-          //mousePointerBox,
           graphViewer.nodeShaper,
           graphViewer.edgeShaper,
           graphViewer.dispatcherConfig
@@ -182,12 +181,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
       background.appendChild(toolbox);
-      /*
-      mousePointerBox.id = "mousepointer";
-      mousePointerBox.className = "mousepointer";
-      background.appendChild(mousePointerBox);
-      */
       dispatcherUI.addAll();
+      // Default selection
+      $("#control_event_expand").click();
     },
     
     updateAttributeExamples = function() {

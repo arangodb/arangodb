@@ -1,0 +1,12 @@
+span.selectDB {
+  top: 6px;
+  left: 210px;
+  position: absolute;
+}
+
+span.selectDB > select {
+  line-height: 20px;
+  height: 20px;
+  width: 150px;
+  padding: 0px;
+}

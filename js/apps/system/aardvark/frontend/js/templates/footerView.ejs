@@ -1,8 +1,17 @@
-
+<%
+  var n,v,db;
+  if (name) {
+    n = name || "";
+    v = version || "";
+    db = database || "";
+  }
+%>
 <div class="footer-left">
   <!--p>&nbsp;<a id="currentUser" style="color:#FFFFFF"></a></p-->
-  <p>Copyright (c) triAGENS GmbH</p>
+  <p <%=margin?"style='margin-left:"+margin+"px'":""%>>Copyright (c) triAGENS GmbH</p>
 </div>
 
-<div class="footer-right"><p> </p></div>
+<div class="footer-right">
+  <p <%=margin?"style='margin-right:"+margin+"px'":""%>><% if(n) { %>Server: <%=n%> <%=v%>, Database: <%=db%><% } %></p>
+</div>
 <div class="footer-invisible" id="databaseName"></div>
