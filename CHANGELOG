@@ -31,6 +31,7 @@ v1.5.x (XXXX-XX-XX)
 
 * added collection status "loading"
 
+
 v1.4.1-rc1 (2013-11-07)
 -----------------------
 
@@ -81,6 +82,7 @@ v1.4.1-rc1 (2013-11-07)
   username/passwd.
 
 * issue #424: Documentation about IDs needs to be upgraded
+
 
 v1.4.0 (2013-10-29)
 -------------------
