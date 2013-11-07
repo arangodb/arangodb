@@ -797,6 +797,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
       if (vocbase != 0) {
         // special check script to be run just once in first thread (not in all) 
         // but for all databases
+        v8::HandleScope scope;
+
+        context->_context->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+
         bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
       
         if (! ok) {
