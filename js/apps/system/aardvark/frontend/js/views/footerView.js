@@ -1,11 +1,10 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, arangoHelper, window*/
+/*global Backbone, templateEngine, $, arangoHelper, window*/
 
 var footerView = Backbone.View.extend({
   el: '.footer',
   system: {},
   isOffline: true,
-  dbSelectionView: null,
 
   initialize: function () {
     //also server online check
@@ -13,10 +12,6 @@ var footerView = Backbone.View.extend({
     window.setInterval(function(){
       self.getVersion();
     }, 15000);
-    this.dbSelectionView = new window.DBSelectionView({
-      collection: arangoDatabase
-    });
-    
     self.getVersion();
   },
 
@@ -62,20 +57,31 @@ var footerView = Backbone.View.extend({
         success: function(data) {
           var name = data.result.name;
           self.system.database = name;
-          $('#databaseName').html(name);
-          if (name === '_system') {
-            // show "logs" button
-            $('.logs-menu').css('visibility', 'visible');
-            // show dbs menues
-            $('#databaseNavi').css('display','inline');
-            $('#databaseNaviSelect').css('display','inline');
-          }
-          else {
-            // hide "logs" button
-            $('.logs-menu').css('visibility', 'hidden');
-            $('.logs-menu').css('display', 'none');
-          }
-          self.render();
+          window.databaseName = name;
+
+          var timer = window.setInterval(function () {
+            var navElement = $('#databaseNavi');
+
+            if (navElement) {
+              window.clearTimeout(timer);
+              timer = null;
+
+              if (name === '_system') {
+                // show "logs" button
+                $('.logs-menu').css('visibility', 'visible');
+                $('.logs-menu').css('display', 'inline');
+                // show dbs menues
+                $('#databaseNavi').css('display','inline');
+                $('#databaseNaviSelect').css('display','inline');
+              }
+              else {
+                // hide "logs" button
+                $('.logs-menu').css('visibility', 'hidden');
+                $('.logs-menu').css('display', 'none');
+              }
+              self.render();
+            }
+          }, 50);
         }
       });
     }
@@ -89,7 +95,6 @@ var footerView = Backbone.View.extend({
         database: this.system.database,
         margin: this.resizeMargin
       }));
-      this.dbSelectionView.render($("#selectDB"));
      /* 
           var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
         ', Database: ' + this.system.database;
@@ -113,7 +118,6 @@ var footerView = Backbone.View.extend({
       database: this.system.database,
       margin: this.resizeMargin
     }));
-    this.dbSelectionView.render($("#selectDB"));
     return this;
   }
 
