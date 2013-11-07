@@ -58,19 +58,30 @@ var footerView = Backbone.View.extend({
           var name = data.result.name;
           self.system.database = name;
           $('#databaseName').html(name);
-          if (name === '_system') {
-            // show "logs" button
-            $('.logs-menu').css('visibility', 'visible');
-            // show dbs menues
-            $('#databaseNavi').css('display','inline');
-            $('#databaseNaviSelect').css('display','inline');
-          }
-          else {
-            // hide "logs" button
-            $('.logs-menu').css('visibility', 'hidden');
-            $('.logs-menu').css('display', 'none');
-          }
-          self.render();
+
+          var timer = window.setInterval(function () {
+            var navElement = $('#databaseNavi');
+
+            if (navElement) {
+              window.clearTimeout(timer);
+              timer = null;
+
+              if (name === '_system') {
+                // show "logs" button
+                $('.logs-menu').css('visibility', 'visible');
+                $('.logs-menu').css('display', 'inline');
+                // show dbs menues
+                $('#databaseNavi').css('display','inline');
+                $('#databaseNaviSelect').css('display','inline');
+              }
+              else {
+                // hide "logs" button
+                $('.logs-menu').css('visibility', 'hidden');
+                $('.logs-menu').css('display', 'none');
+              }
+              self.render();
+            }
+          }, 50);
         }
       });
     }
