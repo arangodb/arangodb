@@ -1,5 +1,5 @@
 /*jslint indent: 2, stupid: true, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, window, exports, Backbone, EJS, $, arangoHelper */
+/*global require, window, exports, Backbone, $, arangoHelper, templateEngine */
 
 var collectionView = Backbone.View.extend({
   el: '#modalPlaceholder',

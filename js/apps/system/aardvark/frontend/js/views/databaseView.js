@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $ */
+/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper */
 
 window.databaseView = Backbone.View.extend({
   el: '#content',
@@ -34,7 +34,8 @@ window.databaseView = Backbone.View.extend({
     this.collection.map(function(dbs) {
       $("#databaseTable tbody").append(
         '<tr><td><a>' + dbs.get("name") + '</a></td>' +
-        '<td><span class="glyphicon glyphicon-minus-sign" data-original-title="Delete database"></span></td></tr>'
+        '<td><span class="glyphicon glyphicon-minus-sign"' + 
+        'data-original-title="Delete database"></span></td></tr>'
       );
     });
   },
@@ -71,7 +72,7 @@ window.databaseView = Backbone.View.extend({
       arangoHelper.arangoError("Databasename should not start with _");
       return false;
     }
-    if (!db.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
+    if (!db.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
       arangoHelper.arangoError("Databasename may only contain numbers, letters, _ and -");
       return false;
     }
