@@ -218,7 +218,7 @@ function get_api_database (req, res) {
 /// must be a list of user objects to initially create for the new database.
 /// Each user object can contain the following attributes:
 ///
-/// - `username`: the user name as a string
+/// - `username`: the user name as a string. This attribute is mandatory.
 ///
 /// - `passwd`: the user password as a string. If not specified, then it defaults
 ///   to the empty string.
