@@ -4,6 +4,7 @@ TOC {#HandlingIndexesTOC}
 - @ref HandlingIndexes
   - @ref HandlingIndexesIntro
   - @ref HandlingIndexesResource
+  - @ref HandlingIndexesWhichWhen
   - @ref HandlingIndexesShell
     - @ref HandlingIndexesCollectionMethods
       - @ref HandlingIndexesRead "collection.index"
