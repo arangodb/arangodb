@@ -215,6 +215,94 @@ function DatabaseSuite () {
 /// @brief test _createDatabase function
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCreateDatabaseWithUsers1 : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+
+      // empty users
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, [ ]));
+      
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseWithUsers2 : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+
+      var users = [ 
+        { username: "admin", passwd: "secret", extra: { gender: "m" } },
+        { username: "foo", active: false, extra: { gender: "f" } }
+      ];
+
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
+
+      internal.db._useDatabase("UnitTestsDatabase0");
+      var m = require("org/arangodb/users");
+      var user = m.document("admin");
+
+      assertEqual("admin", user.user);
+      assertTrue(user.active);
+      assertEqual("m", user.extra.gender);
+      
+      user = m.document("foo");
+      assertEqual("foo", user.user);
+      assertFalse(user.active);
+      assertEqual("f", user.extra.gender);
+
+      internal.db._useDatabase("_system");
+      
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseWithUsers3 : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err1) {
+      }
+
+      var users = [ 
+        { username: "admin", passwd: "secret", active: true, extra: { gender: "m" } }, 
+        { username: "admin", passwd: "", active: false, extra: { gender: "m" } }, 
+      ];
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
+
+      internal.db._useDatabase("UnitTestsDatabase0");
+      var m = require("org/arangodb/users");
+      var user = m.document("admin");
+      assertEqual("admin", user.user);
+      assertTrue(user.active);
+      assertEqual("m", user.extra.gender);
+
+      internal.db._useDatabase("_system");
+      
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
     testCreateDatabaseInvalidName : function () {
       assertEqual("_system", internal.db._name());
 
@@ -298,7 +386,7 @@ function DatabaseSuite () {
 /// @brief test _createDatabase function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseCase : function () {
+    testCreateDatabaseCaseSensitivity : function () {
       assertEqual("_system", internal.db._name());
 
       var getCollections = function () {

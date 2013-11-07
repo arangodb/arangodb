@@ -287,14 +287,13 @@
 
       if (args && args.users) {
         args.users.forEach(function(user) {
-          userManager.save(user.username, user.password, user.active || true, user.extra || { });
+          userManager.save(user.username, user.passwd, user.active, user.extra || { });
         });
       }
-      else {
-        if (users.count() === 0) {
-          // only add account if user has not created his/her own accounts already
-          userManager.save("root", "", true);
-        }
+
+      if (users.count() === 0) {
+        // only add account if user has not created his/her own accounts already
+        userManager.save("root", "", true);
       }
 
       return true;
