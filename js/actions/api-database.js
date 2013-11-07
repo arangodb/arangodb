@@ -212,7 +212,27 @@ function get_api_database (req, res) {
 /// Creates a new database
 ///
 /// The request body must be a JSON object with the attribute `name`. `name` must
-/// contain a valid @ref DatabaseNames.
+/// contain a valid @ref DatabaseNames "database name".
+///
+/// The request body can optionally contain an attribute `users`, which then 
+/// must be a list of user objects to initially create for the new database.
+/// Each user object can contain the following attributes:
+///
+/// - `username`: the user name as a string
+///
+/// - `passwd`: the user password as a string. If not specified, then it defaults
+///   to the empty string.
+///
+/// - `active`: a boolean flag indicating whether the user accout should be
+///   actived or not. The default value is `true`.
+///
+/// - `extra`: an optional JSON object with extra user information. The data
+///   contained in `extra` will be stored for the user but not be interpreted
+///   further by ArangoDB.
+///
+/// If `users` is not specified or does not contain any users, a default user
+/// `root` will be created with an empty string password. This ensures that the
+/// new database will be accessible after it is created.
 ///
 /// The response is a JSON object with the attribute `result` set to `true`.
 ///
@@ -232,6 +252,8 @@ function get_api_database (req, res) {
 ///
 /// @EXAMPLES
 ///
+/// Creating a database named `example`.
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreate}
 ///     var url = "/_api/database";
 ///     var name = "example";
@@ -243,6 +265,40 @@ function get_api_database (req, res) {
 ///
 ///     var data = {
 ///       name: name
+///     };
+///     var response = logCurlRequest('POST', url, JSON.stringify(data));
+///
+///     db._dropDatabase(name);
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Creating a database named `mydb` with two users.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreateUsers}
+///     var url = "/_api/database";
+///     var name = "mydb";
+///     try {
+///       db._dropDatabase(name);
+///     }
+///     catch (err) {
+///     }
+///
+///     var data = {
+///       name: name,
+///       users: [
+///         { 
+///           username : "admin", 
+///           passwd : "secret",
+///           active: true
+///         },
+///         {
+///           username : "tester", 
+///           passwd : "test001",
+///           active: false
+///         }
+///       ]
 ///     };
 ///     var response = logCurlRequest('POST', url, JSON.stringify(data));
 ///
@@ -289,9 +345,27 @@ function post_api_database (req, res) {
 
   var i;
   for (i = 0; i < users.length; ++i) {
-    if (typeof users[i] !== 'object' || ! users[i].hasOwnProperty('username')) {
+    var user = users[i];
+    if (typeof user !== 'object' || 
+        ! user.hasOwnProperty('username') ||
+        typeof(user.username) !== 'string') {
+      // bad username
       actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
       return;
+    }
+
+    if (! user.hasOwnProperty('passwd')) {
+      // default to empty string
+      users[i].passwd = '';
+    }
+    else if (typeof(user.passwd) !== 'string') {
+      // bad password type
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      return;
+    }
+
+    if (! user.hasOwnProperty('active')) {
+      users[i].active = true;
     }
   }
 
