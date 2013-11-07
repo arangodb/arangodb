@@ -19,13 +19,25 @@ DESC="ArangoDB"
 NAME="arangod"
 PIDDIR=/var/run/arangodb
 PIDFILE=${PIDDIR}/arangod.pid
-CONF=/etc/arangodb/arangod.conf
+CONF=/etc/arangodb/arangod-uid.conf
 
 test -x $DAEMON || exit 0
 
 start () {
     test -d $PIDDIR || mkdir $PIDDIR
-    chown arangodb $PIDDIR
+    chown arangodb:arangodb $PIDDIR
+
+    if test -d /var/log/arangodb;  then
+      chown -R arangodb:arangodb /var/log/arangodb
+    fi
+
+    if test -d /var/lib/arangodb;  then
+      chown -R arangodb:arangodb /var/lib/arangodb
+    fi
+
+    if test -d /var/lib/arangodb-apps;  then
+      chown -R arangodb:arangodb /var/lib/arangodb-apps
+    fi
 
     if [ "$1" = "--upgrade" ]; then
       $DAEMON -c $CONF $@
