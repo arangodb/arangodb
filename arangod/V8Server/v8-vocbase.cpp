@@ -7915,15 +7915,35 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ///
-/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options})}
+/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options}, @FA{users})}
 ///
 /// Creates a new database with the name specified by @FA{name}. 
-/// There are restrictions for database names (see @ref DatabaseNames}.
+/// There are restrictions for database names (see @ref DatabaseNames).
 ///
 /// Note that even if the database is created successfully, there will be no
 /// change into the current database to the new database. Changing the current
 /// database must explicitly be requested by using the @ref HandlingDatabasesUse
 /// "db._useDatabase" method.
+///
+/// The optional @FA{users} attribute can be used to create initial users for
+/// the new database. If specified, it must be a list of user objects. Each user 
+/// object can contain the following attributes:
+///
+/// - `username`: the user name as a string. This attribute is mandatory.
+///
+/// - `passwd`: the user password as a string. If not specified, then it defaults
+///   to the empty string.
+///
+/// - `active`: a boolean flag indicating whether the user accout should be
+///   actived or not. The default value is `true`.
+///
+/// - `extra`: an optional JSON object with extra user information. The data
+///   contained in `extra` will be stored for the user but not be interpreted
+///   further by ArangoDB.
+///
+/// If no initial users are specified, a default user `root` will be created 
+/// with an empty string password. This ensures that the new database will be 
+/// accessible via HTTP after it is created.
 ///
 /// This method can only be used from within the `_system` database. 
 ////////////////////////////////////////////////////////////////////////////////
