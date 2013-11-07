@@ -343,11 +343,12 @@ add_subdirectory(UnitTests)
 ## --SECTION--                                                          PACKAGES
 ## -----------------------------------------------------------------------------
 
-set(CPACK_SET_DESTDIR ON)
-
 ################################################################################
 ### @brief general information
 ################################################################################
+
+set(CPACK_SET_DESTDIR ON)
+
 
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
@@ -361,6 +362,9 @@ endif ()
 set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
 set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
+
+
+set(CPACK_STRIP_FILES "ON")
 
 ################################################################################
 ### @brief MacOSX bundle
