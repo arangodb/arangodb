@@ -158,12 +158,9 @@ endif ()
 
 if (BUILD_PACKAGE STREQUAL "raspbian")
   install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
-    DESTINATION ${ETCDIR_NATIVE})
-
-  install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
-    DESTINATION ${ETCDIR_NATIVE})
+    DESTINATION ${ETCDIR_NATIVE}
+    RENAME arangod.conf)
 else ()
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
