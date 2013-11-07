@@ -1,5 +1,5 @@
-v1.5.x (XXXX-XX-XX)
--------------------
+v1.4.1-rc1 (2013-11-07)
+-----------------------
 
 * fixed issue #650: Randonmess of any() should be improved
 
@@ -43,6 +43,7 @@ v1.5.x (XXXX-XX-XX)
   macros are gone.
 
 * added collection status "loading"
+
 
 v1.4.0 (2013-10-29)
 -------------------
