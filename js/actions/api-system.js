@@ -311,37 +311,6 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_admin_echo_database_name
-/// @brief returns the database name
-///
-/// @RESTHEADER{GET /_admin/database_name,returns the database name}
-///
-/// @RESTDESCRIPTION
-///
-/// The call returns an object with the following attributes:
-///
-/// - `name`: the name of the database
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Name was returned successfully.
-///
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/database-name",
-  context : "admin",
-  prefix : true,
-
-  callback : function (req, res) {
-    res.responseCode = actions.HTTP_OK;
-    res.contentType = "application/json; charset=utf-8";
-    res.body = JSON.stringify({ name: internal.db._name() });
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_get_admin_statistics
 /// @brief returns system status information for the server
 ///
