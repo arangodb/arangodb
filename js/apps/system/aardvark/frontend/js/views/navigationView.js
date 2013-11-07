@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window*/
+/*global require, exports, Backbone, templateEngine, $, window, arangoDatabase*/
 
 var navigationView = Backbone.View.extend({
   el: '.header',
@@ -15,13 +15,13 @@ var navigationView = Backbone.View.extend({
   render: function() {
     $(this.el).html(this.template.render({}));
     this.handleSelectNavigation();
-    this.dbSelectionView.render($("#selectDB2"));
+    this.dbSelectionView.render($("#selectDB"));
     return this;
   },
 
   handleResize: function (margin) {
     $('.arango-logo').css('margin-left', margin - 17);
-    $("#selectDB2").css('margin-left', margin - 17);
+    $("#selectDB").css('margin-left', margin - 17);
     $('.nav-collapse').css('margin-right', margin - 10);
   },
 
