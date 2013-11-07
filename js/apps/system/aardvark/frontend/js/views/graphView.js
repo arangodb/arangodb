@@ -1,14 +1,14 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, forin: true */
-/*global require, Backbone, $, _, window, EJS, GraphViewerUI */
+/*global require, Backbone, $, _, window, templateEngine, GraphViewerUI */
 
 window.graphView = Backbone.View.extend({
   el: '#content',
 
-  template: new EJS({url: 'js/templates/graphView.ejs'}),
+  template: templateEngine.createTemplate("graphView.ejs"),
 
   initialize: function () {
     var self = this;
-    this.newLineTmpl = new EJS({url: "js/templates/graphViewGroupByEntry.ejs"});
+    this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
     this.graphs = [];
     this.i = 1;
   },
@@ -17,6 +17,7 @@ window.graphView = Backbone.View.extend({
     "click input[type='radio'][name='loadtype']": "toggleLoadtypeDisplay",
     "click #createViewer": "createViewer",
     "click #add_group_by": "insertNewAttrLine",
+    "click input[type='radio'][name='colour']": "toggleColourDisplay",
     "click .gv_internal_remove_line": "removeAttrLine"
   },
 
@@ -46,6 +47,15 @@ window.graphView = Backbone.View.extend({
     }
   },
 
+  toggleColourDisplay: function() {
+    var selected = $("input[type='radio'][name='colour']:checked").attr("id");
+    if (selected === "samecolour") {
+      $("#colourAttribute_config").css("display", "none");
+      return;
+    }
+    $("#colourAttribute_config").css("display", "block");
+  },
+
   createViewer: function() {
     var ecol,
       ncol,
@@ -58,12 +68,18 @@ window.graphView = Backbone.View.extend({
       color,
       config,
       ui,
+      sameColor,
       width,
       self = this;
 
     undirected = !!$("#undirected").attr("checked");
     label = $("#nodeLabel").val();
-    color = $("#nodeColor").val();
+    sameColor = $("input[type='radio'][name='colour']:checked").attr("id") === "samecolour";
+    if (sameColor) {
+      color = label;
+    } else {
+      color = $("#nodeColor").val();
+    }
     randomStart = !!$("#randomStart").attr("checked");
     
     var graphName;

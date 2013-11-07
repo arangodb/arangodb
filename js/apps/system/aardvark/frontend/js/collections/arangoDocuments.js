@@ -73,8 +73,8 @@ window.arangoDocuments = Backbone.Collection.extend({
 
         if (this.documentsCount <= sortCount) {
           //sorted
-          myQueryVal = "FOR x in @@collection SORT TO_NUMBER(x._key) == 0 ? " + 
-                       "x._key : TO_NUMBER(x._key) LIMIT @offset, @count RETURN x";
+          myQueryVal = "FOR x in @@collection SORT TO_NUMBER(x._key) == 0 " + 
+                       "? x._key : TO_NUMBER(x._key) LIMIT @offset, @count RETURN x";
         }
         else {
           //not sorted

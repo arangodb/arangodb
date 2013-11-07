@@ -94,7 +94,7 @@ gs = _.sortBy(gs, sortF);
                 <div class="control-group">
                   <label for="undirected" class="control-label">Treat graph as undirected</label>
                   <div class="controls">
-                    <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
+                    <input id="undirected" type="checkbox" name="undirected" class="input-xlarge" checked>
                   </div>
                 </div>
                 
@@ -109,14 +109,24 @@ gs = _.sortBy(gs, sortF);
                 <div class="control-group">
                   <label for="nodeLabel" class="control-label">Vertex label attribute (e.g. "name")</label>
                   <div class="controls">
-                    <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Attribute" maxlength="75" class="input-xlarge">
+                    <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Attribute" maxlength="75" class="input-xlarge" value="_key">
                   </div>
                 </div>
  
                 <div class="control-group">
-                  <label for="nodeColor" class="control-label">Vertex color attribute (e.g. "name")</label>
-                  <div class="controls">
-                    <input id="nodeColor" type="text" name="nodeColor" placeholder="Attribute" maxlength="75" class="input-xlarge">
+                  <label class="radio">
+                    <input id="samecolour" type="radio" name="colour" class="gv_radio_button" checked>
+                    Use this attribute for colouring, too
+                  </label>
+                  <label class="radio">
+                    <input id="differentcolour" type="radio" name="colour" class="gv_radio_button">
+                    Use different attribute for colouring
+                  </label>
+                  <div class="control-group" style="display:none" id="colourAttribute_config">
+                    <label for="nodeColor" class="control-label">Vertex color attribute (e.g. "name")</label>
+                    <div class="controls">
+                      <input id="nodeColor" type="text" name="nodeColor" placeholder="Attribute" maxlength="75" class="input-xlarge">
+                    </div>
                   </div>
                 </div>
                 

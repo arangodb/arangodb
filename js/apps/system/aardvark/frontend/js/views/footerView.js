@@ -1,10 +1,10 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, arangoHelper, window*/
+/*global Backbone, templateEngine, $, arangoHelper, window*/
 
 var footerView = Backbone.View.extend({
   el: '.footer',
   system: {},
-  isOffline: false,
+  isOffline: true,
 
   initialize: function () {
     //also server online check
@@ -15,7 +15,7 @@ var footerView = Backbone.View.extend({
     self.getVersion();
   },
 
-  template: new EJS({url: 'js/templates/footerView.ejs'}),
+  template: templateEngine.createTemplate("footerView.ejs"),
 
   getVersion: function () {
     var self = this;
@@ -35,18 +35,17 @@ var footerView = Backbone.View.extend({
           window.setTimeout(function(){
             arangoHelper.arangoNotification("Server connected");
           }, 1000);
+          self.system.name = data.server;
+          self.system.version = data.version;
+          self.render();
         }
-
-        self.system.name = data.server;
-        self.system.version = data.version;
-        self.renderVersion();
       },
       error: function (data) {
         self.isOffline = true;
         arangoHelper.arangoError("Server is offline");
       }
     });
-    
+
     if (! self.system.hasOwnProperty('database')) {
       $.ajax({
         type: "GET",
@@ -62,13 +61,16 @@ var footerView = Backbone.View.extend({
           if (name === '_system') {
             // show "logs" button
             $('.logs-menu').css('visibility', 'visible');
+            // show dbs menues
+            $('#databaseNavi').css('display','inline');
+            $('#databaseNaviSelect').css('display','inline');
           }
           else {
             // hide "logs" button
             $('.logs-menu').css('visibility', 'hidden');
             $('.logs-menu').css('display', 'none');
           }
-          self.renderVersion();
+          self.render();
         }
       });
     }
@@ -76,17 +78,35 @@ var footerView = Backbone.View.extend({
 
   renderVersion: function () {
     if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
-      var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
-                ', Database: ' + this.system.database;
+      $(this.el).html(this.template.render({
+        name: this.system.name,
+        version: this.system.version,
+        database: this.system.database,
+        margin: this.resizeMargin
+      }));
+     /* 
+          var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
+        ', Database: ' + this.system.database;
       $('.footer-right p').html(tag);
+      */
     }
   },
 
-  render: function () {
-    $(this.el).html(this.template.text);
-    this.getVersion();
+  handleResize: function(newMargin) {
+    this.resizeMargin = newMargin;
+    this.render();
+  },
 
-    // only fill in version if we have a version number...
+  render: function () {
+    if (!this.system.version) {
+      this.getVersion();
+    }
+    $(this.el).html(this.template.render({
+      name: this.system.name,
+      version: this.system.version,
+      database: this.system.database,
+      margin: this.resizeMargin
+    }));
     return this;
   }
 
