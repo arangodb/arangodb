@@ -87,10 +87,7 @@ $(document).ready(function() {
     },
 
     logsAllowed: function () {
-      if ($('#databaseName').html() !== '_system') {
-        return false;
-      }
-      return true;
+      return (window.databaseName === '_system');
     },
 
     checkSession: function () {
@@ -227,6 +224,7 @@ $(document).ready(function() {
 
     logs: function() {
       if (! this.logsAllowed()) {
+        this.navigate('', { trigger: true });
         return;
       }
 
