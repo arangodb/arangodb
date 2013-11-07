@@ -424,7 +424,13 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
 
     }
   }
+  // We break this tie in the key comparison by looking at the key: 
+  compareResult = strcmp(leftElement->_document->_key,rightElement->_document->_key);
+  if (compareResult < 0) return TRI_SKIPLIST_COMPARE_STRICTLY_LESS;
+  else if (compareResult > 0) return TRI_SKIPLIST_COMPARE_STRICTLY_GREATER;
 
+  // This will actually never be reached since the keys can only be
+  // the same if the documents are, which has been checked above.
   return defaultEqual;
 }
 
