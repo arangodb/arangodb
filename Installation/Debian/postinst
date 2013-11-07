@@ -17,7 +17,7 @@ Upgrading ArangoDB database files:
   > /etc/init.d/arangodb upgrade
 
 Configuration file:
-  /etc/arangodb/arangod.conf
+  /etc/arangodb/arangod-uid.conf
 
 Start ArangoDB shell client:
   > /usr/bin/arangosh
