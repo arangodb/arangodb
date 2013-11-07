@@ -88,10 +88,14 @@ describes how to deal with a particular request path.
 For the above example, add the following document to the @{_routing} collection:
 
     arangosh> db._routing.save({ 
-    ........>   url: { match: "/hello/world" },
-    ........>   content: { 
-    ........>     contentType: "text/html", 
-    ........>     body: "<html><body>Hello World</body></html>" }});
+      url: { 
+        match: "/hello/world" 
+      },
+      content: { 
+        contentType: "text/html", 
+        body: "<html><body>Hello World</body></html>" 
+      }
+    });
 
 In order to activate the new routing, you must either restart the server or call
 the internal reload function.
@@ -118,14 +122,20 @@ Exact Match{#UserManualActionsMatchesExact}
 
 If the definition is
 
-    { url: { match: "/hello/world" } }
+    { 
+      url: { 
+        match: "/hello/world" 
+      } 
+    }
 
 then the match must be exact. Only the request for `/hello/world` will match,
 everything else, e. g. `/hello/world/my` or `/hello/world2`, will not match.
 
 The following definition is a short-cut for an exact match.
 
-    { url: "/hello/world" }
+    { 
+      url: "/hello/world" 
+    }
 
 
 Please note that while the two definitions will result in the same URL
@@ -136,14 +146,19 @@ will result in the URL being accessible via all supported HTTP methods (e.g.
 `GET`, `POST`, `PUT`, `DELETE`, ...), whereas the latter definition (providing a string
 `url` attribute) will result in the URL being accessible via HTTP `GET` and 
 HTTP `HEAD` only, with all other HTTP methods being disabled. Calling a URL
-with an unsupported or disabled HTTP method will result in an HTTP 501 error.
+with an unsupported or disabled HTTP method will result in an HTTP 501 
+(not implemented) error.
 
 Prefix Match{#UserManualActionsMatchesPrefix}
 ---------------------------------------------
 
 If the definition is
 
-    { url: { match: "/hello/world/*" } }
+    { 
+      url: { 
+        match: "/hello/world/*" 
+      } 
+    }
 
 then the match can be a prefix match. The requests for `/hello/world`,
 `/hello/world/my`, and `/hello/world/how/are/you` will all match. However
@@ -171,7 +186,11 @@ allowed inside the URL path.
 
 If the definition is
 
-    { url: { match: "/hello/:name/world" } }
+    { 
+      url: { 
+        match: "/hello/:name/world" 
+      } 
+    }
 
 then the URL must have three parts, the first part being `hello` and the third
 part `world`. For example, `/hello/emil/world` will match, while
@@ -185,15 +204,28 @@ carry constraints.
 
 If the definition is
 
-    { url: { match: "/hello/:name/world", constraint: { name: "/[a-z]+/" } }
+    { 
+      url: { 
+        match: "/hello/:name/world", 
+        constraint: { 
+          name: "/[a-z]+/" 
+        } 
+      }
+    }
 
 then the URL must have three parts, the first part being `hello` and the third
 part `world`. The second part must be all lowercase.
 
 It is possible to use more then one constraint for the same URL part.
 
-    { url: { match: "/hello/:name|:id/world",
-	     constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }
+    { 
+      url: { 
+        match: "/hello/:name|:id/world",
+	constraint: { 
+          name: "/[a-z]+/", id: "/[0-9]+/" 
+        } 
+      }
+    }
 
 Optional Match{#UserManualActionsMatchesOptional}
 -------------------------------------------------
@@ -203,14 +235,21 @@ optional.
 
 If the definition is
 
-    { url: { match: "/hello/:name?", constraint: { name: "/[a-z]+/" } }
+    { 
+      url: { 
+        match: "/hello/:name?", 
+        constraint: { 
+          name: "/[a-z]+/"
+        } 
+      }
+    }
 
 then the URL `/hello` and `/hello/emil` will match.
 
 If the definitions are
 
     { url: { match: "/hello/world" } }
-    { url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } }
+    { url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } } }
     { url: { match: "/hello/*" } }
 
 then the URL `/hello/world` will be matched by the first route, because it is
@@ -224,7 +263,12 @@ You can restrict the match to specific HTTP methods.
 
 If the definition is
 
-    { url: { match: "/hello/world", methods: [ "post", "put" ] }
+    { 
+      url: { 
+        match: "/hello/world", 
+        methods: [ "post", "put" ] 
+      }
+    }
 
 then only HTTP `POST` and `PUT` requests will match.
 Calling with a different HTTP method will result in an HTTP 501 error.
@@ -233,7 +277,9 @@ Please note that if `url` is defined as a simple string, then only the
 HTTP methods `GET` and `HEAD` will be allowed, an all other methods will be
 disabled:
 
-    { url: "/hello/world" }
+    { 
+      url: "/hello/world" 
+    }
 
 More on Matching{#UserManualActionsMatching}
 --------------------------------------------
@@ -249,8 +295,8 @@ Remember that the more specific match wins.
 Consider the following definitions
 
     (1) { url: { match: "/hello/world" } }
-    (2) { url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } }
-    (3) { url: { match: "/:something/world" }
+    (2) { url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } } }
+    (3) { url: { match: "/:something/world" } }
     (4) { url: { match: "/hello/*" } }
 
 Then
@@ -278,10 +324,12 @@ A Hello World Example for JSON{#UserManualActionsHelloJson}
 If you change the example slightly, then a JSON object will be delivered.
 
     arangosh> db._routing.save({ 
-    ........>   url: "/hello/json", 
-    ........>   content: { 
-    ........>     contentType: "application/json", 
-    ........>     body: "{ \"hello\" : \"world\" }" }});
+      url: "/hello/json", 
+      content: { 
+        contentType: "application/json", 
+        body: "{ \"hello\" : \"world\" }" 
+      }
+    });
     arangosh> require("internal").reloadRouting()
 
 Again check with your browser
@@ -309,7 +357,8 @@ Static Content{#UserManualActionsContentStatic}
 
 You can specify a body and a content-type.
 
-    { content: {
+    { 
+      content: {
 	contentType: "text/html",
 	body: "<html><body>Hello World</body></html>"
       }
@@ -317,14 +366,20 @@ You can specify a body and a content-type.
 
 If the content type is `text/plain` then you can use the short-cut
 
-    { content: "Hello World" }
+    { 
+      content: "Hello World" 
+    }
 
 A Simple Action{#UserManualActionsContentAction}
 ================================================
 
 The simplest dynamic action is:
 
-    { action: { do: "org/arangodb/actions/echoRequest" } }
+    { 
+      action: { 
+        do: "org/arangodb/actions/echoRequest" 
+      } 
+    }
 
 It is not advisable to store functions directly in the routing table. It is
 better to call functions defined in modules. In the above example the function
@@ -342,8 +397,11 @@ The signature of such a function must be
 For example
 
     arangosh> db._routing.save({ 
-    ........>   url: "/hello/echo",
-    ........>   action: { do: "org/arangodb/actions/echoRequest" } });
+      url: "/hello/echo",
+      action: { 
+        do: "org/arangodb/actions/echoRequest" 
+      } 
+    });
 
 Reload the routing and check
 
@@ -352,20 +410,20 @@ Reload the routing and check
 You should see something like
 
     {
-	"request": {
-	    "path": "/hello/echo",
-	    "headers": {
-		"accept-encoding": "gzip, deflate",
-		"accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
-		"connection": "keep-alive",
-		"content-length": "0",
-		"host": "localhost:8529",
-		"user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
-	    },
-	    "requestType": "GET",
-	    "parameters": { }
-	},
-	"options": { }
+      "request": {
+        "path": "/hello/echo",
+        "headers": {
+          "accept-encoding": "gzip, deflate",
+          "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
+          "connection": "keep-alive",
+          "content-length": "0",
+          "host": "localhost:8529",
+          "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
+        },
+        "requestType": "GET",
+        "parameters": { }
+      },
+      "options": { }
     }
 
 The request might contain `path`, `prefix`, `suffix`, and `urlParameters`
@@ -377,12 +435,19 @@ or more parameters were matched, then the parameter values are stored in
 
 For example, if the url description is
 
-    { url: { match: "/hello/:name/:action" } }
+    { 
+      url: { 
+        match: "/hello/:name/:action" 
+      } 
+    }
 
 and you request the path `/hello/emil/jump`, then the request object
 will contain the following attribute
 
-    urlParameters: { name: "emil", action: "jump" } }
+    urlParameters: { 
+      name: "emil", 
+      action: "jump" 
+    } 
 
 Action Controller{#UserManualActionsContentController}
 ------------------------------------------------------
@@ -395,8 +460,11 @@ called.
 For example
 
     arangosh> db._routing.save({ 
-    ........>   url: "/hello/echo",
-    ........>   action: { controller: "org/arangodb/actions/echoController" } });
+      url: "/hello/echo",
+      action: { 
+        controller: "org/arangodb/actions/echoController" 
+      } 
+    });
 
 Prefix Action Controller{#UserManualActionsContentPrefix}
 ---------------------------------------------------------
@@ -406,11 +474,19 @@ flexible, but slower and maybe insecure variant, the prefix controller.
 
 Assume that the url is a prefix match
 
-    { url: { match: /hello/*" } }
+    { 
+      url: { 
+        match: /hello/*" 
+      } 
+    }
 
 You can use
 
-    { action: { prefixController: "org/arangodb/actions" } }
+    { 
+      action: { 
+        prefixController: "org/arangodb/actions" 
+      } 
+    }
 
 to define a prefix controller. If the URL `/hello/echoController` is given, then
 the module `org/arangodb/actions/echoController` is used.
@@ -420,7 +496,9 @@ are available under the prefix.
 
 The definition
 
-    { action: "org/arangodb/actions" }
+    { 
+      action: "org/arangodb/actions" 
+    }
 
 is a short-cut for a prefix controller definition.
 
@@ -432,8 +510,11 @@ You can also store a function directly in the routing table.
 For example
 
     arangosh> db._routing.save({ 
-    ........>   url: "/hello/echo",
-    ........>   action: { callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" } });
+      url: "/hello/echo",
+      action: { 
+        callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
+      } 
+    });
 
 Requests and Responses{#UserManualActionsReqRes}
 ================================================
@@ -454,11 +535,14 @@ A very simple example is the function `echoRequest` defined in the module
       res.body = JSON.stringify(result);
     }
 
-Install it as
+Install it via:
 
     arangosh> db._routing.save({ 
-    ........>   url: "/echo",
-    ........>   action: { do: "org/arangodb/actions/echoRequest" } });
+      url: "/echo",
+      action: { 
+        do: "org/arangodb/actions/echoRequest" 
+      } 
+    });
 
 Reload the routing and check
 
@@ -467,44 +551,48 @@ Reload the routing and check
 You should see something like
 
     {
-	"request": {
-	    "prefix": "/hello/echo",
-	    "suffix": [
-		"hello",
-		"echo"
-	    ],
-	    "path": "/hello/echo",
-	    "headers": {
-		"accept-encoding": "gzip, deflate",
-		"accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
-		"connection": "keep-alive",
-		"content-length": "0",
-		"host": "localhost:8529",
-		"user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
-	    },
-	    "requestType": "GET",
-	    "parameters": { }
-	},
-	"options": { }
+      "request": {
+        "prefix": "/hello/echo",
+        "suffix": [
+          "hello",
+          "echo"
+        ],
+        "path": "/hello/echo",
+        "headers": {
+          "accept-encoding": "gzip, deflate",
+          "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
+          "connection": "keep-alive",
+          "content-length": "0",
+          "host": "localhost:8529",
+          "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
+        },
+        "requestType": "GET",
+        "parameters": { }
+      },
+      "options": { }
     }
 
 You may also pass options to the called function:
 
     arangosh> db._routing.save({ 
-    ........>   url: "/echo",
-    ........>   action: {
-    ........>     do: "org/arangodb/actions/echoRequest",
-    ........>     options: { "Hello": "World" } } });
+      url: "/echo",
+      action: {
+        do: "org/arangodb/actions/echoRequest",
+        options: { 
+          "Hello": "World" 
+        } 
+      } 
+    });
 
 You should now see the options in the result.
 
     {
-	"request": {
-	    ...
-	},
-	"options": {
-	    "Hello": "World"
-	}
+      "request": {
+        ...
+      },
+      "options": {
+        "Hello": "World"
+      }
     }
 
 Modifying Request and Response{#UserManualActionsModify}
@@ -528,12 +616,12 @@ object is an action's only way to return data to the caller of the action.
 We've already seen how to set the HTTP status code, the content type, and the
 result body. The `res` object has the following properties for these:
 
-- contentType: MIME type of the body as defined in the HTTP standard (e.g. 
+- `contentType`: MIME type of the body as defined in the HTTP standard (e.g. 
   `text/html`, `text/plain`, `application/json`, ...)
-- responsecode: the HTTP status code of the response as defined in the HTTP
+- `responsecode`: the HTTP status code of the response as defined in the HTTP
   standard. Common values for actions that succeed are `200` or `201`. 
   Please refer to the HTTP standard for more information.
-- body: the actual response data
+- `body`: the actual response data
 
 To set or modify arbitrary headers of the response object, the `headers`
 property can be used. For example, to add a user-defined header to the response,
@@ -577,17 +665,21 @@ specific names.
 To start, we'll define a simple action handler in a module `/own/test`:
 
     arangosh> db._modules.save({ 
-    ........>   path: "/own/test",
-    ........>   content: "exports.do = function(req, res, options, next) { res.body = 'test'; res.responseCode = 200; res.contentType = 'text/html'; };",
-    ........>   autoload: true });
+      path: "/own/test",
+      content: "exports.do = function(req, res, options, next) { res.body = 'test'; res.responseCode = 200; res.contentType = 'text/html'; };",
+      autoload: true 
+    });
 
 This does nothing but register a do action handler in a module `/own/test`.  The
 action handler is not yet callable, but must be mapped to a route first.  To map
 the action to the route `/ourtest`, execute the following command:
 
     arangosh> db._routing.save({ 
-    ........>   url: "/ourtest",
-    ........>   action: { controller: "/own/test" } }); 
+      url: "/ourtest",
+      action: { 
+        controller: "/own/test" 
+      } 
+    }); 
 
 In order to see the module in action, you must either restart the server or call
 the internal reload function.
@@ -613,7 +705,7 @@ The Routing Cache
 The routing cache stores the routing information computed from the `_routing`
 collection. Whenever you change this collection manually, you need to call
 
-    arangosh> require("internal").reloadRouting()
+    arangosh> require("internal").reloadRouting();
 
 in order to rebuild the cache.
 
@@ -626,7 +718,7 @@ JavaScript code again and again.
 
 Whenever you change the `modules` collections manually, you need to call
 
-    arangosh> require("internal").flushServerModules()
+    arangosh> require("internal").flushServerModules();
 
 in order to rebuild the cache.
 
@@ -638,8 +730,8 @@ caches in a particular order. In order to build the routes, the module
 information must be known. Therefore, you need to flush the modules caches
 first.
 
-    arangosh> require("internal").flushServerModules()
-    arangosh> require("internal").reloadRouting()
+    arangosh> require("internal").flushServerModules();
+    arangosh> require("internal").reloadRouting();
 
 Advanced Usages{#UserManualActionsAdvanced}
 ===========================================
@@ -652,12 +744,15 @@ Redirects{#UserManualActionsAdvancedRedirects}
 Use the following for a permanent redirect:
 
     arangosh> db._routing.save({ 
-    ........>   url: "/",
-    ........>   action: {
-    ........>     do: "org/arangodb/actions/redirectRequest", 
-    ........>     options: { 
-    ........>       permanently: true,
-    ........>       destination: "http://somewhere.else/" } } });
+      url: "/",
+      action: {
+        do: "org/arangodb/actions/redirectRequest", 
+        options: { 
+          permanently: true,
+          destination: "http://somewhere.else/" 
+        } 
+      } 
+    });
 
 Routing Bundles{#UserManualActionsAdvancedBundles}
 --------------------------------------------------
@@ -667,10 +762,10 @@ specify a bundle.
 
     {
       routes: [ 
-	{ url: "/url1", content: "..." },
-	{ url: "/url2", content: "..." },
-	{ url: "/url3", content: "..." },
-	... 
+        { url: "/url1", content: "..." },
+        { url: "/url2", content: "..." },
+        { url: "/url3", content: "..." },
+        ... 
       ]
     }
 
@@ -679,12 +774,11 @@ and use a common prefix.
 
     {
       urlPrefix: "/test",
-
       routes: [ 
-	{ url: "/url1", content: "..." },
-	{ url: "/url2", content: "..." },
-	{ url: "/url3", content: "..." },
-	... 
+        { url: "/url1", content: "..." },
+        { url: "/url2", content: "..." },
+        { url: "/url3", content: "..." },
+        ... 
       ]
     }
 
@@ -703,15 +797,22 @@ the next in line, and logs the response.
       console.log("produced response: %s", JSON.stringify(res));
     };
 
-This function is available as `org/arangodb/actions/logRequest`.  You need to
+This function is available as `org/arangodb/actions/logRequest`. You need to
 tell ArangoDB that it is should use a prefix match and that the shortest match
 should win in this case:
 
     arangosh> db._routing.save({ 
-    ........>   middleware: [
-    ........>     { url: { match: "/*" }, action: { do: "org/arangodb/actions/logRequest" } }
-    ........>   ]
-    ........> });
+      middleware: [
+        { 
+          url: { 
+            match: "/*" 
+          }, 
+          action: { 
+            do: "org/arangodb/actions/logRequest" 
+          } 
+        }
+      ]
+    });
 
 Application Deployment{#UserManualActionsApplicationDeployment}
 ===============================================================
@@ -719,3 +820,83 @@ Application Deployment{#UserManualActionsApplicationDeployment}
 Using single routes or @ref UserManualActionsAdvancedBundles "bundles" can be
 become a bit messy in large applications. Kaerus has written a deployment tool
 `https://github.com/kaerus/arangodep` in node.js.
+
+Note that there is also @ref UserManualFoxx "Foxx" for building applications
+with ArangoDB.
+
+Common Pitfalls when using Actions{#UserManualActionsPitfalls}
+==============================================================
+   
+Caching
+-------
+
+If you made any changes to the routing but the changes do not have any effect
+when calling the modified action's URL, you might have been hit by some
+caching issues. 
+
+After any modification to the routing or actions, it is thus recommended to
+make the changes "live" by calling the following functions from within arangosh:
+
+    arangosh> require("internal").flushServerModules();
+    arangosh> require("internal").reloadRouting();
+
+You might also be affected by client-side caching.
+Browsers tend to cache content and also redirection URLs. You might need to
+clear or disable the browser cache in some cases to see your changes in effect.
+
+Data types
+----------
+
+When processing the request data in an action, please be aware that the data
+type of all URL parameters is `string`. This is because the whole URL is a
+string and when the individual parts are extracted, they will also be strings.
+
+For example, when calling the URL
+
+    http://localhost:8529/hello/world?value=5
+
+the parameter `value` will have a value of (string) `5`, not (number) `5`.
+This might be troublesome if you use JavaScript's `===` operator when checking
+request parameter values.
+
+The same problem occurs with incoming HTTP headers. When sending the following
+header from a client to ArangoDB
+
+    X-My-Value: 5
+
+then the header `X-My-Value` will have a value of (string) `5` and not (number) `5`.
+
+501 Not Implemented
+-------------------
+
+If you defined a URL in the routing and the URL is accessible fine via 
+HTTP `GET` but returns an HTTP 501 (not implemented) for other HTTP methods 
+such as `POST`, `PUT` or `DELETE`, then you might have been hit by some
+defaults.
+
+By default, URLs defined like this (simple string `url` attribute) are 
+accessible via HTTP `GET` and `HEAD` only. To make such URLs accessible via
+other HTTP methods, extend the URL definition with the `methods` attribute.
+
+For example, this definition only allows access via `GET` and `HEAD`:
+
+    { 
+      url: "/hello/world" 
+    }
+
+whereas this definition allows HTTP `GET`, `POST`, and `PUT`:
+
+    { 
+      url: { 
+       match: "/hello/world", 
+       methods: [ "get", "post", "put" ] 
+      }
+    }
+
+The former definition (defining `url` as an object with a `match` attribute)
+will result in the URL being accessible via all supported HTTP methods (e.g.
+`GET`, `POST`, `PUT`, `DELETE`, ...), whereas the latter definition (providing a string
+`url` attribute) will result in the URL being accessible via HTTP `GET` and 
+HTTP `HEAD` only, with all other HTTP methods being disabled. Calling a URL
+with an unsupported or disabled HTTP method will result in an HTTP 501 error.
+
