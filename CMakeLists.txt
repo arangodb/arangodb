@@ -117,7 +117,7 @@ endif ()
 
 file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
 
-add_definitions("-D_ETCDIR_=\"${ETCDIR_NATIVE}\"")
+add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_NATIVE}\"")
 
 ################################################################################
 ### @brief DATA DIRECTORY (/var)
