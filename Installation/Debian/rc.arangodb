@@ -5,20 +5,19 @@
 # Required-Start:    
 # Required-Stop:     
 # Default-Start:     2 3 4 5
-# Default-Stop:
+# Default-Stop:      0 1 6
 # Short-Description: arangodb
-# Description:       arangodb database server 
+# Description:       arango database server 
 ### END INIT INFO
 
 . /lib/lsb/init-functions
 
-[ -f /etc/default/rcS ] && . /etc/default/rcS
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/arangod
-DESC="ArangoDB"
+DESC="arango database server"
 NAME="arangod"
 PIDDIR=/var/run/arangodb
-PIDFILE=${PIDDIR}/arangod.pid
+PIDFILE=/var/run/arangodb/arangod.pid
 CONF=/etc/arangodb/arangod-uid.conf
 
 test -x $DAEMON || exit 0
@@ -61,9 +60,9 @@ case "$1" in
     ;;
 
   stop)
-    log_daemon_msg "Stopping $DESC" "$NAME"
+    log_begin_msg "Stopping $DESC" "$NAME"
 
-    start-stop-daemon --stop --quiet --oknodo --exec $DAEMON --startas $DAEMON
+    start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
     RETVAL=$?
     log_end_msg $RETVAL
 
@@ -84,7 +83,7 @@ case "$1" in
     ;;
 
   status)
-    status_of_proc $DAEMON $NAME && exit 0 || exit $?
+    status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
     ;;
 
   upgrade)
@@ -95,9 +94,10 @@ case "$1" in
     ;;
 
   *)
-    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status|upgrade}"
+    log_success_msg "Usage: /etc/init.d/arangodb {start|stop|restart|force-reload|status|upgrade}"
     exit 1
     ;;
 esac
 
 exit 0
+

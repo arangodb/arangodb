@@ -9,36 +9,44 @@
     <thead>
       <tr>
         <td class="dbThFirst">Name</td>
-        <td class="dbThSecond"></td>
+        <td class="dbThSecond">
+          <span id="createDatabase" class="glyphicon glyphicon-plus-sign" data-original-title="Create a database"></span>
+        </td>
       </tr>
     </thead>
     <tbody id="databaseTableBody">
     </tbody>
   </table>
-
-
-  <div class="databaseButtons">
-    <button id="createDatabase" class="btn btn-success">Create</button>
-  </div>
 </div>
 
 <div id="createDatabaseModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">New Database</a>
+    <a class="arangoHeader">Create Database</a>
   </div>
 
   <div class="modal-body">
     <table>
       <tr>
         <th>Name:</th>
-        <th><input type="text" id="newDatabaseName" name="name" value=""/></th>
+        <th><input type="text" id="newDatabaseName" name="databasename" value="" placeholder="Database Name"/></th>
+      </tr>
+      <tr>
+        <td colspan="2">Please define the owner of this database. This will be the only user having initial access to this database. If the user is different to your account you will not be able to see the database. If there is a failure you will be informed.</td>
+      </tr>
+      <tr>
+        <th>Username:</th>
+        <th><input type="text" id="newUser" name="username" value="" placeholder="Database Owner"/></th>
+      </tr>
+      <tr>
+        <th>Password:</th>
+        <th><input type="password" id="newPassword" name="password" value=""/></th>
       </tr>
     </table>
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitCreateDatabase" class="btn btn-success pull-right">Save</button>
+    <button id="submitCreateDatabase" class="btn btn-success pull-right">Create</button>
   </div>
 </div>
 

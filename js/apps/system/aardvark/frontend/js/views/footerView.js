@@ -4,7 +4,7 @@
 var footerView = Backbone.View.extend({
   el: '.footer',
   system: {},
-  isOffline: false,
+  isOffline: true,
 
   initialize: function () {
     //also server online check
@@ -35,11 +35,10 @@ var footerView = Backbone.View.extend({
           window.setTimeout(function(){
             arangoHelper.arangoNotification("Server connected");
           }, 1000);
+          self.system.name = data.server;
+          self.system.version = data.version;
+          self.render();
         }
-
-        self.system.name = data.server;
-        self.system.version = data.version;
-        self.renderVersion();
       },
       error: function (data) {
         self.isOffline = true;
@@ -71,7 +70,7 @@ var footerView = Backbone.View.extend({
             $('.logs-menu').css('visibility', 'hidden');
             $('.logs-menu').css('display', 'none');
           }
-          self.renderVersion();
+          self.render();
         }
       });
     }
@@ -99,12 +98,15 @@ var footerView = Backbone.View.extend({
   },
 
   render: function () {
+    if (!this.system.version) {
+      this.getVersion();
+    }
     $(this.el).html(this.template.render({
+      name: this.system.name,
+      version: this.system.version,
+      database: this.system.database,
       margin: this.resizeMargin
     }));
-    this.getVersion();
-
-    // only fill in version if we have a version number...
     return this;
   }
 
