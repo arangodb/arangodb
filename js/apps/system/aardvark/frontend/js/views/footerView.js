@@ -5,7 +5,6 @@ var footerView = Backbone.View.extend({
   el: '.footer',
   system: {},
   isOffline: true,
-  dbSelectionView: null,
 
   initialize: function () {
     //also server online check
@@ -13,10 +12,6 @@ var footerView = Backbone.View.extend({
     window.setInterval(function(){
       self.getVersion();
     }, 15000);
-    this.dbSelectionView = new window.DBSelectionView({
-      collection: arangoDatabase
-    });
-    
     self.getVersion();
   },
 
@@ -89,7 +84,6 @@ var footerView = Backbone.View.extend({
         database: this.system.database,
         margin: this.resizeMargin
       }));
-      this.dbSelectionView.render($("#selectDB"));
      /* 
           var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
         ', Database: ' + this.system.database;
@@ -113,7 +107,6 @@ var footerView = Backbone.View.extend({
       database: this.system.database,
       margin: this.resizeMargin
     }));
-    this.dbSelectionView.render($("#selectDB"));
     return this;
   }
 
