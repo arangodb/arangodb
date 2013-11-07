@@ -1494,6 +1494,24 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
+    
+    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collectionName, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutput(generator, ", ");
+      if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      }
+      else {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
+      ScopeOutput(generator, ")");
+      return;
+    }
     // fall through to other access types
   }
 
@@ -1526,7 +1544,12 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       }
 
       case TRI_AQL_ACCESS_REFERENCE: {
-        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+        if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+          ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        }
+        else {
+          ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+        }
         break;
       }
 
