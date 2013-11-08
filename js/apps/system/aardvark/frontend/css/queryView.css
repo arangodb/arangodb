@@ -215,7 +215,6 @@
 
 .styled-select select {
   background: white;
-  width: 268px;
   padding: 5px;
   font-size: 16px;
   font-weight: 300;
@@ -223,14 +222,13 @@
   border: 0;
   border-radius: 0;
   height: 30px;
-  -webkit-appearance: none;
   padding-left: 5px !important;
   padding-top: 3px !important;
 }
 
 .styled-select {
   float: right;
-  width: 240px;
+  width: 220px;
   height: 30px;
   overflow: hidden;
 }
@@ -238,7 +236,7 @@
 .querySizeDiv {
   margin-right: 10px;
   height: 30px !important;
-  width: 95px !important;
+  width: 130px !important;
 }
 
 .querySizeDiv select {
@@ -246,7 +244,7 @@
 }
 
 #querySize {
-  width: 115px !important;
+  width: 130px !important;
   line-height: 20px !important;
   z-index: 9999 !important;
   border-radius: 0 !important;
