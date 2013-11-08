@@ -4,7 +4,7 @@
 window.FoxxActiveView = Backbone.View.extend({
   tagName: 'li',
   className: "span3",
-  template: new EJS({url: 'js/templates/foxxActiveView.ejs'}),
+  template: templateEngine.createTemplate("foxxActiveView.ejs"),
 
   events: {
     'click .glyphicon-info-sign' : 'showDocu',

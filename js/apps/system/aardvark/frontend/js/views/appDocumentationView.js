@@ -4,7 +4,7 @@
 window.AppDocumentationView = Backbone.View.extend({
 
   el: '#content',
-  template: new EJS({url: 'js/templates/appDocumentationView.ejs'}),
+  template: templateEngine.createTemplate("appDocumentationView.ejs"),
   
   initialize: function() {
     var internal = require("internal");

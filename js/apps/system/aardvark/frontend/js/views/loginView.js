@@ -15,7 +15,7 @@ var loginView = Backbone.View.extend({
     "keydown #loginPassword" : "checkKey"
   },
 
-  template: new EJS({url: 'js/templates/loginView.ejs'}),
+  template: templateEngine.createTemplate("loginView.ejs"),
 
   render: function() {
     this.addDummyUser();

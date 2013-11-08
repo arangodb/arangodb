@@ -11,7 +11,7 @@ var documentSourceView = Backbone.View.extend({
     "keypress #sourceEditor" : "sourceShortcut"
   },
 
-  template: new EJS({url: 'js/templates/documentSourceView.ejs'}),
+  template: templateEngine.createTemplate("documentSourceView.ejs"),
 
   render: function() {
     $(this.el).html(this.template.text);

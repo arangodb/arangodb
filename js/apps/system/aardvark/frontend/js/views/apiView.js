@@ -6,7 +6,7 @@ window.apiView = Backbone.View.extend({
   init: function () {
   },
 
-  template: new EJS({url: 'js/templates/apiView.ejs'}),
+  template: templateEngine.createTemplate("apiView.ejs"),
 
   initialize: function() {
     this.swaggerUi = new SwaggerUi({

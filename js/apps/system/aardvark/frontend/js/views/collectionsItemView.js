@@ -5,7 +5,7 @@ window.CollectionListItemView = Backbone.View.extend({
 
   tagName: "li",
   className: "span3",
-  template: new EJS({url: 'js/templates/collectionsItemView.ejs'}),
+  template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
   initialize: function () {
     //this.model.bind("change", this.render, this);

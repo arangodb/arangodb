@@ -8,7 +8,7 @@ window.foxxMountView = Backbone.View.extend({
   initialize: function () {
     this.m = this.model.attributes;
   },
-  template: new EJS({url: 'js/templates/foxxMountView.ejs'}),
+  template: templateEngine.createTemplate("foxxMountView.ejs"),
 
   render: function() {
     $(this.el).html(this.template.render(this.model));

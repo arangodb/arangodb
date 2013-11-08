@@ -4,8 +4,8 @@
 window.ApplicationsView = Backbone.View.extend({
   el: '#content',
 
-  template: new EJS({url: 'js/templates/applicationsView.ejs'}),
-  
+  template: templateEngine.createTemplate("applicationsView.ejs"),
+
   events: {
     "click .toggle-icon": "toggleView",
     "click #checkDevel": "toggleDevel",

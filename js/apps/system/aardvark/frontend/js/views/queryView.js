@@ -85,7 +85,7 @@ var queryView = Backbone.View.extend({
 
     customQueries: [],
 
-    template: new EJS({url: 'js/templates/queryView.ejs'}),
+    template: templateEngine.createTemplate("queryView.ejs"),
 
     render: function () {
         $(this.el).html(this.template.text);
