@@ -17,7 +17,6 @@ $(document).ready(function() {
       "shell"                               : "shell",
       "query"                               : "query",
       "logs"                                : "logs",
-      "about"                               : "about",
       "api"                                 : "api",
       "databases"                           : "databases",
       "application/installed/:key"          : "applicationEdit",
@@ -212,14 +211,6 @@ $(document).ready(function() {
         $('#databaseNavi').css('display','none');
         $('#databaseNaviSelect').css('display','none');
       }
-    },
-
-    about: function() {
-      if (!this.aboutView) {
-        this.aboutView = new window.aboutView();
-      }
-      this.aboutView.render();
-      this.naviView.selectMenuItem('about-menu');
     },
 
     logs: function() {
