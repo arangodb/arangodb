@@ -256,6 +256,19 @@ function ArangoAdapter(nodes, edges, config) {
       });
     },
     */
+
+
+    insertInitialCallback = function(callback) {
+      return function (n) {
+        if (n && n.errorCode) {
+          callback(n);
+          return;
+        }
+        callback(absAdapter.insertInitialNode(n));
+      }
+    },
+
+
     permanentlyRemoveEdgesOfNode = function (nodeId) {
        sendQuery(queries.connectedEdges, {
          id: nodeId
@@ -352,10 +365,7 @@ function ArangoAdapter(nodes, edges, config) {
   
   self.loadInitialNode = function(nodeId, callback) {
     absAdapter.cleanUp();
-    var cb = function(n) {
-      callback(absAdapter.insertInitialNode(n));
-    };
-    self.loadNode(nodeId, cb);
+    self.loadNode(nodeId, insertInitialCallback(callback));
   };
   
   self.loadNodeFromTreeById = function(nodeId, callback) {
@@ -376,10 +386,7 @@ function ArangoAdapter(nodes, edges, config) {
   
   self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
     absAdapter.cleanUp();
-    var cb = function(n) {
-      callback(absAdapter.insertInitialNode(n));
-    };
-    self.loadNodeFromTreeByAttributeValue(attribute, value, cb);
+    self.loadNodeFromTreeByAttributeValue(attribute, value, insertInitialCallback(callback));
   };
   
   self.requestCentralityChildren = function(nodeId, callback) {
