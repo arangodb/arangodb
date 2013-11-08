@@ -1,3 +1,9 @@
+v1.4.1 (2013-11-08)
+-------------------
+
+* performance improvements for skip-list deletes
+
+
 v1.4.1-rc1 (2013-11-07)
 -----------------------
 
