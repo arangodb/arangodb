@@ -63,7 +63,14 @@
         + encodeURIComponent(name)
         + "/_admin/aardvark/index.html";
       if (hash) {
-        url += hash;
+        var base = hash.split("/")[0];
+        if (base.indexOf("#collection") === 0) {
+          base = "#collections";
+        }
+        if (base.indexOf("#application") === 0) {
+          base = "#applications";
+        }
+        url += base;
       }
       return url;
     },
