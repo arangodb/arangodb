@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
-/*global require, exports, module */
+/*global require, exports, module, UPGRADE_ARGS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version check at the start of the server, will optionally perform
@@ -42,7 +42,7 @@
 /// @brief updates the database
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
+(function(args) {
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
@@ -283,6 +283,12 @@
       var users = getCollection("_users");
       if (! users) {
         return false;
+      }
+
+      if (args && args.users) {
+        args.users.forEach(function(user) {
+          userManager.save(user.username, user.passwd, user.active, user.extra || { });
+        });
       }
 
       if (users.count() === 0) {
@@ -668,7 +674,7 @@
 
   // we should never get here
   return true;
-}());
+}(UPGRADE_ARGS));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

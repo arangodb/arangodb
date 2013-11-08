@@ -1168,9 +1168,11 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
          fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
          (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
-          fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
+          (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+           fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN)));
 
-  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST || 
+      fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     ScopeOutput(generator, "aql.GET_DOCUMENTS_PRIMARY_LIST('");
   }
   else {
@@ -1182,7 +1184,8 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutputIndexId(generator, collectionName, idx);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
+    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+           fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
     if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
       ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
@@ -1226,6 +1229,26 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
+  
+    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_HASH_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collectionName, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutput(generator, ", ");
+
+      if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      }
+      else {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
+      ScopeOutput(generator, ")");
+      return;
+    }
+
     // fall through to exact access
   }
 
@@ -1241,7 +1264,8 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
 
     assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
            (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
-            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
+            (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+             fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN)));
 
     if (i > 0) {
       ScopeOutput(generator, ", ");
@@ -1250,7 +1274,8 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
     ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
     ScopeOutput(generator, " : ");
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-      assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
+      assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+             fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
         ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
@@ -1286,9 +1311,11 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
   assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
          fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
          (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
-          fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
+          (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+           fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN)));
 
-  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
+      fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     ScopeOutput(generator, "aql.GET_DOCUMENTS_EDGE_LIST('");
   }
   else {
@@ -1300,7 +1327,8 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
+    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+           fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
     if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
       ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
@@ -1345,6 +1373,25 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
+
+    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_SKIPLIST_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collectionName, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutput(generator, ", ");
+      if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      }
+      else {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
+      ScopeOutput(generator, ")");
+      return;
+    }
+
     // fall through to other access types
   }
 
@@ -1447,6 +1494,24 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
+    
+    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collectionName, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutput(generator, ", ");
+      if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      }
+      else {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
+      ScopeOutput(generator, ")");
+      return;
+    }
     // fall through to other access types
   }
 
@@ -1473,14 +1538,18 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
     ScopeOutput(generator, " : ");
 
     switch (fieldAccess->_type) {
-
       case TRI_AQL_ACCESS_EXACT: {
         ScopeOutputJson(generator, fieldAccess->_value._value);
         break;
       }
 
       case TRI_AQL_ACCESS_REFERENCE: {
-        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+        if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+          ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        }
+        else {
+          ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+        }
         break;
       }
 

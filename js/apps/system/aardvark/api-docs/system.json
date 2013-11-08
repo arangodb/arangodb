@@ -84,6 +84,25 @@
                 {
                     "errorResponses": [
                         {
+                            "reason": "Name was returned successfully. ",
+                            "code": "200"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "<br><br>The call returns an object with the following attributes: <br><br>- <em>name</em>: the name of the database<br><br>",
+                    "summary": "returns the database name",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "returnsTheDatabaseName"
+                }
+            ],
+            "path": "/_admin/database_name"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
                             "reason": "Statistics were returned successfully. ",
                             "code": "200"
                         }
@@ -92,7 +111,7 @@
                     "notes": "<br><br>Returns the statistics information. The returned object contains the statistics figures grouped together according to the description returned by <em>_admin/statistics-description</em>. For instance, to access a figure <em>userTime</em> from the group <em>system</em>, you first select the sub-object describing the group stored in <em>system</em> and in that sub-object the value for <em>userTime</em> is stored in the attribute of the same name. <br><br>In case of a distribution, the returned object contains the total count in <em>count</em> and the distribution list in <em>counts</em>. The sum (or total) of the individual values is returned in <em>sum</em>. <br><br>",
                     "summary": "reads the statistics",
                     "httpMethod": "GET",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_admin/statistics\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"system\" : { \n    \"minorPageFaults\" : 91494, \n    \"majorPageFaults\" : 1892, \n    \"userTime\" : 11.372575, \n    \"systemTime\" : 1.564711, \n    \"numberOfThreads\" : 16, \n    \"residentSize\" : 57114624, \n    \"virtualSize\" : 4999372800 \n  }, \n  \"client\" : { \n    \"httpConnections\" : 1, \n    \"connectionTime\" : { \n      \"sum\" : 0.00045299530029296875, \n      \"count\" : 1, \n      \"counts\" : [ \n        1, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"totalTime\" : { \n      \"sum\" : 20.997063636779785, \n      \"count\" : 808, \n      \"counts\" : [ \n        492, \n        219, \n        37, \n        44, \n        13, \n        2, \n        1 \n      ] \n    }, \n    \"requestTime\" : { \n      \"sum\" : 20.84328055381775, \n      \"count\" : 808, \n      \"counts\" : [ \n        497, \n        214, \n        37, \n        44, \n        13, \n        2, \n        1 \n      ] \n    }, \n    \"queueTime\" : { \n      \"sum\" : 0.017017364501953125, \n      \"count\" : 806, \n      \"counts\" : [ \n        806, \n        0, \n        0, \n        0, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"bytesSent\" : { \n      \"sum\" : 369922, \n      \"count\" : 808, \n      \"counts\" : [ \n        195, \n        500, \n        113, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"bytesReceived\" : { \n      \"sum\" : 188185, \n      \"count\" : 808, \n      \"counts\" : [ \n        592, \n        216, \n        0, \n        0, \n        0, \n        0 \n      ] \n    } \n  }, \n  \"server\" : { \n    \"uptime\" : 27.606037139892578 \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_admin/statistics\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"system\" : { \n    \"minorPageFaults\" : 116577, \n    \"majorPageFaults\" : 1913, \n    \"userTime\" : 13.089237, \n    \"systemTime\" : 1.855819, \n    \"numberOfThreads\" : 16, \n    \"residentSize\" : 57847808, \n    \"virtualSize\" : 5000425472 \n  }, \n  \"client\" : { \n    \"httpConnections\" : 1, \n    \"connectionTime\" : { \n      \"sum\" : 0.005326032638549805, \n      \"count\" : 1, \n      \"counts\" : [ \n        1, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"totalTime\" : { \n      \"sum\" : 93.36807155609131, \n      \"count\" : 814, \n      \"counts\" : [ \n        362, \n        148, \n        69, \n        100, \n        102, \n        30, \n        3 \n      ] \n    }, \n    \"requestTime\" : { \n      \"sum\" : 93.20457792282104, \n      \"count\" : 814, \n      \"counts\" : [ \n        363, \n        147, \n        70, \n        100, \n        101, \n        30, \n        3 \n      ] \n    }, \n    \"queueTime\" : { \n      \"sum\" : 0.019629240036010742, \n      \"count\" : 812, \n      \"counts\" : [ \n        812, \n        0, \n        0, \n        0, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"bytesSent\" : { \n      \"sum\" : 373700, \n      \"count\" : 814, \n      \"counts\" : [ \n        198, \n        501, \n        115, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"bytesReceived\" : { \n      \"sum\" : 189531, \n      \"count\" : 814, \n      \"counts\" : [ \n        597, \n        217, \n        0, \n        0, \n        0, \n        0 \n      ] \n    } \n  }, \n  \"server\" : { \n    \"uptime\" : 107.04278707504272 \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "readsTheStatistics"
                 }
             ],

@@ -3,19 +3,20 @@
         <div class="container">
 
           <a class="arango-logo brand navlogo" href="#"><img src="img/logo_arangob_white.gif"/></a>
-
+          <span id="selectDB" class="selectDB"></span>
             <div class="nav-collapse arangoNavSwitch">
                 <ul class="nav">
                 </ul>
 
                 <ul class="arango-nav nav pull-right" id="arangoCollectionUl">
                     <li class="dashboard-menu"><a href="#">Dashboard</a></li>
+                    <li id="databaseNavi" style="display:none" class="databases-menu"><a href="#databases">Databases</a></li>
                     <li class="collections-menu"><a href="#collections">Collections</a></li>
                     <li class="applications-menu"><a href="#applications">Applications</a></li>
                     <li class="graphviewer-menu"><a href="#graph">Graphs</a></li>
                     <li class="query-menu"><a href="#query">AQL Editor</a></li>
                     <li class="shell-menu"><a href="#shell">JS Shell</a></li>
-                    <li class="logs-menu"><a href="#logs">Logs</a></li>
+                    <li class="logs-menu" style="display:none"><a href="#logs">Logs</a></li>
                     <li class="api-menu"><a href="#api">API</a></li>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">Links <b class="caret"></b></a>
@@ -42,6 +43,7 @@
                 <option value="" selected="selected">Select</option>
 
                 <option value="#">Dashboard</option>
+                <option style="display:none" id="databaseNaviSelect" value="#databases">Databases</option>
                 <option value="#collections">Collections</option>
                 <option value="#applications">Applications</option>
                 <option value="#graph">Graph</option>

@@ -1,5 +1,17 @@
-v1.5.x (XXXX-XX-XX)
--------------------
+v1.4.1-rc1 (2013-11-07)
+-----------------------
+
+* fixed issue #635: Web-Interface should have a "Databases" Menu for Management
+
+* fixed issue #624: Web-Interface is missing a Database selector
+
+* fixed segfault in bitarray query
+
+* fixed issue #656: Cannot create unique index through web interface
+
+* fixed issue #654: bitarray index makes server down
+
+* fixed issue #653: Slow query
 
 * fixed issue #650: Randonmess of any() should be improved
 
@@ -18,13 +30,6 @@ v1.5.x (XXXX-XX-XX)
       DOCUMENT(users, [ 'users/john', 'users/amy' ])
       DOCUMENT(users, [ 'john', 'amy' ])
 
-* issue #424: Documentation about IDs needs to be upgraded
-
-* removed command-line option `--log.format`
-
-  In previous versions, this option did not have an effect for most log messages, so
-  it got removed.
-
 * simplified usage of ArangoDB batch API
 
   It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`
@@ -37,12 +42,13 @@ v1.5.x (XXXX-XX-XX)
   This also allows using the batch API with the Swagger "Try it out" feature (which is
   not too good at sending a different or even dynamic content-type request header).
 
-* removed C++ logger implementation
+* added API method GET `/_api/database/user` 
 
-  Logging inside ArangoDB is now done using the LOG_XXX() macros. The LOGGER_XXX()
-  macros are gone.
+  This returns the list of databases a specific user can see without changing the
+  username/passwd.
 
-* added collection status "loading"
+* issue #424: Documentation about IDs needs to be upgraded
+
 
 v1.4.0 (2013-10-29)
 -------------------

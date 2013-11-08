@@ -41,6 +41,11 @@ mv configure.ac.tmp configure.ac
 make built-sources || exit 1
 make add-maintainer || exit 1
 make add-automagic || exit 1
+
+make || exit 1
+make examples || exit 1
+make swagger || exit 1
+
 make doxygen || exit 1
 make latex || exit 1
 
