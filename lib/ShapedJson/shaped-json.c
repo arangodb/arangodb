@@ -324,7 +324,7 @@ static int SortShapeValuesFunc (void const* l, void const* r) {
   int wl;
   int wr;
 
-  left = (TRI_shape_value_t const*) l;
+  left  = (TRI_shape_value_t const*) l;
   right = (TRI_shape_value_t const*) r;
 
   if (left->_fixedSized != right->_fixedSized) {
@@ -338,7 +338,7 @@ static int SortShapeValuesFunc (void const* l, void const* r) {
     return wl - wr;
   }
 
-  return (int)(left->_aid - right->_aid);
+  return (int) (left->_aid - right->_aid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
