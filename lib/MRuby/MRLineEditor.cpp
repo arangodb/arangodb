@@ -189,7 +189,7 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
 ////////////////////////////////////////////////////////////////////////////////
 
 MRLineEditor::MRLineEditor (mrb_state* mrb, string const& history)
-  : LineEditor(history), _current(), _mrb(mrb) {
+  : LineEditor(history), _current() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -74,6 +74,8 @@ arangod/Ahuacatl/ahuacatl-tokens.c
 bin/
 etc/arangodb/arangob.conf
 etc/arangodb/arangod-uid.conf
+etc/arangodb/arangod-arm.conf
+etc/arangodb/arangod-uid-arm.conf
 etc/arangodb/arangod.conf
 etc/arangodb/arangodump.conf
 etc/arangodb/arangoimp.conf

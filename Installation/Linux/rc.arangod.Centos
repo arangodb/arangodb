@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 #
 # arangod        Startup script for the ArangoDB Server
 #
@@ -14,7 +14,7 @@
 ARANGO_BIN=/usr/sbin/arangod
 test -x $ARANGO_BIN || exit 5
 
-ARANGO_SYSCONFIG=/etc/arangodb/arangod.conf
+ARANGO_SYSCONFIG=/etc/arangodb/arangod-uid.conf
 test -r $ARANGO_SYSCONFIG || exit 6
 
 pidfile=/var/run/arangodb/arangod.pid
@@ -27,9 +27,25 @@ start() {
   echo -n $"Starting $ARANGO_BIN: "
 
   ARANGO_PIDDIR=`dirname $pidfile`
-  test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
+  test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb:arangodb $ARANGO_PIDDIR)
 
-  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor $@
+  if test -d /var/log/arangodb;  then
+    chown -R arangodb:arangodb /var/log/arangodb
+  fi
+
+  if test -d /var/lib/arangodb;  then
+    chown -R arangodb:arangodb /var/lib/arangodb
+  fi
+
+  if test -d /var/lib/arangodb-apps;  then
+    chown -R arangodb:arangodb /var/lib/arangodb-apps
+  fi
+
+  if [ "$1" = "--upgrade" ];  then
+    $ARANGO_BIN -c $ARANGO_SYSCONFIG $@
+  else
+    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor $@
+  fi
 
   RETVAL=$?
   echo

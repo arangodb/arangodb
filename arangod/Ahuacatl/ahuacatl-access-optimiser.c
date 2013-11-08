@@ -2216,6 +2216,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 
   // all other operation types require a value...
   value = TRI_NodeJsonAql(context, node);
+
   if (value == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
@@ -2302,6 +2303,7 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
   }
 
   fieldAccess = CreateAccessForNode(context, field, operator, node);
+
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -2459,7 +2461,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 
     return result;
   }
-
+  
   if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
       node->_type == TRI_AQL_NODE_OPERATOR_BINARY_NE ||
       node->_type == TRI_AQL_NODE_OPERATOR_BINARY_LT ||
@@ -2475,12 +2477,13 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_node_t* node2;
     TRI_aql_node_type_e operator;
     bool useBoth;
-
+  
+/*
     if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != TRI_AQL_NODE_LIST) {
       // in operator is special. if right operand is not a list, we must abort here
       return NULL;
     }
-
+*/
     useBoth = false;
 
     if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) &&
@@ -2523,7 +2526,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     else {
       return NULL;
     }
-
+  
     if (node2->_type != TRI_AQL_NODE_VALUE &&
         node2->_type != TRI_AQL_NODE_LIST &&
         node2->_type != TRI_AQL_NODE_ARRAY &&
@@ -2567,7 +2570,7 @@ again:
         }
       }
 
-      if (useBoth) {
+      if (useBoth && node->_type != TRI_AQL_NODE_OPERATOR_BINARY_IN) {
         // in this situation, we have an expression of type a.x == b.y
         // we'll have to process both sides of the expression
         TRI_aql_node_t* tempNode;

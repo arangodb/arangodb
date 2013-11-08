@@ -1129,17 +1129,23 @@ VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 ################################################################################
 
 ################################################################################
+### @brief configuration files
+################################################################################
+
+################################################################################
 ### @brief sets up the directories
 ################################################################################
 BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
-	etc/arangodb/arangob.conf etc/arangodb/arangod.conf \
-	etc/arangodb/arangodump.conf etc/arangodb/arangoimp.conf \
-	etc/arangodb/arangoirb.conf etc/arangodb/arangorestore.conf \
-	etc/arangodb/arangosh.conf $(am__append_12) \
-	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
-	@builddir@/.setup-js-directories $(am__append_13) \
-	$(am__append_15) $(am__append_16) @ZLIB_LIBS@ $(am__append_17) \
-	$(am__append_19) $(am__append_21) $(am__append_23)
+	etc/arangodb/arangod-arm.conf \
+	etc/arangodb/arangod-uid-arm.conf etc/arangodb/arangob.conf \
+	etc/arangodb/arangod.conf etc/arangodb/arangodump.conf \
+	etc/arangodb/arangoimp.conf etc/arangodb/arangoirb.conf \
+	etc/arangodb/arangorestore.conf etc/arangodb/arangosh.conf \
+	$(am__append_12) Doxygen/.setup-directories \
+	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
+	$(am__append_13) $(am__append_15) $(am__append_16) @ZLIB_LIBS@ \
+	$(am__append_17) $(am__append_19) $(am__append_21) \
+	$(am__append_23)
 
 ################################################################################
 ### @brief man pages to install
@@ -1759,9 +1765,9 @@ CLIENT_OPT := \
 ################################################################################
 SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-require.js \
-               @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
+               @top_srcdir@/js/common/tests/shell-base64.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
@@ -1773,6 +1779,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
                @top_srcdir@/js/common/tests/shell-index.js \
@@ -1791,6 +1798,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/compaction.js \
                @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/common/tests/shell-bitarray-index.js \
                @top_srcdir@/js/server/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
@@ -1814,6 +1822,7 @@ UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY
 ################################################################################
 SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-in.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-limit.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-sort.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-ref.js \
@@ -7439,7 +7448,14 @@ uninstall-man: uninstall-man1 uninstall-man8
 
 
 etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:# \([ug]id\):\1:' $< > $@
+	sed -e 's:^# \([ug]id\):\1:' $< > $@
+
+etc/arangodb/arangod-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' $< > $@
+
+etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:^# \([ug]id\):\1:' $< \
+      | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
 
 ################################################################################
 ### @brief /var data
@@ -8657,7 +8673,11 @@ clean-zlib:
 ### @brief ICU
 ################################################################################
 
-.PHONY: pack-dmg
+################################################################################
+### @brief MacOSX bundle
+################################################################################
+
+.PHONY: pack-dmg pack-dmg-cmake
 
 pack-dmg:
 	rm -rf Build && mkdir Build
@@ -8669,10 +8689,17 @@ pack-dmg:
 		--enable-all-in-one-libev \
 		--enable-mruby
 
+	${MAKE} pack-dmg-cmake
+
+pack-dmg-cmake:
 	cd Build && cmake \
-		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
+		-D "ARANGODB_VERSION=@VERSION@" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
@@ -8681,6 +8708,46 @@ pack-dmg:
 	cd Build && cpack \
 		-G Bundle \
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
+
+################################################################################
+### @brief debian arm package
+################################################################################
+
+.PHONY: pack-arm pack-arm-cmake
+
+pack-arm:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--disable-mruby
+
+	${MAKE} pack-arm-cmake
+
+pack-arm-cmake:
+	cd Build && cmake \
+		-D "BUILD_PACKAGE=raspbian" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
+		-D "USE_MRUBY=OFF" \
+		-D "USE_RAW_CONFIG=OFF" \
+		-D "ARANGODB_VERSION=@VERSION@" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
+                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		..
+
+	cd Build && cpack \
+		-G DEB
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

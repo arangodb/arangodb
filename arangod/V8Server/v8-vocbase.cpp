@@ -4989,7 +4989,6 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
-
   v8::HandleScope scope;
   bool ok;
   string errorString;
@@ -5163,13 +5162,15 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   // .............................................................................
 
   for (size_t j = 0; j < attributes._length; ++j) {
-    char* attribute = (char*)(TRI_AtVectorPointer(&attributes, j));
-    TRI_json_t* value = (TRI_json_t*)(TRI_AtVectorPointer(&values, j));
+    char* attribute = (char*) TRI_AtVectorPointer(&attributes, j);
     TRI_Free(TRI_CORE_MEM_ZONE, attribute);
-    TRI_FreeJson (TRI_UNKNOWN_MEM_ZONE, value);
   }
-
   TRI_DestroyVectorPointer(&attributes);
+  
+  for (size_t j = 0; j < values._length; ++j) {
+    TRI_json_t* value = (TRI_json_t*) TRI_AtVectorPointer(&values, j);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
+  }
   TRI_DestroyVectorPointer(&values);
 
 
@@ -7865,7 +7866,8 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 0) {
+  const uint32_t argc = argv.Length();
+  if (argc != 0 && argc != 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "db._listDatabases()");
   }
   
@@ -7875,7 +7877,8 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
-  if (! TRI_IsSystemVocBase(vocbase)) {
+  if (argc == 0 && 
+      ! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
   
@@ -7883,7 +7886,19 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   
   TRI_vector_string_t names;
   TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
-  int res = TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
+
+  int res;
+
+  if (argc == 0) {
+    // return all databases
+    res = TRI_GetDatabaseNamesServer((TRI_server_t*) v8g->_server, &names);
+  }
+  else {
+    // return all databases for a specific user
+    string username = TRI_ObjectToString(argv[0]);
+    string password = TRI_ObjectToString(argv[1]);
+    res = TRI_GetUserDatabasesServer((TRI_server_t*) v8g->_server, username.c_str(), password.c_str(), &names);
+  }
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorString(&names);
@@ -7903,15 +7918,35 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ///
-/// @FUN{@FA{db}._createDatabase(@FA{name})}
+/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options}, @FA{users})}
 ///
 /// Creates a new database with the name specified by @FA{name}. 
-/// There are restrictions for database names (see @ref DatabaseNames}.
+/// There are restrictions for database names (see @ref DatabaseNames).
 ///
 /// Note that even if the database is created successfully, there will be no
 /// change into the current database to the new database. Changing the current
 /// database must explicitly be requested by using the @ref HandlingDatabasesUse
 /// "db._useDatabase" method.
+///
+/// The optional @FA{users} attribute can be used to create initial users for
+/// the new database. If specified, it must be a list of user objects. Each user 
+/// object can contain the following attributes:
+///
+/// - `username`: the user name as a string. This attribute is mandatory.
+///
+/// - `passwd`: the user password as a string. If not specified, then it defaults
+///   to the empty string.
+///
+/// - `active`: a boolean flag indicating whether the user accout should be
+///   actived or not. The default value is `true`.
+///
+/// - `extra`: an optional JSON object with extra user information. The data
+///   contained in `extra` will be stored for the user but not be interpreted
+///   further by ArangoDB.
+///
+/// If no initial users are specified, a default user `root` will be created 
+/// with an empty string password. This ensures that the new database will be 
+/// accessible via HTTP after it is created.
 ///
 /// This method can only be used from within the `_system` database. 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7919,8 +7954,8 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>)");
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>, <users>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7996,6 +8031,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
   assert(database != 0);
 
+  // copy users into context
+  if (argv.Length() >= 3 && argv[2]->IsArray()) {
+    v8::Handle<v8::Object> users = v8::Object::New();
+    users->Set(v8::String::New("users"), argv[2]);
+
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), users);
+  }
+  else {
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+  }
+
   if (TRI_V8RunVersionCheck(database, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
     // version check ok
     TRI_V8InitialiseFoxx(database, v8::Context::GetCurrent());
@@ -8004,6 +8050,9 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     // version check failed
     // TODO: report an error
   }
+
+  // populate the authentication cache. otherwise no one can access the new database
+  TRI_ReloadAuthInfo(database);
  
   // finally decrease the reference-counter 
   TRI_ReleaseVocBase(database);

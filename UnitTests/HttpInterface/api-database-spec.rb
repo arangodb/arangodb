@@ -23,6 +23,19 @@ describe ArangoDB do
     end
 
 ################################################################################
+## retrieving the list of databases for the current user
+################################################################################
+
+    it "retrieves the list of user-specific databases" do
+      doc = ArangoDB.log_get("#{prefix}-list-user", api + "/user")
+
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+
+      result.should include("_system")
+    end
+
+################################################################################
 ## checking information about current database
 ################################################################################
 
@@ -112,7 +125,6 @@ describe ArangoDB do
       response = doc.parsed_response
       response["error"].should eq(true)
       response["errorNum"].should eq(1207)
-      
     end
     
     it "drops an existing database" do
@@ -176,7 +188,113 @@ describe ArangoDB do
       result["path"].should be_kind_of(String)
       result["isSystem"].should eq(false)
       
+      # retrieve user for new database
+      doc = ArangoDB.log_get("#{prefix}-create-current", "/_db/#{name}/_api/user/root")
+      doc.code.should eq(200)
+      result = doc.parsed_response
+      result["user"].should eq("root")
+      result["active"].should eq(true)
+      
       doc = ArangoDB.log_delete("#{prefix}-create-current", api + "/#{name}")
+      doc.code.should eq(200)
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
+    
+    it "creates a new database with two users" do
+      body = "{\"name\" : \"#{name}\", \"users\": [ { \"username\": \"admin\", \"password\": \"secret\", \"extra\": { \"gender\": \"m\" } }, { \"username\": \"foxx\", \"active\": false } ] }"
+      doc = ArangoDB.log_post("#{prefix}-create-users", api, :body => body)
+     
+      doc.code.should eq(200)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+
+      # list of databases should include the new database
+      doc = ArangoDB.log_get("#{prefix}-create-users", api)
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+
+      result.should include("_system")
+      result.should include(name)
+
+      # retrieve information about new database
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}" + api + "/current")
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+      result["name"].should eq(name)
+      result["path"].should be_kind_of(String)
+      result["isSystem"].should eq(false)
+      
+      # retrieve information about user "admin"
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}/_api/user/admin")
+      doc.code.should eq(200)
+      result = doc.parsed_response
+      result["user"].should eq("admin")
+      result["active"].should eq(true)
+      result["extra"]["gender"].should eq("m")
+      
+      # retrieve information about user "foxx"
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}/_api/user/foxx")
+      doc.code.should eq(200)
+      result = doc.parsed_response
+      result["user"].should eq("foxx")
+      result["active"].should eq(false)
+      
+      # retrieve information about user "root"
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}/_api/user/root")
+      doc.code.should eq(404)
+      
+      doc = ArangoDB.log_delete("#{prefix}-create-users", api + "/#{name}")
+      doc.code.should eq(200)
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
+    
+    it "creates a new database with an invalid user object" do
+      body = "{\"name\" : \"#{name}\", \"users\": [ { } ] }"
+      doc = ArangoDB.log_post("#{prefix}-create-users-missing", api, :body => body)
+     
+      doc.code.should eq(400)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["error"].should eq(true)
+    end
+    
+    it "creates a new database with an invalid user" do
+      body = "{\"name\" : \"#{name}\", \"users\": [ { \"username\": \"\" } ] }"
+      doc = ArangoDB.log_post("#{prefix}-create-users-invalid", api, :body => body)
+     
+      doc.code.should eq(200)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+
+      # list of databases should include the new database
+      doc = ArangoDB.log_get("#{prefix}-create-users-invalid", api)
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+
+      result.should include("_system")
+      result.should include(name)
+
+      # retrieve information about new database
+      doc = ArangoDB.log_get("#{prefix}-create-users-invalid", "/_db/#{name}" + api + "/current")
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+      result["name"].should eq(name)
+      result["path"].should be_kind_of(String)
+      result["isSystem"].should eq(false)
+      
+      # retrieve information about user "root"
+      doc = ArangoDB.log_get("#{prefix}-create-users-invalid", "/_db/#{name}/_api/user/root")
+      doc.code.should eq(404)
+      
+      doc = ArangoDB.log_delete("#{prefix}-create-users-invalid", api + "/#{name}")
       doc.code.should eq(200)
       response = doc.parsed_response
       response["result"].should eq(true)

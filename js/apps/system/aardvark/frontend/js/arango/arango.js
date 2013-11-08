@@ -26,6 +26,45 @@ window.arangoHelper = {
     });
   },
 
+  currentDatabase: function () {
+    var returnVal = false;
+    $.ajax({
+      type: "GET",
+      cache: false,
+      url: "/_api/database/current",
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        returnVal = data.result.name;
+      },
+      error: function(data) {
+        returnVal = false;
+      }
+    });
+    return returnVal;
+  },
+
+  databaseAllowed: function () {
+    var currentDB = this.currentDatabase();
+    returnVal = false;
+    $.ajax({
+      type: "GET",
+      cache: false,
+      url: "/_db/"+encodeURIComponent(currentDB)+"/_api/database/",
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        returnVal = true;
+      },
+      error: function(data) {
+        returnVal = false;
+      }
+    });
+    return returnVal;
+  },
+
   removeNotifications: function () {
     $.gritter.removeAll();
     this.lastNotificationMessage = null;
