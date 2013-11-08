@@ -147,9 +147,9 @@ window.databaseView = Backbone.View.extend({
   },
 
   changeDatabase: function(e) {
-    var dbname = $(e.currentTarget).text();
-    var route =  '/_db/' + encodeURIComponent(dbname) + '/_admin/aardvark/index.html#databases';
-    window.location = "http://"+window.location.host + route;
+    var changeTo = $("#dbSelectionList > option:selected").attr("id");
+    var url = this.collection.createDatabaseURL(changeTo);
+    window.location.replace(url);
   },
 
   updateDatabases: function() {
