@@ -933,7 +933,7 @@ static bool IterateFiles (TRI_vector_string_t* vector,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a collection parameter block
+/// @brief initializes a collection parameters struct
 /// (options are added to the TRI_col_info_t* and have to be freed by the
 /// TRI_FreeCollectionInfoOptions() function)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1405,11 +1405,11 @@ int TRI_LoadCollectionInfo (char const* path,
     }
 
     if (error != NULL) {
-      LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
+      LOG_ERROR("cannot open '%s', collection parameters are not readable: %s", filename, error);
       TRI_FreeString(TRI_CORE_MEM_ZONE, error);
     }
     else {
-      LOG_ERROR("cannot open '%s', parameter block not readable", filename);
+      LOG_ERROR("cannot open '%s', collection parameters are not readable", filename);
     }
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -1704,7 +1704,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // read parameter block, no need to lock as we are opening the collection
+  // read parameters, no need to lock as we are opening the collection
   res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2135,7 +2135,8 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
     
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
+  // TODO: fix the datafile id
   outfile = TRI_Concatenate2File(path, "datafile-1.db");
 
   if (outfile == NULL) {
@@ -2157,7 +2158,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
     char const* file = files._buffer[i];
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-      TRI_datafile_t* datafile;
+      TRI_datafile_t* df;
       char* fqn;
       
       fqn = TRI_Concatenate2File(shapes, file);
@@ -2209,9 +2210,9 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
       }
       
       // open the datafile, and push it into a vector of datafiles
-      datafile = TRI_OpenDatafile(fqn);
+      df = TRI_OpenDatafile(fqn);
 
-      if (datafile == NULL) {
+      if (df == NULL) {
         res = TRI_errno();
         TRI_Free(TRI_CORE_MEM_ZONE, fqn);
         break;
@@ -2221,7 +2222,10 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
         si._fdout = fdout;
         si._written = &written;
         
-        TRI_IterateDatafile(datafile, UpgradeShapeIterator, &si, false, false);
+        TRI_IterateDatafile(df, UpgradeShapeIterator, &si, false, false);
+        
+        TRI_CloseDatafile(df);
+        TRI_FreeDatafile(df);
       }
 
       TRI_Free(TRI_CORE_MEM_ZONE, fqn);
@@ -2251,6 +2255,17 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
   
   TRI_DestroyVectorString(&files);
   TRI_Free(TRI_CORE_MEM_ZONE, outfile);
+
+  // try to remove SHAPES directory after upgrade
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_RemoveDirectory(shapes);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to remove SHAPES directory '%s'", 
+                shapes);
+    }
+  }
+
   TRI_Free(TRI_CORE_MEM_ZONE, shapes);
   regfree(&re);
   

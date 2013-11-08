@@ -304,7 +304,7 @@ typedef struct TRI_shape_value_s {
   TRI_shape_aid_t    _aid;         // attribute identifier
   TRI_shape_sid_t    _sid;         // shape identifier of the attribute
   TRI_shape_type_t   _type;        // type of the attribute
-  bool               _fixedSized;  // true of all element of this shaped have the same size
+  bool               _fixedSized;  // true of all element of this shape have the same size
   TRI_shape_size_t   _size;        // size of the data block
 
   char*              _value;
