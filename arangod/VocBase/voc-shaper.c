@@ -1302,6 +1302,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m);
   assert(f == NULL);
 
+  // no lock is necessary here as we are the only users of the shaper at this time
   if (shaper->_nextAid <= m->_aid) {
     shaper->_nextAid = m->_aid + 1;
   }

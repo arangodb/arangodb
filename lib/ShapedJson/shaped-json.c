@@ -2228,7 +2228,7 @@ void TRI_DestroyShapedJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShapedJson (TRI_memory_zone_t* zone, 
-                        TRI_shaped_json_t* shaped) {
+                         TRI_shaped_json_t* shaped) {
   TRI_DestroyShapedJson(zone, shaped);
   TRI_Free(zone, shaped);
 }
@@ -2241,7 +2241,8 @@ void TRI_FreeShapedJson (TRI_memory_zone_t* zone,
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortShapeValues (TRI_shape_value_t* values, size_t n) {
+void TRI_SortShapeValues (TRI_shape_value_t* values, 
+                          size_t n) {
   qsort(values, n, sizeof(TRI_shape_value_t), SortShapeValuesFunc);
 }
 
@@ -2249,7 +2250,8 @@ void TRI_SortShapeValues (TRI_shape_value_t* values, size_t n) {
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* json) {
+TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, 
+                                       TRI_json_t const* json) {
   TRI_shaped_json_t* shaped;
   TRI_shape_value_t dst;
   bool ok;
