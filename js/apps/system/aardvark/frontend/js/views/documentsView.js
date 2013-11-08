@@ -560,7 +560,7 @@ var documentsView = Backbone.View.extend({
     }
   },
 
-  template: new EJS({url: 'js/templates/documentsView.ejs'}),
+  template: templateEngine.createTemplate("documentsView.ejs"),
 
   render: function() {
     this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);

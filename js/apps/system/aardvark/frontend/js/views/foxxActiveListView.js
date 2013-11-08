@@ -3,8 +3,8 @@
 
 var FoxxActiveListView = Backbone.View.extend({
   el: '#content',
-  template: new EJS({url: 'js/templates/foxxListView.ejs'}),
-  
+  template: templateEngine.createTemplate("foxxListView.ejs"),
+
   events: {
     // 'click button#add': 'callback'
   },

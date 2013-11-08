@@ -54,7 +54,7 @@ var documentView = Backbone.View.extend({
     }
   },
 
-  template: new EJS({url: 'js/templates/documentView.ejs'}),
+  template: templateEngine.createTemplate("documentView.ejs"),
 
   typeCheck: function (type) {
     var result;

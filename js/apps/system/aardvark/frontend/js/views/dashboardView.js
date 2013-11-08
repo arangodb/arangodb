@@ -79,7 +79,7 @@ var dashboardView = Backbone.View.extend({
     "click #dashboardToggle"       : "toggleEvent"
   },
 
-  template: new EJS({url: 'js/templates/dashboardView.ejs'}),
+  template: templateEngine.createTemplate("dashboardView.ejs"),
 
   toggleEvent: function () {
     if ($('#detailReplication').is(':visible')) {

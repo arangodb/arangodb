@@ -9,7 +9,7 @@ var shellView = Backbone.View.extend({
     'click #editor-run'     : 'submitEditor'
   },
 
-  template: new EJS({url: 'js/templates/shellView.ejs'}),
+  template: templateEngine.createTemplate("shellView.ejs"),
 
   render: function() {
     $(this.el).html(this.template.text);

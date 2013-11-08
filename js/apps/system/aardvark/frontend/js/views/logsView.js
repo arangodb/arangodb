@@ -104,7 +104,8 @@ var logsView = Backbone.View.extend({
   tabs: function () {
   },
 
-  template: new EJS({url: 'js/templates/logsView.ejs'}),
+  template: templateEngine.createTemplate("logsView.ejs"),
+
   initLogTables: function () {
     var self = this;
     $.each(this.collection.tables, function(key, table) {

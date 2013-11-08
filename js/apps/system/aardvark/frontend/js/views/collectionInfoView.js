@@ -7,7 +7,7 @@ var collectionInfoView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: 'js/templates/collectionInfoView.ejs'}),
+  template: templateEngine.createTemplate("collectionInfoView.ejs"),
 
   render: function() {
     $(this.el).html(this.template.text);

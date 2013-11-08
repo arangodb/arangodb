@@ -6,7 +6,7 @@ var newCollectionView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: 'js/templates/newCollectionView.ejs'}),
+  template: templateEngine.createTemplate("newCollectionView.ejs"),
 
   render: function() {
     var self = this;

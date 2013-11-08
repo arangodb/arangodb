@@ -4,7 +4,7 @@
 window.databaseView = Backbone.View.extend({
   el: '#content',
 
-  template: new EJS({url: 'js/templates/databaseView.ejs'}),
+  template: templateEngine.createTemplate("databaseView.ejs"),
 
   currentDB: "",
 
