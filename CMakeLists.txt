@@ -111,8 +111,10 @@ set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc
 
 if (ETCDIR STREQUAL "")
   set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
+  set(ETCDIR_INSTALL "etc/arangodb")
 else ()
   set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
+  set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
 endif ()
 
 file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
@@ -123,12 +125,14 @@ add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_NATIVE}\"")
 ### @brief DATA DIRECTORY (/var)
 ################################################################################
 
-set(VARDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
+set(VARDIR "" CACHE path "System configuration directory (defaults to prefix/var/arangodb)")
 
 if (VARDIR STREQUAL "")
-  set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var/arangodb")
+  set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
+  set(VARDIR_INSTALL "var")
 else ()
-  set(VARDIR_NATIVE "${VARDIR}/arangodb")
+  set(VARDIR_NATIVE "${VARDIR}")
+  set(VARDIR_INSTALL "${VARDIR}")
 endif ()
 
 file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
