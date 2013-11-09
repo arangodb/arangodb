@@ -8704,6 +8704,10 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		..
 
+	${MAKE} ${BUILT_SOURCES}
+
+	cd Build && ${MAKE}
+
 	cd Build && cpack \
 		-G Bundle \
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
@@ -8744,6 +8748,10 @@ pack-arm-cmake:
                 -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
                 -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
+
+	${MAKE} ${BUILT_SOURCES}
+
+	cd Build && ${MAKE}
 
 	cd Build && cpack \
 		-G DEB
