@@ -46,13 +46,13 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf.in
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangob-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf
-  DESTINATION ${ETCDIR_NATIVE})
+  DESTINATION ${ETCDIR_INSTALL})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -91,13 +91,13 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf.in
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangodump-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf
-  DESTINATION ${ETCDIR_NATIVE})
+  DESTINATION ${ETCDIR_INSTALL})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -138,13 +138,13 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf.in
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangoimp-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf
-  DESTINATION ${ETCDIR_NATIVE})
+  DESTINATION ${ETCDIR_INSTALL})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -183,13 +183,13 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf.in
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangorestore-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf
-  DESTINATION ${ETCDIR_NATIVE})
+  DESTINATION ${ETCDIR_INSTALL})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -230,13 +230,13 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf.in
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangosh-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf
-  DESTINATION ${ETCDIR_NATIVE})
+  DESTINATION ${ETCDIR_INSTALL})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
