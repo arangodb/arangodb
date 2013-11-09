@@ -544,6 +544,12 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		..
 
+	${MAKE} .libev-build-64
+	${MAKE} .zlib-build-64
+	${MAKE} .icu-build-64
+	${MAKE} .v8-build-64
+	${MAKE} .mruby-build-64
+
 	${MAKE} ${BUILT_SOURCES}
  
 	cd Build && ${MAKE}
@@ -588,6 +594,11 @@ pack-arm-cmake:
                 -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
                 -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
+
+	${MAKE} .libev-build-64
+	${MAKE} .zlib-build-64
+	${MAKE} .icu-build-64
+	${MAKE} .v8-build-64
 
 	${MAKE} ${BUILT_SOURCES}
  
