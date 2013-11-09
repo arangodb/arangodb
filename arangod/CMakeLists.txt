@@ -152,28 +152,28 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangod-relative.conf)
 endif ()
 
 if (BUILD_PACKAGE STREQUAL "raspbian")
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangod.conf)
 
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
-    DESTINATION ${ETCDIR_NATIVE}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangod-uid.conf)
 else ()
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
-    DESTINATION ${ETCDIR_NATIVE})
+    DESTINATION ${ETCDIR_INSTALL})
 
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
-    DESTINATION ${ETCDIR_NATIVE})
+    DESTINATION ${ETCDIR_INSTALL})
 endif ()
 
 install(
@@ -202,11 +202,11 @@ install(
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
-  DESTINATION ${VARDIR_NATIVE}/log)
+  DESTINATION ${VARDIR_INSTALL}/log)
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
-  DESTINATION ${VARDIR_NATIVE}/lib)
+  DESTINATION ${VARDIR_INSTALL}/lib)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

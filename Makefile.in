@@ -8696,8 +8696,6 @@ pack-dmg-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
 		-D "ARANGODB_VERSION=@VERSION@" \
