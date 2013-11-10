@@ -8755,10 +8755,10 @@ pack-arm-cmake:
                 -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
 
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .icu-build-64
-	${MAKE} .v8-build-64
+	${MAKE} .libev-build-32
+	${MAKE} .zlib-build-32
+	${MAKE} .icu-build-32
+	${MAKE} .v8-build-32
 
 	${MAKE} ${BUILT_SOURCES}
 
