@@ -235,6 +235,66 @@ function HashIndexSuite() {
       catch (err) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: combination of indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiIndexViolation1 : function () {
+      collection.ensureUniqueConstraint("a");
+      collection.ensureSkiplist("b");
+
+      collection.save({ a : "test1", b : 1});
+      try {
+        collection.save({ a : "test1", b : 1});
+        fail();
+      }
+      catch (err1) {
+      }
+        
+      var doc1 = collection.save({ a : "test2", b : 1});
+      assertTrue(doc1._key !== "");
+      
+      try {
+        collection.save({ a : "test1", b : 1});
+        fail();
+      }
+      catch (err2) {
+      }
+      
+      var doc2 = collection.save({ a : "test3", b : 1});
+      assertTrue(doc2._key !== "");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: combination of indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiIndexViolation2 : function () {
+      collection.ensureUniqueSkiplist("a");
+      collection.ensureHashIndex("b");
+
+      collection.save({ a : "test1", b : 1});
+      try {
+        collection.save({ a : "test1", b : 1});
+        fail();
+      }
+      catch (err1) {
+      }
+        
+      var doc1 = collection.save({ a : "test2", b : 1});
+      assertTrue(doc1._key !== "");
+      
+      try {
+        collection.save({ a : "test1", b : 1});
+        fail();
+      }
+      catch (err2) {
+      }
+      
+      var doc2 = collection.save({ a : "test3", b : 1});
+      assertTrue(doc2._key !== "");
     }
 
   };
