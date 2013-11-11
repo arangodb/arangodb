@@ -6974,7 +6974,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
+  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot unload collection");
