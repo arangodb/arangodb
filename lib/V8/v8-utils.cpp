@@ -1924,7 +1924,12 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
     }
 
     const string path(*name);
+#ifdef _WIN32    
+    // windows paths are case-insensitive
+    if (! TRI_CaseEqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+#else      
     if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+#endif
       TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
 
       TRI_V8_EXCEPTION_PARAMETER(scope, "directory to be removed is outside of temporary path");
