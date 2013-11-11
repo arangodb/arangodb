@@ -3471,26 +3471,26 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseDocumentCollection (TRI_document_collection_t* collection) {
+int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   int res;
 
   // closes all open compactors, journals, datafiles
-  res = TRI_CloseCollection(&collection->base.base);
+  res = TRI_CloseCollection(&document->base.base);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  res = TRI_CloseVocShaper(collection->base._shaper);
+  res = TRI_CloseVocShaper(document->base._shaper);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   // this does also destroy the shaper's underlying blob collection
-  TRI_FreeVocShaper(collection->base._shaper);
+  TRI_FreeVocShaper(document->base._shaper);
 
-  collection->base._shaper = NULL;
+  document->base._shaper = NULL;
 
   return TRI_ERROR_NO_ERROR;
 }

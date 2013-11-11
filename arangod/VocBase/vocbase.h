@@ -535,7 +535,8 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnloadCollectionVocBase (TRI_vocbase_t*, 
-                                 TRI_vocbase_col_t*);
+                                 TRI_vocbase_col_t*,
+                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a (document) collection

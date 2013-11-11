@@ -5595,7 +5595,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 /// Creates a skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.
 /// All documents, which do not have the attribute path or
-/// with ore or more values that are not suitable, are ignored.
+/// with one or more values that are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
@@ -5629,7 +5629,7 @@ static v8::Handle<v8::Value> JS_LookupUniqueSkiplistVocbaseCol (v8::Arguments co
 /// Creates a multi skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.
 /// All documents, which do not have the attribute path or
-/// with ore or more values that are not suitable, are ignored.
+/// with one or more values that are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
@@ -6971,7 +6971,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
+  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot unload collection");

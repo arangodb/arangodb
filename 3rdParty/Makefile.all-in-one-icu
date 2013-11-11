@@ -49,6 +49,7 @@ ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 CLEANUP_3RD += clean-icu
 
 clean-icu:
+	cd @top_srcdir@/3rdParty/icu/source && ( $(MAKE) clean || true )
 	rm -f @srcdir@/.icu-build-@TRI_BITS@
 	rm -rf $(ICUDIR)
 
