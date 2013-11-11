@@ -38,7 +38,6 @@ window.foxxEditView = Backbone.View.extend({
     var failed = false;
     var app = this.model.get("app");
     var prefix = this.model.get("options").collectionPrefix;
-    console.log("prefix", prefix);
     if (mount !== this.model.get("mount")) {
       if (this.checkMount(mount)) {
         $.ajax("foxx/move/" + this.model.get("_key"), {
