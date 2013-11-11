@@ -20,8 +20,51 @@ window.foxxEditView = Backbone.View.extend({
     "hidden #change-foxx"   : "hidden",
     // "click #deactivate"     : "deactivate",
     // "click #activate"       : "activate",
-    "click #uninstall"      : "uninstall"
+    "click #uninstall"      : "uninstall",
+    "click #change"         : "changeFoxx",
   },
+  
+  checkMount: function(mount) {
+      var regex = /^(\/[^\/\s]+)+$/;
+      if (!regex.test(mount)){
+        alert("Sorry, you have to give a valid mount point, e.g.: /myPath");
+        return false;
+      }
+      return true;
+  },
+
+  changeFoxx: function() {
+    var mount = $("#change-mount-point").val();
+    var failed = false;
+    var app = this.model.get("app");
+    var prefix = this.model.get("options").collectionPrefix;
+    console.log("prefix", prefix);
+    if (mount !== this.model.get("mount")) {
+      if (this.checkMount(mount)) {
+        $.ajax("foxx/move/" + this.model.get("_key"), {
+          async: false,
+          type: "PUT",
+          data: JSON.stringify({
+            mount: mount,
+            app: app,
+            prefix: prefix
+          }),
+          dataType: "json",
+          error: function(data) {
+            console.log(data);
+            failed = true;
+          }
+        });
+      } else {
+        return;
+      }
+    }
+    // TODO change version
+    if (!failed) {
+      this.hideModal();
+    }
+  },
+
   hidden: function () {
     window.App.navigate("applications", {trigger: true});
   },

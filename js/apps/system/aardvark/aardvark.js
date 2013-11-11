@@ -150,7 +150,23 @@ controller.get('/docu/:key/*', function(req, res) {
   allowMultiple: false
 }).summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
-       + " runnning under the given mount point");
+       + " running under the given mount point");
+
+// .............................................................................
+// Move one foxx from mount-point to another
+// .............................................................................
+
+controller.put('/foxx/move/:key', function(req, res) {
+  var body = req.body();
+  var mountPoint = body.mount;
+  var app = body.app;
+  var key = req.params("key");
+  var prefix = body.prefix;
+  foxxes.move(key, app, mountPoint, prefix);
+})
+.summary("Move one foxx to another moint point")
+  .notes ("This function moves one installed foxx"
+    + " to a given mount point."); 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
