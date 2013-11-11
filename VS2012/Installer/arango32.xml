@@ -12,9 +12,7 @@
   
   <Media Id='1' Cabinet='arango.cab' EmbedCab='yes' />  
   
-  <Property Id="IISROOT" Value="c:\"/>
   <Property Id="WIXUI_DONTVALIDATEPATH" Value="1"/>
-    
     
   <Directory Id='TARGETDIR' Name='SourceDir'>  
    <Directory Id='ProgramFilesFolder'>  
