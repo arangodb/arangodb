@@ -1458,7 +1458,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t collections;
   int res;
   size_t i;
+
+  // stop replication
+  TRI_StopReplicationApplier(vocbase->_replicationApplier, false); 
+  TRI_StopReplicationLogger(vocbase->_replicationLogger); 
   
+
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1473,15 +1478,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
-    TRI_UnloadCollectionVocBase(vocbase, collection);
+    TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
   TRI_DestroyVectorPointer(&collections);
  
-  // stop replication
-  TRI_StopReplicationApplier(vocbase->_replicationApplier, false); 
-  TRI_StopReplicationLogger(vocbase->_replicationLogger); 
-  
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
@@ -1891,8 +1892,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, 
-                                 TRI_vocbase_col_t* collection) {
-  if (! collection->_canUnload) {
+                                 TRI_vocbase_col_t* collection,
+                                 bool force) {
+  if (! collection->_canUnload && ! force) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
   }
 
