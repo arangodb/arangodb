@@ -1987,7 +1987,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
       TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
     }
     // if we get here, the status has changed
-    return TRI_UnloadCollectionVocBase(vocbase, collection);
+    return TRI_UnloadCollectionVocBase(vocbase, collection, force);
   }
 
   // a deleted collection is treated as unloaded
