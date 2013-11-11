@@ -174,7 +174,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetNonExistingIndexes : function () {
-      tests = [ "2444334000000", "9999999999999" ].forEach(function (id) {
+      [ "2444334000000", "9999999999999" ].forEach(function (id) {
         try {
           var idx = collection.index(id);
           fail();
