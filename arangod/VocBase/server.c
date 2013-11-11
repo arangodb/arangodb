@@ -1461,7 +1461,7 @@ static void DatabaseManager (void* data) {
       }
  
       // found a database to delete
-      database = TRI_RemoveVectorPointer(&server->_droppedDatabases, i);
+      database = (TRI_vocbase_t*) TRI_RemoveVectorPointer(&server->_droppedDatabases, i);
       break;
     }
     
