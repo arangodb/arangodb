@@ -956,6 +956,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insertion into secondary indexes failed
+    DeleteSecondaryIndexes(document, header, true);
     DeletePrimaryIndex(document, header, true);
     document->_headers->release(document->_headers, header, true);
 
