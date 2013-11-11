@@ -536,8 +536,6 @@ pack-dmg-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
 		-D "ARANGODB_VERSION=@VERSION@" \
@@ -545,6 +543,16 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		..
+
+	${MAKE} .libev-build-64
+	${MAKE} .zlib-build-64
+	${MAKE} .icu-build-64
+	${MAKE} .v8-build-64
+	${MAKE} .mruby-build-64
+
+	${MAKE} ${BUILT_SOURCES}
+ 
+	cd Build && ${MAKE}
 
 	cd Build && cpack \
 		-G Bundle \
@@ -586,6 +594,15 @@ pack-arm-cmake:
                 -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
                 -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
+
+	${MAKE} .libev-build-32
+	${MAKE} .zlib-build-32
+	${MAKE} .icu-build-32
+	${MAKE} .v8-build-32
+
+	${MAKE} ${BUILT_SOURCES}
+ 
+	cd Build && ${MAKE}
 
 	cd Build && cpack \
 		-G DEB
