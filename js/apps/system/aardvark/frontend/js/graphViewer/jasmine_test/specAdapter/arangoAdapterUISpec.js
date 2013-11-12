@@ -52,6 +52,21 @@
         },
         getGraphs: function(cb) {
           cb(["graph", "newGraph"]);
+        },
+        getGraphName: function() {
+
+        },
+        getEdgeCollection: function() {
+
+        },
+        getNodeCollection: function() {
+
+        },
+        getDirection: function() {
+
+        },
+        loadRandomNode: function() {
+                        
         }
       };
       list = document.createElement("ul");
