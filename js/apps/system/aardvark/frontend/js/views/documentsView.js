@@ -3,7 +3,7 @@
 
 (function() {
   "use strict";
-  var documentsView = Backbone.View.extend({
+  window.documentsView = Backbone.View.extend({
     collectionID: 0,
     currentPage: 1,
     documentsPerPage: 10,
@@ -347,8 +347,9 @@
     },
 
     addDocument: function () {
-      var collid  = window.location.hash.split("/")[1];
-      var doctype = arangoHelper.collectionApiType(collid);
+      var collid  = window.location.hash.split("/")[1],
+        // second parameter is "true" to disable caching of collection type
+        doctype = arangoHelper.collectionApiType(collid, true);
 
       if (doctype === 'edge') {
         $('#edgeCreateModal').modal('show');

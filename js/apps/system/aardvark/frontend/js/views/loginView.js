@@ -1,72 +1,75 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, arangoHelper, window, setTimeout, $*/
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
 
-var loginView = Backbone.View.extend({
-  el: '#content',
-  el2: '.header',
-  el3: '.footer',
+(function() {
+  "use strict";
+  window.loginView = Backbone.View.extend({
+    el: '#content',
+    el2: '.header',
+    el3: '.footer',
 
-  init: function () {
-  },
+    init: function () {
+    },
 
-  events: {
-    "click #submitLogin" : "login",
-    "keydown #loginUsername" : "checkKey",
-    "keydown #loginPassword" : "checkKey"
-  },
+    events: {
+      "click #submitLogin" : "login",
+      "keydown #loginUsername" : "checkKey",
+      "keydown #loginPassword" : "checkKey"
+    },
 
-  template: templateEngine.createTemplate("loginView.ejs"),
+    template: templateEngine.createTemplate("loginView.ejs"),
 
-  render: function() {
-    this.addDummyUser();
+    render: function() {
+      this.addDummyUser();
 
-    $(this.el).html(this.template.text);
-    $(this.el2).hide();
-    $(this.el3).hide();
-    $.gritter.removeAll();
+      $(this.el).html(this.template.text);
+      $(this.el2).hide();
+      $(this.el3).hide();
+      $.gritter.removeAll();
 
-    $('#loginUsername').focus();
+      $('#loginUsername').focus();
 
-    //DEVELOPMENT 
-    $('#loginUsername').val('admin');
-    $('#loginPassword').val('admin');
+      //DEVELOPMENT 
+      $('#loginUsername').val('admin');
+      $('#loginPassword').val('admin');
 
-    return this;
-  },
+      return this;
+    },
 
-  addDummyUser: function () {
-    this.collection.add({
-      "userName" : "admin",
-      "sessionId" : "abc123",
-      "password" :"admin",
-      "userId" : 1
-    });
-  },
+    addDummyUser: function () {
+      this.collection.add({
+        "userName" : "admin",
+        "sessionId" : "abc123",
+        "password" :"admin",
+        "userId" : 1
+      });
+    },
 
-  checkKey: function (e) {
-    if (e.keyCode === 13) {
-      this.login();
+    checkKey: function (e) {
+      if (e.keyCode === 13) {
+        this.login();
+      }
+    },
+
+    login: function () {
+      var username = $('#loginUsername').val();
+      var password = $('#loginPassword').val();
+
+      if (username === '' || password === '') {
+        arangoHelper.arangoNotification("Please fill out required fields");
+        return;
+      }
+      var callback = this.collection.login(username, password);
+
+      if (callback === true) {
+        $(this.el2).show();
+        $(this.el3).show();
+        window.App.navigate("/", {trigger: true});
+        $('#currentUser').text(username);
+        this.collection.loadUserSettings();
+      }
+
     }
-  },
 
-  login: function () {
-    var username = $('#loginUsername').val();
-    var password = $('#loginPassword').val();
-
-    if (username === '' || password === '') {
-      arangoHelper.arangoNotification("Please fill out required fields");
-      return;
-    }
-    var callback = this.collection.login(username, password);
-
-    if (callback === true) {
-      $(this.el2).show();
-      $(this.el3).show();
-      window.App.navigate("/", {trigger: true});
-      $('#currentUser').text(username);
-      this.collection.loadUserSettings();
-    }
-
-  }
-
-});
+  });
+}());

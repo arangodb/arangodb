@@ -407,12 +407,24 @@ ArangoDatabase.prototype._truncate = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._drop = function (id) {
-  var collection = this._collection(id);
+  var name;
 
-  if (collection instanceof this._collectionConstructor) {
-    return collection.drop();
+  for (name in this) {
+    if (this.hasOwnProperty(name)) {
+      var collection = this[name];
+
+      if (collection instanceof this._collectionConstructor) {
+        if (collection._id === id || collection._name === id) {
+          return collection.drop();
+        }
+      }
+    }
   }
 
+  var c = this._collection(id);
+  if (c) {
+    return c.drop();
+  }
   return undefined;
 };
 
