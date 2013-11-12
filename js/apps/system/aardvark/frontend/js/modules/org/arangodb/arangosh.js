@@ -152,7 +152,6 @@ exports.HELP = exports.createHelpHeadline("Help") +
   ' > db.<name>.exists(<_id>)              check if document exists   ' + "\n" +
   ' > db._query(<query>).toArray()         execute an AQL query       ' + "\n" +
   ' > db._useDatabase(<name>)              switch database            ' + "\n" +
-  ' > db._createDatabase(<name>)           create a new database      ' + "\n" +
   ' > db._listDatabases()                  list existing databases    ' + "\n" +
   ' > help                                 show help pages            ' + "\n" +
   ' > exit                                                            ' + "\n" +
