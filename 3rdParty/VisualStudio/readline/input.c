@@ -590,13 +590,22 @@ int rl_getc (stream)
                             break;
                         }
                     }
-                  
+
                   if (KST & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED))
                     pending_prefix = VK_ESCAPE;
 
                   if (pending_prefix)
                       pending_count = (pending_count << 1) - 1;
                
+                  if (pending_prefix &&
+                      // European ALT-GR on Windows is LEFT-CTRL + RIGHT-ALT
+                      // actually ALT-GR is not only used for escaping but also for meaningful input
+                      (KST & (LEFT_CTRL_PRESSED | RIGHT_ALT_PRESSED) == (LEFT_CTRL_PRESSED | RIGHT_ALT_PRESSED)) &&
+                      ((KEV.wVirtualKeyCode >= VK_OEM_1 && KEV.wVirtualKeyCode <= VK_OEM_102) ||
+                       (pending_key >= ' ' && pending_key <= '}')))  {
+                      pending_prefix = 0;
+                  }
+
                   /* Ascii direct */
                   if (pending_key)
                       pending_count--;
