@@ -122,8 +122,9 @@ window.arangoHelper = {
     return val.substr(0, 1) === '_';
   },
 
-  collectionApiType: function (identifier) {
-    if (this.CollectionTypes[identifier] === undefined) {
+  collectionApiType: function (identifier, refresh) {
+    // set "refresh" to disable caching collection type
+    if (refresh || this.CollectionTypes[identifier] === undefined) {
       this.CollectionTypes[identifier] = window.arangoDocumentStore
       .getCollectionInfo(identifier).type;
     }
