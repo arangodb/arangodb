@@ -1,7 +1,7 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global describe, it, expect, jasmine, spyOn*/
-/*global $, d3*/
-
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global runs, waitsFor, jasmine, waits*/
+/*global $ */
 
 describe("Collections View", function() {
   "use strict";
@@ -196,9 +196,7 @@ describe("Collections View", function() {
           check = false;
           return;
         }
-        else {
-          check = true;
-        }
+        check = true;
       });
       expect(check).toBeTruthy();
     });
