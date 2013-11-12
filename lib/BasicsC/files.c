@@ -129,13 +129,16 @@ static TRI_read_write_lock_t FileNamesLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveTrailingSeparator (char* path) {
+  const char* s;
   size_t n;
 
   n = strlen(path);
+  s = path;
 
   if (n > 0) {
     char* p = path + n - 1;
-    while (*p == TRI_DIR_SEPARATOR_CHAR) {
+
+    while (p > s && *p == TRI_DIR_SEPARATOR_CHAR) {
       *p = '\0';
       --p;
     }
@@ -390,14 +393,58 @@ bool TRI_IsSymbolicLink (char const* path) {
 /// @brief checks if file or directory exists
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+
 bool TRI_ExistsFile (char const* path) {
-  struct stat stbuf;
-  int res;
+  if (path == NULL) {
+    return false;
+  }
+  else {
+    struct stat stbuf;
+    size_t len;
+    int res;
+     
+    len  = strlen(path);
 
-  res = stat(path, &stbuf);
+    // path must not end with a \ on Windows, other stat() will return -1
+    if (len > 0 && path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
 
-  return res == 0;
+      if (copy == NULL) {
+        return false;
+      }
+      
+      // remove trailing slash
+      RemoveTrailingSeparator(copy);
+
+      res = stat(copy, &stbuf);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, copy);
+    }
+    else {
+      res = stat(path, &stbuf);
+    }
+
+    return res == 0;
+  }
 }
+
+#else
+
+bool TRI_ExistsFile (char const* path) {
+  if (path == NULL) {
+    return false;
+  }
+  else {
+    struct stat stbuf;
+    int res;
+
+    res = stat(path, &stbuf);
+
+    return res == 0;
+  }
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory, recursively
@@ -1754,27 +1801,27 @@ char* TRI_GetTempPath () {
     _tcscpy(tempFileName,TEXT("TRI_tempFile"));
   }
   
-  tempFileHandle = CreateFile(
-                       (LPTSTR) tempFileName, // file name 
-                        GENERIC_WRITE,        // open for write 
-                        0,                    // do not share 
-                        NULL,                 // default security 
-                        CREATE_ALWAYS,        // overwrite existing
-                        FILE_ATTRIBUTE_NORMAL,// normal file 
-                        NULL);                // no template 
+  tempFileHandle = CreateFile((LPTSTR) tempFileName, // file name 
+                              GENERIC_WRITE,         // open for write 
+                              0,                     // do not share 
+                              NULL,                  // default security 
+                              CREATE_ALWAYS,         // overwrite existing
+                              FILE_ATTRIBUTE_NORMAL, // normal file 
+                              NULL);                 // no template 
+
   if (tempFileHandle == INVALID_HANDLE_VALUE) {
     LOG_FATAL_AND_EXIT("Can not create a temporary file");   
   }
 
   ok = CloseHandle(tempFileHandle);
 
-  if (!ok) {
+  if (! ok) {
     LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");   
   }
 
   ok = DeleteFile(tempFileName);
   
-  if (!ok) {
+  if (! ok) {
     LOG_FATAL_AND_EXIT("Can not destroy a temporary file");   
   }
 
@@ -1789,9 +1836,8 @@ char* TRI_GetTempPath () {
     size_t pathSize = _tcsclen(tempPathName);
     char* temp = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false);
 
-
     if (temp == NULL) {
-      LOG_FATAL_AND_EXIT("Out of memory already");   
+      LOG_FATAL_AND_EXIT("Out of memory");   
     }
 
     for (j = 0; j < pathSize; ++j) {
@@ -1801,6 +1847,9 @@ char* TRI_GetTempPath () {
       temp[j] = (char)(tempPathName[j]);
     }
     temp[pathSize] = 0;
+
+    // remove trailing directory separator
+    RemoveTrailingSeparator(temp);
 
     //ok = (WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, tempPathName, -1, temp, pathSize + 1,  NULL, NULL) != 0);
     

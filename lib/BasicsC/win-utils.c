@@ -101,7 +101,7 @@ void TRI_usleep(unsigned long waitTime) {
   // Create an unnamed waitable timer.
   hTimer = CreateWaitableTimer(NULL, 1, NULL);
   if (hTimer == NULL) {
-    // no much we can do at this low level
+    // not much we can do at this low level
     return;
   }
 
@@ -110,7 +110,7 @@ void TRI_usleep(unsigned long waitTime) {
   }
   // Set timer to wait for indicated micro seconds.
   if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
-    // no much we can do at this low level
+    // not much we can do at this low level
     CloseHandle(hTimer);
     return;
   }
