@@ -5658,7 +5658,7 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength}}
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength})}
 ///
 /// Creates a fulltext index on all documents on attribute @FA{field}.
 /// All documents, which do not have the attribute @FA{field} or that have a
