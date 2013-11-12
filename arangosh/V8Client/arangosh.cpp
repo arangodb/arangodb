@@ -85,6 +85,14 @@ ArangoClient BaseClient;
 V8ClientConnection* ClientConnection = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Windows console codepage
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+static int CodePage = 65001;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief object template for the initial connection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -432,6 +440,12 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
   ;
+
+#ifdef _WIN32
+  description
+    ("code-page", &CodePage, "windows codepage")
+  ;
+#endif
   
   ProgramOptionsDescription deprecatedOptions("DEPRECATED options");
   deprecatedOptions
@@ -556,7 +570,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   V8ClientConnection* connection = CreateConnection();
 
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
-	ostringstream s;
+    ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
       << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName() 
       << "', username: '" << BaseClient.username() << "'";
@@ -601,7 +615,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
   string password;
   if (argv.Length() < 4) {
-	BaseClient.printContinuous("Please specify a password: ");
+    BaseClient.printContinuous("Please specify a password: ");
 
     // now prompt for it
 #ifdef TRI_HAVE_TERMIOS_H
@@ -612,7 +626,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 #else
     getline(cin, password);
 #endif
-	BaseClient.printLine("");
+    BaseClient.printLine("");
   }
   else {
     password = TRI_ObjectToString(argv[3]);
@@ -646,7 +660,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   V8ClientConnection* newConnection = CreateConnection();
 
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
-	ostringstream s;
+    ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
       << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
       << "', username: '" << BaseClient.username() << "'";
@@ -671,9 +685,9 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     return scope.Close(v8::True());
   }
   else {
-	ostringstream s;
+    ostringstream s;
     s << "Could not connect to endpoint '" << BaseClient.endpointString() << 
-		 "', username: '" << BaseClient.username() << "'";
+         "', username: '" << BaseClient.username() << "'";
     BaseClient.printErrLine(s.str());
     
     string errorMsg = "could not connect";
@@ -1536,10 +1550,10 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
   for (size_t i = 0;  i < scripts.size();  ++i) {
     if (! FileUtils::exists(scripts[i])) {
-	  ostringstream s;
-	  s << "error: Javascript file not found: '" << scripts[i].c_str() << "'";
+      ostringstream s;
+      s << "error: Javascript file not found: '" << scripts[i].c_str() << "'";
       BaseClient.printErrLine(s.str());
-	  
+  
       BaseClient.log("error: Javascript file not found: '%s'\n", scripts[i].c_str());
       ok = false;
       break;
@@ -1554,7 +1568,7 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
-	  BaseClient.printErrLine(exception);
+      BaseClient.printErrLine(exception);
 
       BaseClient.log("%s\n", exception.c_str());
       ok = false;
@@ -1586,7 +1600,7 @@ static bool RunString (v8::Handle<v8::Context> context,
   if (tryCatch.HasCaught()) {
     string exception(TRI_StringifyV8Exception(&tryCatch));
 
-	BaseClient.printErrLine(exception);
+    BaseClient.printErrLine(exception);
     BaseClient.log("%s\n", exception.c_str());
     ok = false;
   }
@@ -1631,7 +1645,7 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
 
   if (tryCatch.HasCaught()) {
-	BaseClient.printErrLine(TRI_StringifyV8Exception(&tryCatch));
+    BaseClient.printErrLine(TRI_StringifyV8Exception(&tryCatch));
     ok = false;
   }
   else {
@@ -1758,9 +1772,9 @@ int main (int argc, char* argv[]) {
 
     if (BaseClient.endpointServer() == 0) {
       ostringstream s;
-	  s << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')";
+      s << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')";
 
-	  BaseClient.printErrLine(s.str());
+      BaseClient.printErrLine(s.str());
 
       TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }
@@ -1883,8 +1897,10 @@ int main (int argc, char* argv[]) {
         defaultColour = csbiInfo.wAttributes;
       }
 
-      // not sure about the code page
-      SetConsoleOutputCP(65001);
+      // not sure about the code page. let user set code page by command-line argument if required
+      if (CodePage > 0) {
+        SetConsoleOutputCP((UINT) CodePage);
+      }
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
       printf("                                  ");
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
@@ -1948,12 +1964,12 @@ int main (int argc, char* argv[]) {
     BaseClient.printLine("");
 
     ostringstream s;
-	s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
+    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
 
-	BaseClient.printLine(s.str());
+    BaseClient.printLine(s.str());
 
     ostringstream info;
-	info << "Using ";
+    info << "Using ";
 
 #ifdef TRI_V8_VERSION
     info << "Google V8 " << TRI_V8_VERSION << " JavaScript engine";
@@ -1988,7 +2004,7 @@ int main (int argc, char* argv[]) {
         is << "Could not connect to endpoint '" << BaseClient.endpointString() 
            << "', database: '" << BaseClient.databaseName() 
            << "', username: '" << BaseClient.username() << "'";
-	    BaseClient.printErrLine(is.str());
+        BaseClient.printErrLine(is.str());
 
         if (ClientConnection->getErrorMessage() != "") {
           ostringstream is2;
@@ -1998,7 +2014,7 @@ int main (int argc, char* argv[]) {
         promptError = true;
       }
 
-	  BaseClient.printLine("");
+      BaseClient.printLine("");
     }
   }
 
