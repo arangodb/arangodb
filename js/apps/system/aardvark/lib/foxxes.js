@@ -113,8 +113,18 @@ exports.Foxxes = function () {
   };
 
   this.move = function(key, app, mount, prefix) {
-    foxxmanager.unmount(key);
-    foxxmanager.mount(app, mount, {collectionPrefix: prefix});
+    var success;
+    try {
+      success = foxxmanager.mount(app, mount, {collectionPrefix: prefix});
+      foxxmanager.unmount(key);
+    } catch (e) {
+      return {
+        error: true,
+        status: 409,
+        message: "Mount-Point already in use"
+      };
+    }
+    return success;
   };
   
 };

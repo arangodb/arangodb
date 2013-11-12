@@ -162,7 +162,13 @@ controller.put('/foxx/move/:key', function(req, res) {
   var app = body.app;
   var key = req.params("key");
   var prefix = body.prefix;
-  foxxes.move(key, app, mountPoint, prefix);
+  var result = foxxes.move(key, app, mountPoint, prefix);
+  if (result.error) {
+    res.status(result.status);
+    res.body = result.message;
+    return;
+  }
+  res.json(result);
 })
 .summary("Move one foxx to another moint point")
   .notes ("This function moves one installed foxx"

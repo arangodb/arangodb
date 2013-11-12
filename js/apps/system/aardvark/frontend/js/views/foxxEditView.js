@@ -50,8 +50,8 @@ window.foxxEditView = Backbone.View.extend({
           }),
           dataType: "json",
           error: function(data) {
-            console.log(data);
             failed = true;
+            arangoHelper.arangoError(data.responseText);
           }
         });
       } else {
