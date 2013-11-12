@@ -559,6 +559,47 @@ pack-dmg-cmake:
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
 
 ################################################################################
+### @brief MacOSX
+################################################################################
+
+.PHONY: pack-macosx pack-macosx-cmake
+
+pack-macosx:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--prefix=/opt/arangodb \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--enable-mruby
+
+	${MAKE} pack-macosx-cmake
+
+pack-macosx-cmake:
+	cd Build && cmake \
+		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "USE_MRUBY=ON" \
+		-D "USE_RAW_CONFIG=ON" \
+		-D "ARANGODB_VERSION=@VERSION@" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		..
+
+	${MAKE} .libev-build-64
+	${MAKE} .zlib-build-64
+	${MAKE} .icu-build-64
+	${MAKE} .v8-build-64
+	${MAKE} .mruby-build-64
+
+	${MAKE} ${BUILT_SOURCES}
+ 
+	cd Build && ${MAKE}
+	cd Build && ${MAKE} install DESTDIR=`pwd`/../..
+
+################################################################################
 ### @brief debian arm package
 ################################################################################
 
