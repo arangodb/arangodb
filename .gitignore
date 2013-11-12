@@ -100,4 +100,6 @@ nbproject/
 test.cpp.txt
 
 js/apps/*
-!js/apps/system/aardvark
+!js/apps/system
+!js/apps/system/*
+
