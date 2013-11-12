@@ -331,7 +331,8 @@ var documentsView = Backbone.View.extend({
 
   addDocument: function () {
     var collid  = window.location.hash.split("/")[1];
-    var doctype = arangoHelper.collectionApiType(collid);
+    // second parameter is "true" to disable caching of collection type
+    var doctype = arangoHelper.collectionApiType(collid, true);
 
     if (doctype === 'edge') {
       $('#edgeCreateModal').modal('show');
