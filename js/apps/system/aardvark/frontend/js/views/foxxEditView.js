@@ -65,6 +65,7 @@ window.foxxEditView = Backbone.View.extend({
   },
 
   hidden: function () {
+    this.undelegateEvents();
     window.App.navigate("applications", {trigger: true});
   },
   
