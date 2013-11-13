@@ -186,7 +186,7 @@ static const char* TypeNameCapConstraint (TRI_index_t const* idx) {
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonCapConstraint (TRI_index_t* idx) {
+static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, bool withStats) {
   TRI_json_t* json;
   TRI_cap_constraint_t* cap;
 
