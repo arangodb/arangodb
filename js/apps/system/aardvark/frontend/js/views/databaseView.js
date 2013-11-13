@@ -157,14 +157,7 @@ window.databaseView = Backbone.View.extend({
     this.collection.fetch({
       success: function() {
         self.render();
-        var select = $("#dbSelectionList");
-        select.empty();
-        self.collection.toJSON().forEach(function(item) {
-          select.append($("<option></option>")
-            .attr("value", item.name)
-            .text(item.name)
-            .attr("selected", item.name === this.currentDB));
-        });
+        window.App.handleSelectDatabase();
       }
     });
   }
