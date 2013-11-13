@@ -1,11 +1,11 @@
-Handling Edges {#HandlingEdges}
-===============================
+Handling Edges{#HandlingEdges}
+==============================
 
 @NAVIGATE_HandlingEdges
 @EMBEDTOC{HandlingEdgesTOC}
 
-Edges, Identifiers, Handles {#HandlingEdgesIntro}
-=================================================
+Edges, Identifiers, Handles{#HandlingEdgesIntro}
+================================================
 
 This is an introduction to ArangoDB's interface for edges and how handle
 edges from the JavaScript shell @LIT{arangosh}. For other languages see the
@@ -16,8 +16,8 @@ corresponding language API.
 @copydoc GlossaryEdgeCollection
 
 @CLEARPAGE
-Working with Edges {#HandlingEdgesShell}
-========================================
+Working with Edges{#HandlingEdgesShell}
+=======================================
 
 @anchor HandlingEdgesCreate
 @copydetails SaveEdgeCol

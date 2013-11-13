@@ -7,6 +7,8 @@ v1.4.1 (2013-11-08)
 v1.4.2 (XXXX-XX-XX)
 -------------------
 
+* added documentation for JavaScript traversals 
+
 * added --code-page command-line option for Windows version of arangosh
 
 * fixed a problem when creating edges via the web interface.
