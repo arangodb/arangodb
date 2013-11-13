@@ -632,34 +632,9 @@ void TRI_InitCondition (TRI_condition_t* cond) {
                                    FALSE, // non-signaled initially
                                    NULL); // unnamed
 
-  cond->_ownMutex = true;
   cond->_mutex = CreateMutex(NULL,  // default security attributes
                              FALSE, // initially not owned
                              NULL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new condition variable with existing mutex
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_Init2Condition (TRI_condition_t* cond, TRI_mutex_t* mutex) {
-  cond->_waiters = 0;
-  cond->_broadcast = false;
-
-  cond->_sema = CreateSemaphore(NULL,       // no security
-                                0,          // initially 0
-                                0x7fffffff, // max count
-                                NULL);      // unnamed
-
-  InitializeCriticalSection(&cond->_lockWaiters);
-
-  cond->_waitersDone = CreateEvent(NULL,  // no security
-                                   FALSE, // auto-reset
-                                   FALSE, // non-signaled initially
-                                   NULL); // unnamed
-
-  cond->_ownMutex = false;
-  cond->_mutex = mutex->_mutex;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -670,10 +645,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
   CloseHandle(cond->_waitersDone);
   DeleteCriticalSection(&cond->_lockWaiters);
   CloseHandle(cond->_sema);
-
-  if (cond->_ownMutex) {
-    CloseHandle(cond->_mutex);
-  }
+  CloseHandle(cond->_mutex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
