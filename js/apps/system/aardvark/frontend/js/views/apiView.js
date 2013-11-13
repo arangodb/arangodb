@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $ */
+/*global window, document, Backbone, EJS, SwaggerUi, hljs, templateEngine, $ */
 
 window.apiView = Backbone.View.extend({
   el: '#content',

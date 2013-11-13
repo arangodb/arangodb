@@ -27,12 +27,13 @@
     },
     
     checkMount: function(mount) {
-        var regex = /^(\/[^\/\s]+)+$/;
-        if (!regex.test(mount)){
-          arangoHelper.arangoError("Please give a valid mount point, e.g.: /myPath");
-          return false;
-        }
-        return true;
+      /*jslint regexp: true*/
+      var regex = /^(\/[^\/\s]+)+$/;
+      if (!regex.test(mount)){
+        arangoHelper.arangoError("Please give a valid mount point, e.g.: /myPath");
+        return false;
+      }
+      return true;
     },
 
     changeFoxx: function() {
