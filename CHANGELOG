@@ -31,6 +31,10 @@ v1.5.x (XXXX-XX-XX)
 
 * added collection status "loading"
 
+* added the option to return the number of elements indexed to the
+  result of <collection>.getIndexes() for each index. This is
+  currently only implemented for hash indices and skiplist indices.
+
 
 v1.4.2 (XXXX-XX-XX)
 -------------------
