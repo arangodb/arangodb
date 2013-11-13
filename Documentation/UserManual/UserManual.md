@@ -16,6 +16,7 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{ExtendingAql}
 @CHAPTER_REF{AqlExamples}
 @CHAPTER_REF{Graphs}
+@CHAPTER_REF{Traversals}
 @CHAPTER_REF{Transactions}
 @CHAPTER_REF{UserManualReplication}
 @CHAPTER_REF{UserManualFoxx}
