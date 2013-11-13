@@ -28,6 +28,7 @@
 #include "skiplistIndex.h"
 
 #include "SkipLists/skiplist.h"
+#include "SkipLists/compare.h"
 #include "VocBase/document-collection.h"
 
 //------------------------------------------------------------------------------
@@ -716,7 +717,7 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* sk
     compareResult = 1;
   }
   else {
-    compareResult = skiplistIndex->skiplist.uniqueSkiplist->compareElementElement(
+    compareResult = IndexStaticCompareElementElement(
         skiplistIndex->skiplist.uniqueSkiplist,
         &(lNode->_element),
         &(rNode->_element),
@@ -740,7 +741,7 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* sk
     compareResult = -1;
   }
   else {
-    compareResult = skiplistIndex->skiplist.uniqueSkiplist->compareElementElement(
+    compareResult = IndexStaticCompareElementElement(
         skiplistIndex->skiplist.uniqueSkiplist, 
         &(lNode->_element),
         &(rNode->_element), 
@@ -779,7 +780,7 @@ static bool skiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, 
   lNode = interval->_leftEndPoint;
   rNode = interval->_rightEndPoint;
 
-  compareResult = skiplistIndex->skiplist.uniqueSkiplist->compareElementElement(
+  compareResult = IndexStaticCompareElementElement(
       skiplistIndex->skiplist.uniqueSkiplist, 
       &(lNode->_element),
       &(rNode->_element),
@@ -1143,7 +1144,7 @@ static bool multiSkiplistIndex_findHelperIntervalIntersectionValid (SkiplistInde
     compareResult = 1;
   }
   else {
-    compareResult = skiplistIndex->skiplist.nonUniqueSkiplist->compareElementElement(
+    compareResult = IndexStaticMultiCompareElementElement(
         skiplistIndex->skiplist.nonUniqueSkiplist, 
         &(lNode->_element),
         &(rNode->_element),
@@ -1167,7 +1168,7 @@ static bool multiSkiplistIndex_findHelperIntervalIntersectionValid (SkiplistInde
     compareResult = -1;
   }
   else {
-    compareResult = skiplistIndex->skiplist.nonUniqueSkiplist->compareElementElement(
+    compareResult = IndexStaticMultiCompareElementElement(
         skiplistIndex->skiplist.nonUniqueSkiplist,
         &(lNode->_element),
         &(rNode->_element),
@@ -1193,28 +1194,28 @@ static bool multiSkiplistIndex_findHelperIntervalValid (SkiplistIndex* skiplistI
   TRI_skiplist_node_t* rNode;
   
   if ((interval->_leftEndPoint == NULL) || (interval->_rightEndPoint == NULL)) {
-    return 0;
+    return false;
   }
 
   if (interval->_leftEndPoint == interval->_rightEndPoint) {
-    return 0;
+    return false;
   }
 
   if ( (interval->_leftEndPoint  == TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) ||
        (interval->_rightEndPoint == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)))  {
-    return -1;
+    return true;
   }
   
   lNode = interval->_leftEndPoint;
   rNode = interval->_rightEndPoint;
 
-  compareResult = skiplistIndex->skiplist.nonUniqueSkiplist->compareElementElement(
+  compareResult = IndexStaticMultiCompareElementElement(
       skiplistIndex->skiplist.nonUniqueSkiplist, 
       &(lNode->_element),
       &(rNode->_element),
       0);
                                               
-  return (compareResult == -1);  
+  return (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_LESS);  
 } 
 
 
@@ -1274,10 +1275,9 @@ static void MultiSkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
         for (j = 0; j < rightResult._length; ++j) {
           tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&leftResult, i));
           tempRightInterval =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&rightResult, j));
-          if (! multiSkiplistIndex_findHelperIntervalIntersectionValid(skiplistIndex, tempLeftInterval, tempRightInterval, &interval)) {
-            continue;
+          if (multiSkiplistIndex_findHelperIntervalIntersectionValid(skiplistIndex, tempLeftInterval, tempRightInterval, &interval)) {
+            TRI_PushBackVector(resultIntervalList, &interval);
           }
-          TRI_PushBackVector(resultIntervalList, &interval);
         }
       }
       TRI_DestroyVector(&leftResult);
