@@ -30,11 +30,13 @@
     }
 
     describe('checking codeFiles', function() {
-     var files = /^([\w\W]*lib\/[\w\W]*)|([\w\W]*Spec\.js)$/;
+     var files = /^([\w\W]*lib\/[\w\W]*)|([\w\W]*Spec\.js)$/,
+       generated = /(\/bootstrap\/)|(\/client\/)|(\/modules\/)|(\/shell\/)/,
+       ace = /ace\.js/;
     
       _.each(document.getElementsByTagName('script'), function (element) {
         var script = element.getAttribute('src');
-        if (script === null || files.test(script)) {
+        if (script === null || files.test(script) || generated.test(script) || ace.test(script)) {
           return;
         }
         it(script, function () {
