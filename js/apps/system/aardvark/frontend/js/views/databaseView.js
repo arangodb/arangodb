@@ -157,6 +157,8 @@ window.databaseView = Backbone.View.extend({
     this.collection.fetch({
       success: function() {
         self.render();
+        window.App.handleSelectDatabase();
+        /*
         var select = $("#dbSelectionList");
         select.empty();
         self.collection.toJSON().forEach(function(item) {
@@ -165,6 +167,7 @@ window.databaseView = Backbone.View.extend({
             .text(item.name)
             .attr("selected", item.name === this.currentDB));
         });
+        */
       }
     });
   }
