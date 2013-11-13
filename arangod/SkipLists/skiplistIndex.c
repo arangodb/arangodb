@@ -1019,6 +1019,14 @@ int SkiplistIndex_remove (SkiplistIndex* skiplistIndex,
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of elements in the skip list index
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t SkiplistIndex_getNrUsed(SkiplistIndex* skiplistIndex) {
+  return skiplistIndex->skiplist.uniqueSkiplist->base._nrUsed;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 // Multi-skiplist non-unique skiplist indexes
@@ -1384,6 +1392,14 @@ int MultiSkiplistIndex_insert (SkiplistIndex* skiplistIndex,
 int MultiSkiplistIndex_remove (SkiplistIndex* skiplistIndex, 
                                TRI_skiplist_index_element_t* element) {
   return TRI_RemoveElementSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, element, NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of elements in the multi skip list index
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t MultiSkiplistIndex_getNrUsed(SkiplistIndex* skiplistIndex) {
+  return skiplistIndex->skiplist.nonUniqueSkiplist->base._nrUsed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
