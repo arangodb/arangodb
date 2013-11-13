@@ -108,7 +108,8 @@ function get_api_indexes (req, res) {
     actions.collectionNotFound(req, res, name);
     return;
   }
-  var withStats = req.parameters.withStats == "true" || false;
+
+  var withStats = req.parameters.withStats === "true" || false;
   var list = [], ids = {}, indexes = collection.getIndexes(withStats), i;
 
   for (i = 0;  i < indexes.length;  ++i) {
