@@ -138,6 +138,7 @@ typedef struct TRI_skiplist_base_s {
 
   TRI_skiplist_node_t _startNode;
   TRI_skiplist_node_t _endNode;
+  uint64_t _nrUsed;
 
 }
 TRI_skiplist_base_t;

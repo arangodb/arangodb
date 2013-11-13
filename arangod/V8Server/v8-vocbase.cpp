@@ -762,7 +762,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -878,7 +878,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -1910,7 +1910,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     ReleaseCollection(collection);
@@ -4962,7 +4962,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     ReleaseCollection(collection);
@@ -5176,7 +5176,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     // Create a json represention of the index
     // ...........................................................................
 
-    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex);
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex,false);
 
     if (json == NULL) {
       errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -5574,7 +5574,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -5658,7 +5658,7 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength}}
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength})}
 ///
 /// Creates a fulltext index on all documents on attribute @FA{field}.
 /// All documents, which do not have the attribute @FA{field} or that have a
@@ -5857,9 +5857,12 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
-/// @FUN{getIndexes()}
+/// @FUN{getIndexes(@FA{withStats})}
 ///
-/// Returns a list of all indexes defined for the collection.
+/// Returns a list of all indexes defined for the collection. 
+/// If @FA{withStats} is @LIT{true} then for each index the number of
+/// elements stored in it is returned in the @LIT{numUsed} component,
+/// if this information is exported by the particular index.
 ///
 /// @EXAMPLES
 ///
@@ -5868,6 +5871,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+  bool withStats = false;
+  if (argv.Length() > 0) { 
+      withStats = TRI_ObjectToBoolean(argv[0]);
+  }
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
@@ -5891,7 +5899,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   trx.lockRead();
 
   // get list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document,withStats);
 
   trx.finish(res);
   // READ-LOCK end
