@@ -107,7 +107,7 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
   // boolean: false < true
   // number: natural order
   // strings: lexicographical
-  // lists: lexicorgraphically and within each slot according to these rules.
+  // lists: lexicographically and within each slot according to these rules.
   // ............................................................................
 
   if (left == NULL && right == NULL) {

@@ -4165,7 +4165,7 @@ static int ComparePidName (void const* left, void const* right) {
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document, bool withStats) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
@@ -4181,7 +4181,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
     idx = document->_allIndexes._buffer[i];
 
-    json = idx->json(idx);
+    json = idx->json(idx,withStats);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);
