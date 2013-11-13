@@ -821,7 +821,7 @@ static int OpenDatabases (TRI_server_t* server) {
       // grab last error
       res = TRI_errno();
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_NO_ERROR) {
         // but we must have an error...
         res = TRI_ERROR_INTERNAL;
       }
