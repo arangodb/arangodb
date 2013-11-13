@@ -32,6 +32,66 @@ v1.5.x (XXXX-XX-XX)
 * added collection status "loading"
 
 
+v1.4.2 (XXXX-XX-XX)
+-------------------
+
+* added --code-page command-line option for Windows version of arangosh
+
+* fixed a problem when creating edges via the web interface.
+
+  The problem only occurred if a collection was created with type "document
+  collection" via the web interface, and afterwards was dropped and re-created
+  with type "edge collection". If the web interface page was not reloaded,
+  the old collection type (document) was cached, making the subsequent creation
+  of edges into the (seeming-to-be-document) collection fail.
+
+  The fix is to not cache the collection type in the web interface. Users of
+  an older version of the web interface can reload the collections page if they
+  are affected.
+
+* fixed a caching problem in arangosh: if a collection was created using the web
+  interface, and then removed via arangosh, arangosh did not actually drop the
+  collection due to caching.
+
+  Because the `drop` operation was not carried out, this caused misleading error
+  messages when trying to re-create the collection (e.g. `cannot create collection:
+  duplicate name`).
+
+* fixed ALT-introduced characters for arangosh console input on Windows
+
+  The Windows readline port was not able to handle characters that are built
+  using CTRL or ALT keys. Regular characters entered using the CTRL or ALT keys
+  were silently swallowed and not passed to the terminal input handler.
+  
+  This did not seem to cause problems for the US keyboard layout, but was a
+  severe issue for keyboard layouts that require the ALT (or ALT-GR) key to 
+  construct characters. For example, entering the character `{` with a German
+  keyboard layout requires pressing ALT-GR + 9. 
+
+* fixed issue #665: Hash/skiplist combo madness bit my ass
+
+  this fixes a problem with missing/non-deterministic rollbacks of inserts in
+  case of a unique constraint violation into a collection with multiple secondary
+  indexes (with at least one of them unique)
+
+* fixed issue #664: ArangoDB installer on windows requires drive c:
+
+* partly fixed issue #662: ArangoDB on Windows hanging
+
+  This fixes dropping databases on Windows. In previous 1.4 versions on Windows,
+  one shape collection file was not unloaded and removed when dropping a database,
+  leaving one directory and one shape collection file in the otherwise-dropped
+  database directory.
+
+* fixed issue #660: updated documentation on indexes
+
+
+v1.4.1 (2013-11-08)
+-------------------
+
+* performance improvements for skip-list deletes
+
+
 v1.4.1-rc1 (2013-11-07)
 -----------------------
 

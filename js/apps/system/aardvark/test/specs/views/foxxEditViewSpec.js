@@ -114,10 +114,10 @@
     });
 
     it("should prevent an illegal mountpoint", function() {
-      spyOn(window, "alert");
+      spyOn(arangoHelper, "arangoError");
       $("#change-mount-point").val("illegal");
       $("#change").click();
-      expect(window.alert).toHaveBeenCalled();
+      expect(arangoHelper.arangoError).toHaveBeenCalled();
     });
   });
 }());
