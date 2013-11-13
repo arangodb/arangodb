@@ -73,8 +73,6 @@ extern "C" {
 
 typedef struct TRI_condition_s {
   pthread_cond_t _cond;
-
-  bool _ownMutex;
   pthread_mutex_t* _mutex;
 }
 TRI_condition_t;
