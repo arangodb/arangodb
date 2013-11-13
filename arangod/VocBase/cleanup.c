@@ -262,7 +262,7 @@ void TRI_CleanupVocBase (void* data) {
         TRI_vocbase_col_t* collection;
         TRI_primary_collection_t* primary;
 
-        collection = collections._buffer[i];
+        collection = (TRI_vocbase_col_t*) collections._buffer[i];
 
         TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
