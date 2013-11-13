@@ -7,6 +7,11 @@ v1.4.1 (2013-11-08)
 v1.4.2 (XXXX-XX-XX)
 -------------------
 
+* changed Windows condition variable implementation to use Windows native
+  condition variables
+  
+  This is an attempt to fix spurious Windows hangs as described in issue #662.
+
 * added documentation for JavaScript traversals 
 
 * added --code-page command-line option for Windows version of arangosh
