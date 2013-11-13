@@ -139,7 +139,11 @@ module.exports = function(karma) {
 
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
-    reporters: ['progress'],
+    reporters: ['dots', 'junit'],
+
+    junitReporter: {
+      outputFile: 'frontend-results.xml'
+    },
 
 
     // web server port
@@ -160,7 +164,7 @@ module.exports = function(karma) {
 
 
     // enable / disable watching file and executing tests whenever any file changes
-    autoWatch: true,
+    autoWatch: false,
 
 
     // Start these browsers, currently available:
@@ -171,7 +175,7 @@ module.exports = function(karma) {
     // - Safari (only Mac)
     // - PhantomJS
     // - IE (only Windows)
-    browsers: [],
+    browsers: ["PhantomJS"],
 
 
     // If browser does not capture in given timeout [ms], kill it
@@ -180,6 +184,6 @@ module.exports = function(karma) {
 
     // Continuous Integration mode
     // if true, it capture browsers, run tests and exit
-    singleRun: false
+    singleRun: true
   });
 };
