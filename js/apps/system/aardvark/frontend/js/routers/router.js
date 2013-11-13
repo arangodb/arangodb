@@ -346,6 +346,10 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('applications-menu');
     },
 
+    handleSelectDatabase: function () {
+      this.naviView.handleSelectDatabase(); 
+    },
+
     handleResize: function () {
       var oldWidth = $('#content').width();
       var containerWidth = $(window).width() - 70;

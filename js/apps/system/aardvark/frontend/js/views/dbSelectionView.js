@@ -10,7 +10,7 @@
     },
 
     initialize: function() {
-                  var self = this;
+      var self = this;
       this.collection.fetch({
         success: function(){
           self.render(self.$el);

@@ -26,6 +26,10 @@
       $('.nav-collapse').css('margin-right', margin - 10);
     },
 
+    handleSelectDatabase: function () {
+      this.dbSelectionView.render($("#selectDB"));
+    },
+
     handleSelectNavigation: function () {
       $("#arangoCollectionSelect").change(function() {
         var navigateTo = $(this).find("option:selected").val();
