@@ -1820,7 +1820,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
   if (withStats) {
-    if (idx->_unique) {
+    if (skiplistIndex->_skiplistIndex->unique) {
       nrUsed = SkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
     }
     else {
