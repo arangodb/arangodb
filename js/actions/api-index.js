@@ -52,6 +52,9 @@ var API = "_api/index";
 /// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
+/// @RESTQUERYPARAM{withStats,boolean,optional}
+/// Whether or not to return statistics.
+///
 /// @RESTDESCRIPTION
 ///
 /// Returns an object with an attribute `indexes` containing a list of all
@@ -76,6 +79,25 @@ var API = "_api/index";
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Return information about all indexes with statistics:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestIndexAllIndexesWithStats}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     db.products.ensureSkiplist("name");
+///     db.products.save({name:"Fred"});
+///     db.products.save({name:"Barney"});
+///
+///     var url = "/_api/index?collection=" + cn + "&withStats=true";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_indexes (req, res) {
@@ -86,8 +108,8 @@ function get_api_indexes (req, res) {
     actions.collectionNotFound(req, res, name);
     return;
   }
-
-  var list = [], ids = {}, indexes = collection.getIndexes(), i;
+  var withStats = req.parameters.withStats == "true" || false;
+  var list = [], ids = {}, indexes = collection.getIndexes(withStats), i;
 
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
