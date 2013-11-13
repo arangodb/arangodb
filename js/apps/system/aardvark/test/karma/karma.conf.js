@@ -2,6 +2,7 @@
 // Generated on Thu Jul 04 2013 11:39:34 GMT+0200 (CEST)
 
 module.exports = function(karma) {
+
   karma.set({
 
     // base path, that will be used to resolve files and exclude
@@ -9,8 +10,8 @@ module.exports = function(karma) {
 
 
     // frameworks to use
+    //frameworks: ['jasmine', 'junit-reporter'],
     frameworks: ['jasmine'],
-
 
     // list of files / patterns to load in the browser
     files: [
@@ -136,13 +137,20 @@ module.exports = function(karma) {
       
     ],
 
+/*
+    plugins: [
+      'karma-junit-reporter'
+    ],
+*/
 
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
     reporters: ['dots', 'junit'],
 
     junitReporter: {
-      outputFile: 'frontend-results.xml'
+      //outputFile: '../../../../frontend-results.xml',
+      outputFile: 'frontend-results.xml',
+      suite: ''
     },
 
 
