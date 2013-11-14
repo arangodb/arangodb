@@ -67,15 +67,6 @@ typedef enum {
 TRI_skiplist_prob_e;
 
 
-typedef enum {
-  TRI_SKIPLIST_COMPARE_STRICTLY_LESS = -1,
-  TRI_SKIPLIST_COMPARE_STRICTLY_GREATER = 1,
-  TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL = 0,
-  TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS = -2,
-  TRI_SKIPLIST_COMPARE_SLIGHTLY_GREATER = 2
-}
-TRI_skiplist_compare_e;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief storage structure for a node's nearest neighbours
 ////////////////////////////////////////////////////////////////////////////////

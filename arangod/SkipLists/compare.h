@@ -196,31 +196,30 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist,
 
 static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSkiplist,
                                                   TRI_skiplist_index_element_t* leftElement,
-                                                  TRI_skiplist_index_element_t* rightElement,
-                                                  int defaultEqual) {
+                                                  TRI_skiplist_index_element_t* rightElement) {
   int compareResult;
   TRI_shaper_t* shaper;
   size_t j;
 
 
   if (leftElement == NULL && rightElement == NULL) {
-    return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
+    return 0;
   }
 
   if (leftElement != NULL && rightElement == NULL) {
-    return TRI_SKIPLIST_COMPARE_STRICTLY_GREATER;
+    return 1;
   }
 
   if (leftElement == NULL && rightElement != NULL) {
-    return TRI_SKIPLIST_COMPARE_STRICTLY_LESS;
+    return -1;
   }
 
   if (leftElement == rightElement) {
-    return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
+    return 0;
   }
 
   if (leftElement->_document == rightElement->_document) {
-    return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
+    return 0;
   }
 
   shaper = multiSkiplist->base._collection->_shaper;
@@ -236,9 +235,7 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
 
       // ......................................................................
       // The function CompareShapedJsonShapedJson can only return 0, -1, or 1
-      // that is, TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL (0)
-      // TRI_SKIPLIST_COMPARE_STRICTLY_LESS (-1)
-      // TRI_SKIPLIST_COMPARE_STRICTLY_GREATER (1)
+      // for equal, strictly less than, or strictly greater than.
       // ......................................................................
 
       return compareResult;
@@ -247,12 +244,13 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
   }
   // We break this tie in the key comparison by looking at the key: 
   compareResult = strcmp(leftElement->_document->_key,rightElement->_document->_key);
-  if (compareResult < 0) return TRI_SKIPLIST_COMPARE_STRICTLY_LESS;
-  else if (compareResult > 0) return TRI_SKIPLIST_COMPARE_STRICTLY_GREATER;
-
-  // This will actually never be reached since the keys can only be
-  // the same if the documents are, which has been checked above.
-  return defaultEqual;
+  if (compareResult < 0) {
+      return -1;
+  }
+  else if (compareResult > 0) {
+      return 1;
+  }
+  return 0;
 }
 
 #ifdef __cplusplus
