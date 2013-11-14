@@ -66,11 +66,11 @@ static bool ExtractDoubleArray (TRI_shaper_t* shaper,
     *missing = true;
     return false;
   }
-  else if (json._sid == shaper->_sidNumber) {
+  else if (json._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
     *result = * (double*) json._data.data;
     return true;
   }
-  else if (json._sid == shaper->_sidNull) {
+  else if (json._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
     *missing = true;
     return false;
   }
@@ -119,7 +119,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     // latitude
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 0, &entry);
 
-    if (! ok || entry._sid != shaper->_sidNumber) {
+    if (! ok || entry._sid != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
       return false;
     }
 
@@ -128,7 +128,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     // longitude
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 1, &entry);
 
-    if (! ok || entry._sid != shaper->_sidNumber) {
+    if (! ok || entry._sid != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
       return false;
     }
 
@@ -143,7 +143,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
     hom = (const TRI_homogeneous_list_shape_t*) shape;
 
-    if (hom->_sidEntry != shaper->_sidNumber) {
+    if (hom->_sidEntry != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
       return false;
     }
 
@@ -180,7 +180,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
     hom = (const TRI_homogeneous_sized_list_shape_t*) shape;
 
-    if (hom->_sidEntry != shaper->_sidNumber) {
+    if (hom->_sidEntry != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
       return false;
     }
 

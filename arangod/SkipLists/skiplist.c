@@ -47,6 +47,184 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies an element
+////////////////////////////////////////////////////////////////////////////////
+
+static int IndexStaticCopyElementElement (TRI_skiplist_base_t* skiplist,
+                                          TRI_skiplist_index_element_t* leftElement,
+                                          TRI_skiplist_index_element_t* rightElement) {
+  if (leftElement == NULL || rightElement == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  leftElement->_document   = rightElement->_document;
+  leftElement->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplist->_numFields, false);
+  
+  if (leftElement->_subObjects == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  memcpy(leftElement->_subObjects, rightElement->_subObjects, sizeof(TRI_shaped_sub_t) * skiplist->_numFields);
+  
+  return TRI_ERROR_NO_ERROR;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an element -- removing any allocated memory within the structure
+////////////////////////////////////////////////////////////////////////////////
+
+static void IndexStaticDestroyElement (TRI_skiplist_base_t* skiplist,
+                                       TRI_skiplist_index_element_t* element) {
+
+  // ...........................................................................
+  // Each 'field' in the hElement->fields is a TRI_shaped_json_t object, this
+  // structure has internal structure of its own -- which also has memory
+  // allocated -- HOWEVER we DO NOT deallocate this memory here since it
+  // is actually part of the document structure. This memory should be deallocated
+  // when the document has been destroyed.
+  // ...........................................................................
+  
+  if (element != NULL) {
+    if (element->_subObjects != NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+    }  
+  }  
+}
+
+// .............................................................................
+// left < right  return -1
+// left > right  return  1
+// left == right return  0
+// .............................................................................
+
+static int CompareKeyElement (TRI_shaped_json_t const* left,
+                              TRI_skiplist_index_element_t* right,
+                              size_t rightPosition,
+                              TRI_shaper_t* shaper) {
+  int result;
+  
+  // ............................................................................
+  // the following order is currently defined for placing an order on documents
+  // undef < null < boolean < number < strings < lists < hash arrays
+  // note: undefined will be treated as NULL pointer not NULL JSON OBJECT
+  // within each type class we have the following order
+  // boolean: false < true
+  // number: natural order
+  // strings: lexicographical
+  // lists: lexicographically and within each slot according to these rules.
+  // ............................................................................
+
+  if (left == NULL && right == NULL) {
+    return 0;
+  }
+
+  if (left == NULL && right != NULL) {
+    return -1;
+  }
+
+  if (left != NULL && right == NULL) {
+    return 1;
+  }
+
+  result = TRI_CompareShapeTypes(NULL,
+                                 NULL, 
+                                 left,
+                                 right->_document,
+                                 &right->_subObjects[rightPosition],
+                                 NULL,
+                                 shaper,
+                                 shaper);
+  
+  // ............................................................................
+  // In the above function CompareShaeTypes we use strcmp which may return
+  // an integer greater than 1 or less than -1. From this function we only
+  // need to know whether we have equality (0), less than (-1)  or greater than (1)
+  // ............................................................................
+  
+  if (result < 0) { 
+    result = -1; 
+  }
+  else if (result > 0) { 
+    result = 1; 
+  }
+  
+  return result;
+}  // end of function CompareShapedJsonShapedJson
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a key and an element
+////////////////////////////////////////////////////////////////////////////////
+
+static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist,
+                                         size_t numFields,
+                                         TRI_skiplist_index_key_t* leftElement,
+                                         TRI_skiplist_index_element_t* rightElement,
+                                         int defaultEqual) {
+
+  // .............................................................................
+  // Compare two elements and determines:
+  // left < right   : return -1
+  // left == right  : return 0
+  // left > right   : return 1
+  // .............................................................................
+
+  int compareResult;                               
+  TRI_shaper_t* shaper;
+  size_t j;
+
+  // ............................................................................
+  // the following order is currently defined for placing an order on documents
+  // undef < null < boolean < number < strings < lists < hash arrays
+  // note: undefined will be treated as NULL pointer not NULL JSON OBJECT
+  // within each type class we have the following order
+  // boolean: false < true
+  // number: natural order
+  // strings: lexicographical
+  // lists: lexicorgraphically and within each slot according to these rules.
+  // associative array: ordered keys followed by value of key
+  // ............................................................................
+
+  if (leftElement == NULL && rightElement == NULL) {
+    return 0;
+  }
+
+  if (leftElement == NULL && rightElement != NULL) {
+    return -1;
+  }
+
+  if (leftElement != NULL && rightElement == NULL) {
+    return 1;
+  }
+
+  // ............................................................................
+  // This call back function is used when we query the index, as such
+  // the number of fields which we are using for the query may be less than
+  // the number of fields that the index is defined with.
+  // ............................................................................
+
+  shaper = skiplist->base._collection->_shaper;
+  
+  for (j = 0; j < numFields; j++) {
+    compareResult = CompareKeyElement(&leftElement->_fields[j], 
+                                      rightElement,
+                                      j,
+                                      shaper); 
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  // ............................................................................
+  // The 'keys' match -- however, we may only have a partial match in reality
+  // if not all keys comprising index have been used.
+  // ............................................................................
+
+  return defaultEqual;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a skip list, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,13 +513,6 @@ int TRI_InitSkipList (TRI_skiplist_t* skiplist,
 
   skiplist->base._collection = primary;
   skiplist->base._numFields = numFields;
-
-  // ..........................................................................
-  // Assign the STATIC comparision call back functions
-  // ..........................................................................
-
-  skiplist->compareElementElement = IndexStaticCompareElementElement; // compareElementElement;
-  skiplist->compareKeyElement     = IndexStaticCompareKeyElement;     // compareKeyElement;
 
   // ..........................................................................
   // Assign the maximum height of the skip list. This maximum height must be
@@ -1323,6 +1494,63 @@ void* TRI_StartNodeSkipList(TRI_skiplist_t* skiplist) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                       non-unique skiplist helpers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Skiplist_non_unique
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief used to determine the order of two keys
+////////////////////////////////////////////////////////////////////////////////
+
+static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkiplist,
+                                               size_t numFields,
+                                               TRI_skiplist_index_key_t* leftElement,
+                                               TRI_skiplist_index_element_t* rightElement,
+                                               int defaultEqual) {
+  int compareResult;
+  TRI_shaper_t* shaper;
+  size_t j;
+
+  if (leftElement == NULL && rightElement == NULL) {
+    return 0;
+  }
+
+  if (leftElement != NULL && rightElement == NULL) {
+    return 1;
+  }
+
+  if (leftElement == NULL && rightElement != NULL) {
+    return -1;
+  }
+
+  // ............................................................................
+  // This call back function is used when we query the index, as such
+  // the number of fields which we are using for the query may be less than
+  // the number of fields that the index is defined with.
+  // ............................................................................
+  
+  shaper = multiSkiplist->base._collection->_shaper;
+
+  for (j = 0; j < numFields; j++) {
+    compareResult = CompareKeyElement(&leftElement->_fields[j],
+                                      rightElement,
+                                      j,
+                                      shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  return defaultEqual;
+}
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                  non-unique skiplist constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -1350,14 +1578,6 @@ int TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   
   skiplist->base._collection = primary;
   skiplist->base._numFields = numFields;
-
-  // ..........................................................................
-  // Assign the comparision call back functions
-  // ..........................................................................
-
-  skiplist->compareElementElement = IndexStaticMultiCompareElementElement; //compareElementElement;
-  skiplist->compareKeyElement     = IndexStaticMultiCompareKeyElement; // compareKeyElement;
-  skiplist->equalElementElement   = IndexStaticMultiEqualElementElement; //equalElementElement;
 
   // ..........................................................................
   // Assign the maximum height of the skip list. This maximum height must be
@@ -1812,7 +2032,7 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // the next node element.
       // .......................................................................    
 
-      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element), -1);
+      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element));
       
       // .......................................................................    
       // The element matches the next element. Overwrite if possible and return.
@@ -1993,13 +2213,13 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // the next node element.
       // .......................................................................
 
-      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element), TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS);
+      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element));
 
       // .......................................................................
       // We have found an item which matches the key
       // .......................................................................    
 
-      if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL) {
+      if (0 == compareResult) {
         currentNode = nextNode;
         goto END;
       }
@@ -2018,26 +2238,14 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // We have reached the lowest level of the lists -- no such item.
       // .......................................................................
 
-      if (currentLevel == 0) {
+      if (0 == currentLevel) {
 
         // .....................................................................
         // The element could not be located
         // .....................................................................
 
-        if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_LESS) {
-          return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
-        }
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
 
-        // .....................................................................
-        // The element could be located (by matching the key) and we are at the lowest level
-        // .....................................................................
-
-        if (compareResult == TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS) {
-          goto END;
-        }
-
-        // can not occur
-        assert(false);
       }
 
       // .......................................................................
@@ -2049,26 +2257,6 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
     }
 
   END:
-
-  // ..........................................................................
-  // locate the correct elemet -- since we allow duplicates
-  // ..........................................................................
-
-  while (currentNode != NULL) {
-    if (IndexStaticMultiEqualElementElement(skiplist, element, &(currentNode->_element))) {
-      break;
-    }
-    currentNode = TRI_NextNodeBaseSkipList(&(skiplist->base), currentNode);
-  }
-  
-  // ..........................................................................
-  // The actual element could not be located - an element with a matching key
-  // may exist, but the same data stored within the element could not be located
-  // ..........................................................................
-
-  if (currentNode == NULL) {
-    return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
-  }
 
   // ..........................................................................
   // Perhaps the user wants a copy before we destory the data?

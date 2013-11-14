@@ -96,7 +96,6 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
     TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
     synced = journal->_synced;
-
     written = journal->_written;
 
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
@@ -178,13 +177,20 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
   // (sometimes we don't need a journal, e.g. directly after db._create(collection); when
   // the collection is still empty)
   if (base->_journals._length == 0 && 
-      document->_journalRequested) {
-    journal = TRI_CreateJournalDocumentCollection(document);
+      document->_requestedJournalSize > 0) {
+    TRI_voc_size_t targetSize = document->base.base._info._maximalSize;
+
+    if (document->_requestedJournalSize > 0 && 
+        document->_requestedJournalSize > targetSize) {
+      targetSize = document->_requestedJournalSize;
+    }
+
+    journal = TRI_CreateJournalDocumentCollection(document, targetSize);
 
     if (journal != NULL) {
       worked = true;
-      document->_journalRequested = false;
-      document->_rotateRequested = false;
+      document->_requestedJournalSize = 0;
+      document->_rotateRequested      = false;
 
       LOG_DEBUG("created new journal '%s'", journal->getName(journal));
     }

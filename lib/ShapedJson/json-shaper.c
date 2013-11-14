@@ -38,6 +38,16 @@
 // #define DEBUG_JSON_SHAPER 1
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                           GLOBALS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief basic shape types (shared between all shapers)
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_basic_shapes_t BasicShapes;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      ARRAY SHAPER
 // -----------------------------------------------------------------------------
 
@@ -306,353 +316,6 @@ static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper, char con
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the attribute name
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyAttributeName (TRI_associative_pointer_t* array, void const* key) {
-  char const* k;
-
-  k = (char const*) key;
-
-  return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the attribute
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementAttributeName (TRI_associative_pointer_t* array, void const* element) {
-  char const* e;
-  attribute_2_id_t const* ee;
-
-  e = (char const*) element;
-  ee = (attribute_2_id_t const*) element;
-
-  return TRI_FnvHashPointer(e + sizeof(attribute_2_id_t), (size_t)(ee->_size - 1));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares an attribute name and an attribute
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyAttributeName (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  char const* k;
-  char const* e;
-
-  k = (char const*) key;
-  e = (char const*) element;
-
-  return strcmp(k, e + sizeof(attribute_2_id_t)) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an attribute identifier by name
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, 
-                                            char const* name) {
-  array_shaper_t* s;
-  void const* p;
-
-  assert(name != NULL);
-
-  s = (array_shaper_t*) shaper;
-  p = TRI_LookupByKeyAssociativePointer(&s->_attributeNames, name);
-
-  if (p == NULL) {
-    size_t n;
-    attribute_2_id_t* a2i;
-    void* f;
-    int res;
-
-    n = strlen(name) + 1;
-    a2i = TRI_Allocate(shaper->_memoryZone, sizeof(attribute_2_id_t) + n, false);
-
-    if (a2i == NULL) {
-      return 0;
-    }
-
-    a2i->_aid = 1 + s->_attributes._length;
-    a2i->_size = n;
-    memcpy(((char*) a2i) + sizeof(attribute_2_id_t), name, n);
-
-    f = TRI_InsertKeyAssociativePointer(&s->_attributeNames, name, a2i, false);
-
-    if (f == NULL) {
-      TRI_Free(shaper->_memoryZone, a2i);
-      return 0;
-    }
-
-    res = TRI_PushBackVectorPointer(&s->_attributes, a2i);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_RemoveKeyAssociativePointer(&s->_attributeNames, name);
-      TRI_Free(shaper->_memoryZone, a2i);
-      return 0;
-    }
-
-    return a2i->_aid;
-  }
-  else {
-    attribute_2_id_t const* a2i = (attribute_2_id_t const*) p;
-
-    return a2i->_aid;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an attribute identifier by name
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, char const* name) {
-  array_shaper_t* s;
-  void const* p;
-
-  s = (array_shaper_t*) shaper;
-  p = TRI_LookupByKeyAssociativePointer(&s->_attributeNames, name);
-
-  if (p == NULL) {
-    return 0;
-  }
-  else {
-    attribute_2_id_t const* a2i = (attribute_2_id_t const*) p;
-
-    return a2i->_aid;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an attribute name by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-static char const* LookupAttributeId (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
-  array_shaper_t* s;
-
-  s = (array_shaper_t*) shaper;
-
-  if (0 < aid && aid <= s->_attributes._length) {
-    char const* a2i;
-
-    a2i = s->_attributes._buffer[aid - 1];
-
-    return a2i + sizeof(attribute_2_id_t);
-  }
-
-  return NULL;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the shapes
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementShape (TRI_associative_pointer_t* array, void const* element) {
-  char const* e;
-  TRI_shape_t const* ee;
-
-  e = element;
-  ee = element;
-
-  return TRI_FnvHashPointer(e + sizeof(TRI_shape_sid_t), (size_t)(ee->_size - sizeof(TRI_shape_sid_t)));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares shapes
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualElementShape (TRI_associative_pointer_t* array, void const* left, void const* right) {
-  TRI_shape_t const* ll;
-  TRI_shape_t const* rr;
-  char const* l;
-  char const* r;
-
-  l = left;
-  ll = left;
-
-  r = right;
-  rr = right;
-
-  return (ll->_size == rr->_size)
-    && memcmp(l + sizeof(TRI_shape_sid_t), r + sizeof(TRI_shape_sid_t), (size_t)(ll->_size - sizeof(TRI_shape_sid_t))) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a shape
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
-  TRI_shape_t const* l;
-  array_shaper_t* s;
-  int res;
-
-  assert(shape != NULL);
-
-  s = (array_shaper_t*) shaper;
-  l = TRI_LookupByElementAssociativePointer(&s->_shapeDictionary, shape);
-
-  if (l != NULL) {
-    TRI_Free(shaper->_memoryZone, shape);
-    return l;
-  }
-
-  shape->_sid = s->_shapes._length + 1;
-  assert(shape->_sid > 0);
-
-  TRI_InsertElementAssociativePointer(&s->_shapeDictionary, shape, false);
-
-  if (s->base._memoryZone->_failed) {
-    TRI_Free(shaper->_memoryZone, shape);
-    return NULL;
-  }
-
-  res = TRI_PushBackVectorPointer(&s->_shapes, shape);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_RemoveElementAssociativePointer(&s->_shapeDictionary, shape);
-    TRI_Free(shaper->_memoryZone, shape);
-    return NULL;
-  }
-
-  return shape;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a shape by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t sid) {
-  array_shaper_t* s;
-
-  s = (array_shaper_t*) shaper;
-
-  if (0 < sid && sid <= s->_shapes._length) {
-    return s->_shapes._buffer[sid - 1];
-  }
-
-  return NULL;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a simple, array-based shaper
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
-  array_shaper_t* shaper;
-  int res;
-  bool ok;
-
-  // create the shaper
-  shaper = TRI_Allocate(zone, sizeof(array_shaper_t), false);
-
-  if (shaper == NULL) {
-    return NULL;
-  }
-
-  res = TRI_InitShaper(&shaper->base, zone);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(zone, shaper);
-
-    return NULL;
-  }
-
-  // create the attribute dictionary
-  TRI_InitAssociativePointer(&shaper->_attributeNames,
-                             zone,
-                             HashKeyAttributeName,
-                             HashElementAttributeName,
-                             EqualKeyAttributeName,
-                             0);
-
-  // create the attributes vector
-  TRI_InitVectorPointer(&shaper->_attributes, zone);
-
-  // create the shape dictionary
-  TRI_InitAssociativePointer(&shaper->_shapeDictionary,
-                             zone,
-                             0,
-                             HashElementShape,
-                             0,
-                             EqualElementShape);
-
-  // create the shapes vector
-  TRI_InitVectorPointer(&shaper->_shapes, zone);
-
-  // set the find and lookup functions
-  shaper->base.findAttributeByName = FindAttributeByName;
-  shaper->base.lookupAttributeByName = LookupAttributeByName;
-  shaper->base.lookupAttributeId = LookupAttributeId;
-  shaper->base.findShape = FindShape;
-  shaper->base.lookupShapeId = LookupShapeId;
-  shaper->base.lookupAttributeWeight = NULL;
-
-  // handle basics
-  ok = TRI_InsertBasicTypesShaper(&shaper->base);
-
-  if (! ok || zone->_failed) {
-    TRI_FreeArrayShaper(zone, &shaper->base);
-    return NULL;
-  }
-
-  // and return
-  return &shaper->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array-based shaper, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyArrayShaper (TRI_shaper_t* shaper) {
-  array_shaper_t* s;
-  size_t i;
-  size_t n;
-
-  s = (array_shaper_t*) shaper;
-
-  for (i = 0, n = s->_attributes._length;  i < n;  ++i) {
-    attribute_2_id_t* a2i;
-
-    a2i = s->_attributes._buffer[i];
-    TRI_Free(shaper->_memoryZone, a2i);
-  }
-
-  TRI_DestroyAssociativePointer(&s->_attributeNames);
-  TRI_DestroyVectorPointer(&s->_attributes);
-
-  for (i = 0, n = s->_shapes._length;  i < n;  ++i) {
-    TRI_shape_t* shape;
-
-    shape = s->_shapes._buffer[i];
-    TRI_Free(shaper->_memoryZone, shape);
-  }
-
-  TRI_DestroyAssociativePointer(&s->_shapeDictionary);
-  TRI_DestroyVectorPointer(&s->_shapes);
-
-  TRI_DestroyShaper(shaper);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array-based shaper and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeArrayShaper (TRI_memory_zone_t* zone, TRI_shaper_t* shaper) {
-  TRI_DestroyArrayShaper(shaper);
-  TRI_Free(zone, shaper);
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                            SHAPER
 // -----------------------------------------------------------------------------
 
@@ -756,128 +419,145 @@ void TRI_FreeShaper (TRI_shaper_t* shaper) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates or finds the basic types
+/// @brief return the sid for a basic type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
-  TRI_shape_t const* l;
-  TRI_shape_t* shape;
-
-  // NULL
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_null_shape_t), true);
-
-  if (shape == NULL) {
-    return false;
+TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
+  switch (type) {
+    case TRI_SHAPE_NULL:
+      return BasicShapes._sidNull;
+    case TRI_SHAPE_BOOLEAN:
+      return BasicShapes._sidBoolean;
+    case TRI_SHAPE_NUMBER:
+      return BasicShapes._sidNumber;
+    case TRI_SHAPE_SHORT_STRING:
+      return BasicShapes._sidShortString;
+    case TRI_SHAPE_LONG_STRING:
+      return BasicShapes._sidLongString;
+    case TRI_SHAPE_LIST:
+      return BasicShapes._sidList;
+    default: {
+    }
   }
 
+  LOG_ERROR("encountered an illegal shape type");
+
+  assert(false);
+  return TRI_SHAPE_ILLEGAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a shape is of primitive type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
+  if (sid == BasicShapes._sidNull) {
+    return &BasicShapes._shapeNull;
+  }
+  else if (sid == BasicShapes._sidBoolean) {
+    return &BasicShapes._shapeBoolean;
+  }
+  else if (sid == BasicShapes._sidNumber) {
+    return &BasicShapes._shapeNumber;
+  }
+  else if (sid == BasicShapes._sidShortString) {
+    return &BasicShapes._shapeShortString;
+  }
+  else if (sid == BasicShapes._sidLongString) {
+    return &BasicShapes._shapeLongString;
+  }
+  else if (sid == BasicShapes._sidList) {
+    return &BasicShapes._shapeList;
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a shape is of primitive type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const* shape) {
+  if (shape->_type == TRI_SHAPE_NULL) {
+    return &BasicShapes._shapeNull;
+  }
+  else if (shape->_type == TRI_SHAPE_BOOLEAN) {
+    return &BasicShapes._shapeBoolean;
+  }
+  else if (shape->_type == TRI_SHAPE_NUMBER) {
+    return &BasicShapes._shapeNumber;
+  }
+  else if (shape->_type == TRI_SHAPE_SHORT_STRING) {
+    return &BasicShapes._shapeShortString;
+  }
+  else if (shape->_type == TRI_SHAPE_LONG_STRING) {
+    return &BasicShapes._shapeLongString;
+  }
+  else if (shape->_type == TRI_SHAPE_LIST) {
+    return &BasicShapes._shapeList;
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises global basic shape types
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseShaper () {
+  TRI_shape_t* shape;
+
+  memset(&BasicShapes, 0, sizeof(TRI_basic_shapes_t));
+
+  // NULL
+  shape = &BasicShapes._shapeNull;
   shape->_size = sizeof(TRI_null_shape_t);
   shape->_type = TRI_SHAPE_NULL;
   shape->_dataSize = 0;
-
-  l = shaper->findShape(shaper, shape);
-
-  if (l == NULL) {
-    return false;
-  }
-
-  shaper->_sidNull = l->_sid;
+  shape->_sid = BasicShapes._sidNull = 1;
 
   // BOOLEAN
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_boolean_shape_t), true);
-
-  if (shape == NULL) {
-    return false;
-  }
-
+  shape = &BasicShapes._shapeBoolean;
   shape->_size = sizeof(TRI_boolean_shape_t);
   shape->_type = TRI_SHAPE_BOOLEAN;
   shape->_dataSize = sizeof(TRI_shape_boolean_t);
-
-  l = shaper->findShape(shaper, shape);
-
-  if (l == NULL) {
-    return false;
-  }
-
-  shaper->_sidBoolean = l->_sid;
+  shape->_sid = BasicShapes._sidBoolean = 2;
 
   // NUMBER
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_number_shape_t), true);
-
-  if (shape == NULL) {
-    return false;
-  }
-
+  shape = &BasicShapes._shapeNumber;
   shape->_size = sizeof(TRI_number_shape_t);
   shape->_type = TRI_SHAPE_NUMBER;
   shape->_dataSize = sizeof(TRI_shape_number_t);
-
-  l = shaper->findShape(shaper, shape);
-
-  if (l == NULL) {
-    return false;
-  }
-
-  shaper->_sidNumber = l->_sid;
+  shape->_sid = BasicShapes._sidNumber = 3;
 
   // SHORT STRING
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_short_string_shape_t), true);
-
-  if (shape == NULL) {
-    return false;
-  }
-
+  shape = &BasicShapes._shapeShortString;
   shape->_size = sizeof(TRI_short_string_shape_t);
   shape->_type = TRI_SHAPE_SHORT_STRING;
   shape->_dataSize = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-
-  l = shaper->findShape(shaper, shape);
-
-  if (l == NULL) {
-    return false;
-  }
-
-  shaper->_sidShortString = l->_sid;
+  shape->_sid = BasicShapes._sidShortString = 4;
 
   // LONG STRING
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_long_string_shape_t), true);
-
-  if (shape == NULL) {
-    return false;
-  }
-
+  shape = &BasicShapes._shapeLongString;
   shape->_size = sizeof(TRI_long_string_shape_t);
   shape->_type = TRI_SHAPE_LONG_STRING;
   shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
-
-  l = shaper->findShape(shaper, shape);
-
-  if (l == NULL) {
-    return false;
-  }
-
-  shaper->_sidLongString = l->_sid;
-
+  shape->_sid = BasicShapes._sidLongString = 5;
+  
   // LIST
-  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_list_shape_t), true);
-
-  if (shape == NULL) {
-    return false;
-  }
-
+  shape = &BasicShapes._shapeList;
   shape->_size = sizeof(TRI_list_shape_t);
   shape->_type = TRI_SHAPE_LIST;
   shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
+  shape->_sid = BasicShapes._sidList = 6;
+}
 
-  l = shaper->findShape(shaper, shape);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown shaper
+////////////////////////////////////////////////////////////////////////////////
 
-  if (l == NULL) {
-    return false;
-  }
-
-  shaper->_sidList = l->_sid;
-
-  return true;
+void TRI_ShutdownShaper () {
+  // nothing to do
 }
 
 // Local Variables:

@@ -423,19 +423,15 @@ namespace triagens {
         bool _forceSyncProperties;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force syncing of shape data
+/// @brief force syncing of shapes
 ///
 /// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
 ///
-/// Force syncing of shape data to disk when writing shape information.
-/// If turned off, syncing will still happen for shapes of collections that
-/// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
-/// will always happen, regardless of the value of waitForSync.
-///
-/// The default is @LIT{true}.
+/// This option is not used in this version of ArangoDB. It only remains here
+/// for compatibility reasons.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _forceSyncShapes;
+        bool _unusedForceSyncShapes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication logger on server startup

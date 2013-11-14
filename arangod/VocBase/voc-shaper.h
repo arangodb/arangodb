@@ -34,13 +34,14 @@
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/shape-collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_document_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -88,23 +89,20 @@ TRI_df_shape_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates persistent shaper
+/// @brief creates a shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*,
-                                   char const* path,
-                                   char const* name,
-                                   const bool waitForSync,
-                                   const bool isVolatile);
+TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*, 
+                                   struct TRI_document_collection_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper, but does not free the pointer
+/// @brief destroys a shaper, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocShaper (TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper and frees the pointer
+/// @brief destroys a shaper and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeVocShaper (TRI_shaper_t*);
@@ -123,26 +121,27 @@ void TRI_FreeVocShaper (TRI_shaper_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the underlying collection
+/// @brief destroys a shaper, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_collection_t* TRI_CollectionVocShaper (TRI_shaper_t*);
+int TRI_InitVocShaper (TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens a persistent shaper
+/// @brief insert a shape, called when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t*,
-                                 char const* filename);
+int TRI_InsertShapeVocShaper (TRI_shaper_t*,
+                              TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a persistent shaper
+/// @brief insert an attribute, called when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseVocShaper (TRI_shaper_t*);
+int TRI_InsertAttributeVocShaper (TRI_shaper_t*,
+                                  TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a persistent shaper
+/// @brief finds an accessor
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t*,

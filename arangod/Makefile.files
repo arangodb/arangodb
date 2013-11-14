@@ -78,8 +78,6 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
-	arangod/SkipListsEx/skiplistEx.c \
-	arangod/SkipListsEx/skiplistExIndex.c \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
@@ -106,7 +104,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/replication-logger.c \
 	arangod/VocBase/replication-master.c \
 	arangod/VocBase/server.c \
-	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/transaction.c \
 	arangod/VocBase/update-policy.c \

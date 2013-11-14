@@ -166,7 +166,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  // deprecated
+  // deprecated options
   options[ApplicationServer::OPTIONS_HIDDEN]
     ("server.admin-directory", &UnusedAdminDirectory, "directory containing the ADMIN front-end (deprecated)")
     ("server.disable-admin-interface", &UnusedDisableAdminInterface, "turn off the HTML admin interface (deprecated)")
