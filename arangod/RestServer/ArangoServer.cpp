@@ -286,7 +286,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _developmentMode(false),
     _forceSyncProperties(true),
-    _forceSyncShapes(true),
+    _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnCompacted(true),
@@ -494,12 +494,16 @@ void ArangoServer::buildApplicationServer () {
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
-    ("database.force-sync-shapes", &_forceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
   ;
 
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
+  ;
+  
+  // deprecated options
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
   ;
 
   // .............................................................................
@@ -1260,7 +1264,6 @@ void ArangoServer::openDatabases () {
   defaults.removeOnDrop                  = _removeOnDrop;
   defaults.removeOnCompacted             = _removeOnCompacted;
   defaults.defaultWaitForSync            = _defaultWaitForSync;
-  defaults.forceSyncShapes               = _forceSyncShapes;
   defaults.forceSyncProperties           = _forceSyncProperties;
   defaults.requireAuthentication         = ! _disableAuthentication;
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;

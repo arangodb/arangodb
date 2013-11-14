@@ -853,7 +853,8 @@ static bool StartupTickIterator (TRI_df_marker_t const* marker,
 
 static int ScanPath (TRI_vocbase_t* vocbase, 
                      char const* path,
-                     const bool iterateMarkers) {
+                     bool isUpgrade,
+                     bool iterateMarkers) {
   TRI_vector_string_t files;
   regmatch_t matches[2];
   regex_t re;
@@ -966,13 +967,12 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           TRI_vocbase_col_t* c;
 
           if (info._version < TRI_COL_VERSION) {
-            LOG_INFO("upgrading collection '%s'", info._name);
+            // collection is too "old"
 
-            res = TRI_UpgradeCollection(vocbase, file, &info);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              LOG_ERROR("upgrading collection '%s' failed.", info._name);
-            
+            if (! isUpgrade) {
+              LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.", 
+                        info._name);
+              
               TRI_FreeString(TRI_CORE_MEM_ZONE, file);
               TRI_DestroyVectorString(&files);
               TRI_FreeCollectionInfoOptions(&info);
@@ -980,7 +980,31 @@ static int ScanPath (TRI_vocbase_t* vocbase,
  
               return TRI_set_errno(res);
             }
-          } 
+            else {
+              LOG_INFO("upgrading collection '%s'", info._name);
+
+              res = TRI_ERROR_NO_ERROR;
+
+              if (info._version < TRI_COL_VERSION_13) {
+                res = TRI_UpgradeCollection13(vocbase, file, &info);
+              }
+            
+              if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_15) {
+                res = TRI_UpgradeCollection15(vocbase, file, &info);
+              }
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                LOG_ERROR("upgrading collection '%s' failed.", info._name);
+            
+                TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+                TRI_DestroyVectorString(&files);
+                TRI_FreeCollectionInfoOptions(&info);
+                regfree(&re);
+ 
+                return TRI_set_errno(res);
+              }
+            } 
+          }
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
        
@@ -1312,6 +1336,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
                                 TRI_voc_tick_t id,
                                 char const* name,
                                 TRI_vocbase_defaults_t const* defaults,
+                                bool isUpgrade,
                                 bool iterateMarkers) {
   TRI_vocbase_t* vocbase;
   int res;
@@ -1409,7 +1434,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   // this will create the list of collections and their datafiles, and will also
   // determine the last tick values used (if iterateMarkers is true)
 
-  res = ScanPath(vocbase, vocbase->_path, iterateMarkers);
+  res = ScanPath(vocbase, vocbase->_path, isUpgrade, iterateMarkers);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFunctionsAql(vocbase->_functions);

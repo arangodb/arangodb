@@ -623,7 +623,8 @@ static int CreateApplicationDirectory (char const* name,
 /// @brief iterate over all databases in the databases directory and open them
 ////////////////////////////////////////////////////////////////////////////////
 
-static int OpenDatabases (TRI_server_t* server) {
+static int OpenDatabases (TRI_server_t* server,
+                          bool isUpgrade) {
   TRI_vector_string_t files;
   size_t i, n;
   int res;
@@ -816,7 +817,13 @@ static int OpenDatabases (TRI_server_t* server) {
     // .............................................................................
 
     // try to open this database
-    vocbase = TRI_OpenVocBase(server, databaseDirectory, id, databaseName, &defaults, server->_wasShutdownCleanly);
+    vocbase = TRI_OpenVocBase(server, 
+                              databaseDirectory, 
+                              id, 
+                              databaseName, 
+                              &defaults,
+                              isUpgrade, 
+                              server->_wasShutdownCleanly);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
@@ -1956,7 +1963,7 @@ int TRI_StartServer (TRI_server_t* server,
   // .............................................................................
   
   // scan all databases
-  res = OpenDatabases(server);
+  res = OpenDatabases(server, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("could not iterate over all databases: %s",
@@ -2078,7 +2085,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
            name,
            path);
 
-  vocbase = TRI_OpenVocBase(server, path, tick, name, defaults, false);
+  vocbase = TRI_OpenVocBase(server, path, tick, name, defaults, false, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
   if (vocbase == NULL) {

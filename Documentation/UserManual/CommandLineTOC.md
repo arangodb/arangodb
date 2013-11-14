@@ -36,7 +36,6 @@ TOC {#CommandLineTOC}
     - @ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"
     - @ref CommandLineArangoWaitForSync "database.wait-for-sync"
     - @ref CommandLineArangoForceSyncProperties "database.force-sync-properties"
-    - @ref CommandLineArangoForceSyncShapes "database.force-sync-shapes"
     - @ref CommandLineArangoRemoveOnDrop "database.remove-on-compacted"
     - @ref CommandLineArangoJsGcFrequency "javascript.gc-frequency"
     - @ref CommandLineArangoJsGcInterval "javascript.gc-interval"

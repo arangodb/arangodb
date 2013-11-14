@@ -431,6 +431,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
                      TRI_replication_operation_e type,
                      TRI_string_buffer_t* buffer) {
   TRI_primary_collection_t* primary;
+  TRI_memory_zone_t* zone;
   TRI_shaped_json_t* shaped;
   TRI_json_t json;
   TRI_doc_mptr_t mptr;
@@ -506,6 +507,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
             TRI_BeginStringBuffer(buffer));
   
   primary = logger->_trxCollection->_collection->_collection;
+  zone = primary->_shaper->_memoryZone;
   shaped = TRI_ShapedJsonJson(primary->_shaper, &json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
   
@@ -525,7 +527,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
                         isStandaloneOperation, 
                         forceSync);
 
-  TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);
+  TRI_FreeShapedJson(zone, shaped);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

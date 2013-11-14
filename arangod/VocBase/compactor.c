@@ -540,19 +540,47 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
-  // deletion
+  // deletions
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION && 
            context->_keepDeletions) {
     // write to compactor files
     res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
+      LOG_FATAL_AND_EXIT("cannot write document marker to compactor file: %s", TRI_last_error());
     }
 
     // update datafile info
     context->_dfi._numberDeletion++;
   }
+  
+  // shapes
+  else if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    // write to compactor files
+    res = CopyMarker(document, context->_compactor, marker, &result);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
+    }
+    
+    context->_dfi._numberShapes++;
+    context->_dfi._sizeShapes += (int64_t) marker->_size;
+  }
+  
+  // attributes
+  else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    // write to compactor files
+    res = CopyMarker(document, context->_compactor, marker, &result);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
+    }
+    
+    context->_dfi._numberAttributes++;
+    context->_dfi._sizeAttributes += (int64_t) marker->_size;
+  }
+
+  // transaction markers
   else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
@@ -561,7 +589,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
+      LOG_FATAL_AND_EXIT("cannot write transaction marker to compactor file: %s", TRI_last_error());
     }
     
     context->_dfi._numberTransaction++;
@@ -707,10 +735,19 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     context->_targetSize += alignedSize;
   }
 
+  // deletions
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION && 
            context->_keepDeletions) {
     context->_targetSize += alignedSize;
   }
+  
+  // shapes, attributes
+  else if (marker->_type == TRI_DF_MARKER_SHAPE ||
+           marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    context->_targetSize += alignedSize;
+  }
+  
+  // transaction markers
   else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
@@ -872,7 +909,9 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   if (context._dfi._numberAlive == 0 &&
       context._dfi._numberDead == 0 &&
       context._dfi._numberDeletion == 0 &&
-      context._dfi._numberTransaction == 0) {
+      context._dfi._numberTransaction == 0 &&
+      context._dfi._numberShapes == 0 &&
+      context._dfi._numberAttributes == 0) {
 
     TRI_barrier_t* b;
 
@@ -1067,17 +1106,23 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     }
     
     LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu "
-              "numberDead: %llu, numberAlive: %llu, numberTransaction: %llu, numberDeletion: %llu, "
-              "sizeDead: %llu, sizeAlive: %llu, sizeTransaction: %llu",
+              "numberDead: %llu, numberAlive: %llu, numberDeletion: %llu, numberTransaction: %llu, "
+              "numberShapes: %llu, numberAttributes: %llu, "
+              "sizeDead: %llu, sizeAlive: %llu, sizeTransaction: %llu, "
+              "sizeShapes %llu, sizeAttributes: %llu",
               (unsigned long long) df->_fid,
               (unsigned long long) df->_maximalSize,
               (unsigned long long) dfi->_numberDead,
               (unsigned long long) dfi->_numberAlive,
-              (unsigned long long) dfi->_numberTransaction,
               (unsigned long long) dfi->_numberDeletion,
+              (unsigned long long) dfi->_numberTransaction,
+              (unsigned long long) dfi->_numberShapes,
+              (unsigned long long) dfi->_numberAttributes,
               (unsigned long long) dfi->_sizeDead,
               (unsigned long long) dfi->_sizeAlive,
-              (unsigned long long) dfi->_sizeTransaction);
+              (unsigned long long) dfi->_sizeTransaction,
+              (unsigned long long) dfi->_sizeShapes,
+              (unsigned long long) dfi->_sizeAttributes);
 
     compaction._datafile = df;
     compaction._keepDeletions = (numAlive > 0 && i > 0);
