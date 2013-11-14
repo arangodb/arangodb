@@ -426,6 +426,8 @@ int TRI_InitSkipList (TRI_skiplist_t* skiplist,
   skiplist->base._endNode._extraData         = NULL;
 
   memset(&skiplist->base._endNode._element, 0, sizeof(skiplist->base._endNode._element));
+
+  skiplist->base._nrUsed = 0;
   
   // ..........................................................................  
   // Whenever a probability of 1/2, 1/3, 1/4 is used, on average there will be
@@ -599,7 +601,7 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
   // Determine the path where the new item is to be inserted. If the item
   // already exists either replace it or return false. Recall that this
   // skip list is used for unique key/value pairs. Use the skiplist-multi
-  // non-unique key/value pairs.
+  // for non-unique key/value pairs.
   // ...........................................................................
 
   currentLevel = skiplist->base._startNode._colLength - 1; // NOT current height BUT current level is required here
@@ -734,6 +736,8 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
     JoinNodes(tempLeftNode, newNode, j, j);
     JoinNodes(newNode, tempRightNode, j, j);
   }
+
+  skiplist->base._nrUsed++;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1165,6 +1169,9 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
   }
 
   TRI_FreeSkipListNode(&(skiplist->base), currentNode);
+
+  skiplist->base._nrUsed--;
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1435,6 +1442,8 @@ int TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   skiplist->base._endNode._extraData         = NULL;
 
   memset(&skiplist->base._endNode._element, 0, sizeof(skiplist->base._endNode._element));
+
+  skiplist->base._nrUsed = 0;
   
   // ..........................................................................  
   // Whenever a probability of 1/2, 1/3, 1/4 is used, on average 
@@ -1734,8 +1743,7 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // ...........................................................................
   // Determine the path where the new item is to be inserted. If the item
   // already exists either replace it or return false. Recall that this
-  // skip list is used for unique key/value pairs. Use the skiplist-multi
-  // non-unique key/value pairs.
+  // skip list is used for non-unique key/value pairs.
   // ...........................................................................  
 
   currentLevel = skiplist->base._startNode._colLength - 1; // NOT current height BUT current level is required here
@@ -1868,6 +1876,8 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
     JoinNodes(tempLeftNode, newNode, j, j);
     JoinNodes(newNode, tempRightNode, j, j);
   }
+
+  skiplist->base._nrUsed++;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2080,6 +2090,8 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
   TRI_FreeSkipListNode(&(skiplist->base), currentNode);
   
+  skiplist->base._nrUsed--;
+
   return TRI_ERROR_NO_ERROR;
 }
 

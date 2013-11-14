@@ -420,6 +420,10 @@ ArangoDatabase.prototype._drop = function (id) {
     }
   }
 
+  var c = this._collection(id);
+  if (c) {
+    return c.drop();
+  }
   return undefined;
 };
 
@@ -822,10 +826,11 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._createDatabase = function (name, options) {  
+ArangoDatabase.prototype._createDatabase = function (name, options, users) {  
   var data = {
     name: name,
-    options: options || { } 
+    options: options || { },
+    users: users || [ ] 
   };
   
   var requestResult = this._connection.POST("/_api/database", JSON.stringify(data));

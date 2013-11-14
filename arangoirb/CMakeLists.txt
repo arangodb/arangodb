@@ -49,13 +49,13 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf.in
-    DESTINATION ${ARANGODB_CONF_DIR}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangoirb-relative.conf)
 endif ()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf
-  DESTINATION ${ARANGODB_CONF_DIR})
+  DESTINATION ${ETCDIR_INSTALL})
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/client

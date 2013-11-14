@@ -562,6 +562,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   
   if (found != NULL) {
     LOG_ERROR("duplicate entry for collection name '%s'", name);
+    LOG_ERROR("collection id %llu has same name as already added collection %llu", 
+              (unsigned long long) cid, 
+              (unsigned long long) ((TRI_vocbase_col_t*) found)->_cid);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -1005,12 +1008,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
        
-          if (iterateMarkers) {   
-            // iterating markers may be time-consuming. we'll only do it if
-            // we have to
-            TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
-          }
-
           if (c == NULL) {
             LOG_ERROR("failed to add document collection from '%s'", file);
 
@@ -1023,6 +1020,12 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           }
 
           c->_status = TRI_VOC_COL_STATUS_UNLOADED;
+          
+          if (iterateMarkers) {   
+            // iterating markers may be time-consuming. we'll only do it if
+            // we have to
+            TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
+          }
 
           LOG_DEBUG("added document collection from '%s'", file);
         }
@@ -1537,7 +1540,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t collections;
   int res;
   size_t i;
+
+  // stop replication
+  TRI_StopReplicationApplier(vocbase->_replicationApplier, false); 
+  TRI_StopReplicationLogger(vocbase->_replicationLogger); 
   
+
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1552,15 +1560,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
-    TRI_UnloadCollectionVocBase(vocbase, collection);
+    TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
   TRI_DestroyVectorPointer(&collections);
  
-  // stop replication
-  TRI_StopReplicationApplier(vocbase->_replicationApplier, false); 
-  TRI_StopReplicationLogger(vocbase->_replicationLogger); 
-  
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
@@ -1970,8 +1974,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, 
-                                 TRI_vocbase_col_t* collection) {
-  if (! collection->_canUnload) {
+                                 TRI_vocbase_col_t* collection,
+                                 bool force) {
+  if (! collection->_canUnload && ! force) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
   }
 
@@ -2010,7 +2015,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
       TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
     }
     // if we get here, the status has changed
-    return TRI_UnloadCollectionVocBase(vocbase, collection);
+    return TRI_UnloadCollectionVocBase(vocbase, collection, force);
   }
 
   // a deleted collection is treated as unloaded

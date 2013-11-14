@@ -389,7 +389,6 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 void TRI_InitCondition (TRI_condition_t* cond) {
   pthread_cond_init(&cond->_cond, 0);
 
-  cond->_ownMutex = true;
   cond->_mutex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false);
 
   if (cond->_mutex == NULL) {
@@ -400,27 +399,13 @@ void TRI_InitCondition (TRI_condition_t* cond) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new condition variable with existing mutex
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_Init2Condition (TRI_condition_t* cond, TRI_mutex_t* mutex) {
-  pthread_cond_init(&cond->_cond, 0);
-
-  cond->_ownMutex = false;
-  cond->_mutex = mutex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCondition (TRI_condition_t* cond) {
   pthread_cond_destroy(&cond->_cond);
-
-  if (cond->_ownMutex) {
-    pthread_mutex_destroy(cond->_mutex);
-    TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
-  }
+  pthread_mutex_destroy(cond->_mutex);
+  TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

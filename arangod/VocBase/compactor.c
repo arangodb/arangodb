@@ -74,7 +74,7 @@
 /// @brief maximum number of datafiles to join together in one compaction run
 ////////////////////////////////////////////////////////////////////////////////
 
-#define COMPACTOR_MAX_FILES 3
+#define COMPACTOR_MAX_FILES 4
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafiles smaller than the following value will be merged with others
@@ -253,9 +253,9 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
   char* copy;
   bool ok;
 
-  primary = data;
-  fid = datafile->_fid;
-  copy = NULL;
+  primary = (TRI_primary_collection_t*) data;
+  fid     = datafile->_fid;
+  copy    = NULL;
 
   number   = TRI_StringUInt64(fid);
   name     = TRI_Concatenate3String("deleted-", number, ".db");
@@ -345,9 +345,9 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile,
   TRI_primary_collection_t* primary;
   bool ok;
    
-  context = data;
+  context   = (compaction_context_t*) data;
   compactor = context->_compactor;
-  primary = &context->_document->base;
+  primary   = &context->_document->base;
 
   ok = false;
   assert(datafile->_fid == compactor->_fid);
@@ -455,7 +455,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
   compaction_context_t* context;
   int res;
 
-  context  = data;
+  context  = (compaction_context_t*) data;
   document = context->_document;
   primary  = &document->base;
 
@@ -914,7 +914,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
       context._dfi._numberAttributes == 0) {
 
     TRI_barrier_t* b;
-   
+
     if (n > 1) {
       // create .dead files for all collected files 
       for (i = 0; i < n; ++i) {
@@ -988,7 +988,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
         copy = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(compaction_context_t), false);
 
         memcpy(copy, &context, sizeof(compaction_context_t));
-    
+
         b = TRI_CreateBarrierRenameDatafile(&primary->_barrierList, compaction->_datafile, RenameDatafileCallback, copy);
       
         if (b == NULL) {
@@ -1143,7 +1143,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
         
     numAlive += (int64_t) dfi->_numberAlive;
   }
-  
+
   // can now continue without the lock
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
@@ -1428,22 +1428,22 @@ int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
 void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase;
   TRI_vector_pointer_t collections;
+  int numCompacted = 0;
 
-  vocbase = data;
+  vocbase = (TRI_vocbase_t*) data;
   assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
-    int state;
-    
     // keep initial _state value as vocbase->_state might change during compaction loop
-    state = vocbase->_state;
-      
+    int state = vocbase->_state;
+  
     // check if compaction is currently disallowed
     if (CheckAndLockCompaction(vocbase)) {
       // compaction is currently allowed
       size_t i, n;
+      numCompacted = 0;
 
       // copy all collections
       TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1459,7 +1459,7 @@ void TRI_CompactorVocBase (void* data) {
         bool doCompact;
         bool worked;
       
-        collection = collections._buffer[i];
+        collection = (TRI_vocbase_col_t*) collections._buffer[i];
 
         if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
           // if we can't acquire the read lock instantly, we continue directly
@@ -1510,6 +1510,8 @@ void TRI_CompactorVocBase (void* data) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
         if (worked) {
+          ++numCompacted;
+
           // signal the cleanup thread that we worked and that it can now wake up
           TRI_LockCondition(&vocbase->_cleanupCondition);
           TRI_SignalCondition(&vocbase->_cleanupCondition);
@@ -1520,8 +1522,12 @@ void TRI_CompactorVocBase (void* data) {
       UnlockCompaction(vocbase);
     }
 
-
-    if (state != 2 && vocbase->_state == 1) {
+    if (numCompacted > 0) {
+      // no need to sleep long or go into wait state if we worked. 
+      // maybe there's still work left
+      usleep(1000);
+    }
+    else if (state != 2 && vocbase->_state == 1) {
       // only sleep while server is still running
       TRI_LockCondition(&vocbase->_compactorCondition);
       TRI_TimedWaitCondition(&vocbase->_compactorCondition, (uint64_t) COMPACTOR_INTERVAL);

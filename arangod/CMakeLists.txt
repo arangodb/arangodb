@@ -152,17 +152,29 @@ install(
 if (USE_RAW_CONFIG)
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
-    DESTINATION ${ARANGODB_CONF_DIR}
+    DESTINATION ${ETCDIR_INSTALL}
     RENAME arangod-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
-  DESTINATION ${ARANGODB_CONF_DIR})
+if (BUILD_PACKAGE STREQUAL "raspbian")
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
+    DESTINATION ${ETCDIR_INSTALL}
+    RENAME arangod.conf)
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
-  DESTINATION ${ARANGODB_CONF_DIR})
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
+    DESTINATION ${ETCDIR_INSTALL}
+    RENAME arangod-uid.conf)
+else ()
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
+    DESTINATION ${ETCDIR_INSTALL})
+
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
+    DESTINATION ${ETCDIR_INSTALL})
+endif ()
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
@@ -180,7 +192,8 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/apps
-  DESTINATION share/arangodb/js)
+  DESTINATION share/arangodb/js
+  PATTERN "databases" EXCLUDE)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
@@ -189,11 +202,11 @@ install(
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
-  DESTINATION var/log)
+  DESTINATION ${VARDIR_INSTALL}/log)
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
-  DESTINATION var/lib)
+  DESTINATION ${VARDIR_INSTALL}/lib)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

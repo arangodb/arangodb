@@ -762,7 +762,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -878,7 +878,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -1910,7 +1910,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     ReleaseCollection(collection);
@@ -4962,7 +4962,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   if (json == 0) {
     ReleaseCollection(collection);
@@ -5176,7 +5176,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     // Create a json represention of the index
     // ...........................................................................
 
-    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex);
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex,false);
 
     if (json == NULL) {
       errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -5574,7 +5574,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx,false);
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -5595,7 +5595,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 /// Creates a skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.
 /// All documents, which do not have the attribute path or
-/// with ore or more values that are not suitable, are ignored.
+/// with one or more values that are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
@@ -5629,7 +5629,7 @@ static v8::Handle<v8::Value> JS_LookupUniqueSkiplistVocbaseCol (v8::Arguments co
 /// Creates a multi skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.
 /// All documents, which do not have the attribute path or
-/// with ore or more values that are not suitable, are ignored.
+/// with one or more values that are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
@@ -5658,7 +5658,7 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength}}
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength})}
 ///
 /// Creates a fulltext index on all documents on attribute @FA{field}.
 /// All documents, which do not have the attribute @FA{field} or that have a
@@ -5859,9 +5859,12 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
-/// @FUN{getIndexes()}
+/// @FUN{getIndexes(@FA{withStats})}
 ///
-/// Returns a list of all indexes defined for the collection.
+/// Returns a list of all indexes defined for the collection. 
+/// If @FA{withStats} is @LIT{true} then for each index the number of
+/// elements stored in it is returned in the @LIT{numUsed} component,
+/// if this information is exported by the particular index.
 ///
 /// @EXAMPLES
 ///
@@ -5870,6 +5873,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+  bool withStats = false;
+  if (argv.Length() > 0) { 
+      withStats = TRI_ObjectToBoolean(argv[0]);
+  }
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
@@ -5893,7 +5901,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   trx.lockRead();
 
   // get list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document,withStats);
 
   trx.finish(res);
   // READ-LOCK end
@@ -6973,7 +6981,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
+  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot unload collection");
@@ -7917,15 +7925,35 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ///
-/// @FUN{@FA{db}._createDatabase(@FA{name})}
+/// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options}, @FA{users})}
 ///
 /// Creates a new database with the name specified by @FA{name}. 
-/// There are restrictions for database names (see @ref DatabaseNames}.
+/// There are restrictions for database names (see @ref DatabaseNames).
 ///
 /// Note that even if the database is created successfully, there will be no
 /// change into the current database to the new database. Changing the current
 /// database must explicitly be requested by using the @ref HandlingDatabasesUse
 /// "db._useDatabase" method.
+///
+/// The optional @FA{users} attribute can be used to create initial users for
+/// the new database. If specified, it must be a list of user objects. Each user 
+/// object can contain the following attributes:
+///
+/// - `username`: the user name as a string. This attribute is mandatory.
+///
+/// - `passwd`: the user password as a string. If not specified, then it defaults
+///   to the empty string.
+///
+/// - `active`: a boolean flag indicating whether the user accout should be
+///   actived or not. The default value is `true`.
+///
+/// - `extra`: an optional JSON object with extra user information. The data
+///   contained in `extra` will be stored for the user but not be interpreted
+///   further by ArangoDB.
+///
+/// If no initial users are specified, a default user `root` will be created 
+/// with an empty string password. This ensures that the new database will be 
+/// accessible via HTTP after it is created.
 ///
 /// This method can only be used from within the `_system` database. 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7933,8 +7961,8 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>)");
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "db._createDatabase(<name>, <options>, <users>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -8004,6 +8032,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   }
 
   assert(database != 0);
+
+  // copy users into context
+  if (argv.Length() >= 3 && argv[2]->IsArray()) {
+    v8::Handle<v8::Object> users = v8::Object::New();
+    users->Set(v8::String::New("users"), argv[2]);
+
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), users);
+  }
+  else {
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+  }
 
   if (TRI_V8RunVersionCheck(database, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
     // version check ok

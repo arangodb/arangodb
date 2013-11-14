@@ -571,8 +571,9 @@ ArangoCollection.prototype.refresh = function () {
 /// @brief gets all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = function () {
-  var requestResult = this._database._connection.GET(this._indexurl());
+ArangoCollection.prototype.getIndexes = function (withStats) {
+  var requestResult = this._database._connection.GET(this._indexurl()+
+          "&withStats="+(withStats || false));
 
   arangosh.checkRequestResult(requestResult);
 

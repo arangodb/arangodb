@@ -115,7 +115,7 @@ typedef struct TRI_index_s {
   bool _needsFullCoverage;
 
   const char* (*typeName) (struct TRI_index_s const*);
-  TRI_json_t* (*json) (struct TRI_index_s*);
+  TRI_json_t* (*json) (struct TRI_index_s*, bool);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
   
   // .........................................................................................

@@ -145,7 +145,8 @@ function FileSystemSuite () {
       tempName = fs.getTempFile('tests', false);
       assertTrue(tempName !== '');
       // filename should be located underneath tempPath
-      assertEqual(fs.join(fs.getTempPath(), 'test'), tempName.substr(0, fs.join(fs.getTempPath(), 'test').length));
+      // we need to call join() for the right-hand part too to normalise driver letters on Windows
+      assertEqual(fs.join(fs.getTempPath(), 'test'), fs.join(tempName.substr(0, fs.join(fs.getTempPath(), 'test').length)));
       // file should not yet exist
       assertFalse(fs.exists(tempName));
 

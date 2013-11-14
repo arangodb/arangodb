@@ -249,7 +249,7 @@ static const char* TypeNameGeo1Index (TRI_index_t const* idx) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
+static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, bool withStats) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -301,7 +301,7 @@ static const char* TypeNameGeo2Index (TRI_index_t const* idx) {
 /// @brief JSON description of a geo index, two attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo2Index (TRI_index_t* idx) {
+static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, bool withStats) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;

@@ -64,6 +64,26 @@ BISON_FILES =
 
 BISONXX_FILES = 
 
+################################################################################
+### @brief configuration files
+################################################################################
+
+BUILT_SOURCES += etc/arangodb/arangod-uid.conf
+
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:^# \([ug]id\):\1:' $< > $@
+
+BUILT_SOURCES += etc/arangodb/arangod-arm.conf
+
+etc/arangodb/arangod-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' $< > $@
+
+BUILT_SOURCES += etc/arangodb/arangod-uid-arm.conf
+
+etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:^# \([ug]id\):\1:' $< \
+      | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
 ## -----------------------------------------------------------------------------
@@ -85,11 +105,6 @@ TRI_SBINDIR = ${sbindir}
 TRI_BINDIR = ${bindir}
 
 endif
-
-BUILT_SOURCES += etc/arangodb/arangod-uid.conf
-
-etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:# \([ug]id\):\1:' $< > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FLAGS
@@ -497,7 +512,11 @@ endif
 ## --SECTION--                                                     CMAKE & CPACK
 ## -----------------------------------------------------------------------------
 
-.PHONY: pack-dmg
+################################################################################
+### @brief MacOSX bundle
+################################################################################
+
+.PHONY: pack-dmg pack-dmg-cmake
 
 DMG_NAME := ArangoDB-CLI.app
 
@@ -511,18 +530,82 @@ pack-dmg:
 		--enable-all-in-one-libev \
 		--enable-mruby
 
+	${MAKE} pack-dmg-cmake
+
+pack-dmg-cmake:
 	cd Build && cmake \
-		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "USE_MRUBY=ON" \
 		-D "USE_RAW_CONFIG=ON" \
+		-D "ARANGODB_VERSION=@VERSION@" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		..
 
+	${MAKE} .libev-build-64
+	${MAKE} .zlib-build-64
+	${MAKE} .icu-build-64
+	${MAKE} .v8-build-64
+	${MAKE} .mruby-build-64
+
+	${MAKE} ${BUILT_SOURCES}
+ 
+	cd Build && ${MAKE}
+
 	cd Build && cpack \
 		-G Bundle \
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
+
+################################################################################
+### @brief debian arm package
+################################################################################
+
+.PHONY: pack-arm pack-arm-cmake
+
+pack-arm:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--enable-all-in-one-icu \
+		--enable-all-in-one-v8 \
+		--enable-all-in-one-libev \
+		--disable-mruby
+
+	${MAKE} pack-arm-cmake
+
+pack-arm-cmake:
+	cd Build && cmake \
+		-D "BUILD_PACKAGE=raspbian" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
+		-D "USE_MRUBY=OFF" \
+		-D "USE_RAW_CONFIG=OFF" \
+		-D "ARANGODB_VERSION=@VERSION@" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
+                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		..
+
+	${MAKE} .libev-build-32
+	${MAKE} .zlib-build-32
+	${MAKE} .icu-build-32
+	${MAKE} .v8-build-32
+
+	${MAKE} ${BUILT_SOURCES}
+ 
+	cd Build && ${MAKE}
+
+	cd Build && cpack \
+		-G DEB
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

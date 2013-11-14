@@ -249,6 +249,8 @@ bool RestEdgeHandler::createDocument () {
   if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");

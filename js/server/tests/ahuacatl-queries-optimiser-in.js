@@ -406,6 +406,24 @@ function ahuacatlQueryOptimiserInTestSuite () {
       assertEqual(expected, actual);
       
       internal.db._drop(en);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a ref access without any indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitarray : function () {
+      var colors = [ "black", "blue", "green", "red" ]; 
+      var expected =  [];
+
+      for (var i = 0; i < 100; ++i) { 
+        c.save({ value: colors[i % 4] }); 
+        expected.push(colors[Math.floor(i / 25)]);
+      } 
+      c.ensureBitarray("value", colors);
+      
+      var actual = getQueryResults("LET colors = UNIQUE((FOR x IN @@cn RETURN x.value)) FOR x IN @@cn FILTER x.value IN colors SORT x.value RETURN x.value", { "@cn" : cn });
+      assertEqual(expected, actual);
     }
         
   };

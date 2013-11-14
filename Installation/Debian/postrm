@@ -1,0 +1,6 @@
+#!/bin/sh
+
+if [ purge = "$1" ]; then
+        update-rc.d arangodb remove >/dev/null
+fi
+

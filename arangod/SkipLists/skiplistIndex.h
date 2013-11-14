@@ -154,6 +154,7 @@ int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
 bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*, const TRI_skiplist_index_element_t*);
 
+uint64_t SkiplistIndex_getNrUsed(SkiplistIndex*);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -172,6 +173,8 @@ int MultiSkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 int MultiSkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
 
 bool MultiSkiplistIndex_update (SkiplistIndex*, TRI_skiplist_index_element_t*, TRI_skiplist_index_element_t*);
+
+uint64_t MultiSkiplistIndex_getNrUsed(SkiplistIndex*);
 
 #ifdef __cplusplus
 }

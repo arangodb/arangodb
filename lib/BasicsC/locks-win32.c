@@ -617,49 +617,8 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCondition (TRI_condition_t* cond) {
-  cond->_waiters = 0;
-  cond->_broadcast = false;
-
-  cond->_sema = CreateSemaphore(NULL,       // no security
-                                0,          // initially 0
-                                0x7fffffff, // max count
-                                NULL);      // unnamed
-
   InitializeCriticalSection(&cond->_lockWaiters);
-
-  cond->_waitersDone = CreateEvent(NULL,  // no security
-                                   FALSE, // auto-reset
-                                   FALSE, // non-signaled initially
-                                   NULL); // unnamed
-
-  cond->_ownMutex = true;
-  cond->_mutex = CreateMutex(NULL,  // default security attributes
-                             FALSE, // initially not owned
-                             NULL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new condition variable with existing mutex
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_Init2Condition (TRI_condition_t* cond, TRI_mutex_t* mutex) {
-  cond->_waiters = 0;
-  cond->_broadcast = false;
-
-  cond->_sema = CreateSemaphore(NULL,       // no security
-                                0,          // initially 0
-                                0x7fffffff, // max count
-                                NULL);      // unnamed
-
-  InitializeCriticalSection(&cond->_lockWaiters);
-
-  cond->_waitersDone = CreateEvent(NULL,  // no security
-                                   FALSE, // auto-reset
-                                   FALSE, // non-signaled initially
-                                   NULL); // unnamed
-
-  cond->_ownMutex = false;
-  cond->_mutex = mutex->_mutex;
+  InitializeConditionVariable(&cond->_conditionVariable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -667,13 +626,7 @@ void TRI_Init2Condition (TRI_condition_t* cond, TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCondition (TRI_condition_t* cond) {
-  CloseHandle(cond->_waitersDone);
   DeleteCriticalSection(&cond->_lockWaiters);
-  CloseHandle(cond->_sema);
-
-  if (cond->_ownMutex) {
-    CloseHandle(cond->_mutex);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,16 +649,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SignalCondition (TRI_condition_t* cond) {
-  bool haveWaiters;
-
-  EnterCriticalSection(&cond->_lockWaiters);
-  haveWaiters = cond->_waiters > 0;
-  LeaveCriticalSection(&cond->_lockWaiters);
-
-  // if there aren't any waiters, then this is a no-op.
-  if (haveWaiters) {
-    ReleaseSemaphore(cond->_sema, 1, 0);
-  }
+  WakeConditionVariable(&cond->_conditionVariable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -715,40 +659,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_BroadcastCondition (TRI_condition_t* cond) {
-  bool haveWaiters;
-
-  // This is needed to ensure that _waiters and _broadcast are
-  // consistent relative to each other.
-  EnterCriticalSection(&cond->_lockWaiters);
-  haveWaiters = false;
-
-  if (cond->_waiters > 0) {
-
-    // We are broadcasting, even if there is just one waiter...
-    // Record that we are broadcasting, which helps optimize
-    // wait for the non-broadcast case.
-    cond->_broadcast = true;
-    haveWaiters = true;
-  }
-
-  if (haveWaiters) {
-
-    // Wake up all the waiters atomically.
-    ReleaseSemaphore(cond->_sema, cond->_waiters, 0);
-
-    LeaveCriticalSection(&cond->_lockWaiters);
-
-    // Wait for all the awakened threads to acquire the counting
-    // semaphore.
-    WaitForSingleObject(cond->_waitersDone, INFINITE);
-
-    // This assignment is okay, even without the _lockWaiters held
-    // because no other waiter threads can wake up to access it.
-    cond->_broadcast = false;
-  }
-  else {
-    LeaveCriticalSection (&cond->_lockWaiters);
-  }
+  WakeAllConditionVariable(&cond->_conditionVariable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,43 +669,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WaitCondition (TRI_condition_t* cond) {
-  bool lastWaiter;
-
-  // avoid race conditions
-  EnterCriticalSection(&cond->_lockWaiters);
-  cond->_waiters++;
-  LeaveCriticalSection(&cond->_lockWaiters);
-
-  // This call atomically releases the mutex and waits on the
-  // semaphore until pthread_cond_signal or pthread_cond_broadcast
-  // are called by another thread.
-  SignalObjectAndWait(cond->_mutex, cond->_sema, INFINITE, FALSE);
-
-  // reacquire lock to avoid race conditions.
-  EnterCriticalSection(&cond->_lockWaiters);
-
-  // we're no longer waiting...
-  cond->_waiters--;
-
-  // check to see if we're the last waiter after pthread_cond_broadcast
-  lastWaiter = cond->_broadcast && (cond->_waiters == 0);
-
-  LeaveCriticalSection(&cond->_lockWaiters);
-
-  // If we're the last waiter thread during this particular broadcast
-  // then let all the other threads proceed.
-  if (lastWaiter) {
-
-    // This call atomically signals the waitersDone event and waits until
-    // it can acquire the mutex.  This is required to ensure fairness.
-    SignalObjectAndWait(cond->_waitersDone, cond->_mutex, INFINITE, FALSE);
-  }
-  else {
-
-    // Always regain the external mutex since that's the guarantee we
-    // give to our callers.
-    WaitForSingleObject(cond->_mutex, INFINITE);
-  }
+  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, INFINITE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -804,63 +679,24 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
-  bool lastWaiter;
-  DWORD res;
-
   // ...........................................................................
   // The POSIX threads function pthread_cond_timedwait accepts microseconds
-  // while the the function SignalObjectAndWait  accepts milliseconds
+  // while the Windows function accepts milliseconds
   // ...........................................................................
+  DWORD res;
 
   delay = delay / 1000;
 
-  // avoid race conditions
-  EnterCriticalSection(&cond->_lockWaiters);
-  cond->_waiters++;
-  LeaveCriticalSection(&cond->_lockWaiters);
-
-  // This call atomically releases the mutex and waits on the
-  // semaphore until pthread_cond_signal or pthread_cond_broadcast
-  // are called by another thread.
-  res = SignalObjectAndWait(cond->_mutex, cond->_sema, (DWORD) delay, FALSE);
-
-  if (res == WAIT_TIMEOUT) {
-    EnterCriticalSection(&cond->_lockWaiters);
-    cond->_waiters--;
-    LeaveCriticalSection(&cond->_lockWaiters);
-
-    WaitForSingleObject(cond->_mutex, INFINITE);
-
-    return false;
+  if (SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, (DWORD) delay) != 0) {
+	return true;
   }
 
-  // reacquire lock to avoid race conditions.
-  EnterCriticalSection(&cond->_lockWaiters);
-
-  // we're no longer waiting...
-  cond->_waiters--;
-
-  // check to see if we're the last waiter after pthread_cond_broadcast
-  lastWaiter = cond->_broadcast && (cond->_waiters == 0);
-
-  LeaveCriticalSection(&cond->_lockWaiters);
-
-  // If we're the last waiter thread during this particular broadcast
-  // then let all the other threads proceed.
-  if (lastWaiter) {
-
-    // This call atomically signals the waitersDone event and waits until
-    // it can acquire the mutex.  This is required to ensure fairness.
-    SignalObjectAndWait(cond->_waitersDone, cond->_mutex, INFINITE, FALSE);
-  }
-  else {
-
-    // Always regain the external mutex since that's the guarantee we
-    // give to our callers.
-    WaitForSingleObject(cond->_mutex, INFINITE);
+  res = GetLastError();
+  if (res == ERROR_TIMEOUT) {
+	return false;
   }
 
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -868,29 +704,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockCondition (TRI_condition_t* cond) {
-  DWORD result = WaitForSingleObject(cond->_mutex, INFINITE);
-
-  switch (result) {
-
-    case WAIT_ABANDONED: {
-      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_ABANDONED");
-    }
-
-    case WAIT_OBJECT_0: {
-      // everything ok
-      break;
-    }
-
-    case WAIT_TIMEOUT: {
-      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_TIMEOUT");
-    }
-
-    case WAIT_FAILED: {
-      result = GetLastError();
-      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
-    }
-
-  }
+  EnterCriticalSection(&cond->_lockWaiters);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -898,11 +712,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockCondition (TRI_condition_t* cond) {
-  BOOL ok = ReleaseMutex(cond->_mutex);
-
-  if (! ok) {
-    LOG_FATAL_AND_EXIT("could not unlock the mutex");
-  }
+  LeaveCriticalSection(&cond->_lockWaiters);
 }
 
 
