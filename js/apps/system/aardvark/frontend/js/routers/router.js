@@ -1,7 +1,8 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollection,arangoHelper,dashboardView,arangoDatabase*/
 
-$(document).ready(function() {
+(function() {
+  "use strict";
 
   window.Router = Backbone.Router.extend({
     routes: {
@@ -30,6 +31,11 @@ $(document).ready(function() {
     },
 
     initialize: function () {
+      window.currentDB = new window.CurrentDatabase();
+      window.currentDB.fetch({
+        async: true
+      });
+
       window.activeSession = new window.ArangoSession();
 
       window.arangoDatabase = new window.ArangoDatabase();
@@ -38,43 +44,29 @@ $(document).ready(function() {
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
 
-      window.collectionsView = new window.collectionsView({
+      window.collectionsView = new window.CollectionsView({
         collection: window.arangoCollectionsStore
       });
       window.arangoCollectionsStore.fetch();
-
-      window.collectionView = new window.collectionView({
-        model: arangoCollection
-      });
-
-      window.collectionInfoView = new window.collectionInfoView({
-        model: arangoCollection
-      });
-
-      window.documentsView = new window.documentsView({
-        collection: window.arangoDocuments
-      });
-      window.documentView = new window.documentView({
-        collection: window.arangoDocument
-      });
-      window.documentSourceView = new window.documentSourceView({
-        collection: window.arangoDocument
-      });
-
-      window.arangoLogsStore = new window.arangoLogs();
+      window.collectionView = new window.CollectionView();
+      window.collectionInfoView = new window.CollectionInfoView();
+      window.documentsView = new window.DocumentsView();
+      window.documentView = new window.DocumentView();
+      window.documentSourceView = new window.DocumentSourceView();
+      window.arangoLogsStore = new window.ArangoLogs();
       window.arangoLogsStore.fetch({
         success: function () {
-          window.logsView = new window.logsView({
+          window.logsView = new window.LogsView({
             collection: window.arangoLogsStore
           });
         }
       });
 
-      this.footerView = new window.footerView();
-      this.naviView = new window.navigationView();
+      this.footerView = new window.FooterView();
+      this.naviView = new window.NavigationView();
       this.footerView.render();
       this.naviView.render();
-      this.graphView = new window.graphView({
+      this.graphView = new window.GraphView({
         collection: window.arangoCollectionsStore
       });
 
@@ -92,7 +84,7 @@ $(document).ready(function() {
 
     checkSession: function () {
       if (window.activeSession.models.length === 0) {
-        window.App.navigate("login", {trigger: true});
+        this.navigate("login", {trigger: true});
         return false;
       }
       return true;
@@ -207,7 +199,7 @@ $(document).ready(function() {
         this.naviView.selectMenuItem('databases-menu');
       }
       else {
-        window.App.navigate("#", {trigger: true});
+        this.navigate("#", {trigger: true});
         this.naviView.selectMenuItem('dashboard-menu');
         $('#databaseNavi').css('display','none');
         $('#databaseNaviSelect').css('display','none');
@@ -367,16 +359,10 @@ $(document).ready(function() {
       .css('margin-right', marginWidth);
       // $('.footer-right p').css('margin-right', marginWidth + 20);
       // $('.footer-left p').css('margin-left', marginWidth + 20);
-      if (newWidth !== oldWidth && window.App) {
-        window.App.graphView.handleResize(newWidth);
+      if (newWidth !== oldWidth) {
+        this.graphView.handleResize(newWidth);
       }
     }
-
   });
 
-  window.App = new window.Router();
-  Backbone.history.start();
-  window.App.handleResize();
-
-});
-
+}());
