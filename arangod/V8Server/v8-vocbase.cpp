@@ -5843,11 +5843,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> shapes = v8::Object::New();
   result->Set(v8::String::New("shapes"), shapes);
   shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
+  shapes->Set(v8::String::New("size"), v8::Number::New(info->_sizeShapes));
   
   // attributes info
   v8::Handle<v8::Object> attributes = v8::Object::New();
   result->Set(v8::String::New("attributes"), attributes);
   attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
+  attributes->Set(v8::String::New("size"), v8::Number::New(info->_sizeAttributes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -7985,7 +7987,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyRemoveOnCompacted = v8::String::New("removeOnCompacted");
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
-  v8::Local<v8::String> keyForceSyncShapes = v8::String::New("forceSyncShapes");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
@@ -8008,10 +8009,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
     if (options->Has(keyDefaultWaitForSync)) {
       defaults.defaultWaitForSync = options->Get(keyDefaultWaitForSync)->BooleanValue();
-    }
-
-    if (options->Has(keyForceSyncShapes)) {
-      defaults.forceSyncShapes = options->Get(keyForceSyncShapes)->BooleanValue();
     }
 
     if (options->Has(keyForceSyncProperties)) {

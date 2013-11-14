@@ -66,6 +66,27 @@ extern "C" {
 #define TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT (-9223372036854775807L)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief global shape ids and pointers
+////////////////////////////////////////////////////////////////////////////////
+ 
+typedef struct TRI_basic_shapes_s { 
+  TRI_shape_sid_t _sidNull;
+  TRI_shape_sid_t _sidBoolean;
+  TRI_shape_sid_t _sidNumber;
+  TRI_shape_sid_t _sidShortString;
+  TRI_shape_sid_t _sidLongString;
+  TRI_shape_sid_t _sidList;
+
+  TRI_shape_t     _shapeNull;
+  TRI_shape_t     _shapeBoolean;
+  TRI_shape_t     _shapeNumber;
+  TRI_shape_t     _shapeShortString;
+  TRI_shape_t     _shapeLongString;
+  TRI_shape_t     _shapeList;
+}
+TRI_basic_shapes_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief json shaper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,9 +100,6 @@ typedef struct TRI_shaper_s {
   TRI_shape_path_t const* (*lookupAttributePathByPid) (struct TRI_shaper_s*, TRI_shape_pid_t);
   TRI_shape_pid_t (*findAttributePathByName) (struct TRI_shaper_s*, char const*);
   TRI_shape_pid_t (*lookupAttributePathByName) (struct TRI_shaper_s*, char const*);
-  size_t (*numShapes) (struct TRI_shaper_s*);
-  size_t (*numAttributes) (struct TRI_shaper_s*);
-  bool (*shapefileStats) (struct TRI_shaper_s*, size_t*, int64_t*);
 
   TRI_associative_synced_t _attributePathsByName;
   TRI_associative_synced_t _attributePathsByPid;
@@ -89,42 +107,9 @@ typedef struct TRI_shaper_s {
   TRI_shape_pid_t _nextPid;
   TRI_mutex_t _attributePathLock;
 
-  TRI_shape_sid_t _sidNull;
-  TRI_shape_sid_t _sidBoolean;
-  TRI_shape_sid_t _sidNumber;
-  TRI_shape_sid_t _sidShortString;
-  TRI_shape_sid_t _sidLongString;
-  TRI_shape_sid_t _sidList;
-
   TRI_memory_zone_t* _memoryZone;
 }
 TRI_shaper_t;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ARRAY SHAPER
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a simple, array-based shaper
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array-based shaper, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyArrayShaper (TRI_shaper_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an array-based shaper and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeArrayShaper (TRI_memory_zone_t*, TRI_shaper_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            SHAPER
@@ -163,10 +148,34 @@ void TRI_DestroyShaper (TRI_shaper_t* shaper);
 void TRI_FreeShaper (TRI_shaper_t* shaper);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates or finds the basic types
+/// @brief return the sid for a basic type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertBasicTypesShaper (TRI_shaper_t*);
+TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a shape is of primitive type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a shape is of primitive type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises global basic shape types
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseShaper (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown shaper
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownShaper (void);
 
 #ifdef __cplusplus
 }

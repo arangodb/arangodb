@@ -804,6 +804,7 @@ namespace triagens {
           }
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->_memoryZone;
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json);
 
           if (shaped == 0) {
@@ -819,7 +820,7 @@ namespace triagens {
                        data, 
                        forceSync); 
 
-          TRI_FreeShapedJson(shaper->_memoryZone, shaped);
+          TRI_FreeShapedJson(zone, shaped);
 
           return res;
         }
@@ -867,6 +868,7 @@ namespace triagens {
                     const bool forceSync) {
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->_memoryZone;
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json);
 
           if (shaped == 0) {
@@ -883,7 +885,7 @@ namespace triagens {
                            actualRevision, 
                            forceSync); 
 
-          TRI_FreeShapedJson(shaper->_memoryZone, shaped);
+          TRI_FreeShapedJson(zone, shaped);
 
           return res;
         }

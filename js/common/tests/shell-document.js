@@ -1452,10 +1452,10 @@ function DatabaseDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document too big for a journal 
+/// @brief create a very big document 
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDocumentTooLarge : function () {
+    testDocumentVeryLarge : function () {
       // create a very big and silly document, just to blow up the datafiles
       var doc = { };
       for (var i = 0; i < 60000; ++i) {
@@ -1464,15 +1464,8 @@ function DatabaseDocumentSuite () {
       }
 
       assertEqual(0, collection.count());
-      try {
-        collection.save(doc);
-        fail();
-      }
-      catch (err) {
-        assertTrue(ERRORS.ERROR_ARANGO_NO_JOURNAL.code === err.errorNum ||
-                   ERRORS.ERROR_INTERNAL.code === err.errorNum);
-      }
-      assertEqual(0, collection.count());
+      collection.save(doc);
+      assertEqual(1, collection.count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

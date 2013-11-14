@@ -56,7 +56,6 @@ typedef struct TRI_vocbase_defaults_s {
   bool              removeOnDrop;
   bool              removeOnCompacted;
   bool              defaultWaitForSync;
-  bool              forceSyncShapes;
   bool              forceSyncProperties;
   bool              requireAuthentication;
   bool              authenticateSystemOnly;

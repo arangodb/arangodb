@@ -444,6 +444,7 @@ TRI_vocbase_t* TRI_OpenVocBase (struct TRI_server_s*,
                                 TRI_voc_tick_t,
                                 char const*,
                                 struct TRI_vocbase_defaults_s const*,
+                                bool,
                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////
