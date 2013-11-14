@@ -6,6 +6,7 @@ $(document).ready(function() {
   window.Router = Backbone.Router.extend({
     routes: {
       ""                                    : "dashboard",
+      "dashboard"                           : "dashboard",
       "collection/:colid"                   : "collection",
       "collections"                         : "collections",
       "collectionInfo/:colid"               : "collectionInfo",
