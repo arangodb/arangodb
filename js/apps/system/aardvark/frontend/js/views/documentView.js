@@ -2,7 +2,7 @@
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, value2html, templateEngine */
 (function() {
   "use strict";
-  window.documentView = Backbone.View.extend({
+  window.DocumentView = Backbone.View.extend({
     el: '#content',
     table: '#documentTableID',
     colid: 0,

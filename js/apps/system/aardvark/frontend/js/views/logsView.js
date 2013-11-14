@@ -3,7 +3,7 @@
 
 (function() {
   "use strict";
-  window.logsView = Backbone.View.extend({
+  window.LogsView = Backbone.View.extend({
     el: '#content',
     offset: 0,
     size: 10,

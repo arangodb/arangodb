@@ -2,7 +2,7 @@
 /*global require, window, exports, Backbone, $, arangoHelper, templateEngine */
 (function() {
   "use strict";
-  window.collectionView = Backbone.View.extend({
+  window.CollectionView = Backbone.View.extend({
     el: '#modalPlaceholder',
     initialize: function () {
     },

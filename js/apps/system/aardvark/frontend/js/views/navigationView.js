@@ -2,7 +2,7 @@
 /*global require, exports, Backbone, templateEngine, $, window, arangoDatabase*/
 (function() {
   "use strict";
-  window.navigationView = Backbone.View.extend({
+  window.NavigationView = Backbone.View.extend({
     el: '.header',
     initialize: function () {
       var self = this;

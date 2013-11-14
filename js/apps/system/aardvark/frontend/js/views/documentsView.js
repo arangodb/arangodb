@@ -3,7 +3,7 @@
 
 (function() {
   "use strict";
-  window.documentsView = Backbone.View.extend({
+  window.DocumentsView = Backbone.View.extend({
     collectionID: 0,
     currentPage: 1,
     documentsPerPage: 10,
@@ -354,20 +354,19 @@
       if (doctype === 'edge') {
         $('#edgeCreateModal').modal('show');
         arangoHelper.fixTooltips(".modalTooltips", "left");
+        return;
       }
-      else {
-        var result = window.arangoDocumentStore.createTypeDocument(collid);
-        //Success
-        if (result !== false) {
-          window.location.hash = "collection/" + result;
-          arangoHelper.arangoNotification('Document created');
-        }
-        //Error
-        else {
-          arangoHelper.arangoError('Creating document failed');
-        }
+      var result = window.arangoDocumentStore.createTypeDocument(collid);
+      //Success
+      if (result !== false) {
+        window.location.hash = "collection/" + result;
+        arangoHelper.arangoNotification('Document created');
+        return;
       }
+      //Error
+      arangoHelper.arangoError('Creating document failed');
     },
+
     addEdge: function () {
       var collid  = window.location.hash.split("/")[1];
       var from = $('#new-document-from').val();

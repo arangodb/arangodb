@@ -3,7 +3,7 @@
 
 (function() {
   "use strict";
-  window.collectionsView = Backbone.View.extend({
+  window.CollectionsView = Backbone.View.extend({
     el: '#content',
     /*el2: '.thumbnails',*/
     el2: '#collectionsThumbnailsIn',

@@ -4,7 +4,7 @@
 
 (function() {
   "use strict";
-  window.documentSourceView = Backbone.View.extend({
+  window.DocumentSourceView = Backbone.View.extend({
     el: '#content',
     init: function () {
     },
