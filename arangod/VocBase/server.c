@@ -564,10 +564,13 @@ static int CreateBaseApplicationDirectory (char const* basePath,
       res = TRI_CreateDirectory(path);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        LOG_INFO("created base application directory '%s'", path);
+        LOG_INFO("created base application directory '%s'", 
+                 path);
       }
       else {
-        LOG_ERROR("unable to create base application directory '%s'", path);
+        LOG_ERROR("unable to create base application directory '%s': %s",
+                  path,
+                  TRI_errno_string(res));
       }
     }
 
