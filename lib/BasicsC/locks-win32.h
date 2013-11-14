@@ -77,21 +77,11 @@ TRI_read_write_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
-///
-/// This is based on http://www.cs.wustl.edu/~schmidt/win32-cv-1.html.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_condition_s {
-  CRITICAL_SECTION _lockWaiters;
-
-  bool _ownMutex;
-
-  HANDLE _waitersDone;
-  HANDLE _mutex;
-  HANDLE _sema;
-
-  int _waiters;
-  bool _broadcast;
+  CRITICAL_SECTION   _lockWaiters;
+  CONDITION_VARIABLE _conditionVariable;
 }
 TRI_condition_t;
 

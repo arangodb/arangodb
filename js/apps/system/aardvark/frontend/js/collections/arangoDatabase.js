@@ -5,6 +5,8 @@
   window.ArangoDatabase = Backbone.Collection.extend({
     model: window.Database,
 
+    comparator: "name",
+
     sync: function(method, model, options) {
       'use strict';
       if (method === "read") {
@@ -24,20 +26,53 @@
     },
 
     initialize: function() {
-      this.fetch({
-        success: function(d) {
-          console.log(d);
-        }
+      var self = this; 
+      this.fetch().done(function() {
+        self.sort();  
       });
     },
 
     getDatabases: function() {
-      this.fetch({
-        success: function(d) {
-          console.log(d);
-        }
+      var self = this; 
+      this.fetch().done(function() {
+        self.sort();  
       });
       return this.models;
+    },
+
+    createDatabaseURL: function(name, protocol, port) {
+      var loc = window.location;
+      var hash = window.location.hash;
+      if (protocol) {
+        if (protocol === "SSL" || protocol === "https:") {
+          protocol = "https:";
+        } else {
+          protocol = "http:"; 
+        }
+      } else {
+        protocol = loc.protocol;
+      }
+      port = port || loc.port;
+
+      var url = protocol
+        + "//"
+        + window.location.hostname
+        + ":"
+        + port
+        + "/_db/"
+        + encodeURIComponent(name)
+        + "/_admin/aardvark/index.html";
+      if (hash) {
+        var base = hash.split("/")[0];
+        if (base.indexOf("#collection") === 0) {
+          base = "#collections";
+        }
+        if (base.indexOf("#application") === 0) {
+          base = "#applications";
+        }
+        url += base;
+      }
+      return url;
     },
 
     getCurrentDatabase: function() {
@@ -50,6 +85,10 @@
         processData: false,
         async: false,
         success: function(data) {
+          if (data.code === 200) {
+            returnVal = data.result.name;
+            return;
+          }
           returnVal = data;
         },
         error: function(data) {

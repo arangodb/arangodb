@@ -1,9 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, _ */
+/*global Backbone, EJS, $, window, _, templateEngine*/
 
 var FoxxInstalledListView = Backbone.View.extend({
   el: '#content',
-  template: new EJS({url: 'js/templates/applicationsView.ejs'}),
+  template: templateEngine.createTemplate("applicationsView.ejs"),
   
   events: {
     // 'click button#add': 'callback'

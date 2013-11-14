@@ -28,3 +28,4 @@ TOC {#UserManualActionsTOC}
     - @ref UserManualActionsAdvancedBundles
     - @ref UserManualActionsAdvancedMiddleware
   - @ref UserManualActionsApplicationDeployment
+  - @ref UserManualActionsPitfalls

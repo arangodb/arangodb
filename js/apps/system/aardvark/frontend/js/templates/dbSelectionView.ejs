@@ -1,16 +1,16 @@
 <%
 if (list.length > 1) {
 %>
-  <select>
-    <%
-      list.each(function(o) {
-      var i = o.get("name");
-    %>
-      <option id=<%=i%> <%=i===current?"selected":""%>><%=i%></option>
-    <%
-      });
-    %>
-  </select>
+<select id="dbSelectionList">
+  <%
+    list.each(function(o) {
+    var i = o.get("name");
+  %>
+    <option id=<%=i%> <%=i===current?"selected":""%>><%=i%></option>
+  <%
+    });
+  %>
+</select>
 <%
 }
 %>

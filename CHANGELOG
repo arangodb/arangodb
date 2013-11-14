@@ -12,22 +12,111 @@ v1.5.x (XXXX-XX-XX)
 * added arangosh option `--javascript.gc-interval` to control amount of 
   garbage collection performed by arangosh
 
-* added API method GET `/_api/database/user` 
-
-  This returns the list of databases a specific user can see without changing the
-  username/passwd.
-
-* fixed issue #656: Cannot create unique index through web interface
-
-* fixed issue #654: bitarray index makes server down
-
 * fixed issue #651: Allow addEdge() to take vertex ids in the JS library
-
 
 * added more detailed request statistics 
 
   This adds the number of async-executed HTTP requests plus the number of HTTP
   requests per individual HTTP method type.
+
+* removed command-line option `--log.format`
+
+  In previous versions, this option did not have an effect for most log messages, so
+  it got removed.
+
+* removed C++ logger implementation
+
+  Logging inside ArangoDB is now done using the LOG_XXX() macros. The LOGGER_XXX()
+  macros are gone.
+
+* added collection status "loading"
+
+* added the option to return the number of elements indexed to the
+  result of <collection>.getIndexes() for each index. This is
+  currently only implemented for hash indices and skiplist indices.
+
+
+v1.4.2 (XXXX-XX-XX)
+-------------------
+
+* changed Windows condition variable implementation to use Windows native
+  condition variables
+  
+  This is an attempt to fix spurious Windows hangs as described in issue #662.
+
+* added documentation for JavaScript traversals 
+
+* added --code-page command-line option for Windows version of arangosh
+
+* fixed a problem when creating edges via the web interface.
+
+  The problem only occurred if a collection was created with type "document
+  collection" via the web interface, and afterwards was dropped and re-created
+  with type "edge collection". If the web interface page was not reloaded,
+  the old collection type (document) was cached, making the subsequent creation
+  of edges into the (seeming-to-be-document) collection fail.
+
+  The fix is to not cache the collection type in the web interface. Users of
+  an older version of the web interface can reload the collections page if they
+  are affected.
+
+* fixed a caching problem in arangosh: if a collection was created using the web
+  interface, and then removed via arangosh, arangosh did not actually drop the
+  collection due to caching.
+
+  Because the `drop` operation was not carried out, this caused misleading error
+  messages when trying to re-create the collection (e.g. `cannot create collection:
+  duplicate name`).
+
+* fixed ALT-introduced characters for arangosh console input on Windows
+
+  The Windows readline port was not able to handle characters that are built
+  using CTRL or ALT keys. Regular characters entered using the CTRL or ALT keys
+  were silently swallowed and not passed to the terminal input handler.
+  
+  This did not seem to cause problems for the US keyboard layout, but was a
+  severe issue for keyboard layouts that require the ALT (or ALT-GR) key to 
+  construct characters. For example, entering the character `{` with a German
+  keyboard layout requires pressing ALT-GR + 9. 
+
+* fixed issue #665: Hash/skiplist combo madness bit my ass
+
+  this fixes a problem with missing/non-deterministic rollbacks of inserts in
+  case of a unique constraint violation into a collection with multiple secondary
+  indexes (with at least one of them unique)
+
+* fixed issue #664: ArangoDB installer on windows requires drive c:
+
+* partly fixed issue #662: ArangoDB on Windows hanging
+
+  This fixes dropping databases on Windows. In previous 1.4 versions on Windows,
+  one shape collection file was not unloaded and removed when dropping a database,
+  leaving one directory and one shape collection file in the otherwise-dropped
+  database directory.
+
+* fixed issue #660: updated documentation on indexes
+
+
+v1.4.1 (2013-11-08)
+-------------------
+
+* performance improvements for skip-list deletes
+
+
+v1.4.1-rc1 (2013-11-07)
+-----------------------
+
+* fixed issue #635: Web-Interface should have a "Databases" Menu for Management
+
+* fixed issue #624: Web-Interface is missing a Database selector
+
+* fixed segfault in bitarray query
+
+* fixed issue #656: Cannot create unique index through web interface
+
+* fixed issue #654: bitarray index makes server down
+
+* fixed issue #653: Slow query
 
 * fixed issue #650: Randonmess of any() should be improved
 
@@ -46,13 +135,6 @@ v1.5.x (XXXX-XX-XX)
       DOCUMENT(users, [ 'users/john', 'users/amy' ])
       DOCUMENT(users, [ 'john', 'amy' ])
 
-* issue #424: Documentation about IDs needs to be upgraded
-
-* removed command-line option `--log.format`
-
-  In previous versions, this option did not have an effect for most log messages, so
-  it got removed.
-
 * simplified usage of ArangoDB batch API
 
   It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`
@@ -65,12 +147,13 @@ v1.5.x (XXXX-XX-XX)
   This also allows using the batch API with the Swagger "Try it out" feature (which is
   not too good at sending a different or even dynamic content-type request header).
 
-* removed C++ logger implementation
+* added API method GET `/_api/database/user` 
 
-  Logging inside ArangoDB is now done using the LOG_XXX() macros. The LOGGER_XXX()
-  macros are gone.
+  This returns the list of databases a specific user can see without changing the
+  username/passwd.
 
-* added collection status "loading"
+* issue #424: Documentation about IDs needs to be upgraded
+
 
 v1.4.0 (2013-10-29)
 -------------------

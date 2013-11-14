@@ -35,7 +35,8 @@ MAINTAINER = \
 	lib/V8/v8-json.h \
 	lib/BasicsC/voc-errors.h \
 	lib/BasicsC/voc-errors.c \
-	js/common/bootstrap/errors.js
+	js/common/bootstrap/errors.js \
+	mr/common/bootstrap/mr-error.h
 
 AUTOMAGIC = \
 	Makefile.in \

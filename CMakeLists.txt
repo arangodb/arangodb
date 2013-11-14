@@ -71,6 +71,23 @@ add_definitions("-DTRI_BITS=${BITS}")
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief ARANGODB_VERSION
+################################################################################
+
+set(ARANGODB_VERSION "1.x.y-rc1" CACHE path "ArangoDB version")
+
+################################################################################
+### @brief BUILD_PACKAGE
+###
+### Posible options are:
+### - dmg-cli: Mac OS X shell client application
+### - debian: debian package
+### - raspbian: raspberry debian package
+################################################################################
+
+set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
+
+################################################################################
 ### @brief MRUBY
 ################################################################################
 
@@ -90,22 +107,69 @@ option(USE_RAW_CONFIG "Do you want to install configuration files with variables
 ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
 ################################################################################
 
-set(SYSCONFDIR "etc" CACHE path "System configuration directory")
-set(ARANGODB_CONF_DIR ${SYSCONFDIR}/arangodb)
+set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
-file(TO_NATIVE_PATH "${SYSCONFDIR}" SYSCONFDIR)
-file(TO_NATIVE_PATH "${CMAKE_INSTALL_PREFIX}/${ARANGODB_CONF_DIR}" ETCDIR)
+if (ETCDIR STREQUAL "")
+  set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
+  set(ETCDIR_INSTALL "etc/arangodb")
+else ()
+  set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
+  set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
+endif ()
 
-add_definitions("-D_SYSCONFDIR_=\"${ETCDIR}\"")
+file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
 
-set(TRI_BINDIR      "${CMAKE_INSTALL_PREFIX}/bin")
-set(TRI_DATABASEDIR "${CMAKE_INSTALL_PREFIX}/var/lib/arangodb")
-set(TRI_LOGDIR      "${CMAKE_INSTALL_PREFIX}/var/log/arangodb")
-set(TRI_PKGDATADIR  "${CMAKE_INSTALL_PREFIX}/share/arangodb")
-set(TRI_SBINDIR     "${CMAKE_INSTALL_PREFIX}/sbin")
+add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_NATIVE}\"")
+
+################################################################################
+### @brief DATA DIRECTORY (/var)
+################################################################################
+
+set(VARDIR "" CACHE path "System configuration directory (defaults to prefix/var/arangodb)")
+
+if (VARDIR STREQUAL "")
+  set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
+  set(VARDIR_INSTALL "var")
+else ()
+  set(VARDIR_NATIVE "${VARDIR}")
+  set(VARDIR_INSTALL "${VARDIR}")
+endif ()
+
+file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
+
+################################################################################
+### @brief TRI_BINDIR
+################################################################################
+
+set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+
+################################################################################
+### @brief TRI_DATABASEDIR
+################################################################################
+
+set(TRI_DATABASEDIR "${VARDIR_NATIVE}/lib/arangodb")
+
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+
+################################################################################
+### @brief TRI_LOGDIR
+################################################################################
+
+set(TRI_LOGDIR "${VARDIR_NATIVE}/log/arangodb")
 
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+
+################################################################################
+### @brief TRI_PKGDATADIR
+################################################################################
+
+set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+
+################################################################################
+### @brief TRI_SBINDIR
+################################################################################
+
+set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   COMMON INCLUDES
@@ -283,15 +347,67 @@ add_subdirectory(UnitTests)
 ## --SECTION--                                                          PACKAGES
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief general information
+################################################################################
+
 set(CPACK_SET_DESTDIR ON)
 
-set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-set(CPACK_PACKAGE_VENDOR "triAGENS GmbH")
 
-set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
-set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
-set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
-set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
+if (BUILD_PACKAGE STREQUAL "dmg-cli")
+  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
+elseif (BUILD_PACKAGE STREQUAL "raspbian")
+  set(CPACK_PACKAGE_NAME "arangodb")
+elseif (BUILD_PACKAGE STREQUAL "debian")
+  set(CPACK_PACKAGE_NAME "arangodb")
+endif ()
+
+
+set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
+set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
+set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
+
+
+set(CPACK_STRIP_FILES "ON")
+
+################################################################################
+### @brief MacOSX bundle
+################################################################################
+
+if (BUILD_PACKAGE STREQUAL "dmg-cli")
+  set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
+  set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
+  set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
+  set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
+endif ()
+
+################################################################################
+### @brief debian package
+################################################################################
+
+if ((BUILD_PACKAGE STREQUAL "debian") OR (BUILD_PACKAGE STREQUAL "raspbian"))
+  if (BUILD_PACKAGE STREQUAL "raspbian")
+    set(CPACK_SYSTEM_NAME "raspbian")
+  endif ()
+
+  set(CPACK_DEBIAN_PACKAGE_SECTION "database")
+  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
+    "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
+
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/Installation/Debian/rc.arangodb
+    PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION /etc/init.d
+    RENAME arangodb)
+
+  install(
+    CODE
+      "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E make_directory \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/share/arangodb/js/apps)")
+
+  install(
+    CODE
+      "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink /var/lib/arangodb-apps \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/share/arangodb/js/apps/databases)")
+endif ()
 
 include(CPack)
 

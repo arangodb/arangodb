@@ -979,6 +979,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insertion into secondary indexes failed
+    DeleteSecondaryIndexes(document, header, true);
     DeletePrimaryIndex(document, header, true);
     document->_headers->release(document->_headers, header, true);
 
@@ -3533,19 +3534,18 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseDocumentCollection (TRI_document_collection_t* collection) {
+int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   int res;
 
   // closes all open compactors, journals, datafiles
-  res = TRI_CloseCollection(&collection->base.base);
+  res = TRI_CloseCollection(&document->base.base);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  TRI_FreeVocShaper(collection->base._shaper);
-
-  collection->base._shaper = NULL;
+  TRI_FreeVocShaper(document->base._shaper);
+  document->base._shaper = NULL;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4219,7 +4219,7 @@ static int ComparePidName (void const* left, void const* right) {
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document, bool withStats) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
@@ -4235,7 +4235,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
     idx = document->_allIndexes._buffer[i];
 
-    json = idx->json(idx);
+    json = idx->json(idx,withStats);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);

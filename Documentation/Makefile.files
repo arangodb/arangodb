@@ -85,6 +85,7 @@ WIKI = \
 	SimpleQueries \
 	ToolsManual \
 	Transactions \
+	Traversals \
 	Upgrading \
 	UpgradingGeneral \
 	Upgrading11 \
@@ -271,8 +272,6 @@ Doxygen/arango-latex.doxy: Documentation/arango.template Doxygen/toc.doxy
 latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-latex.doxy > /dev/null
-
-	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
 	cp -R Documentation/latex/*.tex Doxygen/latex
 	cp -R Documentation/images Doxygen/latex/images

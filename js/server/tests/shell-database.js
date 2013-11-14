@@ -151,6 +151,48 @@ function DatabaseSuite () {
       assertEqual(9, d9.value);
 
       d9 = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test removal of database directory
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropDatabaseDirectory : function () {
+      assertEqual("_system", internal.db._name());
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase0");
+      }
+      catch (err) {
+      }
+
+      assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
+      assertTrue(internal.db._useDatabase("UnitTestsDatabase0"));
+      
+      var fs = require("fs");
+
+      // get path
+      var path = internal.db._path();
+      assertTrue(fs.exists(path));
+      var files = fs.listTree(path);
+
+      // assert some files
+      assertTrue(files.length > 10);
+
+      assertTrue(internal.db._useDatabase("_system"));
+
+      // drop db, and check path again
+      assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
+
+      var tries = 0;
+      while (tries++ < 15) {
+        if (fs.exists(path)) {
+          internal.wait(1);
+          continue;
+        }
+      }
+
+      assertFalse(fs.exists(path));
     }
 
   };
