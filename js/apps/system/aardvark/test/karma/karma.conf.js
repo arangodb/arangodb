@@ -127,6 +127,7 @@ module.exports = function(karma) {
       'test/specs/views/collectionsViewSpec.js',
       'test/specs/views/foxxEditViewSpec.js',
       'test/specs/views/dbSelectionViewSpec.js',
+      'test/specs/views/navigationViewSpec.js',
       'test/specs/views/graphViewSpec.js'
       //'test/specJSLint/jsLintSpec.js'
     ],
