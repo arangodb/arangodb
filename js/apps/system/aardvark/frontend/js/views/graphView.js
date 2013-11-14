@@ -5,7 +5,7 @@
 
   "use strict";
   
-  window.graphView = Backbone.View.extend({
+  window.GraphView = Backbone.View.extend({
     el: '#content',
 
     template: templateEngine.createTemplate("graphView.ejs"),

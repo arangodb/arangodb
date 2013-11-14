@@ -3,7 +3,7 @@
 
 (function() {
   "use strict";
-  window.footerView = Backbone.View.extend({
+  window.FooterView = Backbone.View.extend({
     el: '.footer',
     system: {},
     isOffline: true,

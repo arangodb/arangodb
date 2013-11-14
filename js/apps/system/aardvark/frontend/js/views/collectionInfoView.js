@@ -4,7 +4,7 @@
 
 (function() {
   "use strict";
-  window.collectionInfoView = Backbone.View.extend({
+  window.CollectionInfoView = Backbone.View.extend({
     el: '#modalPlaceholder',
 
     initialize: function () {
