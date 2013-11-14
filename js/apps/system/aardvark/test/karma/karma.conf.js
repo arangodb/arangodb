@@ -76,6 +76,7 @@ module.exports = function(karma) {
       'test/mocks/disableEJS.js',
 
       // Models
+      'frontend/js/models/currentDatabase.js',
       'frontend/js/models/arangoCollection.js',
       'frontend/js/models/arangoDatabase.js',
       'frontend/js/models/arangoDocument.js',
@@ -123,6 +124,7 @@ module.exports = function(karma) {
 
       // Specs
       'test/specs/arango/arangoSpec.js',
+      'test/specs/models/currentDatabaseSpec.js',
       'test/specs/views/collectionViewSpec.js',
       'test/specs/views/collectionsViewSpec.js',
       'test/specs/views/foxxEditViewSpec.js',
