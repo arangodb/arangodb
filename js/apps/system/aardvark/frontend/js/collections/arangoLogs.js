@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, window, $, arangoLog */
 
-window.arangoLogs = Backbone.Collection.extend({
+window.ArangoLogs = Backbone.Collection.extend({
   url: '/_admin/log?upto=4&size=10&offset=0',
   parse: function(response) {
     var myResponse = [];
