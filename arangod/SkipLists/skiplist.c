@@ -1550,20 +1550,6 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief used to determine the order of two keys
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IndexStaticMultiEqualElementElement (TRI_skiplist_multi_t* multiSkiplist,
-                                                 TRI_skiplist_index_element_t* leftElement,
-                                                 TRI_skiplist_index_element_t* rightElement) {
-  if (leftElement == rightElement) {
-    return true;
-  }
-
-  return (leftElement->_document == rightElement->_document);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                  non-unique skiplist constructors and destructors
 // -----------------------------------------------------------------------------
@@ -2046,7 +2032,7 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // the next node element.
       // .......................................................................    
 
-      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element), -1);
+      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element));
       
       // .......................................................................    
       // The element matches the next element. Overwrite if possible and return.
@@ -2227,13 +2213,13 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // the next node element.
       // .......................................................................
 
-      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element), TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS);
+      compareResult = IndexStaticMultiCompareElementElement(skiplist, element, &(nextNode->_element));
 
       // .......................................................................
       // We have found an item which matches the key
       // .......................................................................    
 
-      if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL) {
+      if (0 == compareResult) {
         currentNode = nextNode;
         goto END;
       }
@@ -2252,26 +2238,14 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // We have reached the lowest level of the lists -- no such item.
       // .......................................................................
 
-      if (currentLevel == 0) {
+      if (0 == currentLevel) {
 
         // .....................................................................
         // The element could not be located
         // .....................................................................
 
-        if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_LESS) {
-          return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
-        }
+        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
 
-        // .....................................................................
-        // The element could be located (by matching the key) and we are at the lowest level
-        // .....................................................................
-
-        if (compareResult == TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS) {
-          goto END;
-        }
-
-        // can not occur
-        assert(false);
       }
 
       // .......................................................................
@@ -2283,26 +2257,6 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
     }
 
   END:
-
-  // ..........................................................................
-  // locate the correct elemet -- since we allow duplicates
-  // ..........................................................................
-
-  while (currentNode != NULL) {
-    if (IndexStaticMultiEqualElementElement(skiplist, element, &(currentNode->_element))) {
-      break;
-    }
-    currentNode = TRI_NextNodeBaseSkipList(&(skiplist->base), currentNode);
-  }
-  
-  // ..........................................................................
-  // The actual element could not be located - an element with a matching key
-  // may exist, but the same data stored within the element could not be located
-  // ..........................................................................
-
-  if (currentNode == NULL) {
-    return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING;
-  }
 
   // ..........................................................................
   // Perhaps the user wants a copy before we destory the data?

@@ -1147,8 +1147,7 @@ static bool multiSkiplistIndex_findHelperIntervalIntersectionValid (SkiplistInde
     compareResult = IndexStaticMultiCompareElementElement(
         skiplistIndex->skiplist.nonUniqueSkiplist, 
         &(lNode->_element),
-        &(rNode->_element),
-        0);
+        &(rNode->_element));
   }
 
   if (compareResult < 1) {
@@ -1171,8 +1170,7 @@ static bool multiSkiplistIndex_findHelperIntervalIntersectionValid (SkiplistInde
     compareResult = IndexStaticMultiCompareElementElement(
         skiplistIndex->skiplist.nonUniqueSkiplist,
         &(lNode->_element),
-        &(rNode->_element),
-        0);
+        &(rNode->_element));
   }
 
   if (compareResult < 1) {
@@ -1212,10 +1210,9 @@ static bool multiSkiplistIndex_findHelperIntervalValid (SkiplistIndex* skiplistI
   compareResult = IndexStaticMultiCompareElementElement(
       skiplistIndex->skiplist.nonUniqueSkiplist, 
       &(lNode->_element),
-      &(rNode->_element),
-      0);
+      &(rNode->_element));
                                               
-  return (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_LESS);  
+  return (-1 == compareResult);  
 } 
 
 
