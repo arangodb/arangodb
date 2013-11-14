@@ -14,7 +14,7 @@
     beforeEach(function() {
       $('body').append('<div id="content" class="removeMe"></div>');
 
-      myView = new window.collectionView({
+      myView = new window.CollectionView({
         model: arangoCollection
       });
 
