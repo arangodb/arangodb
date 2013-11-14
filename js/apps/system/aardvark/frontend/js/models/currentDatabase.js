@@ -5,8 +5,6 @@
   "use strict";
 
   window.CurrentDatabase = Backbone.Model.extend({
-
     url: "/_api/database/current"
-      
   });
 }());
