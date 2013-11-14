@@ -67,15 +67,6 @@ typedef enum {
 TRI_skiplist_prob_e;
 
 
-typedef enum {
-  TRI_SKIPLIST_COMPARE_STRICTLY_LESS = -1,
-  TRI_SKIPLIST_COMPARE_STRICTLY_GREATER = 1,
-  TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL = 0,
-  TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS = -2,
-  TRI_SKIPLIST_COMPARE_SLIGHTLY_GREATER = 2
-}
-TRI_skiplist_compare_e;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief storage structure for a node's nearest neighbours
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,24 +156,12 @@ TRI_skiplist_base_t;
 
 typedef struct TRI_skiplist_s {
   TRI_skiplist_base_t base;
-
-  // ...........................................................................
-  // callback compare function
-  // < 0: implies left < right
-  // == 0: implies left == right
-  // > 0: implies left > right
-  // ...........................................................................
-
-  int (*compareElementElement) (struct TRI_skiplist_s*,
-                                TRI_skiplist_index_element_t*,
-                                TRI_skiplist_index_element_t*,
-                                int);
-
-  int (*compareKeyElement) (struct TRI_skiplist_s*,
-                            size_t,
-                            TRI_skiplist_index_key_t*,
-                            TRI_skiplist_index_element_t*,
-                            int);    
+  // There used to be some callbacks here, this is why we have this
+  // struct here in the first place, which is actually identical to
+  // TRI_skiplist_multi_t. Eventually, one could remove both 
+  // TRI_skiplist_multi_t and TRI_skiplist_t and rename
+  // TRI_skiplist_base_t to TRI_skiplist_t. One would have to get rid of
+  // the base indirection in that case.
 }
 TRI_skiplist_t;
 
@@ -322,33 +301,11 @@ void* TRI_StartNodeSkipList (TRI_skiplist_t*);
 
 typedef struct TRI_skiplist_multi_s {
   TRI_skiplist_base_t base;
-
-  // ...........................................................................
-  // callback compare function
-  // < 0: implies left < right
-  // == 0: implies left == right
-  // > 0: implies left > right
-  // ...........................................................................
-
-  int (*compareElementElement) (struct TRI_skiplist_multi_s*,
-                                TRI_skiplist_index_element_t*,
-                                TRI_skiplist_index_element_t*,
-                                int);
-
-  int (*compareKeyElement) (struct TRI_skiplist_multi_s*,
-                            size_t,
-                            TRI_skiplist_index_key_t*,
-                            TRI_skiplist_index_element_t*,
-                            int);
-  
-  // ...........................................................................
-  // Returns true if the element is an exact copy, or if the data which the
-  // element points to is an exact copy
-  // ...........................................................................
-
-  bool (*equalElementElement) (struct TRI_skiplist_multi_s*,
-                               TRI_skiplist_index_element_t*,
-                               TRI_skiplist_index_element_t*);
+  // There used to be some callbacks here, this is why we have this
+  // struct here in the first place, which is actually identical to
+  // TRI_skiplist_t. Eventually, one could remove both TRI_skiplist_multi_t
+  // and TRI_skiplist_t and rename TRI_skiplist_base_t to TRI_skiplist_t.
+  // One would have to get rid of the base indirection in that case.
 }
 TRI_skiplist_multi_t;
 

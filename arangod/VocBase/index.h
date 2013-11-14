@@ -41,7 +41,6 @@
 #include "PriorityQueue/pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
-#include "SkipListsEx/skiplistExIndex.h"
 #include "VocBase/voc-types.h"
 
 #ifdef __cplusplus

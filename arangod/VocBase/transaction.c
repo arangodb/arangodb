@@ -412,12 +412,14 @@ trx_coordinator_t;
 
 static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
                               void* data) {
-  TRI_shaped_json_t* shaped;
   TRI_primary_collection_t* primary;
+  TRI_memory_zone_t* zone;
+  TRI_shaped_json_t* shaped;
   trx_coordinator_t* coordinator;
   int res;
 
   primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
+  zone = primary->_shaper->_memoryZone;
   coordinator = data;
 
   if (coordinator->_json == NULL) {
@@ -440,7 +442,7 @@ static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
                         false, 
                         false);
 
-  TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);
+  TRI_FreeShapedJson(zone, shaped);
 
   return res;
 }

@@ -158,7 +158,7 @@ function AnySuite () {
         return c.any().value;
       });
       
-      assertTrue(stddev(dist) < threshold * 2.0);
+      assertTrue(stddev(dist) < threshold * 3.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -324,7 +324,7 @@ static int SortShapeValuesFunc (void const* l, void const* r) {
   int wl;
   int wr;
 
-  left = (TRI_shape_value_t const*) l;
+  left  = (TRI_shape_value_t const*) l;
   right = (TRI_shape_value_t const*) r;
 
   if (left->_fixedSized != right->_fixedSized) {
@@ -338,7 +338,7 @@ static int SortShapeValuesFunc (void const* l, void const* r) {
     return wl - wr;
   }
 
-  return (int)(left->_aid - right->_aid);
+  return (int) (left->_aid - right->_aid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,7 +347,7 @@ static int SortShapeValuesFunc (void const* l, void const* r) {
 
 static bool FillShapeValueNull (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
   dst->_type = TRI_SHAPE_NULL;
-  dst->_sid = shaper->_sidNull;
+  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
   dst->_fixedSized = true;
   dst->_size = 0;
   dst->_value = 0;
@@ -363,7 +363,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
-  dst->_sid = shaper->_sidBoolean;
+  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   // no need to prefill dst->_value with 0, as it is overwritten directly afterwards
@@ -386,7 +386,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
-  dst->_sid = shaper->_sidNumber;
+  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -409,7 +409,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 
   if (json->_value._string.length <= TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
     dst->_type = TRI_SHAPE_SHORT_STRING;
-    dst->_sid = shaper->_sidShortString;
+    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -426,7 +426,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   }
   else {
     dst->_type = TRI_SHAPE_LONG_STRING;
-    dst->_sid = shaper->_sidLongString;
+    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + json->_value._string.length;
     dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -480,7 +480,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
   if (n == 0) {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = shaper->_sidList;
+    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
@@ -695,7 +695,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   // in-homogeneous
   else {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = shaper->_sidList;
+    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
 
     offset =
       sizeof(TRI_shape_length_list_t)
@@ -2228,7 +2228,7 @@ void TRI_DestroyShapedJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShapedJson (TRI_memory_zone_t* zone, 
-                        TRI_shaped_json_t* shaped) {
+                         TRI_shaped_json_t* shaped) {
   TRI_DestroyShapedJson(zone, shaped);
   TRI_Free(zone, shaped);
 }
@@ -2241,7 +2241,8 @@ void TRI_FreeShapedJson (TRI_memory_zone_t* zone,
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortShapeValues (TRI_shape_value_t* values, size_t n) {
+void TRI_SortShapeValues (TRI_shape_value_t* values, 
+                          size_t n) {
   qsort(values, n, sizeof(TRI_shape_value_t), SortShapeValuesFunc);
 }
 
@@ -2249,7 +2250,8 @@ void TRI_SortShapeValues (TRI_shape_value_t* values, size_t n) {
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* json) {
+TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, 
+                                       TRI_json_t const* json) {
   TRI_shaped_json_t* shaped;
   TRI_shape_value_t dst;
   bool ok;

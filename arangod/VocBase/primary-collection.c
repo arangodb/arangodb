@@ -118,15 +118,19 @@ static void DebugDatafileInfoDatafile (TRI_primary_collection_t* primary,
 
   if (dfi == NULL) {
     printf(" no info\n\n");
-    return;
   }
-
-  printf("  number alive:        %llu\n", (unsigned long long) dfi->_numberAlive);
-  printf("  size alive:          %llu\n", (unsigned long long) dfi->_sizeAlive);
-  printf("  number dead:         %llu\n", (unsigned long long) dfi->_numberDead);
-  printf("  size dead:           %llu\n", (unsigned long long) dfi->_sizeDead);
-  printf("  deletion:            %llu\n", (unsigned long long) dfi->_numberDeletion);
-  printf("\n");
+  else {
+    printf("  number alive:        %llu\n", (unsigned long long) dfi->_numberAlive);
+    printf("  size alive:          %llu\n", (unsigned long long) dfi->_sizeAlive);
+    printf("  number dead:         %llu\n", (unsigned long long) dfi->_numberDead);
+    printf("  size dead:           %llu\n", (unsigned long long) dfi->_sizeDead);
+    printf("  number shapes:       %llu\n", (unsigned long long) dfi->_numberShapes);
+    printf("  size shapes:         %llu\n", (unsigned long long) dfi->_sizeShapes);
+    printf("  number attributes:   %llu\n", (unsigned long long) dfi->_numberAttributes);
+    printf("  size attributes:     %llu\n", (unsigned long long) dfi->_sizeAttributes);
+    printf("  numberdeletion:      %llu\n", (unsigned long long) dfi->_numberDeletion);
+    printf("\n");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,13 +502,18 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
 
     if (d != NULL) {
-      info->_numberAlive += d->_numberAlive;
-      info->_numberDead += d->_numberDead;
-      info->_numberTransaction += d->_numberTransaction; // not used here (only in compaction)
-      info->_numberDeletion += d->_numberDeletion;
-      info->_sizeAlive += d->_sizeAlive;
-      info->_sizeDead += d->_sizeDead;
-      info->_sizeTransaction += d->_sizeTransaction; // not used here (only in compaction)
+      info->_numberAlive        += d->_numberAlive;
+      info->_numberDead         += d->_numberDead;
+      info->_numberTransaction  += d->_numberTransaction; // not used here (only in compaction)
+      info->_numberDeletion     += d->_numberDeletion;
+      info->_numberShapes       += d->_numberShapes;
+      info->_numberAttributes   += d->_numberAttributes;
+
+      info->_sizeAlive          += d->_sizeAlive;
+      info->_sizeDead           += d->_sizeDead;
+      info->_sizeTransaction    += d->_sizeTransaction; // not used here (only in compaction)
+      info->_sizeShapes         += d->_sizeShapes;
+      info->_sizeAttributes     += d->_sizeAttributes;
     }
   }
 
@@ -531,16 +540,10 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     ++info->_numberCompactorfiles;
   }
 
-  // get information about shape files
-  primary->_shaper->shapefileStats(primary->_shaper, &i, &info->_shapefileSize);
-  info->_numberShapefiles = (TRI_voc_ssize_t) i;
+  // get information about shape files (hard-coded to 0)
+  info->_shapefileSize    = 0;
+  info->_numberShapefiles = 0;
 
-  // get number of registered shapes
-  info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
-
-  // get number of registered attributes
-  info->_numberAttributes = (TRI_voc_ssize_t) primary->_shaper->numAttributes(primary->_shaper);
-  
   return info;
 }
 
@@ -714,8 +717,9 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
 /// Note that the caller must hold a lock protecting the _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* primary) {
-  return CreateJournal(primary, primary->base._info._maximalSize);
+TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* primary, 
+                                                    TRI_voc_size_t size) {
+  return CreateJournal(primary, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

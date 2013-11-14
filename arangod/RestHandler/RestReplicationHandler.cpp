@@ -1872,6 +1872,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     assert(json != 0);
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
+    TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
     TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
 
     if (shaped != 0) {
@@ -1929,7 +1930,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
       
-      TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);
+      TRI_FreeShapedJson(zone, shaped);
 
       return res;
     }
