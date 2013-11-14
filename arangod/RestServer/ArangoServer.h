@@ -423,6 +423,17 @@ namespace triagens {
         bool _forceSyncProperties;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief force syncing of shapes
+///
+/// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
+///
+/// This option is not used in this version of ArangoDB. It only remains here
+/// for compatibility reasons.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _unusedForceSyncShapes;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication logger on server startup
 ///
 /// @CMDOPT{\--server.disable-replication-logger @CA{flag}}
