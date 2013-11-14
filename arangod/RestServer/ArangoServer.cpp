@@ -286,6 +286,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _developmentMode(false),
     _forceSyncProperties(true),
+    _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnCompacted(true),
@@ -498,6 +499,11 @@ void ArangoServer::buildApplicationServer () {
 
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
+  ;
+  
+  // deprecated options
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
   ;
 
   // .............................................................................
