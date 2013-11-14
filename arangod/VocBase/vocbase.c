@@ -562,6 +562,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   
   if (found != NULL) {
     LOG_ERROR("duplicate entry for collection name '%s'", name);
+    LOG_ERROR("collection id %llu has same name as already added collection %llu", 
+              (unsigned long long) cid, 
+              (unsigned long long) ((TRI_vocbase_col_t*) found)->_cid);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -981,12 +984,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
        
-          if (iterateMarkers) {   
-            // iterating markers may be time-consuming. we'll only do it if
-            // we have to
-            TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
-          }
-
           if (c == NULL) {
             LOG_ERROR("failed to add document collection from '%s'", file);
 
@@ -999,6 +996,12 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           }
 
           c->_status = TRI_VOC_COL_STATUS_UNLOADED;
+          
+          if (iterateMarkers) {   
+            // iterating markers may be time-consuming. we'll only do it if
+            // we have to
+            TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
+          }
 
           LOG_DEBUG("added document collection from '%s'", file);
         }
