@@ -36,6 +36,7 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -216,7 +217,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback for shape iteration
+/// @brief callback for shape iteration on upgrade
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UpgradeShapeIterator (TRI_df_marker_t const* marker, 
@@ -224,7 +225,7 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
                                   TRI_datafile_t* datafile, 
                                   bool journal) {
   shape_iterator_t* si = data;
-  ssize_t* written = si->_written;
+  ssize_t* written     = si->_written;
 
   // new or updated document
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
@@ -333,6 +334,46 @@ static void SortDatafiles (TRI_vector_pointer_t* files) {
   }
 
   qsort(files->_buffer, files->_length, sizeof(TRI_datafile_t*), &DatafileComparator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a suitable datafile id for a new datafile, based on the
+/// ids of existing datafiles/journals/compactors
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_tick_t GetDatafileId (const char* path) {
+  TRI_vector_string_t files;
+  regex_t re;
+  uint64_t lastId;
+  size_t i, n;
+  
+  if (regcomp(&re, "^(journal|datafile|compactor)-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return (TRI_voc_tick_t) 1;
+  }
+  
+  files = TRI_FilesDirectory(path);
+  n = files._length;
+  lastId = 0;
+
+  for (i = 0;  i < n;  ++i) {
+    regmatch_t matches[2];
+    char const* file = files._buffer[i];
+
+    if (regexec(&re, file, sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
+      uint64_t id = GetNumericFilenamePart(file);
+      
+      if (lastId == 0 || (id > 0 && id < lastId)) {
+        lastId = (id - 1);
+      }
+    }
+  }
+
+  TRI_DestroyVectorString(&files);
+  regfree(&re);
+
+  return (TRI_voc_tick_t) lastId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2113,11 +2154,14 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
   
   regex_t re;
   TRI_vector_string_t files;
+  TRI_voc_tick_t datafileId;
   char* shapes;
   char* outfile;
+  char* fname;
+  char* number;
   ssize_t written;
-  int fdout;
   size_t i, n;
+  int fdout;
   int res;
   
   TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION_15);
@@ -2136,8 +2180,18 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  // TODO: fix the datafile id
-  outfile = TRI_Concatenate2File(path, "datafile-1.db");
+  // determine an artificial datafile id 
+  datafileId = GetDatafileId(path);
+  if (datafileId == 0) {
+    datafileId = TRI_NewTickServer();
+  }
+
+  number = TRI_StringUInt64(datafileId);
+  fname  = TRI_Concatenate3String("datafile-", number, ".db");
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+
+  outfile = TRI_Concatenate2File(path, fname);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, fname);
 
   if (outfile == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, shapes);
@@ -2192,7 +2246,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
         // datafile header
         TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
         header._version     = TRI_DF_VERSION;
-        header._maximalSize = 0; // TODO: check if this is ok 
+        header._maximalSize = 0; // TODO: seems ok to set this to 0, check if this is ok 
         header._fid         = tick;
         header.base._tick   = tick;
         header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
@@ -2261,8 +2315,9 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
     res = TRI_RemoveDirectory(shapes);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to remove SHAPES directory '%s'", 
-                shapes);
+      LOG_ERROR("unable to remove SHAPES directory '%s': %s", 
+                shapes,
+                TRI_errno_string(res));
     }
   }
 
