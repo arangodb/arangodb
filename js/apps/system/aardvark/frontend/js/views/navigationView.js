@@ -7,15 +7,19 @@
     initialize: function () {
       var self = this;
       this.dbSelectionView = new window.DBSelectionView({
-        collection: arangoDatabase
+        collection: window.arangoDatabase
       });
+    },
+
+    events: {
+      "change #arangoCollectionSelect": "navigateBySelect",
+      "click .tab": "navigateByTab"
     },
 
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function() {
       $(this.el).html(this.template.render({}));
-      this.handleSelectNavigation();
       this.dbSelectionView.render($("#selectDB"));
       return this;
     },
@@ -30,6 +34,17 @@
       this.dbSelectionView.render($("#selectDB"));
     },
 
+    navigateBySelect: function() {
+      var navigateTo = $("#arangoCollectionSelect").find("option:selected").val();
+      window.App.navigate(navigateTo, {trigger: true});
+    },
+
+    navigateByTab: function(e) {
+      var tab = e.target || e.srcElement;
+      var navigateTo = tab.id;
+      window.App.navigate(navigateTo, {trigger: true});
+      e.stopPropagation();
+    },
     handleSelectNavigation: function () {
       $("#arangoCollectionSelect").change(function() {
         var navigateTo = $(this).find("option:selected").val();
