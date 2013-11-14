@@ -50,10 +50,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct attribute_weight_s {
-    TRI_shape_aid_t            _aid;
-    int64_t                    _weight;
-    char*                      _attribute;
-    struct attribute_weight_s* _next;
+  TRI_shape_aid_t              _aid;
+  int64_t                      _weight;
+  char*                        _attribute;
+  struct attribute_weight_s*   _next;
 }
 attribute_weight_t;
 
