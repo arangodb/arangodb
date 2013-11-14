@@ -91,6 +91,7 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoDocument.js',
       'frontend/js/collections/arangoDatabase.js',
       'frontend/js/collections/arangoLogs.js',
+      'frontend/js/collections/arangoSession.js',
       'frontend/js/collections/arangoStatisticsCollection.js',
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
@@ -103,6 +104,7 @@ module.exports = function(karma) {
       'frontend/js/views/dashboardView.js',
       'frontend/js/views/collectionsView.js',
       'frontend/js/views/collectionView.js',
+      'frontend/js/views/collectionInfoView.js',
       'frontend/js/views/newCollectionView.js',
       'frontend/js/views/collectionsItemView.js',
       'frontend/js/views/documentsView.js',
@@ -119,6 +121,9 @@ module.exports = function(karma) {
       'frontend/js/views/graphView.js',
       'frontend/js/views/dbSelectionView.js',
 
+      // Router
+      'frontend/js/routers/router.js',
+
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
 
@@ -130,7 +135,8 @@ module.exports = function(karma) {
       'test/specs/views/foxxEditViewSpec.js',
       'test/specs/views/dbSelectionViewSpec.js',
       'test/specs/views/navigationViewSpec.js',
-      'test/specs/views/graphViewSpec.js'
+      'test/specs/views/graphViewSpec.js',
+      'test/specs/router/routerSpec.js'
       //'test/specJSLint/jsLintSpec.js'
     ],
 

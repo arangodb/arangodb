@@ -54,7 +54,8 @@
         "frontend/js/models/**",
         "frontend/js/collections/**",
         "frontend/js/views/**",
-        "frontend/js/routers/**"
+        "frontend/js/routers/router.js",
+        "frontend/js/routers/startApp.js"
       ]
     },
 
