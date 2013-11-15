@@ -32,6 +32,7 @@
       };
       documentDummy = {};
       documentsDummy = {};
+      databaseDummy = {};
       graphDummy = {
         handleResize: function() {}
       };
@@ -87,6 +88,7 @@
       spyOn(fakeDB, "fetch").andCallFake(function(options) {
         expect(options.async).toBeTruthy(); 
       });
+      spyOn(window, "DBSelectionView");
     });
 
     describe("Initialisation", function() {
@@ -130,6 +132,13 @@
       it("should create collectionsView", function() {
         expect(window.CollectionsView).toHaveBeenCalledWith({
           collection: storeDummy
+        });
+      });
+
+      it("should create the dbSelectionView", function() {
+        expect(window.DBSelectionView).toHaveBeenCalledWith({
+          collection: databaseDummy,
+          current: fakeDB
         });
       });
 
