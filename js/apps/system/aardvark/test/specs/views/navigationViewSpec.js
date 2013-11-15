@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global $*/
 
 (function() {
   "use strict";
@@ -88,7 +89,7 @@
     });
 
     /*
-     * TODO _system only tabs Databases and Logs
+     * to_do _system only tabs Databases and Logs
      */
     describe("in _system database", function() {
 

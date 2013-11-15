@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global $, jasmine*/
 
 (function() {
   "use strict";
@@ -56,7 +57,7 @@
       spyOn(window, "DocumentView");
       spyOn(window, "DocumentSourceView");
       spyOn(window, "ArangoLogs").andReturn(logsDummy);
-      spyOn(logsDummy, "fetch"); //TODO
+      spyOn(logsDummy, "fetch"); //TO_DO
       /*
         success: function () {
           window.logsView = new window.logsView({

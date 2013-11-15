@@ -415,7 +415,7 @@
       $("#confirmDeleteBtn").attr("disabled", true);
       var hash = window.location.hash.split("/");
       var check = hash[3];
-      //todo - find wrong event handler
+      //to_do - find wrong event handler
       if (check !== 'source') {
         this.reallyDelete();
       }
