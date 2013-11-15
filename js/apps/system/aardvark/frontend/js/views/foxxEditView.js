@@ -61,7 +61,7 @@
           return;
         }
       }
-      // TODO change version
+      // TO_DO change version
       if (!failed) {
         this.hideModal();
       }

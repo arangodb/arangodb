@@ -73,11 +73,11 @@
               this.submitQuery();
           }
           else if (e.ctrlKey && e.keyCode === 90) {
-              // TODO: undo/redo seems to work even without this. check if can be removed
+              // TO_DO: undo/redo seems to work even without this. check if can be removed
               this.undoText();
           }
           else if (e.ctrlKey && e.shiftKey && e.keyCode === 90) {
-              // TODO: undo/redo seems to work even without this. check if can be removed
+              // TO_DO: undo/redo seems to work even without this. check if can be removed
               this.redoText();
           }
       },
