@@ -200,12 +200,33 @@ function byExample (collection, example, skip, limit) {
       console.debug("found hash index %s", idx.id);
     }
   }
-  catch (err) {
+  catch (err2) {
   }
 
   if (idx !== null) {
     // use hash index
     return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
+  }
+ 
+  try {
+    idx = collection.lookupSkiplist.apply(collection, keys);
+    if (idx === null && unique) {
+      idx = collection.lookupUniqueSkiplist.apply(collection, keys);
+    
+      if (idx !== null) {
+        console.debug("found unique skiplist %s", idx.id);
+      }
+    }
+    else if (idx !== null) {
+      console.debug("found skiplist index %s", idx.id);
+    }
+  }
+  catch (err3) {
+  }
+  
+  if (idx !== null) {
+    // use hash index
+    return collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
   }
 
   // use full collection scan
