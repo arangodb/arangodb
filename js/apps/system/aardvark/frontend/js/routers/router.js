@@ -69,10 +69,6 @@
       this.graphView = new window.GraphView({
         collection: window.arangoCollectionsStore
       });
-      this.dbSelectionView = new window.DBSelectionView({
-        collection: window.arangoDatabase,
-        current: window.currentDB
-      });
 
       var self = this;
       $(window).resize(function() {
@@ -343,7 +339,7 @@
     },
 
     handleSelectDatabase: function () {
-      this.dbSelectionView.render($("#selectDB"));
+      this.footerView.handleSelectDatabase();
     },
 
     handleResize: function () {

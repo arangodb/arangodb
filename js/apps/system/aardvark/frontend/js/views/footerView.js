@@ -11,6 +11,10 @@
     initialize: function () {
       //also server online check
       var self = this;
+      this.dbSelectionView = new window.DBSelectionView({
+        collection: window.arangoDatabase,
+        current: window.currentDB
+      });
       window.setInterval(function(){
         self.getVersion();
       }, 15000);
@@ -90,6 +94,7 @@
     },
 
     renderVersion: function () {
+      var self = this;
       if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
         $(this.el).html(this.template.render({
           name: this.system.name,
@@ -97,11 +102,7 @@
           database: this.system.database,
           margin: this.resizeMargin
         }));
-       /* 
-            var tag = 'Server: ' + this.system.name + ' ' + this.system.version + 
-          ', Database: ' + this.system.database;
-        $('.footer-right p').html(tag);
-        */
+        this.dbSelectionView.render($("#dbSelect"));
       }
     },
 
@@ -110,7 +111,12 @@
       this.render();
     },
 
+    handleSelectDatabase: function() {
+      this.dbSelectionView.render();
+    },
+
     render: function () {
+      var self = this;
       if (!this.system.version) {
         this.getVersion();
       }
@@ -120,6 +126,7 @@
         database: this.system.database,
         margin: this.resizeMargin
       }));
+      this.dbSelectionView.render($("#dbSelect"));
       return this;
     }
 

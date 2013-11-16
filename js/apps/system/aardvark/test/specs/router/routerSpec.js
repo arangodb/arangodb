@@ -15,7 +15,6 @@
       footerDummy,
       documentDummy,
       documentsDummy,
-      databaseDummy,
       sessionDummy,
       graphDummy,
       logsDummy;
@@ -32,7 +31,6 @@
       };
       documentDummy = {};
       documentsDummy = {};
-      databaseDummy = {};
       graphDummy = {
         handleResize: function() {}
       };
@@ -48,7 +46,6 @@
       spyOn(storeDummy, "fetch");
       spyOn(window, "arangoCollections").andReturn(storeDummy);
       spyOn(window, "ArangoSession").andReturn(sessionDummy);
-      spyOn(window, "ArangoDatabase").andReturn(databaseDummy);
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
       spyOn(window, "CollectionsView");
@@ -91,7 +88,7 @@
       spyOn(window, "DBSelectionView");
     });
 
-    describe("Initialisation", function() {
+    describe("initialisation", function() {
 
       var r;
 
@@ -132,13 +129,6 @@
       it("should create collectionsView", function() {
         expect(window.CollectionsView).toHaveBeenCalledWith({
           collection: storeDummy
-        });
-      });
-
-      it("should create the dbSelectionView", function() {
-        expect(window.DBSelectionView).toHaveBeenCalledWith({
-          collection: databaseDummy,
-          current: fakeDB
         });
       });
 

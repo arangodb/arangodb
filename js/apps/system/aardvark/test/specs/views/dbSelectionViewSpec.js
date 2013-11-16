@@ -25,13 +25,16 @@
         dbCollection.add({name: n});
       });
       fetched = false;
-      spyOn(dbCollection, "fetch").andCallFake(function(opt) {
-        fetched = true;
-        opt.success();
-      });
+      spyOn(dbCollection, "fetch");
       div = document.createElement("div");
       div.id = "dbSelect";
       document.body.appendChild(div);
+      view = new DBSelectionView(
+        {
+          collection: dbCollection,
+          current: current
+        }
+      );
     });
 
     afterEach(function() {
@@ -39,114 +42,48 @@
     });
 
     it("should display all databases ordered", function() {
-
-      runs(function() {
-        view = new DBSelectionView(
-          {
-            collection: dbCollection,
-            current: current
-          }
-        );
-      });
-
-      waitsFor(function() {
-        return fetched;
-      }, 1000);
-
-      runs(function() {
-        var select = $(div).children()[0],
-          childs;
-        expect(div.childElementCount).toEqual(1);
-        childs = $(select).children();
-        expect(childs.length).toEqual(3);
-        expect(childs[0].id).toEqual(list[0]);
-        expect(childs[1].id).toEqual(list[2]);
-        expect(childs[2].id).toEqual(list[1]);
-      });
+      view.render($(div));
+      var select = $(div).children()[0],
+        childs;
+      expect(div.childElementCount).toEqual(1);
+      childs = $(select).children();
+      expect(childs.length).toEqual(3);
+      expect(childs[0].id).toEqual(list[0]);
+      expect(childs[1].id).toEqual(list[2]);
+      expect(childs[2].id).toEqual(list[1]);
     });
 
     it("should select the current db", function() {
-      runs(function() {
-        view = new DBSelectionView(
-          {
-            collection: dbCollection,
-            current: current
-          }
-        );
-      });
-
-      waitsFor(function() {
-        return fetched;
-      }, 1000);
-
-      runs(function() {
-        expect($(div).find(":selected").attr("id")).toEqual(current.get("name"));
-      });
+      view.render($(div));
+      expect($(div).find(":selected").attr("id")).toEqual(current.get("name"));
     });
 
     it("should trigger fetch on collection", function() {
-      runs(function() {
-        view = new DBSelectionView(
-          {
-            collection: dbCollection,
-            current: current
-          }
-        );
-      });
-
-      waitsFor(function() {
-        return fetched;
-      }, 1000);
-
-      runs(function() {
-        expect(dbCollection.fetch).toHaveBeenCalled();
-      });
+      view.render($(div));
+      expect(dbCollection.fetch).toHaveBeenCalled();
     });
 
     it("should trigger a database switch on click", function() {
-      runs(function() {
-        view = new DBSelectionView(
-          {
-            collection: dbCollection,
-            current: current
-          }
-        );
-      });
-      
-      waitsFor(function() {
-        return fetched;
-      }, 1000);
-
-      runs(function() {
-        spyOn(dbCollection, "createDatabaseURL").andReturn("switchURL");
-        spyOn(location, "replace");
-        $("#dbSelectionList").val("second").trigger("change");
-        expect(dbCollection.createDatabaseURL).toHaveBeenCalledWith("second");
-        expect(location.replace).toHaveBeenCalledWith("switchURL");
-      });
+      view.render($(div));
+      spyOn(dbCollection, "createDatabaseURL").andReturn("switchURL");
+      spyOn(location, "replace");
+      $("#dbSelectionList").val("second").trigger("change");
+      expect(dbCollection.createDatabaseURL).toHaveBeenCalledWith("second");
+      expect(location.replace).toHaveBeenCalledWith("switchURL");
     });
 
-    it("should not render if the list has only one element", function() {
-      runs(function() {
-        var oneCollection = new window.ArangoDatabase();
-        oneCollection.add({name: current});
-        spyOn(oneCollection, "fetch").andCallFake(function(opts) {
-          fetched = true;
-          opts.success();
-        });
-        view = new DBSelectionView({
+    it("should not render the selection if the list has only one element", function() {
+      var oneCollection = new window.ArangoDatabase();
+      oneCollection.add({name: current});
+      spyOn(oneCollection, "fetch");
+      view = new DBSelectionView(
+        {
           collection: oneCollection,
           current: current
-        });
-      });
-
-      waitsFor(function() {
-        return fetched;
-      }, 1000);
-
-      runs(function() {
-        expect($(div).text().trim()).toEqual("");
-      });
+        }
+      );
+      view.render($(div));
+      expect($(div).text().trim()).toEqual("first");
     });
   });
 }());
