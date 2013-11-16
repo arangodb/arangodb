@@ -237,34 +237,34 @@ UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_f
 UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_basics_suite_SOURCES = \
-	UnitTests/Runner.cpp \
-	UnitTests/Philadelphia/conversions-test.cpp \
-	UnitTests/Philadelphia/csv-test.cpp \
-	UnitTests/Philadelphia/files-test.cpp \
-	UnitTests/Philadelphia/json-test.cpp \
-	UnitTests/Philadelphia/json-utilities-test.cpp \
-	UnitTests/Philadelphia/hashes-test.cpp \
-	UnitTests/Philadelphia/mersenne-test.cpp \
-	UnitTests/Philadelphia/associative-pointer-test.cpp \
-	UnitTests/Philadelphia/associative-synced-test.cpp \
-	UnitTests/Philadelphia/string-buffer-test.cpp \
-	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
-	UnitTests/Philadelphia/string-utf8-test.cpp \
-	UnitTests/Philadelphia/string-test.cpp \
-	UnitTests/Philadelphia/structure-size-test.cpp \
-	UnitTests/Philadelphia/vector-pointer-test.cpp \
-	UnitTests/Philadelphia/vector-test.cpp \
-	UnitTests/Jutland/EndpointTest.cpp \
-	UnitTests/Jutland/StringBufferTest.cpp \
-	UnitTests/Jutland/StringUtilsTest.cpp
+	UnitTests/Basics/Runner.cpp \
+	UnitTests/Basics/conversions-test.cpp \
+	UnitTests/Basics/csv-test.cpp \
+	UnitTests/Basics/files-test.cpp \
+	UnitTests/Basics/json-test.cpp \
+	UnitTests/Basics/json-utilities-test.cpp \
+	UnitTests/Basics/hashes-test.cpp \
+	UnitTests/Basics/mersenne-test.cpp \
+	UnitTests/Basics/associative-pointer-test.cpp \
+	UnitTests/Basics/associative-synced-test.cpp \
+	UnitTests/Basics/string-buffer-test.cpp \
+	UnitTests/Basics/string-utf8-normalize-test.cpp \
+	UnitTests/Basics/string-utf8-test.cpp \
+	UnitTests/Basics/string-test.cpp \
+	UnitTests/Basics/structure-size-test.cpp \
+	UnitTests/Basics/vector-pointer-test.cpp \
+	UnitTests/Basics/vector-test.cpp \
+	UnitTests/Basics/EndpointTest.cpp \
+	UnitTests/Basics/StringBufferTest.cpp \
+	UnitTests/Basics/StringUtilsTest.cpp
 
 UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib
 UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
 UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_geo_suite_SOURCES = \
-	UnitTests/Cambridge/Runner.cpp \
-	UnitTests/Cambridge/georeg.cpp \
+	UnitTests/Geo/Runner.cpp \
+	UnitTests/Geo/georeg.cpp \
 	arangod/GeoIndex/GeoIndex.c
 
 else

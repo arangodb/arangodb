@@ -36,26 +36,26 @@ if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
 
 add_executable(
     ${TEST_BASICS_SUITE}
-    Runner.cpp
-    Philadelphia/conversions-test.cpp
-    Philadelphia/csv-test.cpp
-    Philadelphia/files-test.cpp
-    Philadelphia/json-test.cpp
-    Philadelphia/json-utilities-test.cpp
-    Philadelphia/hashes-test.cpp
-    Philadelphia/mersenne-test.cpp
-    Philadelphia/associative-pointer-test.cpp
-    Philadelphia/associative-synced-test.cpp
-    Philadelphia/string-buffer-test.cpp
-    Philadelphia/string-utf8-normalize-test.cpp
-    Philadelphia/string-utf8-test.cpp
-    Philadelphia/string-test.cpp
-    Philadelphia/structure-size-test.cpp
-    Philadelphia/vector-pointer-test.cpp
-    Philadelphia/vector-test.cpp
-    Jutland/EndpointTest.cpp
-    Jutland/StringBufferTest.cpp
-    Jutland/StringUtilsTest.cpp
+    Basics/Runner.cpp
+    Basics/conversions-test.cpp
+    Basics/csv-test.cpp
+    Basics/files-test.cpp
+    Basics/json-test.cpp
+    Basics/json-utilities-test.cpp
+    Basics/hashes-test.cpp
+    Basics/mersenne-test.cpp
+    Basics/associative-pointer-test.cpp
+    Basics/associative-synced-test.cpp
+    Basics/string-buffer-test.cpp
+    Basics/string-utf8-normalize-test.cpp
+    Basics/string-utf8-test.cpp
+    Basics/string-test.cpp
+    Basics/structure-size-test.cpp
+    Basics/vector-pointer-test.cpp
+    Basics/vector-test.cpp
+    Basics/EndpointTest.cpp
+    Basics/StringBufferTest.cpp
+    Basics/StringUtilsTest.cpp
 )
 
 target_link_libraries(
@@ -65,11 +65,6 @@ target_link_libraries(
     ${OPENSSL_LIBS}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
-)
-
-add_test(
-    basics
-    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TEST_BASICS_SUITE}
 )
 
 endif ()
@@ -82,8 +77,8 @@ if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
 
 add_executable(
     ${TEST_GEO_SUITE}
-    Cambridge/Runner.cpp
-    Cambridge/georeg.cpp
+    Geo/Runner.cpp
+    Geo/georeg.cpp
     ../arangod/GeoIndex/GeoIndex.c
 )
 
@@ -96,12 +91,13 @@ target_link_libraries(
     ${Boost_LIBRARIES}
 )
 
-add_test(
-    geo
-    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TEST_GEO_SUITE}
-)
-
 endif ()
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             TESTS
+## -----------------------------------------------------------------------------
+
+include(${PROJECT_SOURCE_DIR}/UnitTests/CTestLists.txt)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
