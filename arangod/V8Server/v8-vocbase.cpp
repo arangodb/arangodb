@@ -642,10 +642,10 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (create) {
     PREVENT_EMBEDDED_TRANSACTION(scope);
   }
-  
+ 
   if (argv.Length() == 0) {
-    string msg = cmd + "(<path>, ...)";
-    TRI_V8_EXCEPTION_USAGE(scope, msg.c_str());
+    const string errorString = cmd + "(<path>, ...)";
+    TRI_V8_EXCEPTION_USAGE(scope, errorString);
   }
 
   TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -662,7 +662,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot ensure index");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -672,11 +672,10 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   // which will be used by the hash index.
   // .............................................................................
 
-  string errorString;
-
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
 
+  string errorString;
   res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
   // .............................................................................
@@ -750,7 +749,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (idx == 0) {
     if (create) {
       trx.abort();
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "index could not be created");
+      TRI_V8_EXCEPTION(scope, res);
     }
     else {
       trx.finish(TRI_ERROR_NO_ERROR);
@@ -762,7 +761,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx,false);
+  TRI_json_t* json = idx->json(idx, false);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -828,7 +827,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot ensure index");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -866,7 +865,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   if (idx == 0) {
     if (create) {
       trx.abort();
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "index could not be created");
+      TRI_V8_EXCEPTION(scope, res);
     }
     else {
       trx.finish(TRI_ERROR_NO_ERROR);
@@ -878,7 +877,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx,false);
+  TRI_json_t* json = idx->json(idx, false);
 
   if (json == 0) {
     trx.finish(TRI_ERROR_OUT_OF_MEMORY);
@@ -995,7 +994,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
       res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
 
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "document not found");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   if (rid != 0 && document._rid != rid) {
@@ -1179,7 +1178,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
+    TRI_V8_EXCEPTION(scope, res);
   }
     
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1200,7 +1199,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   assert(document._key != 0);
@@ -1632,7 +1631,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
@@ -1645,7 +1644,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
       return scope.Close(v8::False());
     }
     else {
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
+      TRI_V8_EXCEPTION(scope, res);
     }
   }
 
@@ -1978,7 +1977,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
     if (errorData.empty()) {
       // no error data. return a regular error message
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute query");
+      TRI_V8_EXCEPTION(scope, res);
     }
     else {
       // there is specific error data. return a more tailored error message

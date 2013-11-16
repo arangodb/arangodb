@@ -103,6 +103,7 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
   old_doc_mptr_t const* e = element;
   char const * k = key;
+
   return (strcmp(k, e->_key) == 0);
 }
 
@@ -229,9 +230,18 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
 
   // new or updated document
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    TRI_shape_t const* shape = (TRI_shape_t const*) ((char const*) marker + sizeof(TRI_df_shape_marker_t));
+
+    // if the shape is of basic type, don't copy it
+    if (TRI_LookupSidBasicShapeShaper(shape->_sid) != NULL) {
+      return true;
+    }
+
+    // copy the shape
     *written = *written + TRI_WRITE(si->_fdout, marker, TRI_DF_ALIGN_BLOCK(marker->_size));
   }
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    // copy any attribute found
     *written = *written + TRI_WRITE(si->_fdout, marker, TRI_DF_ALIGN_BLOCK(marker->_size));
   }
 
@@ -2201,6 +2211,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
   }
 
   res = TRI_ERROR_NO_ERROR;
+  written = 0;
 
   // find all files in the collection directory
   files = TRI_FilesDirectory(shapes);
@@ -2291,17 +2302,30 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
       // datafile footer
       TRI_df_footer_marker_t footer;
       TRI_voc_tick_t tick;
+      ssize_t minSize;
 
       tick = TRI_NewTickServer();
       TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
-      footer.base._tick   = tick;
-      footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
+      footer.base._tick = tick;
+      footer.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
           
       written += TRI_WRITE(fdout, &footer.base, footer.base._size);
     
       TRI_CLOSE(fdout);
+
+      // checkout size of written file
+      minSize = sizeof(TRI_df_header_marker_t) + 
+                sizeof(TRI_col_header_marker_t) + 
+                sizeof(TRI_df_footer_marker_t);
+
+      if (written <= minSize) {
+        // new datafile is empty, we can remove it
+        LOG_TRACE("removing empty shape datafile");
+        TRI_UnlinkFile(outfile);
+      }
     }
     else {
+      // some error occurred
       TRI_CLOSE(fdout);
       TRI_UnlinkFile(outfile);
     }
