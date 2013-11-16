@@ -18,9 +18,8 @@
     },
 
     handleResize: function (margin) {
-      $('.arango-logo').css('margin-left', margin - 17);
-      $("#dbSelect").css('margin-left', margin - 17);
-      $('.nav-collapse').css('margin-right', margin - 10);
+      $('.arango-logo').css('margin-left', margin - 41);
+      $('.nav-collapse').css('margin-right', margin + 7);
     },
 
 

@@ -4,8 +4,6 @@
   "use strict";
   window.DBSelectionView = Backbone.View.extend({
 
-    el: "#dbSelect",
-
     template: templateEngine.createTemplate("dbSelectionView.ejs"),
 
     events: {
@@ -16,9 +14,7 @@
       var self = this;
       this.current = opts.current;
       this.collection.fetch({
-        success: function() {
-          self.render();
-        }
+        async: false
       });
     },
 
@@ -28,13 +24,14 @@
       window.location.replace(url);
     },
 
-    render: function() {
-      $(this.el).html(this.template.render({
+    render: function(el) {
+      this.$el = el;
+      this.$el.html(this.template.render({
         list: this.collection,
         current: this.current.get("name")
       }));
       this.delegateEvents();
-      return $(this.el);
+      return this.el;
     }
   });
 }());
