@@ -33,7 +33,7 @@
     initialize: function () {
       window.currentDB = new window.CurrentDatabase();
       window.currentDB.fetch({
-        async: true
+        async: false
       });
 
       window.activeSession = new window.ArangoSession();

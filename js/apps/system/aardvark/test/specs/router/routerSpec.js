@@ -86,7 +86,7 @@
       });
       spyOn(window, "CurrentDatabase").andReturn(fakeDB);
       spyOn(fakeDB, "fetch").andCallFake(function(options) {
-        expect(options.async).toBeTruthy(); 
+        expect(options.async).toBeFalsy(); 
       });
       spyOn(window, "DBSelectionView");
     });
