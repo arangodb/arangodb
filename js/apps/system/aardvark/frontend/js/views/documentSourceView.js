@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, EJS, $, window*/
-/*global arangoHelper, ace, arangoDocumentStore, templateEngine */
+/*global arangoHelper, ace, arangoDocumentStore, templateEngine, _ */
 
 (function() {
   "use strict";
@@ -54,7 +54,7 @@
         window.documentSourceView.fillSourceBox();
       }
       else {
-        arangoHelper.arangoError('Unknown type: ' + type);
+        arangoHelper.arangoError('Unknown document type: ' + type);
       }
     },
     editor: function () {
@@ -74,10 +74,24 @@
       );
     },
     saveSourceDoc: function() {
-      var editor, model, result;
+      var editor, model, parsed, result;
       if (this.type === 'document') {
         editor = ace.edit("sourceEditor");
         model = editor.getValue();
+     
+        try {
+          parsed = JSON.parse(model); 
+        }
+        catch (err) {
+          arangoHelper.arangoError('Invalid document');
+          return;
+        } 
+
+        if (arangoDocumentStore.models[0].internalAttributeChanged(parsed)) {
+          arangoHelper.arangoError('Cannot change internal attributes of a document');
+          return;
+        }
+
         result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
         if (result === true) {
           arangoHelper.arangoNotification('Document saved');
@@ -100,90 +114,12 @@
     },
     tableView: function () {
       var hash = window.location.hash.split("/");
-      window.location.hash = hash[0]+"/"+hash[1]+"/"+hash[2];
+      window.location.hash = hash[0] + "/" + hash[1] + "/" + hash[2];
     },
     fillSourceBox: function () {
-      var data = arangoDocumentStore.models[0].attributes;
-      var model = [];
-      $.each(data, function(key, val) {
-        if (arangoHelper.isSystemAttribute(key) === true) {
-          delete data[key];
-        }
-      });
       var editor = ace.edit("sourceEditor");
-      editor.setValue(arangoHelper.FormatJSON(data));
+      editor.setValue(arangoHelper.FormatJSON(arangoDocumentStore.models[0].getSorted()));
       editor.clearSelection();
-    },
-    stateReplace: function (value) {
-      var inString = false;
-      var length = value.length;
-      var position = 0;
-      var escaped = false;
-
-      var output = "";
-      while (position < length) {
-        var c = value.charAt(position++);
-
-        if (c === '\\') {
-          if (escaped) {
-            /* case: \ followed by \ */
-            output += '\\\\';
-            escaped = false;
-          }
-          else {
-            /* case: single backslash */
-            escaped = true;
-          }
-        }
-        else if (c === '"') {
-          if (escaped) {
-            /* case: \ followed by " */
-            output += '\\"';
-            escaped = false;
-          }
-          else {
-            output += '"';
-            inString = !inString;
-          }
-        }
-        else {
-          if (inString) {
-            if (escaped) {
-              output += '\\' + c;
-              escaped = false;
-            }
-            else {
-              switch (c) {
-                case '\b':
-                  output += '\\b';
-                break;
-                case '\f':
-                  output += '\\f';
-                break;
-                case '\n':
-                  output += '\\n';
-                break;
-                case '\t':
-                  output += '\\t';
-                break;
-                case '\r':
-                  output += '\\r';
-                break;
-                default:
-                  output += c;
-                break;
-              }
-            }
-          }
-          else {
-            if (c >= '!') {
-              output += c;
-            }
-          }
-        }
-      }
-
-      return output;
     }
   });
 }());
