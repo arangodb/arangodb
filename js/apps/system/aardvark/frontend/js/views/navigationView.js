@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, templateEngine, $, window, arangoDatabase*/
+/*global Backbone, templateEngine, $, window*/
 (function() {
   "use strict";
   window.NavigationView = Backbone.View.extend({
