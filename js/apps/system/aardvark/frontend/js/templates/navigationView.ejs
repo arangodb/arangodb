@@ -1,60 +1,53 @@
-<div class="arango-top-nav navbar navbar-fixed-top" xmlns="http://www.w3.org/1999/html">
-    <div class="arango-nav navbar-inner">
-        <div class="container">
+<ul class="nav"></ul>
 
-          <a class="arango-logo brand navlogo" href="#"><img src="img/logo_arangob_white.gif"/></a>
-          <span id="selectDB" class="selectDB"></span>
-            <div class="nav-collapse arangoNavSwitch">
-                <ul class="nav">
-                </ul>
+<ul class="arango-nav nav pull-right" id="arangoCollectionUl">
+  <li class="dashboard-menu"><a id="dashboard" class="tab">Dashboard</a></li>
+  <% if (isSystem) { %>
+    <li id="databaseNavi" class="databases-menu"><a id="databases" class="tab">Databases</a></li>
+  <% } %>
+  <li class="collections-menu"><a id="collections" class="tab">Collections</a></li>
+  <li class="applications-menu"><a id="applications" class="tab">Applications</a></li>
+  <li class="graphviewer-menu"><a id="graph" class="tab">Graphs</a></li>
+  <li class="query-menu"><a id="query" class="tab">AQL Editor</a></li>
+  <li class="shell-menu"><a id="shell" class="tab">JS Shell</a></li>
+  <% if (isSystem) { %>
+    <li class="logs-menu"><a id="logs" class="tab">Logs</a></li>
+  <% } %>
+  <li class="api-menu"><a id="api" class="tab">API</a></li>
+  <li class="dropdown">
+    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Links <b class="caret"></b></a>
+    <ul class="dropdown-menu">
+      <li class="nav-header">Documentation</li>
+      <li><a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank">JS Shell Documentation</a></li>
+      <li><a href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">AQL Documentation</a></li>
+      <li><a href="https://www.arangodb.org/manuals/current/" target="_blank">General Documentation</a></li>
+      <li class="divider"></li>
+      <li class="nav-header">ArangoDB</li>
+      <li><a href="https://github.com/triAGENS/ArangoDB" target="_blank">GitHub Repository</a></li>
+      <li><a href="https://www.arangodb.org" target="_blank">ArangoDB.org</a></li>
+      <li class="divider"></li>
+      <li class="nav-header">Social</li>
+      <li><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
+      <li><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a></li>
+      <li><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a></li>
+      <li><a href="https://groups.google.com/group/arangodb" target="_blank">Google Groups</a></li>
+    </ul>
+  </li>
+</ul>
 
-                <ul class="arango-nav nav pull-right" id="arangoCollectionUl">
-                    <li class="dashboard-menu"><a id="dashboard" class="tab">Dashboard</a></li>
-                    <li id="databaseNavi" style="display:none" class="databases-menu"><a id="databases" class="tab">Databases</a></li>
-                    <li class="collections-menu"><a id="collections" class="tab">Collections</a></li>
-                    <li class="applications-menu"><a id="applications" class="tab">Applications</a></li>
-                    <li class="graphviewer-menu"><a id="graph" class="tab">Graphs</a></li>
-                    <li class="query-menu"><a id="query" class="tab">AQL Editor</a></li>
-                    <li class="shell-menu"><a id="shell" class="tab">JS Shell</a></li>
-                    <li class="logs-menu" style="display:none"><a id="logs" class="tab">Logs</a></li>
-                    <li class="api-menu"><a id="api" class="tab">API</a></li>
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Links <b class="caret"></b></a>
-                        <ul class="dropdown-menu">
-                            <li class="nav-header">Documentation</li>
-                            <li><a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank">JS Shell Documentation</a></li>
-                            <li><a href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">AQL Documentation</a></li>
-                            <li><a href="https://www.arangodb.org/manuals/current/" target="_blank">General Documentation</a></li>
-                            <li class="divider"></li>
-                            <li class="nav-header">ArangoDB</li>
-                            <li><a href="https://github.com/triAGENS/ArangoDB" target="_blank">GitHub Repository</a></li>
-                            <li><a href="https://www.arangodb.org" target="_blank">ArangoDB.org</a></li>
-                            <li class="divider"></li>
-                            <li class="nav-header">Social</li>
-                            <li><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
-                            <li><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a></li>
-                            <li><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a></li>
-                            <li><a href="https://groups.google.com/group/arangodb" target="_blank">Google Groups</a></li>
-                        </ul>
-                    </li>
-                </ul>
-
-              <select id="arangoCollectionSelect">
-                <option value="" selected="selected">Select</option>
-
-                <option value="#">Dashboard</option>
-                <option style="display:none" id="databaseNaviSelect" value="#databases">Databases</option>
-                <option value="#collections">Collections</option>
-                <option value="#applications">Applications</option>
-                <option value="#graph">Graph</option>
-                <option value="#query">AQL Editor</option>
-                <option value="#shell">JS Shell</option>
-                <option value="#logs">Logs</option>
-                <option value="#api">Api</option>
-
-              </select>
-
-            </div>
-        </div>
-    </div>
-</div>
+<select id="arangoCollectionSelect">
+  <option value="" selected="selected">Select</option>
+  <option value="#">Dashboard</option>
+  <% if(isSystem) { %>
+    <option style="display:none" id="databaseNaviSelect" value="#databases">Databases</option>
+  <% } %>
+  <option value="#collections">Collections</option>
+  <option value="#applications">Applications</option>
+  <option value="#graph">Graph</option>
+  <option value="#query">AQL Editor</option>
+  <option value="#shell">JS Shell</option>
+  <% if(isSystem) { %>
+    <option value="#logs">Logs</option>
+  <% } %>
+  <option value="#api">Api</option>
+</select>

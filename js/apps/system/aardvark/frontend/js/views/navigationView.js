@@ -3,13 +3,7 @@
 (function() {
   "use strict";
   window.NavigationView = Backbone.View.extend({
-    el: '.header',
-    initialize: function () {
-      var self = this;
-      this.dbSelectionView = new window.DBSelectionView({
-        collection: window.arangoDatabase
-      });
-    },
+    el: '#navigationBar',
 
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
@@ -19,20 +13,16 @@
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.render({}));
-      this.dbSelectionView.render($("#selectDB"));
+      $(this.el).html(this.template.render({isSystem: window.currentDB.get("isSystem")}));
       return this;
     },
 
     handleResize: function (margin) {
       $('.arango-logo').css('margin-left', margin - 17);
-      $("#selectDB").css('margin-left', margin - 17);
+      $("#dbSelect").css('margin-left', margin - 17);
       $('.nav-collapse').css('margin-right', margin - 10);
     },
 
-    handleSelectDatabase: function () {
-      this.dbSelectionView.render($("#selectDB"));
-    },
 
     navigateBySelect: function() {
       var navigateTo = $("#arangoCollectionSelect").find("option:selected").val();
