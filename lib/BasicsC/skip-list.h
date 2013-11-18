@@ -100,6 +100,7 @@ typedef struct TRI_skiplist_s {
     TRI_skiplist_free_func_t free;
     bool unique;     // indicates whether multiple entries that
                      // are equal in the preorder are allowed in
+    uint64_t nrUsed;
 } TRI_skiplist_t;
 
 
@@ -124,15 +125,15 @@ typedef struct TRI_skiplist_s {
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_t* TRI_InitSkipList(TRI_skiplist_compare_func_t cmpfunc,
-                             TRI_skiplist_free_func_t freefunc,
-                             bool unique);
+TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
+                                  TRI_skiplist_free_func_t freefunc,
+                                  bool unique);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a skiplist and all its documents
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSkipList(TRI_skiplist_t* sl);
+void TRI_FreeSkipList (TRI_skiplist_t* sl);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,13 +153,13 @@ void TRI_FreeSkipList(TRI_skiplist_t* sl);
 /// @brief return the start node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListStartNode(TRI_skiplist_t* sl);
+TRI_skiplist_node_t* TRI_SkipListStartNode (TRI_skiplist_t* sl);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the successor node or NULL if last node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListNextNode(TRI_skiplist_node_t* node);
+TRI_skiplist_node_t* TRI_SkipListNextNode (TRI_skiplist_node_t* node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a new document into a skiplist
@@ -170,7 +171,7 @@ TRI_skiplist_node_t* TRI_SkipListNextNode(TRI_skiplist_node_t* node);
 /// insert. In the latter two cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SkipListInsert(TRI_skiplist_t *sl, void *doc);
+int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from a skiplist
@@ -180,7 +181,7 @@ int TRI_SkipListInsert(TRI_skiplist_t *sl, void *doc);
 /// cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SkipListRemove(TRI_skiplist_t *sl, void *doc);
+int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less to doc in the preorder
@@ -189,7 +190,7 @@ int TRI_SkipListRemove(TRI_skiplist_t *sl, void *doc);
 /// Only comparisons using the preorder are done.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLeftLookup(TRI_skiplist_t *sl, void *doc);
+TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less or equal to doc in
@@ -198,7 +199,7 @@ TRI_skiplist_node_t* TRI_SkipListLeftLookup(TRI_skiplist_t *sl, void *doc);
 /// Only comparisons using the preorder are done.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListRightLookup(TRI_skiplist_t *sl, void *doc);
+TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up doc in the skiplist using the proper order
@@ -208,7 +209,7 @@ TRI_skiplist_node_t* TRI_SkipListRightLookup(TRI_skiplist_t *sl, void *doc);
 /// if doc is not in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLookup(TRI_skiplist_t *sl, void *doc);
+TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
