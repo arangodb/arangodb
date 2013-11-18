@@ -67,11 +67,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,18 +75,9 @@ namespace triagens {
         ArangoServer (const ArangoServer&);
         ArangoServer& operator= (const ArangoServer&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -107,18 +93,9 @@ namespace triagens {
 
         ~ArangoServer ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AnyServer methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -134,33 +111,15 @@ namespace triagens {
 
         int startupServer ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -189,19 +148,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void closeDatabases ();
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -274,15 +224,15 @@ namespace triagens {
 ///
 /// Controls whether incoming requests need authentication only if they are
 /// directed to the ArangoDB's internal APIs and features, located at `/_api/`,
-/// `/_admin/` etc. 
+/// `/_admin/` etc.
 ///
 /// IF the flag is set to @LIT{true}, then HTTP authentication is only
-/// required for requests going to URLs starting with `/_`, but not for other 
+/// required for requests going to URLs starting with `/_`, but not for other
 /// URLs. The flag can thus be used to expose a user-made API without HTTP
 /// authentication to the outside world, but to prevent the outside world from
 /// using the ArangoDB API and the admin interface without authentication.
 /// Note that checking the URL is performed after any database name prefix
-/// has been removed. That means when the actual URL called is 
+/// has been removed. That means when the actual URL called is
 /// `/_db/_system/myapp/myaction`, the URL `/myapp/myaction` will be used for
 /// `authenticate-system-only` check.
 ///
@@ -292,8 +242,8 @@ namespace triagens {
 /// in order for HTTP authentication to be forced for the ArangoDB API and the
 /// web interface.  Setting only this flag is not enough.
 ///
-/// You can control ArangoDB's general authentication feature with the 
-/// `--server.disable-authentication` flag. 
+/// You can control ArangoDB's general authentication feature with the
+/// `--server.disable-authentication` flag.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _authenticateSystemOnly;
@@ -399,7 +349,7 @@ namespace triagens {
 /// development mode forces reloading of all actions and Foxx applications on
 /// every HTTP request. This is very resource-intensive and slow, but makes
 /// developing server-side actions and Foxx applications much easier.
-///        
+///
 /// Never use this option in production.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -410,10 +360,10 @@ namespace triagens {
 ///
 /// @CMDOPT{\--database.force-sync-properties @CA{boolean}}
 ///
-/// Force syncing of collection properties to disk after creating a collection 
+/// Force syncing of collection properties to disk after creating a collection
 /// or updating its properties.
 ///
-/// If turned off, syncing will still happen for collection that have a 
+/// If turned off, syncing will still happen for collection that have a
 /// waitForSync value of @LIT{true}. If turned on, syncing of properties will
 /// always happen, regardless of the value of waitForSync.
 ///
@@ -441,7 +391,7 @@ namespace triagens {
 /// If @LIT{true} the server will start with the replication logger turned off,
 /// even if the replication logger is configured with the `autoStart` option.
 /// Using this option will not change the value of the `autoStart` option in
-/// the logger configuration, but will suppress auto-starting the replication 
+/// the logger configuration, but will suppress auto-starting the replication
 /// logger just once.
 ///
 /// If the option is not used, ArangoDB will read the logger configuration from
@@ -461,7 +411,7 @@ namespace triagens {
 /// If @LIT{true} the server will start with the replication applier turned off,
 /// even if the replication applier is configured with the `autoStart` option.
 /// Using the command-line option will not change the value of the `autoStart`
-/// option in the applier configuration, but will suppress auto-starting the 
+/// option in the applier configuration, but will suppress auto-starting the
 /// replication applier just once.
 ///
 /// If the option is not used, ArangoDB will read the applier configuration from
@@ -568,10 +518,6 @@ namespace triagens {
     };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
