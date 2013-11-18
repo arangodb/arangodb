@@ -2952,81 +2952,6 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects the top most element using a priority queue
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "TOP(<index>)");
-  }
-  
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-  
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
-  
-  if (idx == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (idx->_type != TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX) {
-    trx.finish(res);
-    TRI_V8_TYPE_ERROR(scope, "index must be a priority queue index");
-  }
-
-  PQIndexElements* elms = TRI_LookupPriorityQueueIndex(idx, 1);
-
-  if (elms == 0) {
-    trx.finish(res);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot execute pqueue query");
-  }
-
-  if (elms->_numElements == 0) {
-    trx.finish(res);
-    TRI_FreeLookupResultPriorityQueueIndex(elms);
-    return scope.Close(v8::Undefined());
-  }
-
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) col->_collection)->_barrierList);
-
-  if (barrier == 0) {
-    TRI_FreeLookupResultPriorityQueueIndex(elms);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, 
-                                                  col->_cid,
-                                                  (TRI_doc_mptr_t const*) elms->_elements[0]._document,
-                                                  barrier);
-
-  trx.finish(res);
-  
-  TRI_FreeLookupResultPriorityQueueIndex(elms);
-
-  if (result.IsEmpty()) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief selects points within a given radius
 ///
 /// the caller must ensure all relevant locks are acquired and freed
@@ -3182,7 +3107,6 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true); 
 
   TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
-  TRI_AddMethodVocbase(rt, "TOP", JS_TopQuery);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
 }
 

@@ -5462,131 +5462,6 @@ static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a priority queue index exists
-///
-/// @FUN{ensurePQIndex(@FA{field1})}
-///
-/// Creates a priority queue index on all documents using attributes as paths to
-/// the fields. Currently only supports one attribute of the type double.
-/// All documents, which do not have the attribute path are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude fluent14
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  bool created = false;
-  TRI_index_t* idx;
-
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
-
-  // .............................................................................
-  // Check that we have a valid collection
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-
-  string errorString;
-
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................
-
-  if (argv.Length() != 1) {
-    ReleaseCollection(collection);
-
-    errorString = "one string parameter required for the ensurePQIndex(...) command";
-    return scope.Close(v8::String::New(errorString.c_str(), errorString.length()));
-  }
-
-
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the priority queue index.
-  // .............................................................................
-
-  TRI_vector_pointer_t attributes;
-  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
-
-  int res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
-
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorPointer(&attributes);
-
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
-  }
-
-  // .............................................................................
-  // Actually create the index here. Note that priority queue is never unique.
-  // .............................................................................
-
-  idx = TRI_EnsurePriorityQueueIndexDocumentCollection(document, 
-                                                       &attributes, 
-                                                       false, 
-                                                       &created, 
-                                                       TRI_GetIdServer());
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................
-
-  TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
-  TRI_DestroyVectorPointer(&attributes);
-
-  if (idx == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::String::New("Priority Queue index could not be created"));
-  }
-
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-
-  TRI_json_t* json = idx->json(idx,false);
-
-  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
-  }
-
-  ReleaseCollection(collection);
-  return scope.Close(index);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ///
 /// @FUN{ensureUniqueSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
@@ -9059,7 +8934,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
 #ifdef TRI_SKIPLIST_EX
   TRI_AddMethodVocbase(rt, "ensureSkiplistEx", JS_EnsureSkiplistExVocbaseCol);

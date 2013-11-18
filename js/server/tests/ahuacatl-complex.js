@@ -36,7 +36,6 @@ var getRawQueryResults = helper.getRawQueryResults;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlComplexTestSuite () {
-  var errors = internal.errors;
   var numbers = null;
 
   return {

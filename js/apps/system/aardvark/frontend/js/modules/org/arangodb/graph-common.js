@@ -29,8 +29,7 @@ module.define("org/arangodb/graph-common", function(exports, module) {
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb"),
-  is = require("org/arangodb/is"),
+var is = require("org/arangodb/is"),
   Edge,
   Graph,
   Vertex,

@@ -142,9 +142,6 @@
     delete SYS_DEFINE_ACTION;
 
     internal.actionLoaded = function() {
-      var modules;
-      var i;
-
       console.debug("actions loaded");
     };
   }

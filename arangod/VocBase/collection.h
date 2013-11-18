@@ -59,13 +59,8 @@ extern "C" {
 /// - index-NNN.json: An index description. The number NNN is the index
 ///     identifier, see @ref TRI_index_t.
 ///
-/// The structure @ref TRI_collection_t is abstract. Currently, there are
-/// two concrete sub-classes @ref TRI_document_collection_t and
-/// @ref TRI_shape_collection_t.
-///
-/// @section ShapeCollection Shape Collection
-///
-/// @copydetails TRI_shape_collection_t
+/// The structure @ref TRI_collection_t is abstract. Currently, there is one
+/// concrete sub-class @ref TRI_document_collection_t.
 ///
 /// @section PrimaryCollection Document Collection
 ///
