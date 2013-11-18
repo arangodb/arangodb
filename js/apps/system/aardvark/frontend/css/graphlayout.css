@@ -74,8 +74,7 @@ svg.graphViewer {
   border-width: 1px;
   border-style: solid;
   border-color: rgba(0,0,0,0.125);
-  margin-top: -25px;
-  margin-left: 50px;
+  margin-left: 74px;
 }
 
 div.mousepointer {
@@ -185,11 +184,10 @@ button.gv-icon-btn.trash{
 }
 div.gv_zoom_widget {
   position: relative;
-  left: 60px;
-  top: 20px;
+  left: 95px;
   width: 40px;
   height: 300px;
-  margin-bottom: -300px;
+  margin-bottom: -322px;
 }
 div.gv_zoom_slider {
   margin: 0px 17px;
@@ -345,3 +343,20 @@ a.gv_dropdown_entry {
 span.gv_caret {
   margin-top: 2px !important;
 }
+
+div.gv_colour_list {
+  position: relative;
+  right: 26px;
+  top: 20px;
+  text-align: right;
+  height: 680px;
+  overflow: auto;
+  margin-bottom: -100%;
+  float: right;
+}
+
+div.gv_colour_list > li {
+  background-color: transparent;
+  padding: 2px 6px;
+}
+  position: relative;

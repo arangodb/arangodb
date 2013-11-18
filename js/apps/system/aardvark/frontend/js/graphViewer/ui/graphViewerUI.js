@@ -45,7 +45,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   
   var self = this,
     graphViewer,
-    width = (optWidth || container.offsetWidth) - 60,
+    width = (optWidth || container.offsetWidth) - 81,
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
@@ -153,7 +153,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       slider.id = "gv_zoom_slider";
       slider.className = "gv_zoom_slider";
       
-      background.appendChild(zoomUI);
+      background.insertBefore(zoomUI, svg[0][0]);
       zoomUI.appendChild(zoomButtons);
       
       zoomUI.appendChild(slider);
@@ -405,6 +405,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     
     createColourList = function() {
       colourList = nodeShaperUI.createColourMappingList();
+      colourList.className = "gv_colour_list";
+      /*
       colourList.style.position = "absolute";
       var intSVG = $("#graphViewerSVG");
       colourList.style.top = intSVG.position().top.toFixed(1) + "px";
@@ -412,6 +414,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       colourList.style.height = intSVG.height() + "px";
       colourList.style.overflow = "auto";
       container.appendChild(colourList);
+      */
+      background.insertBefore(colourList, svg[0][0]);
     };
   container.appendChild(menubar);
   container.appendChild(background);
