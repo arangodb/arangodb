@@ -1,6 +1,10 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* removed priority queues
+
+  this features was never advertised nor documented nor tested.
+
 * display internal attributes in document source view of web interface
 
 * removed separate shape collections
