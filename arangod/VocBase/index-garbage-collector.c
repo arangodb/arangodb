@@ -33,7 +33,6 @@
 
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/skip-list.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/transaction.h"
