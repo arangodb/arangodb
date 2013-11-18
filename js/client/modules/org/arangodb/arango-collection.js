@@ -340,8 +340,6 @@ ArangoCollection.prototype.status = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.type = function () {
-  var result;
-
   if (this._type === null) {
     this.refresh();
   }

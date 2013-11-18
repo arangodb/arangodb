@@ -501,8 +501,6 @@ function updateFishbowlFromZip (filename) {
 function updateFishbowl () {
   'use strict';
 
-  var i;
-
   var url = buildGithubUrl(getFishbowlUrl());
   var filename = fs.getTempFile("downloads", false); 
   var path = fs.getTempFile("zip", false); 
