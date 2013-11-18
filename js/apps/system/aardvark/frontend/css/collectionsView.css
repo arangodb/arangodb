@@ -162,9 +162,9 @@
 
 /* option 1 - dropdown filter  */
 #transparentHeader .dropdown-menu {
-  border-radius: 0 0 0px 0px !important;
-  margin-top: 6px !important;
-  margin-right: -20px !important;
+  border-radius: 0px 0px 0px 0px;
+  margin-top: 6px;
+  margin-right: -20px;
   background-color: rgba(0, 0, 0, 0.7);
   /*background-color: #BFBDBC;*/
   border: solid 1px #686766;
@@ -216,7 +216,7 @@ border-top: 0;
   border-radius: 0 !important;
 }
 
-#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut, .dropdownOut {
+div.headerDropdown {
   background-color: white;
   position:relative;
   display:none;
@@ -225,13 +225,62 @@ border-top: 0;
   width: auto;
 }
 
-#collectionsDropdown, #dashboardDropdown, #foxxDropdown, .dropdownIn{
+div.headerDropdown > div.dropdownInner {
   position: relative;
   min-height: 125px;
   width: auto;
   box-shadow: 0 !important;
 }
 
+div.dropdownInner > .nav-header {
+  font-size: 13px;
+  font-weight: 400;
+  color: black;
+}
+
+div.dropdownInner > label {
+  color: black;
+  font-weight: 300;
+}
+
+div.dropdownInner > ul {
+  border-left: 1px solid black;
+}
+
+div.dropdownInner > ul:first-of-type {
+  border: none;
+}
+
+div.dropdownInner ul {
+  min-height: 105px;
+  float: left;
+  margin-top: 10px;
+  width: 238px;
+  display: inline;
+}
+
+div.dropdownInner ul li label {
+  padding-left: 35px;
+  color: black;
+}
+
+/*
+#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut, .dropdownOut {
+  background-color: white;
+  position:relative;
+  display:none;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: auto;
+}
+*/
+/*
+#collectionsDropdown, #dashboardDropdown, #foxxDropdown, .dropdownIn{
+  position: relative;
+  min-height: 125px;
+  width: auto;
+  box-shadow: 0 !important;
+}
 #collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header, .dropdownOut .nav-header{
   font-size: 13px;
   font-weight: 400;
@@ -246,7 +295,6 @@ border-top: 0;
 #collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul, .dropdownIn ul{
   border-left: 1px solid black;
 }
-
 .dropdownOut ul:last-of-type,
 #collectionsDropdown ul:last-of-type,
 #dashboardDropdown ul:last-of-type,
@@ -282,6 +330,7 @@ border-top: 0;
   color: black;
 }
 
+*/
 .containerdivNewLine {
   clear: both;
   float: left;

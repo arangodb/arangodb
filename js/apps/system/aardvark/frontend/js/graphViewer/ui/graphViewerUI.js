@@ -76,8 +76,35 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       return list;
     },
 
+    makeConfigureDiv = function () {
+      var div, innerDiv, nodeList, nodeHeader, colList, colHeader;
+      div = document.createElement("div");
+      div.id = "configureDropdown";
+      div.className = "headerDropdown";
+      innerDiv = document.createElement("div");
+      innerDiv.className = "dropdownInner";
+      nodeList = document.createElement("ul");
+      nodeHeader = document.createElement("li");
+      nodeHeader.className = "nav-header";
+      nodeHeader.appendChild(document.createTextNode("Vertices"));
+      colList = document.createElement("ul");
+      colHeader = document.createElement("li");
+      colHeader.className = "nav-header";
+      colHeader.appendChild(document.createTextNode("Collections"));
+      nodeList.appendChild(nodeHeader);
+      colList.appendChild(colHeader);
+      innerDiv.appendChild(nodeList);
+      innerDiv.appendChild(colList);
+      div.appendChild(innerDiv);
+      return {
+        el: div,
+        nodes: nodeList,
+        col: colList
+      };
+    },
+
     makeConfigure = function (div, id) {
-      var ul, li, a, span, list;
+      var ul, li, a, span, lists;
       div.className = "pagination pagination-small pagination-right btn-group";
       ul = document.createElement("ul");
       li = document.createElement("li");
@@ -87,23 +114,25 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       a.className = "arangoHeaderA";
       span = document.createElement("span");
       span.className = "glyphicon glyphicon-cog";
-      span.title = "Configure";
+      $(span).attr("data-original-title", "Configure");
       
       div.appendChild(ul);
       ul.appendChild(li);
       li.appendChild(a);
       a.appendChild(span);
 
+      /*
       list = document.createElement("ul");
       list.className = "dropdown-menu gv_configure_menu";
       list.style.display = "none";
       div.appendChild(list);
-
+      */
+      lists = makeConfigureDiv();
       a.onclick = function () {
-        $(list).slideToggle(200);
+        $(lists.el).slideToggle(200);
       };
 
-      return list;
+      return lists;
     },
 
     createSVG = function () {
@@ -222,7 +251,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         buttons = document.createElement("div"),
         equalsField = document.createElement("span"),
         configureDropDown = document.createElement("div"),
-        configureList = makeConfigure(
+        configureLists = makeConfigure(
           configureDropDown,
           "configuredropdown"
         ),
@@ -309,11 +338,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         };
 
       nodeShaperUI = new NodeShaperControls(
-        configureList,
+        configureLists.nodes,
         graphViewer.nodeShaper
       );
       adapterUI = new ArangoAdapterControls(
-        configureList,
+        configureLists.col,
         graphViewer.adapter
       );
       
@@ -369,6 +398,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       });
       
       menubar.appendChild(transparentHeader);
+      menubar.appendChild(configureLists.el);
       transparentHeader.appendChild(searchDiv);
       searchDiv.appendChild(searchAttrDiv);
       searchAttrDiv.appendChild(searchAttrField);
