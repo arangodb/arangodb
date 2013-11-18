@@ -25,6 +25,7 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BasicsC/random.h"
 #include "skip-list.h"
 
 // -----------------------------------------------------------------------------
@@ -80,11 +81,11 @@ static TRI_skiplist_node_t* TRI_SkipListAllocNode(TRI_skiplist_t* sl,
   }
 
   new->next = (TRI_skiplist_node_t**) 
-              TRI_Allocate(TRI_UNKNOWN_MEMORY_ZONE,
+              TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                            sizeof(TRI_skiplist_node_t*)*new->height,
                            true);
   if (NULL == new->next) {
-    TRI_Free(TRI_UNKNOWN_MEMORY_ZONE,new);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,new);
     return NULL;
   }
   return new;
@@ -96,8 +97,8 @@ static TRI_skiplist_node_t* TRI_SkipListAllocNode(TRI_skiplist_t* sl,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void TRI_SkipListFreeNode(TRI_skiplist_node_t* node) {
-  TRI_Free(TRI_UNKNOWN_MEMORY_ZONE,node->next);
-  TRI_Free(TRI_UNKNOWN_MEMORY_ZONE,node);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE,node->next);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE,node);
 }
 
 //
@@ -215,15 +216,15 @@ TRI_skiplist_t* TRI_InitSkipList(TRI_skiplist_compare_func_t cmpfunc,
                                  bool unique) {
   TRI_skiplist_t* sl;
 
-  sl = (TRI_skiplist_t*) TRI_Allocate(TRI_UNKNOWN_MEMORY_ZONE,
-                                      sizeof(TRI_skiplist_t));
+  sl = (TRI_skiplist_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+                                      sizeof(TRI_skiplist_t),false);
   if (NULL == sl) {
     return NULL;
   }
 
   sl->start = TRI_SkipListAllocNode(sl,TRI_SKIPLIST_MAX_HEIGHT);
   if (NULL == sl->start) {
-    TRI_Free(TRI_UNKNOWN_MEMORY_ZONE,sl);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
     return NULL;
   }
   sl->start->height = 1;
@@ -256,7 +257,7 @@ void TRI_FreeSkipList(TRI_skiplist_t* sl) {
     p = next;
   }
   TRI_SkipListFreeNode(sl->start);
-  TRI_Free(TRI_UNKNOWN_MEMORY_ZONE,sl);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
