@@ -157,7 +157,7 @@ function FoxxManagerSuite () {
     testSearchEmpty : function () {
       var result = fm.searchJson();
 
-      var i, j, n;
+      var i, n;
 
       n = result.length;
       assertTrue(n > 0);
@@ -192,7 +192,7 @@ function FoxxManagerSuite () {
     testSearchAztec : function () {
       var result = fm.searchJson("itzpapalotl");
 
-      var i, j, n;
+      var n;
 
       n = result.length;
       assertTrue(n > 0);
