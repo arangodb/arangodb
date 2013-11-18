@@ -60,8 +60,6 @@ bin_arangod_SOURCES = \
 	arangod/HashIndex/hash-index.c \
 	arangod/IndexIterators/index-iterator.c \
 	arangod/IndexOperators/index-operator.c \
-	arangod/PriorityQueue/pqueueindex.c \
-	arangod/PriorityQueue/priorityqueue.c \
 	arangod/Replication/replication-static.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
