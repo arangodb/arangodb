@@ -45,7 +45,7 @@
 /// @brief Select a node height randomly
 ////////////////////////////////////////////////////////////////////////////////
 
-static int TRI_random_height(void)
+static int TRI_random_height (void)
 {
   uint32_t r;
   int height = 1;
@@ -65,8 +65,8 @@ static int TRI_random_height(void)
 /// random height is taken.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_node_t* TRI_SkipListAllocNode(TRI_skiplist_t* sl, 
-                                                  int height) {
+static TRI_skiplist_node_t* TRI_SkipListAllocNode (TRI_skiplist_t* sl, 
+                                                   int height) {
   TRI_skiplist_node_t* new;
   new = (TRI_skiplist_node_t*) malloc(sizeof(TRI_skiplist_node_t));
   if (NULL == new) return new;
@@ -96,7 +96,7 @@ static TRI_skiplist_node_t* TRI_SkipListAllocNode(TRI_skiplist_t* sl,
 /// @brief Free function for a node.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void TRI_SkipListFreeNode(TRI_skiplist_node_t* node) {
+static void TRI_SkipListFreeNode (TRI_skiplist_node_t* node) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE,node->next);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE,node);
 }
@@ -117,11 +117,11 @@ static void TRI_SkipListFreeNode(TRI_skiplist_node_t* node) {
 // lev.
 // 
 
-static int LookupLess(TRI_skiplist_t *sl, 
-                      void *doc,
-                      TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                      TRI_skiplist_node_t** next,
-                      TRI_cmp_type_e cmptype) {
+static int LookupLess (TRI_skiplist_t *sl, 
+                       void *doc,
+                       TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                       TRI_skiplist_node_t** next,
+                       TRI_cmp_type_e cmptype) {
   int lev;
   int cmp = 0;  // just in case to avoid undefined values
   TRI_skiplist_node_t *cur;
@@ -160,11 +160,11 @@ static int LookupLess(TRI_skiplist_t *sl,
 // that have height > lev.
 // 
 
-static int LookupLessOrEq(TRI_skiplist_t *sl, 
-                          void *doc,
-                          TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                          TRI_skiplist_node_t** next,
-                          TRI_cmp_type_e cmptype) {
+static int LookupLessOrEq (TRI_skiplist_t *sl, 
+                           void *doc,
+                           TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                           TRI_skiplist_node_t** next,
+                           TRI_cmp_type_e cmptype) {
   int lev;
   int cmp = 0;  // just in case to avoid undefined values
   TRI_skiplist_node_t *cur;
@@ -211,9 +211,9 @@ static int LookupLessOrEq(TRI_skiplist_t *sl,
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_t* TRI_InitSkipList(TRI_skiplist_compare_func_t cmpfunc,
-                                 TRI_skiplist_free_func_t freefunc,
-                                 bool unique) {
+TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
+                                  TRI_skiplist_free_func_t freefunc,
+                                  bool unique) {
   TRI_skiplist_t* sl;
 
   sl = (TRI_skiplist_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
@@ -233,6 +233,7 @@ TRI_skiplist_t* TRI_InitSkipList(TRI_skiplist_compare_func_t cmpfunc,
   sl->compare = cmpfunc;
   sl->free = freefunc;
   sl->unique = unique;
+  sl->nrUsed = 0;
 
   return sl;
 }
@@ -242,7 +243,7 @@ TRI_skiplist_t* TRI_InitSkipList(TRI_skiplist_compare_func_t cmpfunc,
 /// @brief frees a skiplist and all its documents
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSkipList(TRI_skiplist_t* sl) {
+void TRI_FreeSkipList (TRI_skiplist_t* sl) {
   TRI_skiplist_node_t* p;
   TRI_skiplist_node_t* next;
 
@@ -264,7 +265,7 @@ void TRI_FreeSkipList(TRI_skiplist_t* sl) {
 /// @brief return the start node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListStartNode(TRI_skiplist_t* sl) {
+TRI_skiplist_node_t* TRI_SkipListStartNode (TRI_skiplist_t* sl) {
   return sl->start;
 }
 
@@ -272,7 +273,7 @@ TRI_skiplist_node_t* TRI_SkipListStartNode(TRI_skiplist_t* sl) {
 /// @brief return the successor node or NULL if last node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListNextNode(TRI_skiplist_node_t* node) {
+TRI_skiplist_node_t* TRI_SkipListNextNode (TRI_skiplist_node_t* node) {
   return node->next[0];
 }
 
@@ -289,7 +290,7 @@ TRI_skiplist_node_t* TRI_SkipListNextNode(TRI_skiplist_node_t* node) {
 /// total order. In the latter two cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SkipListInsert(TRI_skiplist_t *sl, void *doc) {
+int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
   int lev;
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
   TRI_skiplist_node_t* next = NULL;  // to please the compiler
@@ -341,6 +342,8 @@ int TRI_SkipListInsert(TRI_skiplist_t *sl, void *doc) {
     pos[lev]->next[lev] = new;
   }
 
+  sl->nrUsed++;
+
   return TRI_ERROR_NO_ERROR;
 }
  
@@ -354,7 +357,7 @@ int TRI_SkipListInsert(TRI_skiplist_t *sl, void *doc) {
 /// In the latter two cases nothing is removed.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SkipListRemove(TRI_skiplist_t *sl, void *doc) {
+int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
   int lev;
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
   TRI_skiplist_node_t* next = NULL;  // to please the compiler
@@ -385,6 +388,8 @@ int TRI_SkipListRemove(TRI_skiplist_t *sl, void *doc) {
 
   TRI_SkipListFreeNode(next);
 
+  sl->nrUsed--;
+
   return TRI_ERROR_NO_ERROR;
 }
  
@@ -396,7 +401,7 @@ int TRI_SkipListRemove(TRI_skiplist_t *sl, void *doc) {
 /// Only comparisons using the preorder are done.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLeftLookup(TRI_skiplist_t *sl, void *doc) {
+TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc) {
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
   TRI_skiplist_node_t* next;
 
@@ -415,7 +420,7 @@ TRI_skiplist_node_t* TRI_SkipListLeftLookup(TRI_skiplist_t *sl, void *doc) {
 /// Only comparisons using the preorder are done.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListRightLookup(TRI_skiplist_t *sl, void *doc) {
+TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc) {
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
   TRI_skiplist_node_t* next;
 
@@ -436,7 +441,7 @@ TRI_skiplist_node_t* TRI_SkipListRightLookup(TRI_skiplist_t *sl, void *doc) {
 /// if doc is not in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLookup(TRI_skiplist_t *sl, void *doc) {
+TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc) {
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
   TRI_skiplist_node_t* next = NULL; // to please the compiler
   int cmp;
