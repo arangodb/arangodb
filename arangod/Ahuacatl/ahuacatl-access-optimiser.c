@@ -2504,7 +2504,8 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       }
     }
     else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL) &&
-             (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL)) {
+             (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) &&
+             node->_type != TRI_AQL_NODE_OPERATOR_BINARY_IN) {
       // const value|reference|attribute|fcall access operator collection.attribute|reference|fcall
       node1 = rhs;
       node2 = lhs;
