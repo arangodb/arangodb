@@ -159,6 +159,7 @@ DOXYGEN = \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
+	Doxygen/js/common/modules/org/arangodb/graph/algorithms-common.c \
 	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
 	Doxygen/js/common/modules/org/arangodb/users-common.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
@@ -175,7 +176,6 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/foxx/request_context.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/template_middleware.c \
 	Doxygen/js/server/modules/org/arangodb/graph.c \
-	Doxygen/js/server/modules/org/arangodb/graph/algorithms.c \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/server.c
 
@@ -197,6 +197,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
+	@test -d Doxygen/js/common/modules/org/aragndob/graph || mkdir -p Doxygen/js/common/modules/org/arangodb/graph
 	@test -d Doxygen/js/server/modules/org/arangodb/foxx || mkdir -p Doxygen/js/server/modules/org/arangodb/foxx
 	@test -d Doxygen/js/server/modules/org/arangodb/graph || mkdir -p Doxygen/js/server/modules/org/arangodb/graph
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
