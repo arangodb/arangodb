@@ -209,7 +209,7 @@ div.gv_zoom_buttons_bg {
 
 
 button.btn-zoom:hover {
-background:inherit;
+  background: inherit;
 }
 
 button.btn-zoom {
@@ -355,8 +355,16 @@ div.gv_colour_list {
   float: right;
 }
 
-div.gv_colour_list > li {
+div.gv_colour_list li {
   background-color: transparent;
   padding: 2px 6px;
 }
-  position: relative;
+
+#transparentHeader div.searchByAttribute > ul.dropdown-menu {
+  border-radius: 0px;
+  margin-top: -4px;
+  margin-left: 5px;
+  width: 247px;
+  background-color: #333231;
+  /* background-color: #8F8D8C; */
+}
