@@ -368,3 +368,9 @@ div.gv_colour_list li {
   background-color: #333231;
   /* background-color: #8F8D8C; */
 }
+
+/* Temporary */
+#transparentPlaceholder {
+  margin-right: -100%;
+}
+
