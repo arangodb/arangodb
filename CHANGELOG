@@ -59,6 +59,8 @@ v1.5.x (XXXX-XX-XX)
 v1.4.2 (XXXX-XX-XX)
 -------------------
 
+* issue #671: Method graph.measurement does not exist
+
 * changed Windows condition variable implementation to use Windows native
   condition variables
   

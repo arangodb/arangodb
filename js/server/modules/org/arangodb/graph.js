@@ -915,8 +915,7 @@ exports.Graph = Graph;
 exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 
-// TODO: Remove Monkey Patch
-require("org/arangodb/graph/algorithms");
+require("org/arangodb/graph/algorithms-common");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
