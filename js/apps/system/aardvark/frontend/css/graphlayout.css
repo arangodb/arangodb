@@ -22,18 +22,32 @@ img.searchSubmit {
 }
 
 .toolbox {
-  margin-right: -40px; 
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-bottom: -340px;
   border-radius: 0px !important;  
   -webkit-border-radius: 0px !important;
   -moz-border-radius: 0px !important;
+  border-style: solid;
+  border-width: 3px;
+  border-color: rgb(51, 51, 51);
 }
 
 .toolbox > .btn {
-  width: 40px;
-  height: 40px;
-  padding: 0px;
+  width: 50px;
+  height: 50px;
+  margin-top: 2px;
+  margin-bottom: 2px;
   background-color: rgb(51, 51, 51);
-  background-size: 40px 40px;
+  background-size: 50px 50px;
+}
+
+.toolbox > .btn:first-child {
+  margin-top: 0px;
+}
+
+.toolbox > .btn:last-child {
+  margin-bottom: 0px;
 }
 
 .btn-icon {
@@ -56,8 +70,12 @@ svg.graphViewer text {
 }
 
 svg.graphViewer {
-  border-style: groove;
-  background-color: #FFFFEE
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: rgba(0,0,0,0.125);
+  margin-top: -25px;
+  margin-left: 50px;
 }
 
 div.mousepointer {
@@ -134,54 +152,36 @@ button.gv-icon-btn {
   -moz-border-radius: 0px !important;
 }
 
+button.gv-icon-btn.active {
+  background-color: #8AA051
+}
+
 button.gv-icon-btn.edit{
   background-image:url("../img/gv_edit.png");
-}
-button.gv-icon-btn.edit.active{
-  background-image:url("../img/gv_edit_reverse.png");
 }
 
 button.gv-icon-btn.view{
   background-image:url("../img/gv_view.png");
-}
-button.gv-icon-btn.view.active{
-  background-image:url("../img/gv_view_reverse.png");
 }
 
 button.gv-icon-btn.add{
   background-image:url("../img/gv_add.png");
 }
 
-button.gv-icon-btn.add.active{
-  background-image:url("../img/gv_add_reverse.png");
-}
-
 button.gv-icon-btn.expand{
   background-image:url("../img/gv_expand.png");
-}
-button.gv-icon-btn.expand.active{
-  background-image:url("../img/gv_expand_reverse.png");
 }
 
 button.gv-icon-btn.drag{
   background-image:url("../img/gv_drag.png");
 }
-button.gv-icon-btn.drag.active{
-  background-image:url("../img/gv_drag_reverse.png");
-}
 
 button.gv-icon-btn.connect{
   background-image:url("../img/gv_connect.png");
 }
-button.gv-icon-btn.connect.active{
-  background-image:url("../img/gv_connect_reverse.png");
-}
 
 button.gv-icon-btn.trash{
   background-image:url("../img/gv_trash.png");
-}
-button.gv-icon-btn.trash.active{
-  background-image:url("../img/gv_trash_reverse.png");
 }
 div.gv_zoom_widget {
   position: relative;

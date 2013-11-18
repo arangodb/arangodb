@@ -112,7 +112,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "graphViewer pull-right")
+        .attr("class", "graphViewer")
         .style("width", width + "px")
         .style("height", height + "px");
     },
@@ -179,8 +179,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           graphViewer.dispatcherConfig
         );
       toolbox.id = "toolbox";
-      toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
-      background.appendChild(toolbox);
+      toolbox.className = "btn-group btn-group-vertical toolbox";
+      background.insertBefore(toolbox, svg[0][0]);
       dispatcherUI.addAll();
       // Default selection
       $("#control_event_expand").click();
