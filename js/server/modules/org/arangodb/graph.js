@@ -602,7 +602,7 @@ Graph.prototype._saveVertex = function (id, shallow, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._replaceVertex = function (vertex_id, data) {
-  var result = this._vertices.replace(vertex_id, data);
+  this._vertices.replace(vertex_id, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,7 +610,7 @@ Graph.prototype._replaceVertex = function (vertex_id, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._replaceEdge = function (edge_id, data) {
-  var result = this._edges.replace(edge_id, data);
+  this._edges.replace(edge_id, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -662,10 +662,11 @@ Graph.prototype.getVertex = function (id) {
 
 Graph.prototype.getVertices = function () {
   var all = this._vertices.all(),
-  graph = this,
-  wrapper = function(object) {
-    return graph.constructVertex(object);
-  };
+    graph = this,
+    wrapper = function(object) {
+      return graph.constructVertex(object);
+    };
+
   return new Iterator(wrapper, graph.constructVertex, "[edge iterator]");
 };
 
@@ -915,8 +916,7 @@ exports.Graph = Graph;
 exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 
-// TODO: Remove Monkey Patch
-require("org/arangodb/graph/algorithms");
+require("org/arangodb/graph/algorithms-common");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

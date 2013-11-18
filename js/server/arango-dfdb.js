@@ -365,7 +365,6 @@ function CheckCollection (collection, issues) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
-  var argc = argv.length;
   var databases = internal.db._listDatabases();
   var i;
   

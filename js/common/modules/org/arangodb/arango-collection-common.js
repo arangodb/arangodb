@@ -33,7 +33,6 @@ var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollectio
 var arangodb = require("org/arangodb");
 
 var ArangoError = arangodb.ArrangoError;
-var output = arangodb.output;
 var sprintf = arangodb.sprintf;
 var db = arangodb.db;
 

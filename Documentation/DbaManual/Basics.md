@@ -39,8 +39,6 @@ or supply on the command line.
 
 @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
 
-@copydetails triagens::arango::ArangoServer::_forceSyncShapes
-
 Per Collection Configuration {#DbaManualBasicsConfigCollection}
 ---------------------------------------------------------------
 

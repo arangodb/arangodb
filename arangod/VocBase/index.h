@@ -38,7 +38,6 @@
 #include "GeoIndex/GeoIndex.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
-#include "PriorityQueue/pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
 #include "VocBase/voc-types.h"
@@ -203,17 +202,6 @@ typedef struct TRI_edge_index_s {
   TRI_multi_pointer_t _edges;
 }
 TRI_edge_index_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_priorityqueue_index_s {
-  TRI_index_t base;
-  PQIndex* _pqIndex;
-  TRI_vector_t _paths; // a list of shape pid which identifies the fields of the index
-}
-TRI_priorityqueue_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skiplist index
@@ -483,62 +471,6 @@ void TRI_DestroyEdgeIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeEdgeIndex (TRI_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              PRIORITY QUEUE INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the priority queue index
-/// A priority queue index lookup however only allows the 'top' most element
-/// of the queue to be located.
-///
-/// @warning who ever calls this function is responsible for destroying
-/// PQIndexElements* result (which could be null)
-////////////////////////////////////////////////////////////////////////////////
-
-PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, 
-                                               size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the result of a priority queue lookup
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeLookupResultPriorityQueueIndex (PQIndexElements*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a priority queue index
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s*,
-                                           TRI_vector_pointer_t*,
-                                           TRI_vector_t*,
-                                           bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyPriorityQueueIndex (TRI_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreePriorityQueueIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
