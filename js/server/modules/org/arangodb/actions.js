@@ -633,8 +633,6 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
   var part;
   var subsub;
   var ok;
-  var p1;
-  var p2;
 
   part = parts[pos];
   if (part === undefined) {
@@ -763,8 +761,6 @@ function defineRoute (route, where, url, callback) {
   'use strict';
 
   var methods;
-  var branch;
-  var i;
   var j;
 
   methods = intersectMethods(url.methods, callback.methods);
@@ -1220,7 +1216,6 @@ function reloadRouting () {
         var r = routes[key];
 
         for (i = 0;  i < r.length;  ++i) {
-          var route = r[i];
           var context = { appModule: appModule };
 
           installRoute(RoutingCache[arangodb.db._name()][key], 
@@ -1241,7 +1236,6 @@ function reloadRouting () {
 
     // clone the route object so the barrier for the collection can be removed soon
     var route = routes[j];
-    var r;
 
     try {
       if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
@@ -1882,7 +1876,6 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filename;
-  var result;
 
   filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
 
