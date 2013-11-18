@@ -90,7 +90,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       colList = document.createElement("ul");
       colHeader = document.createElement("li");
       colHeader.className = "nav-header";
-      colHeader.appendChild(document.createTextNode("Collections"));
+      colHeader.appendChild(document.createTextNode("Connection"));
       nodeList.appendChild(nodeHeader);
       colList.appendChild(colHeader);
       innerDiv.appendChild(nodeList);
