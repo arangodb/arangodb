@@ -1554,7 +1554,6 @@ function RELATIONAL_CMP (lhs, rhs) {
 function RELATIONAL_IN (lhs, rhs) {
   "use strict";
 
-  var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
   if (rightWeight !== TYPEWEIGHT_LIST) {

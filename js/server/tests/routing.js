@@ -253,7 +253,6 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteBundle () {
-  var errors = internal.errors;
   var cn = "_routing";
 
   return {
@@ -357,7 +356,6 @@ function routingSuiteBundle () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuitePrefix () {
-  var errors = internal.errors;
   var cn = "_routing";
 
   return {

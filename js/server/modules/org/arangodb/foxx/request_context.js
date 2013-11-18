@@ -390,8 +390,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
     'use strict';
-    var handler = this.route.action.callback,
-      check;
+    var check;
 
     check = function (req) {
       if (!(req.user && req.currentSession)) {

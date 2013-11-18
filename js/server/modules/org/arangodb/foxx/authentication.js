@@ -28,7 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb"),
+var require("org/arangodb"),
   db = require("org/arangodb").db,
   crypto = require("org/arangodb/crypto"),
   internal = require("internal"),
