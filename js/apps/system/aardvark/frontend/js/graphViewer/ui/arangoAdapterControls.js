@@ -130,10 +130,11 @@ function ArangoAdapterControls(list, adapter) {
   this.addControlChangePriority = function() {
     var prefix = "control_adapter_priority",
       idprefix = prefix + "_",
-      prioList = adapter.getPrioList();
+      prioList = adapter.getPrioList(),
+      label = "Group vertices";
 
-      uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
-        modalDialogHelper.createModalChangeDialog("Group By",
+      uiComponentsHelper.createButton(baseClass, list, label, prefix, function() {
+        modalDialogHelper.createModalChangeDialog(label,
           idprefix, [{
             type: "extendable",
             id: "attribute",
