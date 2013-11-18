@@ -1,6 +1,10 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* layout of the graphs tab adapted to better fit with the other tabs
+
+* database selection is moved to the bottom right corner of the web interface
+
 * display internal attributes in document source view of web interface
 
 * removed separate shape collections
