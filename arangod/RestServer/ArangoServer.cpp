@@ -98,11 +98,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief define "_api" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,7 +107,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
-  
+
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createNoData);
@@ -164,7 +159,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
   // get the request endpoint
   ConnectionInfo ci = request->connectionInfo();
   const string& endpoint = ci.endpoint;
-  
+
   // get the databases mapped to the endpoint
   ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
   const vector<string> databases = s->getEndpointMapping(endpoint);
@@ -174,7 +169,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 
   if (databases.empty()) {
     // no databases defined. this means all databases are accessible via the endpoint
-  
+
     if (dbName.empty()) {
       // if no databases was specified in the request, use system database name as a fallback
       dbName = TRI_VOC_SYSTEM_DATABASE;
@@ -204,14 +199,14 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
       }
     }
   }
-  
 
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, dbName.c_str()); 
-  
+
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, dbName.c_str());
+
   if (vocbase == 0) {
     // database not found
     return 0;
-  } 
+  }
 
   return vocbase;
 }
@@ -220,7 +215,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetRequestContext (triagens::rest::HttpRequest* request, 
+static bool SetRequestContext (triagens::rest::HttpRequest* request,
                                void* data) {
 
   TRI_server_t* server   = (TRI_server_t*) data;
@@ -237,16 +232,12 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
     // out of memory
     return false;
   }
-  
+
   // the "true" means the request is the owner of the context
   request->setRequestContext(ctx, true);
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoServer
@@ -255,11 +246,6 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -304,8 +290,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 
- 
-  TRI_InitialiseServer();
+
+  TRI_InitServerGlobals();
 
   _server = TRI_CreateServer();
 
@@ -313,7 +299,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     LOG_FATAL_AND_EXIT("could not create server instance");
   }
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,24 +312,15 @@ ArangoServer::~ArangoServer () {
   if (_server != 0) {
     TRI_FreeServer(_server);
   }
-  
-  TRI_ShutdownServer();
+
+  TRI_FreeServerGlobals();
 
   Nonce::destroy();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AnyServer methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -390,9 +367,11 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationV8 = new ApplicationV8(_server);
+
   if (_applicationV8 == 0) {
     LOGGER_FATAL_AND_EXIT("out of memory");
   }
+
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -402,9 +381,11 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_ENABLE_MRUBY
 
   _applicationMR = new ApplicationMR(_server);
+
   if (_applicationMR == 0) {
     LOGGER_FATAL_AND_EXIT("out of memory");
   }
+
   _applicationServer->addFeature(_applicationMR);
 
 #else
@@ -419,7 +400,7 @@ void ArangoServer::buildApplicationServer () {
   ;
 
 #endif
-  
+
   // .............................................................................
   // and start a simple admin server
   // .............................................................................
@@ -482,7 +463,7 @@ void ArangoServer::buildApplicationServer () {
     ("jslint", &_jslint, "do not start as server, run js lint instead")
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
-  
+
   // .............................................................................
   // database options
   // .............................................................................
@@ -530,7 +511,7 @@ void ArangoServer::buildApplicationServer () {
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
-  
+
   additional["Server Options:help-extended"]
     ("scheduler.maximal-queue-size", &_dispatcherQueueSize, "maximum size of queue for asynchronous operations")
   ;
@@ -561,9 +542,9 @@ void ArangoServer::buildApplicationServer () {
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
-  
+
   // set the temp-path
-  _tempPath = StringUtils::rTrim(_tempPath, TRI_DIR_SEPARATOR_STR); 
+  _tempPath = StringUtils::rTrim(_tempPath, TRI_DIR_SEPARATOR_STR);
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
@@ -631,14 +612,14 @@ void ArangoServer::buildApplicationServer () {
   }
 
   // strip trailing separators
-  _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR); 
-  
+  _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR);
+
   _applicationEndpointServer->setBasePath(_databasePath);
 
   // .............................................................................
   // now run arangod
   // .............................................................................
-  
+
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
@@ -706,7 +687,7 @@ void ArangoServer::buildApplicationServer () {
 
 int ArangoServer::startupServer () {
   v8::HandleScope scope;
-  
+
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -714,7 +695,7 @@ int ArangoServer::startupServer () {
   if (_dispatcherThreads < 1) {
     _dispatcherThreads = 1;
   }
-  
+
 
   // open all databases
   openDatabases();
@@ -751,7 +732,7 @@ int ArangoServer::startupServer () {
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
 
   _applicationServer->prepare2();
-  
+
 
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
@@ -812,18 +793,9 @@ int ArangoServer::startupServer () {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the JavaScript emergency console
@@ -1254,9 +1226,9 @@ int ArangoServer::executeRubyConsole () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::openDatabases () {
-  TRI_vocbase_defaults_t defaults;  
+  TRI_vocbase_defaults_t defaults;
 
-  // override with command-line options 
+  // override with command-line options
   defaults.defaultMaximalSize            = _defaultMaximalSize;
   defaults.removeOnDrop                  = _removeOnDrop;
   defaults.removeOnCompacted             = _removeOnCompacted;
@@ -1265,18 +1237,18 @@ void ArangoServer::openDatabases () {
   defaults.forceSyncProperties           = _forceSyncProperties;
   defaults.requireAuthentication         = ! _disableAuthentication;
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
-  
-  assert(_server != 0); 
-  
-  int res = TRI_InitServer(_server, 
+
+  assert(_server != 0);
+
+  int res = TRI_InitServer(_server,
                            _applicationEndpointServer,
                            _databasePath.c_str(),
                            _applicationV8->appPath().c_str(),
-                           _applicationV8->devAppPath().c_str(), 
-                           &defaults, 
-                           _disableReplicationLogger, 
+                           _applicationV8->devAppPath().c_str(),
+                           &defaults,
+                           _disableReplicationLogger,
                            _disableReplicationApplier);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
@@ -1287,7 +1259,7 @@ void ArangoServer::openDatabases () {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
   }
-  
+
   LOG_TRACE("found system database");
 }
 
@@ -1305,10 +1277,6 @@ void ArangoServer::closeDatabases () {
 
   LOGGER_INFO("ArangoDB has been shut down");
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
