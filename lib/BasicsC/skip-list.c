@@ -133,7 +133,7 @@ static int LookupLess (TRI_skiplist_t *sl,
       if (NULL == *next) {
         break;
       }
-      cmp = sl->compare(sl->cmpdata,(*next)->doc,doc,cmptype);
+      cmp = sl->cmp_elm_elm(sl->cmpdata,(*next)->doc,doc,cmptype);
       if (cmp >= 0) {
         break;
       }
@@ -176,7 +176,7 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
       if (NULL == *next) {
         break;
       }
-      cmp = sl->compare(sl->cmpdata,(*next)->doc,doc,cmptype);
+      cmp = sl->cmp_elm_elm(sl->cmpdata,(*next)->doc,doc,cmptype);
       if (cmp > 0) {
         break;
       }
@@ -187,6 +187,71 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
   // Now cur == (*pos)[0] points to the largest node whose document 
   // is less than or equal to doc. *next is the next node and can be NULL
   // is if there none.
+  return cmp;
+}
+
+//
+// We have two more very similar functions which look up documents if
+// only a key is given. This implies using the cmp_key_elm function
+// and using the preorder only. Otherwise, they behave identically
+// as the two previous ones.
+//
+
+static int LookupKeyLess (TRI_skiplist_t *sl, 
+                          void *key,
+                          TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                          TRI_skiplist_node_t** next) {
+  int lev;
+  int cmp = 0;  // just in case to avoid undefined values
+  TRI_skiplist_node_t *cur;
+
+  cur = sl->start;
+  for (lev = sl->start->height-1; lev >= 0; lev--) {
+    while (true) {   // will be left by break
+      *next = cur->next[lev];
+      if (NULL == *next) {
+        break;
+      }
+      cmp = sl->cmp_key_elm(sl->cmpdata,key,(*next)->doc);
+      if (cmp <= 0) {
+        break;
+      }
+      cur = *next;
+    }
+    (*pos)[lev] = cur;
+  }
+  // Now cur == (*pos)[0] points to the largest node whose document is
+  // less than key in the preorder. *next is the next node and can be
+  // NULL if there is none.
+  return cmp;
+}
+
+static int LookupKeyLessOrEq (TRI_skiplist_t *sl, 
+                        void *key,
+                        TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                        TRI_skiplist_node_t** next) {
+  int lev;
+  int cmp = 0;  // just in case to avoid undefined values
+  TRI_skiplist_node_t *cur;
+
+  cur = sl->start;
+  for (lev = sl->start->height-1; lev >= 0; lev--) {
+    while (true) {   // will be left by break
+      *next = cur->next[lev];
+      if (NULL == *next) {
+        break;
+      }
+      cmp = sl->cmp_key_elm(sl->cmpdata,key,(*next)->doc);
+      if (cmp < 0) {
+        break;
+      }
+      cur = *next;
+    }
+    (*pos)[lev] = cur;
+  }
+  // Now cur == (*pos)[0] points to the largest node whose document is
+  // less than or equal to key in the preorder. *next is the next node
+  // and can be NULL is if there none.
   return cmp;
 }
 
@@ -211,7 +276,8 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
+TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
+                                  TRI_skiplist_cmp_key_elm_t cmp_key_elm,
                                   void *cmpdata,
                                   TRI_skiplist_free_func_t freefunc,
                                   bool unique) {
@@ -231,7 +297,8 @@ TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
   sl->start->height = 1;
   sl->start->next[0] = NULL;
 
-  sl->compare = cmpfunc;
+  sl->cmp_elm_elm = cmp_elm_elm;
+  sl->cmp_key_elm = cmp_key_elm;
   sl->cmpdata = cmpdata;
   sl->free = freefunc;
   sl->unique = unique;
@@ -312,9 +379,9 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
   // Uniqueness test if wanted:
   if (sl->unique) {
     if ((pos[0] != sl->start && 
-         0 == sl->compare(sl->cmpdata,doc,pos[0]->doc,TRI_CMP_PREORDER)) ||
+         0 == sl->cmp_elm_elm(sl->cmpdata,doc,pos[0]->doc,TRI_CMP_PREORDER)) ||
         (NULL != next && 
-         0 == sl->compare(sl->cmpdata,doc,next->doc,TRI_CMP_PREORDER))) {
+         0 == sl->cmp_elm_elm(sl->cmpdata,doc,next->doc,TRI_CMP_PREORDER))) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
   }
@@ -397,6 +464,31 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
  
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up doc in the skiplist using the proper order
+/// comparison. 
+///
+/// Only comparisons using the proper order are done. Returns NULL
+/// if doc is not in the skiplist.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc) {
+  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  TRI_skiplist_node_t* next = NULL; // to please the compiler
+  int cmp;
+
+  cmp = LookupLess(sl,doc,&pos,&next,TRI_CMP_TOTORDER);
+  // Now pos[0] points to the largest node whose document is less than
+  // doc. next points to the next node and can be NULL if there is none.
+  // doc is in the skiplist iff next != NULL and cmp == 0 and in this
+  // case it is stored at the node next.
+  if (NULL == next || 0 != cmp) {
+    return NULL;
+  }
+  return next;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less to doc in the preorder
 /// comparison or the start node if none is.
 ///
@@ -434,28 +526,44 @@ TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc) {
   return pos[0];
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up doc in the skiplist using the proper order
-/// comparison. 
+/// @brief finds the last document whose key is less to key in the preorder
+/// comparison or the start node if none is.
 ///
-/// Only comparisons using the proper order are done. Returns NULL
-/// if doc is not in the skiplist.
+/// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc) {
+TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key) {
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next = NULL; // to please the compiler
-  int cmp;
+  TRI_skiplist_node_t* next;
 
-  cmp = LookupLess(sl,doc,&pos,&next,TRI_CMP_TOTORDER);
+  LookupKeyLess(sl,key,&pos,&next);
   // Now pos[0] points to the largest node whose document is less than
-  // doc. next points to the next node and can be NULL if there is none.
-  // doc is in the skiplist iff next != NULL and cmp == 0 and in this
-  // case it is stored at the node next.
-  if (NULL == next || 0 != cmp) {
-    return NULL;
-  }
-  return next;
+  // key in the preorder. next points to the next node and can be NULL
+  // if there is none. doc is in the skiplist iff next != NULL and cmp
+  // == 0 and in this case it is stored at the node next.
+  return pos[0];
+
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds the last document that is less or equal to doc in
+/// the preorder comparison or the start node if none is.
+///
+/// Only comparisons using the preorder are done using cmp_key_elm.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl, 
+                                                 void *key) {
+  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  TRI_skiplist_node_t* next;
+
+  LookupKeyLessOrEq(sl,key,&pos,&next);
+  // Now pos[0] points to the largest node whose document is less than
+  // or equal to key in the preorder. next points to the next node and
+  // can be NULL if there is none. doc is in the skiplist iff next !=
+  // NULL and cmp == 0 and in this case it is stored at the node next.
+  return pos[0];
+}
+
 
