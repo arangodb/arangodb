@@ -76,8 +76,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>arangod64d</TargetName>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <TargetName>arangod64</TargetName>
+    <OutDir>$(OutDir)\Exe\</OutDir>
     <LibraryPath>$(SolutionDir)x64\Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -125,7 +125,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <PreprocessorDefinitions>_ALLOW_KEYWORD_MACROS=1;TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;_WIN64;TRI_BITS=64;FD_SETSIZE=2048;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\2012-icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\2012-openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\2012-V8\include;$(SolutionDir)..\3rdParty\VisualStudio\2012-zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\2012-icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\2012-openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\2012-V8\include;$(SolutionDir)..\3rdParty\VisualStudio\2012-zlib\1.2.7\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
