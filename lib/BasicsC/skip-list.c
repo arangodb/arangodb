@@ -133,7 +133,7 @@ static int LookupLess (TRI_skiplist_t *sl,
       if (NULL == *next) {
         break;
       }
-      cmp = sl->compare((*next)->doc,doc,cmptype);
+      cmp = sl->compare(sl->cmpdata,(*next)->doc,doc,cmptype);
       if (cmp >= 0) {
         break;
       }
@@ -176,7 +176,7 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
       if (NULL == *next) {
         break;
       }
-      cmp = sl->compare((*next)->doc,doc,cmptype);
+      cmp = sl->compare(sl->cmpdata,(*next)->doc,doc,cmptype);
       if (cmp > 0) {
         break;
       }
@@ -212,6 +212,7 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
+                                  void *cmpdata,
                                   TRI_skiplist_free_func_t freefunc,
                                   bool unique) {
   TRI_skiplist_t* sl;
@@ -231,6 +232,7 @@ TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
   sl->start->next[0] = NULL;
 
   sl->compare = cmpfunc;
+  sl->cmpdata = cmpdata;
   sl->free = freefunc;
   sl->unique = unique;
   sl->nrUsed = 0;
@@ -310,9 +312,9 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
   // Uniqueness test if wanted:
   if (sl->unique) {
     if ((pos[0] != sl->start && 
-         0 == sl->compare(doc,pos[0]->doc,TRI_CMP_PREORDER)) ||
+         0 == sl->compare(sl->cmpdata,doc,pos[0]->doc,TRI_CMP_PREORDER)) ||
         (NULL != next && 
-         0 == sl->compare(doc,next->doc,TRI_CMP_PREORDER))) {
+         0 == sl->compare(sl->cmpdata,doc,next->doc,TRI_CMP_PREORDER))) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
   }

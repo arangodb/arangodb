@@ -79,9 +79,12 @@ TRI_cmp_type_e;
 /// implemented by the comparison function. The proper total order
 /// must refine the preorder in the sense that a < b in the proper order
 /// implies a <= b in the preorder.
+/// The first argument is a data pointer which may contain arbitrary
+/// infrastructure needed for the comparison. See cmpdata field in the
+/// skiplist type.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef int (*TRI_skiplist_compare_func_t)(void*, void*, TRI_cmp_type_e);
+typedef int (*TRI_skiplist_compare_func_t)(void*, void*, void*, TRI_cmp_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Type of a pointer to a function that is called whenever a
@@ -97,6 +100,7 @@ typedef void (*TRI_skiplist_free_func_t)(void*);
 typedef struct TRI_skiplist_s {
     TRI_skiplist_node_t* start;
     TRI_skiplist_compare_func_t compare;
+    void* cmpdata;   // will be the first arguemnt
     TRI_skiplist_free_func_t free;
     bool unique;     // indicates whether multiple entries that
                      // are equal in the preorder are allowed in
@@ -126,6 +130,7 @@ typedef struct TRI_skiplist_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
+                                  void *cmpdata,
                                   TRI_skiplist_free_func_t freefunc,
                                   bool unique);
 
