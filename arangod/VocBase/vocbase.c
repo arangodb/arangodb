@@ -194,8 +194,12 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
-  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
+  // only if we find the collection by its id, we can delete it by name
+  if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid) != NULL) {
+    // this is because someone else might have created a new collection with the same name,
+    // but with a different id
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+  }
 
   TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
@@ -218,9 +222,9 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_document_collection_t* document;
   int res;
 
-  collection = data;
+  collection = (TRI_vocbase_col_t*) data;
 
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -309,7 +313,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   }
 
 
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
     LOG_ERROR("someone resurrected the collection '%s'", collection->_name);
@@ -540,7 +544,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
   // check name
   res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, name, collection, &found);
-  
+
   if (found != NULL) {
     LOG_ERROR("duplicate entry for collection name '%s'", name);
 
@@ -560,8 +564,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   }
 
   // check collection identifier
+  assert(collection->_cid == cid);
   res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsById, &cid, collection, &found);
-  
+
   if (found != NULL) {
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
@@ -579,7 +584,6 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-
     TRI_set_errno(res);
 
     return NULL;
@@ -698,8 +702,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   void const* found;
   int res;
 
-  // lock collection because we are going to change the name
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   // this must be done after the collection lock
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -792,7 +795,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
   TRI_CopyString(collection->_name, newName, sizeof(collection->_name) - 1);
- 
+
   // this shouldn't fail, as we removed an element above so adding one should be ok
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
   assert(found == NULL);
@@ -1043,7 +1046,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
   // write lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
@@ -1898,7 +1901,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
     return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
   }
 
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   // cannot unload a corrupted collection
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
@@ -1965,14 +1968,14 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-  // mark collection as deleted
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   // .............................................................................
   // collection already deleted
   // .............................................................................
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+    // mark collection as deleted
     UnregisterCollection(vocbase, collection, generatingServer);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2001,7 +2004,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     // remove dangling .json.tmp file if it exists
     tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_VOC_PARAMETER_FILE, ".tmp");
-
+    
     if (tmpFile != NULL) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);
@@ -2025,7 +2028,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-
     UnregisterCollection(vocbase, collection, generatingServer);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2055,6 +2057,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+
     UnregisterCollection(vocbase, collection, generatingServer);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
