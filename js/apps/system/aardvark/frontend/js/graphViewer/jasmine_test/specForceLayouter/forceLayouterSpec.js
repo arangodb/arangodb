@@ -408,15 +408,9 @@
         
         tmp = new ForceLayouter(config);
         
-        /*
-        expect(mock.size).wasCalledWith([940, 640]);
-        expect(mock.linkDistance).wasCalledWith(240);
-        expect(mock.gravity).wasCalledWith(0.08);
-        expect(mock.charge).wasCalledWith(-240);
-        */
         expect(mock.size).wasCalledWith([880, 680]);
         expect(mock.linkDistance).wasCalledWith(jasmine.any(Function));
-        expect(mock.gravity).wasCalledWith(0.08);
+        expect(mock.gravity).wasCalledWith(0.01);
         expect(mock.charge).wasCalledWith(jasmine.any(Function));
         
         expect(fd({
