@@ -65,13 +65,7 @@ TRI_mutex_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_read_write_lock_s {
-  HANDLE _writerEvent;
-  HANDLE _readersEvent;
-
-  int _readers;
-
-  CRITICAL_SECTION _lockWriter;
-  CRITICAL_SECTION _lockReaders;
+  SRWLOCK _lock;
 }
 TRI_read_write_lock_t;
 
