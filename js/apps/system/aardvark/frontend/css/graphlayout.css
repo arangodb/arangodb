@@ -58,6 +58,7 @@ img.searchSubmit {
 .searchByAttribute, .searchEqualsLabel {
   margin-top: 3px;
   margin-right: 6px;
+  margin-left: 6px;
 }
 
 svg.graphViewer text {
@@ -81,6 +82,21 @@ div.mousepointer {
   position: absolute;
   margin: 0;
   padding: 5px;  
+}
+
+.gv_searchInput {
+  background-color: #FFFFFF;
+  box-shadow: 0 !important;
+  color: #555555;
+  display: inline-block;
+  font-size: 12px;
+  height: 18px !important;
+  line-height: 18px;
+  margin-top: 5px;
+  padding: 2px;
+  vertical-align: middle;
+  width:214px !important;
+  border-radius: 0px 0px 0px 0px !important;
 }
 
 button.graphViewer-icon-button {
@@ -278,7 +294,8 @@ input.gv_radio_button {
 }
 
 label.gv_dropdown_label {
-  color: white;
+  color: white !important;
+  padding-left: 0px !important;
 }
 
 /*Overriding the slider UI*/
@@ -360,12 +377,16 @@ div.gv_colour_list li {
   padding: 2px 6px;
 }
 
-#transparentHeader div.searchByAttribute > ul.dropdown-menu {
+div.queryline div.searchByAttribute > ul.dropdown-menu {
+  position: absolute;
   border-radius: 0px;
-  margin-top: -4px;
-  margin-left: 5px;
+  top: 21px;
+  left: 5px;
   width: 247px;
   background-color: #333231;
+  color: white;
+  margin-bottom: 100%;
+  display: none;
   /* background-color: #8F8D8C; */
 }
 
