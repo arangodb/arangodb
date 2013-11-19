@@ -1065,9 +1065,6 @@
           }, 1000);
           
           runs(function() {
-            var callNodesIds = _.map(callNodes, function(n) {
-              return n._id;
-            });
             expect(this.fakeReducerBucketRequest).toHaveBeenCalledWith(
               jasmine.any(Array),
               5
@@ -1366,7 +1363,6 @@
             });
             
             it('should create a community node if limit is set too small', function() {
-              var called;
               
               runs(function() {
                 callbackCheck = false;

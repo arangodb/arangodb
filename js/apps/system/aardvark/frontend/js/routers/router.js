@@ -211,7 +211,6 @@
         return;
       }
 
-      var self = this;
       window.arangoLogsStore.fetch({
         success: function () {
           window.logsView.render();

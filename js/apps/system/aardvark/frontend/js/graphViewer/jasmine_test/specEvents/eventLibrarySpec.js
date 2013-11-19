@@ -56,7 +56,6 @@
     describe('Expand', function() {
       
       var 
-        dummy = {},
         config,
         testee;
       

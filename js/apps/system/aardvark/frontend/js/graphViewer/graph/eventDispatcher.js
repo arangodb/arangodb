@@ -31,7 +31,6 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   "use strict";
   
   var eventlib,
-    expandConfig,
     svgBase,
     svgTemp,
     svgObj,

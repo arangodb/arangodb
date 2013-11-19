@@ -62,7 +62,6 @@
     replShell: function () {
                  // Creating the console.
                  var internal = require("internal");
-                 var arangodb = require("org/arangodb");
                  var client = require("org/arangodb/arangosh");
                  var header = 'Welcome to arangosh Copyright (c) triAGENS GmbH.\n';
                  window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "...>");
@@ -96,7 +95,7 @@
                    jqconsole.Prompt(true, handler, function(command) {
                      // Continue line if can't compile the command.
                      try {
-                       var test = new Function(command);
+                       var f = new Function(command);
                      }
                      catch (e) {
                        if (/[\[\{\(]$/.test(command)) {

@@ -43,7 +43,6 @@
     
     render: function() {
       $(this.el).html(this.template.text);
-      var self = this;
       _.each(this._subViews, function (v) {
         $("#foxxList").append(v.render());
       });

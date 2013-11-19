@@ -266,8 +266,6 @@
           this.renderSelectboxes();
       },
       saveAQL: function (e) {
-
-          var self = this;
           var inputEditor = ace.edit("aqlEditor");
           var queryName = $('#new-query-name').val();
           var content = inputEditor.getValue();
