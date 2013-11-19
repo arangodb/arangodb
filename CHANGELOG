@@ -67,6 +67,28 @@ v1.5.x (XXXX-XX-XX)
 v1.4.2 (XXXX-XX-XX)
 -------------------
 
+* ported Windows version to use native Windows API SRWLocks (slim read-write locks) 
+  and condition variables instead of homemade versions
+
+  MSDN states the following about the compatibility of SRWLocks and Condition Variables:
+
+      Minimum supported client:
+      Windows Server 2008 [desktop apps | Windows Store apps]
+
+      Minimum supported server:
+      Windows Vista [desktop apps | Windows Store apps]
+  
+* fixed issue #662: ArangoDB on Windows hanging
+
+  This fixes a deadlock issue that occurred on Windows when documents were written to
+  a collection at the same time when some other thread tried to drop the collection.
+
+* fixed file-based logging in Windows
+ 
+  the logger complained on startup if the specified log file already existed
+
+* fixed startup of server in daemon mode (`--daemon` startup option)
+
 * fixed a segfault in the AQL optimiser
 
 * issue #671: Method graph.measurement does not exist
