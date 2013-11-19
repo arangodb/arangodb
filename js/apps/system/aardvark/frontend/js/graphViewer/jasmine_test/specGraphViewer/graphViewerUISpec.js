@@ -124,7 +124,7 @@
     
     it('should automatically start the ZoomManager', function() {
       expect(window.ZoomManager).toHaveBeenCalledWith(
-        140,
+        119,
         200,
         jasmine.any(Object),
         jasmine.any(Object),
@@ -310,21 +310,8 @@
         expect(map.length).toEqual(1);
       });
       
-      it('should be positioned in the top-right corner of the svg', function() {
-        expect(map.css("position")).toEqual("absolute");
-        var leftPos = $("#contentDiv svg").position().left,
-        topPos = $("#contentDiv svg").position().top;
-        leftPos += $("#contentDiv svg").width();
-        if (leftPos === Math.round(leftPos)) {
-          expect(map.css("left")).toEqual(leftPos + "px");
-        } else {
-          expect(map.css("left")).toEqual(leftPos.toFixed(1) + "px");
-        }
-        if (topPos === Math.round(topPos)) {
-          expect(map.css("top")).toEqual(topPos + "px");
-        } else {
-          expect(map.css("top")).toEqual(topPos.toFixed(1) + "px");
-        }
+      it('should have the correct css class', function() {
+        expect(map).toBeOfClass("gv_colour_list");
       });
       
     });
