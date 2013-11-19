@@ -486,7 +486,7 @@
     },
 
     initTable: function (colid, pageid) {
-      var documentsTable = $('#documentsTableID').dataTable({
+      $('#documentsTableID').dataTable({
         "aaSorting": [[ 1, "asc" ]],
         "bFilter": false,
         "bPaginate":false,
@@ -811,7 +811,6 @@
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldString = '';
-        var indexId = '';
         var actionString = '';
 
         $.each(this.index.indexes, function(k,v) {

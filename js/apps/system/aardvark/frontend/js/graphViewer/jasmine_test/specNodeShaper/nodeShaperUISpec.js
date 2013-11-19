@@ -91,10 +91,10 @@
 
     it('should throw errors if not setup correctly', function() {
       expect(function() {
-        var e = new NodeShaperControls();
+        var c = new NodeShaperControls();
       }).toThrow("A list element has to be given.");
       expect(function() {
-        var e = new NodeShaperControls(list);
+        var c = new NodeShaperControls(list);
       }).toThrow("The NodeShaper has to be given.");
     });
     

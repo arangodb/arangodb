@@ -368,7 +368,7 @@ function CommunityNode(parent, initial) {
         .attr("height", "20")
         .attr("fill", "#686766")
         .attr("stroke", "none");
-      var dissolveBtn = bBox.append("image")
+      bBox.append("image")
         .attr("id", self._id + "_dissolve")
         .attr("xlink:href", "img/icon_delete.png")
         .attr("width", "16")
@@ -379,8 +379,8 @@ function CommunityNode(parent, initial) {
         .on("click", function() {
           self.dissolve();
           start();
-        }),
-      collapseBtn = bBox.append("image")
+        });
+      bBox.append("image")
         .attr("id", self._id + "_collapse")
         .attr("xlink:href", "img/gv_collapse.png")
         .attr("width", "16")
@@ -391,8 +391,8 @@ function CommunityNode(parent, initial) {
         .on("click", function() {
           self.collapse();
           start();
-        }),
-      title = bBox.append("text")
+        });
+      var title = bBox.append("text")
         .attr("x", "45")
         .attr("y", "15")
         .attr("fill", "white")

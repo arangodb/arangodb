@@ -326,8 +326,7 @@
     });
     
     it('should be able to remove the cursor-following edge on demand', function() {
-      var line,
-        cursorX,
+      var cursorX,
         cursorY,
         nodeX = 15,
         nodeY = 20,

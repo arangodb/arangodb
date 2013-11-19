@@ -43,8 +43,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     throw "An adapter configuration has to be given";
   } 
   
-  var self = this,
-    graphViewer,
+  var graphViewer,
     width = (optWidth || container.offsetWidth) - 81,
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
