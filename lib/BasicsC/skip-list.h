@@ -81,10 +81,14 @@ TRI_cmp_type_e;
 /// implies a <= b in the preorder.
 /// The first argument is a data pointer which may contain arbitrary
 /// infrastructure needed for the comparison. See cmpdata field in the
-/// skiplist type.
+/// skiplist type. 
+/// The cmp_key_elm variant compares a key with an element using the preorder.
+/// The first argument is a data pointer as above, the second is a pointer
+/// to the key and the third is a pointer to an element.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef int (*TRI_skiplist_compare_func_t)(void*, void*, void*, TRI_cmp_type_e);
+typedef int (*TRI_skiplist_cmp_elm_elm_t)(void*, void*, void*, TRI_cmp_type_e);
+typedef int (*TRI_skiplist_cmp_key_elm_t)(void*, void*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Type of a pointer to a function that is called whenever a
@@ -99,8 +103,9 @@ typedef void (*TRI_skiplist_free_func_t)(void*);
 
 typedef struct TRI_skiplist_s {
     TRI_skiplist_node_t* start;
-    TRI_skiplist_compare_func_t compare;
-    void* cmpdata;   // will be the first arguemnt
+    TRI_skiplist_cmp_elm_elm_t cmp_elm_elm;
+    TRI_skiplist_cmp_key_elm_t cmp_key_elm;
+    void* cmpdata;   // will be the first argument
     TRI_skiplist_free_func_t free;
     bool unique;     // indicates whether multiple entries that
                      // are equal in the preorder are allowed in
@@ -129,7 +134,8 @@ typedef struct TRI_skiplist_s {
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_compare_func_t cmpfunc,
+TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
+                                  TRI_skiplist_cmp_key_elm_t cmp_key_elm,
                                   void *cmpdata,
                                   TRI_skiplist_free_func_t freefunc,
                                   bool unique);
@@ -189,10 +195,20 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc);
 int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up doc in the skiplist using the proper order
+/// comparison. 
+///
+/// Only comparisons using the proper order are done using cmp_elm_elm. 
+/// Returns NULL if doc is not in the skiplist.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less to doc in the preorder
 /// comparison or the start node if none is.
 ///
-/// Only comparisons using the preorder are done.
+/// Only comparisons using the preorder are done using cmp_elm_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc);
@@ -201,20 +217,28 @@ TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc);
 /// @brief finds the last document that is less or equal to doc in
 /// the preorder comparison or the start node if none is.
 ///
-/// Only comparisons using the preorder are done.
+/// Only comparisons using the preorder are done using cmp_elm_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up doc in the skiplist using the proper order
-/// comparison. 
+/// @brief finds the last document whose key is less to key in the preorder
+/// comparison or the start node if none is.
 ///
-/// Only comparisons using the proper order are done. Returns NULL
-/// if doc is not in the skiplist.
+/// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc);
+TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds the last document that is less or equal to doc in
+/// the preorder comparison or the start node if none is.
+///
+/// Only comparisons using the preorder are done using cmp_key_elm.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl, void *key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
