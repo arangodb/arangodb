@@ -112,7 +112,7 @@
       altEdgesCollection,
       mockCollection,
       callbackCheck,
-      checkCallbackFunction = function() {
+      checkCallbackFunction = function(test) {
         callbackCheck = true;
       },
       
@@ -760,7 +760,12 @@
               if (vars !== undefined) {
                 request.success({result: loadGraph(vars)});
               } else {
-                request.success({result: {}});
+                request.success({
+                  error: false, 
+                  _id: "TestNodes654/myNewNode",
+                  _key: "myNewNode",
+                  _rev: "1234"
+                });
               }
             });
             
@@ -794,7 +799,7 @@
       
           waitsFor(function() {
             return callbackCheck;
-          }, 1000);
+          }, 1500);
       
           runs(function() {
             existNode(insertedId);
@@ -1288,6 +1293,12 @@
             var insertedId;
         
             runs(function() {
+              fakeResult = {
+                error: false,
+                _id: "TestNodes123/MyNode",
+                _rev: "1234",
+                _key: "MyNode"
+              };
               adapter.createNode({}, function(node) {
                 insertedId = node._id;
                 callbackCheck = true;
