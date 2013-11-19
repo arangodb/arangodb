@@ -106,14 +106,14 @@ int TRI_openFile (const char* filename, int openFlags);
 // this provides a translation
 // .............................................................................
 
-void TRI_sleep(unsigned long);
+void TRI_sleep (unsigned long);
 
 
 // .............................................................................
 // there is no usleep (micro sleep) in windows, so we create one here
 // .............................................................................
 
-void TRI_usleep(unsigned long);
+void TRI_usleep (unsigned long);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
