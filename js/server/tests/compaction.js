@@ -42,13 +42,194 @@ function CompactionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test shapes
+////////////////////////////////////////////////////////////////////////////////
+
+    testShapes1 : function () {
+      var cn = "example";
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
+
+      var i;
+
+      // prefill with "trash"
+      for (i = 0; i < 1000; ++i) {
+        c1.save({ _key: "test" + i });
+      }
+      c1.truncate(); 
+      c1.rotate(); 
+
+      // create lots of different shapes
+      for (i = 0; i < 100; ++i) { 
+        var doc = { _key: "test" + i }; 
+        doc["number" + i] = i; 
+        doc["string" + i] = "test" + i; 
+        doc["bool" + i] = (i % 2 == 0); 
+        c1.save(doc); 
+      } 
+
+      // make sure compaction moves the shapes
+      c1.rotate(); 
+      internal.wait(5); 
+      c1.truncate(); 
+      internal.wait(5); 
+      
+      for (i = 0; i < 100; ++i) { 
+        var doc = { _key: "test" + i }; 
+        doc["number" + i] = i + 1; 
+        doc["string" + i] = "test" + (i + 1); 
+        doc["bool" + i] = (i % 2 != 0);
+        c1.save(doc); 
+      } 
+     
+      for (i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertTrue(doc.hasOwnProperty("number" + i));
+        assertTrue(doc.hasOwnProperty("string" + i));
+        assertTrue(doc.hasOwnProperty("bool" + i));
+
+        assertEqual(i + 1, doc["number" + i]);
+        assertEqual("test" + (i + 1), doc["string" + i]);
+        assertEqual(i % 2 != 0, doc["bool" + i]);
+      } 
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test shapes
+////////////////////////////////////////////////////////////////////////////////
+
+    testShapes2 : function () {
+      var cn = "example";
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
+
+      var i;
+      // prefill with "trash"
+      for (i = 0; i < 1000; ++i) {
+        c1.save({ _key: "test" + i });
+      }
+      c1.truncate(); 
+      c1.rotate(); 
+
+      // create lots of different shapes
+      for (i = 0; i < 100; ++i) { 
+        var doc = { _key: "test" + i }; 
+        doc["number" + i] = i; 
+        doc["string" + i] = "test" + i; 
+        doc["bool" + i] = (i % 2 == 0); 
+        c1.save(doc); 
+      } 
+      
+      c1.save({ _key: "foo", name: { first: "foo", last: "bar" } });
+      c1.save({ _key: "bar", name: { first: "bar", last: "baz", middle: "foo" }, age: 22 });
+
+      // remove most of the shapes
+      for (i = 0; i < 100; ++i) { 
+        c1.remove("test" + i);
+      }
+
+      // make sure compaction moves the shapes
+      c1.rotate(); 
+      internal.wait(5); 
+      
+      var doc = c1.document("foo");
+      assertTrue(doc.hasOwnProperty("name"));
+      assertFalse(doc.hasOwnProperty("age"));
+      assertEqual({ first: "foo", last: "bar" }, doc.name);
+
+      doc = c1.document("bar");
+      assertTrue(doc.hasOwnProperty("name"));
+      assertTrue(doc.hasOwnProperty("age"));
+      assertEqual({ first: "bar", last: "baz", middle: "foo" }, doc.name);
+      assertEqual(22, doc.age);
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test shapes
+////////////////////////////////////////////////////////////////////////////////
+
+    testShapesUnloadReload : function () {
+      var cn = "example";
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
+
+      var i;
+      
+      // create lots of different shapes
+      for (i = 0; i < 100; ++i) { 
+        var doc = { _key: "test" + i }; 
+        doc["number" + i] = i; 
+        doc["string" + i] = "test" + i; 
+        doc["bool" + i] = (i % 2 == 0); 
+        c1.save(doc); 
+      } 
+      
+      c1.save({ _key: "foo", name: { first: "foo", last: "bar" } });
+      c1.save({ _key: "bar", name: { first: "bar", last: "baz", middle: "foo" }, age: 22 });
+
+      // remove most of the shapes
+      for (i = 0; i < 100; ++i) { 
+        c1.remove("test" + i);
+      }
+
+      // make sure compaction moves the shapes
+      c1.rotate(); 
+      internal.wait(5);
+      // unload the collection
+      c1.unload(); 
+      c1 = null;
+      internal.wait(5);
+
+      c1 = internal.db._collection(cn);
+     
+      // check if documents are still there 
+      var doc = c1.document("foo");
+      assertTrue(doc.hasOwnProperty("name"));
+      assertFalse(doc.hasOwnProperty("age"));
+      assertEqual({ first: "foo", last: "bar" }, doc.name);
+
+      doc = c1.document("bar");
+      assertTrue(doc.hasOwnProperty("name"));
+      assertTrue(doc.hasOwnProperty("age"));
+      assertEqual({ first: "bar", last: "baz", middle: "foo" }, doc.name);
+      assertEqual(22, doc.age);
+      
+      // create docs with already existing shapes
+      for (i = 0; i < 100; ++i) { 
+        var doc = { _key: "test" + i }; 
+        doc["number" + i] = i; 
+        doc["string" + i] = "test" + i; 
+        doc["bool" + i] = (i % 2 == 0); 
+        c1.save(doc); 
+      } 
+     
+      // check if the documents work 
+      for (i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertTrue(doc.hasOwnProperty("number" + i));
+        assertTrue(doc.hasOwnProperty("string" + i));
+        assertTrue(doc.hasOwnProperty("bool" + i));
+
+        assertEqual(i, doc["number" + i]);
+        assertEqual("test" + i, doc["string" + i]);
+        assertEqual(i % 2 == 0, doc["bool" + i]);
+      } 
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test journals
 ////////////////////////////////////////////////////////////////////////////////
 
     testJournals : function () {
       var cn = "example";
       internal.db._drop(cn);
-      var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
       // empty collection
       var fig = c1.figures();
@@ -232,7 +413,7 @@ function CompactionSuite () {
       }
 
       internal.db._drop(cn);
-      var c1 = internal.db._create(cn, { "journalSize" : 1048576, "doCompact" : false } );
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576, "doCompact" : false });
 
       for (var i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
@@ -310,7 +491,7 @@ function CompactionSuite () {
       }
 
       internal.db._drop(cn);
-      var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
       for (var i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
@@ -430,7 +611,7 @@ function CompactionSuite () {
       }
 
       internal.db._drop(cn);
-      var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
       for (var i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
