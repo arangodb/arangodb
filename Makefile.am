@@ -564,6 +564,8 @@ pack-dmg-cmake:
 
 .PHONY: pack-macosx pack-macosx-cmake
 
+PACK_DESTDIR ?= .
+
 pack-macosx:
 	rm -rf Build && mkdir Build
 
@@ -597,7 +599,7 @@ pack-macosx-cmake:
 	${MAKE} ${BUILT_SOURCES}
  
 	cd Build && ${MAKE}
-	cd Build && ${MAKE} install DESTDIR=`pwd`/../..
+	cd Build && ${MAKE} install DESTDIR=${PACK_DESTDIR}
 
 ################################################################################
 ### @brief debian arm package
