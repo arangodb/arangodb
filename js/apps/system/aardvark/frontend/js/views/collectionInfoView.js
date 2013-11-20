@@ -193,7 +193,6 @@
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldString = '';
-        var indexId = '';
         $.each(this.index.indexes, function(k,v) {
           if (v.fields !== undefined) {
             fieldString = v.fields.join(", ");

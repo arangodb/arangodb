@@ -37,10 +37,9 @@
 
 describe("Graph Viewer", function() {
   "use strict";
-  var viewer,
-  waittime = 500,
-  svg,
-  docSVG;
+  var waittime = 500,
+    svg,
+    docSVG;
   
   beforeEach(function() {
     docSVG = document.createElement("svg");

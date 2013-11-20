@@ -265,7 +265,7 @@ function ArangoAdapter(nodes, edges, config) {
           return;
         }
         callback(absAdapter.insertInitialNode(n));
-      }
+      };
     },
 
 

@@ -11,7 +11,6 @@
     template: templateEngine.createTemplate("graphView.ejs"),
 
     initialize: function () {
-      var self = this;
       this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
       this.graphs = [];
       this.i = 1;
@@ -66,12 +65,10 @@
         aaconfig,
         undirected,
         randomStart,
-        groupByList,
         groupByAttribute,
         label,
         color,
         config,
-        ui,
         sameColor,
         width,
         self = this;

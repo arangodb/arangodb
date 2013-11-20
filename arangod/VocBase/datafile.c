@@ -1211,6 +1211,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       type != TRI_DF_MARKER_FOOTER &&
       type != TRI_COL_MARKER_HEADER) {
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     // check _tick value of marker and set min/max tick values for datafile
     if (tick <= datafile->_tickMin || tick <= (TRI_voc_tick_t) datafile->_fid) {
       LOG_WARNING("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
@@ -1229,6 +1230,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
           datafile->getName(datafile),
           (unsigned long long) datafile->_tickMax);
     }
+#endif
 
     // set data tick values (for documents and edge markers)
     if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||

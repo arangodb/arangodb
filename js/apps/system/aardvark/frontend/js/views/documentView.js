@@ -264,7 +264,7 @@
     },
 
     initTable: function () {
-      var documentTable = $(this.table).dataTable({
+      $(this.table).dataTable({
         "aaSorting": [[ 1, "asc" ]],
         "bAutoWidth": false,
         "bFilter": false,
@@ -332,7 +332,6 @@
       var self = this;
       var i = 0;
       $('.writeable', documentEditTable.fnGetNodes() ).each(function () {
-        var aPos = documentEditTable.fnGetPosition(this);
         if (i === 1) {
           $(this).removeClass('writeable');
           i = 0;

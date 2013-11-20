@@ -37,8 +37,7 @@ function ArangoAdapterControls(list, adapter) {
   if (adapter === undefined) {
     throw "The ArangoAdapter has to be given.";
   }
-  var self = this,
-    baseClass = "adapter";
+  var baseClass = "adapter";
   
   this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",

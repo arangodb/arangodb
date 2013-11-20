@@ -207,18 +207,6 @@
       expect(function() {
         var e = new EventDispatcherControls();
       }).toThrow("A list element has to be given.");
-      /* Archive
-      expect(function() {
-        var e = new EventDispatcherControls(list);
-      }).toThrow("The cursor decoration box has to be given.");
-      
-      expect(function() {
-        var e = new EventDispatcherControls(list, mousePointerbox);
-      }).toThrow("The NodeShaper has to be given.");
-      expect(function() {
-        var e = new EventDispatcherControls(list, mousePointerbox, nodeShaper);
-      }).toThrow("The EdgeShaper has to be given.");
-      */
             
       expect(function() {
         var e = new EventDispatcherControls(list);
@@ -377,7 +365,6 @@
       it('should be possible to add new attributes to nodes', function() {
         
         runs(function() {
-          var nested = JSON.stringify(edges[0]._data.nested);
           helper.simulateMouseEvent("click", id);
           helper.simulateMouseEvent("click", "1");
       
@@ -691,10 +678,6 @@
       });
       
       it('should draw a line from startNode following the cursor', function() {
-        var line,
-        cursorX,
-        cursorY;
-        
         spyOn(edgeShaper, "addAnEdgeFollowingTheCursor");
         
         dispatcherUI.addControlConnect();

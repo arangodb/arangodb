@@ -48,8 +48,8 @@
       
       it('should throw an error if no callback is given', function() {
         expect(function() {
-          function Test(){}
-          var s = new WebWorkerWrapper(Test);
+          var Test = function() {},
+            s = new WebWorkerWrapper(Test);
         }).toThrow("A callback has to be given.");
       });
       
