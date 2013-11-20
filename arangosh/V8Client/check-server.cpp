@@ -45,12 +45,42 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief exit function
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+
+static void checkserverExitFunction (int exitCode, void* data) {
+  int res = 0;
+
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // ...........................................................................
+
+  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+
+  if (res != 0) {
+    exit(1);
+  }
+
+  exit(exitCode);
+}
+
+#else
+
+static void checkserverExitFunction (int exitCode, void* data) {
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief startup function
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
 
-static void arangoshEntryFunction () {
+static void checkserverEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -79,42 +109,12 @@ static void arangoshEntryFunction () {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangoshExitFunction);
+  TRI_Application_Exit_SetExit(checkserverExitFunction);
 }
 
 #else
 
-static void arangoshEntryFunction () {
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exit function
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-
-static void arangoshExitFunction (int exitCode, void* data) {
-  int res = 0;
-
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-
-  if (res != 0) {
-    exit(1);
-  }
-
-  exit(exitCode);
-}
-
-#else
-
-static void arangoshExitFunction (int exitCode, void* data) {
+static void checkserverEntryFunction () {
 }
 
 #endif
@@ -145,7 +145,7 @@ static V8ClientConnection* CreateConnection (Endpoint* endpoint) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangoshEntryFunction();
+  checkserverEntryFunction();
 
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
@@ -217,7 +217,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangoshExitFunction(ret, NULL);
+  checkserverExitFunction(ret, NULL);
 
   return ret;
 }

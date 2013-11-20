@@ -58,6 +58,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arangob Binary", "Arangob B
 		{604036DD-7013-4463-B827-D06016BD41FC} = {604036DD-7013-4463-B827-D06016BD41FC}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Checkserver Binary", "Checkserver Binary\Checkserver Binary.vcxproj", "{2BC148DF-067A-4299-AA89-15A4DB89B40F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9FB69E35-6ADE-4AAD-9766-B5409C1D2595} = {9FB69E35-6ADE-4AAD-9766-B5409C1D2595}
+		{8985F67A-A9CC-41C8-80D4-364678550F2F} = {8985F67A-A9CC-41C8-80D4-364678550F2F}
+		{604036DD-7013-4463-B827-D06016BD41FC} = {604036DD-7013-4463-B827-D06016BD41FC}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -170,6 +177,14 @@ Global
 		{1D51688C-8A5D-4191-A3A6-ACD5D3A8111F}.Release|Win32.Build.0 = Release|Win32
 		{1D51688C-8A5D-4191-A3A6-ACD5D3A8111F}.Release|x64.ActiveCfg = Release|x64
 		{1D51688C-8A5D-4191-A3A6-ACD5D3A8111F}.Release|x64.Build.0 = Release|x64
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Debug|Win32.Build.0 = Debug|Win32
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Debug|x64.ActiveCfg = Debug|x64
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Debug|x64.Build.0 = Debug|x64
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Release|Win32.ActiveCfg = Release|Win32
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Release|Win32.Build.0 = Release|Win32
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Release|x64.ActiveCfg = Release|x64
+		{2BC148DF-067A-4299-AA89-15A4DB89B40F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
