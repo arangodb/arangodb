@@ -377,7 +377,7 @@ CLEANUP += \
 
 .PHONY: publish publish-html publish-pdf publish-copy
 
-publish: examples publish-html publish-pdf
+publish: publish-html publish-pdf
 	make publish-copy
 
 publish-copy:
