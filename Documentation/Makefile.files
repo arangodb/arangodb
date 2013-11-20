@@ -187,11 +187,9 @@ DOXYGEN = \
 ### @brief directory setup
 ################################################################################
 
-.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
+.PHONY: doxygen-create-directories
 
-BUILT_SOURCES += Doxygen/.setup-directories
-
-Doxygen/.setup-directories:
+doxygen-create-directories:
 	@test -d Doxygen/doc/images || mkdir -p Doxygen/doc/images
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
@@ -205,6 +203,12 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
+
+.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
+
+BUILT_SOURCES += Doxygen/.setup-directories
+
+Doxygen/.setup-directories: doxygen-create-directories
 	@touch $@
 
 Doxygen/js/actions/%.c: @srcdir@/js/actions/%.js Doxygen/.setup-directories
