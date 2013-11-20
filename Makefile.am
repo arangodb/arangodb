@@ -224,7 +224,8 @@ bin_SCRIPTS =
 ### @brief uninstalled programs
 ################################################################################
 
-noinst_PROGRAMS =
+noinst_PROGRAMS = \
+	bin/check-server
 
 ################################################################################
 ### @brief ruby additions
