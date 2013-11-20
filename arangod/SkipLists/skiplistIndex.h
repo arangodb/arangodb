@@ -30,6 +30,8 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/skip-list.h"
+
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
@@ -44,9 +46,6 @@ extern "C" {
 
 struct TRI_doc_mptr_s;
 struct TRI_primary_collection_s;
-struct TRI_skiplist_s;
-struct TRI_skiplist_multi_s;
-struct TRI_skiplist_node_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        skiplistIndex public types
@@ -58,46 +57,59 @@ struct TRI_skiplist_node_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
-  union {
-    struct TRI_skiplist_s* uniqueSkiplist;
-    struct TRI_skiplist_multi_s* nonUniqueSkiplist;
-  } skiplist;
+  TRI_skiplist_t* skiplist;
   bool unique;
+  bool sparse;
+  struct TRI_primary_collection_s* _collection;
+  size_t _numFields;
 } 
 SkiplistIndex;
 
 typedef struct {
-  TRI_shaped_json_t*      _fields; // list of shaped json objects which the collection should know about
+  TRI_shaped_json_t* _fields;   // list of shaped json objects which the 
+                                // collection should know about
 } 
 TRI_skiplist_index_key_t;
 
 typedef struct {
-  TRI_shaped_sub_t*      _subObjects;    // list of shaped json objects which the collection should know about
+  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the 
+                                    // collection should know about
   struct TRI_doc_mptr_s* _document; // master document pointer
 } 
 TRI_skiplist_index_element_t;
 
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
+///
+/// Intervals are open in the sense that both end points are not members 
+/// of the interval. This means that one has to use TRI_SkipListNextNode
+/// on the start node to get the first element and that the stop node
+/// can be NULL. Note that it is ensured that all intervals in an iterator
+/// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_iterator_interval_s {
-  struct TRI_skiplist_node_s*  _leftEndPoint;
-  struct TRI_skiplist_node_s*  _rightEndPoint;
-} TRI_skiplist_iterator_interval_t;
+  TRI_skiplist_node_t* _leftEndPoint;
+  TRI_skiplist_node_t* _rightEndPoint;
+} 
+TRI_skiplist_iterator_interval_t;
 
 typedef struct TRI_skiplist_iterator_s {
   SkiplistIndex* _index;
   TRI_vector_t _intervals;
-  size_t _currentInterval; // starts with 0
-  void* _cursor; // initially null
+  size_t _currentInterval; // starts with 0, current interval used
+  TRI_skiplist_node_t* _cursor; 
+                 // always holds the last node returned, initially equal to 
+                 // the _leftEndPoint of the first interval, can be NULL
+                 // if there are no intervals (yet), in any case, if
+                 // _cursor is NULL, then there are (currently) no more
+                 // documents in the iterator.
   bool  (*_hasNext) (struct TRI_skiplist_iterator_s*);
   void* (*_next)    (struct TRI_skiplist_iterator_s*);
   void* (*_nexts)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);
-  bool  (*_hasPrev) (struct TRI_skiplist_iterator_s*);
-  void* (*_prev)    (struct TRI_skiplist_iterator_s*);
-  void* (*_prevs)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);
-} TRI_skiplist_iterator_t;
+} 
+TRI_skiplist_iterator_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,42 +151,24 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-// Unique skiplist indexes
+// Skiplist indices, both unique and non-unique
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
 SkiplistIndex* SkiplistIndex_new (struct TRI_primary_collection_s*,
-                                  size_t);
+                                  size_t, bool, bool);
 
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, 
+                                             TRI_index_operator_t*); 
 
 int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
 int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
 
-bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*, const TRI_skiplist_index_element_t*);
+bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*,
+                           const TRI_skiplist_index_element_t*);
 
 uint64_t SkiplistIndex_getNrUsed(SkiplistIndex*);
-
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-// Multi-skiplist non-unique skiplist indexes
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-
-
-SkiplistIndex* MultiSkiplistIndex_new (struct TRI_primary_collection_s*, 
-                                       size_t);
-
-TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
-
-int MultiSkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
-
-int MultiSkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
-
-bool MultiSkiplistIndex_update (SkiplistIndex*, TRI_skiplist_index_element_t*, TRI_skiplist_index_element_t*);
-
-uint64_t MultiSkiplistIndex_getNrUsed(SkiplistIndex*);
 
 #ifdef __cplusplus
 }
