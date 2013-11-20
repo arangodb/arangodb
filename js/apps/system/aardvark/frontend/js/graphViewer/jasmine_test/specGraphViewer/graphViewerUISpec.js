@@ -154,31 +154,6 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
-      /* Archive
-      it('should create the additional mouse-icon box', function() {
-        var pointerBox = $("#contentDiv #mousepointer");
-        expect(pointerBox.length).toEqual(1);
-        expect(pointerBox[0]).toBeTag("div");
-        expect(pointerBox[0]).toBeOfClass("mousepointer");
-      });
-      
-      it('should position the mouse-icon box next to the mouse pointer', function() {
-        var x = 40,
-          y = 50,
-          pointerBox = $("#contentDiv #mousepointer");
-          
-        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
-        expect(pointerBox.offset().left).toEqual(x + 7);
-        expect(pointerBox.offset().top).toEqual(y + 12);
-        
-        x = 66;
-        y = 33;
-        
-        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
-        expect(pointerBox.offset().left).toEqual(x + 7);
-        expect(pointerBox.offset().top).toEqual(y + 12);
-      });
-      */
     });
     
     describe('checking the menubar', function() {
@@ -197,13 +172,11 @@
         expect($(barSelector + " #loadnode").length).toEqual(1);
         expect(attrfield).toBeTag("input");
         expect(attrfield.type).toEqual("text");
-        expect(attrfield).toBeOfClass("input");
-        expect(attrfield.placeholder).toEqual("Attribute");
+        expect(attrfield.placeholder).toEqual("Attribute name");
         expect(valfield).toBeTag("input");
         expect(valfield.type).toEqual("text");
-        expect(valfield).toBeOfClass("searchInput");
-        expect(valfield).toBeOfClass("input-xlarge");
-        expect(valfield.placeholder).toEqual("Value");
+        expect(valfield).toBeOfClass("gv_searchInput");
+        expect(valfield.placeholder).toEqual("Attribute value");
         expect(btn).toBeTag("img");
         expect(btn.className).toEqual("searchSubmit");
       });
@@ -213,88 +186,23 @@
         expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
       });
       
-      /*
-      it('should contain a menu for the node shapes', function() {
-        var menuSelector = "#contentDiv #menubar #nodeshapermenu";
-        expect($(menuSelector).length).toEqual(1);
-        expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect($(menuSelector +  " #control_none").length).toEqual(1);
-        expect($(menuSelector +  " #control_circle").length).toEqual(1);
-        expect($(menuSelector +  " #control_rect").length).toEqual(1);
-        expect($(menuSelector +  " #control_label").length).toEqual(1);
-        expect($(menuSelector +  " #control_singlecolour").length).toEqual(1);
-        expect($(menuSelector +  " #control_attributecolour").length).toEqual(1);
-        expect($(menuSelector +  " #control_expandcolour").length).toEqual(1);
-      });
-      */
-      /*
-      it('should contain a menu for the edge shapes', function() {
-        var menuSelector = "#contentDiv #menubar #edgeshapermenu";
-        expect($(menuSelector).length).toEqual(1);
-        expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect($(menuSelector + " #control_none").length).toEqual(1);
-        expect($(menuSelector + " #control_arrow").length).toEqual(1);
-        expect($(menuSelector + " #control_label").length).toEqual(1);
-        expect($(menuSelector + " #control_singlecolour").length).toEqual(1);
-        expect($(menuSelector + " #control_attributecolour").length).toEqual(1);
-        expect($(menuSelector + " #control_gradientcolour").length).toEqual(1);
-      });
-      */
-      /*
-      it('should contain a menu for the adapter', function() {
-        var menuSelector = "#contentDiv #menubar #adaptermenu";
-        expect($(menuSelector).length).toEqual(1);
-        expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect($(menuSelector +  " #control_collections").length).toEqual(1);
-      });
-      */
-      /*
-      it('should contain a menu for the layouter', function() {
-        var menuSelector = "#contentDiv #menubar #layoutermenu";
-        expect($(menuSelector).length).toEqual(1);
-        expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect($(menuSelector + " #control_gravity").length).toEqual(1);
-        expect($(menuSelector + " #control_distance").length).toEqual(1);
-        expect($(menuSelector + " #control_charge").length).toEqual(1);
-      });
-      */
-      
       it('should contain a general configure menu', function() {
-        var menuSelector = "#contentDiv #menubar #configuremenu";
+        var menuSelector = "#contentDiv #menubar #configuremenu",
+          dropDownSelector = "#configureDropdown .dropdownInner ul";
         expect($(menuSelector).length).toEqual(1);
-        expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect($("> button", menuSelector).text()).toEqual("Configure ");
-        expect($(menuSelector +  " #control_adapter_collections").length).toEqual(1);
-        expect($(menuSelector +  " #control_node_labelandcolour").length).toEqual(1);
-        expect($(menuSelector +  " #control_adapter_priority").length).toEqual(1);
+        expect($("span", menuSelector).attr("data-original-title")).toEqual("Configure");
+        expect($("span", menuSelector)).toBeOfClass("glyphicon");
+        expect($("span", menuSelector)).toBeOfClass("glyphicon-cog");
+        expect($(dropDownSelector +  " #control_adapter_collections").length).toEqual(1);
+        expect($(dropDownSelector +  " #control_node_labelandcolour").length).toEqual(1);
+        expect($(dropDownSelector +  " #control_adapter_priority").length).toEqual(1);
       });
       
       it('should have the same layout as the web interface', function() {
-        var header = div.children[0],
-          transHeader = header.firstChild,
-          transPH = transHeader.children[0],
-          searchField = transPH.children[0],
-          
-          content = div.children[1];
+        var header = div.children[0];
         expect(header).toBeTag("ul");
         expect(header.id).toEqual("menubar");
         expect(header.className).toEqual("thumbnails2");
-        expect(transHeader).toBeTag("div");
-        expect(transHeader.id).toEqual("transparentHeader");
-       
-        expect(transPH).toBeTag("div");
-        expect(transPH).toBeOfClass("pull-left");
-        expect(transPH.id).toEqual("transparentPlaceholder");
-        expect(searchField).toBeTag("div");
-        expect(searchField).toBeOfClass("pull-left");
-        expect(searchField).toBeOfClass("input-append");
-        expect(searchField).toBeOfClass("searchByAttribute");
-        expect(searchField.children[0]).toBeTag("input");
-        expect(searchField.children[0].id).toEqual("attribute");
-        expect(transPH.children[1]).toBeTag("span");
-        expect(transPH.children[1].textContent).toEqual("==");
-        expect(transPH.children[2].id).toEqual("value");
-        expect(transPH.children[3].id).toEqual("loadnode");
       });
     });
     
