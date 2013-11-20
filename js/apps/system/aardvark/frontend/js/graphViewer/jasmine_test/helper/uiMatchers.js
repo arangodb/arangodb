@@ -62,7 +62,10 @@ var uiMatchers = uiMatchers || {};
         };
         expect(div).toBeOfClass("btn-group");
         expect(btn).toBeTag("button");
-        expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
+        expect(btn).toBeOfClass("btn"); 
+        expect(btn).toBeOfClass("btn-inverse");
+        expect(btn).toBeOfClass("btn-small");
+        expect(btn).toBeOfClass("dropdown-toggle");
         if (btn.getAttribute("data-toggle") !== "dropdown") {
           msg = "first elements data-toggle to be dropdown";
           return false;
@@ -85,10 +88,13 @@ var uiMatchers = uiMatchers || {};
         var box = this.actual;
         expect(box).toBeTag("div");
         expect(box.id).toEqual("toolbox");
-        expect(box).toBeOfClass("btn-group btn-group-vertical pull-left toolbox");
+        expect(box).toBeOfClass("btn-group");
+        expect(box).toBeOfClass("btn-group-vertical");
+        expect(box).toBeOfClass("toolbox");
         _.each(box.children, function(btn) {
           expect(btn).toBeTag("button");
-          expect(btn).toBeOfClass("btn btn-icon");
+          expect(btn).toBeOfClass("btn");
+          expect(btn).toBeOfClass("btn-icon");
           // Correctness of buttons is checked in eventDispatcherUISpec.
         });
         return true;
