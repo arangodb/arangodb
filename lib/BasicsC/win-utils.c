@@ -57,16 +57,15 @@ _invalid_parameter_handler newInvalidHandleHandler;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-int ftruncate(int fd, long newSize) {
+int ftruncate (int fd, long newSize) {
   int result = _chsize(fd, newSize);
   return result;
 }
 
-
-int getpagesize(void) {
+int getpagesize (void) {
   static int pageSize = 0; // only define it once
 
-  if (!pageSize) {
+  if (! pageSize) {
     // first time, so call the system info function
     SYSTEM_INFO systemInfo;
     GetSystemInfo (&systemInfo);
@@ -76,22 +75,20 @@ int getpagesize(void) {
   return pageSize;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Calls the windows Sleep function which always sleeps for milliseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_sleep(unsigned long waitTime) {
+void TRI_sleep (unsigned long waitTime) {
   Sleep(waitTime * 1000);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Calls a timer which waits for a signal after the elapsed time.
-// The timer is acurate to 100nanoseconds
+// The timer is accurate to 100nanoseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_usleep(unsigned long waitTime) {
+void TRI_usleep (unsigned long waitTime) {
   int result;
   HANDLE hTimer = NULL;    // stores the handle of the timer object
   LARGE_INTEGER wTime;    // essentially a 64bit number
@@ -109,7 +106,7 @@ void TRI_usleep(unsigned long waitTime) {
     abort();
   }
   // Set timer to wait for indicated micro seconds.
-  if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
+  if (! SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
     // not much we can do at this low level
     CloseHandle(hTimer);
     return;
@@ -135,14 +132,13 @@ void TRI_usleep(unsigned long waitTime) {
 // for now is to ignore error and hope it goes away!
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InvalidParameterHandler(const wchar_t* expression, // expression sent to function - NULL
-                                    const wchar_t* function,   // name of function - NULL
-                                    const wchar_t* file,       // file where code resides - NULL
-                                    unsigned int line,         // line within file - NULL
-                                    uintptr_t pReserved) {     // in case microsoft forget something
+static void InvalidParameterHandler (const wchar_t* expression, // expression sent to function - NULL
+                                     const wchar_t* function,   // name of function - NULL
+                                     const wchar_t* file,       // file where code resides - NULL
+                                     unsigned int line,         // line within file - NULL
+                                     uintptr_t pReserved) {     // in case microsoft forget something
   LOG_ERROR("Invalid handle parameter passed");
-
-  /* start oreste -debug */
+/*
   if (expression != 0) {
     wprintf(L"win-utils.c:InvalidParameterHandler:EXPRESSION = %s\n",expression);
   }
@@ -161,13 +157,11 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
   }
-  printf("oreste:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
-  /* end oreste -debug */
+*/
   //abort();
   // TODO: use the wcstombs_s function to convert wchar to char - since all the above
   // wchar never will contain 2 byte chars
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Called from the 'main' and performs any initialisation requirements which
@@ -178,8 +172,8 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
 // calling function should decide what to do.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
+int finaliseWindows (const TRI_win_finalise_e finaliseWhat, 
+                     const char* data) {
   int result = 0;
 
   // ............................................................................
@@ -209,10 +203,8 @@ int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
   return -1;
 }
 
-
-
-int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* data) {
-
+int initialiseWindows (const TRI_win_initialise_e initialiseWhat, 
+                       const char* data) {
 
   // ............................................................................
   // The data is used to transport information from the calling function to here
@@ -273,7 +265,6 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
 
 }
 
-
 int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int    fileDescriptor;
@@ -282,10 +273,9 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
                            GENERIC_READ | GENERIC_WRITE,
                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                            NULL,
-                           CREATE_NEW,
+                           (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW,
                            0,
                            NULL);
-
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;

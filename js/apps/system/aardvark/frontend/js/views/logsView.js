@@ -109,7 +109,6 @@
     template: templateEngine.createTemplate("logsView.ejs"),
 
     initLogTables: function () {
-      var self = this;
       $.each(this.collection.tables, function(key, table) {
         table = $('#'+table).dataTable({
           "bFilter": false,

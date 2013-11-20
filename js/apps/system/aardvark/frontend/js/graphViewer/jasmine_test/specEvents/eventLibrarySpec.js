@@ -56,7 +56,6 @@
     describe('Expand', function() {
       
       var 
-        dummy = {},
         config,
         testee;
       
@@ -213,20 +212,21 @@
         callbackCheck = function() {
           called = true;
         },
-        nodeEditorConfig = {
-          nodes: nodes,
-          adapter: adapterDummy,
-          shaper: nodeShaperDummy
-        },
         testee;
         
-        adapterDummy.createNode = function(nodeToCreate, callback) {
-          created = nodeToCreate;
-          nodes.push(created);
-          callback(created);
-        };
-        
         runs(function() {
+          adapterDummy.createNode = function(nodeToCreate, callback) {
+            created = nodeToCreate;
+            nodes.push(created);
+            callback(created);
+          };
+
+          var nodeEditorConfig = {
+            nodes: nodes,
+            adapter: adapterDummy,
+            shaper: nodeShaperDummy
+          };
+        
           testee = eventLib.InsertNode(nodeEditorConfig);
           testee(callbackCheck);
         });

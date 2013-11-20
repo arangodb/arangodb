@@ -151,15 +151,11 @@
         var edgeRoute,
           nodeRoute,
           queryRoute,
-          loadGraph,
           requests;
         
         beforeEach(function() {  
           var self = this,
             route = "foxx/route",
-            /*host = window.location.protocol + "//"
-              + window.location.host + "/"
-              + route;*/
             host = route;
           self.fakeReducerRequest = function() {};
           self.fakeReducerBucketRequest = function() {};

@@ -132,7 +132,7 @@ function EventLibrary() {
       }
       adapter.createNode(d, function(newNode) {
         nodeShaper.reshapeNodes();
-        callback(newNode);
+        cb(newNode);
       });
     };
   };
