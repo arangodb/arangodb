@@ -1526,7 +1526,9 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
   }
 
   skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary, paths->_length, 
-                                                    unique);
+                                                    unique,false);
+  // Note that the last argument is the "sparse" flag. This will be
+  // implemented soon but has no consequences as of now.
 
   if (skiplistIndex->_skiplistIndex == NULL) {
     TRI_DestroyVector(&skiplistIndex->_paths);
