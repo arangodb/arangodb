@@ -46,6 +46,26 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-lock the status
+////////////////////////////////////////////////////////////////////////////////
+
+#define WRITE_LOCK_STATUS(applier) \
+  while (! TRI_TryWriteLockReadWriteLock(&(applier->_statusLock))) { \
+    usleep(1000); \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-unlock the status
+////////////////////////////////////////////////////////////////////////////////
+
+#define WRITE_UNLOCK_STATUS(applier) \
+  TRI_WriteUnlockReadWriteLock(&(applier->_statusLock))
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -118,9 +138,9 @@ int ContinuousSyncer::run () {
   uint64_t connectRetries = 0;
      
   // reset failed connects 
-  TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+  WRITE_LOCK_STATUS(_applier);
   _applier->_state._failedConnects = 0;
-  TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+  WRITE_UNLOCK_STATUS(_applier);
 
   while (_vocbase->_state < 2) {
     setProgress("fetching master state information");
@@ -131,11 +151,11 @@ int ContinuousSyncer::run () {
       // master error. try again after a sleep period
       connectRetries++;
       
-      TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      WRITE_LOCK_STATUS(_applier);
       _applier->_state._failedConnects = connectRetries;
       _applier->_state._totalRequests++;
       _applier->_state._totalFailedConnects++;
-      TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+      WRITE_UNLOCK_STATUS(_applier);
 
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally 
@@ -153,12 +173,12 @@ int ContinuousSyncer::run () {
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+    WRITE_LOCK_STATUS(_applier);
     res = getLocalState(errorMsg);
 
     _applier->_state._failedConnects = 0;
     _applier->_state._totalRequests++; 
-    TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+    WRITE_UNLOCK_STATUS(_applier);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -664,7 +684,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   if (! tick.empty()) {
     TRI_voc_tick_t newTick = (TRI_voc_tick_t) StringUtils::uint64(tick.c_str(), tick.size());
 
-    TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+    WRITE_LOCK_STATUS(_applier);
     if (newTick > _applier->_state._lastProcessedContinuousTick) {
       _applier->_state._lastProcessedContinuousTick = newTick;
     }
@@ -673,7 +693,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
                   (unsigned long long) newTick,
                   (unsigned long long) _applier->_state._lastProcessedContinuousTick);
     }
-    TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+    WRITE_UNLOCK_STATUS(_applier);
   }
 
   // handle marker type   
@@ -812,11 +832,11 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
     if (updateTick) {
       // update tick value
-      TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      WRITE_LOCK_STATUS(_applier);
       if (_applier->_state._lastProcessedContinuousTick > _applier->_state._lastAppliedContinuousTick) {
         _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
       }
-      TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+      WRITE_UNLOCK_STATUS(_applier);
     }
   }
 }
@@ -834,7 +854,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   // ---------------------------------------
   TRI_voc_tick_t fromTick = 0;
     
-  TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+  WRITE_LOCK_STATUS(_applier);
 
   if (_useTick) {
     // use user-defined tick
@@ -850,7 +870,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+  WRITE_UNLOCK_STATUS(_applier);
 
   if (fromTick == 0) {
     return TRI_ERROR_REPLICATION_NO_START_TICK; 
@@ -873,11 +893,11 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       sleepTime = 30 * 1000 * 1000;
       connectRetries++;
       
-      TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      WRITE_LOCK_STATUS(_applier);
       _applier->_state._failedConnects = connectRetries;
       _applier->_state._totalRequests++;
       _applier->_state._totalFailedConnects++;
-      TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+      WRITE_UNLOCK_STATUS(_applier);
 
       if (connectRetries > _configuration._maxConnectRetries) {
         // halt
@@ -887,10 +907,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     else {
       connectRetries = 0;
       
-      TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      WRITE_LOCK_STATUS(_applier);
       _applier->_state._failedConnects = connectRetries;
       _applier->_state._totalRequests++;
-      TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+      WRITE_UNLOCK_STATUS(_applier);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // some other error we will not ignore
@@ -1031,9 +1051,9 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
       if (found) {
         tick = StringUtils::uint64(header);
 
-        TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+        WRITE_LOCK_STATUS(_applier);
         _applier->_state._lastAvailableContinuousTick = tick;
-        TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+        WRITE_UNLOCK_STATUS(_applier);
       }
     }
   }
@@ -1046,9 +1066,9 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ReadLockReadWriteLock(&_applier->_statusLock);
+    WRITE_LOCK_STATUS(_applier);
     TRI_voc_tick_t lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
-    TRI_ReadUnlockReadWriteLock(&_applier->_statusLock);
+    WRITE_UNLOCK_STATUS(_applier);
 
     uint64_t processedMarkers = 0;
     res = applyLog(response, errorMsg, processedMarkers, ignoreCount);
@@ -1056,13 +1076,13 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     if (processedMarkers > 0) {
       worked = true;
 
-      TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      WRITE_LOCK_STATUS(_applier);
       _applier->_state._totalEvents += processedMarkers;
 
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
         saveApplierState();
       }
-      TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+      WRITE_UNLOCK_STATUS(_applier);
     }
   }
 

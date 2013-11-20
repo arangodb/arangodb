@@ -155,7 +155,7 @@ The configuration file will be installed in
 
 The database will be installed in
 
-    /var/lib/arangodb
+    /usr/local/var/lib/arangodb
 
 The ArangoShell will be installed in
 

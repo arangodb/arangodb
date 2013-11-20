@@ -246,6 +246,27 @@ install(
   REGEX "^.*/common/tests$" EXCLUDE
   REGEX "^.*/client/tests$" EXCLUDE)
 
+################################################################################
+### @brief check-server
+################################################################################
+
+add_executable(
+    ${BIN_CHECK_SERVER}
+    V8Client/V8ClientConnection.cpp
+    V8Client/check-server.cpp
+)
+
+target_link_libraries(
+    ${BIN_CHECK_SERVER}
+    ${LIB_ARANGO_V8}
+    ${LIB_ARANGO_CLIENT}
+    ${LIB_ARANGO}
+    ${V8_LIBS}
+    ${ICU_LIBS}
+    ${ZLIB_LIBS}
+    ${OPENSSL_LIBS}
+)
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------

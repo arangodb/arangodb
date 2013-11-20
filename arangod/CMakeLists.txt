@@ -75,8 +75,6 @@ add_executable(
     HashIndex/hash-index.c
     IndexIterators/index-iterator.c
     IndexOperators/index-operator.c
-    PriorityQueue/pqueueindex.c
-    PriorityQueue/priorityqueue.c
     Replication/replication-static.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
@@ -121,7 +119,6 @@ add_executable(
     VocBase/replication-logger.c
     VocBase/replication-master.c
     VocBase/server.c
-    VocBase/shape-collection.c
     VocBase/synchroniser.c
     VocBase/transaction.c
     VocBase/update-policy.c

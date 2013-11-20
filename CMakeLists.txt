@@ -29,6 +29,7 @@ set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
+set(BIN_CHECK_SERVER  check-server)
 
 set(SCRIPT_ARANGO_DFDB  arango-dfdb)
 set(SCRIPT_FOXX_MANAGER foxx-manager)

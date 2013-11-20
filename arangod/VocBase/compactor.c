@@ -1181,7 +1181,10 @@ static bool TryLockCompaction (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void LockCompaction (TRI_vocbase_t* vocbase) { 
-  TRI_WriteLockReadWriteLock(&vocbase->_compactionBlockers._lock);
+  while (! TryLockCompaction(vocbase)) {
+    // cycle until we have acquired the write-lock
+    usleep(1000);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

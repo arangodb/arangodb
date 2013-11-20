@@ -64,7 +64,7 @@ static int const SYNCHRONISER_INTERVAL = (100 * 1000);
 /// @brief checks if a file needs to be synced
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
+static bool CheckSyncDocumentCollection (TRI_document_collection_t* document) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
   bool ok;
@@ -75,7 +75,7 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
   size_t n;
 
   worked = false;
-  base = &doc->base.base;
+  base = &document->base.base;
 
   // .............................................................................
   // the only thread MODIFYING the _journals variable is this thread,
@@ -93,18 +93,16 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
       continue;
     }
 
-    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-    synced = journal->_synced;
+    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+    synced  = journal->_synced;
     written = journal->_written;
-
-    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
     if (synced < written) {
       worked = true;
       ok = journal->sync(journal, synced, written);
 
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
       if (ok) {
         journal->_synced = written;
@@ -113,11 +111,11 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
         journal->_state = TRI_DF_STATE_WRITE_ERROR;
       }
 
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
       if (ok) {
-        LOG_TRACE("msync succeeded %p, size %lu", synced, (unsigned long)(written - synced));
+        LOG_TRACE("msync succeeded %p, size %lu", synced, (unsigned long) (written - synced));
       }
       else {
         LOG_ERROR("msync failed with: %s", TRI_last_error());
@@ -152,7 +150,6 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
   // .............................................................................
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
   n = base->_journals._length;
 
   for (i = 0;  i < n;) {
