@@ -1,6 +1,35 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* simplified ArangoDB startup options
+
+  Some startup options are now superfluous or their usage is simplified. The
+  following options have been changed:
+
+  * `--javascript.modules-path`: this option has been removed. The modules paths
+    are determined by arangod and arangosh automatically based on the value of 
+    `--javascript.startup-directory`.
+
+    If the option is set on startup, it is ignored so startup will not abort with
+    an error `unrecognized option`.
+
+  * `--javascript.action-directory`: this option has been removed. The actions
+    directory is determined by arangod automatically based on the value of
+    `--javascript.startup-directory`.
+
+    If the option is set on startup, it is ignored so startup will not abort with
+    an error `unrecognized option`.
+
+  * `--javascript.package-path`: this option is still available but it is not
+    required anymore to set the standard package paths (e.g. `js/npm`). arangod
+    will automatically use this standard package path regardless of whether it
+    was specified via the options.
+
+    It is possible to use this option to add additional package paths to the
+    standard value.
+
+  Configuration files included with arangod are adjusted accordingly.
+
 * layout of the graphs tab adapted to better fit with the other tabs
 
 * database selection is moved to the bottom right corner of the web interface

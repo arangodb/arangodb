@@ -51,6 +51,12 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace std;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we'll store deprecated config option values in here
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string DeprecatedPath;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class V8GcThread
 // -----------------------------------------------------------------------------
@@ -553,13 +559,14 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
   options["JAVASCRIPT Options:help-admin"]
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
-    ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.app-path", &_appPath, "directory for Foxx applications (normal mode)")
     ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
-    ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
+    // deprecated options
+    ("javascript.action-directory", &DeprecatedPath, "path to the JavaScript action directory (deprecated)")
+    ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
   ;
 }
 
@@ -568,20 +575,20 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
-  // check the startup modules
-  if (_modulesPath.empty()) {
-    LOG_FATAL_AND_EXIT("no 'javascript.modules-path' has been supplied, giving up");
-  }
-
-  // set up the startup loader
+  // check the startup path
   if (_startupPath.empty()) {
     LOG_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
   }
 
-  // set the actions path
-  if (_useActions && _actionPath.empty()) {
-    LOG_FATAL_AND_EXIT("no 'javascript.action-directory' has been supplied, giving up");
-  }
+  // remove trailing / from path
+  _startupPath = StringUtils::trim(_startupPath, TRI_DIR_SEPARATOR_STR);
+
+  // derive all other options from --javascript.startup-directory
+  _actionPath  = _startupPath + TRI_DIR_SEPARATOR_STR + "actions";
+
+  _modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" + TRI_DIR_SEPARATOR_STR + "modules;" + 
+                 _startupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" + 
+                 _startupPath + TRI_DIR_SEPARATOR_STR + "node"; 
 
   // dump paths
   {
@@ -589,10 +596,7 @@ bool ApplicationV8::prepare () {
 
     paths.push_back(string("startup '" + _startupPath + "'"));
     paths.push_back(string("modules '" + _modulesPath + "'"));
-
-    if (! _packagePath.empty()) {
-      paths.push_back(string("packages '" + _packagePath + "'"));
-    }
+    paths.push_back(string("packages '" + _packagePath + "'"));
 
     if (_useActions) {
       paths.push_back(string("actions '" + _actionPath + "'"));
@@ -613,12 +617,6 @@ bool ApplicationV8::prepare () {
   if (_appPath.empty()) {
     LOG_FATAL_AND_EXIT("no value has been specified for --javascript.app-path.");
   }
-
-  if (_packagePath.empty()) {
-    LOG_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
-    // TODO: decide if we want to abort server start here
-  }
-
 
   _startupLoader.setDirectory(_startupPath);
   
@@ -760,7 +758,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _startupPath);
+  TRI_InitV8Utils(context->_context, _startupPath, _modulesPath, _packagePath);
   TRI_InitV8Shell(context->_context);
 
   {

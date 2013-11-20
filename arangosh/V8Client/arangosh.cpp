@@ -73,6 +73,12 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief we'll store deprecated config option values in here
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string DeprecatedPath;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +123,7 @@ static JSLoader StartupLoader;
 static string StartupModules = "";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path for Node modules files
+/// @brief path for JavaScript packages
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StartupPackages = "";
@@ -434,11 +440,12 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("javascript.execute-string", &ExecuteString, "execute Javascript code from string")
     ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
     ("javascript.gc-interval", &GcInterval, "JavaScript request-based garbage collection interval (each x commands)")
-    ("javascript.modules-path", &StartupModules, "one or more directories separated by semi-colons")
     ("javascript.package-path", &StartupPackages, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
+    // deprecated options
+    ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
   ;
 
 #ifdef _WIN32
@@ -479,10 +486,10 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   // set V8 options
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
 
-  // check module path
-  if (StartupModules.empty()) {
-    LOG_FATAL_AND_EXIT("module path not known, please use '--javascript.modules-path'");
-  }
+  // derive other paths from `--javascript.directory`
+  StartupModules = StartupPath + TRI_DIR_SEPARATOR_STR + "client" + TRI_DIR_SEPARATOR_STR + "modules;" + 
+                   StartupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" + 
+                   StartupPath + TRI_DIR_SEPARATOR_STR + "node"; 
 
   // turn on paging automatically if "pager" option is set
   if (options.has("pager") && ! options.has("use-pager")) {
@@ -1814,7 +1821,7 @@ int main (int argc, char* argv[]) {
 
   TRI_InitV8Buffer(context);
 
-  TRI_InitV8Utils(context, StartupModules, StartupPackages, StartupPath);
+  TRI_InitV8Utils(context, StartupPath, StartupModules, StartupPackages);
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)

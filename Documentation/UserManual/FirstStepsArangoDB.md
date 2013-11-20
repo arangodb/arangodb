@@ -225,8 +225,6 @@ you can skip this section.
   * `server.endpoint`: what IP address and port to bind to, 
   * `log` parameters: if and where to log
   * `database.directory`: path the database files are stored in
-  * `javascript.action-directory` and `javascript.modules-path`: where to 
-    look for Javascript files
 
   If the configuration reveals something is not configured right, the config
   file should be adjusted and the server be restarted.
@@ -570,8 +568,6 @@ Use `--help` to get a list of command-line options:
       --javascript.check <string>                syntax check code Javascript code from file
       --javascript.execute <string>              execute Javascript code from file
       --javascript.execute-string <string>       execute Javascript code from string
-      --javascript.modules-path <string>         one or more directories separated by semi-colons
-      --javascript.package-path <string>         one or more directories separated by semi-colons
       --javascript.startup-directory <string>    startup paths containing the JavaScript files
       --javascript.unit-tests <string>           do not start as shell, run unit tests instead
       --jslint <string>                          do not start as shell, run jslint instead
