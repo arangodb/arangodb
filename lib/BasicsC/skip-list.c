@@ -466,7 +466,7 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
 /// @brief returns the number of entries in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_SkipListNrUsed (TRI_skiplist_t *sl) {
+uint64_t TRI_SkipListGetNrUsed (TRI_skiplist_t *sl) {
   return sl->nrUsed;
 }
 
