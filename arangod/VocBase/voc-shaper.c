@@ -76,7 +76,6 @@ typedef struct weighted_attribute_s {
   TRI_shape_aid_t              _aid;
   int64_t                      _weight;  
   TRI_shaped_json_t            _value;
-  const TRI_shaper_t*          _shaper;
 } 
 weighted_attribute_t;
 
@@ -453,7 +452,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   if (weightedAttribute != NULL) {
     weightedAttribute->_aid       = markerResult->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-    weightedAttribute->_attribute = (char*)(markerResult) + sizeof(TRI_df_attribute_marker_t);
+    weightedAttribute->_attribute = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
     weightedAttribute->_next      = NULL;
 
     // ..........................................................................
@@ -740,9 +739,9 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 /// @brief compares to weighted attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int attributeWeightCompareFunction (const void* leftItem, const void* rightItem) {
-  const weighted_attribute_t* l = (const weighted_attribute_t*)(leftItem);
-  const weighted_attribute_t* r = (const weighted_attribute_t*)(rightItem);
+static int AttributeWeightCompareFunction (const void* leftItem, const void* rightItem) {
+  const weighted_attribute_t* l = (const weighted_attribute_t*) leftItem;
+  const weighted_attribute_t* r = (const weighted_attribute_t*) rightItem;
 
   if (l->_weight < r->_weight) { 
     return -1; 
@@ -760,7 +759,7 @@ static int attributeWeightCompareFunction (const void* leftItem, const void* rig
 /// comparisions.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void freeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedList, 
+static void FreeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedList, 
                                           weighted_attribute_t** rightWeightedList) {
   if (*leftWeightedList != NULL) {                                         
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, *leftWeightedList);
@@ -777,7 +776,7 @@ static void freeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedLis
 /// @brief returns the number of entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
+static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
                                             const TRI_shaper_t* shaper, 
                                             const TRI_shaped_json_t* shapedJson,
                                             weighted_attribute_t** attributeArray) {
@@ -847,7 +846,6 @@ static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
     (*attributeArray)[j]._value._sid         = sids[j];
     (*attributeArray)[j]._value._data.data   = shapedJson->_data.data + offsets[j];
     (*attributeArray)[j]._value._data.length = offsets[j + 1] - offsets[j];
-    (*attributeArray)[j]._shaper             = shaper;
   }
   
   offsets = (const TRI_shape_size_t*)(shapedJson->_data.data);
@@ -858,7 +856,6 @@ static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
     (*attributeArray)[jj]._value._sid         = sids[jj];
     (*attributeArray)[jj]._value._data.data   = shapedJson->_data.data + offsets[j];
     (*attributeArray)[jj]._value._data.length = offsets[j + 1] - offsets[j];
-    (*attributeArray)[jj]._shaper             = shaper;
   }
 
   return (fixedEntries + variableEntries);  
@@ -969,11 +966,11 @@ static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, 
 static int InitStep1VocShaper (voc_shaper_t* shaper) {
   int res;
 
-  shaper->base.findAttributeByName = FindAttributeByName;
+  shaper->base.findAttributeByName   = FindAttributeByName;
   shaper->base.lookupAttributeByName = LookupAttributeByName;
-  shaper->base.lookupAttributeId = LookupAttributeId;
-  shaper->base.findShape = FindShape;
-  shaper->base.lookupShapeId = LookupShapeId;
+  shaper->base.lookupAttributeId     = LookupAttributeId;
+  shaper->base.findShape             = FindShape;
+  shaper->base.lookupShapeId         = LookupShapeId;
 
   res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
                                   TRI_UNKNOWN_MEM_ZONE,
@@ -1217,6 +1214,12 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   weightedAttribute = (shaper->_weights)._first;
   while (weightedAttribute != NULL) {
     nextWeightedAttribute = weightedAttribute->_next;
+
+    // free attribute name
+    if (weightedAttribute->_attribute != NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, weightedAttribute->_attribute);
+    }
+
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, weightedAttribute);
     weightedAttribute = nextWeightedAttribute;
   }
@@ -1254,6 +1257,61 @@ int TRI_InitVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
   return InitStep3VocShaper(shaper);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move a shape marker, called during compaction
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MoveMarkerVocShaper (TRI_shaper_t* s, 
+                             TRI_df_marker_t* marker) {
+  voc_shaper_t* shaper = (voc_shaper_t*) s;
+
+  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
+    TRI_shape_t* l = (TRI_shape_t*) p;
+    void* f;
+
+    // remove the old marker
+    f = TRI_RemoveKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid);
+    assert(f != NULL);
+
+    // re-insert the marker with the new pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l);
+    assert(f == NULL);
+  
+    // same for the shape dictionary
+    f = TRI_RemoveElementAssociativeSynced(&shaper->_shapeDictionary, l);
+    assert(f != NULL);
+
+    // re-insert 
+    f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l);
+    assert(f == NULL);
+  }
+  else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
+    char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
+    void* f;
+ 
+    // remove attribute by name (p points to new location of name, but names
+    // are identical in old and new marker) 
+    f = TRI_RemoveKeyAssociativeSynced(&shaper->_attributeNames, p);
+    assert(f != NULL);
+  
+    // now re-insert same attribute with adjusted pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m);
+    assert(f == NULL);
+
+    // same for attribute ids
+    f = TRI_RemoveKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid);
+    assert(f != NULL);
+
+    // now re-insert same attribute with adjusted pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m);
+    assert(f == NULL);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1321,7 +1379,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
     weightedAttribute->_aid       = m->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-    weightedAttribute->_attribute = (char*) m + sizeof(TRI_df_attribute_marker_t);
+    weightedAttribute->_attribute = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, (char*) m + sizeof(TRI_df_attribute_marker_t));
     weightedAttribute->_next      = NULL;
 
     // ..........................................................................
@@ -1849,8 +1907,8 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // generate the left and right lists.
           // ............................................................................
 
-          leftNumWeightedList  = compareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
-          rightNumWeightedList = compareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
+          leftNumWeightedList  = CompareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
+          rightNumWeightedList = CompareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
 
           // ............................................................................
           // If the left and right both resulted in errors, we return equality for want
@@ -1858,7 +1916,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if ( (leftNumWeightedList < 0) && (rightNumWeightedList < 0) )  { // probably out of memory error        
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 0;            
           }
           
@@ -1867,7 +1925,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if (leftNumWeightedList < 0) { // probably out of memory error        
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return -1; // attempt to compare as low as possible
           }
          
@@ -1876,7 +1934,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if (rightNumWeightedList < 0) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 1;
           }
 
@@ -1885,7 +1943,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if ( (leftNumWeightedList == 0) && (rightNumWeightedList == 0) ) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 0; 
           }
 
@@ -1894,7 +1952,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
 
           if  (leftNumWeightedList == 0) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return -1; 
           }
          
@@ -1903,7 +1961,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
 
           if  (rightNumWeightedList == 0) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 1; 
           }
 
@@ -1911,8 +1969,8 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // We now have to sort the left and right weighted list according to attribute weight
           // ..............................................................................
 
-          qsort(leftWeightedList, leftNumWeightedList, sizeof(weighted_attribute_t), attributeWeightCompareFunction);
-          qsort(rightWeightedList, rightNumWeightedList, sizeof(weighted_attribute_t), attributeWeightCompareFunction);                         
+          qsort(leftWeightedList, leftNumWeightedList, sizeof(weighted_attribute_t), AttributeWeightCompareFunction);
+          qsort(rightWeightedList, rightNumWeightedList, sizeof(weighted_attribute_t), AttributeWeightCompareFunction);                         
 
           // ..............................................................................
           // check the weight and if equal check the values. Notice that numWeightedList
@@ -1970,7 +2028,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // Deallocate any memory for the comparisions and return the result
           // ..............................................................................
           
-          freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+          FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
           return result;
         }
       } // end of switch (rightType) 
