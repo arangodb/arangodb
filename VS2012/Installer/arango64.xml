@@ -15,7 +15,7 @@
   <Property Id="WIXUI_DONTVALIDATEPATH" Value="1"/>
     
   <Directory Id='TARGETDIR' Name='SourceDir'>  
-   <Directory Id='ProgramFilesFolder'>  
+   <Directory Id='ProgramFiles64Folder'>  
      <Directory Id="IISROOT" Name=".">   
       <Directory Id='INSTALLDIR' Name='triAGENS'>  
         
