@@ -76,7 +76,6 @@ typedef struct weighted_attribute_s {
   TRI_shape_aid_t              _aid;
   int64_t                      _weight;  
   TRI_shaped_json_t            _value;
-  const TRI_shaper_t*          _shaper;
 } 
 weighted_attribute_t;
 
@@ -740,9 +739,9 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 /// @brief compares to weighted attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int attributeWeightCompareFunction (const void* leftItem, const void* rightItem) {
-  const weighted_attribute_t* l = (const weighted_attribute_t*)(leftItem);
-  const weighted_attribute_t* r = (const weighted_attribute_t*)(rightItem);
+static int AttributeWeightCompareFunction (const void* leftItem, const void* rightItem) {
+  const weighted_attribute_t* l = (const weighted_attribute_t*) leftItem;
+  const weighted_attribute_t* r = (const weighted_attribute_t*) rightItem;
 
   if (l->_weight < r->_weight) { 
     return -1; 
@@ -760,7 +759,7 @@ static int attributeWeightCompareFunction (const void* leftItem, const void* rig
 /// comparisions.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void freeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedList, 
+static void FreeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedList, 
                                           weighted_attribute_t** rightWeightedList) {
   if (*leftWeightedList != NULL) {                                         
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, *leftWeightedList);
@@ -777,7 +776,7 @@ static void freeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedLis
 /// @brief returns the number of entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
+static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
                                             const TRI_shaper_t* shaper, 
                                             const TRI_shaped_json_t* shapedJson,
                                             weighted_attribute_t** attributeArray) {
@@ -847,7 +846,6 @@ static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
     (*attributeArray)[j]._value._sid         = sids[j];
     (*attributeArray)[j]._value._data.data   = shapedJson->_data.data + offsets[j];
     (*attributeArray)[j]._value._data.length = offsets[j + 1] - offsets[j];
-    (*attributeArray)[j]._shaper             = shaper;
   }
   
   offsets = (const TRI_shape_size_t*)(shapedJson->_data.data);
@@ -858,7 +856,6 @@ static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
     (*attributeArray)[jj]._value._sid         = sids[jj];
     (*attributeArray)[jj]._value._data.data   = shapedJson->_data.data + offsets[j];
     (*attributeArray)[jj]._value._data.length = offsets[j + 1] - offsets[j];
-    (*attributeArray)[jj]._shaper             = shaper;
   }
 
   return (fixedEntries + variableEntries);  
@@ -1910,8 +1907,8 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // generate the left and right lists.
           // ............................................................................
 
-          leftNumWeightedList  = compareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
-          rightNumWeightedList = compareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
+          leftNumWeightedList  = CompareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
+          rightNumWeightedList = CompareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
 
           // ............................................................................
           // If the left and right both resulted in errors, we return equality for want
@@ -1919,7 +1916,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if ( (leftNumWeightedList < 0) && (rightNumWeightedList < 0) )  { // probably out of memory error        
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 0;            
           }
           
@@ -1928,7 +1925,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if (leftNumWeightedList < 0) { // probably out of memory error        
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return -1; // attempt to compare as low as possible
           }
          
@@ -1937,7 +1934,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if (rightNumWeightedList < 0) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 1;
           }
 
@@ -1946,7 +1943,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
           
           if ( (leftNumWeightedList == 0) && (rightNumWeightedList == 0) ) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 0; 
           }
 
@@ -1955,7 +1952,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
 
           if  (leftNumWeightedList == 0) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return -1; 
           }
          
@@ -1964,7 +1961,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // ............................................................................
 
           if  (rightNumWeightedList == 0) {
-            freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 1; 
           }
 
@@ -1972,8 +1969,8 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // We now have to sort the left and right weighted list according to attribute weight
           // ..............................................................................
 
-          qsort(leftWeightedList, leftNumWeightedList, sizeof(weighted_attribute_t), attributeWeightCompareFunction);
-          qsort(rightWeightedList, rightNumWeightedList, sizeof(weighted_attribute_t), attributeWeightCompareFunction);                         
+          qsort(leftWeightedList, leftNumWeightedList, sizeof(weighted_attribute_t), AttributeWeightCompareFunction);
+          qsort(rightWeightedList, rightNumWeightedList, sizeof(weighted_attribute_t), AttributeWeightCompareFunction);                         
 
           // ..............................................................................
           // check the weight and if equal check the values. Notice that numWeightedList
@@ -2031,7 +2028,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // Deallocate any memory for the comparisions and return the result
           // ..............................................................................
           
-          freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+          FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
           return result;
         }
       } // end of switch (rightType) 

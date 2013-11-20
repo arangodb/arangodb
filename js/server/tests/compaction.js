@@ -56,6 +56,10 @@ function CompactionSuite () {
       for (i = 0; i < 1000; ++i) {
         c1.save({ _key: "test" + i });
       }
+
+      // this accesses all documents, and creates shape accessors for all of them
+      c1.toArray();
+
       c1.truncate(); 
       c1.rotate(); 
 
@@ -170,6 +174,9 @@ function CompactionSuite () {
       
       c1.save({ _key: "foo", name: { first: "foo", last: "bar" } });
       c1.save({ _key: "bar", name: { first: "bar", last: "baz", middle: "foo" }, age: 22 });
+      
+      // this accesses all documents, and creates shape accessors for all of them
+      c1.toArray();
 
       // remove most of the shapes
       for (i = 0; i < 100; ++i) { 
