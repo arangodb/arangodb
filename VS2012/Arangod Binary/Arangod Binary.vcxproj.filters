@@ -37,12 +37,6 @@
     <Filter Include="IndexIterators Header">
       <UniqueIdentifier>{b0dd276d-71b6-4991-a4b2-5524256eb6e5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="PriorityQueue Source">
-      <UniqueIdentifier>{120b3084-35a3-4c63-9dd3-5dd5962475e0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="PriorityQueue Header">
-      <UniqueIdentifier>{e1c38b70-c0da-49f9-a438-654573b89d12}</UniqueIdentifier>
-    </Filter>
     <Filter Include="RestHandler Header">
       <UniqueIdentifier>{bdf04799-3349-4e2d-8270-9e3b17a27613}</UniqueIdentifier>
     </Filter>
@@ -207,12 +201,6 @@
     <ClCompile Include="..\..\arangod\IndexOperators\index-operator.c">
       <Filter>IndexOperators Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\arangod\PriorityQueue\pqueueindex.c">
-      <Filter>PriorityQueue Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\PriorityQueue\priorityqueue.c">
-      <Filter>PriorityQueue Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\arangod\SkipLists\skiplist.c">
       <Filter>Skiplists Source</Filter>
     </ClCompile>
@@ -262,9 +250,6 @@
       <Filter>VocBase Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\VocBase\primary-collection.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\VocBase\shape-collection.c">
       <Filter>VocBase Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\VocBase\synchroniser.c">
@@ -485,12 +470,6 @@
     <ClInclude Include="..\..\arangod\IndexOperators\index-operator.h">
       <Filter>IndexOperators Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\PriorityQueue\pqueueindex.h">
-      <Filter>PriorityQueue Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\PriorityQueue\priorityqueue.h">
-      <Filter>PriorityQueue Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\RestHandler\RestBatchHandler.h">
       <Filter>RestHandler Header</Filter>
     </ClInclude>
@@ -555,9 +534,6 @@
       <Filter>VocBase Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\VocBase\primary-collection.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\VocBase\shape-collection.h">
       <Filter>VocBase Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\VocBase\synchroniser.h">
