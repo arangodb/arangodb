@@ -319,6 +319,8 @@ Graph.prototype.getVertices = function () {
     wrapper = function(object) {
       return new Vertex(graph, object);
     };
+
+  return new Iterator(wrapper, cursor, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
