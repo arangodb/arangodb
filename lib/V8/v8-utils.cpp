@@ -2181,6 +2181,31 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief intentionally cause a segfault
+///
+/// @FUN{internal.debugSegfault(@FA{message})}
+///
+/// intentionally cause a segmentation violation
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugSegfault(<message>)");
+  }
+
+  const string message = TRI_ObjectToString(argv[0]);
+
+  TRI_SegfaultDebugging(message.c_str());
+
+  // we may get here if we are in non-maintainer mode
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set a failure point
 ///
 /// @FUN{internal.debugSetFailAt(@FA{point})}
@@ -2820,6 +2845,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
 
   // debugging functions
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SEGFAULT", JS_DebugSegfault);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SET_FAILAT", JS_DebugSetFailAt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_REMOVE_FAILAT", JS_DebugRemoveFailAt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CLEAR_FAILAT", JS_DebugClearFailAt);
