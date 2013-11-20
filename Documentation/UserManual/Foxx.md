@@ -26,8 +26,12 @@ separate application server.
 Think of an Foxx app as a typical web app similar to any other web app using
 other technologies. A Foxx app provides one or more URLs, which can either
 be accessed directly from the browser or from a backend application written e.g. in
-Ruby or C#. A Foxx app has a routing, accesses data (in ArangoDB), manipulates data,
-it can deliver static HTML pages, CSS, Images and much more. 
+Ruby or C#. Other features include:
+
+* **Routing:** Define arbitrary routes namespaced via the `Controllers`
+* **Accesses data:** Direct access to all data in ArangoDB using simple queries, AQL, traversals and more
+* **Manipulates data:** Create new or manipulate existing entries
+* Deliver **static files** like HTML pages, CSS or images directly
 
 The typical request to a Foxx application will work as follows (only conceptually,
 a lot of the steps are cached in reality):
