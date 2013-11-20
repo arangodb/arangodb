@@ -62,6 +62,36 @@
 
 #define DATABASE_MANAGER_INTERVAL (500 * 1000)
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief eventually acquire a write-lock on the databases
+////////////////////////////////////////////////////////////////////////////////
+
+#define WRITE_LOCK_DATABASES(server) \
+  while (! TRI_TryWriteLockReadWriteLock(&server->_databasesLock)) { \
+    usleep(1000); \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-unlock the databases
+////////////////////////////////////////////////////////////////////////////////
+
+#define WRITE_UNLOCK_DATABASES(server) \
+  TRI_WriteUnlockReadWriteLock(&server->_databasesLock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read-lock the databases
+////////////////////////////////////////////////////////////////////////////////
+
+#define READ_LOCK_DATABASES(server) \
+  TRI_ReadLockReadWriteLock(&server->_databasesLock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read-unlock the databases
+////////////////////////////////////////////////////////////////////////////////
+
+#define READ_UNLOCK_DATABASES(server) \
+  TRI_ReadUnlockReadWriteLock(&server->_databasesLock)
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -823,7 +853,8 @@ static int OpenDatabases (TRI_server_t* server,
 static int CloseDatabases (TRI_server_t* server) {
   size_t i, n;
 
-  TRI_WriteLockReadWriteLock(&server->_databasesLock);
+  WRITE_LOCK_DATABASES(server);
+
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -838,7 +869,7 @@ static int CloseDatabases (TRI_server_t* server) {
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
+  WRITE_UNLOCK_DATABASES(server);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1405,7 +1436,7 @@ static void DatabaseManager (void* data) {
     // check if we have to drop some database
     database = NULL;
 
-    TRI_ReadLockReadWriteLock(&server->_databasesLock);
+    READ_LOCK_DATABASES(server);
 
     n = server->_droppedDatabases._length;
 
@@ -1420,8 +1451,8 @@ static void DatabaseManager (void* data) {
       database = (TRI_vocbase_t*) TRI_RemoveVectorPointer(&server->_droppedDatabases, i);
       break;
     }
-
-    TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+    
+    READ_UNLOCK_DATABASES(server);
 
     if (database != NULL) {
       // remember the database path
@@ -1978,7 +2009,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   TRI_LockMutex(&server->_createLock);
 
-  TRI_ReadLockReadWriteLock(&server->_databasesLock);
+  READ_LOCK_DATABASES(server);
 
   n = server->_databases._nrAlloc;
   for (i = 0; i < n; ++i) {
@@ -1987,7 +2018,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     if (vocbase != NULL) {
       if (TRI_EqualString(name, vocbase->_name)) {
         // name already in use
-        TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+        READ_UNLOCK_DATABASES(server);
         TRI_UnlockMutex(&server->_createLock);
 
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
@@ -1996,7 +2027,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   }
 
   // name not yet in use, release the read lock
-  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+  READ_UNLOCK_DATABASES(server);
 
   // create the database directory
   tick = TRI_NewTickServer();
@@ -2045,10 +2076,10 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   // increase reference counter
   TRI_UseVocBase(vocbase);
-
-  TRI_WriteLockReadWriteLock(&server->_databasesLock);
+  
+  WRITE_LOCK_DATABASES(server);
   TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
-  TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
+  WRITE_UNLOCK_DATABASES(server);
 
   TRI_UnlockMutex(&server->_createLock);
 
@@ -2071,11 +2102,11 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  TRI_WriteLockReadWriteLock(&server->_databasesLock);
+  WRITE_LOCK_DATABASES(server);
 
   if (TRI_ReserveVectorPointer(&server->_droppedDatabases, 1) != TRI_ERROR_NO_ERROR) {
     // we need space for one more element
-    TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
+    WRITE_UNLOCK_DATABASES(server);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2108,7 +2139,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&server->_databasesLock);
+  WRITE_UNLOCK_DATABASES(server);
 
   return res;
 }
@@ -2122,7 +2153,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
                                       char const* name) {
   TRI_vocbase_t* vocbase;
 
-  TRI_ReadLockReadWriteLock(&server->_databasesLock);
+  READ_LOCK_DATABASES(server);
 
   vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
 
@@ -2132,8 +2163,8 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
     // if we got here, no one else can have deleted the database
     assert(result == true);
   }
-
-  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+  
+  READ_UNLOCK_DATABASES(server);
 
   return vocbase;
 }
@@ -2163,7 +2194,7 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
 
   res = TRI_ERROR_NO_ERROR;
 
-  TRI_ReadLockReadWriteLock(&server->_databasesLock);
+  READ_LOCK_DATABASES(server);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -2194,7 +2225,8 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
       }
     }
   }
-  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+  
+  READ_UNLOCK_DATABASES(server);
 
   SortDatabaseNames(names);
 
@@ -2213,7 +2245,7 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
 
   res = TRI_ERROR_NO_ERROR;
 
-  TRI_ReadLockReadWriteLock(&server->_databasesLock);
+  READ_LOCK_DATABASES(server);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -2239,7 +2271,8 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
       }
     }
   }
-  TRI_ReadUnlockReadWriteLock(&server->_databasesLock);
+
+  READ_UNLOCK_DATABASES(server);
 
   SortDatabaseNames(names);
 

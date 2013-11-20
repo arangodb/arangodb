@@ -212,6 +212,9 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   assert(collection->_name != NULL);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+ 
+  // pre-condition
+  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   // only if we find the collection by its id, we can delete it by name
   if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid) != NULL) {
@@ -220,6 +223,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
   }
 
+  // post-condition
   TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -577,7 +581,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // OOM. this might have happend AFTER insertion
+    // OOM. this might have happened AFTER insertion
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(res);
@@ -822,6 +826,8 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   // this shouldn't fail, as we removed an element above so adding one should be ok
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
   assert(found == NULL);
+  
+  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -1754,7 +1760,10 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
 
   TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
 
-  TRI_WriteLockReadWriteLock(&vocbase->_inventoryLock);
+  while (! TRI_TryWriteLockReadWriteLock(&vocbase->_inventoryLock)) {
+    // cycle on write-lock
+    usleep(1000);
+  }
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock 
