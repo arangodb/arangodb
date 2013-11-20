@@ -81,11 +81,6 @@ add_library(
     BasicsC/voc-mimetypes.c
     BasicsC/tri-zip.c
     JsonParser/json-parser.c
-    Logger/Logger.cpp
-    Logger/LoggerData.cpp
-    Logger/LoggerInfo.cpp
-    Logger/LoggerStream.cpp
-    Logger/LoggerTiming.cpp
     ProgramOptions/program-options.c
     Rest/AnyServer.cpp
     Rest/EndpointList.cpp
