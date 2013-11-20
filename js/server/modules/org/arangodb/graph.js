@@ -667,7 +667,7 @@ Graph.prototype.getVertices = function () {
       return graph.constructVertex(object);
     };
 
-  return new Iterator(wrapper, graph.constructVertex, "[edge iterator]");
+  return new Iterator(wrapper, all, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
