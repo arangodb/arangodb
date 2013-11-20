@@ -432,7 +432,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
     dfi->_numberAttributes++;
     dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
   }
-    
+  
   // enter into the dictionaries
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result);
   assert(f == NULL);
@@ -694,7 +694,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   // get next shape number and write into marker
   ((TRI_shape_t*) (mem + sizeof(TRI_df_shape_marker_t)))->_sid = s->_nextSid++;
 
-  // write into the shape collection
+  // write shape into the collection
   res = TRI_WriteMarkerDocumentCollection(s->_collection, &marker->base, totalSize, &fid, &result, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -717,7 +717,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     dfi->_numberShapes++;
     dfi->_sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
   }
-
+    
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
 
