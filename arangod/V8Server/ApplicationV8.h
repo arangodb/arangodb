@@ -371,12 +371,12 @@ namespace triagens {
         struct TRI_server_s* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the directory containing alternate startup scripts
+/// @brief path to the directory containing the startup scripts
 ///
-/// @CMDOPT{\--javascript.directory @CA{directory}}
+/// @CMDOPT{\--javascript.startup-directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to the JavaScript files used for
-/// bootstraping. Multiple paths can be specified separated with commas.
+/// bootstraping.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupPath;
@@ -384,16 +384,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of module directories
 ///
-/// @CMDOPT{\--javascript.modules-path @CA{directory}}
-///
-/// Specifies the @CA{directory} paths where the JavaScript modules are located.
-/// Multiple paths can be specified separated with commas.
+/// This variable is automatically set based on the value of 
+/// `--javascript.startup-directory`.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _modulesPath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief semicolon separated list of module directories
+/// @brief semicolon separated list of package directories
 ///
 /// @CMDOPT{\--javascript.package-path @CA{directory}}
 ///
@@ -406,10 +404,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
-/// @CMDOPT{\--javascript.action-directory @CA{directory}}
-///
-/// Specifies the @CA{directory} containg the JavaScript files describing the
-/// system actions.  Multiple paths can be specified separated with commas.
+/// This variable is automatically set based on the value of 
+/// `--javascript.startup-directory`.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _actionPath;

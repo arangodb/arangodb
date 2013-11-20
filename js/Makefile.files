@@ -74,8 +74,6 @@ jslint:
 			--log.level error \
 			--server.password "" \
 			--javascript.startup-directory @srcdir@/js \
-			--javascript.modules-path "@srcdir@/js/client/modules;@srcdir@/js/common/modules;@srcdir@/js/node" \
-			--javascript.package-path "@srcdir@/js/npm;@srcdir@/js/common/test-data/modules" \
 			--jslint $$file; \
 	done
 
