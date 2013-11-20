@@ -453,7 +453,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   if (weightedAttribute != NULL) {
     weightedAttribute->_aid       = markerResult->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-    weightedAttribute->_attribute = (char*)(markerResult) + sizeof(TRI_df_attribute_marker_t);
+    weightedAttribute->_attribute = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
     weightedAttribute->_next      = NULL;
 
     // ..........................................................................
@@ -969,11 +969,11 @@ static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, 
 static int InitStep1VocShaper (voc_shaper_t* shaper) {
   int res;
 
-  shaper->base.findAttributeByName = FindAttributeByName;
+  shaper->base.findAttributeByName   = FindAttributeByName;
   shaper->base.lookupAttributeByName = LookupAttributeByName;
-  shaper->base.lookupAttributeId = LookupAttributeId;
-  shaper->base.findShape = FindShape;
-  shaper->base.lookupShapeId = LookupShapeId;
+  shaper->base.lookupAttributeId     = LookupAttributeId;
+  shaper->base.findShape             = FindShape;
+  shaper->base.lookupShapeId         = LookupShapeId;
 
   res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
                                   TRI_UNKNOWN_MEM_ZONE,
@@ -1217,6 +1217,12 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   weightedAttribute = (shaper->_weights)._first;
   while (weightedAttribute != NULL) {
     nextWeightedAttribute = weightedAttribute->_next;
+
+    // free attribute name
+    if (weightedAttribute->_attribute != NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, weightedAttribute->_attribute);
+    }
+
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, weightedAttribute);
     weightedAttribute = nextWeightedAttribute;
   }
@@ -1254,6 +1260,61 @@ int TRI_InitVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
   return InitStep3VocShaper(shaper);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move a shape marker, called during compaction
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MoveMarkerVocShaper (TRI_shaper_t* s, 
+                             TRI_df_marker_t* marker) {
+  voc_shaper_t* shaper = (voc_shaper_t*) s;
+
+  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
+    TRI_shape_t* l = (TRI_shape_t*) p;
+    void* f;
+
+    // remove the old marker
+    f = TRI_RemoveKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid);
+    assert(f != NULL);
+
+    // re-insert the marker with the new pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l);
+    assert(f == NULL);
+  
+    // same for the shape dictionary
+    f = TRI_RemoveElementAssociativeSynced(&shaper->_shapeDictionary, l);
+    assert(f != NULL);
+
+    // re-insert 
+    f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l);
+    assert(f == NULL);
+  }
+  else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
+    char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
+    void* f;
+ 
+    // remove attribute by name (p points to new location of name, but names
+    // are identical in old and new marker) 
+    f = TRI_RemoveKeyAssociativeSynced(&shaper->_attributeNames, p);
+    assert(f != NULL);
+  
+    // now re-insert same attribute with adjusted pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m);
+    assert(f == NULL);
+
+    // same for attribute ids
+    f = TRI_RemoveKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid);
+    assert(f != NULL);
+
+    // now re-insert same attribute with adjusted pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m);
+    assert(f == NULL);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1321,7 +1382,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
     weightedAttribute->_aid       = m->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-    weightedAttribute->_attribute = (char*) m + sizeof(TRI_df_attribute_marker_t);
+    weightedAttribute->_attribute = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, (char*) m + sizeof(TRI_df_attribute_marker_t));
     weightedAttribute->_next      = NULL;
 
     // ..........................................................................
