@@ -1169,6 +1169,12 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     func = "LESSEQUAL";
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+    if (rhs->_type != TRI_AQL_NODE_LIST) {
+      // oops, rhs is no list. cannot run IN operator
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
+      return node;
+    }
+
     func = "IN";
   }
   else {
@@ -1187,21 +1193,23 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   execContext = TRI_CreateExecutionContext(code->_buffer);
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
 
-  if (! execContext) {
+  if (execContext == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
-  if (! json) {
+
+  if (json == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, NULL);
     return NULL;
   }
 
   // use the constant values instead of the function call node
   node = TRI_JsonNodeAql(context, json);
-  if (! node) {
+
+  if (node == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
