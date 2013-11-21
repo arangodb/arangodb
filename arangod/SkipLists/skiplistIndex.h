@@ -109,8 +109,9 @@ typedef struct TRI_skiplist_iterator_s {
                  // _cursor is NULL, then there are (currently) no more
                  // documents in the iterator.
   bool  (*_hasNext) (struct TRI_skiplist_iterator_s*);
-  void* (*_next)    (struct TRI_skiplist_iterator_s*);
-  void* (*_nexts)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);
+  TRI_skiplist_index_element_t* (*_next)(struct TRI_skiplist_iterator_s*);
+  TRI_skiplist_index_element_t* (*_nexts)(struct TRI_skiplist_iterator_s*, 
+                                          int64_t jumpSize);
 } 
 TRI_skiplist_iterator_t;
 

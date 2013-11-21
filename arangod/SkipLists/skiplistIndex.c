@@ -365,7 +365,8 @@ static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) 
 /// @brief Jumps forwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* SkiplistIteration(TRI_skiplist_iterator_t* iterator, 
+static TRI_skiplist_index_element_t* SkiplistIteration(
+                               TRI_skiplist_iterator_t* iterator, 
                                int64_t jumpSize) {
   TRI_skiplist_iterator_interval_t* interval;
   int64_t j;
@@ -411,7 +412,7 @@ static void* SkiplistIteration(TRI_skiplist_iterator_t* iterator,
     }
   }
 
-  return &(iterator->_cursor->doc);
+  return (TRI_skiplist_index_element_t*) (iterator->_cursor->doc);
 }
 
 
@@ -420,7 +421,8 @@ static void* SkiplistIteration(TRI_skiplist_iterator_t* iterator,
 /// @brief default callback for jumping forward by 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* SkiplistNextIterationCallback(TRI_skiplist_iterator_t* iterator) {
+static TRI_skiplist_index_element_t* SkiplistNextIterationCallback(
+                        TRI_skiplist_iterator_t* iterator) {
   return SkiplistIteration(iterator,1);
 }
 
@@ -429,7 +431,8 @@ static void* SkiplistNextIterationCallback(TRI_skiplist_iterator_t* iterator) {
 /// @brief default callback for jumping forward by jumpSize docs
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* SkiplistNextsIterationCallback(TRI_skiplist_iterator_t* iterator,
+static TRI_skiplist_index_element_t* SkiplistNextsIterationCallback(
+                                            TRI_skiplist_iterator_t* iterator,
                                             int64_t jumpSize) {
   return SkiplistIteration(iterator,jumpSize);
 }
