@@ -254,7 +254,9 @@ int Thread::shutdown () {
     int res = TRI_StopThread(&_thread);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to stop thread '%s'", _name.c_str());
+      LOG_WARNING("unable to stop thread '%s': %s", 
+                  _name.c_str(), 
+                  TRI_errno_string(res));
     }
   }
 
