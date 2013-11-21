@@ -1083,7 +1083,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
 
   while (true) {
-    TRI_skiplist_index_element_t* indexElement = (TRI_skiplist_index_element_t*) skiplistIterator->_next(skiplistIterator);
+    TRI_skiplist_index_element_t* indexElement = 
+                  skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
       break;
