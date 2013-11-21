@@ -2405,6 +2405,7 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
 
 void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
   TRI_LockSpin(&vocbase->_usage._lock);
+  TRI_ASSERT_MAINTAINER(vocbase->_usage._refCount > 0);
   --vocbase->_usage._refCount;
   TRI_UnlockSpin(&vocbase->_usage._lock);
 }
