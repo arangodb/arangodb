@@ -130,6 +130,7 @@
   },
 
   "files": {
+    "/favicon.ico" : "favicon.ico",
     "/api-docs.json": "api-docs.json",
     "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
