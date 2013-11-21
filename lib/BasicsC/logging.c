@@ -1426,14 +1426,22 @@ log_appender_file_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WriteLogFile (int fd, char const* buffer, ssize_t len) {
+  bool giveUp = false;
+
   while (len > 0) {
     ssize_t n;
 
     n = TRI_WRITE(fd, buffer, len);
 
-    if (n <= 0) {
-      fprintf(stderr, "cannot log data: %s", TRI_LAST_ERROR_STR);
+    if (n < 0) {
+      fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
       return; // give up, but do not try to log failure
+    }
+    else if (n == 0) {
+      if (! giveUp) {
+        giveUp = true;
+        continue;
+      }
     }
 
     buffer += n;
