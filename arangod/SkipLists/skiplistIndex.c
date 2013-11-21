@@ -800,8 +800,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
         }
         else {
           temp = TRI_SkipListRightKeyLookup(skiplistIndex->skiplist, &values);
-          // Note: this can be NULL
-          interval._rightEndPoint = temp;
+          interval._rightEndPoint = TRI_SkipListNextNode(temp);
           if (skiplistIndex_findHelperIntervalValid(skiplistIndex,
                                                     &interval)) {
             TRI_PushBackVector(resultIntervalList, &interval);
@@ -815,7 +814,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     case TRI_LE_INDEX_OPERATOR: {
       interval._leftEndPoint  = TRI_SkipListStartNode(skiplistIndex->skiplist);
       temp = TRI_SkipListRightKeyLookup(skiplistIndex->skiplist, &values);
-      interval._rightEndPoint = temp;
+      interval._rightEndPoint = TRI_SkipListNextNode(temp);
 
       if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
