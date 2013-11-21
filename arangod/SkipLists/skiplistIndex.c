@@ -618,7 +618,7 @@ static bool skiplistIndex_findHelperIntervalValid(
   }
   
   compareResult = CmpElmElm( skiplistIndex, 
-                             &(lNode->doc), &(rNode->doc), TRI_CMP_TOTORDER );
+                             lNode->doc, rNode->doc, TRI_CMP_TOTORDER );
   return (compareResult == -1);
   // Since we know that the nodes are not neighbours, we can guarantee
   // at least one document in the interval.
