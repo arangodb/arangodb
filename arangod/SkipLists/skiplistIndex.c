@@ -872,6 +872,7 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
                             TRI_vector_t* shapeList, 
                             TRI_index_operator_t* indexOperator) {
   TRI_skiplist_iterator_t* results;
+  TRI_skiplist_iterator_interval_t* tmp;
 
   results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t),
                          true);
@@ -889,6 +890,13 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
 
   SkiplistIndex_findHelper(skiplistIndex, shapeList, indexOperator, 
                            &(results->_intervals));
+
+  // Finally initialise _cursor if the result is not empty:
+  if (0 > TRI_LengthVector(&(results->_intervals))) {
+    tmp = (TRI_skiplist_iterator_interval_t*) 
+             TRI_AtVector(&(results->_intervals),0);
+    results->_cursor = tmp->_leftEndPoint;
+  }
 
   return results;
 }
