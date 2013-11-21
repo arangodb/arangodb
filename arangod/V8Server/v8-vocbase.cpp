@@ -51,6 +51,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
 #include "Utils/AhuacatlTransaction.h"
+#include "Utils/Barrier.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/EmbeddableTransaction.h"
@@ -1263,6 +1264,8 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     }
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
+
+  Barrier barrier(primary);
 
   TRI_doc_mptr_t document;
   res = trx->createDocument(key, &document, shaped, forceSync);

@@ -327,6 +327,7 @@ bool RestDocumentHandler::createDocument () {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
+  
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -351,6 +352,8 @@ bool RestDocumentHandler::createDocument () {
   }
 
   const TRI_voc_cid_t cid = trx.cid();
+  
+  Barrier barrier(trx.primaryCollection());
 
   TRI_doc_mptr_t document;
   res = trx.createDocument(&document, json, waitForSync);
