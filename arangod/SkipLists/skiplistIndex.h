@@ -68,6 +68,9 @@ SkiplistIndex;
 typedef struct {
   TRI_shaped_json_t* _fields;   // list of shaped json objects which the 
                                 // collection should know about
+  size_t _numFields;   // Note that the number of fields coming from
+                       // a query can be smaller than the number of
+                       // fields indexed
 } 
 TRI_skiplist_index_key_t;
 
