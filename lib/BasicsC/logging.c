@@ -386,8 +386,9 @@ static void StoreOutput (TRI_log_level_e level,
   cur = BufferCurrent[pos];
   buf = &BufferOutput[pos][cur];
 
-  if (buf->_text) {
+  if (buf->_text != NULL) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, buf->_text);
+    buf->_text = NULL;
   }
 
   buf->_lid = BufferLID++;
