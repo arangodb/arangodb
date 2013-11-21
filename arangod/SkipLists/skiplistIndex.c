@@ -892,7 +892,7 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
                            &(results->_intervals));
 
   // Finally initialise _cursor if the result is not empty:
-  if (0 > TRI_LengthVector(&(results->_intervals))) {
+  if (0 < TRI_LengthVector(&(results->_intervals))) {
     tmp = (TRI_skiplist_iterator_interval_t*) 
              TRI_AtVector(&(results->_intervals),0);
     results->_cursor = tmp->_leftEndPoint;
