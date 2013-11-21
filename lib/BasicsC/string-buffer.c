@@ -71,7 +71,8 @@ static int Reserve (TRI_string_buffer_t * self, const size_t size) {
     size_t len;
 
     off = self->_current - self->_buffer;
-    len = (size_t)(1.2 * (self->_len + size));
+    len = (size_t) (1.2 * (self->_len + size));
+    assert(len > 0);
     ptr = TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1);
 
     if (ptr == NULL) {

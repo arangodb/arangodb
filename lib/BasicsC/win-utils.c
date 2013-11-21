@@ -97,13 +97,14 @@ void TRI_usleep (unsigned long waitTime) {
 
   // Create an unnamed waitable timer.
   hTimer = CreateWaitableTimer(NULL, 1, NULL);
+
   if (hTimer == NULL) {
     // no much we can do at this low level
     return;
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    abort();
+    LOG_FATAL_AND_EXIT("internal error in TRI_usleep()");
   }
   // Set timer to wait for indicated micro seconds.
   if (! SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
@@ -114,9 +115,10 @@ void TRI_usleep (unsigned long waitTime) {
 
   // Wait for the timer
   result = WaitForSingleObject(hTimer, INFINITE);
+
   if (result != WAIT_OBJECT_0) {
     CloseHandle(hTimer);
-    abort();
+    LOG_FATAL_AND_EXIT("couldn't wait for timer in TRI_usleep()");
   }
 
   CloseHandle(hTimer);
