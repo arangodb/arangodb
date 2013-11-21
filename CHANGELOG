@@ -1,6 +1,10 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* use pretty-printing in `--console` mode by defaul
+
+* added `check-server` binary for testing
+
 * simplified ArangoDB startup options
 
   Some startup options are now superfluous or their usage is simplified. The
@@ -93,8 +97,23 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.2 (XXXX-XX-XX)
+v1.4.3 (XXXX-XX-XX)
 -------------------
+
+* fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
+  used on the right-hand side of an IN operator that had a collection attribute on the
+  left-hand side
+
+* issue #662:
+  
+  Fixed access violation errors (crashes) in the Windows version, occurring under some
+  circumstances when accessing databases with multiple clients in parallel
+
+
+v1.4.2 (2013-11-20)
+-------------------
+
+* fixed issue #669: Tiny documentation update
 
 * ported Windows version to use native Windows API SRWLocks (slim read-write locks) 
   and condition variables instead of homemade versions
