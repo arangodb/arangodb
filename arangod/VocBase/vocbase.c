@@ -2253,11 +2253,11 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
   bool result;
 
   TRI_LockSpin(&vocbase->_usage._lock);
+  ++vocbase->_usage._refCount;
   if (vocbase->_usage._isDeleted) {
     result = false;
   }
   else {
-    ++vocbase->_usage._refCount;
     result = true;
   }
   TRI_UnlockSpin(&vocbase->_usage._lock);
