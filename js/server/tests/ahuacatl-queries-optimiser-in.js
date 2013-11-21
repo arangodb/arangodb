@@ -30,6 +30,8 @@ var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var getQueryExplanation = helper.getQueryExplanation;
+var assertQueryError = helper.assertQueryError;
+var errors = internal.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -424,8 +426,98 @@ function ahuacatlQueryOptimiserInTestSuite () {
       
       var actual = getQueryResults("LET colors = UNIQUE((FOR x IN @@cn RETURN x.value)) FOR x IN @@cn FILTER x.value IN colors SORT x.value RETURN x.value", { "@cn" : cn });
       assertEqual(expected, actual);
-    }
-        
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check invalid values for IN
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidIn : function () {
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN null RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN false RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN 1.2 RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN '' RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN {} RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: null });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: false });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: 1.2 });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: "" });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: { } });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check invalid values for IN
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidInCollection : function () {
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN null RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN false RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN 1.2 RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN '' RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN {} RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: null });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: false });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: 1.2 });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: "" });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: { } });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check invalid values for IN
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidInCollectionIndex : function () {
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN null RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN false RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN 1.2 RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN '' RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN {} RETURN i");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: null });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: false });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: 1.2 });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: "" });
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: { } });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check valid IN queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testValidIn : function () {
+      c.save({ value: "red" });
+      c.save({ value: "green" });
+      c.save({ value: "blue" });
+      c.save({ value: 12 });
+      c.save({ value: false });
+      c.save({ value: null });
+      
+      var actual = getQueryResults("FOR i IN " + cn + " FILTER i.value IN [ 'red', 'green' ] SORT i.value RETURN i.value");
+      assertEqual([ "green", "red" ], actual);
+      
+      actual = getQueryResults("FOR i IN " + cn + " FILTER i.value IN [ 'green', 'blue' ] SORT i.value RETURN i.value");
+      assertEqual([ "blue", "green" ], actual);
+      
+      actual = getQueryResults("FOR i IN " + cn + " FILTER i.value IN [ 'foo', 'bar' ] SORT i.value RETURN i.value");
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR i IN " + cn + " FILTER i.value IN [ 12, false ] SORT i.value RETURN i.value");
+      assertEqual([ false, 12 ], actual);
+      
+      actual = getQueryResults("FOR i IN " + cn + " FILTER i.value IN [ 23, 'black', 'red', null ] SORT i.value RETURN i.value");
+      assertEqual([ null, 'red' ], actual);
+      
+      c.truncate();
+      c.save({ value: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, "red", "blue" ]});
+      actual = getQueryResults("FOR i IN " + cn + " FILTER 12 IN i.value SORT i.value RETURN LENGTH(i.value)");
+      assertEqual([ 14 ], actual);
+      
+      actual = getQueryResults("FOR i IN " + cn + " FILTER 13 IN i.value SORT i.value RETURN LENGTH(i.value)");
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR i IN " + cn + " FILTER 'red' IN i.value SORT i.value RETURN LENGTH(i.value)");
+      assertEqual([ 14 ], actual);
+    },
+
   };
 
 }
