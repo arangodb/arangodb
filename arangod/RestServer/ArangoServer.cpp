@@ -990,6 +990,10 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
+        
+        const string pretty = "start_pretty_print();";
+        TRI_ExecuteJavaScriptString(context->_context, v8::String::New(pretty.c_str(), pretty.size()), v8::String::New("(internal)"), false);
+
         V8LineEditor console(context->_context, ".arangod.history");
 
         console.open(true);
