@@ -1,5 +1,14 @@
-v1.4.3 (2013-XX-XX)
--------------------
+v1.4.3-alpha1 (2013-XX-XX)
+--------------------------
+
+* fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
+  used on the right-hand side of an IN operator that had a collection attribute on the
+  left-hand side
+
+* issue #662:
+ 
+  Fixed access violation errors (crashes) in the Windows version, occurring under some
+  circumstances when accessing databases with multiple clients in parallel
 
 * fixed issue #681: Problem with ArchLinux PKGBUILD configuration
 
