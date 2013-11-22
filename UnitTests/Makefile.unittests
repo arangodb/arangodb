@@ -374,7 +374,8 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
                @top_srcdir@/js/common/tests/shell-skiplist-index.js \
-               @top_srcdir@/js/server/tests/shell-skiplist-rm-performance.js
+               @top_srcdir@/js/server/tests/shell-skiplist-rm-performance.js \
+               @top_srcdir@/js/server/tests/shell-skiplist-correctness.js
 
 SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
 
