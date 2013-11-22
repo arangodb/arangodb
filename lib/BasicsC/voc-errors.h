@@ -380,15 +380,6 @@ extern "C" {
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
-/// - 3100: @LIT{priority queue insert failure}
-///   Will be raised when an attempt to insert a document into a priority queue
-///   index fails for some reason.
-/// - 3110: @LIT{priority queue remove failure}
-///   Will be raised when an attempt to remove a document from a priority queue
-///   index fails for some reason.
-/// - 3111: @LIT{priority queue remove failure - item missing in index}
-///   Will be raised when an attempt to remove a document from a priority queue
-///   index fails when document can not be located within the index.
 /// - 3112: @LIT{(non-unique) hash index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   hash index fails due to the fact that document is duplicated within that
@@ -2108,39 +2099,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3100: ERROR_ARANGO_INDEX_PQ_INSERT_FAILED
-///
-/// priority queue insert failure
-///
-/// Will be raised when an attempt to insert a document into a priority queue
-/// index fails for some reason.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED                           (3100)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3110: ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED
-///
-/// priority queue remove failure
-///
-/// Will be raised when an attempt to remove a document from a priority queue
-/// index fails for some reason.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED                           (3110)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3111: ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING
-///
-/// priority queue remove failure - item missing in index
-///
-/// Will be raised when an attempt to remove a document from a priority queue
-/// index fails when document can not be located within the index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING                     (3111)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3112: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
