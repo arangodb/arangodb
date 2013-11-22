@@ -1184,9 +1184,9 @@ TRI_skiplistEx_iterator_t* TRI_LookupSkiplistExIndex(TRI_index_t* idx, TRI_index
 /// @brief helper for skiplist methods
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
-                               TRI_skiplist_index_element_t* skiplistElement,
-                               const TRI_doc_mptr_t* document) {
+static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
+                                TRI_skiplist_index_element_t* skiplistElement,
+                                const TRI_doc_mptr_t* document) {
   TRI_shaped_json_t shapedObject;
   TRI_shaped_json_t shapedJson;
   TRI_shape_access_t const* acc;
@@ -1222,7 +1222,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
     acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
 
     if (acc == NULL || acc->_shape == NULL) {
-      return TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
+      return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }  
       
       
@@ -1301,7 +1301,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
     // not report back an error.
     // .........................................................................
 
-    if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
+    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1454,7 +1454,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
     // report an error to the calling procedure.
     // ........................................................................
     
-    if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
+    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) { 
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -2076,7 +2076,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
-        return TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
+        return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
       }
 
 
@@ -2119,7 +2119,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
-        return TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING;
+        return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
 
       // ..........................................................................
@@ -2210,7 +2210,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
     // be included within the bitarray index, in this case do not report back an error.
     // ..........................................................................
 
-    if (result == TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) {
+    if (result == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
       if (! baIndex->_supportUndef) {
         return TRI_ERROR_NO_ERROR;
       }
@@ -2440,7 +2440,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx,
     // Check what type of error we received. If 'bad' error, then return
     // ........................................................................
 
-    if (result != TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) {
+    if (result != TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
 
       // ......................................................................
       // Deallocate memory allocated to element.fields above

@@ -189,6 +189,10 @@ extern "C" {
 /// - 1233: @LIT{edge attribute missing}
 ///   will be raised when the _from or _to values of an edge are undefined or
 ///   contain an invalid value.
+/// - 1234: @LIT{index insertion warning - attribute missing in document}
+///   Will be raised when an attempt to insert a document into an index is
+///   caused by in the document not having one or more attributes which the
+///   index is built on
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -380,54 +384,6 @@ extern "C" {
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
-/// - 3112: @LIT{(non-unique) hash index insert failure - document duplicated in index}
-///   Will be raised when an attempt to insert a document into a non-unique
-///   hash index fails due to the fact that document is duplicated within that
-///   index.
-/// - 3113: @LIT{(non-unique) skiplist index insert failure - document duplicated in index}
-///   Will be raised when an attempt to insert a document into a non-unique
-///   skiplist index fails due to the fact that document is duplicated within
-///   that index.
-/// - 3200: @LIT{hash index insertion warning - attribute missing in document}
-///   Will be raised when an attempt to insert a document into a hash index is
-///   caused by the document not having one or more attributes which are
-///   required by the hash index.
-/// - 3202: @LIT{hash index update warning - attribute missing in revised document}
-///   Will be raised when an attempt to update a document results in the
-///   revised document not having one or more attributes which are required by
-///   the hash index.
-/// - 3211: @LIT{hash index remove failure - item missing in index}
-///   Will be raised when an attempt to remove a document from a hash index
-///   fails when document can not be located within that index.
-/// - 3300: @LIT{skiplist index insertion warning - attribute missing in document}
-///   Will be raised when an attempt to insert a document into a skiplist index
-///   is caused by in the document not having one or more attributes which are
-///   required by the skiplist index.
-/// - 3302: @LIT{skiplist index update warning - attribute missing in revised document}
-///   Will be raised when an attempt to update a document results in the
-///   revised document not having one or more attributes which are required by
-///   the skiplist index.
-/// - 3304: @LIT{skiplist index insertion warning - CAS failure while attempting to insert document}
-///   Will be raised when an attempt to insert a document into a skiplist index
-///   fails due to repeated CAS failures/clashes.
-/// - 3311: @LIT{skiplist index remove failure - item missing in index}
-///   Will be raised when an attempt to remove a document from a skiplist index
-///   fails when document can not be located within that index.
-/// - 3313: @LIT{skiplist index remove warning - CAS failure while attempting to remove document}
-///   Will be raised when an attempt to remove a document into a skiplist index
-///   fails due to repeated CAS failures/clashes.
-/// - 3315: @LIT{skiplist index remove failure - item inserted post this transaction in the index}
-///   Will be raised when an attempt to remove a document from a skiplist index
-///   fails due to the fact that the document to be removed was inserted in a
-///   transaction post this removal transaction.
-/// - 3317: @LIT{skiplist index remove failure - item removed prior this transaction in the index}
-///   Will be raised when an attempt to remove a document from a skiplist index
-///   fails due to the fact that the document to be removed was removed in a
-///   transaction prior this removal transaction.
-/// - 3400: @LIT{bitarray index insertion warning - attribute missing in document}
-///   Will be raised when an attempt to insert a document into a bitarray index
-///   is caused by in the document not having one or more attributes which are
-///   required by the bitarray index.
 /// - 3402: @LIT{bitarray index update warning - attribute missing in revised document}
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
@@ -1284,6 +1240,18 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE                           (1233)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1234: ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
+///
+/// index insertion warning - attribute missing in document
+///
+/// Will be raised when an attempt to insert a document into an index is caused
+/// by in the document not having one or more attributes which the index is
+/// built on
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING                 (1234)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -2101,162 +2069,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3112: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
-///
-/// (non-unique) hash index insert failure - document duplicated in index
-///
-/// Will be raised when an attempt to insert a document into a non-unique hash
-/// index fails due to the fact that document is duplicated within that index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED                (3112)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3113: ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED
-///
-/// (non-unique) skiplist index insert failure - document duplicated in index
-///
-/// Will be raised when an attempt to insert a document into a non-unique
-/// skiplist index fails due to the fact that document is duplicated within
-/// that index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED            (3113)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3200: WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING
-///
-/// hash index insertion warning - attribute missing in document
-///
-/// Will be raised when an attempt to insert a document into a hash index is
-/// caused by the document not having one or more attributes which are required
-/// by the hash index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING          (3200)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3202: WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING
-///
-/// hash index update warning - attribute missing in revised document
-///
-/// Will be raised when an attempt to update a document results in the revised
-/// document not having one or more attributes which are required by the hash
-/// index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING            (3202)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3211: WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING
-///
-/// hash index remove failure - item missing in index
-///
-/// Will be raised when an attempt to remove a document from a hash index fails
-/// when document can not be located within that index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING                 (3211)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3300: WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING
-///
-/// skiplist index insertion warning - attribute missing in document
-///
-/// Will be raised when an attempt to insert a document into a skiplist index
-/// is caused by in the document not having one or more attributes which are
-/// required by the skiplist index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING      (3300)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3302: WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING
-///
-/// skiplist index update warning - attribute missing in revised document
-///
-/// Will be raised when an attempt to update a document results in the revised
-/// document not having one or more attributes which are required by the
-/// skiplist index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING        (3302)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3304: WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE
-///
-/// skiplist index insertion warning - CAS failure while attempting to insert
-/// document
-///
-/// Will be raised when an attempt to insert a document into a skiplist index
-/// fails due to repeated CAS failures/clashes.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE              (3304)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3311: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING
-///
-/// skiplist index remove failure - item missing in index
-///
-/// Will be raised when an attempt to remove a document from a skiplist index
-/// fails when document can not be located within that index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING             (3311)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3313: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE
-///
-/// skiplist index remove warning - CAS failure while attempting to remove
-/// document
-///
-/// Will be raised when an attempt to remove a document into a skiplist index
-/// fails due to repeated CAS failures/clashes.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE              (3313)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3315: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED
-///
-/// skiplist index remove failure - item inserted post this transaction in the
-/// index
-///
-/// Will be raised when an attempt to remove a document from a skiplist index
-/// fails due to the fact that the document to be removed was inserted in a
-/// transaction post this removal transaction.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED       (3315)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3317: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED
-///
-/// skiplist index remove failure - item removed prior this transaction in the
-/// index
-///
-/// Will be raised when an attempt to remove a document from a skiplist index
-/// fails due to the fact that the document to be removed was removed in a
-/// transaction prior this removal transaction.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED       (3317)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3400: WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING
-///
-/// bitarray index insertion warning - attribute missing in document
-///
-/// Will be raised when an attempt to insert a document into a bitarray index
-/// is caused by in the document not having one or more attributes which are
-/// required by the bitarray index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING      (3400)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3402: WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING
+/// @brief 3402: ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING
 ///
 /// bitarray index update warning - attribute missing in revised document
 ///
@@ -2265,10 +2078,10 @@ void TRI_InitialiseErrorMessages (void);
 /// bitarray index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING        (3402)
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING          (3402)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3411: WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING
+/// @brief 3411: ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING
 ///
 /// bitarray index remove failure - item missing in index
 ///
@@ -2276,7 +2089,7 @@ void TRI_InitialiseErrorMessages (void);
 /// fails when document can not be located within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING             (3411)
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING               (3411)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3413: ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE
