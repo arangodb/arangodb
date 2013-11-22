@@ -246,12 +246,16 @@ struct ShapesTest : public BenchmarkOperation {
 
       size_t keyId = (size_t) (globalCounter / 3);
       const string key = "testkey" + StringUtils::itoa(keyId);
-      TRI_AppendStringStringBuffer(buffer, key.c_str());
+      TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
       for (uint64_t i = 1; i <= n; ++i) {
+        uint64_t mod = Operations / 10;
+        if (mod < 100) {
+          mod = 100;
+        }
         TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt64StringBuffer(buffer, (uint64_t) ((globalCounter + i) % (Operations / 10)));
+        TRI_AppendUInt64StringBuffer(buffer, (uint64_t) ((globalCounter + i) % mod));
         TRI_AppendStringStringBuffer(buffer, "\":\"");
         TRI_AppendStringStringBuffer(buffer, "some bogus string value to fill up the datafile...");
       }
