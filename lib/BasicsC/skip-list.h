@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skip list implementation
+/// @brief generic skip list implementation
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,215 +21,96 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Max Neunhoeffer
+/// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef TRIAGENS_BASICS_C_SKIPLIST_H
-#define TRIAGENS_BASICS_C_SKIPLIST_H 1
+#ifndef TRIAGENS_BASICS_C_SKIP_LIST_H
+#define TRIAGENS_BASICS_C_SKIP_LIST_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/vector.h"
-
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// We will probably never see more than 2^48 documents in a skip list
+#define TRI_SKIPLIST_MAX_HEIGHT 48
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                             skiplist public types
+// --SECTION--                                                         SKIP LIST
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of a skiplist node
+////////////////////////////////////////////////////////////////////////////////
 
+typedef struct TRI_skiplist_node_s {
+    struct TRI_skiplist_node_s** next;
+    int height;
+    void *doc;
+} TRI_skiplist_node_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief types which enumerate the probability used to determine the height of node
+/// @brief two possibilities for comparison, see below
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_SKIP_LIST_CREATE_ELEMENT,
-  TRI_SKIP_LIST_DESTROY_ELEMENT,
-  TRI_SKIP_LIST_REPLACE_ELEMENT
-} 
-TRI_skip_list_action_e;  
-
-typedef enum {
-  TRI_SKIP_LIST_PROB_HALF,
-  TRI_SKIP_LIST_PROB_THIRD,
-  TRI_SKIP_LIST_PROB_QUARTER
-} 
-TRI_skip_list_prob_e;  
-
-
-typedef enum {
-  TRI_SKIP_LIST_COMPARE_STRICTLY_LESS = -1,
-  TRI_SKIP_LIST_COMPARE_STRICTLY_GREATER = 1,
-  TRI_SKIP_LIST_COMPARE_STRICTLY_EQUAL = 0,
-  TRI_SKIP_LIST_COMPARE_SLIGHTLY_LESS = -2,
-  TRI_SKIP_LIST_COMPARE_SLIGHTLY_GREATER = 2
-} 
-TRI_skip_list_compare_e;  
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief storage structure for a node's nearest neighbours
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_list_nb_s {
-  void* _prev;
-  void* _next;
+  TRI_CMP_PREORDER,
+  TRI_CMP_TOTORDER
 }
-TRI_skip_list_nb_t; // nearest neighbour;
-
-
+TRI_cmp_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief structure of a skip list node (unique and non-unique)
+/// @brief type of a function pointer to a comparison function for a skiplist.
+///
+/// The last argument is called preorder. If true then the comparison
+/// function must implement a preorder (reflexive and transitive).
+/// If preorder is false, then a proper total order must be
+/// implemented by the comparison function. The proper total order
+/// must refine the preorder in the sense that a < b in the proper order
+/// implies a <= b in the preorder.
+/// The first argument is a data pointer which may contain arbitrary
+/// infrastructure needed for the comparison. See cmpdata field in the
+/// skiplist type. 
+/// The cmp_key_elm variant compares a key with an element using the preorder.
+/// The first argument is a data pointer as above, the second is a pointer
+/// to the key and the third is a pointer to an element.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_skip_list_node_s {
-  TRI_skip_list_nb_t* _column; // these represent the levels
-  uint32_t _colLength; 
-  void* _extraData;
-  void* _element;  
-} 
-TRI_skip_list_node_t;
-
-  
-////////////////////////////////////////////////////////////////////////////////
-/// @brief The base structure of a skiplist (unique and non-unique)
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_list_base_s {
-  // ...........................................................................
-  // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
-  // stored in the skip list. 
-  // ...........................................................................
-  uint32_t _maxHeight;
-
-  // ...........................................................................
-  // The size of each element which is to be stored. This allows us to store
-  // memory assigned to the element within the node directly, saving one level
-  // of indirection when we access the data within the element.
-  // ...........................................................................
-  uint32_t _elementSize;
-  
-  
-  // ...........................................................................
-  // The probability which is used to determine the level for insertions
-  // into the list. Note the following
-  // ...........................................................................
-  TRI_skip_list_prob_e _prob;
-  int32_t             _numRandom;
-  uint32_t*           _random; // storage for random numbers so we do not need
-                               // to constantly allocate and de-allocate memory
-  bool                _unique; // true if skiplist supports only unique keys
-  
-  // ...........................................................................
-  // The main two nodes which are always required in any skiplist.
-  // ...........................................................................
-  TRI_skip_list_node_t _startNode;
-  TRI_skip_list_node_t _endNode;
-}
-TRI_skip_list_base_t;
+typedef int (*TRI_skiplist_cmp_elm_elm_t)(void*, void*, void*, TRI_cmp_type_e);
+typedef int (*TRI_skiplist_cmp_key_elm_t)(void*, void*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief Type of a pointer to a function that is called whenever a
+/// document is removed from a skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      unique skiplist public types
-// -----------------------------------------------------------------------------
+typedef void (*TRI_skiplist_free_func_t)(void*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist_unique
-/// @{
+/// @brief type of a skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a skip list which only accepts unique entries
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_list_s {
-  TRI_skip_list_base_t _base;
-  // ...........................................................................
-  // callback compare function
-  // < 0: implies left < right
-  // == 0: implies left == right
-  // > 0: implies left > right
-  // ...........................................................................
-  int (*_compareElementElement) (struct TRI_skip_list_s*, void*, void*, int);
-  int (*_compareKeyElement) (struct TRI_skip_list_s*, void*, void*, int);    
-  int (*_actionElement) (struct TRI_skip_list_s*, TRI_skip_list_action_e, void*, const void*, void*);    
-}
-TRI_skip_list_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a skip list which only accepts unique entries and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// structure for a skiplist which allows unique entries -- with locking
-// available for its nearest neighbours.
-// TODO: implement locking for nearest neighbours rather than for all of index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_list_synced_s {
-  TRI_skip_list_t _base;
-  TRI_read_write_lock_t _lock;  
-} TRI_skip_list_synced_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                 unique skiplist      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist_unique
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates and initialises a skip list
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitSkipList (TRI_skip_list_t*,
-                       uint32_t elementSize,
-                       int (*compareElementElement) (TRI_skip_list_t*, void*, void*, int),
-                       int (*compareKeyElement) (TRI_skip_list_t*, void*, void*, int),
-                       int (*actionElement) (TRI_skip_list_t*, TRI_skip_list_action_e, void*, const void*, void*),
-                       TRI_skip_list_prob_e, uint32_t);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroySkipList (TRI_skip_list_t*);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeSkipList (TRI_skip_list_t*);
-
-
+typedef struct TRI_skiplist_s {
+    TRI_skiplist_node_t* start;
+    TRI_skiplist_cmp_elm_elm_t cmp_elm_elm;
+    TRI_skiplist_cmp_key_elm_t cmp_key_elm;
+    void* cmpdata;   // will be the first argument
+    TRI_skiplist_free_func_t free;
+    bool unique;     // indicates whether multiple entries that
+                     // are equal in the preorder are allowed in
+    uint64_t nrUsed;
+} TRI_skiplist_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,309 +118,137 @@ void TRI_FreeSkipList (TRI_skip_list_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 unique skiplist  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist_unique
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the end node which belongs to a skiplist
+/// @brief creates a new skiplist
+///
+/// Returns NULL if allocation fails and a pointer to the skiplist
+/// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_EndNodeSkipList (TRI_skip_list_t*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the skip list using element for comparison
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertElementSkipList (TRI_skip_list_t*, void*, bool);
-
-
+TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
+                                  TRI_skiplist_cmp_key_elm_t cmp_key_elm,
+                                  void *cmpdata,
+                                  TRI_skiplist_free_func_t freefunc,
+                                  bool unique);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the skip list using key for comparison
+/// @brief frees a skiplist and all its documents
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeySkipList (TRI_skip_list_t*, void*, void*, bool);
+void TRI_FreeSkipList (TRI_skiplist_t* sl);
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key, returns greatest left element
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_LeftLookupByKeySkipList (TRI_skip_list_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key, returns null if not found
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_LookupByKeySkipList (TRI_skip_list_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_NextNodeSkipList (TRI_skip_list_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief given a node returns the prev node in the skip list, if the beginning is reached returns the start node
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_PrevNodeSkipList(TRI_skip_list_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the skip list using element for comparison
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveElementSkipList (TRI_skip_list_t*, void*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the skip list using key for comparison
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveKeySkipList (TRI_skip_list_t*, void*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key, returns least right element
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RightLookupByKeySkipList (TRI_skip_list_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the start node  which belongs to a skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_StartNodeSkipList (TRI_skip_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                  non-unique skiplist public types
-// -----------------------------------------------------------------------------
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a multi skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist_non_unique
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_list_multi_s {
-  TRI_skip_list_base_t _base;
-  // ...........................................................................
-  // callback compare function
-  // < 0: implies left < right
-  // == 0: implies left == right
-  // > 0: implies left > right
-  // ...........................................................................
-  int (*_compareElementElement) (struct TRI_skip_list_multi_s*, void*, void*, int);
-  int (*_compareKeyElement) (struct TRI_skip_list_multi_s*, void*, void*, int);    
-
-  // ...........................................................................
-  // Returns true if the element is an exact copy, or if the data which the
-  // element points to is an exact copy
-  // ...........................................................................
-  bool (*_equalElementElement) (struct TRI_skip_list_multi_s*, void*, void*);
-
-  int (*_actionElement) (struct TRI_skip_list_multi_s*, TRI_skip_list_action_e, void*, const void*, void*);      
-  
-} TRI_skip_list_multi_t;
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a multi skip list and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_list_synced_multi_s {
-  TRI_skip_list_t _base;
-  TRI_read_write_lock_t _lock;  
-} TRI_skip_list_synced_multi_t;
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                 non-unique skiplist  constructors and destructors
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist_non_unique
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a skip list
+/// @brief return the start node
 ////////////////////////////////////////////////////////////////////////////////
 
-
-int TRI_InitSkipListMulti (TRI_skip_list_multi_t*,
-                           uint32_t elementSize,
-                           int (*compareElementElement) (TRI_skip_list_multi_t*, void*, void*, int),
-                           int (*compareKeyElement) (TRI_skip_list_multi_t*, void*, void*, int),
-                           bool (*equalElementElement) (TRI_skip_list_multi_t*, void*, void*),
-                           int (*actionElement) (TRI_skip_list_multi_t*, TRI_skip_list_action_e, void*, const void*, void*),
-                           TRI_skip_list_prob_e, 
-                           uint32_t);
-                                              
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a multi skip list, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroySkipListMulti (TRI_skip_list_multi_t*);
-
-
+TRI_skiplist_node_t* TRI_SkipListStartNode (TRI_skiplist_t* sl);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list and frees the pointer
+/// @brief return the successor node or NULL if last node
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSkipListMulti (TRI_skip_list_multi_t*);
-
-
-
+TRI_skiplist_node_t* TRI_SkipListNextNode (TRI_skiplist_node_t* node);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief inserts a new document into a skiplist
+///
+/// Comparison is done using proper order comparison. If the skiplist
+/// is unique then no two documents that compare equal in the preorder
+/// can be inserted. Returns 0 if all is well, -1 if allocation failed
+/// and -2 if the unique constraint would have been violated by the
+/// insert. In the latter two cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                 unique skiplist  public functions
-// -----------------------------------------------------------------------------
+int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Skiplist_non_unique
-/// @{
+/// @brief removes a document from a skiplist
+///
+/// Comparison is done using proper order comparison. Returns 0 if all
+/// is well and -1 if the document was not found. In the latter two
+/// cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
+int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the end node which belongs to a skiplist
+/// @brief returns the number of entries in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_EndNodeSkipListMulti (TRI_skip_list_multi_t*);
-
-
+uint64_t TRI_SkipListGetNrUsed (TRI_skiplist_t *sl);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the skip list using element for comparison
+/// @brief looks up doc in the skiplist using the proper order
+/// comparison. 
+///
+/// Only comparisons using the proper order are done using cmp_elm_elm. 
+/// Returns NULL if doc is not in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertElementSkipListMulti (TRI_skip_list_multi_t*, void*, bool);
-
-
+TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the skip list using key for comparison
+/// @brief finds the last document that is less to doc in the preorder
+/// comparison or the start node if none is.
+///
+/// Only comparisons using the preorder are done using cmp_elm_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeySkipListMulti (TRI_skip_list_multi_t*, void*, void*, bool);
-
-
+TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key, returns greatest left element
+/// @brief finds the last document that is less or equal to doc in
+/// the preorder comparison or the start node if none is.
+///
+/// Only comparisons using the preorder are done using cmp_elm_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LeftLookupByKeySkipListMulti (TRI_skip_list_multi_t*, void*);
-
-
+TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key, returns null if not found
+/// @brief finds the last document whose key is less to key in the preorder
+/// comparison or the start node if none is.
+///
+/// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByKeySkipListMulti (TRI_skip_list_multi_t*, void*);
-
-
+TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
+/// @brief finds the last document that is less or equal to doc in
+/// the preorder comparison or the start node if none is.
+///
+/// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_NextNodeSkipListMulti (TRI_skip_list_multi_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief given a node returns the prev node in the skip list, if the beginning is reached returns the start node
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_PrevNodeSkipListMulti (TRI_skip_list_multi_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the skip list using element for comparison
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveElementSkipListMulti (TRI_skip_list_multi_t*, void*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the skip list using key for comparison
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveKeySkipListMulti (TRI_skip_list_multi_t*, void*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key, returns least right element
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_RightLookupByKeySkipListMulti (TRI_skip_list_multi_t*, void*);
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the start node  which belongs to a skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_StartNodeSkipListMulti (TRI_skip_list_multi_t*);
-
-
+TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl, void *key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 #ifdef __cplusplus
 }
@@ -547,7 +256,3 @@ void* TRI_StartNodeSkipListMulti (TRI_skip_list_multi_t*);
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

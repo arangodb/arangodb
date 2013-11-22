@@ -1132,12 +1132,8 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
     return NULL;
   }
 
-  if (skiplistIndex->base._unique) {
-    iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
-  }
-  else {
-    iteratorResult = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
-  }
+  iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, 
+                                      &skiplistIndex->_paths, slOperator);
 
   // .........................................................................
   // we must deallocate any memory we allocated in FillLookupSLOperator
@@ -1299,10 +1295,11 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
       
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
     
-    // ..........................................................................
-    // It may happen that the document does not have the necessary attributes to
-    // be included within the hash index, in this case do not report back an error.
-    // ..........................................................................
+    // .........................................................................
+    // It may happen that the document does not have the necessary
+    // attributes to be included within the hash index, in this case do
+    // not report back an error.
+    // .........................................................................
 
     if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
       return TRI_ERROR_NO_ERROR;
@@ -1311,26 +1308,16 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
     return res;
   }    
 
-  // ............................................................................
-  // Fill the json field list from the document for unique skiplist index
-  // ............................................................................
+  // ...........................................................................
+  // Fill the json field list from the document for skiplist index
+  // ...........................................................................
 
-  if (skiplistIndex->base._unique) {
-    res = SkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
-  }
+  res = SkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
 
-  // ............................................................................
-  // Fill the json field list from the document for non-unique skiplist index
-  // ............................................................................
-
-  else {
-    res = MultiSkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
-  }
-
-  // ............................................................................
+  // ...........................................................................
   // Memory which has been allocated to skiplistElement.fields remains allocated
   // contents of which are stored in the hash array.
-  // ............................................................................
+  // ...........................................................................
       
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
   
@@ -1404,12 +1391,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
   if (withStats) {
-    if (skiplistIndex->_skiplistIndex->unique) {
-      nrUsed = SkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
-    }
-    else {
-      nrUsed = MultiSkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
-    }
+    nrUsed = SkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "numUsed", 
                TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) nrUsed));
   }
@@ -1479,25 +1461,15 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
     return res;  
   }
   
-  // ............................................................................
-  // Attempt the removal for unique skiplist indexes
-  // ............................................................................
+  // ...........................................................................
+  // Attempt the removal for skiplist indexes
+  // ...........................................................................
   
-  if (skiplistIndex->base._unique) {
-    res = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
-  } 
+  res = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
   
-  // ............................................................................
-  // Attempt the removal for non-unique skiplist indexes
-  // ............................................................................
-  
-  else {
-    res = MultiSkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
-  }
-  
-  // ............................................................................
+  // ...........................................................................
   // Deallocate memory allocated to skiplistElement.fields above
-  // ............................................................................
+  // ...........................................................................
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
   
@@ -1553,18 +1525,17 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
     TRI_PushBackVectorString(&idx->_fields, copy);
   }
 
-  if (unique) {
-    skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary, paths->_length);
-  }
-  else {
-    skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new(primary, paths->_length);
-  }
+  skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary, paths->_length, 
+                                                    unique,false);
+  // Note that the last argument is the "sparse" flag. This will be
+  // implemented soon but has no consequences as of now.
 
   if (skiplistIndex->_skiplistIndex == NULL) {
     TRI_DestroyVector(&skiplistIndex->_paths);
     TRI_DestroyVectorString(&idx->_fields);
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-    LOG_WARNING("skiplist index creation failed -- internal error when creating skiplist structure");
+    LOG_WARNING("skiplist index creation failed -- internal error when "
+                "creating skiplist structure");
     return NULL;
   }
 
