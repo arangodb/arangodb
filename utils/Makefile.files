@@ -21,7 +21,7 @@ CLEANUP += $(bin_SCRIPTS)
 bin/arango-dfdb: utils/arango-dfdb.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
-		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		$< > $@
 	chmod 755 $@

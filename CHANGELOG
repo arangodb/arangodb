@@ -97,7 +97,7 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.3 (XXXX-XX-XX)
+v1.4.3 (2013-XX-XX)
 -------------------
 
 * fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
@@ -105,9 +105,11 @@ v1.4.3 (XXXX-XX-XX)
   left-hand side
 
 * issue #662:
-  
+ 
   Fixed access violation errors (crashes) in the Windows version, occurring under some
   circumstances when accessing databases with multiple clients in parallel
+
+* fixed issue #681: Problem with ArchLinux PKGBUILD configuration
 
 
 v1.4.2 (2013-11-20)
