@@ -549,7 +549,7 @@ int TRI_RemoveElementBitarray (TRI_bitarray_t* ba, TRI_doc_mptr_t* element) {
   position = (TRI_master_table_position_t*)(TRI_FindByKeyAssociativeArray(&(mt->_tablePosition),element));
 
   if (position == NULL) {
-    return TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING; 
+    return TRI_ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING; 
   }  
   
   // ..........................................................................
