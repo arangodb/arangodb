@@ -5,7 +5,7 @@
 # 
 
 [database]
-directory= @DATABASEDIR@
+directory= @LOCALSTATEDIR@/lib/arangodb
 # maximal-journal-size=33554432
 # remove-on-drop=true
 
@@ -40,7 +40,7 @@ startup-directory = @PKGDATADIR@/js
 action-directory = @PKGDATADIR@/js/actions
 modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules;@PKGDATADIR@/js/node
 package-path = @PKGDATADIR@/js/npm
-app-path = @PKGDATADIR@/js/apps
+app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 
 [ruby]
 action-directory = @PKGDATADIR@/mr/actions
@@ -49,4 +49,4 @@ modules-path = @PKGDATADIR@/mr/server/modules;@PKGDATADIR@/mr/common/modules
 [log]
 level = info
 severity = human
-file = @LOGDIR@/arangod.log
+file = @LOCALSTATEDIR@/log/arangodb/arangod.log

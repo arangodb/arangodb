@@ -1226,12 +1226,10 @@ BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.c
 ### @brief bison++ files
 ################################################################################
 BISONXX_FILES = 
-@ENABLE_RELATIVE_FALSE@TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
-@ENABLE_RELATIVE_TRUE@TRI_DATABASEDIR = 
-@ENABLE_RELATIVE_FALSE@TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
-@ENABLE_RELATIVE_TRUE@TRI_LOGDIR = /tmp
 @ENABLE_RELATIVE_FALSE@TRI_PKGDATADIR = ${pkgdatadir}
 @ENABLE_RELATIVE_TRUE@TRI_PKGDATADIR = .
+@ENABLE_RELATIVE_FALSE@TRI_LOCALSTATEDIR = ${localstatedir}
+@ENABLE_RELATIVE_TRUE@TRI_LOCALSTATEDIR = .
 @ENABLE_RELATIVE_FALSE@TRI_SBINDIR = ${sbindir}
 @ENABLE_RELATIVE_TRUE@TRI_SBINDIR = ${abs_builddir}/bin
 @ENABLE_RELATIVE_FALSE@TRI_BINDIR = ${bindir}
@@ -2102,7 +2100,6 @@ JAVASCRIPT_JSLINT = \
 @ENABLE_MRUBY_TRUE@	mr/server/mr-server.h
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
-DMG_NAME := ArangoDB-CLI.app
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -7467,8 +7464,9 @@ etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
 #else
 
 install-data-local:
-	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
-	test -d $(DESTDIR)$(TRI_LOGDIR) || mkdir -p $(DESTDIR)$(TRI_LOGDIR)
+	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb
+	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps
+	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb
 
 #endif
 
@@ -7492,8 +7490,7 @@ build.h: configure.ac
 etc/arangodb/%.conf: etc/arangodb/%.conf.in Makefile
 	@test -d etc/arangodb || mkdir -p etc/arangodb
 	sed \
-		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
-		-e 's%@LOGDIR@%${TRI_LOGDIR}%g' \
+		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		$< > $@
 
@@ -7504,7 +7501,7 @@ etc/arangodb/%.conf: etc/arangodb/%.conf.in Makefile
 bin/arango-dfdb: utils/arango-dfdb.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
-		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		$< > $@
 	chmod 755 $@
@@ -8675,142 +8672,6 @@ clean-zlib:
 ################################################################################
 ### @brief ICU
 ################################################################################
-
-################################################################################
-### @brief MacOSX bundle
-################################################################################
-
-.PHONY: pack-dmg pack-dmg-cmake
-
-pack-dmg:
-	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/opt/arangodb \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
-		--enable-mruby
-
-	${MAKE} pack-dmg-cmake
-
-pack-dmg-cmake:
-	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "USE_MRUBY=ON" \
-		-D "USE_RAW_CONFIG=ON" \
-		-D "ARANGODB_VERSION=@VERSION@" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		..
-
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .icu-build-64
-	${MAKE} .v8-build-64
-	${MAKE} .mruby-build-64
-
-	${MAKE} ${BUILT_SOURCES}
-
-	cd Build && ${MAKE}
-
-	cd Build && cpack \
-		-G Bundle \
-		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
-
-################################################################################
-### @brief MacOSX
-################################################################################
-
-.PHONY: pack-macosx pack-macosx-cmake
-
-PACK_DESTDIR ?= .
-
-pack-macosx:
-	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/opt/arangodb \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
-		--enable-mruby
-
-	${MAKE} pack-macosx-cmake
-
-pack-macosx-cmake:
-	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "USE_MRUBY=ON" \
-		-D "USE_RAW_CONFIG=ON" \
-		-D "ARANGODB_VERSION=@VERSION@" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		..
-
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .icu-build-64
-	${MAKE} .v8-build-64
-	${MAKE} .mruby-build-64
-
-	${MAKE} ${BUILT_SOURCES}
-
-	cd Build && ${MAKE}
-	cd Build && ${MAKE} install DESTDIR=${PACK_DESTDIR}
-
-################################################################################
-### @brief debian arm package
-################################################################################
-
-.PHONY: pack-arm pack-arm-cmake
-
-pack-arm:
-	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
-		--disable-mruby
-
-	${MAKE} pack-arm-cmake
-
-pack-arm-cmake:
-	cd Build && cmake \
-		-D "BUILD_PACKAGE=raspbian" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
-		-D "USE_MRUBY=OFF" \
-		-D "USE_RAW_CONFIG=OFF" \
-		-D "ARANGODB_VERSION=@VERSION@" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
-                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
-                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
-		..
-
-	${MAKE} .libev-build-32
-	${MAKE} .zlib-build-32
-	${MAKE} .icu-build-32
-	${MAKE} .v8-build-32
-
-	${MAKE} ${BUILT_SOURCES}
-
-	cd Build && ${MAKE}
-
-	cd Build && cpack \
-		-G DEB
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

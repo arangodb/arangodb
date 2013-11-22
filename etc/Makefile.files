@@ -20,8 +20,7 @@ BUILT_SOURCES += \
 etc/arangodb/%.conf: etc/arangodb/%.conf.in Makefile
 	@test -d etc/arangodb || mkdir -p etc/arangodb
 	sed \
-		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
-		-e 's%@LOGDIR@%${TRI_LOGDIR}%g' \
+		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		$< > $@
 
