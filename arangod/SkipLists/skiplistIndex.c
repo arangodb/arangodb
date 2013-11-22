@@ -244,6 +244,7 @@ static void FreeElm(void* x)
 {
   TRI_skiplist_index_element_t* xx = x;
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, xx->_subObjects);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, xx);
 }
 
 static int CopyElement (SkiplistIndex* skiplistindex,
