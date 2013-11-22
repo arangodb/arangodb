@@ -58,6 +58,20 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
                                             size_t size);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shape cache (caches pointer to last shape)
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct shape_cache_s {
+  TRI_shape_sid_t    _sid;
+  TRI_shape_t const* _shape;
+}
+shape_cache_t;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS
 // -----------------------------------------------------------------------------
 
@@ -90,7 +104,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
+  dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -112,7 +126,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
+  dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -134,7 +148,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
+  dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -156,7 +170,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
+  dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -190,39 +204,37 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     * ((TRI_shape_length_short_string_t*) ptr) = 1;
     * (ptr + sizeof(TRI_shape_length_short_string_t)) = '\0';
   }
-  else if (str.length() < TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
-    size_t size = str.length() + 1;
-
-    dst->_type = TRI_SHAPE_SHORT_STRING;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
-    dst->_fixedSized = true;
-    dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
-
-    if (dst->_value == NULL) {
-      return false;
-    }
-
-    * ((TRI_shape_length_short_string_t*) ptr) = size;
-
-    memcpy(ptr + sizeof(TRI_shape_length_short_string_t), *str, size);
-  }
   else {
-    size_t size = str.length() + 1;
+    const size_t size = str.length();
 
-    dst->_type = TRI_SHAPE_LONG_STRING;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
-    dst->_fixedSized = false;
-    dst->_size = sizeof(TRI_shape_length_long_string_t) + size;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+    if (size < TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
+      dst->_type = TRI_SHAPE_SHORT_STRING;
+      dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
+      dst->_fixedSized = true;
+      dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
+      dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-    if (dst->_value == NULL) {
-      return false;
+      if (dst->_value == NULL) {
+        return false;
+      }
+
+      * ((TRI_shape_length_short_string_t*) ptr) = size + 1;
+      memcpy(ptr + sizeof(TRI_shape_length_short_string_t), *str, size + 1);
     }
+    else {
+      dst->_type = TRI_SHAPE_LONG_STRING;
+      dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
+      dst->_fixedSized = false;
+      dst->_size = sizeof(TRI_shape_length_long_string_t) + size + 1;
+      dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-    * ((TRI_shape_length_long_string_t*) ptr) = size;
+      if (dst->_value == NULL) {
+        return false;
+      }
 
-    memcpy(ptr + sizeof(TRI_shape_length_long_string_t), *str, size);
+      * ((TRI_shape_length_long_string_t*) ptr) = size + 1;
+      memcpy(ptr + sizeof(TRI_shape_length_long_string_t), *str, size + 1);
+    }
   }
 
   return true;
@@ -237,8 +249,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
                                 v8::Handle<v8::Array> json,
                                 set<int>& seenHashes,
                                 vector< v8::Handle<v8::Object> >& seenObjects) {
-  size_t i;
-  size_t n;
+  size_t i, n;
   size_t total;
 
   TRI_shape_value_t* values;
@@ -550,8 +561,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
                                  v8::Handle<v8::Object> json,
                                  set<int>& seenHashes,
                                  vector< v8::Handle<v8::Object> >& seenObjects) {
-  size_t n;
-  size_t i;
+  size_t i, n;
   size_t total;
 
   size_t f;
@@ -606,7 +616,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    p->_aid = shaper->findAttributeByName(shaper, *keyStr);
+    p->_aid = shaper->findAttributeByName(shaper, *keyStr, true);
 
     // convert value
     if (p->_aid == 0) {
@@ -649,7 +659,9 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   total += (v + 1) * sizeof(TRI_shape_size_t);
 
   // now sort the shape entries
-  TRI_SortShapeValues(values, n);
+  if (n > 1) {
+    TRI_SortShapeValues(values, n);
+  }
 
 #ifdef DEBUG_JSON_SHAPER
   printf("shape values\n------------\ntotal: %u, fixed: %u, variable: %u\n",
@@ -898,7 +910,7 @@ static v8::Handle<v8::Value> JsonShapeDataBoolean (TRI_shaper_t* shaper,
 
   v = (* (TRI_shape_boolean_t const*) data) != 0;
 
-  return v ? v8::True() : v8::False();
+  return v8::Boolean::New(v);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -965,6 +977,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t i;
   TRI_shape_size_t n;
   TRI_shape_size_t v;
+  shape_cache_t shapeCache;
   char const* qtr;
 
   v8::Handle<v8::Object> array;
@@ -986,31 +999,36 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
   qtr += n * sizeof(TRI_shape_aid_t);
 
   offsetsF = (TRI_shape_size_t const*) qtr;
+  shapeCache._sid   = 0;
+  shapeCache._shape = 0;
 
   for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
     TRI_shape_sid_t sid = *sids;
-    TRI_shape_aid_t aid = *aids;
-    TRI_shape_size_t offset;
-    TRI_shape_t const* subshape;
-    char const* name;
-    v8::Handle<v8::Value> element;
 
-    offset = *offsetsF;
-    subshape = shaper->lookupShapeId(shaper, sid);
-    name = shaper->lookupAttributeId(shaper, aid);
+    TRI_shape_t const* subshape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
+    }
+    else {
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
+    }
 
     if (subshape == 0) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
+    
+    TRI_shape_aid_t aid = *aids;
+    char const* name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == 0) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
 
-    element = JsonShapeData(shaper, subshape, data + offset, offsetsF[1] - offset);
-
+    const TRI_shape_size_t offset = *offsetsF;
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsF[1] - offset);
     array->Set(v8::String::New(name), element);
   }
 
@@ -1018,28 +1036,31 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
 
   for (i = 0;  i < v;  ++i, ++sids, ++aids, ++offsetsV) {
     TRI_shape_sid_t sid = *sids;
-    TRI_shape_aid_t aid = *aids;
-    TRI_shape_size_t offset;
-    TRI_shape_t const* subshape;
-    char const* name;
-    v8::Handle<v8::Value> element;
 
-    offset = *offsetsV;
-    subshape = shaper->lookupShapeId(shaper, sid);
-    name = shaper->lookupAttributeId(shaper, aid);
+    TRI_shape_t const* subshape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
+    }
+    else {
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
+    }
 
     if (subshape == 0) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
+    
+    TRI_shape_aid_t aid = *aids;
+    char const* name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == 0) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
 
-    element = JsonShapeData(shaper, subshape, data + offset, offsetsV[1] - offset);
-
+    const TRI_shape_size_t offset = *offsetsV;
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsV[1] - offset);
     array->Set(v8::String::New(name), element);
   }
 
@@ -1058,36 +1079,46 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
   TRI_shape_length_list_t l;
   TRI_shape_sid_t const* sids;
   TRI_shape_size_t const* offsets;
+  shape_cache_t shapeCache;
   char const* ptr;
   v8::Handle<v8::Array> list;
 
-  list = v8::Array::New();
-
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
+
+  if (l == 0) {
+    return v8::Array::New(l);
+  }
+ 
+  shapeCache._sid   = 0;
+  shapeCache._shape = 0;
+  list = v8::Array::New(l);
 
   ptr += sizeof(TRI_shape_length_list_t);
   sids = (TRI_shape_sid_t const*) ptr;
 
   ptr += l * sizeof(TRI_shape_sid_t);
   offsets = (TRI_shape_size_t const*) ptr;
-
+  
   for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
     TRI_shape_sid_t sid = *sids;
-    TRI_shape_size_t offset;
-    TRI_shape_t const* subshape;
-    v8::Handle<v8::Value> element;
 
-    offset = *offsets;
-    subshape = shaper->lookupShapeId(shaper, sid);
+    TRI_shape_t const* subshape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
+    }
+    else {
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid   = sid;
+    }
 
     if (subshape == 0) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
 
-    element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
-
+    const TRI_shape_size_t offset = *offsets;
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
     list->Set(i, element);
   }
 
@@ -1108,9 +1139,8 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   TRI_shape_sid_t sid;
   TRI_shape_size_t const* offsets;
   char const* ptr;
+  TRI_shape_t const* subshape;
   v8::Handle<v8::Array> list;
-
-  list = v8::Array::New();
 
   s = (TRI_homogeneous_list_shape_t const*) shape;
   sid = s->_sidEntry;
@@ -1120,21 +1150,19 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   ptr += sizeof(TRI_shape_length_list_t);
   offsets = (TRI_shape_size_t const*) ptr;
+  
+  subshape = shaper->lookupShapeId(shaper, sid);
+
+  if (subshape == 0) {
+    LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+    return v8::Array::New();
+  }
+  
+  list = v8::Array::New(l);
 
   for (i = 0;  i < l;  ++i, ++offsets) {
-    TRI_shape_size_t offset;
-    TRI_shape_t const* subshape;
-    v8::Handle<v8::Value> element;
-
-    offset = *offsets;
-    subshape = shaper->lookupShapeId(shaper, sid);
-
-    if (subshape == 0) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
-      continue;
-    }
-
-    element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
+    TRI_shape_size_t offset = *offsets;
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
 
     list->Set(i, element);
   }
@@ -1155,34 +1183,34 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
   TRI_shape_length_list_t l;
   TRI_shape_sid_t sid;
   TRI_shape_size_t length;
-  TRI_shape_size_t offset;
   char const* ptr;
+  TRI_shape_t const* subshape;
   v8::Handle<v8::Array> list;
 
-  list = v8::Array::New();
-
   s = (TRI_homogeneous_sized_list_shape_t const*) shape;
-  sid = s->_sidEntry;
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
 
+  if (l == 0) {
+    return v8::Array::New();
+  }
+  
+  sid    = s->_sidEntry;
   length = s->_sizeEntry;
-  offset = sizeof(TRI_shape_length_list_t);
+  
+  subshape = shaper->lookupShapeId(shaper, sid);
+
+  if (subshape == 0) {
+    LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+    return v8::Array::New();
+  }
+
+  TRI_shape_size_t offset = sizeof(TRI_shape_length_list_t);
+  list = v8::Array::New(l);
 
   for (i = 0;  i < l;  ++i, offset += length) {
-    TRI_shape_t const* subshape;
-    v8::Handle<v8::Value> element;
-
-    subshape = shaper->lookupShapeId(shaper, sid);
-
-    if (subshape == 0) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
-      continue;
-    }
-
-    element = JsonShapeData(shaper, subshape, data + offset, length);
-
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, length);
     list->Set(i, element);
   }
 
@@ -1246,7 +1274,7 @@ static v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
-  return json->_value._boolean ? v8::True() : v8::False();
+  return v8::Boolean::New(json->_value._boolean);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1275,13 +1303,13 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   const size_t n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  i += 2) {
-    TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* key = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
 
     if (! TRI_IsStringJson(key)) {
       continue;
     }
 
-    TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
+    TRI_json_t const* j = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
     v8::Handle<v8::Value> val = TRI_ObjectJson(j);
 
     object->Set(v8::String::New(key->_value._string.data, key->_value._string.length - 1), val);
@@ -1295,12 +1323,12 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
-  v8::Handle<v8::Array> object = v8::Array::New();
-
   const size_t n = json->_value._objects._length;
+  
+  v8::Handle<v8::Array> object = v8::Array::New(n);
 
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* j = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
     v8::Handle<v8::Value> val = TRI_ObjectJson(j);
 
     object->Set(i, val);

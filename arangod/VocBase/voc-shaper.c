@@ -343,7 +343,9 @@ static void FullSetAttributeWeight (voc_shaper_t* shaper) {
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* name) {
+static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, 
+                                            char const* name, 
+                                            bool create) {
   char* mem;
   TRI_df_attribute_marker_t* marker;
   TRI_df_marker_t* result;
@@ -368,6 +370,10 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
 
   if (p != NULL) {
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
+  }
+
+  if (! create) {
+    return 0;
   }
 
   // create a new attribute name
@@ -491,26 +497,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an attribute identifier by name
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, char const* name) {
-  voc_shaper_t* s;
-  void const* p;
-
-  s = (voc_shaper_t*) shaper;
-  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
-
-  if (p != NULL) {
-    return ((TRI_df_attribute_marker_t const*) p)->_aid;
-  }
-  else {
-    return 0;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the attribute id
+/// @brief hashes the attribute id
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const* key) {
@@ -520,7 +507,7 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the attribute
+/// @brief hashes the attribute
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
@@ -967,7 +954,6 @@ static int InitStep1VocShaper (voc_shaper_t* shaper) {
   int res;
 
   shaper->base.findAttributeByName   = FindAttributeByName;
-  shaper->base.lookupAttributeByName = LookupAttributeByName;
   shaper->base.lookupAttributeId     = LookupAttributeId;
   shaper->base.findShape             = FindShape;
   shaper->base.lookupShapeId         = LookupShapeId;
