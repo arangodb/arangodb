@@ -68,7 +68,9 @@ static int TRI_random_height (void)
 static TRI_skiplist_node_t* TRI_SkipListAllocNode (TRI_skiplist_t* sl, 
                                                    int height) {
   TRI_skiplist_node_t* new;
-  new = (TRI_skiplist_node_t*) malloc(sizeof(TRI_skiplist_node_t));
+  new = (TRI_skiplist_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+                                            sizeof(TRI_skiplist_node_t),
+                                            false);
   if (NULL == new) return new;
 
   new->doc = NULL;
