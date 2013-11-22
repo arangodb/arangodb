@@ -359,7 +359,7 @@ int main (int argc, char* argv[]) {
   if (realStep % 1000 != 0) {
     realStep += 1000 - (realStep % 1000);
   }
-  // add some more offset we don't get into trouble with threads of different speed
+  // add some more offset so we don't get into trouble with threads of different speed
   realStep += 10000;
 
   // start client threads
