@@ -169,9 +169,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
-  REG_ERROR(ERROR_ARANGO_INDEX_PQ_INSERT_FAILED, "priority queue insert failure");
-  REG_ERROR(ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED, "priority queue remove failure");
-  REG_ERROR(ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING, "priority queue remove failure - item missing in index");
   REG_ERROR(ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED, "(non-unique) hash index insert failure - document duplicated in index");
   REG_ERROR(ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED, "(non-unique) skiplist index insert failure - document duplicated in index");
   REG_ERROR(WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING, "hash index insertion warning - attribute missing in document");
