@@ -1,3 +1,9 @@
+v1.4.3 (2013-XX-XX)
+-------------------
+
+* fixed issue #681: Problem with ArchLinux PKGBUILD configuration
+
+
 v1.4.2 (2013-11-20)
 -------------------
 

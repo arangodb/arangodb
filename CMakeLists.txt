@@ -144,18 +144,20 @@ file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
 
 ################################################################################
-### @brief TRI_DATABASEDIR
+### @brief database directory
 ################################################################################
-
-set(TRI_DATABASEDIR "${VARDIR_NATIVE}/lib/arangodb")
 
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
 
 ################################################################################
-### @brief TRI_LOGDIR
+### @brief apps directory
 ################################################################################
 
-set(TRI_LOGDIR "${VARDIR_NATIVE}/log/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+
+################################################################################
+### @brief log directory
+################################################################################
 
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
 
