@@ -62,7 +62,7 @@ start () {
     if [ "$1" = "--upgrade" ];  then
       $ARANGO_BIN -c $ARANGO_SYSCONFIG $@ 
     else
-      startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor $@ 
+      startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --tmp-path "/var/tmp/arangod" --supervisor $@ 
     fi
 
     # Remember status and be verbose
