@@ -44,7 +44,7 @@ start() {
   if [ "$1" = "--upgrade" ];  then
     $ARANGO_BIN -c $ARANGO_SYSCONFIG $@
   else
-    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor $@
+    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --tmp-path "/var/tmp/arangod" --supervisor $@
   fi
 
   RETVAL=$?
