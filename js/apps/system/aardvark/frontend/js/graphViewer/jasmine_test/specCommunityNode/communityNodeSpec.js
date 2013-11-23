@@ -1306,7 +1306,7 @@
         expect(layouter.stop.calls.length).toEqual(1);
       });
       
-      it('should update the positioning if an oubound edge becomes internal', function() {
+      it('should update the positioning if an outbound edge becomes internal', function() {
         var c = new CommunityNode(parent, nodes.slice(0, 2)),
           e = {
             _id: "0-1",
