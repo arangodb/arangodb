@@ -26,9 +26,9 @@ function groups if required.
 
 Examples:
 
-    RETURN myfunctions:myfunc()
+    RETURN myfunctions::myfunc()
 
-    RETURN myfunctions:math:random()
+    RETURN myfunctions::math::random()
 
 Note: as all function names in AQL, user function names are also
 case-insensitive.
