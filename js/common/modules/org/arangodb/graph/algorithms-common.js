@@ -504,7 +504,7 @@ Graph.prototype.measurement = function (measurement) {
     start_value = Infinity;
     break;
   default:
-    throw "Unknown Measurement '" + measurement + "'";
+    throw "Unknown Measurement";
   }
 
   return vertices.reduce(function (calculated, vertex) {
@@ -530,6 +530,10 @@ Graph.prototype.measurement = function (measurement) {
 ///
 /// Calculates the normalized degree, closeness, betweenness or eccentricity
 /// of all vertices in a graph
+/// `measurement` can either be: 
+/// - `closeness`: to calculate the closeness
+/// - `betweenness`: to calculate the betweenness
+/// - `eccentricity`: to calculate the eccentricity
 ///
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -216,6 +216,14 @@ Graph.prototype.initialize = function (name, vertices, edges) {
   this._properties = results.graph;
   this._vertices = arangodb.db._collection(this._properties.vertices);
   this._edges = arangodb.db._collection(this._properties.edges);
+  
+  // and dictionary for vertices and edges
+  this._verticesCache = {};
+  this._edgesCache = {};
+  
+  // and store the cashes
+  this.predecessors = {};
+  this.distances = {};
 
   return this;
 };
@@ -303,6 +311,7 @@ Graph.prototype.getVertices = function () {
     wrapper = function(object) {
       return new Vertex(graph, object);
     };
+  return new Iterator(wrapper, cursor, "[vertex iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -488,11 +488,11 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   this._gdb = gdb;
   this._vertices = vertices;
   this._edges = edges;
-
+  
   // and dictionary for vertices and edges
   this._verticesCache = {};
   this._edgesCache = {};
-
+  
   // and store the cashes
   this.predecessors = {};
   this.distances = {};
@@ -647,7 +647,7 @@ Graph.prototype.getVertices = function () {
     wrapper = function(object) {
         return graph.constructVertex(object);
     };
-  return new Iterator(wrapper, graph.constructVertex, "[edge iterator]");
+  return new Iterator(wrapper, graph.constructVertex, "[vertex iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -765,115 +765,6 @@ Graph.prototype.removeEdge = function (edge, waitForSync) {
     this._edgesCache[edge._properties._id] = undefined;
     edge._properties = undefined;
   }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief empties the internal cache for Predecessors
-///
-/// @FUN{@FA{graph}.emptyCachedPredecessors()}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.emptyCachedPredecessors = function () {
-  this.predecessors = {};
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets Predecessors for a pair from the internal cache
-///
-/// @FUN{@FA{graph}.getCachedPredecessors(@FA{target}), @FA{source})}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.getCachedPredecessors = function (target, source) {
-  var predecessors;
-
-  if (this.predecessors[target.getId()]) {
-    predecessors = this.predecessors[target.getId()][source.getId()];
-  }
-
-  return predecessors;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets Predecessors for a pair in the internal cache
-///
-/// @FUN{@FA{graph}.setCachedPredecessors(@FA{target}), @FA{source}, @FA{value})}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.setCachedPredecessors = function (target, source, value) {
-  if (!this.predecessors[target.getId()]) {
-    this.predecessors[target.getId()] = {};
-  }
-
-  this.predecessors[target.getId()][source.getId()] = value;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.constructVertex = function (data) {
-  var id;
-
-  if (typeof data === "string") {
-    id = data;
-  } else {
-    id = data._id;
-  }
-
-  var vertex = this._verticesCache[id];
-
-  if (vertex === undefined) {
-    var properties = this._vertices.document(id);
-
-    if (! properties) {
-      throw "accessing a deleted vertex";
-    }
-
-    this._verticesCache[id] = vertex = new Vertex(this, properties);
-  }
-
-  return vertex;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an edge
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.constructEdge = function (data) {
-  var id, edge, properties;
-
-  if (typeof data === "string") {
-    id = data;
-  } else {
-    id = data._id;
-  }
-
-  edge = this._edgesCache[id];
-
-  if (edge === undefined) {
-    properties = this._edges.document(id);
-
-    if (!properties) {
-      throw "accessing a deleted edge";
-    }
-
-    this._edgesCache[id] = edge = new Edge(this, properties);
-  }
-
-  return edge;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

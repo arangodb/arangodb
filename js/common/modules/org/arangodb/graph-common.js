@@ -793,6 +793,104 @@ Graph.prototype.size = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief empties the internal cache for Predecessors
+///
+/// @FUN{@FA{graph}.emptyCachedPredecessors()}
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.emptyCachedPredecessors = function () {
+  this.predecessors = {};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets Predecessors for a pair from the internal cache
+///
+/// @FUN{@FA{graph}.getCachedPredecessors(@FA{target}), @FA{source})}
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getCachedPredecessors = function (target, source) {
+  var predecessors;
+
+  if (this.predecessors[target.getId()]) {
+    predecessors = this.predecessors[target.getId()][source.getId()];
+  }
+
+  return predecessors;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets Predecessors for a pair in the internal cache
+///
+/// @FUN{@FA{graph}.setCachedPredecessors(@FA{target}), @FA{source}, @FA{value})}
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.setCachedPredecessors = function (target, source, value) {
+  if (!this.predecessors[target.getId()]) {
+    this.predecessors[target.getId()] = {};
+  }
+
+  this.predecessors[target.getId()][source.getId()] = value;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.constructVertex = function (data) {
+  var id, rev;
+
+  if (typeof data === "string") {
+    id = data;
+  } else {
+    id = data._id;
+    rev = data._rev;
+  }
+
+  var vertex = this._verticesCache[id];
+
+  if (vertex === undefined || vertex._rev !== rev) {
+    var properties = this._vertices.document(id);
+
+    if (! properties) {
+      throw "accessing a deleted vertex";
+    }
+
+    this._verticesCache[id] = vertex = new Vertex(this, properties);
+  }
+
+  return vertex;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs an edge
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.constructEdge = function (data) {
+  var id, rev, edge, properties;
+
+  if (typeof data === "string") {
+    id = data;
+  } else {
+    id = data._id;
+    rev = data._rev;
+  }
+
+  edge = this._edgesCache[id];
+
+  if (edge === undefined || edge._rev !== rev) {
+    properties = this._edges.document(id);
+
+    if (!properties) {
+      throw "accessing a deleted edge";
+    }
+
+    this._edgesCache[id] = edge = new Edge(this, properties);
+  }
+
+  return edge;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief graph printing
 ////////////////////////////////////////////////////////////////////////////////
 
