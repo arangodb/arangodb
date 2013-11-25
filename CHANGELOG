@@ -1,5 +1,5 @@
-v1.4.3-alpha1 (2013-XX-XX)
---------------------------
+v1.4.3 (2013-11-25)
+-------------------
 
 * fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
   used on the right-hand side of an IN operator that had a collection attribute on the
