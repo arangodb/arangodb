@@ -540,6 +540,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // ..............................................................................
+// This directive below suppresses warnings about 'inline'
+// ..............................................................................
+
+#define _ALLOW_KEYWORD_MACROS			    1
+
+// ..............................................................................
 // This directive below suppresses warnings about using the 'new' more secure CRT
 // functions.
 // ..............................................................................
@@ -622,7 +628,9 @@
 
 typedef int ssize_t;
 
+#ifndef va_copy
 #define va_copy(d,s) ((d) = (s))
+#endif
 
 // ...........................................................................
 // typedef unsigned int bool; - this never ever going to work. Problem is
@@ -632,7 +640,6 @@ typedef int ssize_t;
 // ...........................................................................
 
 #ifndef __BOOL_DEFINED
-
 typedef unsigned char bool;
 #define true 1
 #define false 0
