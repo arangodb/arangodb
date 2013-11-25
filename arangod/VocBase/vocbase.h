@@ -362,11 +362,6 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t               _compactor;
   TRI_thread_t               _cleanup;
   
-#ifdef TRI_SKIPLIST_EX
-  // the index garbage collection  
-  TRI_thread_t               _indexGC;
-#endif  
-  
   struct TRI_general_cursor_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 
