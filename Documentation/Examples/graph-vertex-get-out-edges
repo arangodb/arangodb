@@ -10,14 +10,14 @@ Edge(3)
 arango> e2 = g.addEdge(v1, v2, 4, "hates");
 Edge(4)
 
-arango> v1.getInEdges();
+arango> v1.getOutEdges();
 [ Edge(3), Edge(4) ]
 
-arango> v1.getInEdges("knows");
+arango> v1.getOutEdges("knows");
 [ Edge(3) ]
 
-arango> v1.getInEdges("hates");
+arango> v1.getOutEdges("hates");
 [ Edge(4) ]
 
-arango> v1.getInEdges("knows", "hates");
+arango> v1.getOutEdges("knows", "hates");
 [ Edge(3), Edge(4) ]
