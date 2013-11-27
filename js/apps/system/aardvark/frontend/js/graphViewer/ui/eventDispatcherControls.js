@@ -138,9 +138,17 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     },
     
     getCursorPositionInSVG = function (ev) {
-      var pos = getCursorPosition(ev);
-      pos.x -= $('svg').offset().left;
-      pos.y -= $('svg').offset().top;
+      var pos = getCursorPosition(ev),
+        off = $('svg').offset();
+      // Hack for Firefox
+      /*
+      var off = {
+        left: 166,
+        top: 171
+      };
+      */
+      pos.x -= off.left;
+      pos.y -= off.top;
       return pos;
     };
     /* Archive
@@ -178,7 +186,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.newNodeRebinds = function() {
     var prefix = "control_event_new_node",
       idprefix = prefix + "_",
-      createCallback = function(n) {
+      createCallback = function(ev) {
+        var pos = getCursorPositionInSVG(ev);
         modalDialogHelper.createModalCreateDialog(
           "Create New Node",
           idprefix,
@@ -187,7 +196,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
             dispatcher.events.CREATENODE(data, function(node) {
               $("#" + idprefix + "modal").modal('hide');
               nodeShaper.reshapeNodes();
-            })();
+            }, pos.x, pos.y)();
           }
         );
       };
