@@ -125,6 +125,7 @@
         "frontend/css/ansi.css",
         "frontend/css/graphlayout.css",
         "frontend/css/api.css",
+        "frontend/css/screenSizes.css",
         "frontend/ttf/arangofont/style.css"
       ]
     }
