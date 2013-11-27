@@ -27,9 +27,12 @@
 
 #include "skiplistIndex.h"
 
-#include "SkipLists/skiplist.h"
-#include "SkipLists/compare.h"
+#include "BasicsC/utf8-helper.h"
+#include "ShapedJson/json-shaper.h"
+#include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
+#include "VocBase/voc-shaper.h"
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -37,101 +40,320 @@
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-
 // .............................................................................
-// forward declaration - some helper methods
-// .............................................................................
+// recall for all of the following comparison functions:
+//
+// left < right  return -1
+// left > right  return  1
+// left == right return  0
+//
+// furthermore:
+//
+// the following order is currently defined for placing an order on documents
+// undef < null < boolean < number < strings < lists < hash arrays
+// note: undefined will be treated as NULL pointer not NULL JSON OBJECT
+// within each type class we have the following order
+// boolean: false < true
+// number: natural order
+// strings: lexicographical
+// lists: lexicographically and within each slot according to these rules.
+// ...........................................................................
 
-static bool skiplistIndex_findHelperIntervalValid      (SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
-static bool multiSkiplistIndex_findHelperIntervalValid (SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a key with an element, version with proper types
+////////////////////////////////////////////////////////////////////////////////
 
+static int CompareKeyElement (TRI_shaped_json_t const* left,
+                              TRI_skiplist_index_element_t* right,
+                              size_t rightPosition,
+                              TRI_shaper_t* shaper) {
+  int result;
+  
+  assert(NULL != left);
+  assert(NULL != right);
+  result = TRI_CompareShapeTypes(NULL,
+                                 NULL, 
+                                 left,
+                                 right->_document,
+                                 &right->_subObjects[rightPosition],
+                                 NULL,
+                                 shaper,
+                                 shaper);
+  
+  // ...........................................................................
+  // In the above function CompareShapeTypes we use strcmp which may
+  // return an integer greater than 1 or less than -1. From this
+  // function we only need to know whether we have equality (0), less
+  // than (-1) or greater than (1)
+  // ...........................................................................
+  
+  if (result < 0) { 
+    result = -1; 
+  }
+  else if (result > 0) { 
+    result = 1; 
+  }
+  
+  return result;
+}
 
-// .............................................................................
-// forward declaration of static functions which are used by the query engine
-// .............................................................................
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares elements, version with proper types
+////////////////////////////////////////////////////////////////////////////////
 
-static int                   SkiplistIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
-static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*));
-static int                   SkiplistIndex_freeMethodCall   (void*, void*);
+static int CompareElementElement (TRI_skiplist_index_element_t* left,
+                                  size_t leftPosition,
+                                  TRI_skiplist_index_element_t* right,
+                                  size_t rightPosition,
+                                  TRI_shaper_t* shaper) {
+  int result;
+
+  assert(NULL != left);
+  assert(NULL != right);
+  result = TRI_CompareShapeTypes(left->_document,
+                                 &left->_subObjects[leftPosition],
+                                 NULL, 
+                                 right->_document,
+                                 &right->_subObjects[rightPosition],
+                                 NULL,
+                                 shaper,
+                                 shaper);
+  
+  // ...........................................................................
+  // In the above function CompareShapeTypes we use strcmp which may
+  // return an integer greater than 1 or less than -1. From this
+  // function we only need to know whether we have equality (0), less
+  // than (-1) or greater than (1)
+  // ...........................................................................
+
+  if (result < 0) {
+    result = -1;
+  }
+  else if (result > 0) {
+    result = 1;
+  }
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares two elements in a skip list, this is the generic callback
+////////////////////////////////////////////////////////////////////////////////
+
+static int CmpElmElm(void* sli, void* left, void* right,
+                     TRI_cmp_type_e cmptype) {
+
+  SkiplistIndex* skiplistindex = sli;
+  TRI_skiplist_index_element_t* leftElement = left;
+  TRI_skiplist_index_element_t* rightElement = right;
+  int compareResult;
+  TRI_shaper_t* shaper;
+  size_t j;
+
+  assert(NULL != left);
+  assert(NULL != right);
+
+  if (leftElement == rightElement) {
+    return 0;
+  }
+
+  // ..........................................................................
+  // The document could be the same -- so no further comparison is required.
+  // ..........................................................................
+
+  if (leftElement->_document == rightElement->_document) {
+    return 0;
+  }    
+  
+  shaper = skiplistindex->_collection->_shaper;
+  
+  for (j = 0;  j < skiplistindex->_numFields;  j++) {
+    compareResult = CompareElementElement(leftElement,
+                                          j,
+                                          rightElement,
+                                          j,
+                                          shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  // ...........................................................................
+  // This is where the difference between the preorder and the proper total
+  // order comes into play. Here if the 'keys' are the same,
+  // but the doc ptr is different (which it is since we are here), then
+  // we return 0 if we use the preorder and look at the _key attribute
+  // otherwise.
+  // ...........................................................................
+
+  if (TRI_CMP_PREORDER == cmptype) {
+    return 0;
+  }
+
+  // We break this tie in the key comparison by looking at the key: 
+  compareResult = strcmp(leftElement->_document->_key,
+                         rightElement->_document->_key);
+  if (compareResult < 0) {
+      return -1;
+  }
+  else if (compareResult > 0) {
+      return 1;
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a key with an element in a skip list, generic callback
+////////////////////////////////////////////////////////////////////////////////
+
+static int CmpKeyElm(void* sli, void* left, void* right) {
+
+  SkiplistIndex* skiplistindex = sli;
+  TRI_skiplist_index_key_t* leftKey = left;
+  TRI_skiplist_index_element_t* rightElement = right;
+  int compareResult;
+  TRI_shaper_t* shaper;
+  size_t j;
+
+  assert(NULL != left);
+  assert(NULL != right);
+
+  shaper = skiplistindex->_collection->_shaper;
+  
+  // Note that the key might contain fewer fields than there are indexed
+  // attributes, therefore we only run the following loop to
+  // leftKey->_numFields.
+  for (j = 0;  j < leftKey->_numFields;  j++) {
+    compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement,
+                                      j, shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees an element in the skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeElm(void* x)
+{
+  TRI_skiplist_index_element_t* xx = x;
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, xx->_subObjects);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, xx);
+}
+
+static int CopyElement (SkiplistIndex* skiplistindex,
+                        TRI_skiplist_index_element_t* leftElement,
+                        TRI_skiplist_index_element_t* rightElement) {
+  assert(NULL != leftElement && NULL != rightElement);
+    
+  leftElement->_document   = rightElement->_document;
+  leftElement->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
+                 sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields, false);
+  
+  if (leftElement->_subObjects == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  memcpy(leftElement->_subObjects, rightElement->_subObjects, 
+         sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields);
+  
+  return TRI_ERROR_NO_ERROR;  
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Attempts to determine if there is a next document within an interval - without advancing the iterator.
+// Some static helper functions:
+// These are assigned to some callback hooks but do not seem to be used,
+// which is good because otherwise the assert(false) statements would
+// bite!
+////////////////////////////////////////////////////////////////////////////////
+
+static int SkiplistIndex_queryMethodCall (void* theIndex, 
+                                          TRI_index_operator_t* indexOperator,
+                                          TRI_index_challenge_t* challenge, 
+                                          void* data) {
+  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
+  if (slIndex == NULL || indexOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (
+                   void* theIndex, 
+                   TRI_index_operator_t* indexOperator,
+                   void* data, 
+                   bool (*filter) (TRI_index_iterator_t*)) {
+  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
+  if (slIndex == NULL || indexOperator == NULL) {
+    return NULL;
+  }
+  assert(false);
+  return NULL;
+}
+
+static int SkiplistIndex_freeMethodCall (void* theIndex, 
+                                         void* data) {
+  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
+  if (slIndex == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Attempts to determine if there is a next document within an 
+/// interval - without advancing the iterator.
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) {
   TRI_skiplist_iterator_interval_t* interval;
   void* leftNode;
 
-  // .............................................................................
+  // ...........................................................................
   // Some simple checks.
-  // .............................................................................
+  // ...........................................................................
 
-  if (iterator == NULL) {
+  assert(NULL != iterator);
+
+  if (NULL == iterator->_cursor) {
     return false;
   }
 
-  if (iterator->_intervals._length == 0) {
-    return false;
-  }
-
-
-  // .............................................................................
-  // if we have more intervals than the one we are currently working on then of course we have a next doc
-  // .............................................................................
+  // ...........................................................................
+  // if we have more intervals than the one we are currently working 
+  // on then of course we have a next doc
+  // ...........................................................................
   if (iterator->_intervals._length - 1 > iterator->_currentInterval) {
     return true;
   }
 
-
-  // .............................................................................
+  // ...........................................................................
   // Obtain the current interval -- in case we ever use more than one interval
-  // .............................................................................
+  // ...........................................................................
 
-  interval =  (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
+  interval =  (TRI_skiplist_iterator_interval_t*) 
+        ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
 
-
-  // .............................................................................
+  // ...........................................................................
   // Obtain the left end point we are currently at
-  // .............................................................................
+  // ...........................................................................
 
-  if (iterator->_cursor == NULL) {
-    leftNode = interval->_leftEndPoint;
-  }
-  else {
-    leftNode = iterator->_cursor;
-  }
-
-
-  // .............................................................................
+  leftNode = TRI_SkipListNextNode(iterator->_cursor);
+  // Note that leftNode can be NULL here!
+  // ...........................................................................
   // If the left == right end point AND there are no more intervals then we have
   // no next.
-  // .............................................................................
-
-  if (leftNode == interval->_rightEndPoint) {
-    return false;
-  }
-
   // ...........................................................................
-  // interval of the type (a,b) -- but nothing between a and b
-  // such intervals are optimised out so will not be here
-  // ...........................................................................
-  if (iterator->_index->unique) {
-    leftNode = TRI_NextNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, leftNode);
-  }
-  else {
-    leftNode = TRI_NextNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, leftNode);
-  }
-
-
-  // ...........................................................................
-  // Check various possibilities
-  // ...........................................................................
-
-  if (leftNode == NULL) {
-    return false;
-  }
-
   if (leftNode == interval->_rightEndPoint) {
     return false;
   }
@@ -140,286 +362,58 @@ static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) 
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Attempts to determine if there is a previous document within an interval - without advancing the iterator.
+/// @brief Jumps forwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SkiplistHasPrevIterationCallback(TRI_skiplist_iterator_t* iterator) {
+static TRI_skiplist_index_element_t* SkiplistIteration(
+                               TRI_skiplist_iterator_t* iterator, 
+                               int64_t jumpSize) {
   TRI_skiplist_iterator_interval_t* interval;
-  void* rightNode;
-
-  // .............................................................................
-  // Some simple checks.
-  // .............................................................................
-
-  if (iterator == NULL) {
-    return false;
-  }
-
-  if (iterator->_intervals._length == 0) {
-    return false;
-  }
-
-  // .............................................................................
-  // this check is as follows if we have more intervals than the one
-  // we are currently working on -- then of course we have a prev doc
-  // .............................................................................
-  if (iterator->_currentInterval > 0 ) {
-    return true;
-  }
-
-
-  // .............................................................................
-  // Obtain the current interval -- in case we ever use more than one interval
-  // .............................................................................
-
-  interval =  (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
-
-
-  // .............................................................................
-  // Obtain the left end point we are currently at
-  // .............................................................................
-
-  if (iterator->_cursor == NULL) {
-    rightNode = interval->_rightEndPoint;
-  }
-  else {
-    rightNode = iterator->_cursor;
-  }
-
-
-  // .............................................................................
-  // If the left == right end point AND there are no more intervals then we have
-  // no next.
-  // .............................................................................
-
-  if (rightNode == interval->_leftEndPoint) {
-    return false;
-  }
-
-  // ...........................................................................
-  // interval of the type (a,b) -- but nothing between a and b
-  // such intervals are optimised out so will not be here
-  // ...........................................................................
-  if (iterator->_index->unique) {
-    rightNode = TRI_PrevNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, rightNode);
-  }
-  else {
-    rightNode = TRI_PrevNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, rightNode);
-  }
-
-
-  // ...........................................................................
-  // Check various possibilities
-  // ...........................................................................
-
-  if (rightNode == NULL) {
-    return false;
-  }
-
-  if (rightNode == interval->_leftEndPoint) {
-    return false;
-  }
-
-  return true;
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Jumps forwards or backwards by jumpSize and returns the document
-////////////////////////////////////////////////////////////////////////////////
-
-static void* SkiplistIteration(TRI_skiplist_iterator_t* iterator, int64_t jumpSize) {
-  TRI_skiplist_iterator_interval_t* interval;
-  TRI_skiplist_node_t* currentNode;
   int64_t j;
 
-  // .............................................................................
+  // ...........................................................................
   // Some simple checks.
-  // .............................................................................
+  // ...........................................................................
 
-  if (iterator == NULL) {
+  assert(NULL != iterator);
+
+  if (NULL == iterator->_cursor) {
+    // In this case the iterator is exhausted or does not even have intervals.
     return NULL;
   }
 
-  if (iterator->_intervals._length == 0) {
-    return NULL;
-  }
+  assert(jumpSize > 0);
 
-  currentNode = iterator->_cursor;
-
-  if (jumpSize == 0) {
-    if (currentNode == NULL) {
-      return NULL;
-    }
-    else {
-      return &(currentNode->_element);
-    }
-  }
-  
-  // ............................................................................. 
-  // If the current cursor is NULL and jumpSize < 0, then start at the endpoint of
-  // the right most interval.
-  // .............................................................................
-  if (currentNode == NULL && jumpSize < 0) {
-    interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_intervals._length - 1) );
-
-    if (iterator->_index->unique) {
-      iterator->_cursor = TRI_PrevNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, interval->_rightEndPoint);
-    }
-    else {
-      iterator->_cursor = TRI_PrevNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, interval->_rightEndPoint);
-    }
-
-    currentNode = iterator->_cursor;
-
-    if (currentNode == NULL) {
-      return NULL;
-    }
-
-    if (currentNode == interval->_leftEndPoint) {
-      return NULL;
-    }
-
-    return &(currentNode->_element);
-  }
-
-
-  // .............................................................................
-  // If the current cursor is NULL and jumpSize > 0, then start at the left point of
-  // the left most interval.
-  // .............................................................................
-  if (currentNode == NULL && jumpSize > 0) {
-    interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), 0) );
-
-    if (iterator->_index->unique) {
-      iterator->_cursor = TRI_NextNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, interval->_leftEndPoint);
-    }
-    else {
-      iterator->_cursor = TRI_NextNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, interval->_leftEndPoint);
-    }
-
-    currentNode = iterator->_cursor;
-
-    if (currentNode == NULL) {
-      return NULL;
-    }
-
-    if (currentNode == interval->_rightEndPoint) {
-      if (iterator->_index->unique) {
-        iterator->_cursor = TRI_NextNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, interval->_leftEndPoint);
-      }
-      else {
-        iterator->_cursor = TRI_NextNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, interval->_leftEndPoint);
-      }
-
-      return NULL;
-    }
-
-    return &(currentNode->_element);
-  }
-
-
-  // .............................................................................
+  // ...........................................................................
   // Obtain the current interval we are at.
-  // .............................................................................
+  // ...........................................................................
 
-  interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
+  interval = (TRI_skiplist_iterator_interval_t*) 
+       ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
 
-  // .............................................................................
-  // use the current cursor and move jumpSize back.
-  // .............................................................................
-  if (jumpSize < 0) {
-    jumpSize = -jumpSize;
-    for (j = 0; j < jumpSize; ++j) {
-      if (iterator->_cursor == interval->_leftEndPoint) {
-        if (iterator->_currentInterval == 0) {
-          return NULL;
-        }
-        --iterator->_currentInterval;
-        interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
-        iterator->_cursor = interval->_rightEndPoint;
-      }
-
-      if (iterator->_index->unique) {
-        iterator->_cursor = TRI_PrevNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, iterator->_cursor);
-      }
-      else {
-        iterator->_cursor = TRI_PrevNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, iterator->_cursor);
-      }
-
-    }
-
-    if (iterator->_cursor == interval->_leftEndPoint) {
-      if (iterator->_currentInterval == 0) {
-        return NULL;
-      }
-      --iterator->_currentInterval;
-      interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
-      iterator->_cursor = interval->_rightEndPoint;
-
-      if (iterator->_index->unique) {
-        iterator->_cursor = TRI_PrevNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, iterator->_cursor);
-      }
-      else {
-        iterator->_cursor = TRI_PrevNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, iterator->_cursor);
-      }
-
-    }
-  }
-
-
-  // .............................................................................
+  // ...........................................................................
   // use the current cursor and move jumpSize forward.
-  // .............................................................................
-  if (jumpSize > 0) {
-
-    for (j = 0; j < jumpSize; ++j) {
-      if (iterator->_cursor == interval->_rightEndPoint) {
-        if (iterator->_currentInterval == (iterator->_intervals._length - 1)) {
-          return NULL;
-        }
-        ++iterator->_currentInterval;
-        interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals),
-                                                         iterator->_currentInterval) );
-        iterator->_cursor = interval->_leftEndPoint;
+  // ...........................................................................
+  for (j = 0; j < jumpSize; ++j) {
+    while (true) {   // will be left by break
+      iterator->_cursor = TRI_SkipListNextNode(iterator->_cursor);
+      if (iterator->_cursor != interval->_rightEndPoint) {
+        // Note that _cursor can be NULL here!
+        break;   // we found a next one
       }
-
-      if (iterator->_index->unique) {
-        iterator->_cursor = TRI_NextNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, iterator->_cursor);
-      }
-      else {
-        iterator->_cursor = TRI_NextNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, iterator->_cursor);
-      }
-    }
-
-    if (iterator->_cursor == interval->_rightEndPoint) {
       if (iterator->_currentInterval == (iterator->_intervals._length - 1)) {
+        iterator->_cursor = NULL;  // exhausted
         return NULL;
       }
       ++iterator->_currentInterval;
-      interval = (TRI_skiplist_iterator_interval_t*) ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
+      interval = (TRI_skiplist_iterator_interval_t*) 
+          ( TRI_AtVector(&(iterator->_intervals), iterator->_currentInterval) );
       iterator->_cursor = interval->_leftEndPoint;
-
-      if (iterator->_index->unique) {
-        iterator->_cursor = TRI_NextNodeSkipList(iterator->_index->skiplist.uniqueSkiplist, iterator->_cursor);
-      }
-      else {
-        iterator->_cursor = TRI_NextNodeSkipListMulti(iterator->_index->skiplist.nonUniqueSkiplist, iterator->_cursor);
-      }
-
     }
   }
 
-  currentNode = iterator->_cursor;
-
-  if (currentNode == NULL) {
-    return NULL;
-  }
-
-  return &(currentNode->_element);
+  return (TRI_skiplist_index_element_t*) (iterator->_cursor->doc);
 }
 
 
@@ -428,67 +422,20 @@ static void* SkiplistIteration(TRI_skiplist_iterator_t* iterator, int64_t jumpSi
 /// @brief default callback for jumping forward by 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* SkiplistNextIterationCallback(TRI_skiplist_iterator_t* iterator) {
+static TRI_skiplist_index_element_t* SkiplistNextIterationCallback(
+                        TRI_skiplist_iterator_t* iterator) {
   return SkiplistIteration(iterator,1);
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default callback for jumping forward by jumpSize docs
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* SkiplistNextsIterationCallback(TRI_skiplist_iterator_t* iterator, int64_t jumpSize) {
+static TRI_skiplist_index_element_t* SkiplistNextsIterationCallback(
+                                            TRI_skiplist_iterator_t* iterator,
+                                            int64_t jumpSize) {
   return SkiplistIteration(iterator,jumpSize);
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default callback for jumping backwards by 1
-////////////////////////////////////////////////////////////////////////////////
-
-static void* SkiplistPrevIterationCallback(TRI_skiplist_iterator_t* iterator) {
-  return SkiplistIteration(iterator,-1);
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default callback for jumping backwards by jumpSize docs
-////////////////////////////////////////////////////////////////////////////////
-
-static void* SkiplistPrevsIterationCallback(TRI_skiplist_iterator_t* iterator, int64_t jumpSize) {
-  return SkiplistIteration(iterator,-jumpSize);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an element to a key
-////////////////////////////////////////////////////////////////////////////////
-
-static void FillSkiplistIndexKeyBySkiplistIndexElement (SkiplistIndex* idx,
-                                                        TRI_skiplist_index_key_t* key,
-                                                        TRI_skiplist_index_element_t* element) {
-  char const* ptr;
-  size_t n;
-  size_t i;
-
-  if (idx->unique) {
-    n = idx->skiplist.uniqueSkiplist->base._numFields;
-  }
-  else {
-    n = idx->skiplist.nonUniqueSkiplist->base._numFields;
-  }
-
-  key->_fields = TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
-
-  ptr = (char const*) element->_document->_data;
-
-  for (i = 0;  i < n;  ++i) {
-    key->_fields[i]._sid = element->_subObjects[i]._sid;
-    key->_fields[i]._data.length = element->_subObjects[i]._length;
-    key->_fields[i]._data.data = CONST_CAST(ptr + element->_subObjects[i]._offset);
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -500,28 +447,32 @@ static void FillSkiplistIndexKeyBySkiplistIndexElement (SkiplistIndex* idx,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Assigns a static function call to a function pointer used by Query Engine
+/// @brief Assigns a static function call to a function pointer used by
+/// the Query Engine, seems not to be used at this stage...
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+int SkiplistIndex_assignMethod(void* methodHandle, 
+                               TRI_index_method_assignment_type_e methodType) {
   switch (methodType) {
 
     case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
-      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
+      TRI_index_query_free_method_call_t* call = 
+             (TRI_index_query_free_method_call_t*)(methodHandle);
       *call = SkiplistIndex_freeMethodCall;
       break;
     }
 
     case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
-      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
+      TRI_index_query_method_call_t* call = 
+             (TRI_index_query_method_call_t*)(methodHandle);
       *call = SkiplistIndex_queryMethodCall;
       break;
     }
 
     case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
-      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
+      TRI_index_query_result_method_call_t* call = 
+             (TRI_index_query_result_method_call_t*)(methodHandle);
       *call = SkiplistIndex_resultMethodCall;
       break;
     }
@@ -540,7 +491,7 @@ int SkiplistIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_t
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const iterator) {
-  assert(iterator);
+  assert(NULL != iterator);
 
   TRI_DestroyVector(&iterator->_intervals);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, iterator);
@@ -555,14 +506,8 @@ void SkiplistIndex_destroy (SkiplistIndex* slIndex) {
     return;
   }
 
-  if (slIndex->unique) {
-    TRI_FreeSkipList(slIndex->skiplist.uniqueSkiplist);
-    slIndex->skiplist.uniqueSkiplist = NULL;
-  }
-  else {
-    TRI_FreeSkipListMulti(slIndex->skiplist.nonUniqueSkiplist);
-    slIndex->skiplist.nonUniqueSkiplist = NULL;
-  }
+  TRI_FreeSkipList(slIndex->skiplist);
+  slIndex->skiplist = NULL;
 }
 
 
@@ -585,35 +530,23 @@ void SkiplistIndex_free (SkiplistIndex* slIndex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-
-
-
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-// Unique Skiplists
+// Skiplist indices
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-
 //------------------------------------------------------------------------------
-// Private Methods Unique Skiplists
-//------------------------------------------------------------------------------
-
-
-
-
-//------------------------------------------------------------------------------
-// Public Methods Unique Skiplists
+// Public Methods Skiplist Indices
 //------------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new unique entry skiplist
+/// @brief creates a new skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
-                                  size_t numFields) {
+                                  size_t numFields, bool unique, bool sparse) {
   SkiplistIndex* skiplistIndex;
-  int res;
 
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
 
@@ -621,25 +554,15 @@ SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
     return NULL;
   }
 
-  skiplistIndex->unique = true;
-  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t), true);
+  skiplistIndex->_collection = primary;
+  skiplistIndex->_numFields = numFields;
+  skiplistIndex->unique = unique;
+  skiplistIndex->sparse = sparse;
+  skiplistIndex->skiplist = TRI_InitSkipList(CmpElmElm,CmpKeyElm,skiplistIndex,
+                                             FreeElm,unique);
 
-  if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
+  if (skiplistIndex->skiplist == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-
-    return NULL;
-  }
-
-  res = TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
-                         primary,
-                         numFields,
-                         TRI_SKIPLIST_PROB_HALF,
-                         40);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex->skiplist.uniqueSkiplist);
-    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-
     return NULL;
   }
 
@@ -647,57 +570,70 @@ SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
 }
 
 
-
-//////////////////////////////////////////////////////////////////////////////////
-/// @brief Locates one or more ranges within the unique skiplist and returns iterator
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Locates one or more ranges within the skiplist and returns iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-// ...............................................................................
+// .............................................................................
 // Tests whether the LeftEndPoint is < than RightEndPoint (-1)
 // Tests whether the LeftEndPoint is == to RightEndPoint (0)    [empty]
 // Tests whether the LeftEndPoint is > than RightEndPoint (1)   [undefined]
-// ...............................................................................
-/*
-static void debugElement(SkiplistIndex* skiplistIndex, TRI_skiplist_node_t* node) {
-  size_t numFields;
-  SkiplistIndexElement* element = (SkiplistIndexElement*)(&(node->_element));
-  TRI_shaper_t* shaper;
-  size_t j;
+// .............................................................................
 
-  if (node == NULL) {
-    printf("%s:%u:node null\n",__FILE__,__LINE__);
-    return;
+static bool skiplistIndex_findHelperIntervalValid(
+                        SkiplistIndex* skiplistIndex,
+                        TRI_skiplist_iterator_interval_t* interval) {
+  int compareResult;
+  TRI_skiplist_node_t* lNode;
+  TRI_skiplist_node_t* rNode;
+
+  lNode = interval->_leftEndPoint;
+
+  if (lNode == NULL) {
+    return false;
+  }
+  // Note that the right end point can be NULL to indicate the end of the index.
+
+  rNode = interval->_rightEndPoint;
+
+  if (lNode == rNode) {
+    return false;
   }
 
-  if (node == TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
-    printf("%s:%u:start node\n",__FILE__,__LINE__);
+  if (TRI_SkipListNextNode(lNode) == rNode) {
+    // Interval empty, nothing to do with it.
+    return false;
   }
 
-  if (node == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
-    printf("%s:%u:end node\n",__FILE__,__LINE__);
+  if (NULL != rNode && TRI_SkipListNextNode(rNode) == lNode) {
+    // Interval empty, nothing to do with it.
+    return false;
   }
 
-  if (element == NULL) {
-    printf("%s:%u:element null\n",__FILE__,__LINE__);
-    return;
+  if (TRI_SkipListGetNrUsed(skiplistIndex->skiplist) == 0) {
+    return false;
   }
 
-  numFields = element->numFields;
-  shaper    = ((TRI_primary_collection_t*)(element->collection))->_shaper;
-
-  for (j = 0; j < numFields; j++) {
-    printf("%s:%u:!!!:%f:%lu\n",__FILE__,__LINE__,
-      *((double*)((j + element->fields)->_data.data)),
-      (long unsigned int)(element->data) );
+  if ( lNode == TRI_SkipListStartNode(skiplistIndex->skiplist) ||
+       NULL == rNode ) {
+    // The index is not empty, the nodes are not neighbours, one of them
+    // is at the boundary, so the interval is valid and not empty.
+    return true;
   }
-  return;
-}
-*/
+  
+  compareResult = CmpElmElm( skiplistIndex, 
+                             lNode->doc, rNode->doc, TRI_CMP_TOTORDER );
+  return (compareResult == -1);
+  // Since we know that the nodes are not neighbours, we can guarantee
+  // at least one document in the interval.
+} 
 
-static bool skiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* skiplistIndex,
-                                                               TRI_skiplist_iterator_interval_t* lInterval,
-                                                               TRI_skiplist_iterator_interval_t* rInterval,
-                                                               TRI_skiplist_iterator_interval_t* interval) {
+
+static bool skiplistIndex_findHelperIntervalIntersectionValid (
+                    SkiplistIndex* skiplistIndex,
+                    TRI_skiplist_iterator_interval_t* lInterval,
+                    TRI_skiplist_iterator_interval_t* rInterval,
+                    TRI_skiplist_iterator_interval_t* interval) {
   int compareResult;
   TRI_skiplist_node_t* lNode;
   TRI_skiplist_node_t* rNode;
@@ -705,23 +641,23 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* sk
   lNode = lInterval->_leftEndPoint;
   rNode = rInterval->_leftEndPoint;
 
-  if (lNode == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist) || lNode == NULL ||
-      rNode == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist) || rNode == NULL) {
+  if (NULL == lNode || NULL == rNode) {
+    // At least one left boundary is the end, intersection is empty.
     return false;
   }
 
-  if (lNode == TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
+  // Now find the larger of the two start nodes:
+  if (lNode == TRI_SkipListStartNode(skiplistIndex->skiplist)) {
+    // We take rNode, even if it is the start node as well.
     compareResult = -1;
   }
-  else if (rNode == TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
+  else if (rNode == TRI_SkipListStartNode(skiplistIndex->skiplist)) {
+    // We take lNode
     compareResult = 1;
   }
   else {
-    compareResult = IndexStaticCompareElementElement(
-        skiplistIndex->skiplist.uniqueSkiplist,
-        &(lNode->_element),
-        &(rNode->_element),
-        0);
+    compareResult = CmpElmElm(skiplistIndex, lNode->doc, rNode->doc, 
+                              TRI_CMP_TOTORDER);
   }
 
   if (compareResult < 1) {
@@ -734,18 +670,18 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* sk
   lNode = lInterval->_rightEndPoint;
   rNode = rInterval->_rightEndPoint;
   
-  if (lNode == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
+  // Now find the smaller of the two end nodes:
+  if (NULL == lNode) {
+    // We take rNode, even is this also the end node. 
     compareResult = 1;
   }
-  else if (rNode == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
+  else if (NULL == rNode) {
+    // We take lNode.
     compareResult = -1;
   }
   else {
-    compareResult = IndexStaticCompareElementElement(
-        skiplistIndex->skiplist.uniqueSkiplist, 
-        &(lNode->_element),
-        &(rNode->_element), 
-        0);
+    compareResult = CmpElmElm(skiplistIndex, lNode->doc, rNode->doc, 
+                              TRI_CMP_TOTORDER);
   }
 
   if (compareResult < 1) {
@@ -757,37 +693,6 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* sk
 
   return skiplistIndex_findHelperIntervalValid(skiplistIndex, interval);
 }
-
-static bool skiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, TRI_skiplist_iterator_interval_t* interval) {
-  int compareResult;
-  TRI_skiplist_node_t* lNode;
-  TRI_skiplist_node_t* rNode;
-
-
-  if ((interval->_leftEndPoint == NULL) || (interval->_rightEndPoint == NULL)) {
-    return false;
-  }
-
-  if (interval->_leftEndPoint == interval->_rightEndPoint) {
-    return false;
-  }
-
-  if ( (interval->_leftEndPoint  == TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) ||
-       (interval->_rightEndPoint == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)))  {
-    return true;
-  }
-  
-  lNode = interval->_leftEndPoint;
-  rNode = interval->_rightEndPoint;
-
-  compareResult = IndexStaticCompareElementElement(
-      skiplistIndex->skiplist.uniqueSkiplist, 
-      &(lNode->_element),
-      &(rNode->_element),
-      0);
-  return (compareResult == -1);                                              
-} 
-
 
 static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
                                       TRI_vector_t* shapeList,
@@ -801,16 +706,16 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
   TRI_skiplist_iterator_interval_t  interval;
   TRI_skiplist_iterator_interval_t* tempLeftInterval;
   TRI_skiplist_iterator_interval_t* tempRightInterval;
-  size_t numFields;
+  TRI_skiplist_node_t*              temp;
   size_t i, j;
 
-  TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
-  TRI_InitVector(&(rightResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, 
+                 sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(rightResult), TRI_UNKNOWN_MEM_ZONE, 
+                 sizeof(TRI_skiplist_iterator_interval_t));
 
   relationOperator  = (TRI_relation_index_operator_t*)(indexOperator);
   logicalOperator   = (TRI_logical_index_operator_t*)(indexOperator);
-
-  numFields = 0;
 
   switch (indexOperator->_type) {
     case TRI_EQ_INDEX_OPERATOR:
@@ -820,11 +725,12 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     case TRI_GT_INDEX_OPERATOR: 
 
       values._fields     = relationOperator->_fields;
-      numFields          = relationOperator->_numFields;
+      values._numFields  = relationOperator->_numFields;
       
     default: {
-      // must not access relationOperator->xxx if the operator is not a relational one
-      // otherwise we'll get invalid reads and the prog might crash
+      // must not access relationOperator->xxx if the operator is not a
+      // relational one otherwise we'll get invalid reads and the prog
+      // might crash
     }
   }
 
@@ -832,12 +738,16 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
 
     /*
     case TRI_SL_OR_OPERATOR: {
-      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_left,&leftResult);
-      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_right,&leftResult);
+      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_left,
+                               &leftResult);
+      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_right,
+                               &leftResult);
       i = 0;
       while (i < leftResult._length - 1) {
-        tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&leftResult, i));
-        tempRightInterval =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&leftResult, i + 1));
+        tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) 
+                             (TRI_AtVector(&leftResult, i));
+        tempRightInterval =  (TRI_skiplist_iterator_interval_t*) 
+                             (TRI_AtVector(&leftResult, i + 1));
         // if intervals intersect, optimise and start again
       }
       assert(0);
@@ -845,434 +755,23 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     */
 
     case TRI_AND_INDEX_OPERATOR: {
-      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_left,&leftResult);
-      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_right,&rightResult);
+      SkiplistIndex_findHelper(skiplistIndex,shapeList,
+                               logicalOperator->_left,&leftResult);
+      SkiplistIndex_findHelper(skiplistIndex,shapeList,
+                               logicalOperator->_right,&rightResult);
 
       for (i = 0; i < leftResult._length; ++i) {
         for (j = 0; j < rightResult._length; ++j) {
-          tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&leftResult, i));    
-          tempRightInterval =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&rightResult, j));    
-
-          if (!skiplistIndex_findHelperIntervalIntersectionValid(skiplistIndex,
-                                                                 tempLeftInterval, 
-                                                                 tempRightInterval,
-                                                                 &interval)) {
-            continue;
-          }
-          TRI_PushBackVector(resultIntervalList, &interval);
-        }
-      }
-      TRI_DestroyVector(&leftResult);
-      TRI_DestroyVector(&rightResult);
-      return;
-    }
-
-
-    case TRI_EQ_INDEX_OPERATOR: {
-
-      // ............................................................................
-      // The index is constructed from n fields and the client has sent us n values
-      // ............................................................................
-
-      if (relationOperator->_numFields == shapeList->_length) {
-        interval._leftEndPoint  = TRI_LookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields);
-
-        if (interval._leftEndPoint != NULL) {
-          interval._rightEndPoint = TRI_NextNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist, interval._leftEndPoint);
-          interval._leftEndPoint  = TRI_PrevNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist, interval._leftEndPoint);
-        }
-      }
-      // ............................................................................
-      // The index is constructed from n fields and the client has sent us m values
-      // where m < n
-      // ............................................................................
-
-      else {
-        interval._leftEndPoint  = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields);
-        interval._rightEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields);
-      }
-
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
-        TRI_PushBackVector(resultIntervalList, &interval);
-      }
-
-      return;    
-    }
-
-    
-    case TRI_LE_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-      interval._rightEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields); 
-
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
-        TRI_PushBackVector(resultIntervalList, &interval);
-      }  
-
-      return;
-    }  
-
-    
-    case TRI_LT_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-      interval._rightEndPoint = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields); 
-
-      if (interval._rightEndPoint != TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) { 
-        interval._rightEndPoint = TRI_NextNodeSkipList (skiplistIndex->skiplist.uniqueSkiplist, interval._rightEndPoint);      
-      }      
-
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
-        TRI_PushBackVector(resultIntervalList, &interval);
-      }  
-
-      return;
-    }
-
-
-    case TRI_GE_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields);
-      interval._rightEndPoint = TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
-        TRI_PushBackVector(resultIntervalList, &interval);
-      }  
-
-      return;
-    }
-
-
-    case TRI_GT_INDEX_OPERATOR: {
-      interval._leftEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values, numFields);
-      interval._rightEndPoint = TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-
-      if (interval._leftEndPoint != TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
-        interval._leftEndPoint = TRI_PrevNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist, interval._leftEndPoint);      
-      }  
-
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
-        TRI_PushBackVector(resultIntervalList, &interval);
-      }  
-
-      return;
-    }
-
-    default: {
-      assert(0);
-    }
-
-  } // end of switch statement
-}
-
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex* skiplistIndex, 
-                                             TRI_vector_t* shapeList, 
-                                             TRI_index_operator_t* indexOperator) {
-  TRI_skiplist_iterator_t*         results;
-
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), true);
-  if (results == NULL) {
-    return NULL; // calling procedure needs to care when the iterator is null
-  }
-  results->_index = skiplistIndex;
-  TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
-  results->_currentInterval = 0;
-  results->_cursor          = NULL;
-  results->_hasNext         = SkiplistHasNextIterationCallback;
-  results->_next            = SkiplistNextIterationCallback;
-  results->_nexts           = SkiplistNextsIterationCallback;
-  results->_hasPrev         = SkiplistHasPrevIterationCallback;
-  results->_prev            = SkiplistPrevIterationCallback;
-  results->_prevs           = SkiplistPrevsIterationCallback;
-
-  SkiplistIndex_findHelper(skiplistIndex, shapeList, indexOperator, &(results->_intervals));
-
-  return results;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a data element into a unique skip list
-////////////////////////////////////////////////////////////////////////////////
-
-int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, 
-                          TRI_skiplist_index_element_t* element) {
-  TRI_skiplist_index_key_t key;
-  int result;
-
-  FillSkiplistIndexKeyBySkiplistIndexElement(skiplistIndex, &key, element);
-  result = TRI_InsertKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &key, element, false);
-  TRI_Free(TRI_CORE_MEM_ZONE, key._fields);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from the skip list
-////////////////////////////////////////////////////////////////////////////////
-
-int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, 
-                          TRI_skiplist_index_element_t* element) {
-  int result;
-
-  result = TRI_RemoveElementSkipList(skiplistIndex->skiplist.uniqueSkiplist, element, NULL);
-
-  if (result == TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of elements in the skip list index
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t SkiplistIndex_getNrUsed(SkiplistIndex* skiplistIndex) {
-  return skiplistIndex->skiplist.uniqueSkiplist->base._nrUsed;
-}
-
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-// Multi-skiplist non-unique skiplist indexes
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-
-//------------------------------------------------------------------------------
-// Private methods
-//------------------------------------------------------------------------------
-
-//------------------------------------------------------------------------------
-// Public Methods Non-Unique Muilti Skiplists
-//------------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new non-uniqe (allows duplicates) multi skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-SkiplistIndex* MultiSkiplistIndex_new (TRI_primary_collection_t* primary,
-                                       size_t numFields) {
-  SkiplistIndex* skiplistIndex;
-  int res;
-
-  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
-
-  if (skiplistIndex == NULL) {
-    return NULL;
-  }
-
-  skiplistIndex->unique = false;
-  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t), true);
-
-  if (skiplistIndex->skiplist.nonUniqueSkiplist == NULL) {
-    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-    return NULL;
-  }
-  
-  res = TRI_InitSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist,
-                              primary,
-                              numFields,
-                              TRI_SKIPLIST_PROB_HALF,
-                              40);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex->skiplist.nonUniqueSkiplist);
-    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-
-    return NULL;
-  }
-
-  return skiplistIndex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Locates one or more ranges within the unique skiplist and returns iterator
-////////////////////////////////////////////////////////////////////////////////
-/*
-static void debugElementMulti(SkiplistIndex* skiplistIndex, TRI_skiplist_node_t* node) {
-  size_t numFields;
-  SkiplistIndexElement* element = (SkiplistIndexElement*)(&(node->_element));
-  TRI_shaper_t* shaper;
-  size_t j;
-
-  if (node == NULL) {
-    printf("%s:%u:node null\n",__FILE__,__LINE__);
-    return;
-  }
-
-  if (node == TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-    printf("%s:%u:start node\n",__FILE__,__LINE__);
-  }
-
-  if (node == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-    printf("%s:%u:end node\n",__FILE__,__LINE__);
-  }
-
-  if (element == NULL) {
-    printf("%s:%u:element null\n",__FILE__,__LINE__);
-    return;
-  }
-
-  numFields = element->numFields;
-  shaper    = ((TRI_primary_collection_t*)(element->collection))->_shaper;
-
-  for (j = 0; j < numFields; j++) {
-    printf("%s:%u:!!!:%f:%lu\n",__FILE__,__LINE__,
-      *((double*)((j + element->fields)->_data.data)),
-      (long unsigned int)(element->data) );
-  }
-  return;
-}
-*/
-
-static bool multiSkiplistIndex_findHelperIntervalIntersectionValid (SkiplistIndex* skiplistIndex,
-                                                                    TRI_skiplist_iterator_interval_t* lInterval, 
-                                                                    TRI_skiplist_iterator_interval_t* rInterval, 
-                                                                    TRI_skiplist_iterator_interval_t* interval) {
-  int compareResult;
-  TRI_skiplist_node_t* lNode;
-  TRI_skiplist_node_t* rNode;
-
-  lNode = lInterval->_leftEndPoint;
-  rNode = rInterval->_leftEndPoint;
-
-  if (lNode == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist) || lNode == NULL ||
-      rNode == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist) || rNode == NULL) {
-    return false;
-  }
-
-  if (lNode == TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-    compareResult = -1;
-  }
-  else if (rNode == TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-    compareResult = 1;
-  }
-  else {
-    compareResult = IndexStaticMultiCompareElementElement(
-        skiplistIndex->skiplist.nonUniqueSkiplist, 
-        &(lNode->_element),
-        &(rNode->_element));
-  }
-
-  if (compareResult < 1) {
-    interval->_leftEndPoint = rNode;
-  }
-  else {
-    interval->_leftEndPoint = lNode;
-  }  
-  
-  lNode = lInterval->_rightEndPoint;
-  rNode = rInterval->_rightEndPoint;
-  
-  if (lNode == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-    compareResult = 1;
-  }
-  else if (rNode == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-    compareResult = -1;
-  }
-  else {
-    compareResult = IndexStaticMultiCompareElementElement(
-        skiplistIndex->skiplist.nonUniqueSkiplist,
-        &(lNode->_element),
-        &(rNode->_element));
-  }
-
-  if (compareResult < 1) {
-    interval->_rightEndPoint = lNode;
-  }
-  else {
-    interval->_rightEndPoint = rNode;
-  }
-
-  return multiSkiplistIndex_findHelperIntervalValid(skiplistIndex, interval);
-}
-
-
-
-static bool multiSkiplistIndex_findHelperIntervalValid (SkiplistIndex* skiplistIndex,
-                                                        TRI_skiplist_iterator_interval_t* interval) {
-  int compareResult;
-  TRI_skiplist_node_t* lNode;
-  TRI_skiplist_node_t* rNode;
-  
-  if ((interval->_leftEndPoint == NULL) || (interval->_rightEndPoint == NULL)) {
-    return false;
-  }
-
-  if (interval->_leftEndPoint == interval->_rightEndPoint) {
-    return false;
-  }
-
-  if ( (interval->_leftEndPoint  == TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) ||
-       (interval->_rightEndPoint == TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)))  {
-    return true;
-  }
-  
-  lNode = interval->_leftEndPoint;
-  rNode = interval->_rightEndPoint;
-
-  compareResult = IndexStaticMultiCompareElementElement(
-      skiplistIndex->skiplist.nonUniqueSkiplist, 
-      &(lNode->_element),
-      &(rNode->_element));
-                                              
-  return (-1 == compareResult);  
-} 
-
-
-
-static void MultiSkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
-                                           TRI_vector_t* shapeList,
-                                           TRI_index_operator_t* indexOperator,
-                                           TRI_vector_t* resultIntervalList) {
-  TRI_skiplist_index_key_t          values;
-  TRI_vector_t                      leftResult;
-  TRI_vector_t                      rightResult;
-  TRI_relation_index_operator_t*    relationOperator;
-  TRI_logical_index_operator_t*     logicalOperator;
-  TRI_skiplist_iterator_interval_t  interval;
-  TRI_skiplist_iterator_interval_t* tempLeftInterval;
-  TRI_skiplist_iterator_interval_t* tempRightInterval;
-  size_t numFields;
-  size_t i, j;
-
-  TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
-  TRI_InitVector(&(rightResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
-
-  logicalOperator   = (TRI_logical_index_operator_t*)(indexOperator);
-  relationOperator  = (TRI_relation_index_operator_t*)(indexOperator);
-
-  numFields = 0;
-
-  switch (indexOperator->_type) {
-    case TRI_EQ_INDEX_OPERATOR:
-    case TRI_LE_INDEX_OPERATOR:
-    case TRI_LT_INDEX_OPERATOR:
-    case TRI_GE_INDEX_OPERATOR:
-    case TRI_GT_INDEX_OPERATOR:
-
-      values._fields     = relationOperator->_fields;
-      numFields          = relationOperator->_numFields;
-      
-    default: {
-      // must not access relationOperator->xxx if the operator is not a relational one
-      // otherwise we'll get invalid reads and the prog might crash
-    }
-  }
-
-  switch (indexOperator->_type) {
-
-    /*
-    case TRI_SL_OR_OPERATOR: {
-      todo
-    }
-    */
-
-    case TRI_AND_INDEX_OPERATOR: {
-      MultiSkiplistIndex_findHelper(skiplistIndex, shapeList, logicalOperator->_left, &leftResult);
-      MultiSkiplistIndex_findHelper(skiplistIndex, shapeList, logicalOperator->_right, &rightResult);
-
-      for (i = 0; i < leftResult._length; ++i) {
-        for (j = 0; j < rightResult._length; ++j) {
-          tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&leftResult, i));
-          tempRightInterval =  (TRI_skiplist_iterator_interval_t*) (TRI_AtVector(&rightResult, j));
-          if (multiSkiplistIndex_findHelperIntervalIntersectionValid(skiplistIndex, tempLeftInterval, tempRightInterval, &interval)) {
+          tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) 
+                               (TRI_AtVector(&leftResult, i));    
+          tempRightInterval =  (TRI_skiplist_iterator_interval_t*) 
+                               (TRI_AtVector(&rightResult, j));    
+
+          if (skiplistIndex_findHelperIntervalIntersectionValid(
+                            skiplistIndex,
+                            tempLeftInterval, 
+                            tempRightInterval,
+                            &interval)) {
             TRI_PushBackVector(resultIntervalList, &interval);
           }
         }
@@ -1284,159 +783,182 @@ static void MultiSkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
 
 
     case TRI_EQ_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values, numFields);
-      interval._rightEndPoint = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values, numFields);
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
-        TRI_PushBackVector(resultIntervalList, &interval);
+      temp = TRI_SkipListLeftKeyLookup(skiplistIndex->skiplist, &values);
+      if (NULL != temp) {
+        interval._leftEndPoint = temp;
+        if (skiplistIndex->unique) {
+          // At most one hit:
+          temp = TRI_SkipListNextNode(temp);
+          if (NULL != temp) {
+            if (0 == CmpKeyElm(skiplistIndex, &values, temp->doc)) {
+              interval._rightEndPoint = TRI_SkipListNextNode(temp);
+              if (skiplistIndex_findHelperIntervalValid(skiplistIndex,
+                                                        &interval)) {
+                TRI_PushBackVector(resultIntervalList, &interval);
+              }
+            }
+          }
+        }
+        else {
+          temp = TRI_SkipListRightKeyLookup(skiplistIndex->skiplist, &values);
+          interval._rightEndPoint = TRI_SkipListNextNode(temp);
+          if (skiplistIndex_findHelperIntervalValid(skiplistIndex,
+                                                    &interval)) {
+            TRI_PushBackVector(resultIntervalList, &interval);
+          }
+        }
       }
-      return;
+      return;    
     }
 
-
+    
     case TRI_LE_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      interval._rightEndPoint = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values, numFields);
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      interval._leftEndPoint  = TRI_SkipListStartNode(skiplistIndex->skiplist);
+      temp = TRI_SkipListRightKeyLookup(skiplistIndex->skiplist, &values);
+      interval._rightEndPoint = TRI_SkipListNextNode(temp);
+
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
-      }
+      }  
+
       return;
-    }
+    }  
 
-
+    
     case TRI_LT_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      interval._rightEndPoint = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values, numFields);
-      if (interval._rightEndPoint != TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-        interval._rightEndPoint = TRI_NextNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, interval._rightEndPoint);
-      }
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      interval._leftEndPoint  = TRI_SkipListStartNode(skiplistIndex->skiplist);
+      temp = TRI_SkipListLeftKeyLookup(skiplistIndex->skiplist, &values);
+      interval._rightEndPoint = TRI_SkipListNextNode(temp);
+
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
-      }
+      }  
+
       return;
     }
 
 
     case TRI_GE_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values, numFields);
-      interval._rightEndPoint = TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      temp = TRI_SkipListLeftKeyLookup(skiplistIndex->skiplist, &values);
+      interval._leftEndPoint = temp; 
+      interval._rightEndPoint = NULL;
+
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
-      }
+      }  
+
       return;
     }
 
 
     case TRI_GT_INDEX_OPERATOR: {
-      interval._leftEndPoint  = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values, numFields);
-      interval._rightEndPoint = TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      if (interval._leftEndPoint != TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
-        interval._leftEndPoint = TRI_PrevNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, interval._leftEndPoint);
-      }
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      temp = TRI_SkipListRightKeyLookup(skiplistIndex->skiplist, &values);
+      interval._leftEndPoint = temp;
+      interval._rightEndPoint = NULL;
+
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
-      }
+      }  
+
       return;
     }
 
     default: {
-      assert(0);
+      assert(false);
     }
 
   } // end of switch statement
 }
 
-
-TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex* skiplistIndex, 
-                                                  TRI_vector_t* shapeList, 
-                                                  TRI_index_operator_t* indexOperator) {
+TRI_skiplist_iterator_t* SkiplistIndex_find (
+                            SkiplistIndex* skiplistIndex, 
+                            TRI_vector_t* shapeList, 
+                            TRI_index_operator_t* indexOperator) {
   TRI_skiplist_iterator_t* results;
+  TRI_skiplist_iterator_interval_t* tmp;
 
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), false);
-
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t),
+                         true);
   if (results == NULL) {
-    return NULL;
+    return NULL; // calling procedure needs to care when the iterator is null
   }
-
   results->_index = skiplistIndex;
-  TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, 
+                 sizeof(TRI_skiplist_iterator_interval_t));
   results->_currentInterval = 0;
   results->_cursor          = NULL;
   results->_hasNext         = SkiplistHasNextIterationCallback;
   results->_next            = SkiplistNextIterationCallback;
   results->_nexts           = SkiplistNextsIterationCallback;
-  results->_hasPrev         = SkiplistHasPrevIterationCallback;
-  results->_prev            = SkiplistPrevIterationCallback;
-  results->_prevs           = SkiplistPrevsIterationCallback;
 
-  MultiSkiplistIndex_findHelper(skiplistIndex, shapeList, indexOperator, &(results->_intervals));
+  SkiplistIndex_findHelper(skiplistIndex, shapeList, indexOperator, 
+                           &(results->_intervals));
+
+  // Finally initialise _cursor if the result is not empty:
+  if (0 < TRI_LengthVector(&(results->_intervals))) {
+    tmp = (TRI_skiplist_iterator_interval_t*) 
+             TRI_AtVector(&(results->_intervals),0);
+    results->_cursor = tmp->_leftEndPoint;
+  }
 
   return results;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a data element into a multi skiplist
+/// @brief inserts a data element into a unique skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-int MultiSkiplistIndex_insert (SkiplistIndex* skiplistIndex, 
-                               TRI_skiplist_index_element_t* element) {
-  return TRI_InsertElementSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, element, false);  
-}
+int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, 
+                          TRI_skiplist_index_element_t* element) {
+  TRI_skiplist_index_element_t* copy;
+  int result;
 
-//////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from the skiplist
-//////////////////////////////////////////////////////////////////////////////////
-
-int MultiSkiplistIndex_remove (SkiplistIndex* skiplistIndex, 
-                               TRI_skiplist_index_element_t* element) {
-  return TRI_RemoveElementSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, element, NULL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of elements in the multi skip list index
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t MultiSkiplistIndex_getNrUsed(SkiplistIndex* skiplistIndex) {
-  return skiplistIndex->skiplist.nonUniqueSkiplist->base._nrUsed;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-// Implementation of forward declared query engine callback functions
-////////////////////////////////////////////////////////////////////////////////
-
-static int SkiplistIndex_queryMethodCall (void* theIndex, 
-                                          TRI_index_operator_t* indexOperator,
-                                          TRI_index_challenge_t* challenge, 
-                                          void* data) {
-  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == NULL || indexOperator == NULL) {
-    return TRI_ERROR_INTERNAL;
+  copy = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
+                      sizeof(TRI_skiplist_index_element_t),false);
+  if (NULL == copy) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
-  assert(false);
+  result = CopyElement(skiplistIndex, copy, element);
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+    return result;
+  }
+  result = TRI_SkipListInsert(skiplistIndex->skiplist, copy);
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy->_subObjects);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+    return result;
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
-static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (void* theIndex, 
-                                                             TRI_index_operator_t* indexOperator,
-                                                             void* data, 
-                                                             bool (*filter) (TRI_index_iterator_t*)) {
-  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == NULL || indexOperator == NULL) {
-    return NULL;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an entry from the skip list
+////////////////////////////////////////////////////////////////////////////////
+
+int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, 
+                          TRI_skiplist_index_element_t* element) {
+  int result;
+
+  result = TRI_SkipListRemove(skiplistIndex->skiplist, element);
+
+  if (result == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    // This is for the case of a rollback in an aborted transaction.
+    // We silently ignore the fact that the document was not there.
+    // This could also be useful for the case of a sparse index.
+    return TRI_ERROR_NO_ERROR;
   }
-  assert(false);
-  return NULL;
+
+  return result;
 }
 
-static int SkiplistIndex_freeMethodCall (void* theIndex, 
-                                         void* data) {
-  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == NULL) {
-    return TRI_ERROR_INTERNAL;
-  }
-  assert(false);
-  return TRI_ERROR_NO_ERROR;
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of elements in the skip list index
+////////////////////////////////////////////////////////////////////////////////
 
+uint64_t SkiplistIndex_getNrUsed(SkiplistIndex* skiplistIndex) {
+  return TRI_SkipListGetNrUsed(skiplistIndex->skiplist);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

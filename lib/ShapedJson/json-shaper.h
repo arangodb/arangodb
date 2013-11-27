@@ -91,8 +91,7 @@ TRI_basic_shapes_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shaper_s {
-  TRI_shape_aid_t (*findAttributeByName) (struct TRI_shaper_s*, char const*);
-  TRI_shape_aid_t (*lookupAttributeByName) (struct TRI_shaper_s*, char const*);
+  TRI_shape_aid_t (*findAttributeByName) (struct TRI_shaper_s*, char const*, bool);
   char const* (*lookupAttributeId) (struct TRI_shaper_s*, TRI_shape_aid_t);
   TRI_shape_t const* (*findShape) (struct TRI_shaper_s*, TRI_shape_t*);
   TRI_shape_t const* (*lookupShapeId) (struct TRI_shaper_s*, TRI_shape_sid_t);

@@ -47,6 +47,20 @@ static TRI_json_t* JsonShapeData (TRI_shaper_t* shaper, TRI_shape_t const* shape
 static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* buffer, TRI_shape_t const* shape, char const* data, uint64_t size);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shape cache (caches pointer to last shape)
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct shape_cache_s {
+  TRI_shape_sid_t    _sid;
+  TRI_shape_t const* _shape;
+}
+shape_cache_t;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -367,7 +381,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   // no need to prefill dst->_value with 0, as it is overwritten directly afterwards
-  dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, false));
+  dst->_value = (char*) (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -389,7 +403,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+  dst->_value = (char*) (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
   if (dst->_value == NULL) {
     return false;
@@ -450,8 +464,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
-  size_t i;
-  size_t n;
+  size_t i, n;
   uint64_t total;
 
   TRI_shape_value_t* values;
@@ -506,7 +519,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   e = values + n;
 
   for (i = 0;  i < n;  ++i, ++p) {
-    TRI_json_t* el = TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* el = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
     bool ok = FillShapeValueJson(shaper, p, el);
 
     if (! ok) {
@@ -755,9 +768,10 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 /// @brief converts a json array into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
-  size_t n;
-  size_t i;
+static bool FillShapeValueArray (TRI_shaper_t* shaper, 
+                                 TRI_shape_value_t* dst, 
+                                 TRI_json_t const* json) { 
+  size_t i, n;
   uint64_t total;
 
   size_t f;
@@ -817,7 +831,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
     }
 
     // first find an identifier for the name
-    p->_aid = shaper->findAttributeByName(shaper, key->_value._string.data);
+    p->_aid = shaper->findAttributeByName(shaper, key->_value._string.data, true);
 
     // convert value
     if (p->_aid == 0) {
@@ -1112,8 +1126,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsetsF;
   TRI_shape_size_t const* offsetsV;
   
-  TRI_shape_sid_t cachedSid;
-  TRI_shape_t const* cachedShape;
+  shape_cache_t shapeCache; 
 
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
@@ -1137,9 +1150,9 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   qtr += n * sizeof(TRI_shape_aid_t);
 
   offsetsF = (TRI_shape_size_t const*) qtr;
-  
-  cachedSid = 0;
-  cachedShape = NULL;
+
+  shapeCache._sid = 0;  
+  shapeCache._shape = NULL; 
 
   for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
     TRI_shape_sid_t sid = *sids;
@@ -1150,21 +1163,22 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
     TRI_json_t* element;
 
     offset = *offsetsF;
-    name = shaper->lookupAttributeId(shaper, aid);
     
     // use last sid if in cache
-    if (sid == cachedSid && cachedSid > 0) {
-      subshape = cachedShape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
     }
     else {
-      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
-      cachedSid = sid;
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
     }
 
     if (subshape == NULL) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
+    
+    name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
@@ -1193,21 +1207,22 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
     TRI_json_t* element;
 
     offset = *offsetsV;
-    name = shaper->lookupAttributeId(shaper, aid);
     
     // use last sid if in cache
-    if (sid == cachedSid && cachedSid > 0) {
-      subshape = cachedShape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
     }
     else {
-      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
-      cachedSid = sid;
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
     }
 
     if (subshape == NULL) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
+    
+    name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
@@ -1244,15 +1259,11 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
                                       uint64_t size) {
   char const* ptr;
   TRI_json_t* list;
-
   TRI_shape_sid_t const* sids;
   TRI_shape_size_t const* offsets;
-
   TRI_shape_length_list_t l;
   TRI_shape_length_list_t i;
-  
-  TRI_shape_sid_t cachedSid;
-  TRI_shape_t const* cachedShape;
+  shape_cache_t shapeCache; 
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
@@ -1264,15 +1275,14 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
     return NULL;
   }
 
-
   ptr += sizeof(TRI_shape_length_list_t);
   sids = (TRI_shape_sid_t const*) ptr;
 
   ptr += l * sizeof(TRI_shape_sid_t);
   offsets = (TRI_shape_size_t const*) ptr;
   
-  cachedSid = 0;
-  cachedShape = NULL;
+  shapeCache._sid = 0;
+  shapeCache._shape = NULL;
 
   for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
     TRI_shape_sid_t sid = *sids;
@@ -1283,12 +1293,12 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
     offset = *offsets;
 
     // use last sid if in cache
-    if (sid == cachedSid && cachedSid > 0) {
-      subshape = cachedShape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
     }
     else {
-      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
-      cachedSid = sid;
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
     }
 
     if (subshape == NULL) {
@@ -1686,8 +1696,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t i;
   TRI_shape_size_t n;
   TRI_shape_size_t v;
-  TRI_shape_sid_t cachedSid;
-  TRI_shape_t const* cachedShape;
+  shape_cache_t shapeCache;
   bool first;
   char const* qtr;
   char* unicoded;
@@ -1724,8 +1733,8 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
 
   offsetsF = (TRI_shape_size_t const*) qtr;
 
-  cachedSid = 0;
-  cachedShape = NULL;
+  shapeCache._sid   = 0;
+  shapeCache._shape = NULL;
 
   for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
     TRI_shape_aid_t aid;
@@ -1740,20 +1749,20 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     offset = *offsetsF;
 
     // use last sid if in cache
-    if (sid == cachedSid && cachedSid > 0) {
-      subshape = cachedShape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
     }
     else {
-      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
-      cachedSid = sid;
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
     }
-
-    name = shaper->lookupAttributeId(shaper, aid);
 
     if (subshape == NULL) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
+    
+    name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
@@ -1819,20 +1828,20 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     offset = *offsetsV;
    
     // use last sid if in cache 
-    if (sid == cachedSid && cachedSid > 0) {
-      subshape = cachedShape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
     }
     else {
-      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
-      cachedSid = sid;
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
     }
 
-    name = shaper->lookupAttributeId(shaper, aid);
-    
     if (subshape == NULL) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
+    
+    name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
@@ -1907,8 +1916,7 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
   TRI_shape_length_list_t l;
   TRI_shape_sid_t const* sids;
   TRI_shape_size_t const* offsets;
-  TRI_shape_sid_t cachedSid;
-  TRI_shape_t const* cachedShape;
+  shape_cache_t shapeCache;
   bool first;
   char const* ptr;
   int res;
@@ -1929,8 +1937,8 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
     return false;
   }
   
-  cachedSid = 0;
-  cachedShape = NULL;
+  shapeCache._sid   = 0;
+  shapeCache._shape = NULL;
 
   for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
     TRI_shape_sid_t sid;
@@ -1942,12 +1950,12 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
     offset = *offsets;
     
     // use last sid if in cache
-    if (sid == cachedSid && cachedSid > 0) {
-      subshape = cachedShape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
     }
     else {
-      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
-      cachedSid = sid;
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
     }
     
     if (subshape == NULL) {

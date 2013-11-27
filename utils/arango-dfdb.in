@@ -3,8 +3,8 @@
 # Placeholders starting with @ will be replaced by make
 
 ARANGOD="${ARANGODB_ROOT}@SBINDIR@/arangod"
-DATABASE="${ARANGODB_ROOT}@DATABASEDIR@"
-APPPATH="${ARANGODB_ROOT}@PKGDATADIR@/js/apps"
+DATABASE="${ARANGODB_ROOT}@LOCALSTATEDIR@/lib/arangodb"
+APPPATH="${ARANGODB_ROOT}@LOCALSTATEDIR@/lib/arangodb-apps"
 STARTUPPATH="${ARANGODB_ROOT}@PKGDATADIR@/js"
 SCRIPT="${ARANGODB_ROOT}@PKGDATADIR@/js/server/arango-dfdb.js"
 

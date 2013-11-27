@@ -212,7 +212,7 @@ describe ArangoDB do
 ## outbound traversals
 ################################################################################
 
-    context "oubound traversals" do
+    context "outbound traversals" do
 
 ################################################################################
 ## depth-first, preorder, forward

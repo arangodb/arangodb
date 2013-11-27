@@ -90,16 +90,14 @@ etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
 
 if ENABLE_RELATIVE
 
-TRI_DATABASEDIR = 
-TRI_LOGDIR = /tmp
 TRI_PKGDATADIR = .
+TRI_LOCALSTATEDIR = .
 TRI_SBINDIR = ${abs_builddir}/bin
 TRI_BINDIR = ${abs_builddir}/bin
 
 else
 
-TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
-TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
+TRI_LOCALSTATEDIR = ${localstatedir}
 TRI_PKGDATADIR = ${pkgdatadir}
 TRI_SBINDIR = ${sbindir}
 TRI_BINDIR = ${bindir}
@@ -257,7 +255,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/client -name "*.js" -print) \
 	$(shell find @srcdir@/js/node -type f -print) \
 	$(shell find @srcdir@/js/npm -type f "(" -name .travis.yml -o -name .npmignore -o -print ")") \
-	$(shell find @srcdir@/js/apps -type f -print)
+	$(shell find @srcdir@/js/apps/system -type f -print)
 
 if ENABLE_MRUBY
 
@@ -277,8 +275,9 @@ endif
 #else
 
 install-data-local:
-	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
-	test -d $(DESTDIR)$(TRI_LOGDIR) || mkdir -p $(DESTDIR)$(TRI_LOGDIR)
+	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb
+	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps
+	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb
 
 #endif
 
@@ -508,105 +507,6 @@ endif
 if ENABLE_ALL_IN_ONE_ICU
 include 3rdParty/Makefile.all-in-one-icu
 endif
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                     CMAKE & CPACK
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief MacOSX bundle
-################################################################################
-
-.PHONY: pack-dmg pack-dmg-cmake
-
-DMG_NAME := ArangoDB-CLI.app
-
-pack-dmg:
-	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/opt/arangodb \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
-		--enable-mruby
-
-	${MAKE} pack-dmg-cmake
-
-pack-dmg-cmake:
-	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "USE_MRUBY=ON" \
-		-D "USE_RAW_CONFIG=ON" \
-		-D "ARANGODB_VERSION=@VERSION@" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		..
-
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .icu-build-64
-	${MAKE} .v8-build-64
-	${MAKE} .mruby-build-64
-
-	${MAKE} ${BUILT_SOURCES}
- 
-	cd Build && ${MAKE}
-
-	cd Build && cpack \
-		-G Bundle \
-		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
-
-################################################################################
-### @brief debian arm package
-################################################################################
-
-.PHONY: pack-arm pack-arm-cmake
-
-pack-arm:
-	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
-		--disable-mruby
-
-	${MAKE} pack-arm-cmake
-
-pack-arm-cmake:
-	cd Build && cmake \
-		-D "BUILD_PACKAGE=raspbian" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
-		-D "USE_MRUBY=OFF" \
-		-D "USE_RAW_CONFIG=OFF" \
-		-D "ARANGODB_VERSION=@VERSION@" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
-                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
-                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
-		..
-
-	${MAKE} .libev-build-32
-	${MAKE} .zlib-build-32
-	${MAKE} .icu-build-32
-	${MAKE} .v8-build-32
-
-	${MAKE} ${BUILT_SOURCES}
- 
-	cd Build && ${MAKE}
-
-	cd Build && cpack \
-		-G DEB
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

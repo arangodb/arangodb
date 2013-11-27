@@ -1602,8 +1602,6 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   ok = datafile->sync(datafile, datafile->_data, ((char*) datafile->_data) + datafile->_currentSize);
 
   if (! ok) {
-    // TODO: remove disastrous call to abort() here!! FIXME
-    abort();
     datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
     if (errno == ENOSPC) {
@@ -1640,10 +1638,9 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     #endif
 
     if (res < 0) {
-      // TODO: remove disastrous call to abort() here!! FIXME
-      abort();
       LOG_ERROR("cannot truncate datafile '%s': %s", datafile->getName(datafile), TRI_last_error());
       datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      datafile->_state = TRI_DF_STATE_WRITE_ERROR;
       ok = false;
     }
 

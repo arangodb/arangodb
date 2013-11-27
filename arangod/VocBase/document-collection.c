@@ -5312,6 +5312,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeSkiplistIndex(idx);
 
+    TRI_set_errno(res);
     return NULL;
   }
 

@@ -60,7 +60,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   shape = shaper->lookupShapeId(shaper, accessor->_sid);
 
   if (shape == NULL) {
-    LOG_ERROR("unknown shape id '%ld'", (unsigned long) accessor->_sid);
+    LOG_ERROR("unknown shape id %llu", (unsigned long long) accessor->_sid);
     return false;
   }
 
@@ -68,14 +68,15 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   path = shaper->lookupAttributePathByPid(shaper, accessor->_pid);
 
   if (path == NULL) {
-    LOG_ERROR("unknown attribute path '%ld'", (unsigned long) accessor->_pid);
+    LOG_ERROR("unknown attribute path %llu", (unsigned long long) accessor->_pid);
     return false;
   }
 
   paids = (TRI_shape_aid_t*) (((char const*) path) + sizeof(TRI_shape_path_t));
 
   // collect the bytecode
-  TRI_InitVectorPointer(&ops, shaper->_memoryZone);
+  // we need at least 4 entries in the vector to store an accessor
+  TRI_InitVectorPointer2(&ops, shaper->_memoryZone, 4);
 
   // start with the shape
   res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
@@ -343,7 +344,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
         b = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
         e = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
 
-        *end = ((char*) *begin) + e;
+        *end   = ((char*) *begin) + e;
         *begin = ((char*) *begin) + b;
 
         break;
@@ -353,7 +354,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
 
         offsetsV = (TRI_shape_size_t*) *begin;
 
-        *end = ((char*) *begin) + offsetsV[pos + 1];
+        *end   = ((char*) *begin) + offsetsV[pos + 1];
         *begin = ((char*) *begin) + offsetsV[pos];
 
         break;
@@ -384,9 +385,9 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShapeAccessor (TRI_shape_access_t* accessor) {
-  assert(accessor);
+  assert(accessor != NULL);
 
-  if (accessor->_code) {
+  if (accessor->_code != NULL) {
     TRI_Free(accessor->_memoryZone, (void*) accessor->_code);
   }
 
@@ -437,7 +438,7 @@ bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
   bool ok;
 
   begin = shaped->_data.data;
-  end = ((char*) begin) + shaped->_data.length;
+  end   = ((char*) begin) + shaped->_data.length;
 
   ok = ExecuteBytecodeShapeAccessor(accessor, &begin, &end);
 
@@ -445,8 +446,8 @@ bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
     return false;
   }
 
-  result->_sid = accessor->_shape->_sid;
-  result->_data.data = (char*) begin;
+  result->_sid         = accessor->_shape->_sid;
+  result->_data.data   = (char*) begin;
   result->_data.length = (uint32_t) (((char const*) end) - ((char const*) begin));
 
   return true;

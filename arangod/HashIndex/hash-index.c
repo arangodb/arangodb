@@ -149,7 +149,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
       shapedSub._length = 0;
       shapedSub._offset = 0;
 
-      res = TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
+      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }
 
     // extract the field
@@ -160,7 +160,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
       }
 
       if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
-        res = TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING;
+        res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
 
       shapedSub._sid = shapedObject._sid;
@@ -208,7 +208,7 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
   // the index is not unique, we ignore this error.
   // .............................................................................
 
-  if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING && ! hashIndex->base._unique) {
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING && ! hashIndex->base._unique) {
     res = TRI_ERROR_NO_ERROR;
   }
   else if (res != TRI_ERROR_NO_ERROR) {
@@ -508,7 +508,7 @@ static int InsertHashIndex (TRI_index_t* idx,
 
   res = HashIndexHelperAllocate(hashIndex, &hashElement, document, true);
 
-  if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -541,7 +541,7 @@ static int RemoveHashIndex (TRI_index_t* idx,
 
   res = HashIndexHelperAllocate(hashIndex, &hashElement, document, true);
 
-  if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
     return TRI_ERROR_NO_ERROR;
   }
 
