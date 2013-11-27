@@ -70,13 +70,6 @@ svg.graphViewer text {
   text-transform:capitalize;
 }
 
-svg.graphViewer {
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: rgba(0,0,0,0.125);
-  margin-left: 74px;
-}
 
 div.mousepointer {
   position: absolute;
@@ -350,11 +343,10 @@ ul.gv_configure_menu {
   top: 18px;
 }
 
-a.gv_dropdown_entry {
-  width: 160px !important;
-  background-color: rgba(0, 0, 0, 0.7) !important;
-  color: #FFFFFF !important;
-  height: 20px !important;
+button.gv_dropdown_entry {
+  width: 160px;
+  height: 30px;
+  margin: 4px 4px 4px 30px;
 }
 
 span.gv_caret {
