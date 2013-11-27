@@ -1,4 +1,4 @@
-@media (max-width: 1024px) {
+@media (max-width: 798px) {
   #arangoCollectionUl {
     display: none;
   }
@@ -8,18 +8,18 @@
   #arangoCollectionSelect {
     display: inline-block;
   }
-  .footer-left {
-    display: none;
+}
+
+@media (min-width: 799px) and (max-width: 1041px) {
+  #arangoCollectionUl a {
+    font-size: 12px;
+    padding: 7px 5px 10px;
   }
-  .footer-mid {
-    margin-left: 35%;
-    height: 30px;
-    margin-top: 10px;
-  }
-  .footer-mid p {
-    display: inline;
-  }
-  .footer-right {
-    display: none;
+}
+
+
+@media (min-width: 1042px) and (max-width: 1284px) {
+  #arangoCollectionUl a {
+    font-size: 13px;
   }
 }
