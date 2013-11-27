@@ -1,0 +1,25 @@
+@media (max-width: 1024px) {
+  #arangoCollectionUl {
+    display: none;
+  }
+  #collectionsDropdown ul {
+    width: auto !important;
+  }
+  #arangoCollectionSelect {
+    display: inline-block;
+  }
+  .footer-left {
+    display: none;
+  }
+  .footer-mid {
+    margin-left: 35%;
+    height: 30px;
+    margin-top: 10px;
+  }
+  .footer-mid p {
+    display: inline;
+  }
+  .footer-right {
+    display: none;
+  }
+}
