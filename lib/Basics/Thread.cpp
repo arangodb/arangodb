@@ -26,11 +26,11 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Thread.h"
+
 #ifdef _WIN32
 #include "BasicsC/win-utils.h"
 #endif
-
-#include "Thread.h"
 
 #include <errno.h>
 #include <signal.h>
