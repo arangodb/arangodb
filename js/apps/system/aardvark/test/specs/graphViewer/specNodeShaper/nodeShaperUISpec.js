@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper*/
+/*global helper, uiMatchers*/
 /*global NodeShaper, NodeShaperControls*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,25 +63,7 @@
         };
       });
       spyOn(shaper, "setColourMappingListener");
-      this.addMatchers({
-        toBeTag: function(name) {
-          var el = this.actual;
-          this.message = function() {
-            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
-          };
-          return el.tagName.toLowerCase() === name;
-        },
-        
-        toConformToListCSS: function() {
-          var li = this.actual,
-            a = li.firstChild,
-            lbl = a.firstChild;
-          expect(li).toBeTag("li");
-          expect(a).toBeTag("a");
-          expect(lbl).toBeTag("label");
-          return true;
-        }
-      });
+      uiMatchers.define(this);
     });
 
     afterEach(function () {

@@ -1,7 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-// Will be injected by WebWorkers
-/*global self*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///

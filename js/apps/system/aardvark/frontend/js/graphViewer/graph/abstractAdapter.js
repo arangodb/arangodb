@@ -104,7 +104,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       throw "Too many edges with the same ID, should never happen";
     },
     
-    insertNode = function(data) {
+    insertNode = function(data, x, y) {
       var node = {
         _data: data,
         _id: data._id
@@ -113,8 +113,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       if (n) {
         return n;
       }
-      node.x = initialX.getStart();
-      node.y = initialY.getStart();
+      node.x = x || initialX.getStart();
+      node.y = y || initialY.getStart();
       nodes.push(node);
       node._outboundCounter = 0;
       node._inboundCounter = 0;

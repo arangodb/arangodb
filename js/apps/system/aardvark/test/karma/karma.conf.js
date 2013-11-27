@@ -74,6 +74,46 @@ module.exports = function(karma) {
 
       // Mocks
       'test/mocks/disableEJS.js',
+      'test/specs/graphViewer/helper/eventHelper.js',
+      'test/specs/graphViewer/helper/objectsHelper.js',
+      'test/specs/graphViewer/helper/mocks.js',
+      'test/specs/graphViewer/helper/commMock.js',
+      'test/specs/graphViewer/helper/uiMatchers.js',
+
+
+
+      // GraphViewer
+      // Core Modules
+      'frontend/js/graphViewer/graphViewer.js',
+      'frontend/js/graphViewer/graph/domObserverFactory.js',
+      'frontend/js/graphViewer/graph/colourMapper.js',
+      'frontend/js/graphViewer/graph/communityNode.js',
+      'frontend/js/graphViewer/graph/webWorkerWrapper.js',
+      'frontend/js/graphViewer/graph/nodeShaper.js',
+      'frontend/js/graphViewer/graph/abstractAdapter.js',
+      'frontend/js/graphViewer/graph/jsonAdapter.js',
+      'frontend/js/graphViewer/graph/arangoAdapter.js',
+      'frontend/js/graphViewer/graph/foxxAdapter.js',
+      'frontend/js/graphViewer/graph/previewAdapter.js',
+      'frontend/js/graphViewer/graph/edgeShaper.js',
+      'frontend/js/graphViewer/graph/forceLayouter.js',
+      'frontend/js/graphViewer/graph/eventDispatcher.js',
+      'frontend/js/graphViewer/graph/eventLibrary.js',
+      'frontend/js/graphViewer/graph/zoomManager.js',
+      'frontend/js/graphViewer/graph/nodeReducer.js',
+      'frontend/js/graphViewer/graph/modularityJoiner.js',
+
+      // UI Modules
+      'frontend/js/graphViewer/ui/modalDialogHelper.js',
+      'frontend/js/graphViewer/ui/nodeShaperControls.js',
+      'frontend/js/graphViewer/ui/edgeShaperControls.js',
+      'frontend/js/graphViewer/ui/arangoAdapterControls.js',
+      'frontend/js/graphViewer/ui/layouterControls.js',
+      'frontend/js/graphViewer/ui/uiComponentsHelper.js',
+      'frontend/js/graphViewer/ui/eventDispatcherControls.js',
+      'frontend/js/graphViewer/ui/graphViewerUI.js',
+      'frontend/js/graphViewer/ui/graphViewerWidget.js',
+      'frontend/js/graphViewer/ui/graphViewerPreview.js',
 
       // Models
       'frontend/js/models/currentDatabase.js',
@@ -120,6 +160,7 @@ module.exports = function(karma) {
       'frontend/js/views/appDocumentationView.js',
       'frontend/js/views/graphView.js',
       'frontend/js/views/dbSelectionView.js',
+      'frontend/js/views/editListEntryView.js',
 
       // Router
       'frontend/js/routers/router.js',
@@ -128,15 +169,54 @@ module.exports = function(karma) {
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
 
       // Specs
+
+      // GraphViewer
+      'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
+      // 'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
+      'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
+      'test/specs/graphViewer/specAdapter/interfaceSpec.js',
+      'test/specs/graphViewer/specAdapter/abstractAdapterSpec.js',
+      'test/specs/graphViewer/specAdapter/jsonAdapterSpec.js',
+      'test/specs/graphViewer/specAdapter/arangoAdapterSpec.js',
+      'test/specs/graphViewer/specAdapter/foxxAdapterSpec.js',
+      'test/specs/graphViewer/specAdapter/previewAdapterSpec.js',
+      // 'test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js',
+      'test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js',
+      // 'test/specs/graphViewer/specNodeShaper/nodeShaperUISpec.js',
+      'test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js',
+      // 'test/specs/graphViewer/specEdgeShaper/edgeShaperUISpec.js',
+      'test/specs/graphViewer/specForceLayouter/forceLayouterSpec.js',
+      // 'test/specs/graphViewer/specForceLayouter/forceLayouterUISpec.js',
+      'test/specs/graphViewer/specEvents/eventLibrarySpec.js',
+      'test/specs/graphViewer/specEvents/eventDispatcherSpec.js',
+      // 'test/specs/graphViewer/specEvents/eventDispatcherUISpec.js',
+      // 'test/specs/graphViewer/specZoomManager/zoomManagerSpec.js',
+      // 'test/specs/graphViewer/specGraphViewer/graphViewerSpec.js',
+      'test/specs/graphViewer/specGraphViewer/graphViewerUISpec.js',
+      'test/specs/graphViewer/specGraphViewer/graphViewerWidgetSpec.js',
+      'test/specs/graphViewer/specGraphViewer/graphViewerPreviewSpec.js',
+      'test/specs/graphViewer/specNodeReducer/nodeReducerSpec.js',
+      // 'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
+      'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
+
+      // Arango
       'test/specs/arango/arangoSpec.js',
+      // Models
       'test/specs/models/currentDatabaseSpec.js',
+
+      // Views
+      'test/specs/views/editListEntryViewSpec.js',
       'test/specs/views/collectionViewSpec.js',
       'test/specs/views/collectionsViewSpec.js',
       'test/specs/views/foxxEditViewSpec.js',
       'test/specs/views/dbSelectionViewSpec.js',
       'test/specs/views/navigationViewSpec.js',
       'test/specs/views/graphViewSpec.js',
+
+      // Router
       'test/specs/router/routerSpec.js',
+
+      // JSLint
       'test/specJSLint/jsLintSpec.js'
     ],
 

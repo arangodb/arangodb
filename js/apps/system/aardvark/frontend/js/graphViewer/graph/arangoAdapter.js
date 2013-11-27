@@ -124,9 +124,9 @@ function ArangoAdapter(nodes, edges, config) {
       if (query !== queries.getAllGraphs) {
         if (query !== queries.connectedEdges) {
           bindVars["@nodes"] = nodeCollection;
-        }
-        if (query !== queries.childrenCentrality) {
-          bindVars.dir = direction;
+          if (query !== queries.childrenCentrality) {
+            bindVars.dir = direction;
+          }
         }
         bindVars["@edges"] = edgeCollection;
       }
@@ -470,9 +470,7 @@ function ArangoAdapter(nodes, edges, config) {
       processData: false,
       success: function(data) {
         if (data.error === false) {
-          nodeToAdd._key = data._key;
           nodeToAdd._id = data._id;
-          nodeToAdd._rev = data._rev;
           absAdapter.insertNode(nodeToAdd);
           callback(nodeToAdd);
         }

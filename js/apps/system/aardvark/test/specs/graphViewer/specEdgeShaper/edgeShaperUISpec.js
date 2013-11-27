@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper*/
+/*global helper, uiMatchers*/
 /*global EdgeShaper, EdgeShaperControls*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,30 +50,7 @@
       list.id = "control_edge_list";
       shaperUI = new EdgeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
-      this.addMatchers({
-        toConformToListCSS: function() {
-          var li = this.actual,
-            a = li.firstChild,
-            lbl = a.firstChild,
-            msg = "";
-          this.message = function() {
-            return "Expected " + msg;
-          };
-          if (li === undefined || li.tagName.toLowerCase() !== "li") {
-            msg = "first element to be a li";
-            return false;
-          }
-          if (a === undefined || a.tagName.toLowerCase() !== "a") {
-            msg = "first element to be a a";
-            return false;
-          }
-          if (lbl === undefined || lbl.tagName.toLowerCase() !== "label") {
-            msg = "first element to be a label";
-            return false;
-          }
-          return true;
-        }
-      });
+      uiMatchers.define(this);
     });
 
     afterEach(function () {
