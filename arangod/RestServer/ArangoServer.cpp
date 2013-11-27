@@ -720,7 +720,7 @@ int ArangoServer::startupServer () {
     _applicationV8->skipUpgrade();
   }
 
-#if TRI_ENABLE_MRUBY
+#ifdef TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(vocbase);
   _applicationMR->setConcurrency(_dispatcherThreads);
 #endif
