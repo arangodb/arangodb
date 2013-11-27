@@ -95,7 +95,7 @@ table.dataTable thead th {
 
 #importHeader input {
   line-height: 0px !important;
-  (;margin-top: 5px;margin-bottom: -5px;)
+  margin-top: 5px;margin-bottom: -5px;
 }
 
 #confirmDocImport {
