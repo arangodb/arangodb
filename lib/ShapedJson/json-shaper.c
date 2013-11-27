@@ -242,10 +242,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
       if (ptr != prev) {
         if (create) {
-          aids[count++] = shaper->findAttributeByName(shaper, prev);
+          aids[count++] = shaper->findAttributeByName(shaper, prev, true);
         }
         else {
-          aids[count] = shaper->lookupAttributeByName(shaper, prev);
+          aids[count] = shaper->findAttributeByName(shaper, prev, false);
 
           if (aids[count] == 0) {
             TRI_FreeString(shaper->_memoryZone, buffer);

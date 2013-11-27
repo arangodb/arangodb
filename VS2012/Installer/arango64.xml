@@ -8,26 +8,27 @@
           Version='1.1.0.0' 
           Manufacturer='triAGENS'>  
   
-  <Package Id='*' InstallerVersion='200' Compressed='yes' />  
+  <Package Id='*' InstallerVersion='200' Compressed='yes' Platform='x64' />  
   
   <Media Id='1' Cabinet='arango.cab' EmbedCab='yes' />  
   
   <Property Id="WIXUI_DONTVALIDATEPATH" Value="1"/>
     
   <Directory Id='TARGETDIR' Name='SourceDir'>  
-   <Directory Id='ProgramFilesFolder'>  
+   <Directory Id='ProgramFiles64Folder'>  
      <Directory Id="IISROOT" Name=".">   
       <Directory Id='INSTALLDIR' Name='triAGENS'>  
         
         <Directory Id='js_dir' Name='js'/>
         
-        <Component Id='MainExecutable' Guid='{D7363040-5D54-4C08-B777-0119BCD0E15E}'>  
+        <Component Id='MainExecutable' Guid='{D7363040-5D54-4C08-B777-0119BCD0E15E}' Win64='yes'>  
           <File Id='arangodEXE' Name='arangod.exe' Source='arangod64.exe' Vital='yes' />  
           <File Id='arangoShellEXE' Name='arangosh.exe' Source='arangosh64.exe' Vital='yes' />  
           <File Id='arangodImportEXE' Name='arangoimp.exe' Source='arangoimp64.exe' Vital='yes' />  
           <File Id='arangodRestoreEXE' Name='arangorestore.exe' Source='arangorestore64.exe' Vital='yes' />  
           <File Id='arangodDumpEXE' Name='arangodump.exe' Source='arangodump64.exe' Vital='yes' />  
           <File Id='arangodBenchEXE' Name='arangob.exe' Source='arangob64.exe' Vital='yes' />  
+          <File Id='checkserverEXE' Name='checkserver.exe' Source='checkserver64.exe' Vital='yes' />  
 
           <File Id='arangodConf' Name='arangod.conf' Source='arangod.conf' Vital='yes' />  
           <File Id='arangoShellConf' Name='arangosh.conf' Source='arangosh.conf' Vital='yes' />  
@@ -61,7 +62,7 @@
   
   <Feature Id='Complete' Level="1">  
    <ComponentRef Id='MainExecutable' />  
-   <ComponentGroupRef Id='jsDirectory'/>
+   <ComponentGroupRef Id='jsDirectory' />
   </Feature>  
 
   <Icon Id="arango.ico" SourceFile="arango.ico"/>    

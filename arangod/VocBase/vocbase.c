@@ -57,10 +57,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
 
-#ifdef TRI_SKIPLIST_EX
-#include "VocBase/index-garbage-collector.h"
-#endif
-
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
@@ -1489,11 +1485,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
-#ifdef TRI_SKIPLIST_EX
-  TRI_InitThread(&(vocbase->_indexGC));
-  TRI_StartThread(&(vocbase->_indexGC), "[index_garbage_collector]", TRI_IndexGCVocBase, vocbase);
-#endif
-
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
 
   if (vocbase->_replicationLogger == NULL) {
@@ -1577,15 +1568,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
-#ifdef TRI_SKIPLIST_EX
-  // wait for the index garbage collector to finish what ever it is doing
-  res = TRI_JoinThread(&vocbase->_indexGC);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to join indexgc thread: %s", TRI_errno_string(res));
-  }
-#endif  
-  
   
   // wait until synchroniser and compactor are finished
   res = TRI_JoinThread(&vocbase->_synchroniser);
@@ -2387,11 +2369,11 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
   bool result;
 
   TRI_LockSpin(&vocbase->_usage._lock);
+  ++vocbase->_usage._refCount;
   if (vocbase->_usage._isDeleted) {
     result = false;
   }
   else {
-    ++vocbase->_usage._refCount;
     result = true;
   }
   TRI_UnlockSpin(&vocbase->_usage._lock);
@@ -2405,6 +2387,7 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
 
 void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
   TRI_LockSpin(&vocbase->_usage._lock);
+  TRI_ASSERT_MAINTAINER(vocbase->_usage._refCount > 0);
   --vocbase->_usage._refCount;
   TRI_UnlockSpin(&vocbase->_usage._lock);
 }

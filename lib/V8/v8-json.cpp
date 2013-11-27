@@ -2315,6 +2315,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error) {
   int c;
   struct yyguts_t * yyg;
   yyscan_t scanner;
+  const char* em = 0;
 
   tri_v8_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
@@ -2326,23 +2327,22 @@ v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error) {
   object = ParseObject(scanner, c);
 
   if (object->IsUndefined()) {
-    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
+    em = yyextra._message;
   }
   else {
     c = tri_v8_lex(scanner);
 
     if (c != END_OF_FILE) {
       object = v8::Undefined();
-      LOG_DEBUG("failed to parse json object: expecting EOF");
+      em = "expecting EOF";
     }
   }
 
-  if (error != NULL) {
-    if (yyextra._message != 0) {
-      *error = TRI_DuplicateString(yyextra._message);
-    }
-    else {
-      *error = NULL;
+  if (em != 0) {
+    LOG_DEBUG("failed to parse json object: '%s'", em);
+
+    if (error != NULL) {
+      *error = TRI_DuplicateString(em);
     }
   }
 

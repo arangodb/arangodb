@@ -112,6 +112,7 @@ ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database
 ERROR_ARANGO_ENDPOINT_NOT_FOUND,1231,"endpoint not found","Will be raised when there is an attempt to delete a non-existing endpoint."
 ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised when an invalid key generator description is used."
 ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"edge attribute missing","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
+ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING,1234,"index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into an index is caused by in the document not having one or more attributes which the index is built on"
 
 ################################################################################
 ## ArangoDB storage errors
@@ -260,28 +261,8 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ## Errors that occur when user request fails due to an index error.
 ################################################################################
 
-ERROR_ARANGO_INDEX_PQ_INSERT_FAILED,3100,"priority queue insert failure","Will be raised when an attempt to insert a document into a priority queue index fails for some reason."
-ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED,3110,"priority queue remove failure","Will be raised when an attempt to remove a document from a priority queue index fails for some reason."
-ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING,3111,"priority queue remove failure - item missing in index","Will be raised when an attempt to remove a document from a priority queue index fails when document can not be located within the index."
-ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED,3112,"(non-unique) hash index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique hash index fails due to the fact that document is duplicated within that index."
-ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED,3113,"(non-unique) skiplist index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique skiplist index fails due to the fact that document is duplicated within that index."
-
-WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING,3200,"hash index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a hash index is caused by the document not having one or more attributes which are required by the hash index."
-WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING,3202,"hash index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the hash index."
-WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING,3211,"hash index remove failure - item missing in index","Will be raised when an attempt to remove a document from a hash index fails when document can not be located within that index."
-
-WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING,3300,"skiplist index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a skiplist index is caused by in the document not having one or more attributes which are required by the skiplist index."
-WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING,3302,"skiplist index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the skiplist index."
-WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE,3304,"skiplist index insertion warning - CAS failure while attempting to insert document","Will be raised when an attempt to insert a document into a skiplist index fails due to repeated CAS failures/clashes."
-WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING,3311,"skiplist index remove failure - item missing in index","Will be raised when an attempt to remove a document from a skiplist index fails when document can not be located within that index."
-WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE,3313,"skiplist index remove warning - CAS failure while attempting to remove document","Will be raised when an attempt to remove a document into a skiplist index fails due to repeated CAS failures/clashes."
-WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED,3315,"skiplist index remove failure - item inserted post this transaction in the index","Will be raised when an attempt to remove a document from a skiplist index fails due to the fact that the document to be removed was inserted in a transaction post this removal transaction."
-WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED,3317,"skiplist index remove failure - item removed prior this transaction in the index","Will be raised when an attempt to remove a document from a skiplist index fails due to the fact that the document to be removed was removed in a transaction prior this removal transaction."
-
-
-WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING,3400,"bitarray index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a bitarray index is caused by in the document not having one or more attributes which are required by the bitarray index."
-WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING,3402,"bitarray index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the bitarray index."
-WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING,3411,"bitarray index remove failure - item missing in index","Will be raised when an attempt to remove a document from a bitarray index fails when document can not be located within that index."
+ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING,3402,"bitarray index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the bitarray index."
+ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING,3411,"bitarray index remove failure - item missing in index","Will be raised when an attempt to remove a document from a bitarray index fails when document can not be located within that index."
 ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE,3413,"bitarray index insert failure - document attribute value unsupported in index","Will be raised when an attempt to insert a document into a bitarray index fails due to the fact that one or more values for an index attribute is not supported within that index."
 ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES,3415,"bitarray index creation failure - one or more index attributes are duplicated.","Will be raised when an attempt to create an index with two or more index attributes repeated."
 ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES,3417,"bitarray index creation failure - one or more index attribute values are duplicated.","Will be raised when an attempt to create an index with two or more index attribute values repeated."

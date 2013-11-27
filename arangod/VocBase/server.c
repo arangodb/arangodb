@@ -1900,17 +1900,23 @@ int TRI_StartServer (TRI_server_t* server,
   // create subdirectories if not yet present
   res = CreateBaseApplicationDirectory(server->_appPath, "databases");
 
+  // system directory is in a read-only location
+#if 0
   if (res == TRI_ERROR_NO_ERROR) {
     res = CreateBaseApplicationDirectory(server->_appPath, "system");
   }
+#endif
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = CreateBaseApplicationDirectory(server->_devAppPath, "databases");
   }
 
+  // system directory is in a read-only location
+#if 0
   if (res == TRI_ERROR_NO_ERROR) {
     res = CreateBaseApplicationDirectory(server->_devAppPath, "system");
   }
+#endif
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("unable to initialise databases: %s",

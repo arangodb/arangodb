@@ -28,6 +28,7 @@
           <File Id='arangodRestoreEXE' Name='arangorestore.exe' Source='arangorestore32.exe' Vital='yes' />  
           <File Id='arangodDumpEXE' Name='arangodump.exe' Source='arangodump32.exe' Vital='yes' />  
           <File Id='arangodBenchEXE' Name='arangob.exe' Source='arangob32.exe' Vital='yes' />  
+          <File Id='checkserverEXE' Name='checkserver.exe' Source='checkserver32.exe' Vital='yes' />  
 
           <File Id='arangodConf' Name='arangod.conf' Source='arangod.conf' Vital='yes' />  
           <File Id='arangoShellConf' Name='arangosh.conf' Source='arangosh.conf' Vital='yes' />  

@@ -42,7 +42,7 @@ start () {
     if [ "$1" = "--upgrade" ]; then
       $DAEMON -c $CONF $@
     else
-      $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
+      $DAEMON -c $CONF --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
     fi
 
     RETVAL=$?

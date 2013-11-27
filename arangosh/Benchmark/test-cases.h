@@ -48,11 +48,6 @@ static bool CreateIndex (SimpleHttpClient*, const string&, const string&, const 
 // --SECTION--                                            version retrieval test
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 struct VersionTest : public BenchmarkOperation {
   VersionTest ()
     : BenchmarkOperation () {
@@ -88,18 +83,9 @@ struct VersionTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         document CRUD append test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCrudAppendTest : public BenchmarkOperation {
   DocumentCrudAppendTest ()
@@ -200,18 +186,101 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       shapes test
+// -----------------------------------------------------------------------------
+
+struct ShapesTest : public BenchmarkOperation {
+  ShapesTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~ShapesTest () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 3;
+
+    if (mod == 0) {
+      return string("/_api/document?collection=" + Collection);
+    }
+    else {
+      size_t keyId = (size_t) (globalCounter / 3);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+
+      return string("/_api/document/" + Collection + "/" + key);
+    }
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 3;
+
+    if (mod == 0) {
+      return HttpRequest::HTTP_REQUEST_POST;
+    }
+    else if (mod == 1) {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+    else {
+      return HttpRequest::HTTP_REQUEST_DELETE;
+    }
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 3;
+
+    if (mod == 0) {
+      const uint64_t n = Complexity;
+      TRI_string_buffer_t* buffer;
+
+      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
+
+      size_t keyId = (size_t) (globalCounter / 3);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+      TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
+      TRI_AppendStringStringBuffer(buffer, "\"");
+
+      for (uint64_t i = 1; i <= n; ++i) {
+        uint64_t mod = Operations / 10;
+        if (mod < 100) {
+          mod = 100;
+        }
+        TRI_AppendStringStringBuffer(buffer, ",\"value");
+        TRI_AppendUInt64StringBuffer(buffer, (uint64_t) ((globalCounter + i) % mod));
+        TRI_AppendStringStringBuffer(buffer, "\":\"");
+        TRI_AppendStringStringBuffer(buffer, "some bogus string value to fill up the datafile...");
+      }
+
+      TRI_AppendStringStringBuffer(buffer, "\"}");
+
+      *length = TRI_LengthStringBuffer(buffer);
+      *mustFree = true;
+      char* ptr = TRI_StealStringBuffer(buffer); 
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+      return (const char*) ptr;
+    }
+    else {
+      *length = 0;
+      *mustFree = false;
+      return (const char*) 0;
+    }
+  }
+
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                document CRUD test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCrudTest : public BenchmarkOperation {
   DocumentCrudTest ()
@@ -315,18 +384,9 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    edge CRUD test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct EdgeCrudTest : public BenchmarkOperation {
   EdgeCrudTest ()
@@ -432,18 +492,9 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     skiplist test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct SkiplistTest : public BenchmarkOperation {
   SkiplistTest ()
@@ -535,18 +586,9 @@ struct SkiplistTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         hash test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct HashTest : public BenchmarkOperation {
   HashTest ()
@@ -638,18 +680,9 @@ struct HashTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            document creation test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCreationTest : public BenchmarkOperation {
   DocumentCreationTest ()
@@ -710,18 +743,9 @@ struct DocumentCreationTest : public BenchmarkOperation {
   size_t _length;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            document creation test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct CollectionCreationTest : public BenchmarkOperation {
   CollectionCreationTest ()
@@ -790,11 +814,6 @@ struct CollectionCreationTest : public BenchmarkOperation {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  transaction test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct TransactionAqlTest : public BenchmarkOperation {
   TransactionAqlTest ()
@@ -899,18 +918,9 @@ struct TransactionAqlTest : public BenchmarkOperation {
   string _c3;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  transaction test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct TransactionCountTest : public BenchmarkOperation {
   TransactionCountTest ()
@@ -956,18 +966,9 @@ struct TransactionCountTest : public BenchmarkOperation {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  transaction test
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 struct TransactionMultiTest : public BenchmarkOperation {
   TransactionMultiTest ()
@@ -1048,25 +1049,11 @@ struct TransactionMultiTest : public BenchmarkOperation {
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 BenchmarkCounter<uint64_t>* CollectionCreationTest::_counter = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Benchmark
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a collection
@@ -1211,6 +1198,9 @@ static BenchmarkOperation* GetTestCase (const string& name) {
   if (name == "edge") {
     return new EdgeCrudTest();
   }
+  if (name == "shapes") {
+    return new ShapesTest();
+  }
   if (name == "crud") {
     return new DocumentCrudTest();
   }
@@ -1229,10 +1219,6 @@ static BenchmarkOperation* GetTestCase (const string& name) {
 
   return 0;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

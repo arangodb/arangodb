@@ -246,8 +246,6 @@
     <ClCompile Include="..\..\arangod\HashIndex\hash-index.c" />
     <ClCompile Include="..\..\arangod\IndexIterators\index-iterator.c" />
     <ClCompile Include="..\..\arangod\IndexOperators\index-operator.c" />
-    <ClCompile Include="..\..\arangod\PriorityQueue\pqueueindex.c" />
-    <ClCompile Include="..\..\arangod\PriorityQueue\priorityqueue.c" />
     <ClCompile Include="..\..\arangod\Replication\ContinuousSyncer.cpp" />
     <ClCompile Include="..\..\arangod\Replication\InitialSyncer.cpp" />
     <ClCompile Include="..\..\arangod\Replication\replication-static.cpp" />
@@ -292,7 +290,6 @@
     <ClCompile Include="..\..\arangod\VocBase\replication-logger.c" />
     <ClCompile Include="..\..\arangod\VocBase\replication-master.c" />
     <ClCompile Include="..\..\arangod\VocBase\server.c" />
-    <ClCompile Include="..\..\arangod\VocBase\shape-collection.c" />
     <ClCompile Include="..\..\arangod\VocBase\synchroniser.c" />
     <ClCompile Include="..\..\arangod\VocBase\transaction.c" />
     <ClCompile Include="..\..\arangod\VocBase\update-policy.c" />
@@ -342,8 +339,6 @@
     <ClInclude Include="..\..\arangod\HashIndex\hash-index.h" />
     <ClInclude Include="..\..\arangod\IndexIterators\index-iterator.h" />
     <ClInclude Include="..\..\arangod\IndexOperators\index-operator.h" />
-    <ClInclude Include="..\..\arangod\PriorityQueue\pqueueindex.h" />
-    <ClInclude Include="..\..\arangod\PriorityQueue\priorityqueue.h" />
     <ClInclude Include="..\..\arangod\Replication\ContinuousSyncer.h" />
     <ClInclude Include="..\..\arangod\Replication\InitialSyncer.h" />
     <ClInclude Include="..\..\arangod\Replication\replication-static.h" />
@@ -400,7 +395,6 @@
     <ClInclude Include="..\..\arangod\VocBase\replication-logger.h" />
     <ClInclude Include="..\..\arangod\VocBase\replication-master.h" />
     <ClInclude Include="..\..\arangod\VocBase\server.h" />
-    <ClInclude Include="..\..\arangod\VocBase\shape-collection.h" />
     <ClInclude Include="..\..\arangod\VocBase\synchroniser.h" />
     <ClInclude Include="..\..\arangod\VocBase\transaction.h" />
     <ClInclude Include="..\..\arangod\VocBase\update-policy.h" />

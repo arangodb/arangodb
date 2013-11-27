@@ -24,6 +24,9 @@ class ArangoDB
   # set timeout to 120 seconds
   default_timeout 120 
 
+  # do not verify SSL
+  default_options[:verify] = false
+
 ################################################################################
 ## create a collection
 ################################################################################

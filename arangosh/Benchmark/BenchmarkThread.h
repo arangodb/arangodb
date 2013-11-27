@@ -311,6 +311,10 @@ namespace triagens {
             if (result != 0) {
               delete result;
             }
+            _warningCount++;
+            if (_warningCount < MaxWarnings) {
+              LOG_WARNING("batch operation failed because server did not reply");
+            }
             return;
           }
 
@@ -371,6 +375,10 @@ namespace triagens {
             _operationsCounter->incFailures(1);
             if (result != 0) {
               delete result;
+            }
+            _warningCount++;
+            if (_warningCount < MaxWarnings) {
+              LOG_WARNING("batch operation failed because server did not reply");
             }
             return;
           }

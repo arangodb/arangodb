@@ -39,6 +39,7 @@
 #include "VocBase/marker.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -562,6 +563,12 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
+
+    res = TRI_MoveMarkerVocShaper(primary->_shaper, result);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
+    }
     
     context->_dfi._numberShapes++;
     context->_dfi._sizeShapes += (int64_t) marker->_size;
@@ -574,6 +581,12 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
+    }
+    
+    res = TRI_MoveMarkerVocShaper(primary->_shaper, result);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
     }
     
     context->_dfi._numberAttributes++;
