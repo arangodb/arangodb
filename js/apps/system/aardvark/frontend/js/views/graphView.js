@@ -12,7 +12,7 @@
 
     initialize: function () {
       this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
-      this.graphs = [];
+      this.graphs = new window.GraphCollection();
       this.i = 1;
     },
 
@@ -95,10 +95,10 @@
       else {
         // selected a "graph"
         graphName = $("#graphSelected").val();
-        graph = _.find(this.graphs, function(g) { return g._key === graphName; });
+        graph = this.graphs.get(graphName);
         if (graph) {
-          ecol = graph.edges;
-          ncol = graph.vertices;
+          ecol = graph.get("edges");
+          ncol = graph.get("vertices");
         }
       }
 
@@ -171,22 +171,13 @@
     },
 
     render: function() {
-      var self = this;
-      $.ajax({
-        cache: false,
-        type: 'GET',
-        url: "/_api/graph",
-        contentType: "application/json",
-        success: function(data) {
-          self.graphs = data.graphs;
-          $(self.el).html(self.template.render({
-            col: self.collection, 
-            gs: _.pluck(self.graphs, "_key")
-          }));
-          delete self.ui;
-        }
-      });
-      return this;
+      this.graphs.fetch({async: false});
+      $(this.el).html(this.template.render({
+        col: this.collection, 
+        gs: this.graphs.pluck("_key")
+      }));
+      delete this.ui;
+      return $(this.el);
     }
 
   });
