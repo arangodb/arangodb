@@ -41,7 +41,7 @@
 
     toggleLoadtypeDisplay: function() {
       var selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
-      if (selected === "collections") {
+      if (selected === "useCollections") {
         $("#collection_config").css("display", "block");
         $("#graph_config").css("display", "none");
       } else {
@@ -71,6 +71,9 @@
         config,
         sameColor,
         width,
+        graphName,
+        graph,
+        selected,
         self = this;
 
       undirected = !!$("#undirected").attr("checked");
@@ -83,9 +86,8 @@
       }
       randomStart = !!$("#randomStart").attr("checked");
       
-      var graphName;
-      var selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
-      if (selected === "collections") {
+      selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
+      if (selected === "useCollections") {
         // selected two individual collections
         ecol = $("#edgeCollection").val();
         ncol = $("#nodeCollection").val();
@@ -93,7 +95,7 @@
       else {
         // selected a "graph"
         graphName = $("#graphSelected").val();
-        var graph = _.find(this.graphs, function(g) { return g._key === graphName; });
+        graph = _.find(this.graphs, function(g) { return g._key === graphName; });
         if (graph) {
           ecol = graph.edges;
           ncol = graph.vertices;
