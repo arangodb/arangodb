@@ -124,6 +124,7 @@ module.exports = function(karma) {
       'frontend/js/models/arangoStatistics.js',
       'frontend/js/models/arangoStatisticsDescription.js',
       'frontend/js/models/foxx.js',
+      'frontend/js/models/graph.js',
 
       // Collections
       'frontend/js/collections/arangoCollections.js',
@@ -135,6 +136,7 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoStatisticsCollection.js',
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
+      'frontend/js/collections/graphCollection.js',
 
       // Views
       'frontend/js/views/navigationView.js',
@@ -171,6 +173,7 @@ module.exports = function(karma) {
       // Specs
 
       // GraphViewer
+      
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
       'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
@@ -211,6 +214,7 @@ module.exports = function(karma) {
       'test/specs/views/foxxEditViewSpec.js',
       'test/specs/views/dbSelectionViewSpec.js',
       'test/specs/views/navigationViewSpec.js',
+      
       'test/specs/views/graphViewSpec.js',
 
       // Router
