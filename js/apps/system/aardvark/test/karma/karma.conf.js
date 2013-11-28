@@ -91,7 +91,7 @@ module.exports = function(karma) {
       'frontend/js/graphViewer/graph/webWorkerWrapper.js',
       'frontend/js/graphViewer/graph/nodeShaper.js',
       'frontend/js/graphViewer/graph/abstractAdapter.js',
-      'frontend/js/graphViewer/graph/jsonAdapter.js',
+      'frontend/js/graphViewer/graph/JSONAdapter.js',
       'frontend/js/graphViewer/graph/arangoAdapter.js',
       'frontend/js/graphViewer/graph/foxxAdapter.js',
       'frontend/js/graphViewer/graph/previewAdapter.js',
