@@ -14,6 +14,9 @@
       this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
       this.graphs = new window.GraphCollection();
       this.i = 1;
+      this.managementView = new window.GraphManagementView({
+        collection: this.graphs
+      });
     },
 
     events: {
@@ -21,7 +24,12 @@
       "click #createViewer": "createViewer",
       "click #add_group_by": "insertNewAttrLine",
       "click input[type='radio'][name='colour']": "toggleColourDisplay",
-      "click .gv_internal_remove_line": "removeAttrLine"
+      "click .gv_internal_remove_line": "removeAttrLine",
+      "click #manageGraphs": "showGraphManager"
+    },
+
+    showGraphManager: function() {
+      this.managementView.render();
     },
 
     removeAttrLine: function(e) {

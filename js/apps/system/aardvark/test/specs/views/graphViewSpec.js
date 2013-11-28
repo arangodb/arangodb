@@ -26,6 +26,18 @@
       view = new GraphView();
       expect(templateEngine.createTemplate).toHaveBeenCalledWith("graphViewGroupByEntry.ejs");
     });
+
+    it("should setup a new graph collection", function () {
+      spyOn(window, "GraphCollection");
+      view = new GraphView();
+      expect(window.GraphCollection).toHaveBeenCalled();
+    });
+
+    it("should setup a graph management view", function () {
+      spyOn(window, "GraphManagementView");
+      view = new GraphView();
+      expect(window.GraphManagementView).toHaveBeenCalled();
+    });
   
     describe("after view creation", function() {
       
@@ -34,59 +46,51 @@
 
       beforeEach(function() {
 
-        runs(function() {
-          var createCol = function(name, type, isSystem) {
-            return new window.arangoCollection({
-              id: name,
-              type: type,
-              isSystem: isSystem || false,
-              name: name,
-              status: "loaded"
-            });
-          };
-          called = false;
-          v1 = createCol("z1", "document");
-          v2 = createCol("a2", "document");
-          e1 = createCol("y1", "edge");
-          e2 = createCol("b2", "edge");
-          sys1 = createCol("_sys1", "document (system)", true);
-          cols = [sys1, v1, v2, e1, e2];
-          myStore = new window.arangoCollections(cols);
-          g1 = {
-            _id: "_graphs/g1",
-            _key: "x1",
-            _rev: "123",
-            vertices: v1.get("name"),
-            edges: e2.get("name")
-          };
-          g2 = {
-            _id: "_graphs/g2",
-            _key: "c2",
-            _rev: "321",
-            vertices: v2.get("name"),
-            edges: e1.get("name")
-          };
-          graphs = [g1, g2];
-          view = new GraphView({
-            collection: myStore 
+        var createCol = function(name, type, isSystem) {
+          return new window.arangoCollection({
+            id: name,
+            type: type,
+            isSystem: isSystem || false,
+            name: name,
+            status: "loaded"
           });
-          spyOn($, "ajax").andCallFake(function(opts) {
-            if (opts.type === "GET") {
-              expect(opts.url).toEqual("/_api/graph");
-              expect(_.isFunction(opts.success)).toBeTruthy();
-              opts.success({graphs: graphs});
-            } else {
-              throw "Test not implemented";
-            }
-            called = true;
-          });
-          view.render();
+        };
+        called = false;
+        v1 = createCol("z1", "document");
+        v2 = createCol("a2", "document");
+        e1 = createCol("y1", "edge");
+        e2 = createCol("b2", "edge");
+        sys1 = createCol("_sys1", "document (system)", true);
+        cols = [sys1, v1, v2, e1, e2];
+        myStore = new window.arangoCollections(cols);
+        g1 = {
+          _id: "_graphs/g1",
+          _key: "x1",
+          _rev: "123",
+          vertices: v1.get("name"),
+          edges: e2.get("name")
+        };
+        g2 = {
+          _id: "_graphs/g2",
+          _key: "c2",
+          _rev: "321",
+          vertices: v2.get("name"),
+          edges: e1.get("name")
+        };
+        graphs = new window.GraphCollection();
+        graphs.add(g1);
+        graphs.add(g2);
+        spyOn(graphs, "fetch");
+        spyOn(window, "GraphCollection").andCallFake(function() {
+          return graphs;
         });
-
-        waitsFor(function() {
-          return called;
-        }, 1000);
-
+        view = new GraphView({
+          collection: myStore 
+        });
+        spyOn($, "ajax").andCallFake(function(opts) {
+          throw "Test not implemented";
+        });
+        view.render();
       });
 
       it("should render all vertex collections in correct order", function () {
@@ -149,7 +153,7 @@
           spyOn(window, "GraphViewerUI");
           $("#createViewer").click();
           // Once load graphs, but never load random node
-          expect($.ajax.calls.length).toEqual(1);
+          expect($.ajax).not.toHaveBeenCalled();
           defaultAdapterConfig.nodeCollection = v2.get("name");
           defaultAdapterConfig.edgeCollection = e2.get("name");
           expect(window.GraphViewerUI).toHaveBeenCalledWith(
@@ -168,7 +172,7 @@
           spyOn(window, "GraphViewerUI");
           $("#createViewer").click();
           // Once load graphs, but never load random node
-          expect($.ajax.calls.length).toEqual(1);
+          expect($.ajax).not.toHaveBeenCalled();
           defaultAdapterConfig.graph = g2._key;
           defaultAdapterConfig.nodeCollection = g2.vertices;
           defaultAdapterConfig.edgeCollection = g2.edges;
@@ -185,6 +189,15 @@
 
       describe("Advanced options", function () {
 
+      });
+
+      describe("Graph Management", function () {
+
+        it("should load the view", function () {
+          spyOn(view.managementView, "render");
+          $("#manageGraphs").click();
+          expect(view.managementView.render).toHaveBeenCalled();
+        });
       });
 
     });
