@@ -42,8 +42,16 @@
     it('should create a Mutation Observer Instance', function() {
       // First is Firefox, Second is Chrome and Safari
       var Observer = window.MutationObserver || window.WebKitMutationObserver,
-        factory = new DomObserverFactory();
-        expect(factory.createObserver(function() {})).toEqual(jasmine.any(Observer));
+        factory = new DomObserverFactory(),
+        agent = window.navigator.userAgent;
+      if (agent.match(/PhantomJS/)) {
+        // Fake for PhantomJS. Should not be reached for other browsers
+        expect(function() {
+          factory.createObserver(function() {});
+        }).toThrow("Observer not supported");
+        return;
+      }
+      expect(factory.createObserver(function() {})).toEqual(jasmine.any(Observer));
     });
     
     it('should propagate the callback to the MutationObserver', function() {

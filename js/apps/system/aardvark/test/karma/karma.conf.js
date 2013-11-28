@@ -172,7 +172,7 @@ module.exports = function(karma) {
 
       // GraphViewer
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
-      // 'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
+      'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
       'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
       'test/specs/graphViewer/specAdapter/interfaceSpec.js',
       'test/specs/graphViewer/specAdapter/abstractAdapterSpec.js',
