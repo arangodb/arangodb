@@ -92,14 +92,15 @@
       }
       else {
         // selected a "graph"
-        graphName = $("#graph").val();
+        graphName = $("#graphSelected").val();
+        console.log(graphName);
         var graph = _.find(this.graphs, function(g) { return g._key === graphName; });
-
+        
         if (graph) {
           ecol = graph.edges;
           ncol = graph.vertices;
         }
-
+        console.log(ecol, ncol);
       }
 
       groupByAttribute = [];

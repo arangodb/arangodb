@@ -68,7 +68,7 @@ gs = _.sortBy(gs, sortF);
             <div id="graph_config" style="display:none">
               <label for="graph" class="control-label">Graph-Name</label>
               <div class="controls">
-                <select id="graph" name="graph">
+                <select id="graphSelected" name="graph">
                 <%_.each(gs, function(g) {%>
                   <option value="<%= g %>"><%= g %></option>
                 <%}); %>
