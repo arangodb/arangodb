@@ -77,21 +77,6 @@ div.mousepointer {
   padding: 5px;  
 }
 
-.gv_searchInput {
-  background-color: #FFFFFF;
-  box-shadow: 0 !important;
-  color: #555555;
-  display: inline-block;
-  font-size: 12px;
-  height: 18px !important;
-  line-height: 18px;
-  margin-top: 5px;
-  padding: 2px;
-  vertical-align: middle;
-  width:214px !important;
-  border-radius: 0px 0px 0px 0px !important;
-}
-
 button.graphViewer-icon-button {
   border: medium none;
   width: 20px;
