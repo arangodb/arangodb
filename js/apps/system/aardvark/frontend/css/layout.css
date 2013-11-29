@@ -6,9 +6,7 @@
   margin-left: 22px;
 }
 
-.arangoBtn {
-  background: none repeat scroll 0 0 #FFFFFF;
-  color: #333232;
+.arangoBtn, .arangoBtnSuccess {
   float: left;
   font-family: 'Open Sans', sans-serif;
   font-size: 16px;
@@ -16,14 +14,14 @@
   text-decoration: none;
 }
 
+.arangoBtn {
+  background: none repeat scroll 0 0 #FFFFFF;
+  color: #333232;
+}
+
 .arangoBtnSuccess {
   background: none repeat scroll 0 0 #5E7B36;
   color: #FFFFFF;
-  float: left;
-  font-family: 'Open Sans', sans-serif;
-  font-size: 16px;
-  padding: 4px 10px;
-  text-decoration: none;
 }
 
 /* Radius */
