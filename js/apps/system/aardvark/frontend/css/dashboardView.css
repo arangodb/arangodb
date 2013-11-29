@@ -354,6 +354,8 @@ li:hover h6, li.hover h6 {
 #detailReplicationDiv table {
   margin-top: 10px;
   border-spacing: 0 0px;
+  width: 100%;
+  text-align:left !important;
 }
 
 #detailReplicationDiv table thead {
@@ -365,35 +367,27 @@ li:hover h6, li.hover h6 {
   font-weight: 400 !important;
 }
 
-#detailReplicationDiv table {
-  width: 100%;
-}
-
-#detailReplicationDiv table {
-  text-align:left !important;
-}
-
-#detailReplicationDiv table tr {
-}
-
 #detailReplicationDiv table tbody tr th {
   padding-bottom: 4px;
   padding-top: 4px;
 }
 
-#rightReplicationDiv {
-  min-height: 150px;
+#leftReplicationDiv, #rightReplicationDiv {
+  padding: 10px !important;
   padding-top: 5px;
+  min-height: 150px;
   margin-right: 10px;
-  margin-bottom: 8px;
   background-color: #FFFFFF;
 }
 
-#leftReplicationDiv, #rightReplicationDiv {
-  padding: 10px !important;
+#rightReplicationDiv {
+  margin-bottom: 8px;
 }
 
-#leftReplicationDiv h4, #rightReplicationDiv h4 {
+#leftReplicationDiv {
+  width: auto;
+  margin-top: -1px;
+  border-top: 1px solid #888;
 }
 
 #leftReplicationDiv table, #rightReplicationDiv table {
@@ -426,15 +420,6 @@ li:hover h6, li.hover h6 {
 #leftReplicationDiv tbody tr, #rightReplicationDiv tbody tr {
 }
 
-#leftReplicationDiv {
-  padding-top: 5px;
-  width: auto;
-  min-height: 150px;
-  margin-right: 10px;
-  margin-top: -1px;
-  border-top: 1px solid #888;
-  background-color: #FFFFFF;
-}
 
 .alignLeft {
   width: 240px !important;
