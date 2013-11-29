@@ -143,7 +143,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchAttrExampleCaret.className = "caret gv_caret";
       searchAttrExampleList.className = "dropdown-menu";
       searchValueField.id = "value";
-      searchValueField.className = "gv_searchInput";
+      searchValueField.className = "searchInput";
       //searchValueField.className = "filterValue";
       searchValueField.type = "text";
       searchValueField.placeholder = "Attribute value";
