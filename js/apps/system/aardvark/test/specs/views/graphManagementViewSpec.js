@@ -97,9 +97,13 @@
 
       it("should be able to delete", function() {
         var lg = graphs.get("g3");
-        spyOn(lg, "destroy");
-        $("#" + g3._key).click();
+        spyOn(lg, "destroy").andCallFake(function(opt) {
+          opt.success(); 
+        });
+        spyOn(view, "render");
+        $("#" + g3._key + " > span").click();
         expect(lg.destroy).toHaveBeenCalled();
+        expect(view.render).toHaveBeenCalled();
       });
 
     });

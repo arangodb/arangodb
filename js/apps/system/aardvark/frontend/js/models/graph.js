@@ -7,12 +7,14 @@
 
     idAttribute: "_key",
 
-    url: function() {
-      if (this.isNew()) {
-        return "/_api/graph/";
-      } else {
-        return "/_api/graph/" + this.get("_key");
-      }
+    urlRoot: "/_api/graph",
+
+    isNew: function() {
+      return !this.get("_id");
+    },
+
+    parse: function(raw) {
+      return raw.graph || raw;
     },
 
     defaults: {

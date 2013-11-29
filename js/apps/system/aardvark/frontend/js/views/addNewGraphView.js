@@ -8,11 +8,32 @@
     el: '#modalPlaceholder',
     template: templateEngine.createTemplate("addNewGraphView.ejs"),
 
-    initilize: function() {
+    initialize: function() {
       this.graphs = this.options.graphs;
     },
 
     events: {
+      "click #cancel": "hide",
+      "hidden": "hidden",
+      "click #createGraph": "createGraph"
+    },
+
+    createGraph: function() {
+      this.graphs.create({
+        _key: $("#newGraphName").val(),
+        vertices: $("#newGraphVertices").val(),
+        edges: $("#newGraphEdges").val()
+      });
+      this.hide();
+    },
+
+    hide: function() {
+      $('#add-graph').modal('hide');
+    },
+
+    hidden: function () {
+      this.undelegateEvents();
+      window.App.navigate("graphManagement", {trigger: true});
     },
 
     render: function() {
@@ -26,7 +47,7 @@
         collections: this.collection,
         graphs: this.graphs
       }));
-      $('#change-foxx').modal('show');
+      $('#add-graph').modal('show');
       $('.modalTooltips').tooltip({
         placement: "left"
       });
