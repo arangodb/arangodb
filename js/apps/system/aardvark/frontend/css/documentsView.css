@@ -353,22 +353,24 @@ table.dataTable thead th {
   padding-right: 9px;
 }
 
-.badge-success .cornered {
+.badge-success .cornered,
+.badge-important .cornered,
+.badge-inverse .cornered {
   height: 0px;
-  border-bottom: 16px solid #8AA051;
   border-left: 16px solid transparent;
+  border-bottom-width: 16px;
+  border-bottom-style: solid;
+}
+.badge-success .cornered {
+  border-bottom-color: #8AA051;
 }
 
 .badge-important .cornered {
-  height: 0px;
-  border-bottom: 16px solid #B94A48;
-  border-left: 16px solid transparent;
+  border-bottom-color: #B94A48;
 }
 
 .badge-inverse .cornered {
-  height: 0px;
-  border-bottom: 16px solid #333333;
-  border-left: 16px solid transparent;
+  border-bottom-color: #333333;
 }
 
 .badge .arrow:after {
