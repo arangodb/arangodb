@@ -82,14 +82,17 @@ table.dataTable thead th {
   margin-bottom: -10px;
 }
 
-#filterHeader, #importHeader, .arangoDropdownIn {
+#filterHeader, #importHeader, .arangoDropdownIn, #indexHeaderContent {
+  margin-left: 5px;
+  margin-right: 5px;
   background-color: white;
+}
+
+#filterHeader, #importHeader, .arangoDropdownIn {
   padding-top: 10px;
   padding-left: 10px;
   padding-right: 10px;
   padding-bottom: 5px;
-  margin-left: 5px;
-  margin-right: 5px;
   position:relative;
 }
 
@@ -375,9 +378,6 @@ table.dataTable thead th {
   border-right-color: #8AA051;
   bottom: -10px;
   left: 1px;
-}
-
-.badge .arrow:after {
   border-width: 10px;
   content: "";
 }
@@ -529,15 +529,6 @@ table.dataTable thead th {
   font-size: 16px;
   margin-right: 3px;
   margin-left: 0px;
-}
-
-#resetView, #filterSend, #confirmDocImport {
-}
-
-#indexHeaderContent {
-  margin-left: 5px;
-  margin-right: 5px;
-  background-color: white;
 }
 
 #indexHeaderContent > div {

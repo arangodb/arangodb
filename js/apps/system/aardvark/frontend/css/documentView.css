@@ -18,15 +18,6 @@
   cursor: default !important;
 }
 
-.docLink {
-}
-
-.docPreview {
-  text-align: right;
-  float: right;
-  margin-right: -17px !important; 
-}
-
 #collectionPrev, #collectionNext{
   cursor: pointer;
 }
@@ -89,11 +80,23 @@
   color: #B30000;
 }
 
+.editSecondAttribute, .editFirstAttribute, .docPreview {
+  text-align: right;
+  float: right;
+}
 .editSecondAttribute, .editFirstAttribute {
   color: #444444;
   font-size: 16px;
-  float:right;
   padding-top: 4px;
+}
+
+.editFirstAttribute, .docPreview{
+  margin-right: -17px !important;
+}
+
+.editSecondAttribute {
+  margin-right: -30px !important;
+  padding-bottom: 1px;
 }
 
 .addAttribute, .deleteAttribute {
@@ -129,18 +132,7 @@ table.dataTable thead th {
   cursor: default !important;
 }
 
-.editFirstAttribute {
-  float:right;
-  text-align:right;
-  margin-right: -17px !important;
-}
 
-.editSecondAttribute {
-  float:right;
-  text-align:right;
-  margin-right: -30px !important;
-  padding-bottom: 1px;
-}
 
 #documentTableID .icon-edit {
   margin-top: 0;
