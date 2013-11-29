@@ -172,13 +172,20 @@ body {
   margin-right: 12px;
 }
 
-.clearicon {
+.clearicon, .reloadicon {
   opacity: 0.2;
   cursor: pointer;
   margin-top: 3px;
   top: 20px;
-  right: 25px;
   position: absolute;
+}
+
+.clearicon {
+  right: 25px;
+}
+
+.reloadicon {
+  right: 45px;
 }
 
 #plusIcon {
@@ -188,26 +195,7 @@ body {
   opacity: 0.3;
 }
 
-#plusIcon:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-.reloadicon {
-  opacity: 0.2;
-  cursor: pointer;
-  margin-top: 3px;
-  top: 20px;
-  right: 45px;
-  position: absolute;
-}
-
-.clearicon:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-.reloadicon:hover {
+#plusIcon:hover, .clearicon:hover, .reloadicon:hover {
   opacity: 0.8;
   cursor: pointer;
 }
