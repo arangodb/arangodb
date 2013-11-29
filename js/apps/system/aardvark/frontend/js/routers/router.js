@@ -267,7 +267,14 @@
     },
 
     graphAddNew: function() {
-
+      if (!this.addNewGraphView) {
+        this.addNewGraphView = new window.AddNewGraphView({
+          collection: window.arangoCollectionsStore,
+          graphs: this.graphs
+        });
+      }
+      this.addNewGraphView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
     applications: function() {

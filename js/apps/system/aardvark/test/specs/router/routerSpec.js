@@ -10,34 +10,50 @@
     var 
       jQueryDummy,
       fakeDB,
+      graphDummy,
       storeDummy,
       naviDummy,
       footerDummy,
       documentDummy,
       documentsDummy,
       sessionDummy,
-      graphDummy,
+      graphsDummy,
       logsDummy;
 
     // Spy on all views that are initialized by startup
     beforeEach(function() {
       naviDummy = {
+        id: "navi",
         render: function(){},
-        handleResize: function(){}
+        handleResize: function(){},
+        selectMenuItem: function(){}
       };
       footerDummy = {
+        id: "footer",
         render: function(){},
         handleResize: function(){}
       };
-      documentDummy = {};
-      documentsDummy = {};
+      documentDummy = {id: "document"};
+      documentsDummy = {id: "documents"};
       graphDummy = {
+        id: "graph",
         handleResize: function() {}
       };
-      storeDummy = {fetch: function(){}};
-      logsDummy = {fetch: function() {}};
-      fakeDB = {fetch: function() {}};
+      storeDummy = {
+        id: "store",
+        fetch: function(){}
+      };
+      graphsDummy = {id: "graphs"};
+      logsDummy = {
+        id: "logs",
+        fetch: function() {}
+      };
+      fakeDB = {
+        id: "fakeDB",
+        fetch: function() {}
+      };
       jQueryDummy = {
+        id: "jquery",
         resize: function() {},
         width: function() {},
         height: function() {},
@@ -48,6 +64,7 @@
       spyOn(window, "ArangoSession").andReturn(sessionDummy);
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
+      spyOn(window, "GraphCollection").andReturn(graphsDummy);
       spyOn(window, "CollectionsView");
       spyOn(window, "CollectionView");
       spyOn(window, "CollectionInfoView");
@@ -67,6 +84,7 @@
       spyOn(footerDummy, "render");
       spyOn(window, "NavigationView").andReturn(naviDummy);
       spyOn(naviDummy, "render");
+      spyOn(naviDummy, "selectMenuItem");
       spyOn(window, "GraphView").andReturn(graphDummy);
       spyOn(window, "$").andReturn(jQueryDummy);
       spyOn(jQueryDummy, "resize").andCallFake(function() {
@@ -102,7 +120,8 @@
 
       it("should create a graph view", function() {
         expect(window.GraphView).toHaveBeenCalledWith({
-          collection: storeDummy
+          collection: storeDummy,
+          graphs: graphsDummy
         });
       });
 
@@ -140,6 +159,31 @@
         expect(window.CurrentDatabase).toHaveBeenCalled();
         expect(fakeDB.fetch).toHaveBeenCalled();
       });
+    });
+
+    describe("navigation", function () {
+      
+      var r;
+
+      beforeEach(function() {
+        r = new window.Router();
+      });
+
+      it("should offer the add new graph view", function() {
+        var route = r.routes["graphManagement/add"],
+          view = {render: function(){}};
+        expect(route).toBeDefined();
+        spyOn(window, "AddNewGraphView").andReturn(view);
+        spyOn(view, "render");
+        r[route]();
+        expect(window.AddNewGraphView).toHaveBeenCalledWith({
+          collection: storeDummy,
+          graphs: graphsDummy
+        });
+        expect(view.render).toHaveBeenCalled();
+        expect(naviDummy.selectMenuItem).toHaveBeenCalledWith("graphviewer-menu");
+      });
+
     });
   });
 }());

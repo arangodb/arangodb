@@ -27,18 +27,6 @@
       expect(templateEngine.createTemplate).toHaveBeenCalledWith("graphViewGroupByEntry.ejs");
     });
 
-    it("should setup a new graph collection", function () {
-      spyOn(window, "GraphCollection");
-      view = new GraphView();
-      expect(window.GraphCollection).toHaveBeenCalled();
-    });
-
-    it("should setup a graph management view", function () {
-      spyOn(window, "GraphManagementView");
-      view = new GraphView();
-      expect(window.GraphManagementView).toHaveBeenCalled();
-    });
-  
     describe("after view creation", function() {
       
       var graphs, g1, g2, v1, v2, e1, e2,
@@ -85,7 +73,8 @@
           return graphs;
         });
         view = new GraphView({
-          collection: myStore 
+          collection: myStore,
+          graphs: graphs
         });
         spyOn($, "ajax").andCallFake(function(opts) {
           throw "Test not implemented";
@@ -193,10 +182,10 @@
 
       describe("Graph Management", function () {
 
-        it("should load the view", function () {
-          spyOn(view.managementView, "render");
+        it("should navigate to the management view", function () {
+          spyOn(window.App, "navigate");
           $("#manageGraphs").click();
-          expect(view.managementView.render).toHaveBeenCalled();
+          expect(window.App.navigate).toHaveBeenCalledWith("graphManagement", {trigger: true});
         });
       });
 
