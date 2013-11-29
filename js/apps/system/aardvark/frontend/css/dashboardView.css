@@ -25,6 +25,8 @@
   margin-top: 6px;
   margin-bottom: 0;
   padding-bottom: 0;
+  border-radius: 0 !important;
+  max-height: 30px !important;
 }
 
 #dashboardHeader ul a {
@@ -202,7 +204,7 @@ li:hover h6, li.hover h6 {
   font-family: 'Open Sans', sans-serif !important;
 }
 
-#dashboardHeader {
+#dashboardHeader, #transparentHeader {
   margin-left: 5px;
   margin-right: 5px;
   padding-right: 5px;
@@ -213,10 +215,6 @@ li:hover h6, li.hover h6 {
   margin-top: 5px !important;
 }
 
-#dashboardHeader .btn-group {
-  border-radius: 0 !important;
-  max-height: 30px !important;
-}
 
 /*NVD3*/
 .nv-series {
