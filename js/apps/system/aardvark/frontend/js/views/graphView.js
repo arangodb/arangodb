@@ -12,11 +12,8 @@
 
     initialize: function () {
       this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
-      this.graphs = new window.GraphCollection();
+      this.graphs = this.options.graphs;
       this.i = 1;
-      this.managementView = new window.GraphManagementView({
-        collection: this.graphs
-      });
     },
 
     events: {
@@ -29,7 +26,7 @@
     },
 
     showGraphManager: function() {
-      this.managementView.render();
+      window.App.navigate("graphManagement", {trigger: true});
     },
 
     removeAttrLine: function(e) {

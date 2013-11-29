@@ -27,10 +27,14 @@
       "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
       "application/documentation/:key"      : "appDocumentation",
-      "graph"                               : "graph"
+      "graph"                               : "graph",
+      "graphManagement"                     : "graphManagement",
+      "graphManagement/add"                 : "graphAddNew"
     },
 
     initialize: function () {
+      this.graphs = new window.GraphCollection();
+
       window.currentDB = new window.CurrentDatabase();
       window.currentDB.fetch({
         async: false
@@ -67,6 +71,7 @@
       this.footerView.render();
       this.naviView.render();
       this.graphView = new window.GraphView({
+        graphs: this.graphs,
         collection: window.arangoCollectionsStore
       });
 
@@ -253,6 +258,18 @@
       });
     },
 
+    graphManagement: function() {
+      if (!this.graphManagementView) {
+        this.graphManagementView = new window.GraphManagementView({collection: this.graphs});
+      }
+      this.graphManagementView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
+    },
+
+    graphAddNew: function() {
+
+    },
+
     applications: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
@@ -294,41 +311,26 @@
 
     applicationEdit: function(appkey) {
       if (this.foxxList === undefined) {
-        var self = this;
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
-          success: function() {
-            var editAppView = new window.foxxEditView({
-              model: self.foxxList.findWhere({_key: appkey})
-            });
-            editAppView.render();
-          }
+          async: false
         });
-      } else {
-        var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
-        editAppView.render();
       }
+      var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
+      editAppView.render();
     },
 
     applicationInstall: function(appkey) {
       if (this.foxxList === undefined) {
-        var self = this;
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
-          success: function() {
-            var installAppView = new window.foxxMountView({
-              model: self.foxxList.findWhere({_key: appkey})
-            });
-            installAppView.render();
-          }
+          async: false
         });
-      } else {
-        var installAppView = new window.foxxMountView({
-          model: this.foxxList.findWhere({_key: appkey})
-        });
-        installAppView.render();
       }
-
+      var installAppView = new window.foxxMountView({
+        model: this.foxxList.findWhere({_key: appkey})
+      });
+      installAppView.render();
     },
 
     appDocumentation: function(key) {
