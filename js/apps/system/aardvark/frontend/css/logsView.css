@@ -104,9 +104,9 @@ background-color: none !important;
 }
 
 #logContent .dataTable {
-› table-layout:fixed !important;
-› border-collapse:separate;
-› border-spacing:0 5px;
+  table-layout:fixed !important;
+  border-collapse:separate;
+  border-spacing:0 5px;
 }
 
 #logPaginationDiv a {

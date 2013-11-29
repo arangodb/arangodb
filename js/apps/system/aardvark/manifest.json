@@ -124,7 +124,9 @@
         "frontend/css/modal.css",
         "frontend/css/ansi.css",
         "frontend/css/graphlayout.css",
+        "frontend/css/datatables.css",
         "frontend/css/api.css",
+        "frontend/css/general.css",
         "frontend/css/screenSizes.css",
         "frontend/ttf/arangofont/style.css"
       ]

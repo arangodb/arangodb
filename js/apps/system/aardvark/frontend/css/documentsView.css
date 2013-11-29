@@ -42,7 +42,6 @@ table.dataTable thead th {
 }
 
 #documentsFooterBox {
-  background-color: rgba(0,0,0,0.15);
   height: 56px;
 }
 
@@ -78,7 +77,6 @@ table.dataTable thead th {
 }
 
 .arangoDropdown {
-  background-color: rgba(0,0,0,0.15);
   margin-bottom: -10px;
 }
 
@@ -140,7 +138,6 @@ table.dataTable thead th {
 
 #documentsDiv {
   margin-top: 10px !important;
-  background-color: rgba(0, 0, 0, 0.15);
 }
 
 #documentsTableID thead {
