@@ -1,0 +1,75 @@
+/* Sets the default values shared for content views*/
+
+#aboutDiv, #queryDiv, #queryDropdown,
+#documentsFooterBox, #documentsDiv,
+#databaseDiv,
+.arangoDropdown,
+.thumbnails2, .thumbnails,
+.api-actions
+{
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* layout.css
+#aboutDiv {
+  padding-bottom: 5px;
+}
+
+queryView.css
+#queryDiv {
+  margin-top: 0px !important;
+  padding-top: 6px !important;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-bottom: 5px !important;
+}
+
+#queryDropdown {
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+documentsView.css
+#documentsFooterBox {
+  height: 56px;
+}
+
+.arangoDropdown {
+  margin-bottom: -10px;
+}
+
+#documentsDiv {
+  margin-top: 10px !important;
+}
+
+#databaseDiv {
+  padding: 5px;
+}
+
+collectionsView.css
+
+.thumbnails {
+  margin-left:0px;
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-bottom: 5px;
+  padding-top: 13px;
+}
+
+
+.thumbnails2 {
+  padding-top: 1px !important;
+  margin-left:0;
+  margin-bottom:0;
+}
+
+api.css 
+
+.api-actions {
+  margin: 0 !important;
+  padding: 0;
+}
+
+*/

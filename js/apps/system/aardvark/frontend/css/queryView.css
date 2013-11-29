@@ -56,7 +56,6 @@
 }
 
 #queryDiv {
-  background-color: rgba(0,0,0,0.15);
   margin-top: 0px !important;
   padding-top: 6px !important;
   padding-left: 5px;
@@ -251,7 +250,6 @@
   margin-right: 0;
   padding-left: 5px;
   padding-right: 5px;
-  background-color: rgba(0,0,0,0.15);
 }
 
 #queryDropdownIn {
