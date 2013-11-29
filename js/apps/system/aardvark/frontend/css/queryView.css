@@ -24,15 +24,35 @@
   border-top: 0;
 }
 
-#editorToolbar {
-  margin-top: 5px;
+.queryToolbar, #aqlEditor {
   margin-left: 0px;
   margin-right: 0px;
-  border-top: 1px solid #A0A0A0;
-  border-right: 1px solid #A0A0A0;
-  border-left: 1px solid #A0A0A0;
+  border-width: 1px;
+  border-style: solid;
+  border-bottom: 0px;
   height: 20px;
   background-color: #F0F0F0;
+}
+
+#editorToolbar {
+  margin-top: 5px;
+  border-color: #A0A0A0;
+}
+
+#outputToolbar {
+  position: relative;
+  width: auto;
+  border-color: #C0C0C0;
+}
+
+#aqlEditor {
+  border-bottom: 1px;
+  width: auto;
+  border-color: #A0A0A0;
+  min-width: 99.8%;
+  height: 200px;
+  min-height: 100px;
+  margin-bottom: 5px;
 }
 
 #queryDiv {
@@ -50,19 +70,6 @@
   margin-left: 5px;
   top: 2px;
   float:right;
-}
-
-
-#outputToolbar {
-  position: relative;
-  margin-left: 0;
-  margin-right: 0;
-  width: auto;
-  border-top: 1px solid #C0C0C0;
-  border-right: 1px solid #C0C0C0;
-  border-left: 1px solid #C0C0C0;
-  height: 20px;
-  background-color: #F0F0F0;
 }
 
 #editorToolbar i:hover, #outputToolbar i:hover {
@@ -97,17 +104,6 @@
   border-left: 0 !important;
   border-bottom: 0 !important;
   border-top: 0 !important;
-}
-
-#aqlEditor {
-  width: auto;
-  min-width: 99.8%;
-  margin-right: 0px;
-  margin-left: 0px;
-  height: 200px;
-  min-height: 100px;
-  border: 1px solid #A0A0A0;
-  margin-bottom: 5px;
 }
 
 #wideButtonDiv {
