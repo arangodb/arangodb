@@ -570,32 +570,26 @@ li:hover h6, li.hover h6 {
   visibility: hidden !important;
 }
 
-.greenLight {
-  background: green;
-  background-image: radial-gradient(lime, transparent);
+.greenLight, .redLight {
   background-size: 3px 3px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  box-shadow:
   margin-top: 1px;
-  0 0 10px #111 inset,
-  0 0 5px lime;
+}
+
+.greenLight {
+  background: green;
+  background-image: radial-gradient(lime, transparent);
+  box-shadow: 0 0 10px #111 inset, 0 0 5px lime;
   animation: 13s green infinite;
 }
 
 .redLight {
   background: red;
   background-image: radial-gradient(brown, transparent);
-  background-size: 3px 3px; 
-  margin-top: 1px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
   animation: 13s red infinite;
-  box-shadow:
-    0 0 10px #111 inset,
-    0 0 5px red;
+  box-shadow: 0 0 10px #111 inset, 0 0 5px red;
 }
 
 #dashboardDropdown > ul > li > a > .radio {
