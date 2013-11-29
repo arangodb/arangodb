@@ -137,9 +137,6 @@ table.dataTable thead th {
 
 #documentsDiv {
   margin-top: 10px !important;
-  padding-left: 5px;
-  padding-right: 5px;
-  padding-top: 13px;
   background-color: rgba(0, 0, 0, 0.15);
 }
 
