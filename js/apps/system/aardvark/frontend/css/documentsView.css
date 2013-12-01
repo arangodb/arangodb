@@ -2,14 +2,6 @@
   margin-top: 4px;
 }
 
-#addDocumentButton {
-  position: relative;
-  margin-right: 6px;
-  font-size: 20px;
-  color: #8AA050;
-  margin-top: 2px;
-}
-
 table.dataTable thead th {
   cursor: default !important;
 }
