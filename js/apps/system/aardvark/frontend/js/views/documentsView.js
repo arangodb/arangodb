@@ -548,7 +548,7 @@
               + value.attributes.key
               + '</div>',
 
-              '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
+              '<a id="deleteDoc" class="deleteButton"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
               +'Delete document" title="Delete document"></span><a>'
             ]
           );
