@@ -60,7 +60,8 @@
   padding-top: 6px !important;
   padding-left: 5px;
   padding-right: 5px;
-  padding-bottom: 5px !important;
+  padding-bottom: 20px !important;
+  background-color: transparent;
 }
 
 #outputToolbar span, #editorToolbar span {
