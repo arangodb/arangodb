@@ -127,6 +127,7 @@
         "frontend/css/datatables.css",
         "frontend/css/api.css",
         "frontend/css/general.css",
+        "frontend/css/buttons.css",
         "frontend/css/screenSizes.css",
         "frontend/ttf/arangofont/style.css"
       ]

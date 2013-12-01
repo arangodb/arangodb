@@ -1,36 +1,9 @@
-.arangoDataTable .key {
-  margin-top: 4px;
-}
-
-table.dataTable thead th {
-  cursor: default !important;
-}
-
-#tableDiv table.dataTable td {
-  padding:12px 18px !important;
-}
-
-#documentsDiv table.dataTable td {
-  padding:10px 18px !important;
-}
-
 #documentAddBtn {
   margin-left: 6px;
 }
 
 .docleftico {
   width: 30px !important;
-}
-
-#deleteDoc {
-  color: #B30000;
-  font-size: 20px;
-  padding-right: 3px;
-  top: 3px;
-  position: relative;
-}
-
-#deleteDoc span {
 }
 
 #documentsFooterBox {
@@ -132,12 +105,6 @@ table.dataTable thead th {
   margin-top: 10px !important;
 }
 
-.arangoDataTable thead {
-  font-weight: 400 !important;
-  background-color: #FFFFFF !important;
-  text-align: left;
-}
-
 #documentsTableID_length, #documentsTableID_filter {
   display: none;
 }
@@ -151,67 +118,9 @@ table.dataTable thead th {
   visibility: hidden;
 }
 
-.arangoDataTable {
-  padding-left: 5px !important;
-  padding-right: 5px !important;
-  width: 100% !important;
-  position: relative;
-  table-layout:fixed !important;
-  border-spacing:0 0px;
-}
-
-#documentsTable thead {
-  border: 0 !important;
-}
-
 .docsFirstCol, .docsSecCol, .docsThirdCol {
   border: 0 !important;
 }
-
-table.dataTable thead th {
-  border-bottom:none;
-}
-
-.arangoDataTable.dataTable thead tr {
-  border-bottom: 1px solid #C2C2C2;
-}
-
-.arangoDataTable tbody {
-}
-
-.arangoDataTable.dataTable tr,
-#logContent .dataTable tr {
-}
-
-#logContent .odd {
-  background-color: #F1F0EE;
-}
-
-#logContent .even {
-  background-color: #FFFFFF;
-}
-
-
-.arangoDataTable .odd:hover,
-.arangoDataTable .even:hover,
-#logContent .odd:hover,
-#logContent .even:hover {
-  cursor: pointer;
-  /*background-color: #D4DFC3 !important;*/
-}
-
-.arangoDataTable.dataTable tr.even td.sorting_1,
-.arangoDataTable.dataTable tr.odd td.sorting_1,
-#logContent tr.even td.sorting_1,
-#logContent tr.odd td.sorting_1 {
-}
-
-.arangoDataTable tr.even:hover td.sorting_1,
-.arangoDataTable tr.odd:hover td.sorting_1,
-#logContent tr.even:hover td.sorting_1,
-#logContent tr.odd:hover td.sorting_1 {
-}
-
 
 #documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
   visibility: hidden;
@@ -461,7 +370,6 @@ table.dataTable thead th {
 }
 
 .docsThirdCol {
-  padding-right: 15px !important;
   float:right;
 }
 
