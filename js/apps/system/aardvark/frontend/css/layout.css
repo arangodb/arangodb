@@ -136,16 +136,6 @@ textarea, .alert {
   color:#b9d375;
 }
 
-#content {
-  margin-top: 74px;
-  margin-bottom: 33px;
-  min-height: 80px;
-  height: 100%;
-  width: 100%;
-  margin-left: 20px;
-  margin-left: 0;
-}
-
 body {
   background-color: white !important;
   /*background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;*/
@@ -156,7 +146,8 @@ body {
 }
 
 .form-actions {
-  background-color: #FFFFFF;
+  margin-top: -10px !important;
+  background-color: rgba(0,0,0,0.05);
   border:none;
 }
 
@@ -251,12 +242,6 @@ table .sorting {
   margin-bottom: 20px;
 }
 
-.marginRight10 {
-}
-
-.form-actions {
-  margin-top: -10px !important;
-}
 
 input,select,option {
   border-radius: 0 !important;

@@ -1,15 +1,15 @@
 /* Sets the default values shared for content views*/
-
-#aboutDiv, #queryDiv, #queryDropdown,
-#documentsFooterBox, #documentsDiv,
-#databaseDiv,
-.arangoDropdown,
-.thumbnails2, .thumbnails,
-.api-actions
+#content
 {
   background-color: rgba(0, 0, 0, 0.15);
+  margin-top: 74px;
+  margin-bottom: 33px;
+  min-height: 80px;
+  height: 100%;
+  width: 100%;
+  margin-left: 20px;
+  margin-left: 0;
 }
-
 /* layout.css
 #aboutDiv {
   padding-bottom: 5px;
