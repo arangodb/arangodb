@@ -27,7 +27,7 @@
   cursor: default !important;
 }
 
-#tableDiv, #logContent, #documentsDiv, #sourceDiv {
+#tableDiv, #logContent, #documentsDiv, #sourceDiv, #graphManagementDiv {
   padding-top: 13px;
   padding-right: 5px;
   padding-left: 5px;
@@ -154,10 +154,12 @@ table.dataTable thead th {
     box-shadow: none;
 }
 
-#documentTableID .odd, #documentsTableID .odd {
+#documentTableID .odd,
+table.dataTable.arangoDataTable tr.odd {
 	background:#F1F0EE;
 }
-#documentTableID .even, #documentsTableID .even {
+#documentTableID .even,
+table.dataTable.arangoDataTable tr.even {
 	background:#FFFFFF;
 }
 
