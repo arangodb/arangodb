@@ -1,4 +1,4 @@
-#documentsTableID .key {
+.arangoDataTable .key {
   margin-top: 4px;
 }
 
@@ -140,7 +140,7 @@ table.dataTable thead th {
   margin-top: 10px !important;
 }
 
-#documentsTableID thead {
+.arangoDataTable thead {
   font-weight: 400 !important;
   background-color: #FFFFFF !important;
   text-align: left;
@@ -159,7 +159,7 @@ table.dataTable thead th {
   visibility: hidden;
 }
 
-#documentsTableID {
+.arangoDataTable {
   padding-left: 5px !important;
   padding-right: 5px !important;
   width: 100% !important;
@@ -180,14 +180,14 @@ table.dataTable thead th {
   border-bottom:none;
 }
 
-#documentsTableID.dataTable thead tr {
+.arangoDataTable.dataTable thead tr {
   border-bottom: 1px solid #C2C2C2;
 }
 
-#documentsTableID tbody {
+.arangoDataTable tbody {
 }
 
-#documentsTableID.dataTable tr,
+.arangoDataTable.dataTable tr,
 #logContent .dataTable tr {
 }
 
@@ -200,22 +200,22 @@ table.dataTable thead th {
 }
 
 
-#documentsTableID .odd:hover,
-#documentsTableID .even:hover,
+.arangoDataTable .odd:hover,
+.arangoDataTable .even:hover,
 #logContent .odd:hover,
 #logContent .even:hover {
   cursor: pointer;
   /*background-color: #D4DFC3 !important;*/
 }
 
-#documentsTableID.dataTable tr.even td.sorting_1,
-#documentsTableID.dataTable tr.odd td.sorting_1,
+.arangoDataTable.dataTable tr.even td.sorting_1,
+.arangoDataTable.dataTable tr.odd td.sorting_1,
 #logContent tr.even td.sorting_1,
 #logContent tr.odd td.sorting_1 {
 }
 
-#documentsTableID tr.even:hover td.sorting_1,
-#documentsTableID tr.odd:hover td.sorting_1,
+.arangoDataTable tr.even:hover td.sorting_1,
+.arangoDataTable tr.odd:hover td.sorting_1,
 #logContent tr.even:hover td.sorting_1,
 #logContent tr.odd:hover td.sorting_1 {
 }
