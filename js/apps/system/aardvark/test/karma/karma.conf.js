@@ -161,6 +161,8 @@ module.exports = function(karma) {
       'frontend/js/views/foxxMountView.js',
       'frontend/js/views/appDocumentationView.js',
       'frontend/js/views/graphView.js',
+      'frontend/js/views/graphManagementView.js',
+      'frontend/js/views/addNewGraphView.js',
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
 
@@ -173,7 +175,6 @@ module.exports = function(karma) {
       // Specs
 
       // GraphViewer
-      
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
       'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
@@ -206,7 +207,7 @@ module.exports = function(karma) {
       'test/specs/arango/arangoSpec.js',
       // Models
       'test/specs/models/currentDatabaseSpec.js',
-
+      'test/specs/models/graphSpec.js',
       // Views
       'test/specs/views/editListEntryViewSpec.js',
       'test/specs/views/collectionViewSpec.js',
@@ -214,8 +215,9 @@ module.exports = function(karma) {
       'test/specs/views/foxxEditViewSpec.js',
       'test/specs/views/dbSelectionViewSpec.js',
       'test/specs/views/navigationViewSpec.js',
-      
       'test/specs/views/graphViewSpec.js',
+      'test/specs/views/graphManagementViewSpec.js',
+      'test/specs/views/addNewGraphViewSpec.js',
 
       // Router
       'test/specs/router/routerSpec.js',
