@@ -175,7 +175,7 @@
         expect(attrfield.placeholder).toEqual("Attribute name");
         expect(valfield).toBeTag("input");
         expect(valfield.type).toEqual("text");
-        expect(valfield).toBeOfClass("gv_searchInput");
+        expect(valfield).toBeOfClass("searchInput");
         expect(valfield.placeholder).toEqual("Attribute value");
         expect(btn).toBeTag("img");
         expect(btn.className).toEqual("searchSubmit");
