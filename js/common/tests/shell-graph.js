@@ -59,6 +59,12 @@ function GraphCreationSuite() {
         edge = "UnitTestsCollectionEdge",
         graph = null;
 
+      try {
+        Graph.drop(graph_name);
+      }
+      catch (err) {
+      }
+
       graph = new Graph(graph_name, vertex, edge);
 
       assertEqual(graph_name, graph._properties._key);
@@ -66,6 +72,36 @@ function GraphCreationSuite() {
       assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
 
       graph.drop();
+    },
+
+    testCreationWithCollections : function () {
+      // clean up
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+
+      try {
+        require("org/arangodb/graph").Graph.drop("UnitTestsCollectionGraph");
+      }
+      catch (err) {
+      }
+
+      // create collections
+      var Graph = require("org/arangodb/graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        vertex = arangodb.db._create("UnitTestsCollectionGraphVertices"),
+        edge = arangodb.db._createEdgeCollection("UnitTestsCollectionGraphEdges"),
+        graph = null;
+
+      graph = new Graph(graph_name, vertex, edge);
+      assertEqual(graph_name, graph._properties._key);
+      assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
+      assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
+
+      graph.drop();
+
+      // clean up
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
     },
 
     testDroppingIfVertexCollectionIsUsedTwice : function () {
@@ -81,6 +117,40 @@ function GraphCreationSuite() {
       graph.drop();
       assertTrue(arangodb.db._collection("UnitTestsCollectionVertex") !== null);
       other_graph.drop();
+    },
+    
+    testDropStatic : function () {
+      // clean up
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+
+      // create collections
+      var Graph = require("org/arangodb/graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        vertex = arangodb.db._create("UnitTestsCollectionGraphVertices"),
+        edge = arangodb.db._createEdgeCollection("UnitTestsCollectionGraphEdges"),
+        graph = null;
+
+      assertNotNull(arangodb.db._collection("UnitTestsCollectionGraphVertices"));
+      assertNotNull(arangodb.db._collection("UnitTestsCollectionGraphEdges"));
+      // create the graph
+      graph = new Graph(graph_name, vertex, edge);
+       
+      // clean up the collections
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+      
+      assertNull(arangodb.db._collection("UnitTestsCollectionGraphVertices"));
+      assertNull(arangodb.db._collection("UnitTestsCollectionGraphEdges"));
+      
+      // statically remove the graph
+      try {
+        Graph.drop(graph_name);
+      }
+      catch (err) {
+      }
+
+      assertNull(arangodb.db._collection('_graphs').firstExample({ _key: graph_name }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
