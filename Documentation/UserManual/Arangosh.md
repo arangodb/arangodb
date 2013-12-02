@@ -22,9 +22,9 @@ command-line options:
 
 - `--server.database <string>`: name of the database to connect to
 - `--server.endpoint <string>`: endpoint to connect to
-- `--server.username <string>`: username
-- `--server.password <string>`: password to use (omit this and you'll be prompted for the
-  password)
+- `--server.username <string>`: database username
+- `--server.password <string>`: password to use when connecting 
+- `--server.disable-authentication <bool>`: disable password prompt and authentication
 
 For example, to connect to an ArangoDB server on IP `192.168.173.13` on port
 8530 with the user `foo` and using the database `test`, use
