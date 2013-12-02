@@ -370,11 +370,11 @@ use the options of `arangosh`. To retrieve a list of the options for `arangosh`,
 
 To most relevant `arangosh` options to pass to the `foxx-manager` will be:
 
-    --server.database <string>                database name to use when connecting (default: "_system")
-    --server.disable-authentication <bool>    disable authentication (will disable password prompt) (default: false)
-    --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
-    --server.password <string>                password to use when connecting (leave empty for prompt)
-    --server.username <string>                username to use when connecting (default: "root")
+    --server.database <string>                database name to use when connecting
+    --server.disable-authentication <bool>    disable the password prompt and authentication when connecting to the server 
+    --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server 
+    --server.password <string>                password to use when connecting
+    --server.username <string>                username to use when connecting
 
 These options allow you to use the foxx-manager with a different database or with another
 than the default user.

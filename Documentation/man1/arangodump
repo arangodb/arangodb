@@ -51,6 +51,8 @@ database name to use when connection (default: "_system") ENDOPTION
 OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"
-password to use when connecting. Leave empty for a password prompt ENDOPTION
+password to use when connecting. Don't specify this option to get a password prompt ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server ENDOPTION
 EXAMPLES
 AUTHOR
