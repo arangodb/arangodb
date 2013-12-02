@@ -33,6 +33,7 @@
 
     hidden: function () {
       this.undelegateEvents();
+      //$(this.el).empty();
       window.App.navigate("graphManagement", {trigger: true});
     },
 
@@ -47,6 +48,7 @@
         collections: this.collection,
         graphs: this.graphs
       }));
+      this.delegateEvents();
       $('#add-graph').modal('show');
       $('.modalTooltips').tooltip({
         placement: "left"
