@@ -97,6 +97,12 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
+v1.4.x (XXXX-XX-XX)
+-------------------
+
+* fixed typos in configuration files
+
+
 v1.4.3 (2013-XX-XX)
 -------------------
 
