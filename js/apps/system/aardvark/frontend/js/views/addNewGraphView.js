@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global Backbone, $, _, window, templateEngine*/
+/*global Backbone, $, _, window, templateEngine, arangoHelper*/
 
 (function() {
   "use strict";
@@ -19,12 +19,41 @@
     },
 
     createGraph: function() {
+      var _key = $("#newGraphName").val(),
+        vertices = $("#newGraphVertices").val(),
+        edges = $("#newGraphEdges").val(),
+        self = this;
+
+      if (!_key) {
+        arangoHelper.arangoNotification(
+          "A name for the graph has to be provided."
+        );
+        return;
+      } 
+      if (!vertices) {
+        arangoHelper.arangoNotification(
+          "A vertex collection has to be provided."
+        );
+        return;
+      } 
+      if (!edges) {
+        arangoHelper.arangoNotification(
+          "An edge collection has to be provided."
+        );
+        return;
+      } 
       this.graphs.create({
-        _key: $("#newGraphName").val(),
-        vertices: $("#newGraphVertices").val(),
-        edges: $("#newGraphEdges").val()
+        _key: _key,
+        vertices: vertices,
+        edges: edges
+      }, {
+        success: function() {
+          self.hide(); 
+        },
+        error: function(err) {
+          arangoHelper.arangoError(err.errorMessage);
+        }
       });
-      this.hide();
     },
 
     hide: function() {
@@ -33,7 +62,6 @@
 
     hidden: function () {
       this.undelegateEvents();
-      //$(this.el).empty();
       window.App.navigate("graphManagement", {trigger: true});
     },
 
