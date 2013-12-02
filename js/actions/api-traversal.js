@@ -91,34 +91,45 @@ function notFound (req, res, code, message) {
 ///         - `Array` -> containing any combination of the above.
 ///             If there is at least one `"exclude"` or `"prune"` respectivly
 ///             is contained, it's effect will occur.
+///
 /// - `minDepth` (optional, ANDed with any existing filters): 
 ///    visits only nodes in at least the given depth
+///
 /// - `maxDepth` (optional, ANDed with any existing filters): 
 ///    visits only nodes in at most the given depth
+///
 /// - `visitor` (optional): body (JavaScript) code of custom visitor function
 ///          function signature: (config, result, vertex, path) -> void
 ///          visitor function can do anything, but its return value is ignored. To 
 ///          populate a result, use the `result` variable by reference
+///
 /// - `direction` (optional): direction for traversal
 ///            - *if set*, must be either `"outbound"`, `"inbound"`, or `"any"`
 ///            - *if not set*, the `expander` attribute must be specified
+///
 /// - `init` (optional): body (JavaScript) code of custom result initialisation function
 ///       function signature: (config, result) -> void
 ///       initialise any values in result with what is required
+///
 /// - `expander` (optional): body (JavaScript) code of custom expander function
 ///           *must* be set if `direction` attribute is *not* set
 ///           function signature: (config, vertex, path) -> array
 ///           expander must return an array of the connections for `vertex`
 ///           each connection is an object with the attributes `edge` and `vertex`
+///
 /// - `strategy` (optional): traversal strategy
 ///           can be `"depthfirst"` or `"breadthfirst"`
+///
 /// - `order` (optional): traversal order
 ///        can be `"preorder"` or `"postorder"`
+///
 /// - `itemOrder` (optional): item iteration order
 ///            can be `"forward"` or `"backward"`
+///
 /// - `uniqueness` (optional): specifies uniqueness for vertices and edges visited
 ///             if set, must be an object like this:
 ///             `"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}`
+///
 /// - `maxIterations` (optional): Maximum number of iterations in each traversal. This number can be
 ///    set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
 ///    as many iterations as the `maxIterations` value, the traversal will abort with an
