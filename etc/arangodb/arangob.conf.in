@@ -3,4 +3,4 @@ progress = true
 
 [server]
 endpoint = tcp://localhost:8529
-disable-authentcation = true
+disable-authentication = true
