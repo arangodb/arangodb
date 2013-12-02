@@ -419,8 +419,9 @@ bool ApplicationServer::parse (int argc,
   set<string> help = _options.needHelp("help");
 
   if (! help.empty()) {
+    // output help, but do not yet exit (we'll exit a little later so we can also
+    // check the specified configuration for errors)
     cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // check for version request
@@ -449,6 +450,14 @@ bool ApplicationServer::parse (int argc,
 
   if (! ok) {
     return false;
+  }
+  
+  // exit here if --help was specified.
+  // this allows us to use --help to run a configuration file check, too, and 
+  // report errors to the user
+
+  if (! help.empty()) {
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // .............................................................................
