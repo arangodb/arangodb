@@ -9,7 +9,7 @@
     template: templateEngine.createTemplate("manageGraphsView.ejs"),
 
     events: {
-      "click .deleteGraph": "deleteGraph",
+      "click .deleteButton": "deleteGraph",
       "click #addGraphButton": "addNewGraph"
     },
 
