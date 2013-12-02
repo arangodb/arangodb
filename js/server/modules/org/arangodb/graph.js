@@ -393,7 +393,15 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   if (typeof name !== "string" || name === "") {
     throw "<name> must be a string";
   }
-
+ 
+  // convert collection objects to collection names  
+  if (typeof vertices === 'object' && typeof vertices.name === 'function') {
+    vertices = vertices.name();
+  }
+  if (typeof edges === 'object' && typeof edges.name === 'function') {
+    edges = edges.name();
+  }
+  
   if (vertices === undefined && edges === undefined) {
 
     // Find an existing graph
@@ -420,24 +428,13 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
   }
-  else if (typeof vertices !== "string") {
-    if (typeof vertices === 'object' && typeof vertices.name === 'function') {
-      vertices = vertices.name();
-    }
-    else {
-      throw "<vertices> must be a string or null";
-    }
+  else if (typeof vertices !== "string" || vertices === "") {
+    throw "<vertices> must be a string or null";
   }
   else if (typeof edges !== "string" || edges === "") {
-    if (typeof edges === 'object' && typeof edges.name === 'function') {
-      edges = edges.name();
-    }
-    else {
-      throw "<edges> must be a string or null";
-    }
+    throw "<edges> must be a string or null";
   }
   else {
-
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
