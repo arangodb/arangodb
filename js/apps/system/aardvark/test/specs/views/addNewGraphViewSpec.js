@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
-/*global spyOn, runs, expect, waitsFor*/
-/*global AddNewGraphView, _, $*/
+/*global spyOn, runs, expect, waitsFor, jasmine*/
+/*global AddNewGraphView, _, $, arangoHelper */
 
 (function() {
   "use strict";
@@ -104,9 +104,101 @@
         spyOn(graphs, "create");
         $("#createGraph").click();
         expect(graphs.create).toHaveBeenCalledWith({
-        _key: name,
+          _key: name,
           vertices: v,
           edges: e
+        }, {
+          success: jasmine.any(Function),
+          error: jasmine.any(Function)
+        });
+      });
+
+      describe("if invalid information is added", function() {
+
+        beforeEach(function() {
+          spyOn(arangoHelper, "arangoNotification");
+          spyOn(graphs, "create");
+        });
+
+        it("should alert unnamed graph", function() {
+          var nField = "#newGraphName",
+            vField = "#newGraphVertices",
+            eField = "#newGraphEdges",
+            name = "",
+            v = "v",
+            e = "e";
+          $(nField).val(name);
+          $(vField).val(v);
+          $(eField).val(e);
+          $("#createGraph").click();
+          expect(arangoHelper.arangoNotification)
+            .toHaveBeenCalledWith(
+              "A name for the graph has to be provided."
+            );
+          expect(graphs.create).not.toHaveBeenCalled();
+        });
+
+        it("should alert unnamed vertices", function() {
+          var nField = "#newGraphName",
+            vField = "#newGraphVertices",
+            eField = "#newGraphEdges",
+            name = "g",
+            v = "",
+            e = "e";
+          $(nField).val(name);
+          $(vField).val(v);
+          $(eField).val(e);
+          $("#createGraph").click();
+          expect(arangoHelper.arangoNotification)
+            .toHaveBeenCalledWith(
+              "A vertex collection has to be provided."
+            );
+          expect(graphs.create).not.toHaveBeenCalled();
+        });
+
+        it("should alert unnamed edges", function() {
+          var nField = "#newGraphName",
+            vField = "#newGraphVertices",
+            eField = "#newGraphEdges",
+            name = "g",
+            v = "v",
+            e = "";
+          $(nField).val(name);
+          $(vField).val(v);
+          $(eField).val(e);
+          $("#createGraph").click();
+          expect(arangoHelper.arangoNotification)
+            .toHaveBeenCalledWith(
+              "An edge collection has to be provided."
+            );
+          expect(graphs.create).not.toHaveBeenCalled();
+        });
+
+        it("should alert arango errors", function() {
+          var nField = "#newGraphName",
+            vField = "#newGraphVertices",
+            eField = "#newGraphEdges",
+            name = "g",
+            v = "v",
+            e = "e",
+            errMsg = "ArangoDB internal errror";
+          $(nField).val(name);
+          $(vField).val(v);
+          $(eField).val(e);
+          graphs.create.andCallFake(function (info, opts) {
+            expect(opts.error).toBeDefined();
+            opts.error({
+              error: true,
+              code: 400,
+              errorNum: 1093,
+              errorMessage: errMsg
+            });
+          });
+          spyOn(arangoHelper, "arangoError");
+          $("#createGraph").click();
+          expect(graphs.create).toHaveBeenCalled();
+          expect(arangoHelper.arangoError)
+            .toHaveBeenCalledWith(errMsg);
         });
       });
     });
