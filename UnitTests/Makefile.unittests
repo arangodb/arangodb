@@ -29,6 +29,7 @@ unittests: all unittests-verbose unittests-brief
 unittests-brief: \
 	unittests-make \
 	unittests-codebase-static \
+	unittests-config \
 	unittests-boost \
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
@@ -201,11 +202,40 @@ unittests-make:
 ### @brief static codebase tests (a.k.a. Visual Studio cries)
 ################################################################################
 
+.PHONY: unittests-codebase-static
+
 unittests-codebase-static:
 	@rm -f duplicates.test
 	@(find lib arangosh arangod arangoirb -regex ".*/.*\.\(c\|h\|cpp\)" -print | cut -d "/" -f2-9 | tr "[:upper:]" "[:lower:]" | sort | uniq -c | grep -v "^ \+1 \+" > duplicates.test) || true
 	@if [ "`grep " " duplicates.test`" != "" ]; then echo ; echo "Duplicate filenames found. These should be fixed to allow compilation with Visual Studio:"; cat duplicates.test; rm -f duplicates.test; false; fi
 	@rm -f duplicates.test
+
+################################################################################
+### @brief test configuration files
+################################################################################
+
+.PHONY: unittests-config
+
+unittests-config:
+	@echo
+	@echo "================================================================================"
+	@echo "<< CONFIGURATION FILE TESTS                                                   >>"
+	@echo "================================================================================"
+	@echo
+	
+	@builddir@/bin/arangod --configuration @builddir@/etc/arangodb/arangod.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangob --configuration @builddir@/etc/arangodb/arangob.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangodump --configuration @builddir@/etc/arangodb/arangodump.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangoimp --configuration @builddir@/etc/arangodb/arangoimp.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangorestore --configuration @builddir@/etc/arangodb/arangorestore.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangosh --configuration @builddir@/etc/arangodb/arangosh.conf --help 1> /dev/null || false 
+	
+	@builddir@/bin/arangod --configuration @builddir@/etc/relative/arangod.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangob --configuration @builddir@/etc/relative/arangob.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangodump --configuration @builddir@/etc/relative/arangodump.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangoimp --configuration @builddir@/etc/relative/arangoimp.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangorestore --configuration @builddir@/etc/relative/arangorestore.conf --help 1> /dev/null || false 
+	@builddir@/bin/arangosh --configuration @builddir@/etc/relative/arangosh.conf --help 1> /dev/null || false 
 
 ################################################################################
 ### @brief BOOST TESTS
