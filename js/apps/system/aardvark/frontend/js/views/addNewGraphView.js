@@ -50,8 +50,14 @@
         success: function() {
           self.hide(); 
         },
-        error: function(err) {
-          arangoHelper.arangoError(err.errorMessage);
+        error: function(obj, err) {
+          var response = JSON.parse(err.responseText),
+            msg = response.errorMessage;
+          // Gritter does not display <>
+          msg = msg.replace("<", "");
+          msg = msg.replace(">", "");
+          console.log(msg);
+          arangoHelper.arangoError(msg);
         }
       });
     },

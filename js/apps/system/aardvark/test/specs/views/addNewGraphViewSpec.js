@@ -187,11 +187,13 @@
           $(eField).val(e);
           graphs.create.andCallFake(function (info, opts) {
             expect(opts.error).toBeDefined();
-            opts.error({
-              error: true,
-              code: 400,
-              errorNum: 1093,
-              errorMessage: errMsg
+            opts.error(info, {
+              responseText: JSON.stringify({
+                error: true,
+                code: 400,
+                errorNum: 1093,
+                errorMessage: errMsg
+              })
             });
           });
           spyOn(arangoHelper, "arangoError");
