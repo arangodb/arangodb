@@ -8,6 +8,8 @@
     
     url: "/_api/graph",
 
+    comparator: "_key",
+
     parse: function(res) {
       if (!res.error) {
         return res.graphs;
