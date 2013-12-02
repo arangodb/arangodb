@@ -206,6 +206,13 @@ Graph.prototype.initialize = function (name, vertices, edges) {
   if (is.notExisty(vertices) && is.notExisty(edges)) {
     results = GraphAPI.getGraph(name);
   } else {
+    if (typeof vertices === 'object' && typeof vertices.name === 'function') {
+      vertices = vertices.name();
+    }
+    if (typeof edges === 'object' && typeof edges.name === 'function') {
+      edges = edges.name();
+    }
+
     results = GraphAPI.postGraph({
       _key: name,
       vertices: vertices,
@@ -247,6 +254,14 @@ Graph.prototype.initialize = function (name, vertices, edges) {
 
 Graph.getAll = function () {
   return GraphAPI.getAllGraphs();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static delete method
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.drop = function (name) {
+  GraphAPI.deleteGraph(name);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
