@@ -1,6 +1,10 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* issue #675: Dropping a collection used in "graph" module breaks the graph
+
+* added "static" Graph.drop() method for graphs API
+
 * fixed issue #695: arangosh server.password error
 
 * use pretty-printing in `--console` mode by defaul
