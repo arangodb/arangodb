@@ -112,10 +112,12 @@
           outputEditor.setReadOnly(true);
           outputEditor.setHighlightActiveLine(false);
           outputEditor.getSession().setMode("ace/mode/json");
+          outputEditor.setFontSize("16px");
           outputEditor.setValue('');
 
           var inputEditor = ace.edit("aqlEditor");
           inputEditor.getSession().setMode("ace/mode/aql");
+          inputEditor.setFontSize("16px");
           inputEditor.commands.addCommand({
               name: "togglecomment",
               bindKey: {win:"Ctrl-Shift-C", linux:"Ctrl-Shift-C", mac:"Command-Shift-C"},
