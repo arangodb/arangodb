@@ -56,7 +56,6 @@
           // Gritter does not display <>
           msg = msg.replace("<", "");
           msg = msg.replace(">", "");
-          console.log(msg);
           arangoHelper.arangoError(msg);
         }
       });
