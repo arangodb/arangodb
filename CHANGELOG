@@ -1,6 +1,8 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* fixed issue #701: ArangoStatement undefined in arangosh
+
 * fixed typos in configuration files
 
 
