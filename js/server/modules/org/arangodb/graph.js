@@ -420,11 +420,21 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
   }
-  else if (typeof vertices !== "string" || vertices === "") {
-    throw "<vertices> must be a string or null";
+  else if (typeof vertices !== "string") {
+    if (typeof vertices === 'object' && typeof vertices.name === 'function') {
+      vertices = vertices.name();
+    }
+    else {
+      throw "<vertices> must be a string or null";
+    }
   }
   else if (typeof edges !== "string" || edges === "") {
-    throw "<edges> must be a string or null";
+    if (typeof edges === 'object' && typeof edges.name === 'function') {
+      edges = edges.name();
+    }
+    else {
+      throw "<edges> must be a string or null";
+    }
   }
   else {
 
@@ -520,7 +530,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 /// Returns all available graphs.
 ////////////////////////////////////////////////////////////////////////////////
 
-function getAllGraphs () {
+Graph.getAll = function getAllGraphs () {
   var gdb = db._collection("_graphs"),
     graphs = [ ];
 
@@ -538,9 +548,28 @@ function getAllGraphs () {
   });
 
   return graphs;
-}
+};
 
-Graph.getAll = getAllGraphs;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static drop function 
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.drop = function (name, waitForSync) {
+  var gdb = db._collection("_graphs");
+  var exists = gdb.exists(name);
+
+  try {
+    var obj = new Graph(name); 
+    return obj.drop(waitForSync);
+  }
+  catch (err) {
+    if (exists) {
+      // if the graph exists but cannot be deleted because one of the underlying
+      // collections is missing, delete from _graphs "manually"
+      gdb.remove(name, true, waitForSync);
+    }
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the graph, the vertices, and the edges
