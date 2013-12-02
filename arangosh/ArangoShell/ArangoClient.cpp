@@ -235,10 +235,10 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 
   clientOptions
     ("server.database", &_databaseName, "database name to use when connecting")
-    ("server.disable-authentication", &_disableAuthentication, "disable authentication (will disable password prompt)")
+    ("server.disable-authentication", &_disableAuthentication, "disable the password prompt and authentication when connecting")
     ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
     ("server.username", &_username, "username to use when connecting")
-    ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
+    ("server.password", &_password, "password to use when connecting. Don't specify this option to get a password prompt")
     ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
     ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
   ;
