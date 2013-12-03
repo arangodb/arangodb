@@ -595,6 +595,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define GLOBAL_TIMEZONE                     timezone
+#define TRI_HAVE_GLOBAL_TIMEZONE_PROTO      1
+
+#define YY_NO_UNISTD_H                      1
 
 #define TRI_WIN32_CONSOLE                   1
 #define TRI_WIN32_THREAD_LOCAL_STORAGE      1
@@ -611,6 +614,7 @@
 #define TRI_HAVE_WIN32_PWD                  1
 
 #define TRI_HAVE_ANONYMOUS_MMAP             1
+#define TRI_MISSING_MEMRCHR                 1
 
 // ..............................................................
 // usleep in POSIX is for microseconds - not milliseconds
