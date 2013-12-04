@@ -8,3 +8,4 @@ TOC {#UserManualFoxxTOC}
   - @ref UserManualFoxxDetailsModel
   - @ref UserManualFoxxDetailsRepository
   - @ref UserManualFoxxDevelopment
+  - @ref UserManualFoxxDeployment
