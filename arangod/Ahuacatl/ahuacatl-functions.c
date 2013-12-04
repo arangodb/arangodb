@@ -150,6 +150,10 @@ static bool CheckArgumentType (TRI_aql_node_t const* parameter,
                                const param_t* const allowed) {
   param_t found = InitParam();
 
+  if (parameter->_type == TRI_AQL_NODE_REFERENCE) {
+    return true;
+  }
+  
   if (parameter->_type == TRI_AQL_NODE_PARAMETER) {
     // node is a bind parameter
     char* name = TRI_AQL_NODE_STRING(parameter);
