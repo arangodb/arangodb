@@ -581,7 +581,7 @@ bool ApplicationV8::prepare () {
   }
 
   // remove trailing / from path
-  _startupPath = StringUtils::trim(_startupPath, TRI_DIR_SEPARATOR_STR);
+  _startupPath = StringUtils::rTrim(_startupPath, TRI_DIR_SEPARATOR_STR);
 
   // derive all other options from --javascript.startup-directory
   _actionPath  = _startupPath + TRI_DIR_SEPARATOR_STR + "actions";
