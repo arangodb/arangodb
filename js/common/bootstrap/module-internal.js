@@ -18,7 +18,7 @@
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER,
+  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +126,15 @@
     SYS_LOG("warning", "################################################################################");
     SYS_LOG("warning", "development mode is active, never use this in production");
     SYS_LOG("warning", "################################################################################");
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logfilePath
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof LOGFILE_PATH !== "undefined") {
+    exports.logfilePath = LOGFILE_PATH;
+    delete LOGFILE_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

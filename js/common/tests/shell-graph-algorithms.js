@@ -175,8 +175,6 @@ function dijkstraSuite() {
         try {
           // Drop the graph if it exsits
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -293,7 +291,7 @@ function dijkstraSuite() {
         e2 = graph.addEdge(v2, v3),
         e3,
         pathes = v1.pathTo(v3, {cached: true});
-
+      
       e3 = graph.addEdge(v1, v3);
 
       pathes = v1.pathTo(v3, {cached: true});
