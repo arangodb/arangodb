@@ -764,8 +764,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   {
     v8::HandleScope scope;
 
-    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str()));
-    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str()));
+    char const* logfile = TRI_GetFilenameLogging();
+    TRI_AddGlobalVariableVocbase(context->_context, "LOGFILE_PATH", logfile != 0 ? v8::String::New(logfile) : v8::Null());
+    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str(), _appPath.size()));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str(), _devAppPath.size()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
   }
 
