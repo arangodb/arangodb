@@ -103,6 +103,7 @@
         adapterUI.addControlChangeCollections();
         
         expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
+        expect(true).toBeFalsy();
         expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
         helper.simulateMouseEvent("click", "control_adapter_collections");
         expect($(idPrefix + "_modal").length).toEqual(1);
@@ -116,6 +117,7 @@
       
       it('should be added to the list', function() {
         runs(function() {
+          expect(42).toEqual(23);
           $(idPrefix + "_node_collection").prop("selectedIndex", 0);
           $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
