@@ -70,6 +70,7 @@
 #include "RestHandler/RestUploadHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
+#include "Sharding/ApplicationSharding.h"
 #include "Statistics/statistics.h"
 
 #include "V8/V8LineEditor.h"
@@ -258,6 +259,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+    _applicationSharding(0),
     _jobManager(0),
 #ifdef TRI_ENABLE_MRUBY
     _applicationMR(0),
@@ -486,6 +488,18 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
   ;
+  
+
+  // .............................................................................
+  // sharding options
+  // .............................................................................
+  
+  _applicationSharding = new ApplicationSharding();
+  if (_applicationSharding == 0) {
+    LOG_FATAL_AND_EXIT("out of memory");
+  }
+
+  _applicationServer->addFeature(_applicationSharding);
 
   // .............................................................................
   // server options
@@ -501,7 +515,8 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
-
+ 
+  
 
   bool disableStatistics = false;
 
@@ -552,7 +567,7 @@ void ArangoServer::buildApplicationServer () {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
-  // configure v8
+  // configure v8 w/ development-mode
   if (_applicationServer->programOptions().has("development-mode")) {
     _developmentMode = true;
     _applicationV8->enableDevelopmentMode();

@@ -61,6 +61,7 @@ namespace triagens {
   namespace arango {
     class ApplicationMR;
     class ApplicationV8;
+    class ApplicationSharding;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoServer
@@ -196,6 +197,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         admin::ApplicationAdminServer* _applicationAdminServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sharding application feature
+////////////////////////////////////////////////////////////////////////////////
+        
+        triagens::arango::ApplicationSharding* _applicationSharding;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief asynchronous job manager
