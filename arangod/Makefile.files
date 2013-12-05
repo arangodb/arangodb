@@ -74,6 +74,7 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
+	arangod/Sharding/server-state.cpp \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
