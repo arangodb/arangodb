@@ -22,62 +22,66 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Max Neunhoeffer
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHARDING_AGENCY_COMM_H
-#define TRIAGENS_SHARDING_AGENCY_COMM_H 1
+#include "Sharding/AgencyComm.h"
+#include "BasicsC/logging.h"
 
-#include "Basics/Common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-namespace triagens {
-  namespace arango {
+//using namespace triagens::basics;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Agent
 // -----------------------------------------------------------------------------
 
-    struct Agent {
-      Agent ();
-      ~Agent ();
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-      std::string  _name;
+Agent::Agent () {
+}
 
-      std::string  _endpoint;
-    };
+Agent::~Agent () {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  AgencyCommResult
 // -----------------------------------------------------------------------------
 
-    struct AgencyCommResult {
-      AgencyCommResult ();
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-      ~AgencyCommResult ();
+AgencyCommResult::AgencyCommResult () {
+}
 
-      int _statusCode;
-
-      std::map<std::string, std::string> _values;
-      
-    };
+AgencyCommResult::~AgencyCommResult () {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
 
-    class AgencyComm {
+std::string AgencyComm::_prefix;
 
-      public:
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-        AgencyComm ();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs an agency communication object
+////////////////////////////////////////////////////////////////////////////////
 
-        ~AgencyComm ();
+AgencyComm::AgencyComm () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an agency communication object
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyComm::~AgencyComm () {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
@@ -86,8 +90,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
-        
-        void setPrefix (std::string const&);
+
+void AgencyComm::setPrefix (std::string const& prefix) {
+  _prefix = prefix;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -97,85 +103,83 @@ namespace triagens {
 /// @brief establishes the communication channels
 ////////////////////////////////////////////////////////////////////////////////
 
-        int connect ();
+int AgencyComm::connect () {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnects all communication channels
 ////////////////////////////////////////////////////////////////////////////////
-        
-        int disconnect ();
+
+int AgencyComm::disconnect () {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an agent to the agents list
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addAgent (Agent);
+int AgencyComm::addAgent (Agent agent) {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an agent from the agents list
 ////////////////////////////////////////////////////////////////////////////////
 
-        int removeAgent (Agent);
+int AgencyComm::removeAgent (Agent agent) {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an agent from the agents list
 ////////////////////////////////////////////////////////////////////////////////
-
-        int setValue (std::string const& key, 
-                      std::string const& value);
+        
+int AgencyComm::setValue (std::string const& key, 
+                          std::string const& value) {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AgencyCommResult getValues (std::string const& key, 
-                                    bool recursive);
+
+AgencyCommResult AgencyComm::getValues (std::string const& key, 
+                                        bool recursive) {
+  AgencyCommResult result;
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        int removeValues (std::string const& key,  
-                          bool recursive);
+
+int AgencyComm::removeValues (std::string const& key, 
+                              bool recursive) {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        int casValue (std::string const& key, 
-                      std::string const& oldValue, 
-                      std::string const& newValue);
+
+int AgencyComm::casValue (std::string const& key,
+                          std::string const& oldValue, 
+                          std::string const& newValue) {
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief blocks on a change of a single value in the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AgencyCommResult watchValues (std::string const& key, 
-                                      double timeout);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private static variables
-// -----------------------------------------------------------------------------
+AgencyCommResult AgencyComm::watchValues (std::string const& key, 
+                                          double timeout) {
+  AgencyCommResult result;
 
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the global prefix
-////////////////////////////////////////////////////////////////////////////////
-
-        static std::string _prefix;
-
-    };
-
-  }
-}
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+  return result;
+} 
 
 // Local Variables:
 // mode: outline-minor
