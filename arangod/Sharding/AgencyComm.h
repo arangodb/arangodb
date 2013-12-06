@@ -160,8 +160,8 @@ namespace triagens {
 /// @brief removes one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
         
-        int removeValues (std::string const& key,  
-                          bool recursive);
+        bool removeValues (std::string const& key,  
+                           bool recursive);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the back end
@@ -191,7 +191,15 @@ namespace triagens {
         std::string buildUrl (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends data to the URL
+/// @brief sends data to the URL w/o body
+////////////////////////////////////////////////////////////////////////////////
+    
+        bool send (triagens::httpclient::GeneralClientConnection*,
+                   triagens::rest::HttpRequest::HttpRequestType,
+                   std::string const&); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends data to the URL w/ body
 ////////////////////////////////////////////////////////////////////////////////
     
         bool send (triagens::httpclient::GeneralClientConnection*,

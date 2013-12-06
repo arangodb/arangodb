@@ -292,8 +292,7 @@ bool AgencyComm::setValue (std::string const& key,
     ++it;
   }
 
-  // if we got here, we could not send data to any endpoint successfully
-
+  // if we get here, we could not send data to any endpoint successfully
   return false;
 }
 
@@ -305,6 +304,8 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
                                         bool recursive) {
   AgencyCommResult result;
 
+  // TODO
+
   return result;
 }
 
@@ -312,9 +313,28 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
 /// @brief removes one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-int AgencyComm::removeValues (std::string const& key, 
-                              bool recursive) {
-  return 0;
+bool AgencyComm::removeValues (std::string const& key, 
+                               bool recursive) {
+  
+  std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*>::iterator it = _endpoints.begin();
+ 
+  while (it != _endpoints.end()) {
+    triagens::httpclient::GeneralClientConnection* connection = (*it).second;
+
+    std::string url(buildUrl(key));
+    if (recursive) {
+      url += "?recursive=true";
+    }
+    
+    if (send(connection, triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, url)) {
+      return true;
+    }
+
+    ++it;
+  }
+
+  // if we get here, we could not send data to any endpoint successfully
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +344,9 @@ int AgencyComm::removeValues (std::string const& key,
 int AgencyComm::casValue (std::string const& key,
                           std::string const& oldValue, 
                           std::string const& newValue) {
+
+  // TODO
+
   return 0;
 }
 
@@ -335,8 +358,14 @@ AgencyCommResult AgencyComm::watchValues (std::string const& key,
                                           double timeout) {
   AgencyCommResult result;
 
+  // TODO
+
   return result;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a URL
@@ -347,7 +376,20 @@ std::string AgencyComm::buildUrl (std::string const& relativePart) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends data to the URL
+/// @brief sends data to the URL w/o body
+////////////////////////////////////////////////////////////////////////////////
+    
+bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
+                       triagens::rest::HttpRequest::HttpRequestType method, 
+                       std::string const& url) {
+  assert(method == triagens::rest::HttpRequest::HTTP_REQUEST_DELETE ||
+         method == triagens::rest::HttpRequest::HTTP_REQUEST_GET);
+
+  return send(connection, method, url, "");
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends data to the URL w/ body
 ////////////////////////////////////////////////////////////////////////////////
     
 bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
@@ -357,7 +399,10 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
  
   assert(connection != 0);
   
-  LOG_TRACE("sending request to agency url '%s': %s", url.c_str(), body.c_str());
+  LOG_INFO("sending %s request to agency url '%s': %s", 
+           triagens::rest::HttpRequest::translateMethod(method).c_str(),
+           url.c_str(), 
+           body.c_str());
 
   triagens::httpclient::SimpleHttpClient client(connection, _requestTimeout, false);
 
@@ -386,12 +431,12 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
       
   int statusCode = response->getHttpReturnCode();
   
-  /*
-  LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
+  
+  LOG_INFO("request to agency returned status code %d, message: '%s', body: '%s'", 
             statusCode,
             response->getHttpReturnMessage().c_str(),
             response->getBody().str().c_str());
-  */
+  
 
   delete response;
 
