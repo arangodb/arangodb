@@ -10,7 +10,8 @@
 
 bin_SCRIPTS += \
 	bin/arango-dfdb \
-	bin/foxx-manager
+	bin/foxx-manager \
+	bin/arangom
 
 CLEANUP += $(bin_SCRIPTS)
 
@@ -31,6 +32,16 @@ bin/arango-dfdb: utils/arango-dfdb.in
 ################################################################################
 
 bin/foxx-manager: utils/foxx-manager.in
+	sed \
+		-e 's%@BINDIR@%${TRI_BINDIR}%g' \
+		$< > $@
+	chmod 755 $@
+
+################################################################################
+### @brief arangodb cluster manager
+################################################################################
+
+bin/arangom: utils/arangom.in
 	sed \
 		-e 's%@BINDIR@%${TRI_BINDIR}%g' \
 		$< > $@
