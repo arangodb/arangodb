@@ -172,6 +172,32 @@ std::string AgencyComm::generateStamp () {
   return std::string(buffer, len);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a stringified version of the endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+const std::string AgencyComm::getEndpointsString () {
+  std::string result;
+
+  {
+    // copy the global list of endpoints, using the lock
+    READ_LOCKER(AgencyComm::_globalLock);
+    
+    std::set<std::string>::const_iterator it = AgencyComm::_globalEndpoints.begin();
+
+    while (it != AgencyComm::_globalEndpoints.end()) {
+      if (! result.empty()) {
+        result += ", ";
+      }
+
+      result.append((*it));
+      ++it;
+    }
+  }
+
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            private static methods
 // -----------------------------------------------------------------------------
@@ -217,7 +243,7 @@ int AgencyComm::connect () {
       disconnect();
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-  
+
     triagens::httpclient::GeneralClientConnection* connection = 
       triagens::httpclient::GeneralClientConnection::factory(endpoint, _requestTimeout, _connectTimeout, 3);
 
@@ -399,10 +425,13 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
  
   assert(connection != 0);
   
-  LOG_INFO("sending %s request to agency url '%s': %s", 
+  /*
+  LOG_INFO("sending %s request to agency at endpoint '%s', url '%s': %s", 
            triagens::rest::HttpRequest::translateMethod(method).c_str(),
+           connection->getEndpoint()->getSpecification().c_str(),
            url.c_str(), 
            body.c_str());
+  */
 
   triagens::httpclient::SimpleHttpClient client(connection, _requestTimeout, false);
 
@@ -431,12 +460,12 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
       
   int statusCode = response->getHttpReturnCode();
   
-  
+/*  
   LOG_INFO("request to agency returned status code %d, message: '%s', body: '%s'", 
             statusCode,
             response->getHttpReturnMessage().c_str(),
             response->getBody().str().c_str());
-  
+  */
 
   delete response;
 

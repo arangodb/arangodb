@@ -44,17 +44,19 @@ using namespace triagens::arango;
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread (std::string const& myId) 
+HeartbeatThread::HeartbeatThread (std::string const& myId,
+                                  uint64_t interval,
+                                  uint64_t maxFailsBeforeWarning) 
   : Thread("heartbeat"),
     _agency(),
     _condition(),
     _myId(myId),
-    _interval(1000 * 1000),
+    _interval(interval),
+    _maxFailsBeforeWarning(maxFailsBeforeWarning),
+    _numFails(0),
     _stop(0) {
 
   allowAsynchronousCancelation();
-
-  _agency.connect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,16 +95,42 @@ void HeartbeatThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop
+/// @brief initialises the heartbeat
+////////////////////////////////////////////////////////////////////////////////
+
+bool HeartbeatThread::init () {
+  int res = _agency.connect();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends the current server's state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
+  const std::string value = ServerState::stateToString(ServerState::instance()->getCurrent()) + ":" + AgencyComm::generateStamp();
+
   // return value is intentionally not handled
   // if sending the current state fails, we'll just try again in the next iteration
-  _agency.setValue("state/servers/state/" + _myId,  
-                   ServerState::stateToString(ServerState::instance()->getCurrent()) + ":" + AgencyComm::generateStamp());
+  bool result = _agency.setValue("state/servers/state/" + _myId, value);
 
-  return true;
+  if (result) {
+    _numFails = 0;
+  }
+  else {
+    if (++_numFails % _maxFailsBeforeWarning == 0) {
+      const std::string endpoints = AgencyComm::getEndpointsString();
+
+      LOG_ERROR("heartbeat could not be sent to agency endpoints (%s)", endpoints.c_str());
+    }
+  }
+
+  return result;
 }
 
 // Local Variables:
