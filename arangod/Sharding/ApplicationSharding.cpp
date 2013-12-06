@@ -50,6 +50,7 @@ using namespace triagens::arango;
 ApplicationSharding::ApplicationSharding () 
   : ApplicationFeature("Sharding"),
     _heartbeat(0),
+    _heartbeatInterval(1000),
     _agencyEndpoints(),
     _agencyPrefix(),
     _myId(),
@@ -81,6 +82,7 @@ void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescri
   options["Sharding Options:help-sharding"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
+    ("cluster.heartbeat-interval", &_heartbeatInterval, "heartbeat interval (in ms)")
     ("cluster.my-id", &_myId, "this server's id")
     ("cluster.my-address", &_myAddress, "this server's endpoint")
   ;
@@ -128,6 +130,11 @@ bool ApplicationSharding::prepare () {
     LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
   }
 
+  // validate --cluster.heartbeat-interval
+  if (_heartbeatInterval < 10) {
+    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.heartbeat-interval");
+  }
+
   return true;
 }
 
@@ -140,17 +147,23 @@ bool ApplicationSharding::start () {
     return true;
   }
   
-  LOG_INFO("Clustering feature is turned on");
+  const std::string endpoints = AgencyComm::getEndpointsString();
+
+  LOG_INFO("Clustering feature is turned on. Trying to connect to agency endpoints (%s)",
+           endpoints.c_str());
 
   ServerState::instance()->setCurrent(ServerState::STATE_STARTUP);
 
-  _heartbeat = new HeartbeatThread(_myId);
+  _heartbeat = new HeartbeatThread(_myId, _heartbeatInterval * 1000, 5);
 
   if (_heartbeat == 0) {
     LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
   }
 
-  _heartbeat->start();
+  if (! _heartbeat->init() || ! _heartbeat->start()) {
+    LOG_FATAL_AND_EXIT("could not connect to agency endpoints (%s)", 
+                       endpoints.c_str());
+  }
 
   return true;
 }
