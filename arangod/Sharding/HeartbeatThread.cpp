@@ -99,9 +99,14 @@ void HeartbeatThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::init () {
-  int res = _agency.connect();
+  // this tries to connect to the agency via at least one connection
+  if (! _agency.tryConnect()) {
+    return false;
+  }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  // send the server state a first time and use this as an indicator about
+  // the agency's health
+  if (! sendState()) {
     return false;
   }
 
@@ -126,7 +131,7 @@ bool HeartbeatThread::sendState () {
     if (++_numFails % _maxFailsBeforeWarning == 0) {
       const std::string endpoints = AgencyComm::getEndpointsString();
 
-      LOG_ERROR("heartbeat could not be sent to agency endpoints (%s)", endpoints.c_str());
+      LOG_WARNING("heartbeat could not be sent to agency endpoints (%s)", endpoints.c_str());
     }
   }
 

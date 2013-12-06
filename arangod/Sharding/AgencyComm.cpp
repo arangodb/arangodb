@@ -37,6 +37,61 @@
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    AgencyEndpoint
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an agency endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyEndpoint::AgencyEndpoint (triagens::rest::Endpoint* endpoint,
+                                triagens::httpclient::GeneralClientConnection* connection)
+  : _endpoint(endpoint),
+    _connection(connection),
+    _busy(false) {
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an agency endpoint
+////////////////////////////////////////////////////////////////////////////////
+      
+AgencyEndpoint::~AgencyEndpoint () {
+  if (_connection != 0) {
+    delete _connection;
+  }
+  if (_endpoint != 0) {
+    delete _endpoint;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  AgencyCommResult
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a communication result
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult::AgencyCommResult () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a communication result
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult::~AgencyCommResult () {
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
 
@@ -66,25 +121,17 @@ triagens::basics::ReadWriteLock AgencyComm::_globalLock;
 /// @brief list of global endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::set<std::string> AgencyComm::_globalEndpoints;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+std::list<AgencyEndpoint*> AgencyComm::_globalEndpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a communication result
+/// @brief global connection options
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult::AgencyCommResult () {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a communication result
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult::~AgencyCommResult () {
-}
+AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
+  15.0,  // connectTimeout 
+  3.0,   // requestTimeout
+  3      // numRetries
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
@@ -98,12 +145,7 @@ AgencyCommResult::~AgencyCommResult () {
 /// @brief constructs an agency communication object
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyComm::AgencyComm () 
-  : _endpoints(),
-    _connectTimeout(15.0), // TODO: make defaults configurable
-    _requestTimeout(3.0),
-    _connectRetries(3) {
-
+AgencyComm::AgencyComm () { 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +154,24 @@ AgencyComm::AgencyComm ()
 
 AgencyComm::~AgencyComm () {
   disconnect();
+  
+  {
+    WRITE_LOCKER(AgencyComm::_globalLock);
+
+    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+
+    while (it != _globalEndpoints.end()) {
+      AgencyEndpoint* agencyEndpoint = (*it);
+
+      assert(agencyEndpoint != 0);
+      delete agencyEndpoint;
+
+      ++it;
+    }
+
+    // empty the list
+    _globalEndpoints.clear();
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -122,18 +182,36 @@ AgencyComm::~AgencyComm () {
 /// @brief adds an endpoint to the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::addEndpoint (std::string const& endpoint) {
-  LOG_TRACE("adding global endpoint '%s'", endpoint.c_str());
+bool AgencyComm::addEndpoint (std::string const& endpointSpecification) {
+  LOG_TRACE("adding global endpoint '%s'", endpointSpecification.c_str());
 
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
 
-    // we have already got this endpoint
-    if (_globalEndpoints.find(endpoint) != _globalEndpoints.end()) {
+    // check if we already have got this endpoint
+    std::list<AgencyEndpoint*>::const_iterator it = _globalEndpoints.begin();
+
+    while (it != _globalEndpoints.end()) {
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      assert(agencyEndpoint != 0);
+     
+      if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
+        // a duplicate. just ignore
+        return false;
+      }
+
+      ++it;
+    }
+  
+    // not found a previous endpoint, now create one 
+    AgencyEndpoint* agencyEndpoint = createAgencyEndpoint(endpointSpecification);
+
+    if (agencyEndpoint == 0) {
       return false;
     }
-     
-    AgencyComm::_globalEndpoints.insert(endpoint);
+    
+    AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
   }
 
   return true;
@@ -143,11 +221,34 @@ bool AgencyComm::addEndpoint (std::string const& endpoint) {
 /// @brief removes an endpoint from the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::removeEndpoint (std::string const& endpoint) {
-  LOG_TRACE("removing global endpoint '%s'", endpoint.c_str());
+bool AgencyComm::removeEndpoint (std::string const& endpointSpecification) {
+  LOG_TRACE("removing global endpoint '%s'", endpointSpecification.c_str());
+ 
+  {
+    WRITE_LOCKER(AgencyComm::_globalLock);
+    
+    // check if we have got this endpoint
+    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-  WRITE_LOCKER(AgencyComm::_globalLock);
-  return AgencyComm::_globalEndpoints.erase(endpoint) == 1;
+    while (it != _globalEndpoints.end()) {
+      AgencyEndpoint const* agencyEndpoint = (*it);
+     
+      if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
+        // found, now remove
+        AgencyComm::_globalEndpoints.erase(it);
+
+        // and get rid of the endpoint
+        delete agencyEndpoint;
+
+        return true;
+      }
+
+      ++it;
+    }
+  }
+
+  // not found
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,17 +296,21 @@ const std::string AgencyComm::getEndpointsString () {
   std::string result;
 
   {
-    // copy the global list of endpoints, using the lock
+    // iterate over the list of endpoints
     READ_LOCKER(AgencyComm::_globalLock);
     
-    std::set<std::string>::const_iterator it = AgencyComm::_globalEndpoints.begin();
+    std::list<AgencyEndpoint*>::const_iterator it = AgencyComm::_globalEndpoints.begin();
 
     while (it != AgencyComm::_globalEndpoints.end()) {
       if (! result.empty()) {
         result += ", ";
       }
 
-      result.append((*it));
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      assert(agencyEndpoint != 0);
+
+      result.append(agencyEndpoint->_endpoint->getSpecification());
       ++it;
     }
   }
@@ -218,20 +323,30 @@ const std::string AgencyComm::getEndpointsString () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a local copy of endpoints, to be used without the global lock
+/// @brief creates a new agency endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::set<std::string> AgencyComm::getEndpoints () {
-  std::set<std::string> endpoints;
+AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpecification) {
+  triagens::rest::Endpoint* endpoint = triagens::rest::Endpoint::clientFactory(endpointSpecification);
 
-  {
-    // copy the global list of endpoints, using the lock
-    READ_LOCKER(AgencyComm::_globalLock);
-    endpoints = AgencyComm::_globalEndpoints;
+  if (endpoint == 0) {
+    // could not create endpoint...
+    return 0;
   }
 
-  assert(endpoints.size() > 0);
-  return endpoints;
+  triagens::httpclient::GeneralClientConnection* connection = 
+    triagens::httpclient::GeneralClientConnection::factory(endpoint, 
+                                                           _globalConnectionOptions._requestTimeout, 
+                                                           _globalConnectionOptions._connectTimeout, 
+                                                           _globalConnectionOptions._connectRetries);
+
+  if (connection == 0) {
+    delete endpoint;
+
+    return 0;
+  }
+  
+  return new AgencyEndpoint(endpoint, connection);
 }
 
 // -----------------------------------------------------------------------------
@@ -239,79 +354,63 @@ const std::set<std::string> AgencyComm::getEndpoints () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief establishes the communication channels
+/// @brief tries to establish a communication channel
 ////////////////////////////////////////////////////////////////////////////////
 
-int AgencyComm::connect () {
-  assert(_endpoints.size() == 0);
+bool AgencyComm::tryConnect () {
+  {
+    WRITE_LOCKER(AgencyComm::_globalLock);
+    assert(_globalEndpoints.size() > 0);
 
-  bool hasConnected = false;
+    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-  const std::set<std::string> endpoints = getEndpoints();
-  std::set<std::string>::const_iterator it = endpoints.begin();
+    while (it != _globalEndpoints.end()) {
+      AgencyEndpoint* agencyEndpoint = (*it);
 
-  while (it != endpoints.end()) {
-    triagens::rest::Endpoint* endpoint = triagens::rest::Endpoint::clientFactory((*it));
+      assert(agencyEndpoint != 0);
+      assert(agencyEndpoint->_endpoint != 0);
+      assert(agencyEndpoint->_connection != 0);
 
-    if (endpoint == 0) {
-      // could not create endpoint... disconnect all
-      disconnect();
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    triagens::httpclient::GeneralClientConnection* connection = 
-      triagens::httpclient::GeneralClientConnection::factory(endpoint, _requestTimeout, _connectTimeout, _connectRetries);
-
-    if (! hasConnected) {
-      // connect to just one endpoint
-      endpoint->connect(_connectTimeout, _requestTimeout);
-
-      if (endpoint->isConnected()) {
-        hasConnected = true;
+      if (agencyEndpoint->_endpoint->isConnected()) {
+        return true;
       }
+      
+      agencyEndpoint->_endpoint->connect(_globalConnectionOptions._connectTimeout,
+                                         _globalConnectionOptions._requestTimeout);
+      
+      if (agencyEndpoint->_endpoint->isConnected()) {
+        return true;
+      }
+
+      ++it;
     }
-
-    // insert all endpoints (even the unconnected ones)
-    _endpoints[endpoint] = connection;
-
-    ++it;
   }
 
-  if (! hasConnected) {
-    return TRI_ERROR_CLUSTER_NO_AGENCY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-
+  // unable to connect to any endpoint
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnects all communication channels
 ////////////////////////////////////////////////////////////////////////////////
 
-int AgencyComm::disconnect () {
-  std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*>::iterator it = _endpoints.begin();
+void AgencyComm::disconnect () {
+  WRITE_LOCKER(AgencyComm::_globalLock);
 
-  while (it != _endpoints.end()) {
-    triagens::rest::Endpoint* endpoint = (*it).first;
-    triagens::httpclient::GeneralClientConnection* connection = (*it).second;
+  std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+  
+  while (it != _globalEndpoints.end()) {
+    AgencyEndpoint* agencyEndpoint = (*it);
 
-    assert(endpoint != 0);
+    assert(agencyEndpoint != 0);
+    assert(agencyEndpoint->_connection != 0);
+    assert(agencyEndpoint->_endpoint != 0);
 
-    if (connection != 0) {
-      connection->disconnect();
-      delete connection;
-    }
-
-    delete endpoint;
+    agencyEndpoint->_connection->disconnect();
+    agencyEndpoint->_endpoint->disconnect();
 
     ++it;
   }
-
-  // empty the set
-  _endpoints.clear();
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,17 +419,30 @@ int AgencyComm::disconnect () {
         
 bool AgencyComm::setValue (std::string const& key, 
                            std::string const& value) {
+  size_t numEndpoints;
 
-  std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*>::iterator it = _endpoints.begin();
- 
-  while (it != _endpoints.end()) {
-    triagens::httpclient::GeneralClientConnection* connection = (*it).second;
+  {
+    READ_LOCKER(AgencyComm::_globalLock);
+    numEndpoints = AgencyComm::_globalEndpoints.size(); 
+    assert(numEndpoints > 0);
+  }
 
-    if (send(connection, triagens::rest::HttpRequest::HTTP_REQUEST_PUT, buildUrl(key), "value=" + value)) {
+  size_t tries = 0;
+
+  while (tries++ < numEndpoints) {
+    AgencyEndpoint* agencyEndpoint = popEndpoint();
+  
+    bool result = send(agencyEndpoint->_connection, 
+                       triagens::rest::HttpRequest::HTTP_REQUEST_PUT, 
+                       buildUrl(key), 
+                       "value=" + value);
+
+    if (requeueEndpoint(agencyEndpoint, result)) {
+      // we're done
       return true;
     }
 
-    ++it;
+    // otherwise, try next
   }
 
   // if we get here, we could not send data to any endpoint successfully
@@ -356,22 +468,34 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
 
 bool AgencyComm::removeValues (std::string const& key, 
                                bool recursive) {
-  
-  std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*>::iterator it = _endpoints.begin();
- 
-  while (it != _endpoints.end()) {
-    triagens::httpclient::GeneralClientConnection* connection = (*it).second;
-
-    std::string url(buildUrl(key));
-    if (recursive) {
-      url += "?recursive=true";
-    }
+  std::string url(buildUrl(key));
+  if (recursive) {
+    url += "?recursive=true";
+  }
     
-    if (send(connection, triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, url)) {
+  size_t numEndpoints;
+
+  {
+    READ_LOCKER(AgencyComm::_globalLock);
+    numEndpoints = AgencyComm::_globalEndpoints.size(); 
+    assert(numEndpoints > 0);
+  }
+
+  size_t tries = 0;
+
+  while (tries++ < numEndpoints) {
+    AgencyEndpoint* agencyEndpoint = popEndpoint();
+    
+    bool result = send(agencyEndpoint->_connection, 
+                       triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, 
+                       url);
+
+    if (requeueEndpoint(agencyEndpoint, result)) {
+      // we're done
       return true;
     }
 
-    ++it;
+    // otherwise, try next
   }
 
   // if we get here, we could not send data to any endpoint successfully
@@ -409,6 +533,74 @@ AgencyCommResult AgencyComm::watchValues (std::string const& key,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pop an endpoint from the queue
+////////////////////////////////////////////////////////////////////////////////
+    
+AgencyEndpoint* AgencyComm::popEndpoint () {
+  while (1) {
+    {
+      WRITE_LOCKER(AgencyComm::_globalLock);
+  
+      std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+    
+      while (it != _globalEndpoints.end()) {
+        AgencyEndpoint* agencyEndpoint = (*it);
+
+        assert(agencyEndpoint != 0);
+
+        if (! agencyEndpoint->_busy) {
+          agencyEndpoint->_busy = true;
+
+          if (AgencyComm::_globalEndpoints.size() > 1) {
+            // remove from list
+            AgencyComm::_globalEndpoints.remove(agencyEndpoint);
+            // and re-insert at end
+            AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
+          }
+  
+          return agencyEndpoint;
+        }
+
+        ++it;
+      }
+    }
+
+    usleep(500); // TODO: make this configurable
+  }
+
+  // just to shut up compilers
+  assert(false);
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reinsert an endpoint into the queue
+////////////////////////////////////////////////////////////////////////////////
+    
+bool AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
+                                  bool wasWorking) {
+  WRITE_LOCKER(AgencyComm::_globalLock);
+  
+  assert(agencyEndpoint != 0);
+  assert(agencyEndpoint->_busy);
+
+  // set to non-busy
+  agencyEndpoint->_busy = false;
+
+  if (AgencyComm::_globalEndpoints.size() > 1) {
+    if (wasWorking) {
+      // remove from list
+      AgencyComm::_globalEndpoints.remove(agencyEndpoint);
+
+      // and re-insert at front
+      AgencyComm::_globalEndpoints.push_front(agencyEndpoint);
+    }
+  }
+
+  return wasWorking;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a URL
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -440,15 +632,15 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
  
   assert(connection != 0);
   
-  /*
-  LOG_INFO("sending %s request to agency at endpoint '%s', url '%s': %s", 
-           triagens::rest::HttpRequest::translateMethod(method).c_str(),
-           connection->getEndpoint()->getSpecification().c_str(),
-           url.c_str(), 
-           body.c_str());
-  */
-
-  triagens::httpclient::SimpleHttpClient client(connection, _requestTimeout, false);
+  LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s", 
+            triagens::rest::HttpRequest::translateMethod(method).c_str(),
+            connection->getEndpoint()->getSpecification().c_str(),
+            url.c_str(), 
+            body.c_str());
+  
+  triagens::httpclient::SimpleHttpClient client(connection, 
+                                                _globalConnectionOptions._requestTimeout, 
+                                                false);
 
   // set up headers
   std::map<std::string, std::string> headers;
@@ -475,12 +667,10 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
       
   int statusCode = response->getHttpReturnCode();
   
-/*  
-  LOG_INFO("request to agency returned status code %d, message: '%s', body: '%s'", 
+  LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
             statusCode,
             response->getHttpReturnMessage().c_str(),
             response->getBody().str().c_str());
-  */
 
   delete response;
 
