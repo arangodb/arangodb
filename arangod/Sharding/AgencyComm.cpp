@@ -36,14 +36,22 @@
 
 using namespace triagens::arango;
 
-static const std::string AGENCY_PREFIX = "v2/keys";
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        AgencyComm
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  AgencyCommResult
+// --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global prefix used for endpoint
+/// @brief the static global URL prefix
+////////////////////////////////////////////////////////////////////////////////
+
+const std::string AgencyComm::AGENCY_URL_PREFIX = "v2/keys";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global (variable) prefix used for endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::_globalPrefix = "";
@@ -92,8 +100,9 @@ AgencyCommResult::~AgencyCommResult () {
 
 AgencyComm::AgencyComm () 
   : _endpoints(),
-    _connectTimeout(15.0),
-    _requestTimeout(3.0) {
+    _connectTimeout(15.0), // TODO: make defaults configurable
+    _requestTimeout(3.0),
+    _connectRetries(3) {
 
 }
 
@@ -110,7 +119,7 @@ AgencyComm::~AgencyComm () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an endpoint to the agents list
+/// @brief adds an endpoint to the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::addEndpoint (std::string const& endpoint) {
@@ -118,6 +127,12 @@ bool AgencyComm::addEndpoint (std::string const& endpoint) {
 
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
+
+    // we have already got this endpoint
+    if (_globalEndpoints.find(endpoint) != _globalEndpoints.end()) {
+      return false;
+    }
+     
     AgencyComm::_globalEndpoints.insert(endpoint);
   }
 
@@ -125,7 +140,7 @@ bool AgencyComm::addEndpoint (std::string const& endpoint) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an agent from the agents list
+/// @brief removes an endpoint from the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::removeEndpoint (std::string const& endpoint) {
@@ -245,7 +260,7 @@ int AgencyComm::connect () {
     }
 
     triagens::httpclient::GeneralClientConnection* connection = 
-      triagens::httpclient::GeneralClientConnection::factory(endpoint, _requestTimeout, _connectTimeout, 3);
+      triagens::httpclient::GeneralClientConnection::factory(endpoint, _requestTimeout, _connectTimeout, _connectRetries);
 
     if (! hasConnected) {
       // connect to just one endpoint
@@ -398,7 +413,7 @@ AgencyCommResult AgencyComm::watchValues (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::buildUrl (std::string const& relativePart) const {
-  return AGENCY_PREFIX + _globalPrefix + relativePart;
+  return AgencyComm::AGENCY_URL_PREFIX + _globalPrefix + relativePart;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
