@@ -87,7 +87,13 @@ namespace triagens {
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
         
-        void setPrefix (std::string const&);
+        static void setPrefix (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a timestamp
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string generateStamp ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

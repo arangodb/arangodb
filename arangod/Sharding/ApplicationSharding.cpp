@@ -28,6 +28,7 @@
 #include "ApplicationSharding.h"
 #include "Rest/Endpoint.h"
 #include "Sharding/HeartbeatThread.h"
+#include "Sharding/ServerState.h"
 #include "BasicsC/logging.h"
 
 using namespace triagens;
@@ -90,26 +91,39 @@ void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescri
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationSharding::prepare () {
-  if (! _agencyPrefix.empty()) {
-    _enableCluster = true;
+  _enableCluster = (_agencyEndpoints.size() > 0 || ! _agencyPrefix.empty());
 
-    size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  if (! enabled()) {
+    return true;
+  }
 
-    if (found != std::string::npos) {
-      LOG_FATAL_AND_EXIT("invalid value specified for --cluster.agency-prefix");
+  // validate --cluster.agency-prefix
+  size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+
+  if (_agencyPrefix.empty() || found != std::string::npos) {
+    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.agency-prefix");
+  }
+
+  // register the prefix with the communicator
+  AgencyComm::setPrefix(_agencyPrefix);
+
+  
+  // validate --cluster.agency-endpoint
+  if (_agencyEndpoints.size() == 0) {
+    LOG_FATAL_AND_EXIT("must at least specify one endpoint in --cluster.agency-endpoint");
+  }
+
+  for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
+    const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
+
+    if (unified.empty()) {
+      LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", _agencyEndpoints[i].c_str());
     }
   }
 
-  if (_agencyEndpoints.size() > 0) {
-    _enableCluster = true;
-
-    for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
-      const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
-
-      if (unified.empty()) {
-        LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", _agencyEndpoints[i].c_str());
-      }
-    }
+  // validate --cluster.my-id
+  if (_myId.empty()) {
+    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
   }
 
   return true;
@@ -126,7 +140,9 @@ bool ApplicationSharding::start () {
   
   LOG_INFO("using clustering");
 
-  _heartbeat = new HeartbeatThread();
+  ServerState::instance()->setCurrent(ServerState::STATE_STARTUP);
+
+  _heartbeat = new HeartbeatThread(_myId);
 
   if (_heartbeat == 0) {
     LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");

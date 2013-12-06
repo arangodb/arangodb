@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat thread
+/// @brief single-server state
 ///
 /// @file
 ///
@@ -25,68 +25,82 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HeartbeatThread.h"
-#include "Basics/ConditionLocker.h"
-#include "BasicsC/logging.h"
-#include "Sharding/ServerState.h"
+#include "ServerState.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 
-using namespace triagens::basics;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   HeartbeatThread
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a heartbeat thread
+/// @brief server state instance
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread (std::string const& myId) 
-  : Thread("heartbeat"),
-    _agency(),
-    _condition(),
-    _myId(myId),
-    _interval(1000 * 1000),
-    _stop(0) {
+static ServerState* Instance = 0;
 
-  allowAsynchronousCancelation();
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       ServerState
+// -----------------------------------------------------------------------------
 
-  _agency.connect();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::ServerState () 
+  : _lock(),
+    _state(STATE_OFFLINE) {
+      
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a heartbeat thread
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::~HeartbeatThread () {
-  _agency.disconnect();
+ServerState::~ServerState () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
+// --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop
-////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::run () {
-  LOG_TRACE("starting heartbeat thread");
-
-  while (! _stop) {
-    LOG_TRACE("sending heartbeat");
-
-    sendState();
-    
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(_interval);
+ServerState* ServerState::instance () {
+  if (Instance == 0) {
+    Instance = new ServerState();
   }
-  
-  LOG_TRACE("stopping heartbeat thread");
+  return Instance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string representation of a state
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::stateToString (StateEnum state) {
+  switch (state) {
+    case STATE_OFFLINE: 
+      return "OFFLINE";
+    case STATE_STARTUP:
+      return "STARTUP";
+    case STATE_CONNECTED:
+      return "CONNECTED";
+    case STATE_STOPPING:
+      return "STOPPING";
+    case STATE_STOPPED:
+      return "STOPPED";
+    case STATE_PROBLEM:
+      return "PROBLEM"; 
+    case STATE_RECOVERING:
+      return "RECOVERING"; 
+    case STATE_RECOVERED:
+      return "RECOVERED"; 
+    case STATE_SHUTDOWN:
+      return "SHUTDOWN"; 
+  }
+
+  assert(false);
+  return "";
 }
 
 // -----------------------------------------------------------------------------
@@ -94,15 +108,21 @@ void HeartbeatThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop
+/// @brief get the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::sendState () {
-  // TODO: handle return value
-  _agency.setValue("/state/servers/state/" + _myId,  
-                   ServerState::stateToString(ServerState::instance()->getCurrent()) + ";" + AgencyComm::generateStamp());
+ServerState::StateEnum ServerState::getCurrent () {
+  READ_LOCKER(_lock);
+  return _state;
+}
 
-  return true;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current state
+////////////////////////////////////////////////////////////////////////////////
+        
+void ServerState::setCurrent (StateEnum state) {
+  WRITE_LOCKER(_lock);
+  _state = state;
 }
 
 // Local Variables:
