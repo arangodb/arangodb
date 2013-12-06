@@ -46,7 +46,7 @@ if [ "$1" == "init" ] ; then
     set /TmpConfig/ShardsCurrent
     set /TmpConfig/ShardsWanted
     set /State/ServersRegistered
-    set /State/DBServerStates
+    set /State/ServerStates
     set /State/ClusterState OFFLINE
     set /State/OldClusterState none
     set /State/ClusterProblem none
