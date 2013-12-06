@@ -30,7 +30,6 @@
 #include "BasicsC/logging.h"
 #include "Sharding/ServerState.h"
 
-using namespace triagens::basics;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -98,7 +97,8 @@ void HeartbeatThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
-  // TODO: handle return value
+  // return value is intentionally not handled
+  // if sending the current state fails, we'll just try again in the next iteration
   _agency.setValue("state/servers/state/" + _myId,  
                    ServerState::stateToString(ServerState::instance()->getCurrent()) + ":" + AgencyComm::generateStamp());
 

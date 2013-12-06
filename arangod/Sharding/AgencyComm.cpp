@@ -36,6 +36,8 @@
 
 using namespace triagens::arango;
 
+static const std::string AGENCY_PREFIX = "v2/keys";
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  AgencyCommResult
 // -----------------------------------------------------------------------------
@@ -100,6 +102,7 @@ AgencyComm::AgencyComm ()
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyComm::~AgencyComm () {
+  disconnect();
 }
 
 // -----------------------------------------------------------------------------
@@ -214,6 +217,9 @@ int AgencyComm::connect () {
       disconnect();
       return TRI_ERROR_OUT_OF_MEMORY;
     }
+  
+    triagens::httpclient::GeneralClientConnection* connection = 
+      triagens::httpclient::GeneralClientConnection::factory(endpoint, _requestTimeout, _connectTimeout, 3);
 
     if (! hasConnected) {
       // connect to just one endpoint
@@ -225,7 +231,7 @@ int AgencyComm::connect () {
     }
 
     // insert all endpoints (even the unconnected ones)
-    _endpoints.insert(endpoint);
+    _endpoints[endpoint] = connection;
 
     ++it;
   }
@@ -235,6 +241,7 @@ int AgencyComm::connect () {
   }
 
   return TRI_ERROR_NO_ERROR;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,10 +249,20 @@ int AgencyComm::connect () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AgencyComm::disconnect () {
-  std::set<triagens::rest::Endpoint*>::iterator it = _endpoints.begin();
+  std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*>::iterator it = _endpoints.begin();
 
   while (it != _endpoints.end()) {
-    (*it)->disconnect();
+    triagens::rest::Endpoint* endpoint = (*it).first;
+    triagens::httpclient::GeneralClientConnection* connection = (*it).second;
+
+    assert(endpoint != 0);
+
+    if (connection != 0) {
+      connection->disconnect();
+      delete connection;
+    }
+
+    delete endpoint;
 
     ++it;
   }
@@ -257,26 +274,19 @@ int AgencyComm::disconnect () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the back end
+/// @brief sets a value in the backend
 ////////////////////////////////////////////////////////////////////////////////
         
 bool AgencyComm::setValue (std::string const& key, 
                            std::string const& value) {
 
-  std::set<triagens::rest::Endpoint*>::iterator it = _endpoints.begin();
+  std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*>::iterator it = _endpoints.begin();
  
   while (it != _endpoints.end()) {
-    triagens::rest::Endpoint* endpoint = (*it);
+    triagens::httpclient::GeneralClientConnection* connection = (*it).second;
 
-    // check if we are connected
-    if (! endpoint->isConnected()) {
-      endpoint->connect(10, 10);
-    }
-
-    if (endpoint->isConnected()) {
-      if (send(endpoint, triagens::rest::HttpRequest::HTTP_REQUEST_PUT, buildUrl(key), "value=" + value)) {
-        return true;
-      }
+    if (send(connection, triagens::rest::HttpRequest::HTTP_REQUEST_PUT, buildUrl(key), "value=" + value)) {
+      return true;
     }
 
     ++it;
@@ -288,7 +298,7 @@ bool AgencyComm::setValue (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets one or multiple values from the back end
+/// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::getValues (std::string const& key, 
@@ -299,7 +309,7 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes one or multiple values from the back end
+/// @brief removes one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
 int AgencyComm::removeValues (std::string const& key, 
@@ -308,7 +318,7 @@ int AgencyComm::removeValues (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares and swaps a single value in the back end
+/// @brief compares and swaps a single value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
 int AgencyComm::casValue (std::string const& key,
@@ -318,7 +328,7 @@ int AgencyComm::casValue (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief blocks on a change of a single value in the back end
+/// @brief blocks on a change of a single value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::watchValues (std::string const& key, 
@@ -333,22 +343,21 @@ AgencyCommResult AgencyComm::watchValues (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::buildUrl (std::string const& relativePart) const {
-  return "/v2/keys" + _globalPrefix + relativePart;
+  return AGENCY_PREFIX + _globalPrefix + relativePart;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends data to the URL
 ////////////////////////////////////////////////////////////////////////////////
     
-bool AgencyComm::send (triagens::rest::Endpoint* endpoint,
+bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
                        triagens::rest::HttpRequest::HttpRequestType method, 
                        std::string const& url, 
                        std::string const& body) {
-
-  LOG_TRACE("sending request to url '%s': %s", url.c_str(), body.c_str());
-
-  triagens::httpclient::GeneralClientConnection* connection = 
-    triagens::httpclient::GeneralClientConnection::factory(endpoint, _requestTimeout, _connectTimeout, 3);
+ 
+  assert(connection != 0);
+  
+  LOG_TRACE("sending request to agency url '%s': %s", url.c_str(), body.c_str());
 
   triagens::httpclient::SimpleHttpClient client(connection, _requestTimeout, false);
 
@@ -365,20 +374,23 @@ bool AgencyComm::send (triagens::rest::Endpoint* endpoint,
                                                                     headers);
 
   if (response == 0) {
+    LOG_TRACE("sending request to agency failed");
     return false;
   }
 
   if (! response->isComplete()) {
+    LOG_TRACE("sending request to agency failed");
     delete response;
     return false;
   }
       
   int statusCode = response->getHttpReturnCode();
   
-  /* 
-  LOG_TRACE("return message: %s", response->getHttpReturnMessage().c_str());
-  LOG_TRACE("return body: %s", response->getBody().str().c_str());
-  LOG_TRACE("statuscode was %d", statusCode);
+  /*
+  LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
+            statusCode,
+            response->getHttpReturnMessage().c_str(),
+            response->getBody().str().c_str());
   */
 
   delete response;

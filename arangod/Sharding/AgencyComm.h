@@ -39,6 +39,10 @@ extern "C" {
 
 
 namespace triagens {
+  namespace httpclient {
+    class GeneralClientConnection;
+  }
+  
   namespace rest {
     class Endpoint;
   }
@@ -190,10 +194,10 @@ namespace triagens {
 /// @brief sends data to the URL
 ////////////////////////////////////////////////////////////////////////////////
     
-        bool send (triagens::rest::Endpoint*,
-                       triagens::rest::HttpRequest::HttpRequestType,
-                       std::string const&, 
-                       std::string const&);
+        bool send (triagens::httpclient::GeneralClientConnection*,
+                   triagens::rest::HttpRequest::HttpRequestType,
+                   std::string const&, 
+                   std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -205,7 +209,7 @@ namespace triagens {
 /// @brief the endpoints the local instance uses
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::set<triagens::rest::Endpoint*> _endpoints;
+        std::map<triagens::rest::Endpoint*, triagens::httpclient::GeneralClientConnection*> _endpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect timeout

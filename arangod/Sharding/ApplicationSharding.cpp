@@ -140,7 +140,7 @@ bool ApplicationSharding::start () {
     return true;
   }
   
-  LOG_INFO("using clustering");
+  LOG_INFO("Clustering feature is turned on");
 
   ServerState::instance()->setCurrent(ServerState::STATE_STARTUP);
 
