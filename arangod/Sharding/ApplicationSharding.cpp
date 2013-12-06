@@ -26,6 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationSharding.h"
+#include "Rest/Endpoint.h"
+#include "Sharding/HeartbeatThread.h"
+#include "BasicsC/logging.h"
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -45,11 +48,12 @@ using namespace triagens::arango;
 
 ApplicationSharding::ApplicationSharding () 
   : ApplicationFeature("Sharding"),
-    _adminEndpoints(),
-    _adminPrefix(),
+    _heartbeat(0),
+    _agencyEndpoints(),
+    _agencyPrefix(),
     _myId(),
     _myAddress(),
-    _enableSharding(false) {
+    _enableCluster(false) {
 
 }
 
@@ -58,6 +62,10 @@ ApplicationSharding::ApplicationSharding ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationSharding::~ApplicationSharding () {
+  if (_heartbeat != 0) {
+    // flat line.....
+    delete _heartbeat;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -70,11 +78,10 @@ ApplicationSharding::~ApplicationSharding () {
 
 void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   options["Sharding Options:help-sharding"]
-    ("server.admin-endpoint", &_adminEndpoints, "admin endpoint to connect to")
-    ("server.admin-prefix", &_adminPrefix, "admin prefix")
-    ("server.my-id", &_myId, "this server's id")
-    ("server.my-address", &_myAddress, "this server's endpoint")
-    ("server.enable-sharding", &_enableSharding, "enable sharding")
+    ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
+    ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
+    ("cluster.my-id", &_myId, "this server's id")
+    ("cluster.my-address", &_myAddress, "this server's endpoint")
   ;
 }
 
@@ -83,6 +90,28 @@ void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescri
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationSharding::prepare () {
+  if (! _agencyPrefix.empty()) {
+    _enableCluster = true;
+
+    size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+
+    if (found != std::string::npos) {
+      LOG_FATAL_AND_EXIT("invalid value specified for --cluster.agency-prefix");
+    }
+  }
+
+  if (_agencyEndpoints.size() > 0) {
+    _enableCluster = true;
+
+    for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
+      const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
+
+      if (unified.empty()) {
+        LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", _agencyEndpoints[i].c_str());
+      }
+    }
+  }
+
   return true;
 }
 
@@ -91,7 +120,20 @@ bool ApplicationSharding::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationSharding::start () {
-  // TODO: start heartbeat
+  if (! enabled()) {
+    return true;
+  }
+  
+  LOG_INFO("using clustering");
+
+  _heartbeat = new HeartbeatThread();
+
+  if (_heartbeat == 0) {
+    LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
+  }
+
+  _heartbeat->start();
+
   return true;
 }
 
@@ -100,6 +142,11 @@ bool ApplicationSharding::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationSharding::close () {
+  if (! enabled()) {
+    return;
+  }
+  
+  _heartbeat->stop();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +154,11 @@ void ApplicationSharding::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationSharding::stop () {
-  // TODO: stop heartbeat
+  if (! enabled()) {
+    return;
+  }
+
+  _heartbeat->stop();
 }
 
 // Local Variables:

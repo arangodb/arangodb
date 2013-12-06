@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
+#include "Basics/ConditionLocker.h"
 #include "BasicsC/logging.h"
 
 using namespace triagens::basics;
@@ -44,7 +45,11 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread () 
-  : Thread("heartbeat") {
+  : Thread("heartbeat"),
+    _agency(),
+    _condition(),
+    _interval(1000 * 1000),
+    _stop(0) {
 
   allowAsynchronousCancelation();
 
@@ -68,15 +73,17 @@ HeartbeatThread::~HeartbeatThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run () {
-  LOG_INFO("starting heartbeat thread");
+  LOG_TRACE("starting heartbeat thread");
 
-  while (1) {
-    sleep(5);
-
-    LOG_INFO("heartbeat");
+  while (! _stop) {
+    LOG_TRACE("sending heartbeat");
+    
+    CONDITION_LOCKER(guard, _condition);
+    
+    guard.wait(_interval);
   }
   
-  LOG_INFO("stopping heartbeat thread");
+  LOG_TRACE("stopping heartbeat thread");
 }
 
 // Local Variables:
