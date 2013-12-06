@@ -210,6 +210,10 @@ install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
   DESTINATION ${VARDIR_INSTALL}/lib)
 
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps
+  DESTINATION ${VARDIR_INSTALL}/lib)
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
