@@ -98,9 +98,9 @@ bool ApplicationSharding::prepare () {
   }
 
   // validate --cluster.agency-prefix
-  size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
 
-  if (_agencyPrefix.empty() || found != std::string::npos) {
+  if (found != std::string::npos) {
     LOG_FATAL_AND_EXIT("invalid value specified for --cluster.agency-prefix");
   }
 
@@ -119,6 +119,8 @@ bool ApplicationSharding::prepare () {
     if (unified.empty()) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", _agencyEndpoints[i].c_str());
     }
+
+    AgencyComm::addEndpoint(unified);
   }
 
   // validate --cluster.my-id
