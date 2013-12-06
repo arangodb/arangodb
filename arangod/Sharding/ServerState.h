@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat thread
+/// @brief single-server state
 ///
 /// @file
 ///
@@ -25,13 +25,11 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHARDING_HEARTBEAT_THREAD_H
-#define TRIAGENS_SHARDING_HEARTBEAT_THREAD_H 1
+#ifndef TRIAGENS_SHARDING_SERVER_STATE_H
+#define TRIAGENS_SHARDING_SERVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Sharding/AgencyComm.h"
+#include "Basics/ReadWriteLock.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,67 +40,83 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   HeartbeatThread
+// --SECTION--                                                       ServerState
 // -----------------------------------------------------------------------------
 
-    class HeartbeatThread : public basics::Thread {
+    class ServerState {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-      
-      private:
-        HeartbeatThread (HeartbeatThread const&);
-        HeartbeatThread& operator= (HeartbeatThread const&);
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a heartbeat thread
+/// @brief an enum describing the possible states a server can have 
 ////////////////////////////////////////////////////////////////////////////////
 
-        HeartbeatThread (std::string const&);
+        typedef enum {
+          STATE_OFFLINE    = 0,
+          STATE_STARTUP    = 1,
+          STATE_CONNECTED  = 2,
+          STATE_STOPPING   = 3,
+          STATE_STOPPED    = 4,
+          STATE_PROBLEM    = 5,
+          STATE_RECOVERING = 6,
+          STATE_RECOVERED  = 7,
+          STATE_SHUTDOWN   = 8
+        }
+        StateEnum; 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+      
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a heartbeat thread
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HeartbeatThread ();
+        ServerState ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~ServerState ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             public static methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+        static ServerState* instance ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string representation of a state
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string stateToString (StateEnum);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-      
+
       public:
 
-        void stop () {
-          _stop = 1;
-          _condition.signal();
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop
+/// @brief get the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-        void run ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-      
-      private:
+        StateEnum getCurrent ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send the state to the agency
+/// @brief set the current state
 ////////////////////////////////////////////////////////////////////////////////
-
-        bool sendState ();
+        
+        void setCurrent (StateEnum); 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -111,37 +125,18 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AgencyComm instance
+/// @brief r/w lock for state
 ////////////////////////////////////////////////////////////////////////////////
-
-        AgencyComm _agency;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief condition variable for heartbeat
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::basics::ConditionVariable _condition;
+      
+        triagens::basics::ReadWriteLock _lock;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this server's id
+/// @brief the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _myId;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat interval
-////////////////////////////////////////////////////////////////////////////////
-
-        uint64_t _interval;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop flag
-////////////////////////////////////////////////////////////////////////////////
-        
-        volatile sig_atomic_t _stop;
+        StateEnum _state;
 
     };
-
   }
 }
 

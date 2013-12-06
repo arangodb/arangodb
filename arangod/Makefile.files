@@ -76,8 +76,8 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/arango.cpp \
 	arangod/Sharding/AgencyComm.cpp \
 	arangod/Sharding/ApplicationSharding.cpp \
-	arangod/Sharding/server-state.cpp \
 	arangod/Sharding/HeartbeatThread.cpp \
+	arangod/Sharding/ServerState.cpp \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \

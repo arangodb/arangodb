@@ -110,6 +110,23 @@ void AgencyComm::setPrefix (std::string const& prefix) {
   _prefix = prefix;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a timestamp
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::generateStamp () {
+  time_t tt = time(0);
+  struct tm tb;
+  char buffer[21];
+
+  // TODO: optimise this
+  TRI_gmtime(tt, &tb);
+
+  size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+
+  return std::string(buffer, len);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -152,6 +169,8 @@ int AgencyComm::removeAgent (Agent agent) {
         
 int AgencyComm::setValue (std::string const& key, 
                           std::string const& value) {
+
+  // LOG_INFO("SETTING VALUE: %s TO %s", key.c_str(), value.c_str());
   return 0;
 }
 
