@@ -235,6 +235,8 @@ extern "C" {
 /// - 1413: @LIT{no start tick}
 ///   Will be raised when the replication error is started without a known
 ///   start tick value.
+/// - 1450: @LIT{could not connect to agency}
+///   Will be raised when none of the agency servers can be connected to.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1411,6 +1413,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1450: ERROR_CLUSTER_NO_AGENCY
+///
+/// could not connect to agency
+///
+/// Will be raised when none of the agency servers can be connected to.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_NO_AGENCY                                       (1450)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

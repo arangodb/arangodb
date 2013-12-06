@@ -99,8 +99,8 @@ void HeartbeatThread::run () {
 
 bool HeartbeatThread::sendState () {
   // TODO: handle return value
-  _agency.setValue("/state/servers/state/" + _myId,  
-                   ServerState::stateToString(ServerState::instance()->getCurrent()) + ";" + AgencyComm::generateStamp());
+  _agency.setValue("state/servers/state/" + _myId,  
+                   ServerState::stateToString(ServerState::instance()->getCurrent()) + ":" + AgencyComm::generateStamp());
 
   return true;
 }

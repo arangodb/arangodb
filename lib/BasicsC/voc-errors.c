@@ -106,6 +106,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change applier configuration while running");
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
+  REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
