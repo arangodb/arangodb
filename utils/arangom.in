@@ -1,0 +1,56 @@
+#!/bin/bash
+
+CURL="curl -s"
+
+AGENCY="http://localhost:4001"
+PREFIX=""
+
+if [ "$1" == "-a" ] ; then
+    export AGENCY=$2
+    shift 2
+fi
+
+if [ "$1" == "-p" ] ; then
+    export PREFIX=$2
+    shift 2
+fi
+
+if [ "$1" == "help" -o "$1" == "-h" -o "$1" == "--help" ] ; then
+    echo Usage: "arangom [-a AGENCY] [-p PREFIX] help|init"
+    exit 0
+fi
+
+URL=$AGENCY/v2/keys$PREFIX
+
+function set() {
+  key=$1
+  value=$2
+  if [ "x$value" == "x" ] ; then
+      echo Creating directory $key
+      $CURL -X PUT $URL$key > /dev/null
+  else
+      echo Setting key $key to value $value
+      $CURL -X PUT $URL$key -d value=$value > /dev/null
+  fi
+}
+
+
+if [ "$1" == "init" ] ; then
+    $CURL -X DELETE "$URL/?recursive=true" >/dev/null
+    set /Config/MapLocalToID
+    set /Config/MapIDToEndpoint
+    set /TmpConfig/DBServers
+    set /TmpConfig/Coordinators
+    set /TmpConfig/Databases
+    set /TmpConfig/Collections
+    set /TmpConfig/ShardsCurrent
+    set /TmpConfig/ShardsWanted
+    set /State/ServersRegistered
+    set /State/ServerStates
+    set /State/ClusterState OFFLINE
+    set /State/OldClusterState none
+    set /State/Problems none
+    set /State/ClusterManager none
+    echo Initialisation complete.
+fi
+
