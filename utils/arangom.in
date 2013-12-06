@@ -49,7 +49,7 @@ if [ "$1" == "init" ] ; then
     set /State/ServerStates
     set /State/ClusterState OFFLINE
     set /State/OldClusterState none
-    set /State/ClusterProblem none
+    set /State/Problems none
     set /State/ClusterManager none
     echo Initialisation complete.
 fi
