@@ -270,7 +270,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
-    _developmentMode(false),
     _forceSyncProperties(true),
     _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
@@ -554,10 +553,9 @@ void ArangoServer::buildApplicationServer () {
 
   // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
-    _developmentMode = true;
     _applicationV8->enableDevelopmentMode();
   }
-
+  
   // .............................................................................
   // set language of default collator
   // .............................................................................

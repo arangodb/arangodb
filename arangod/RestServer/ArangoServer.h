@@ -341,21 +341,6 @@ namespace triagens {
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief development mode
-///
-/// @CMDOPT{\--development-mode}
-///
-/// Specifying this option will start the server in development mode. The
-/// development mode forces reloading of all actions and Foxx applications on
-/// every HTTP request. This is very resource-intensive and slow, but makes
-/// developing server-side actions and Foxx applications much easier.
-///
-/// Never use this option in production.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _developmentMode;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief force syncing of collection properties
 ///
 /// @CMDOPT{\--database.force-sync-properties @CA{boolean}}
@@ -508,6 +493,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string _defaultLanguage;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief development mode
+///
+/// @CMDOPT{\--development-mode}
+///
+/// Specifying this option will start the server in development mode. The
+/// development mode forces reloading of all actions and Foxx applications on
+/// every HTTP request. This is very resource-intensive and slow, but makes
+/// developing server-side actions and Foxx applications much easier.
+///
+/// Never use this option in production.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _developmentMode; /* variable is only used for documentation generation */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the server
