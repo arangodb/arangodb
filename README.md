@@ -97,9 +97,11 @@ Citing ArangoDB
 ---------------
 Please kindly cite ArangoDB in your publications if it helps your research:
 
-@misc{Jan13ArangoDB,
-   Author = {Jan Steeman, Michael Hackstein},
+```bibtex
+@misc{ArangoDB2013,
+   Author = {ArangoDB},
    Title = { {ArangoDB}: An Open Source multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
    Year  = {2013},
    Howpublished = {\url{http://arangodb.org/}
 }
+```
