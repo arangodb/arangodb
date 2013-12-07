@@ -37,6 +37,7 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 install(
@@ -82,6 +83,7 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 install(
@@ -129,6 +131,7 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 install(
@@ -174,6 +177,7 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 install(
@@ -221,6 +225,7 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 install(
