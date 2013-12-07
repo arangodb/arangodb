@@ -27,14 +27,20 @@
 
 #include "V8LineEditor.h"
 
+#ifdef TRI_HAVE_LINENOISE
+#include <linenoise.h>
+#else
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
 
 #include "BasicsC/tri-strings.h"
 #include "V8/v8-utils.h"
 
+#ifdef TRI_HAVE_LINENOISE
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
+#endif
 #endif
 
 using namespace std;
@@ -48,11 +54,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief word break characters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -62,18 +63,9 @@ static char WordBreakCharacters[] = {
     '\0'
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8LineEditor
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief completion generator
@@ -191,6 +183,10 @@ static char* CompletionGenerator (char const* text, int state) {
 /// @brief attempted completion
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_LINENOISE
+
+#else
+
 static char** AttemptedCompletion (char const* text, int start, int end) {
   char** result;
 
@@ -213,18 +209,11 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8LineEditor
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
@@ -234,18 +223,9 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
   : LineEditor(history), _context(context) {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8LineEditor
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
@@ -253,51 +233,22 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 
 bool V8LineEditor::open (const bool autoComplete) {
   if (autoComplete) {
+#ifdef TRI_HAVE_LINENOISE
 
-    // issue #289: do not append a space after completion
-    rl_completion_append_character = '\0';
-
-    // works only in Readline 4.2+
-#if RL_READLINE_VERSION >= 0x0500
-    // enable this to turn on the visual bell - evil!
-    // rl_variable_bind("prefer-visible-bell", "1");
-
-    // use this for single-line editing as in mongodb shell
-    // rl_variable_bind("horizontal-scroll-mode", "1");
-
-    // show matching parentheses
-    rl_set_paren_blink_timeout(1 * 1000 * 1000);
-    rl_variable_bind("blink-matching-paren", "1");
-
-    // show selection list when completion is ambiguous. not setting this
-    // variable will turn the selection list off at least on Ubuntu
-    rl_variable_bind("show-all-if-ambiguous", "1");
-
-    // use readline's built-in page-wise completer
-    rl_variable_bind("page-completions", "1");
-#endif
+#else
 
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
 
-    rl_bind_key('\t', rl_complete);
+#endif
   }
 
   return LineEditor::open(autoComplete);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup LineEditor
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if line is complete
@@ -448,9 +399,9 @@ bool V8LineEditor::isComplete (string const& source, size_t, size_t) {
   return openParen <= 0 && openBrackets <= 0 && openBraces <= 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

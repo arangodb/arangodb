@@ -37,12 +37,6 @@ set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
 ################################################################################
-### @brief threads
-################################################################################
-
-find_package(Threads)
-
-################################################################################
 ### @brief GNU C/C++ compiler
 ################################################################################
 
@@ -57,6 +51,44 @@ endif ()
 
 if (APPLE)
   add_definitions("-Wno-deprecated-declarations")
+endif ()
+
+################################################################################
+### @brief Visual Studio Compiler
+################################################################################
+
+if (MSVC)
+  add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
+  add_definitions("-DFD_SETSIZE=2048")
+
+  add_definitions("-DUSE_REGEX_STATIC=1")
+  add_definitions("-DU_STATIC_IMPLEMENTATION=1")
+
+  foreach (flag_var
+	   CMAKE_C_FLAGS
+	   CMAKE_C_FLAGS_DEBUG
+	   CMAKE_C_FLAGS_RELEASE
+	   CMAKE_C_FLAGS_MINSIZEREL
+	   CMAKE_C_FLAGS_RELWITHDEBINFO
+           CMAKE_CXX_FLAGS
+           CMAKE_CXX_FLAGS_DEBUG
+           CMAKE_CXX_FLAGS_RELEASE
+           CMAKE_CXX_FLAGS_MINSIZEREL
+           CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    if (${flag_var} MATCHES "/MD")
+      string(REGEX REPLACE "/MDd?" "" ${flag_var} "${${flag_var}}")
+    endif()
+
+    if (flag_var MATCHES "DEBUG")
+      set(${flag_var} "${${flag_var}} /MTd")
+    else ()
+      set(${flag_var} "${${flag_var}} /MT")
+    endif ()
+  endforeach()
+
+  set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
+
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG")
 endif ()
 
 ################################################################################
@@ -118,8 +150,9 @@ else ()
 endif ()
 
 file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
+STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
 
-add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_NATIVE}\"")
+add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
 
 ################################################################################
 ### @brief DATA DIRECTORY (/var)
@@ -184,13 +217,43 @@ include_directories(${PROJECT_SOURCE_DIR})
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief threads
+################################################################################
+
+find_package(Threads)
+
+################################################################################
+### @brief windows
+################################################################################
+
+if (MSVC)
+  set(MSVC_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty-Windows/${BITS}/include CACHE path "MSVC 3rd party include path")
+  set(MSVC_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty-Windows/${BITS}/lib CACHE path "MSVC 3rd party library path")
+endif ()
+
+if (MSVC_INCLUDE)
+  include_directories(${MSVC_INCLUDE})
+endif ()
+
+if (MSVC_LIB_PATH)
+  link_directories(${MSVC_LIB_PATH})
+endif ()
+
+################################################################################
 ### @brief ICU
 ################################################################################
 
-set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/include CACHE path "ICU include path")
-set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/libs CACHE path "ICU library path")
-set(ICU_LIBS icui18n;icuuc;icudata;pthread;m CACHE path "ICU libraries")
-set(ICU_VERSION "52.1" CACHE string "ICU version")
+if (MSVC)
+  set(ICU_LIBS "sicudt;sicuin;sicuio;sicule;siculx;sicutu;sicuuc" CACHE path "ICU libraries")
+  set(ICU_VERSION "52.1" CACHE string "ICU version")
+
+  add_definitions("-DU_STATIC_IMPLEMENTATION=1")
+else ()
+  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/include CACHE path "ICU include path")
+  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/libs CACHE path "ICU library path")
+  set(ICU_LIBS icui18n;icuuc;icudata;pthread;m CACHE path "ICU libraries")
+  set(ICU_VERSION "52.1" CACHE string "ICU version")
+endif ()
 
 if (ICU_INCLUDE)
   include_directories(${ICU_INCLUDE})
@@ -206,10 +269,15 @@ add_definitions("-DTRI_ICU_VERSION=\"${ICU_VERSION}\"")
 ### @brief LIBEV
 ################################################################################
 
-set(LIBEV_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/libev CACHE path "LIBEV include path")
-set(LIBEV_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/libev/BUILD/.libs CACHE path "LIBEV library path")
-set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
-set(LIBEV_VERSION "4.11" CACHE string "LIBEV version")
+if (MSVC)
+  set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
+  set(LIBEV_VERSION "4.11" CACHE string "LIBEV version")
+else ()
+  set(LIBEV_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/libev CACHE path "LIBEV include path")
+  set(LIBEV_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/libev/BUILD/.libs CACHE path "LIBEV library path")
+  set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
+  set(LIBEV_VERSION "4.11" CACHE string "LIBEV version")
+endif ()
 
 if (LIBEV_INCLUDE)
   include_directories(${LIBEV_INCLUDE})
@@ -225,29 +293,39 @@ add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ### @brief MRUBY
 ################################################################################
 
-set(MRUBY_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/mruby/include CACHE path "MRUBY include path")
-set(MRUBY_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/mruby/build/host/lib CACHE path "MRUBY library path")
-set(MRUBY_LIBS mruby CACHE string "MRUBY libraries")
-set(MRUBY_VERSION "2013-08-22 (aa099f7f7d1f8c61db936fb7c39a3c734175af16)" CACHE string "MRUBY version")
-
-if (MRUBY_INCLUDE)
-  include_directories(${MRUBY_INCLUDE})
+if (MSVC)
+else ()
+  set(MRUBY_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/mruby/include CACHE path "MRUBY include path")
+  set(MRUBY_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/mruby/build/host/lib CACHE path "MRUBY library path")
+  set(MRUBY_LIBS mruby CACHE string "MRUBY libraries")
+  set(MRUBY_VERSION "2013-08-22 (aa099f7f7d1f8c61db936fb7c39a3c734175af16)" CACHE string "MRUBY version")
 endif ()
 
-if (MRUBY_LIB_PATH)
-  link_directories(${MRUBY_LIB_PATH})
-endif ()
+if (USE_MRUBY)
+  if (MRUBY_INCLUDE)
+    include_directories(${MRUBY_INCLUDE})
+  endif ()
 
-add_definitions("-DTRI_MRUBY_VERSION=\"${MRUBY_VERSION}\"")
+  if (MRUBY_LIB_PATH)
+    link_directories(${MRUBY_LIB_PATH})
+  endif ()
+
+  add_definitions("-DTRI_MRUBY_VERSION=\"${MRUBY_VERSION}\"")
+endif ()
 
 ################################################################################
 ### @brief OPENSSL
 ################################################################################
 
-set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
-set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
-set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
+if (MSVC)
+  set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
+  set(OPENSSL_VERSION "OpenSSL 1.0.1e" CACHE string "OPENSSL version")
+else ()
+  set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
+  set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
+  set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
+  set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
+endif ()
 
 if (OPENSSL_INCLUDE)
   include_directories(${OPENSSL_INCLUDE})
@@ -260,13 +338,20 @@ endif ()
 add_definitions("-DTRI_OPENSSL_VERSION=\"${OPENSSL_VERSION}\"")
 
 ################################################################################
-### @brief READLINE
+### @brief READLINE or LINENOISE
 ################################################################################
 
-set(READLINE_INCLUDE "" CACHE path "READLINE include path")
-set(READLINE_LIB_PATH "" CACHE path "READLINE library path")
-set(READLINE_LIBS readline CACHE string "READLINE libraries")
-set(READLINE_VERSION "0x0402.hex" CACHE string "READLINE version")
+if (MSVC)
+  set(READLINE_LIBS linenoise CACHE string "LINENOISE libraries")
+  set(READLINE_VERSION "linenoise" CACHE string "LINENOISE version")
+
+  add_definitions("-DREADLINE_STATIC=1")
+else ()
+  set(READLINE_INCLUDE "" CACHE path "READLINE include path")
+  set(READLINE_LIB_PATH "" CACHE path "READLINE library path")
+  set(READLINE_LIBS readline CACHE string "READLINE libraries")
+  set(READLINE_VERSION "0x0402.hex" CACHE string "READLINE version")
+endif ()
 
 if (READLINE_INCLUDE)
   include_directories(${READLINE_INCLUDE})
@@ -282,10 +367,15 @@ add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 ### @brief V8
 ################################################################################
 
-set(V8_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8/include CACHE path "V8 include path")
-set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "V8 library path")
-set(V8_LIBS v8_base v8_nosnapshot CACHE string "V8 libraries")
-set(V8_VERSION "3.16.14" CACHE string "V8 version")
+if (MSVC)
+  set(V8_LIBS v8_base v8_nosnapshot CACHE string "V8 libraries")
+  set(V8_VERSION "3.16.14" CACHE string "V8 version")
+else ()
+  set(V8_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8/include CACHE path "V8 include path")
+  set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "V8 library path")
+  set(V8_LIBS v8_base v8_nosnapshot CACHE string "V8 libraries")
+  set(V8_VERSION "3.16.14" CACHE string "V8 version")
+endif ()
 
 if (V8_INCLUDE)
   include_directories(${V8_INCLUDE})
@@ -301,10 +391,15 @@ add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 ### @brief ZLIB
 ################################################################################
 
-set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB include path")
-set(ZLIB_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB library path")
-set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-set(ZLIB_VERSION "1.2.7" CACHE string "ZLIB version")
+if (MSVC)
+  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+  set(ZLIB_VERSION "1.2.7" CACHE string "ZLIB version")
+else ()
+  set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB include path")
+  set(ZLIB_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB library path")
+  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+  set(ZLIB_VERSION "1.2.7" CACHE string "ZLIB version")
+endif ()
 
 if (ZLIB_INCLUDE)
   include_directories(${ZLIB_INCLUDE})

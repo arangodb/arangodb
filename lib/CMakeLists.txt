@@ -18,10 +18,33 @@ if (APPLE)
   SET(LIB_ARANGO_APPLE BasicsC/locks-macos.c)
 endif ()
 
+if (MSVC)
+  SET(LIB_ARANGO_MSVC
+      BasicsC/locks-win32.c
+      BasicsC/memory-map-win32.c
+      BasicsC/terminal-utils-win32.c
+      BasicsC/threads-win32.c
+      BasicsC/win-utils.c
+      Utilities/LineEditor-linenoise.cpp
+      Zip/iowin32.c
+  )
+else ()
+  SET(LIB_ARANGO_POSIX
+      BasicsC/locks-posix.c
+      BasicsC/memory-map-posix.c
+      BasicsC/terminal-utils-posix.c
+      BasicsC/threads-posix.c
+      Rest/EndpointUnixDomain.cpp
+      Utilities/LineEditor-readline.cpp
+  )
+endif ()
+
 add_library(
     ${LIB_ARANGO}
     STATIC
     ${LIB_ARANGO_APPLE}
+    ${LIB_ARANGO_MSVC}
+    ${LIB_ARANGO_POSIX}
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
     Basics/Exceptions.cpp
@@ -58,10 +81,8 @@ add_library(
     BasicsC/json.c
     BasicsC/json-utilities.c
     BasicsC/linked-list.c
-    BasicsC/locks-posix.c
     BasicsC/logging.c
     BasicsC/memory.c
-    BasicsC/memory-map-posix.c
     BasicsC/mersenne.c
     BasicsC/mimetypes.c
     BasicsC/process-utils.c
@@ -72,9 +93,7 @@ add_library(
     BasicsC/tri-strings.c
     BasicsC/structures.c
     BasicsC/system-functions.c
-    BasicsC/terminal-utils-posix.c
     BasicsC/terminal-utils.c
-    BasicsC/threads-posix.c
     BasicsC/utf8-helper.c
     BasicsC/vector.c
     BasicsC/voc-errors.c
@@ -93,7 +112,6 @@ add_library(
     Rest/EndpointIp.cpp
     Rest/EndpointIpV4.cpp
     Rest/EndpointIpV6.cpp
-    Rest/EndpointUnixDomain.cpp
     Rest/Handler.cpp
     Rest/HttpRequest.cpp
     Rest/HttpResponse.cpp
@@ -105,7 +123,6 @@ add_library(
     ShapedJson/shape-accessor.c
     ShapedJson/shaped-json.c
     Statistics/statistics.cpp
-    Utilities/LineEditor.cpp
     Utilities/ScriptLoader.cpp
     Zip/ioapi.c
     Zip/unzip.c

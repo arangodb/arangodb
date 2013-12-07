@@ -143,7 +143,9 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
-    ${CMAKE_THREAD_LIBS_INIT})
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${MSVC_LIBS}
+)
 
 install(
   TARGETS ${BIN_ARANGOD}
