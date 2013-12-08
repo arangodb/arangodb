@@ -171,7 +171,6 @@ module.exports = function(karma) {
 
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
-
       // Specs
       // GraphViewer
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
@@ -183,7 +182,7 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specAdapter/arangoAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/foxxAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/previewAdapterSpec.js',
-      // 'test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js',
+      'test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js',
       'test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js',
       // 'test/specs/graphViewer/specNodeShaper/nodeShaperUISpec.js',
       'test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js',
