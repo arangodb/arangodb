@@ -199,7 +199,7 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specGraphViewer/graphViewerWidgetSpec.js',
       'test/specs/graphViewer/specGraphViewer/graphViewerPreviewSpec.js',
       'test/specs/graphViewer/specNodeReducer/nodeReducerSpec.js',
-      // 'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
+      'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
       'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
 
       // Arango
