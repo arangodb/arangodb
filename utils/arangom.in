@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CURL="curl -s"
+CURL="curl -s -S --fail "
 
 AGENCY="http://localhost:4001"
 PREFIX=""
@@ -20,23 +20,23 @@ if [ "$1" == "help" -o "$1" == "-h" -o "$1" == "--help" ] ; then
     exit 0
 fi
 
-URL=$AGENCY/v2/keys$PREFIX
+URL="$AGENCY/v2/keys$PREFIX"
 
 function set() {
   key=$1
   value=$2
   if [ "x$value" == "x" ] ; then
-      echo Creating directory $key
-      $CURL -X PUT $URL$key > /dev/null
+      echo "Creating directory $PREFIX$key"
+      $CURL -X PUT "$URL$key" > /dev/null || exit 1
   else
-      echo Setting key $key to value $value
-      $CURL -X PUT $URL$key -d value=$value > /dev/null
+      echo "Setting key $PREFIX$key to value $value"
+      $CURL -X PUT "$URL$key" -d "value=$value" > /dev/null || exit 1
   fi
 }
 
 
 if [ "$1" == "init" ] ; then
-    $CURL -X DELETE "$URL/?recursive=true" >/dev/null
+    $CURL -X DELETE "$URL/?recursive=true" > /dev/null || exit 1
     set /Config/MapLocalToID
     set /Config/MapIDToEndpoint
     set /TmpConfig/DBServers
