@@ -124,6 +124,11 @@ namespace triagens {
 
         static std::string stateToString (StateEnum);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string representation to a state
+////////////////////////////////////////////////////////////////////////////////
+
+        static StateEnum stringToState (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

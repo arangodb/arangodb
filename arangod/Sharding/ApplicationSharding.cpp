@@ -89,7 +89,7 @@ void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescri
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief prepare validate the startup options
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationSharding::prepare () {
@@ -119,7 +119,8 @@ bool ApplicationSharding::prepare () {
     const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
-      LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", _agencyEndpoints[i].c_str());
+      LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", 
+                         _agencyEndpoints[i].c_str());
     }
 
     AgencyComm::addEndpoint(unified);
@@ -172,16 +173,38 @@ bool ApplicationSharding::start () {
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
-    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured at endpoints (%s)", 
+    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured in agency (%s)", 
                        _myId.c_str(),
                        endpoints.c_str());
   }
 
+  // check if my-address is set
+  if (_myAddress.empty()) {
+    // no address given, now ask the agency for out address
+    _myAddress = getEndpointForId();
+  }
+    
+  if (_myAddress.empty()) {
+    LOG_FATAL_AND_EXIT("unable to determine internal address for server '%s'. "
+                       "Please specify --cluster.my-address or configure the address for this server in the agency.", 
+                       _myId.c_str());
+  }
+  
+  // now we can validate --cluster.my-address
+  const string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
+
+  if (unified.empty()) {
+    LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.my-address", 
+                       _myAddress.c_str());
+  }
+
+
   ServerState::instance()->setRole(role);
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
-  LOG_INFO("Cluster feature is turned on. Server id: '%s', role: %s, agency endpoints: %s",
+  LOG_INFO("Cluster feature is turned on. Server id: '%s', internal address: %s, role: %s, agency endpoints: %s",
            _myId.c_str(),
+           _myAddress.c_str(),
            ServerState::roleToString(role).c_str(),
            endpoints.c_str());
 
@@ -231,6 +254,38 @@ void ApplicationSharding::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server's endpoint by scanning Config/MapIDToEnpdoint for 
+/// our id
+////////////////////////////////////////////////////////////////////////////////
+  
+std::string ApplicationSharding::getEndpointForId () const {
+  // fetch value at Config/MapIDToEndpoint
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues("Config/MapIDToEndpoint/" + _myId, false);
+ 
+  if (result.successful()) {
+    std::map<std::string, std::string> out;
+
+    if (! result.flattenJson(out, "Config/MapIDToEndpoint/", false)) {
+      LOG_FATAL_AND_EXIT("Got an invalid JSON response for Config/MapIDToEndpoint");
+    }
+
+    // check if we can find ourselves in the list returned by the agency
+    std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+
+    if (it != out.end()) {
+      LOG_TRACE("using remote value '%s' for --cluster.my-address", 
+                (*it).second.c_str());
+
+      return (*it).second;
+    }
+  }
+
+  // not found
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -249,7 +304,7 @@ ServerState::RoleEnum ApplicationSharding::checkCoordinatorsList () const {
   }
   
   std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "TmpConfig/Coordinators/")) {
+  if (! result.flattenJson(out, "TmpConfig/Coordinators/", false)) {
     LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/Coordinators");
   }
 
@@ -283,7 +338,7 @@ ServerState::RoleEnum ApplicationSharding::checkServersList () const {
   }
   
   std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "TmpConfig/DBServers/")) {
+  if (! result.flattenJson(out, "TmpConfig/DBServers/", false)) {
     LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/DBServers");
   }
 

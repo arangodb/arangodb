@@ -121,10 +121,12 @@ namespace triagens {
 
       bool processJsonNode (struct TRI_json_s const*,
                             std::map<std::string, std::string>&,
-                            std::string const&);
+                            std::string const&,
+                            bool) const;
 
       bool flattenJson (std::map<std::string, std::string>&,
-                        std::string const&); 
+                        std::string const&,
+                        bool) const; 
 
       std::string _message;
       std::string _body;
@@ -226,37 +228,38 @@ namespace triagens {
 /// @brief sets a value in the back end
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool setValue (std::string const& key, 
-                       std::string const& value);
+        bool setValue (std::string const&, 
+                       std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
         
-        AgencyCommResult getValues (std::string const& key, 
-                                    bool recursive);
+        AgencyCommResult getValues (std::string const&, 
+                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool removeValues (std::string const& key,  
-                           bool recursive);
+        bool removeValues (std::string const&,  
+                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the back end
 ////////////////////////////////////////////////////////////////////////////////
         
-        int casValue (std::string const& key, 
-                      std::string const& oldValue, 
-                      std::string const& newValue);
+        int casValue (std::string const&, 
+                      std::string const&, 
+                      std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief blocks on a change of a single value in the back end
 ////////////////////////////////////////////////////////////////////////////////
         
-        AgencyCommResult watchValues (std::string const& key, 
-                                      double timeout);
+        AgencyCommResult watchValue (std::string const&, 
+                                     uint64_t,
+                                     double);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -289,6 +292,7 @@ namespace triagens {
     
         bool send (triagens::httpclient::GeneralClientConnection*,
                    triagens::rest::HttpRequest::HttpRequestType,
+                   double,
                    AgencyCommResult&,
                    std::string const&); 
 
@@ -298,6 +302,7 @@ namespace triagens {
     
         bool send (triagens::httpclient::GeneralClientConnection*,
                    triagens::rest::HttpRequest::HttpRequestType,
+                   double,
                    AgencyCommResult&,
                    std::string const&, 
                    std::string const&);

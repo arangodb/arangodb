@@ -100,6 +100,19 @@ std::string ServerState::roleToString (RoleEnum role) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string representation to a state
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::StateEnum ServerState::stringToState (std::string const& value) {
+  if (value == "SHUTDOWN") {
+    return STATE_SHUTDOWN;
+  }
+  // TODO: do we need to understand other states, too?
+
+  return STATE_UNDEFINED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -166,10 +179,10 @@ void ServerState::setState (StateEnum state) {
   }
   
   if (result) {
-    LOG_TRACE("changing state of %s server from %s to %s", 
-              ServerState::roleToString(_role).c_str(),
-              ServerState::stateToString(_state).c_str(),
-              ServerState::stateToString(state).c_str());
+    LOG_INFO("changing state of %s server from %s to %s", 
+             ServerState::roleToString(_role).c_str(),
+             ServerState::stateToString(_state).c_str(),
+             ServerState::stateToString(state).c_str());
 
     _state = state;
   }

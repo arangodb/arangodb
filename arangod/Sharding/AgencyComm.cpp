@@ -27,6 +27,7 @@
 
 #include "Sharding/AgencyComm.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
@@ -105,7 +106,8 @@ AgencyCommResult::~AgencyCommResult () {
 
 bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
                                         std::map<std::string, std::string>& out,
-                                        std::string const& stripPrefix) {
+                                        std::string const& stripKeyPrefix,
+                                        bool returnIndex) const {
   if (! TRI_IsArrayJson(node)) {
     return true;
   }
@@ -118,7 +120,7 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
   }
 
   // make sure we don't strip more bytes than the key is long
-  const size_t offset = AgencyComm::_globalPrefix.size() + stripPrefix.size();
+  const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
   const size_t length = key->_value._string.length - 1;
 
   std::string prefix;
@@ -146,7 +148,10 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
     const size_t n = TRI_LengthVector(&nodes->_value._objects);
 
     for (size_t i = 0; i < n; ++i) {
-      if (! processJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), out, stripPrefix)) {
+      if (! processJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), 
+                            out, 
+                            stripKeyPrefix, 
+                            returnIndex)) {
         return false;
       }
     }
@@ -162,7 +167,21 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
     }
 
     if (! prefix.empty()) {
-      out[prefix] = std::string(value->_value._string.data, value->_value._string.length - 1);
+      if (returnIndex) {
+        // return "modifiedIndex"
+        TRI_json_t const* modifiedIndex = TRI_LookupArrayJson(node, "modifiedIndex");
+        
+        if (! TRI_IsNumberJson(modifiedIndex)) {
+          return false;
+        }
+      
+        // convert the number to an integer  
+        out[prefix] = triagens::basics::StringUtils::itoa((uint64_t) modifiedIndex->_value._number);
+      }
+      else {
+        // otherwise return value
+        out[prefix] = std::string(value->_value._string.data, value->_value._string.length - 1);
+      }
     }
   }
 
@@ -174,7 +193,8 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::flattenJson (std::map<std::string, std::string>& out,
-                                    std::string const& stripPrefix) {
+                                    std::string const& stripKeyPrefix,
+                                    bool returnIndex) const {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
   if (! TRI_IsArrayJson(json)) {
@@ -187,7 +207,7 @@ bool AgencyCommResult::flattenJson (std::map<std::string, std::string>& out,
   // get "node" attribute
   TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
 
-  const bool result = processJsonNode(node, out, stripPrefix);
+  const bool result = processJsonNode(node, out, stripKeyPrefix, returnIndex);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;
@@ -547,6 +567,7 @@ bool AgencyComm::setValue (std::string const& key,
   
     send(agencyEndpoint->_connection, 
          triagens::rest::HttpRequest::HTTP_REQUEST_PUT, 
+         _globalConnectionOptions._requestTimeout, 
          result,
          buildUrl(key), 
          "value=" + value);
@@ -590,6 +611,7 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
     
     send(agencyEndpoint->_connection, 
          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+         _globalConnectionOptions._requestTimeout * 1000.0 * 1000.0, 
          result,
          url);
 
@@ -632,6 +654,7 @@ bool AgencyComm::removeValues (std::string const& key,
     
     send(agencyEndpoint->_connection, 
          triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, 
+         _globalConnectionOptions._requestTimeout, 
          result,
          url);
 
@@ -664,12 +687,45 @@ int AgencyComm::casValue (std::string const& key,
 /// @brief blocks on a change of a single value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::watchValues (std::string const& key, 
-                                          double timeout) {
+AgencyCommResult AgencyComm::watchValue (std::string const& key, 
+                                         uint64_t waitIndex,
+                                         double timeout) {
+  std::string url(buildUrl(key));
+  url += "?wait=true";
+
+  if (waitIndex > 0) {
+    url += "&waitIndex=" + triagens::basics::StringUtils::itoa(waitIndex);
+  }
+
   AgencyCommResult result;
+  size_t numEndpoints;
 
-  // TODO
+  {
+    READ_LOCKER(AgencyComm::_globalLock);
+    numEndpoints = AgencyComm::_globalEndpoints.size(); 
+    assert(numEndpoints > 0);
+  }
 
+  size_t tries = 0;
+
+  while (tries++ < numEndpoints) {
+    AgencyEndpoint* agencyEndpoint = popEndpoint();
+
+    send(agencyEndpoint->_connection, 
+         triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+         timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
+         result,
+         url);
+
+    if (requeueEndpoint(agencyEndpoint, result.successful())) {
+      // we're done
+      break;
+    }
+
+    // otherwise, try next
+  }
+
+  // if we get here, we could not send data to any endpoint successfully
   return result;
 }
 
@@ -765,6 +821,7 @@ std::string AgencyComm::buildUrl (std::string const& relativePart) const {
     
 bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
                        triagens::rest::HttpRequest::HttpRequestType method, 
+                       double timeout,
                        AgencyCommResult& result,
                        std::string const& url) {
   // only these methods can be called without a body
@@ -772,7 +829,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
          method == triagens::rest::HttpRequest::HTTP_REQUEST_GET ||
          method == triagens::rest::HttpRequest::HTTP_REQUEST_HEAD);
 
-  return send(connection, method, result, url, "");
+  return send(connection, method, timeout, result, url, "");
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,6 +838,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     
 bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
                        triagens::rest::HttpRequest::HttpRequestType method, 
+                       double timeout,
                        AgencyCommResult& result,
                        std::string const& url, 
                        std::string const& body) {
@@ -795,8 +853,8 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
             url.c_str(), 
             body.c_str());
   
-  triagens::httpclient::SimpleHttpClient client(connection, 
-                                                _globalConnectionOptions._requestTimeout, 
+  triagens::httpclient::SimpleHttpClient client(connection,
+                                                timeout, 
                                                 false);
 
   // set up headers

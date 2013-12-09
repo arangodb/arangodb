@@ -72,21 +72,66 @@ HeartbeatThread::~HeartbeatThread () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
+/// the heartbeat thread constantly reports the current server status to the
+/// agency. it does so by sending the current state string to the key
+/// "State/ServerStates/" + my-id.
+/// after transferring the current state to the agency, the heartbeat thread
+/// will wait for changes on the "Commands/" + my-id key. If no changes occur,
+/// then the request it aborted and the heartbeat thread will go on with 
+/// reporting its state to the agency again. If it notices a change when 
+/// watching the command key, it will wake up and apply the change locally.
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run () {
   LOG_TRACE("starting heartbeat thread");
 
-  while (! _stop) {
-    LOG_TRACE("sending heartbeat");
+  // convert timeout to seconds  
+  const double interval = (double) _interval / 1000.0 / 1000.0;
 
+  // value of /Commands/my-id at startup 
+  uint64_t lastCommandIndex = getLastCommandIndex(); 
+
+  while (! _stop) {
+    LOG_TRACE("sending heartbeat to agency");
+
+    // send our state to the agency. 
+    // we don't care if this fails
     sendState();
+
+    if (_stop) {
+      break;
+    }
+
+    // watch Commands/my-id for changes
+
+    // TODO: check if this is CPU-intensive and whether we need to sleep
+    AgencyCommResult result = _agency.watchValue("Commands/" + _myId, 
+                                                 lastCommandIndex + 1, 
+                                                 interval); 
+      
+    if (_stop) {
+      break;
+    }
+
+    if (result.successful()) {
+      // value has changed!
+      handleStateChange(result, lastCommandIndex);
+
+      // sleep a while 
+      CONDITION_LOCKER(guard, _condition);
+      guard.wait(_interval);
     
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(_interval);
+    }
+    else {
+      // value did not change, but we already blocked waiting for a change...
+      // nothing to do here
+    }
   }
+
+  // another thread is waiting for this value to shut down properly
+  _stop = 2;
   
-  LOG_TRACE("stopping heartbeat thread");
+  LOG_TRACE("stopped heartbeat thread");
 }
 
 // -----------------------------------------------------------------------------
@@ -107,16 +152,94 @@ bool HeartbeatThread::init () {
   return true;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the index id of the value of /Commands/my-id from the agency 
+/// this index value is determined initially and it is passed to the watch
+/// command (we're waiting for an entry with a higher id)
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t HeartbeatThread::getLastCommandIndex () {
+  // get the initial command state  
+  AgencyCommResult result = _agency.getValues("Commands/" + _myId, false);
+
+  if (result.successful()) {
+    std::map<std::string, std::string> out;
+
+    if (result.flattenJson(out, "Commands/", true)) {
+      // check if we can find ourselves in the list returned by the agency
+      std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+
+      if (it != out.end()) {
+        // found something
+        LOG_TRACE("last command index was: '%s'", (*it).second.c_str());
+        return triagens::basics::StringUtils::uint64((*it).second);
+      }
+    }
+  }
+
+  // nothing found. this is not an error
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a state change
+/// this is triggered if the watch command reports a change
+/// when this is called, it will update the index value of the last command
+/// (we'll pass the updated index value to the next watches so we don't get
+/// notified about this particular change again).
+////////////////////////////////////////////////////////////////////////////////
+      
+bool HeartbeatThread::handleStateChange (AgencyCommResult const& result,
+                                         uint64_t& lastCommandIndex) {
+  std::map<std::string, std::string> out;
+
+  if (result.flattenJson(out, "Commands/", true)) {
+    // get the new value of "modifiedIndex"
+    std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+
+    if (it != out.end()) {
+      lastCommandIndex = triagens::basics::StringUtils::uint64((*it).second);
+    }
+  }
+
+  out.clear();
+     
+  if (result.flattenJson(out, "Commands/", false)) {
+    // get the new value!
+    std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+
+    if (it != out.end()) {
+      const std::string command = (*it).second;
+
+      ServerState::StateEnum newState = ServerState::stringToState(command);
+
+      if (newState != ServerState::STATE_UNDEFINED) {
+        // state change.
+        ServerState::instance()->setState(newState);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server's state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
-  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + ":" + AgencyComm::generateStamp();
+  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + 
+                            ":" + 
+                            AgencyComm::generateStamp();
 
   // return value is intentionally not handled
   // if sending the current state fails, we'll just try again in the next iteration
-  bool result = _agency.setValue("state/servers/state/" + _myId, value);
+  bool result = _agency.setValue("State/ServerStates/" + _myId, value);
 
   if (result) {
     _numFails = 0;
