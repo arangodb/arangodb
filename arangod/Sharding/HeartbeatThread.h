@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "BasicsC/logging.h"
 #include "Sharding/AgencyComm.h"
 
 #ifdef __cplusplus
@@ -88,8 +89,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void stop () {
+          if (_stop > 0) {
+            return;
+          }
+          
+          LOG_TRACE("stopping heartbeat thread");
+
           _stop = 1;
           _condition.signal();
+
+          while (_stop != 2) {
+            usleep(1000);
+          }
         }
 
 // -----------------------------------------------------------------------------
@@ -109,6 +120,19 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a state change
+////////////////////////////////////////////////////////////////////////////////
+      
+        bool handleStateChange (AgencyCommResult const&,
+                                uint64_t&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the last value of /Commands/my-id from the agency 
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t getLastCommandIndex ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server's state to the agency
