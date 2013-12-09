@@ -29,6 +29,7 @@
 #define TRIAGENS_SHARDING_APPLICATION_SHARDING_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
+#include "Sharding/ServerState.h"
 
 namespace triagens {
   namespace arango {
@@ -108,6 +109,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void stop ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
+////////////////////////////////////////////////////////////////////////////////
+  
+         ServerState::RoleEnum checkCoordinatorsList () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server role by scanning TmpConfig/DBServers for our id
+////////////////////////////////////////////////////////////////////////////////
+
+         ServerState::RoleEnum checkServersList () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
