@@ -130,7 +130,8 @@ namespace triagens {
 
       std::string _message;
       std::string _body;
-      int _statusCode;
+      uint64_t    _index;
+      int         _statusCode;
     };
 
 // -----------------------------------------------------------------------------

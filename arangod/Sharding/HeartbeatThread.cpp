@@ -115,6 +115,7 @@ void HeartbeatThread::run () {
 
     if (result.successful()) {
       // value has changed!
+
       handleStateChange(result, lastCommandIndex);
 
       // sleep a while 
@@ -179,6 +180,11 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
         return triagens::basics::StringUtils::uint64((*it).second);
       }
     }
+  }
+  
+  if (result._index > 0) {
+    // use the value returned in header X-Etcd-Index
+    return result._index;
   }
 
   // nothing found. this is not an error

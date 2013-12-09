@@ -86,6 +86,7 @@ AgencyEndpoint::~AgencyEndpoint () {
 AgencyCommResult::AgencyCommResult () 
   : _message(),
     _body(),
+    _index(0),
     _statusCode(0) {
 }
 
@@ -882,10 +883,17 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     delete response;
     return false;
   }
-      
-  result._statusCode = response->getHttpReturnCode();
+  
   result._message    = response->getHttpReturnMessage();
   result._body       = response->getBody().str();
+  result._index      = 0;
+  result._statusCode = response->getHttpReturnCode();
+  
+  bool found = false;
+  std::string lastIndex = response->getHeaderField("x-etcd-index", found);
+  if (found) {
+    result._index    = triagens::basics::StringUtils::uint64(lastIndex);
+  }
   
   LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
             result._statusCode,
