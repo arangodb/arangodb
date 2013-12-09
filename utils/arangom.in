@@ -47,10 +47,11 @@ if [ "$1" == "init" ] ; then
     set /TmpConfig/ShardsWanted
     set /State/ServersRegistered
     set /State/ServerStates
-    set /State/ClusterState OFFLINE
-    set /State/OldClusterState none
-    set /State/Problems none
+    set /State/ShardsCopied
+    set /State/Problems
     set /State/ClusterManager none
+    set /State/LatestID 0
+    set /Commands
     echo Initialisation complete.
 fi
 
