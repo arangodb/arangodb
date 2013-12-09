@@ -28,6 +28,7 @@
 #include "ServerState.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "BasicsC/logging.h"
 
 using namespace triagens::arango;
 
@@ -51,7 +52,8 @@ static ServerState* Instance = 0;
 
 ServerState::ServerState () 
   : _lock(),
-    _state(STATE_OFFLINE) {
+    _role(ROLE_UNDEFINED),
+    _state(STATE_UNDEFINED) {
       
 }
 
@@ -66,6 +68,10 @@ ServerState::~ServerState () {
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the (sole) instance
+////////////////////////////////////////////////////////////////////////////////
+
 ServerState* ServerState::instance () {
   if (Instance == 0) {
     Instance = new ServerState();
@@ -74,27 +80,51 @@ ServerState* ServerState::instance () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string representation of a role
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::roleToString (RoleEnum role) {
+  switch (role) {
+    case ROLE_UNDEFINED: 
+      return "UNDEFINED";
+    case ROLE_PRIMARY:
+      return "PRIMARY";
+    case ROLE_SECONDARY:
+      return "SECONDARY";
+    case ROLE_COORDINATOR:
+      return "COORDINATOR";
+  }
+
+  assert(false);
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a state
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::stateToString (StateEnum state) {
   switch (state) {
-    case STATE_OFFLINE: 
-      return "OFFLINE";
+    case STATE_UNDEFINED: 
+      return "UNDEFINED";
     case STATE_STARTUP:
       return "STARTUP";
-    case STATE_CONNECTED:
-      return "CONNECTED";
+    case STATE_SERVINGASYNC:
+      return "SERVINGASYNC";
+    case STATE_SERVINGSYNC:
+      return "SERVINGSYNC";
     case STATE_STOPPING:
       return "STOPPING";
     case STATE_STOPPED:
       return "STOPPED";
-    case STATE_PROBLEM:
-      return "PROBLEM"; 
-    case STATE_RECOVERING:
-      return "RECOVERING"; 
-    case STATE_RECOVERED:
-      return "RECOVERED"; 
+    case STATE_SYNCING:
+      return "SYNCING"; 
+    case STATE_INSYNC:
+      return "INSYNC"; 
+    case STATE_LOSTPRIMARY:
+      return "LOSTPRIMARY"; 
+    case STATE_SERVING:
+      return "SERVING"; 
     case STATE_SHUTDOWN:
       return "SHUTDOWN"; 
   }
@@ -111,7 +141,7 @@ std::string ServerState::stateToString (StateEnum state) {
 /// @brief get the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::StateEnum ServerState::getCurrent () {
+ServerState::StateEnum ServerState::getState () {
   READ_LOCKER(_lock);
   return _state;
 }
@@ -120,9 +150,128 @@ ServerState::StateEnum ServerState::getCurrent () {
 /// @brief set the current state
 ////////////////////////////////////////////////////////////////////////////////
         
-void ServerState::setCurrent (StateEnum state) {
+void ServerState::setState (StateEnum state) {
+  bool result = false;
+
   WRITE_LOCKER(_lock);
-  _state = state;
+
+  if (_role == ROLE_PRIMARY) {
+    result = checkPrimaryState(state);
+  }
+  else if (_role == ROLE_SECONDARY) {
+    result = checkSecondaryState(state);
+  }
+  else if (_role == ROLE_COORDINATOR) {
+    result = checkCoordinatorState(state);
+  }
+  
+  if (result) {
+    LOG_TRACE("changing state of %s server from %s to %s", 
+              ServerState::roleToString(_role).c_str(),
+              ServerState::stateToString(_state).c_str(),
+              ServerState::stateToString(state).c_str());
+
+    _state = state;
+  }
+  else {
+    LOG_ERROR("invalid state transition for %s server from %s to %s", 
+              ServerState::roleToString(_role).c_str(),
+              ServerState::stateToString(_state).c_str(),
+              ServerState::stateToString(state).c_str());
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a state transition for a primary server
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::checkPrimaryState (StateEnum state) {
+  if (state == STATE_STARTUP) {
+    // startup state can only be set once
+    return (_state == STATE_UNDEFINED);
+  }
+  else if (state == STATE_SERVINGASYNC) {
+    return (_state == STATE_STARTUP ||
+            _state == STATE_STOPPED);
+  }
+  else if (state == STATE_SERVINGSYNC) {
+    return (_state == STATE_STARTUP ||
+            _state == STATE_SERVINGASYNC ||
+            _state == STATE_STOPPED);
+  }
+  else if (state == STATE_STOPPING) {
+    return (_state == STATE_SERVINGSYNC ||
+            _state == STATE_SERVINGASYNC);
+  }
+  else if (state == STATE_STOPPED) {
+    return (_state == STATE_STOPPING);
+  }
+  else if (state == STATE_SHUTDOWN) {
+    return (_state == STATE_STARTUP ||
+            _state == STATE_STOPPED);
+  }
+
+  // anything else is invalid
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a state transition for a secondary server
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::checkSecondaryState (StateEnum state) {
+  if (state == STATE_STARTUP) {
+    // startup state can only be set once
+    return (_state == STATE_UNDEFINED);
+  }
+  else if (state == STATE_SYNCING) {
+    return (_state == STATE_STARTUP ||
+            _state == STATE_LOSTPRIMARY);
+  }
+  else if (state == STATE_INSYNC) {
+    return (_state == STATE_SYNCING);
+  }
+  else if (state == STATE_LOSTPRIMARY) {
+    return (_state == STATE_SYNCING ||
+            _state == STATE_INSYNC);
+  }
+  else if (state == STATE_SERVING) {
+    return (_state == STATE_STARTUP);
+  }
+  else if (state == STATE_SHUTDOWN) {
+    return (_state == STATE_STARTUP ||
+            _state == STATE_SYNCING ||
+            _state == STATE_INSYNC ||
+            _state == STATE_LOSTPRIMARY);
+  }
+
+  // anything else is invalid
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a state transition for a coordinator server
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::checkCoordinatorState (StateEnum state) {
+  if (state == STATE_STARTUP) {
+    // startup state can only be set once
+    return (_state == STATE_UNDEFINED);
+  }
+  else if (state == STATE_SERVING) {
+    return (_state == STATE_STARTUP);
+  }
+  else if (state == STATE_SHUTDOWN) {
+    return (_state == STATE_STARTUP ||
+            _state == STATE_SERVING);
+  }
+
+  // anything else is invalid
+  return false;
 }
 
 // Local Variables:

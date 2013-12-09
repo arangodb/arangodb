@@ -28,6 +28,7 @@
 #include "Sharding/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Rest/Endpoint.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -81,7 +82,10 @@ AgencyEndpoint::~AgencyEndpoint () {
 /// @brief constructs a communication result
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult::AgencyCommResult () {
+AgencyCommResult::AgencyCommResult () 
+  : _message(),
+    _body(),
+    _statusCode(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +93,104 @@ AgencyCommResult::AgencyCommResult () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult::~AgencyCommResult () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively flatten the JSON response into a map
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
+                                        std::map<std::string, std::string>& out,
+                                        std::string const& stripPrefix) {
+  if (! TRI_IsArrayJson(node)) {
+    return true;
+  }
+
+  // get "key" attribute
+  TRI_json_t const* key = TRI_LookupArrayJson(node, "key");
+
+  if (! TRI_IsStringJson(key)) {
+    return false;
+  }
+
+  // make sure we don't strip more bytes than the key is long
+  const size_t offset = AgencyComm::_globalPrefix.size() + stripPrefix.size();
+  const size_t length = key->_value._string.length - 1;
+
+  std::string prefix;
+  if (offset >= length) {
+    prefix = "";
+  }
+  else {
+    prefix = std::string(key->_value._string.data + offset, 
+                         key->_value._string.length - 1 - offset);
+  }
+
+  // get "dir" attribute
+  TRI_json_t const* dir = TRI_LookupArrayJson(node, "dir");
+  bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
+
+  if (isDir) {
+    // is a directory, so there may be a "nodes" attribute
+    TRI_json_t const* nodes = TRI_LookupArrayJson(node, "nodes");
+
+    if (! TRI_IsListJson(nodes)) {
+      // if directory is empty...
+      return true;
+    }
+
+    const size_t n = TRI_LengthVector(&nodes->_value._objects);
+
+    for (size_t i = 0; i < n; ++i) {
+      if (! processJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), out, stripPrefix)) {
+        return false;
+      }
+    }
+  }
+  else {
+    // not a directory
+    
+    // get "value" attribute
+    TRI_json_t const* value = TRI_LookupArrayJson(node, "value");
+
+    if (! TRI_IsStringJson(value)) {
+      return false;
+    }
+
+    if (! prefix.empty()) {
+      out[prefix] = std::string(value->_value._string.data, value->_value._string.length - 1);
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a result into a map
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommResult::flattenJson (std::map<std::string, std::string>& out,
+                                    std::string const& stripPrefix) {
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return false;
+  }
+
+  // get "node" attribute
+  TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
+
+  const bool result = processJsonNode(node, out, stripPrefix);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -153,7 +255,18 @@ AgencyComm::AgencyComm () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyComm::~AgencyComm () {
-  disconnect();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             public static methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleans up all connections
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyComm::cleanup () {
+  AgencyComm::disconnect();
   
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
@@ -174,9 +287,66 @@ AgencyComm::~AgencyComm () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to establish a communication channel
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::tryConnect () {
+  {
+    WRITE_LOCKER(AgencyComm::_globalLock);
+    assert(_globalEndpoints.size() > 0);
+
+    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+
+    while (it != _globalEndpoints.end()) {
+      AgencyEndpoint* agencyEndpoint = (*it);
+
+      assert(agencyEndpoint != 0);
+      assert(agencyEndpoint->_endpoint != 0);
+      assert(agencyEndpoint->_connection != 0);
+
+      if (agencyEndpoint->_endpoint->isConnected()) {
+        return true;
+      }
+      
+      agencyEndpoint->_endpoint->connect(_globalConnectionOptions._connectTimeout,
+                                         _globalConnectionOptions._requestTimeout);
+      
+      if (agencyEndpoint->_endpoint->isConnected()) {
+        return true;
+      }
+
+      ++it;
+    }
+  }
+
+  // unable to connect to any endpoint
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnects all communication channels
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyComm::disconnect () {
+  WRITE_LOCKER(AgencyComm::_globalLock);
+
+  std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+  
+  while (it != _globalEndpoints.end()) {
+    AgencyEndpoint* agencyEndpoint = (*it);
+
+    assert(agencyEndpoint != 0);
+    assert(agencyEndpoint->_connection != 0);
+    assert(agencyEndpoint->_endpoint != 0);
+
+    agencyEndpoint->_connection->disconnect();
+    agencyEndpoint->_endpoint->disconnect();
+
+    ++it;
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an endpoint to the endpoints list
@@ -269,6 +439,8 @@ void AgencyComm::setPrefix (std::string const& prefix) {
       _globalPrefix += '/';
     }
   }
+
+  LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,71 +526,12 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to establish a communication channel
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyComm::tryConnect () {
-  {
-    WRITE_LOCKER(AgencyComm::_globalLock);
-    assert(_globalEndpoints.size() > 0);
-
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
-
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint* agencyEndpoint = (*it);
-
-      assert(agencyEndpoint != 0);
-      assert(agencyEndpoint->_endpoint != 0);
-      assert(agencyEndpoint->_connection != 0);
-
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
-      }
-      
-      agencyEndpoint->_endpoint->connect(_globalConnectionOptions._connectTimeout,
-                                         _globalConnectionOptions._requestTimeout);
-      
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
-      }
-
-      ++it;
-    }
-  }
-
-  // unable to connect to any endpoint
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnects all communication channels
-////////////////////////////////////////////////////////////////////////////////
-
-void AgencyComm::disconnect () {
-  WRITE_LOCKER(AgencyComm::_globalLock);
-
-  std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
-  
-  while (it != _globalEndpoints.end()) {
-    AgencyEndpoint* agencyEndpoint = (*it);
-
-    assert(agencyEndpoint != 0);
-    assert(agencyEndpoint->_connection != 0);
-    assert(agencyEndpoint->_endpoint != 0);
-
-    agencyEndpoint->_connection->disconnect();
-    agencyEndpoint->_endpoint->disconnect();
-
-    ++it;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a value in the backend
 ////////////////////////////////////////////////////////////////////////////////
         
 bool AgencyComm::setValue (std::string const& key, 
                            std::string const& value) {
+  AgencyCommResult result;
   size_t numEndpoints;
 
   {
@@ -432,12 +545,13 @@ bool AgencyComm::setValue (std::string const& key,
   while (tries++ < numEndpoints) {
     AgencyEndpoint* agencyEndpoint = popEndpoint();
   
-    bool result = send(agencyEndpoint->_connection, 
-                       triagens::rest::HttpRequest::HTTP_REQUEST_PUT, 
-                       buildUrl(key), 
-                       "value=" + value);
+    send(agencyEndpoint->_connection, 
+         triagens::rest::HttpRequest::HTTP_REQUEST_PUT, 
+         result,
+         buildUrl(key), 
+         "value=" + value);
 
-    if (requeueEndpoint(agencyEndpoint, result)) {
+    if (requeueEndpoint(agencyEndpoint, result.successful())) {
       // we're done
       return true;
     }
@@ -455,10 +569,39 @@ bool AgencyComm::setValue (std::string const& key,
 
 AgencyCommResult AgencyComm::getValues (std::string const& key, 
                                         bool recursive) {
+  std::string url(buildUrl(key));
+  if (recursive) {
+    url += "?recursive=true";
+  }
+
   AgencyCommResult result;
+  size_t numEndpoints;
 
-  // TODO
+  {
+    READ_LOCKER(AgencyComm::_globalLock);
+    numEndpoints = AgencyComm::_globalEndpoints.size(); 
+    assert(numEndpoints > 0);
+  }
 
+  size_t tries = 0;
+
+  while (tries++ < numEndpoints) {
+    AgencyEndpoint* agencyEndpoint = popEndpoint();
+    
+    send(agencyEndpoint->_connection, 
+         triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+         result,
+         url);
+
+    if (requeueEndpoint(agencyEndpoint, result.successful())) {
+      // we're done
+      break;
+    }
+
+    // otherwise, try next
+  }
+
+  // if we get here, we could not send data to any endpoint successfully
   return result;
 }
 
@@ -473,6 +616,7 @@ bool AgencyComm::removeValues (std::string const& key,
     url += "?recursive=true";
   }
     
+  AgencyCommResult result;
   size_t numEndpoints;
 
   {
@@ -486,11 +630,12 @@ bool AgencyComm::removeValues (std::string const& key,
   while (tries++ < numEndpoints) {
     AgencyEndpoint* agencyEndpoint = popEndpoint();
     
-    bool result = send(agencyEndpoint->_connection, 
-                       triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, 
-                       url);
+    send(agencyEndpoint->_connection, 
+         triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, 
+         result,
+         url);
 
-    if (requeueEndpoint(agencyEndpoint, result)) {
+    if (requeueEndpoint(agencyEndpoint, result.successful())) {
       // we're done
       return true;
     }
@@ -540,7 +685,8 @@ AgencyEndpoint* AgencyComm::popEndpoint () {
   while (1) {
     {
       WRITE_LOCKER(AgencyComm::_globalLock);
-  
+ 
+      const size_t numEndpoints = _globalEndpoints.size(); 
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
     
       while (it != _globalEndpoints.end()) {
@@ -557,6 +703,8 @@ AgencyEndpoint* AgencyComm::popEndpoint () {
             // and re-insert at end
             AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
           }
+
+          assert(_globalEndpoints.size() == numEndpoints);
   
           return agencyEndpoint;
         }
@@ -580,6 +728,7 @@ AgencyEndpoint* AgencyComm::popEndpoint () {
 bool AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
                                   bool wasWorking) {
   WRITE_LOCKER(AgencyComm::_globalLock);
+  const size_t numEndpoints = _globalEndpoints.size(); 
   
   assert(agencyEndpoint != 0);
   assert(agencyEndpoint->_busy);
@@ -596,6 +745,8 @@ bool AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
       AgencyComm::_globalEndpoints.push_front(agencyEndpoint);
     }
   }
+          
+  assert(_globalEndpoints.size() == numEndpoints);
 
   return wasWorking;
 }
@@ -614,11 +765,14 @@ std::string AgencyComm::buildUrl (std::string const& relativePart) const {
     
 bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
                        triagens::rest::HttpRequest::HttpRequestType method, 
+                       AgencyCommResult& result,
                        std::string const& url) {
+  // only these methods can be called without a body
   assert(method == triagens::rest::HttpRequest::HTTP_REQUEST_DELETE ||
-         method == triagens::rest::HttpRequest::HTTP_REQUEST_GET);
+         method == triagens::rest::HttpRequest::HTTP_REQUEST_GET ||
+         method == triagens::rest::HttpRequest::HTTP_REQUEST_HEAD);
 
-  return send(connection, method, url, "");
+  return send(connection, method, result, url, "");
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,10 +781,13 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     
 bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
                        triagens::rest::HttpRequest::HttpRequestType method, 
+                       AgencyCommResult& result,
                        std::string const& url, 
                        std::string const& body) {
  
   assert(connection != 0);
+
+  result._statusCode = 0;
   
   LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s", 
             triagens::rest::HttpRequest::translateMethod(method).c_str(),
@@ -644,8 +801,11 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
   // set up headers
   std::map<std::string, std::string> headers;
-  // the agency needs this
-  headers["content-type"] = "application/x-www-form-urlencoded";
+  if (method == triagens::rest::HttpRequest::HTTP_REQUEST_PUT ||
+      method == triagens::rest::HttpRequest::HTTP_REQUEST_POST) {
+    // the agency needs this content-type for the body
+    headers["content-type"] = "application/x-www-form-urlencoded";
+  }
   
   // send the actual request
   triagens::httpclient::SimpleHttpResult* response = client.request(method,
@@ -665,16 +825,18 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     return false;
   }
       
-  int statusCode = response->getHttpReturnCode();
+  result._statusCode = response->getHttpReturnCode();
+  result._message    = response->getHttpReturnMessage();
+  result._body       = response->getBody().str();
   
   LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
-            statusCode,
-            response->getHttpReturnMessage().c_str(),
-            response->getBody().str().c_str());
+            result._statusCode,
+            result._message.c_str(),
+            result._body.c_str());
 
   delete response;
 
-  return (statusCode >= 200 && statusCode <= 299);
+  return result.successful();
 }
 
 // Local Variables:

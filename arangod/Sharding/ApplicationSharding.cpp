@@ -79,7 +79,7 @@ ApplicationSharding::~ApplicationSharding () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  options["Sharding Options:help-sharding"]
+  options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
     ("cluster.heartbeat-interval", &_heartbeatInterval, "heartbeat interval (in ms)")
@@ -147,13 +147,45 @@ bool ApplicationSharding::start () {
     return true;
   }
   
+  // perfom an initial connect to the agency
   const std::string endpoints = AgencyComm::getEndpointsString();
 
-  LOG_INFO("Clustering feature is turned on. Trying to connect to agency endpoints (%s)",
+  if (! AgencyComm::tryConnect()) {
+    LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)", 
+                       endpoints.c_str());
+  }
+
+
+  ServerState::RoleEnum role = checkServersList();
+
+  if (role == ServerState::ROLE_UNDEFINED) {
+    // role is still unknown. check if we are a coordinator
+    role = checkCoordinatorsList();
+  }
+  else {
+    // we are a primary or a secondary.
+    // now we double-check that we are not a coordinator as well
+    if (checkCoordinatorsList() != ServerState::ROLE_UNDEFINED) {
+      role = ServerState::ROLE_UNDEFINED;
+    }
+  }
+
+  if (role == ServerState::ROLE_UNDEFINED) {
+    // no role found
+    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured at endpoints (%s)", 
+                       _myId.c_str(),
+                       endpoints.c_str());
+  }
+
+  ServerState::instance()->setRole(role);
+  ServerState::instance()->setState(ServerState::STATE_STARTUP);
+
+  LOG_INFO("Cluster feature is turned on. Server id: '%s', role: %s, agency endpoints: %s",
+           _myId.c_str(),
+           ServerState::roleToString(role).c_str(),
            endpoints.c_str());
 
-  ServerState::instance()->setCurrent(ServerState::STATE_STARTUP);
-
+  // start heartbeat thread
   _heartbeat = new HeartbeatThread(_myId, _heartbeatInterval * 1000, 5);
 
   if (_heartbeat == 0) {
@@ -190,6 +222,96 @@ void ApplicationSharding::stop () {
   }
 
   _heartbeat->stop();
+
+  AgencyComm::cleanup();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
+////////////////////////////////////////////////////////////////////////////////
+  
+ServerState::RoleEnum ApplicationSharding::checkCoordinatorsList () const {
+  // fetch value at TmpConfig/DBServers
+  // we need this to determine the server's role
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues("TmpConfig/Coordinators", true);
+ 
+  if (! result.successful()) {
+    const std::string endpoints = AgencyComm::getEndpointsString();
+
+    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): got status code %d", 
+                       endpoints.c_str(), 
+                       result._statusCode);
+  }
+  
+  std::map<std::string, std::string> out;
+  if (! result.flattenJson(out, "TmpConfig/Coordinators/")) {
+    LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/Coordinators");
+  }
+
+  // check if we can find ourselves in the list returned by the agency
+  std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+
+  if (it != out.end()) {
+    // we are in the list. this means we are a primary server
+    return ServerState::ROLE_COORDINATOR;
+  }
+
+  return ServerState::ROLE_UNDEFINED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server role by scanning TmpConfig/DBServers for our id
+////////////////////////////////////////////////////////////////////////////////
+  
+ServerState::RoleEnum ApplicationSharding::checkServersList () const {
+  // fetch value at TmpConfig/DBServers
+  // we need this to determine the server's role
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues("TmpConfig/DBServers", true);
+ 
+  if (! result.successful()) {
+    const std::string endpoints = AgencyComm::getEndpointsString();
+
+    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): got status code %d", 
+                       endpoints.c_str(), 
+                       result._statusCode);
+  }
+  
+  std::map<std::string, std::string> out;
+  if (! result.flattenJson(out, "TmpConfig/DBServers/")) {
+    LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/DBServers");
+  }
+
+  ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
+
+  // check if we can find ourselves in the list returned by the agency
+  std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+
+  if (it != out.end()) {
+    // we are in the list. this means we are a primary server
+    role = ServerState::ROLE_PRIMARY;
+  }
+  else {
+    // check if we are a secondary...
+    it = out.begin();
+
+    while (it != out.end()) {
+      const std::string value = (*it).second;
+      if (value == _myId) {
+        role = ServerState::ROLE_SECONDARY;
+        break;
+      }
+
+      ++it;
+    }
+  }
+
+  return role;
 }
 
 // Local Variables:
