@@ -37,6 +37,7 @@
 extern "C" {
 #endif
 
+struct TRI_json_s;
 
 namespace triagens {
   namespace httpclient {
@@ -80,7 +81,7 @@ namespace triagens {
 /// @brief the endpoint 
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::rest::Endpoint*                      _endpoint;
+      triagens::rest::Endpoint* _endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the connection
@@ -92,7 +93,7 @@ namespace triagens {
 /// @brief whether or not the endpoint is busy
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool                                           _busy;
+      bool _busy;
     };
 
 // -----------------------------------------------------------------------------
@@ -111,10 +112,23 @@ namespace triagens {
 
     struct AgencyCommResult {
       AgencyCommResult ();
+
       ~AgencyCommResult ();
+
+      inline bool successful () const {
+        return (_statusCode >= 200 && _statusCode <= 299);
+      }
+
+      bool processJsonNode (struct TRI_json_s const*,
+                            std::map<std::string, std::string>&,
+                            std::string const&);
+
+      bool flattenJson (std::map<std::string, std::string>&,
+                        std::string const&); 
+
+      std::string _message;
+      std::string _body;
       int _statusCode;
-      std::map<std::string, std::string> _values;
-      
     };
 
 // -----------------------------------------------------------------------------
@@ -122,6 +136,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class AgencyComm {
+      friend AgencyCommResult;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -144,6 +159,24 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleans up all connections
+////////////////////////////////////////////////////////////////////////////////
+
+        static void cleanup (); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to establish a communication channel
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool tryConnect ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnects all communication channels
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void disconnect ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an endpoint to the agents list
@@ -188,18 +221,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to establish a communication channel
-////////////////////////////////////////////////////////////////////////////////
-
-        bool tryConnect ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnects all communication channels
-////////////////////////////////////////////////////////////////////////////////
-        
-        void disconnect ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a value in the back end
@@ -268,6 +289,7 @@ namespace triagens {
     
         bool send (triagens::httpclient::GeneralClientConnection*,
                    triagens::rest::HttpRequest::HttpRequestType,
+                   AgencyCommResult&,
                    std::string const&); 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,6 +298,7 @@ namespace triagens {
     
         bool send (triagens::httpclient::GeneralClientConnection*,
                    triagens::rest::HttpRequest::HttpRequestType,
+                   AgencyCommResult&,
                    std::string const&, 
                    std::string const&);
 
