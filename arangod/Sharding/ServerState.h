@@ -52,19 +52,33 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief an enum describing the roles a server can have 
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef enum {
+          ROLE_UNDEFINED = 0,  // initial value
+          ROLE_PRIMARY,
+          ROLE_SECONDARY,
+          ROLE_COORDINATOR
+        }
+        RoleEnum;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief an enum describing the possible states a server can have 
 ////////////////////////////////////////////////////////////////////////////////
 
         typedef enum {
-          STATE_OFFLINE    = 0,
-          STATE_STARTUP    = 1,
-          STATE_CONNECTED  = 2,
-          STATE_STOPPING   = 3,
-          STATE_STOPPED    = 4,
-          STATE_PROBLEM    = 5,
-          STATE_RECOVERING = 6,
-          STATE_RECOVERED  = 7,
-          STATE_SHUTDOWN   = 8
+          STATE_UNDEFINED = 0,         // initial value
+          STATE_STARTUP,               // used by all roles
+          STATE_SERVINGASYNC,          // primary only
+          STATE_SERVINGSYNC,           // primary only
+          STATE_STOPPING,              // primary only
+          STATE_STOPPED,               // primary only 
+          STATE_SYNCING,               // secondary only
+          STATE_INSYNC,                // secondary only
+          STATE_LOSTPRIMARY,           // secondary only
+          STATE_SERVING,               // coordinator only
+          STATE_SHUTDOWN               // used by all roles
         }
         StateEnum; 
 
@@ -92,13 +106,24 @@ namespace triagens {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the (sole) instance
+////////////////////////////////////////////////////////////////////////////////
+
         static ServerState* instance ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string representation of a role
+////////////////////////////////////////////////////////////////////////////////
+        
+        static std::string roleToString (RoleEnum);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a state
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string stateToString (StateEnum);
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -107,16 +132,51 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server role
+////////////////////////////////////////////////////////////////////////////////
+
+        inline RoleEnum getRole () const {
+          return _role;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server role
+////////////////////////////////////////////////////////////////////////////////
+        
+        void setRole (RoleEnum role) {
+          assert(_role == ROLE_UNDEFINED);
+          _role = role;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-        StateEnum getCurrent ();
+        StateEnum getState ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the current state
 ////////////////////////////////////////////////////////////////////////////////
         
-        void setCurrent (StateEnum); 
+        void setState (StateEnum); 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+        bool checkPrimaryState (StateEnum);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a state transition for a secondary server
+////////////////////////////////////////////////////////////////////////////////
+
+        bool checkSecondaryState (StateEnum);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a state transition for a coordinator server
+////////////////////////////////////////////////////////////////////////////////
+
+        bool checkCoordinatorState (StateEnum);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -129,6 +189,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
         triagens::basics::ReadWriteLock _lock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the server role
+////////////////////////////////////////////////////////////////////////////////
+
+        RoleEnum _role;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current state

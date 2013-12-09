@@ -64,7 +64,6 @@ HeartbeatThread::HeartbeatThread (std::string const& myId,
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::~HeartbeatThread () {
-  _agency.disconnect();
 }
 
 // -----------------------------------------------------------------------------
@@ -99,11 +98,6 @@ void HeartbeatThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::init () {
-  // this tries to connect to the agency via at least one connection
-  if (! _agency.tryConnect()) {
-    return false;
-  }
-
   // send the server state a first time and use this as an indicator about
   // the agency's health
   if (! sendState()) {
@@ -118,7 +112,7 @@ bool HeartbeatThread::init () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
-  const std::string value = ServerState::stateToString(ServerState::instance()->getCurrent()) + ":" + AgencyComm::generateStamp();
+  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + ":" + AgencyComm::generateStamp();
 
   // return value is intentionally not handled
   // if sending the current state fails, we'll just try again in the next iteration
