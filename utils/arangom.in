@@ -27,7 +27,7 @@ function set() {
   value=$2
   if [ "x$value" == "x" ] ; then
       echo "Creating directory $PREFIX$key"
-      $CURL -X PUT "$URL$key" > /dev/null || exit 1
+      $CURL -X PUT "$URL$key?dir=true" > /dev/null || exit 1
   else
       echo "Setting key $PREFIX$key to value $value"
       $CURL -X PUT "$URL$key" -d "value=$value" > /dev/null || exit 1
