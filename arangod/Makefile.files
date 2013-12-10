@@ -74,10 +74,6 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
-	arangod/Cluster/AgencyComm.cpp \
-	arangod/Cluster/ApplicationCluster.cpp \
-	arangod/Cluster/HeartbeatThread.cpp \
-	arangod/Cluster/ServerState.cpp \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
@@ -110,6 +106,16 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c \
 	arangod/VocBase/vocbase-defaults.c
+	
+if ENABLE_CLUSTER
+
+bin_arangod_SOURCES += \
+        arangod/Cluster/AgencyComm.cpp \
+	arangod/Cluster/ApplicationCluster.cpp \
+	arangod/Cluster/HeartbeatThread.cpp \
+	arangod/Cluster/ServerState.cpp 
+endif
+
 
 if ENABLE_MRUBY
 

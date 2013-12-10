@@ -1,0 +1,26 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                          CLUSTER
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(cluster,
+  AS_HELP_STRING([--enable-cluster], [enable cluster features (default: yes)]),
+  [tr_CLUSTER="$enableval"],
+  [tr_CLUSTER="yes"]
+)
+
+if test "x$tr_CLUSTER" = xyes;  then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_CLUSTER, 1, [true if cluster is enabled])
+fi
+
+AM_CONDITIONAL(ENABLE_CLUSTER, test "x$tr_CLUSTER" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+dnl End:
