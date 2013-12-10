@@ -28,7 +28,7 @@
 #include "HeartbeatThread.h"
 #include "Basics/ConditionLocker.h"
 #include "BasicsC/logging.h"
-#include "Sharding/ServerState.h"
+#include "Cluster/ServerState.h"
 
 using namespace triagens::arango;
 
