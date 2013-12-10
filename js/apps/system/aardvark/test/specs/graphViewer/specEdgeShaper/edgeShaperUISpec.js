@@ -74,7 +74,7 @@
         expect($("#control_edge_list #control_edge_none").length).toEqual(1);
         expect($("#control_edge_list #control_edge_none")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_edge_none");
+        helper.simulateMouseEvent("click", "control_edge_none_button");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -91,7 +91,7 @@
         expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
         expect($("#control_edge_list #control_edge_arrow")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_edge_arrow");
+        helper.simulateMouseEvent("click", "control_edge_arrow_button");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -109,7 +109,7 @@
         expect($("#control_edge_list #control_edge_label").length).toEqual(1);
         expect($("#control_edge_list #control_edge_label")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_edge_label");
+        helper.simulateMouseEvent("click", "control_edge_label_button");
         $("#control_edge_label_key").attr("value", "theAnswer");
         helper.simulateMouseEvent("click", "control_edge_label_submit");
       
@@ -131,7 +131,7 @@
         expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
         expect($("#control_edge_list #control_edge_singlecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_edge_singlecolour");
+        helper.simulateMouseEvent("click", "control_edge_singlecolour_button");
         $("#control_edge_singlecolour_stroke").attr("value", "#123456");
         helper.simulateMouseEvent("click", "control_edge_singlecolour_submit");
       
@@ -156,7 +156,7 @@
         expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
         expect($("#control_edge_list #control_edge_attributecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_edge_attributecolour");
+        helper.simulateMouseEvent("click", "control_edge_attributecolour_button");
         $("#control_edge_attributecolour_key").attr("value", "label");
         helper.simulateMouseEvent("click", "control_edge_attributecolour_submit");
       
@@ -181,7 +181,7 @@
         expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
         expect($("#control_edge_list #control_edge_gradientcolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_edge_gradientcolour");
+        helper.simulateMouseEvent("click", "control_edge_gradientcolour_button");
         $("#control_edge_gradientcolour_source").attr("value", "#123456");
         $("#control_edge_gradientcolour_target").attr("value", "#654321");
         helper.simulateMouseEvent("click", "control_edge_gradientcolour_submit");
