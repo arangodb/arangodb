@@ -87,7 +87,7 @@
         expect($("#control_node_list #control_node_none").length).toEqual(1);
         expect($("#control_node_list #control_node_none")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_none");
+        helper.simulateMouseEvent("click", "control_node_none_button");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -103,13 +103,11 @@
       
         expect($("#control_node_list #control_node_circle").length).toEqual(1);
         expect($("#control_node_list #control_node_circle")[0]).toConformToListCSS();
-        
-        helper.simulateMouseEvent("click", "control_node_circle");
+        helper.simulateMouseEvent("click", "control_node_circle_button");
         expect($("#control_node_circle_modal").length).toEqual(1);
-      
         $("#control_node_circle_radius").attr("value", 42);
         helper.simulateMouseEvent("click", "control_node_circle_submit");
-      
+        
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
             type: NodeShaper.shapes.CIRCLE,
@@ -131,7 +129,7 @@
         expect($("#control_node_list #control_node_rect").length).toEqual(1);
         expect($("#control_node_list #control_node_rect")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_rect");
+        helper.simulateMouseEvent("click", "control_node_rect_button");
         $("#control_node_rect_width").attr("value", 42);
         $("#control_node_rect_height").attr("value", 12);
         helper.simulateMouseEvent("click", "control_node_rect_submit");
@@ -158,7 +156,7 @@
         expect($("#control_node_list #control_node_label").length).toEqual(1);
         expect($("#control_node_list #control_node_label")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_label");
+        helper.simulateMouseEvent("click", "control_node_label_button");
         $("#control_node_label_key").attr("value", "theAnswer");
         helper.simulateMouseEvent("click", "control_node_label_submit");
       
@@ -180,7 +178,7 @@
         expect($("#control_node_list #control_node_singlecolour").length).toEqual(1);
         expect($("#control_node_list #control_node_singlecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_singlecolour");
+        helper.simulateMouseEvent("click", "control_node_singlecolour_button");
         $("#control_node_singlecolour_fill").attr("value", "#123456");
         $("#control_node_singlecolour_stroke").attr("value", "#654321");
         helper.simulateMouseEvent("click", "control_node_singlecolour_submit");
@@ -207,7 +205,7 @@
         expect($("#control_node_list #control_node_attributecolour").length).toEqual(1);
         expect($("#control_node_list #control_node_attributecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_attributecolour");
+        helper.simulateMouseEvent("click", "control_node_attributecolour_button");
         $("#control_node_attributecolour_key").attr("value", "label");
         helper.simulateMouseEvent("click", "control_node_attributecolour_submit");
       
@@ -232,7 +230,7 @@
         expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
         expect($("#control_node_list #control_node_expandcolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_expandcolour");
+        helper.simulateMouseEvent("click", "control_node_expandcolour_button");
         $("#control_node_expandcolour_expanded").attr("value", "#123456");
         $("#control_node_expandcolour_collapsed").attr("value", "#654321");
         helper.simulateMouseEvent("click", "control_node_expandcolour_submit");
@@ -324,7 +322,7 @@
         expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
         expect($("#control_node_list #control_node_expandcolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_node_expandcolour");
+        helper.simulateMouseEvent("click", "control_node_expandcolour_button");
         $("#control_node_expandcolour_expanded").attr("value", "#123456");
         $("#control_node_expandcolour_collapsed").attr("value", "#654321");
         
@@ -355,7 +353,7 @@
           expect($("#control_node_list #control_node_labelandcolour").length).toEqual(1);
           expect($("#control_node_list #control_node_labelandcolour")[0]).toConformToListCSS();
       
-          helper.simulateMouseEvent("click", "control_node_labelandcolour");
+          helper.simulateMouseEvent("click", "control_node_labelandcolour_button");
           $("#control_node_labelandcolour_label-attribute").attr("value", "label");
           helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
           

@@ -75,7 +75,7 @@
         expect($("#control_layout_list #control_layout_gravity").length).toEqual(1);
         expect($("#control_layout_list #control_layout_gravity")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_layout_gravity");
+        helper.simulateMouseEvent("click", "control_layout_gravity_button");
         
         expect($("#control_layout_gravity_modal").length).toEqual(1);
         
@@ -100,7 +100,7 @@
         expect($("#control_layout_list #control_layout_distance").length).toEqual(1);
         expect($("#control_layout_list #control_layout_distance")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_layout_distance");
+        helper.simulateMouseEvent("click", "control_layout_distance_button");
         
         expect($("#control_layout_distance_modal").length).toEqual(1);
         
@@ -125,7 +125,7 @@
         expect($("#control_layout_list #control_layout_charge").length).toEqual(1);
         expect($("#control_layout_list #control_layout_charge")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_layout_charge");
+        helper.simulateMouseEvent("click", "control_layout_charge_button");
         
         expect($("#control_layout_charge_modal").length).toEqual(1);
         
