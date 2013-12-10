@@ -223,7 +223,7 @@ bool ApplicationCluster::start () {
   }
 
   if (! _heartbeat->init() || ! _heartbeat->start()) {
-    LOG_FATAL_AND_EXIT("could not connect to agency endpoints (%s)", 
+    LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
                        endpoints.c_str());
   }
 
@@ -309,7 +309,7 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
                        "got status code %d, message: %s",
                        endpoints.c_str(), 
                        result._statusCode,
-                       result.getErrorMessage().c_str());
+                       result.errorMessage().c_str());
   }
   
   std::map<std::string, std::string> out;
@@ -345,9 +345,9 @@ ServerState::RoleEnum ApplicationCluster::checkServersList () const {
                        "got status code %d, message: %s", 
                        endpoints.c_str(), 
                        result._statusCode,
-                       result.getErrorMessage().c_str());
+                       result.errorMessage().c_str());
   }
-  
+ 
   std::map<std::string, std::string> out;
   if (! result.flattenJson(out, "TmpConfig/DBServers/", false)) {
     LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/DBServers");
