@@ -214,6 +214,29 @@ Command-Line Options for Development {#CommandLineDevelopment}
 @copydetails triagens::arango::ArangoServer::_developmentMode
 
 @CLEARPAGE
+Command-Line Options for Clusters {#CommandLineCluster}
+=======================================================
+
+@anchor CommandLineArangoClusterHeartbeatInterval
+@copydetails triagens::arango::ApplicationCluster::_heartbeatInterval
+
+@CLEARPAGE
+@anchor CommandLineArangoClusterAgencyEndpoint
+@copydetails triagens::arango::ApplicationCluster::_agencyEndpoints
+
+@CLEARPAGE
+@anchor CommandLineArangoClusterAgencyPrefix
+@copydetails triagens::arango::ApplicationCluster::_agencyPrefix
+
+@CLEARPAGE
+@anchor CommandLineArangoClusterMyId
+@copydetails triagens::arango::ApplicationCluster::_myId
+
+@CLEARPAGE
+@anchor CommandLineArangoClusterMyAddress
+@copydetails triagens::arango::ApplicationCluster::_myAddress
+
+@CLEARPAGE
 Command-Line Options for Communication {#CommandLineScheduler}
 ==============================================================
 

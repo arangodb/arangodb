@@ -25,10 +25,10 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationSharding.h"
+#include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
-#include "Sharding/HeartbeatThread.h"
-#include "Sharding/ServerState.h"
+#include "Cluster/HeartbeatThread.h"
+#include "Cluster/ServerState.h"
 #include "BasicsC/logging.h"
 
 using namespace triagens;
@@ -36,7 +36,7 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class ApplicationSharding
+// --SECTION--                                         class ApplicationCluster
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -47,7 +47,7 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationSharding::ApplicationSharding () 
+ApplicationCluster::ApplicationCluster () 
   : ApplicationFeature("Sharding"),
     _heartbeat(0),
     _heartbeatInterval(1000),
@@ -63,7 +63,7 @@ ApplicationSharding::ApplicationSharding ()
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationSharding::~ApplicationSharding () {
+ApplicationCluster::~ApplicationCluster () {
   if (_heartbeat != 0) {
     // flat line.....
     delete _heartbeat;
@@ -78,7 +78,7 @@ ApplicationSharding::~ApplicationSharding () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
+void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
@@ -92,7 +92,7 @@ void ApplicationSharding::setupOptions (map<string, basics::ProgramOptionsDescri
 /// @brief prepare validate the startup options
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationSharding::prepare () {
+bool ApplicationCluster::prepare () {
   _enableCluster = (_agencyEndpoints.size() > 0 || ! _agencyPrefix.empty());
 
   if (! enabled()) {
@@ -130,6 +130,13 @@ bool ApplicationSharding::prepare () {
   if (_myId.empty()) {
     LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
   }
+  else {
+    size_t found = _myId.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+    
+    if (found != std::string::npos) {
+      LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
+    }
+  }
 
   // validate --cluster.heartbeat-interval
   if (_heartbeatInterval < 10) {
@@ -143,7 +150,7 @@ bool ApplicationSharding::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationSharding::start () {
+bool ApplicationCluster::start () {
   if (! enabled()) {
     return true;
   }
@@ -227,7 +234,7 @@ bool ApplicationSharding::start () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationSharding::close () {
+void ApplicationCluster::close () {
   if (! enabled()) {
     return;
   }
@@ -239,7 +246,7 @@ void ApplicationSharding::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationSharding::stop () {
+void ApplicationCluster::stop () {
   if (! enabled()) {
     return;
   }
@@ -258,7 +265,7 @@ void ApplicationSharding::stop () {
 /// our id
 ////////////////////////////////////////////////////////////////////////////////
   
-std::string ApplicationSharding::getEndpointForId () const {
+std::string ApplicationCluster::getEndpointForId () const {
   // fetch value at Config/MapIDToEndpoint
   AgencyComm comm;
   AgencyCommResult result = comm.getValues("Config/MapIDToEndpoint/" + _myId, false);
@@ -289,7 +296,7 @@ std::string ApplicationSharding::getEndpointForId () const {
 /// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
 ////////////////////////////////////////////////////////////////////////////////
   
-ServerState::RoleEnum ApplicationSharding::checkCoordinatorsList () const {
+ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   // fetch value at TmpConfig/DBServers
   // we need this to determine the server's role
   AgencyComm comm;
@@ -323,7 +330,7 @@ ServerState::RoleEnum ApplicationSharding::checkCoordinatorsList () const {
 /// @brief lookup the server role by scanning TmpConfig/DBServers for our id
 ////////////////////////////////////////////////////////////////////////////////
   
-ServerState::RoleEnum ApplicationSharding::checkServersList () const {
+ServerState::RoleEnum ApplicationCluster::checkServersList () const {
   // fetch value at TmpConfig/DBServers
   // we need this to determine the server's role
   AgencyComm comm;

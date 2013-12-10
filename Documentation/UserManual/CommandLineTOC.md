@@ -42,6 +42,12 @@ TOC {#CommandLineTOC}
     - @ref CommandLineArangoJsV8Options "javascript.v8-options"
   - @ref CommandLineDevelopment
     - @ref CommandLineArangoDevelopmentMode "development-mode"
+  - @ref CommandLineCluster
+    - @ref CommandLineArangoClusterHeartbeatInterval "cluster.heartbeat-interval"
+    - @ref CommandLineArangoClusterAgencyEndpoint "cluster.agency-endpoint"
+    - @ref CommandLineArangoClusterAgencyPrefix "cluster.agency-prefix"
+    - @ref CommandLineArangoClusterMyId "cluster.my-id"
+    - @ref CommandLineArangoClusterMyAddress "cluster.my-address"
   - @ref CommandLineLogging
     - @ref CommandLineLoggingGeneral
       - @ref CommandLineLoggingLogFile "log.file"
