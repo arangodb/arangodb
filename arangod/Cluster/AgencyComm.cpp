@@ -25,7 +25,7 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Sharding/AgencyComm.h"
+#include "Cluster/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
@@ -100,6 +100,36 @@ AgencyCommResult::~AgencyCommResult () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the error message from the result
+/// if there is no error, an empty string will be returned
+////////////////////////////////////////////////////////////////////////////////
+      
+std::string AgencyCommResult::getErrorMessage () const {
+  std::string result;
+
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return result;
+  }
+
+  // get "message" attribute
+  TRI_json_t const* message = TRI_LookupArrayJson(json, "message");
+
+  if (! TRI_IsStringJson(message)) {
+    return result;
+  }
+
+  result = std::string(message->_value._string.data, message->_value._string.length - 1);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
@@ -368,7 +398,6 @@ void AgencyComm::disconnect () {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an endpoint to the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,7 +600,7 @@ bool AgencyComm::setValue (std::string const& key,
          _globalConnectionOptions._requestTimeout, 
          result,
          buildUrl(key), 
-         "value=" + value);
+         "value=" + triagens::basics::StringUtils::urlEncode(value));
 
     if (requeueEndpoint(agencyEndpoint, result.successful())) {
       // we're done
@@ -673,13 +702,89 @@ bool AgencyComm::removeValues (std::string const& key,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not a previous value existed for the key
+////////////////////////////////////////////////////////////////////////////////
+
+int AgencyComm::casValue (std::string const& key,
+                          std::string const& value,
+                          bool prevExists) {
+
+  AgencyCommResult result;
+  size_t numEndpoints;
+
+  {
+    READ_LOCKER(AgencyComm::_globalLock);
+    numEndpoints = AgencyComm::_globalEndpoints.size(); 
+    assert(numEndpoints > 0);
+  }
+
+  size_t tries = 0;
+
+  while (tries++ < numEndpoints) {
+    AgencyEndpoint* agencyEndpoint = popEndpoint();
+  
+    send(agencyEndpoint->_connection, 
+         triagens::rest::HttpRequest::HTTP_REQUEST_PUT, 
+         _globalConnectionOptions._requestTimeout, 
+         result,
+         buildUrl(key) + "?prevExists=" + (prevExists ? "true" : "false"), 
+         "value=" + triagens::basics::StringUtils::urlEncode(value));
+
+    if (requeueEndpoint(agencyEndpoint, result.successful())) {
+      // we're done
+      return true;
+    }
+
+    // otherwise, try next
+  }
+
+  // if we get here, we could not send data to any endpoint successfully
+  return false;
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not the previous value for the key was
+/// identical to `oldValue`
 ////////////////////////////////////////////////////////////////////////////////
 
 int AgencyComm::casValue (std::string const& key,
                           std::string const& oldValue, 
                           std::string const& newValue) {
 
-  // TODO
+  AgencyCommResult result;
+  size_t numEndpoints;
+
+  {
+    READ_LOCKER(AgencyComm::_globalLock);
+    numEndpoints = AgencyComm::_globalEndpoints.size(); 
+    assert(numEndpoints > 0);
+  }
+
+  size_t tries = 0;
+
+  while (tries++ < numEndpoints) {
+    AgencyEndpoint* agencyEndpoint = popEndpoint();
+  
+    send(agencyEndpoint->_connection, 
+         triagens::rest::HttpRequest::HTTP_REQUEST_PUT, 
+         _globalConnectionOptions._requestTimeout, 
+         result,
+         buildUrl(key) + "?prevValue=" + triagens::basics::StringUtils::urlEncode(oldValue),
+         "value=" + triagens::basics::StringUtils::urlEncode(newValue));
+
+    if (requeueEndpoint(agencyEndpoint, result.successful())) {
+      // we're done
+      return true;
+    }
+
+    // otherwise, try next
+  }
+
+  // if we get here, we could not send data to any endpoint successfully
+  return false;
 
   return 0;
 }
@@ -691,6 +796,7 @@ int AgencyComm::casValue (std::string const& key,
 AgencyCommResult AgencyComm::watchValue (std::string const& key, 
                                          uint64_t waitIndex,
                                          double timeout) {
+
   std::string url(buildUrl(key));
   url += "?wait=true";
 
@@ -815,7 +921,7 @@ bool AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
 std::string AgencyComm::buildUrl (std::string const& relativePart) const {
   return AgencyComm::AGENCY_URL_PREFIX + _globalPrefix + relativePart;
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends data to the URL w/o body
 ////////////////////////////////////////////////////////////////////////////////
@@ -883,7 +989,45 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     delete response;
     return false;
   }
-  
+/*
+  if (response->getHttpReturnCode() == 307) {
+    std::cout << "GOT a 307\n\n";
+    // sometimes the agency will return a 307 (temporary redirect)
+    // in this case we have to pick it up and use the new location returned
+
+    bool found = false;
+    std::string location = response->getHeaderField("location", found);
+    std::cout << "LOCATION: " << location << "\n\n";
+
+    if (! found) {
+      // 307 without a "location" header is just rubbish
+      delete response;
+      return false;
+    }
+
+    // transform location into an endpoint
+    if (location.substr(0, 7) == "http://") {
+      location = "tcp://" + location.substr(7);
+    }
+    else if (location.substr(0, 8) == "https://") {
+      location = "ssl://" + location.substr(7);
+    }
+    std::cout << "NEW LOCATION: " << location << "\n\n";
+
+    const size_t delim = location.find('/', 6);
+    if (delim == std::string::npos) {
+      // invalid location header
+      delete response;
+      return false;
+    }
+
+    std::string endpoint = location.substr(0, delim);
+    std::string newUrl = location.substr(delim);
+    
+    std::cout << "NEW ENDPOINT: " << endpoint << "\n\n";
+    std::cout << "NEW URL: " << newUrl << "\n\n";
+  }
+*/  
   result._message    = response->getHttpReturnMessage();
   result._body       = response->getBody().str();
   result._index      = 0;
