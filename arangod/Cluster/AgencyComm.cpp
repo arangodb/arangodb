@@ -789,6 +789,8 @@ AgencyEndpoint* AgencyComm::popEndpoint () {
       }
     }
 
+    // if we got here, we ran out of non-busy connections...
+
     usleep(500); // TODO: make this configurable
   }
 
