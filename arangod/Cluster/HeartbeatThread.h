@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sharding configuration
+/// @brief heartbeat thread
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,173 +21,187 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann 
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHARDING_APPLICATION_SHARDING_H
-#define TRIAGENS_SHARDING_APPLICATION_SHARDING_H 1
+#ifndef TRIAGENS_CLUSTER_HEARTBEAT_THREAD_H
+#define TRIAGENS_CLUSTER_HEARTBEAT_THREAD_H 1
 
-#include "ApplicationServer/ApplicationFeature.h"
-#include "Sharding/ServerState.h"
+#include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
+#include "BasicsC/logging.h"
+#include "Cluster/AgencyComm.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 namespace triagens {
   namespace arango {
 
-    class HeartbeatThread;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   HeartbeatThread
+// -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sharding feature configuration
-////////////////////////////////////////////////////////////////////////////////
-
-    class ApplicationSharding: public rest::ApplicationFeature { 
+    class HeartbeatThread : public basics::Thread {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
       
       private:
-        ApplicationSharding (ApplicationSharding const&);
-        ApplicationSharding& operator= (ApplicationSharding const&);
+        HeartbeatThread (HeartbeatThread const&);
+        HeartbeatThread& operator= (HeartbeatThread const&);
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationSharding ();
+        HeartbeatThread (std::string const&,
+                         uint64_t,
+                         uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
+/// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ApplicationSharding ();
+        ~HeartbeatThread ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
+      
       public:
 
-        inline bool enabled () const {
-          return _enableCluster;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises the heartbeat
+////////////////////////////////////////////////////////////////////////////////
+
+        bool init ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the heartbeat
+////////////////////////////////////////////////////////////////////////////////
+
+        void stop () {
+          if (_stop > 0) {
+            return;
+          }
+          
+          LOG_TRACE("stopping heartbeat thread");
+
+          _stop = 1;
+          _condition.signal();
+
+          while (_stop != 2) {
+            usleep(1000);
+          }
         }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        ApplicationFeature methods
+// --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
 
-      public:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief heartbeat main loop
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (map<string, basics::ProgramOptionsDescription>&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool prepare ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool start ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void close ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void stop ();
+        void run ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+      
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Config/MapIDToEnpdoint for 
-/// our id
+/// @brief handles a state change
 ////////////////////////////////////////////////////////////////////////////////
-  
-         std::string getEndpointForId () const;
+      
+        bool handleStateChange (AgencyCommResult const&,
+                                uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
-////////////////////////////////////////////////////////////////////////////////
-  
-         ServerState::RoleEnum checkCoordinatorsList () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning TmpConfig/DBServers for our id
+/// @brief fetch the last value of /Commands/my-id from the agency 
 ////////////////////////////////////////////////////////////////////////////////
 
-         ServerState::RoleEnum checkServersList () const;
+        uint64_t getLastCommandIndex ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends the current server's state to the agency
+////////////////////////////////////////////////////////////////////////////////
+
+        bool sendState ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-       private:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread for heartbeat
+/// @brief AgencyComm instance
 ////////////////////////////////////////////////////////////////////////////////
 
-         HeartbeatThread* _heartbeat;
+        AgencyComm _agency;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat interval (in ms)
+/// @brief condition variable for heartbeat
 ////////////////////////////////////////////////////////////////////////////////
 
-         uint64_t _heartbeatInterval;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of agency endpoints
-////////////////////////////////////////////////////////////////////////////////
-         
-         std::vector<std::string> _agencyEndpoints;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global agency prefix
-////////////////////////////////////////////////////////////////////////////////
-         
-         std::string _agencyPrefix;
+        triagens::basics::ConditionVariable _condition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-         std::string _myId;
+        const std::string _myId;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this server's address / endpoint
+/// @brief heartbeat interval
 ////////////////////////////////////////////////////////////////////////////////
 
-         std::string _myAddress;
+        uint64_t _interval;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the cluster feature is enabled
+/// @brief number of fails in a row before a warning is issued
 ////////////////////////////////////////////////////////////////////////////////
 
-         bool _enableCluster;
+        uint64_t _maxFailsBeforeWarning;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current number of fails in a row
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _numFails;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop flag
+////////////////////////////////////////////////////////////////////////////////
+        
+        volatile sig_atomic_t _stop;
 
     };
+
   }
 }
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+

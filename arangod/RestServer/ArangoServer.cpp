@@ -70,7 +70,7 @@
 #include "RestHandler/RestUploadHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
-#include "Sharding/ApplicationSharding.h"
+#include "Cluster/ApplicationCluster.h"
 #include "Statistics/statistics.h"
 
 #include "V8/V8LineEditor.h"
@@ -259,7 +259,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
-    _applicationSharding(0),
+    _applicationCluster(0),
     _jobManager(0),
 #ifdef TRI_ENABLE_MRUBY
     _applicationMR(0),
@@ -491,15 +491,15 @@ void ArangoServer::buildApplicationServer () {
   
 
   // .............................................................................
-  // sharding options
+  // cluster options
   // .............................................................................
   
-  _applicationSharding = new ApplicationSharding();
-  if (_applicationSharding == 0) {
+  _applicationCluster = new ApplicationCluster();
+  if (_applicationCluster == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
-  _applicationServer->addFeature(_applicationSharding);
+  _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
   // server options

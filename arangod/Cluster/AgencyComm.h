@@ -26,8 +26,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHARDING_AGENCY_COMM_H
-#define TRIAGENS_SHARDING_AGENCY_COMM_H 1
+#ifndef TRIAGENS_CLUSTER_AGENCY_COMM_H
+#define TRIAGENS_CLUSTER_AGENCY_COMM_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
