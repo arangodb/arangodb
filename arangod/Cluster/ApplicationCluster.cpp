@@ -102,7 +102,7 @@ bool ApplicationCluster::prepare () {
   // validate --cluster.agency-prefix
   size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
 
-  if (found != std::string::npos) {
+  if (found != std::string::npos || _agencyPrefix.empty()) {
     LOG_FATAL_AND_EXIT("invalid value specified for --cluster.agency-prefix");
   }
 
@@ -305,9 +305,11 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
-    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): got status code %d", 
+    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): "
+                       "got status code %d, message: %s",
                        endpoints.c_str(), 
-                       result._statusCode);
+                       result._statusCode,
+                       result.getErrorMessage().c_str());
   }
   
   std::map<std::string, std::string> out;
@@ -339,9 +341,11 @@ ServerState::RoleEnum ApplicationCluster::checkServersList () const {
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
-    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): got status code %d", 
+    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): "
+                       "got status code %d, message: %s", 
                        endpoints.c_str(), 
-                       result._statusCode);
+                       result._statusCode,
+                       result.getErrorMessage().c_str());
   }
   
   std::map<std::string, std::string> out;

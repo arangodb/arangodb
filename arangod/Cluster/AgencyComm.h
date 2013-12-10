@@ -111,22 +111,64 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct AgencyCommResult {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a communication result
+////////////////////////////////////////////////////////////////////////////////
+
       AgencyCommResult ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a communication result
+////////////////////////////////////////////////////////////////////////////////
+
       ~AgencyCommResult ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether the last request was successful
+////////////////////////////////////////////////////////////////////////////////
 
       inline bool successful () const {
         return (_statusCode >= 200 && _statusCode <= 299);
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the error message from the result
+/// if there is no error, an empty string will be returned
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string getErrorMessage () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively flatten the JSON response into a map
+////////////////////////////////////////////////////////////////////////////////
 
       bool processJsonNode (struct TRI_json_s const*,
                             std::map<std::string, std::string>&,
                             std::string const&,
                             bool) const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a result into a map
+////////////////////////////////////////////////////////////////////////////////
+
       bool flattenJson (std::map<std::string, std::string>&,
                         std::string const&,
                         bool) const; 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+  
+    public:
 
       std::string _message;
       std::string _body;
@@ -247,7 +289,18 @@ namespace triagens {
                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not a previous value existed for the key
+////////////////////////////////////////////////////////////////////////////////
+
+        int casValue (std::string const&,
+                      std::string const&,
+                      bool);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the back end
+/// the CAS condition is whether or not the previous value for the key was
+/// identical to `oldValue`
 ////////////////////////////////////////////////////////////////////////////////
         
         int casValue (std::string const&, 
