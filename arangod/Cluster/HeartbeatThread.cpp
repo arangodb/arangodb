@@ -115,13 +115,11 @@ void HeartbeatThread::run () {
 
     if (result.successful()) {
       // value has changed!
-
       handleStateChange(result, lastCommandIndex);
 
       // sleep a while 
       CONDITION_LOCKER(guard, _condition);
       guard.wait(_interval);
-    
     }
     else {
       // value did not change, but we already blocked waiting for a change...
@@ -245,9 +243,9 @@ bool HeartbeatThread::sendState () {
 
   // return value is intentionally not handled
   // if sending the current state fails, we'll just try again in the next iteration
-  bool result = _agency.setValue("State/ServerStates/" + _myId, value);
+  AgencyCommResult result(_agency.setValue("State/ServerStates/" + _myId, value));
 
-  if (result) {
+  if (result.successful()) {
     _numFails = 0;
   }
   else {
@@ -258,7 +256,7 @@ bool HeartbeatThread::sendState () {
     }
   }
 
-  return result;
+  return result.successful();
 }
 
 // Local Variables:

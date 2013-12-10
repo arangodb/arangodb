@@ -145,7 +145,15 @@ namespace triagens {
 /// if there is no error, an empty string will be returned
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string getErrorMessage () const;
+      std::string errorMessage () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the location header (might be empty)
+////////////////////////////////////////////////////////////////////////////////
+      
+      const std::string location () const {
+        return _location;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
@@ -170,6 +178,7 @@ namespace triagens {
   
     public:
 
+      std::string _location;
       std::string _message;
       std::string _body;
       uint64_t    _index;
@@ -234,13 +243,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static bool removeEndpoint (std::string const&);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an endpoint is present
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool hasEndpoint (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
         static const std::string getEndpointsString ();
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,11 +282,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a directory in the backend
+////////////////////////////////////////////////////////////////////////////////
+        
+        AgencyCommResult createDirectory (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a value in the back end
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool setValue (std::string const&, 
-                       std::string const&);
+        AgencyCommResult setValue (std::string const&, 
+                                   std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the back end
@@ -285,17 +305,17 @@ namespace triagens {
 /// @brief removes one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool removeValues (std::string const&,  
-                           bool);
+        AgencyCommResult removeValues (std::string const&,  
+                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the backend
 /// the CAS condition is whether or not a previous value existed for the key
 ////////////////////////////////////////////////////////////////////////////////
 
-        int casValue (std::string const&,
-                      std::string const&,
-                      bool);
+        AgencyCommResult casValue (std::string const&,
+                                   std::string const&,
+                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the back end
@@ -303,9 +323,9 @@ namespace triagens {
 /// identical to `oldValue`
 ////////////////////////////////////////////////////////////////////////////////
         
-        int casValue (std::string const&, 
-                      std::string const&, 
-                      std::string const&);
+        AgencyCommResult casValue (std::string const&, 
+                                   std::string const&, 
+                                   std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief blocks on a change of a single value in the back end
@@ -341,17 +361,18 @@ namespace triagens {
         std::string buildUrl (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends data to the URL w/o body
+/// @brief sends an HTTP request to the agency, handling failover 
 ////////////////////////////////////////////////////////////////////////////////
     
-        bool send (triagens::httpclient::GeneralClientConnection*,
-                   triagens::rest::HttpRequest::HttpRequestType,
-                   double,
-                   AgencyCommResult&,
-                   std::string const&); 
+        bool sendWithFailover (triagens::rest::HttpRequest::HttpRequestType,
+                               double,
+                               AgencyCommResult&,
+                               std::string const&, 
+                               std::string const&,
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends data to the URL w/ body
+/// @brief sends data to the URL 
 ////////////////////////////////////////////////////////////////////////////////
     
         bool send (triagens::httpclient::GeneralClientConnection*,
