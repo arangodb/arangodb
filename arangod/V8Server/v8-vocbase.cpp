@@ -2223,17 +2223,32 @@ static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <oldValue>, <newValue>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <oldValue>, <newValue>, <throw>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
   const std::string oldValue = TRI_ObjectToString(argv[1]);
   const std::string newValue = TRI_ObjectToString(argv[2]);
+
+  bool shouldThrow = false;
+  if (argv.Length() > 3) {
+    shouldThrow = TRI_ObjectToBoolean(argv[3]);
+  }
   
   AgencyComm comm;
   AgencyCommResult result = comm.casValue(key, oldValue, newValue);
-// TODO
-  return scope.Close(v8::Undefined());
+
+  if (! result.successful()) {
+    if (! shouldThrow) {
+      return scope.Close(v8::False());
+    }
+
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return scope.Close(v8::True());
 }
 #endif
 
@@ -2401,32 +2416,33 @@ static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
 
   AgencyComm comm;
   AgencyCommResult result = comm.watchValue(key, waitIndex, timeout);
-  
+ 
+  if (result._statusCode == 0) {
+    // watch timed out
+    return scope.Close(v8::False());
+  }
+
   if (! result.successful()) {
     const std::string errorDetails = result.errorDetails();
     v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
     return scope.Close(v8::ThrowException(err));
   }
 
-  if (result._statusCode > 0) {
-    std::map<std::string, std::string> out;
-    result.flattenJson(out, "", false);
-    std::map<std::string, std::string>::const_iterator it = out.begin(); 
+  std::map<std::string, std::string> out;
+  result.flattenJson(out, "", false);
+  std::map<std::string, std::string>::const_iterator it = out.begin(); 
 
-    v8::Handle<v8::Array> l = v8::Array::New();
+  v8::Handle<v8::Object> l = v8::Object::New();
 
-    while (it != out.end()) {
-      const std::string key = (*it).first;
-      const std::string value = (*it).second;
+  while (it != out.end()) {
+    const std::string key = (*it).first;
+    const std::string value = (*it).second;
 
-      l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
-      ++it;
-    }
-    
-    return scope.Close(l);
+    l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
+    ++it;
   }
-
-  return scope.Close(v8::False());
+    
+  return scope.Close(l);
 }
 #endif
 
