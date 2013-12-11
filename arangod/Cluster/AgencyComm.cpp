@@ -133,6 +133,21 @@ std::string AgencyCommResult::errorMessage () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the error details from the result
+/// if there is no error, an empty string will be returned
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyCommResult::errorDetails () const {
+  const std::string errorMessage = this->errorMessage();
+
+  if (errorMessage.empty()) {
+    return _message;
+  }
+
+  return _message + " (" + errorMessage + ")";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -211,6 +226,7 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
           // otherwise return value
           out[prefix] = std::string(value->_value._string.data, value->_value._string.length - 1);
         }
+  
       }
     }
   }
@@ -297,7 +313,8 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
 /// @brief constructs an agency communication object
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyComm::AgencyComm () { 
+AgencyComm::AgencyComm (bool addNewEndpoints) 
+  : _addNewEndpoints(addNewEndpoints) { 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -401,7 +418,8 @@ void AgencyComm::disconnect () {
 /// @brief adds an endpoint to the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::addEndpoint (std::string const& endpointSpecification) {
+bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
+                              bool toFront) {
   LOG_TRACE("adding global endpoint '%s'", endpointSpecification.c_str());
 
   {
@@ -430,7 +448,12 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification) {
       return false;
     }
     
-    AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
+    if (toFront) {
+      AgencyComm::_globalEndpoints.push_front(agencyEndpoint);
+    }
+    else {
+      AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
+    }
   }
 
   return true;
@@ -501,6 +524,12 @@ bool AgencyComm::hasEndpoint (std::string const& endpointSpecification) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AgencyComm::setPrefix (std::string const& prefix) {
+  // agency prefix must not be changed
+  if (! _globalPrefix.empty() && prefix != _globalPrefix) {
+    LOG_ERROR("agency-prefix cannot be changed at runtime");
+    return;
+  }
+
   _globalPrefix = prefix;
 
   // make sure prefix starts with a forward slash
@@ -519,6 +548,14 @@ void AgencyComm::setPrefix (std::string const& prefix) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the global prefix for all operations
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::prefix () {
+  return _globalPrefix;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -533,6 +570,32 @@ std::string AgencyComm::generateStamp () {
   size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
 
   return std::string(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a stringified version of the endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+const std::vector<std::string> AgencyComm::getEndpoints () {
+  std::vector<std::string> result;
+
+  {
+    // iterate over the list of endpoints
+    READ_LOCKER(AgencyComm::_globalLock);
+    
+    std::list<AgencyEndpoint*>::const_iterator it = AgencyComm::_globalEndpoints.begin();
+
+    while (it != AgencyComm::_globalEndpoints.end()) {
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      assert(agencyEndpoint != 0);
+
+      result.push_back(agencyEndpoint->_endpoint->getSpecification());
+      ++it;
+    }
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -599,6 +662,27 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the backend version
+////////////////////////////////////////////////////////////////////////////////
+        
+std::string AgencyComm::getVersion () {
+  AgencyCommResult result;
+
+  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                   _globalConnectionOptions._requestTimeout,
+                   result,
+                   "version",
+                   "",
+                   false);
+
+  if (result.successful()) {
+    return result._body;
+  }
+
+  return "";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
@@ -803,7 +887,7 @@ AgencyEndpoint* AgencyComm::popEndpoint () {
 /// @brief reinsert an endpoint into the queue
 ////////////////////////////////////////////////////////////////////////////////
     
-bool AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
+void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
                                   bool wasWorking) {
   WRITE_LOCKER(AgencyComm::_globalLock);
   const size_t numEndpoints = _globalEndpoints.size(); 
@@ -825,8 +909,6 @@ bool AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
   }
           
   assert(_globalEndpoints.size() == numEndpoints);
-
-  return wasWorking;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -908,8 +990,21 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
 
       if (! AgencyComm::hasEndpoint(endpoint)) {
         // redirection to an unknown endpoint
+
+        if (_addNewEndpoints) {
+          AgencyComm::addEndpoint(endpoint, true);
+
+          // re-check the new endpoint
+          if (AgencyComm::hasEndpoint(endpoint)) {
+            ++numEndpoints;
+            continue;
+          }
+        }
+
         LOG_ERROR("found redirection to unknown endpoint '%s'. Will not follow!", 
                   endpoint.c_str());
+        
+        // this is an error
         return false;
       }
 
@@ -917,10 +1012,16 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
       continue;
     }
 
-    // watches might time out, this still counts as a success
-    const bool wasSuccessful = result.successful() || (isWatch && result._statusCode == 0);
+    // we can stop iterating over endpoints if the operation succeeded,
+    // if a watch timed out or 
+    // if the reason for failure was a client-side error
+    const bool canAbort = result.successful() || 
+                          (isWatch && result._statusCode == 0) ||
+                          (result._statusCode >= 400 && result._statusCode <= 499);
 
-    if (requeueEndpoint(agencyEndpoint, wasSuccessful)) {
+    requeueEndpoint(agencyEndpoint, canAbort);
+
+    if (canAbort) {
       // we're done
       return true;
     }
@@ -954,13 +1055,14 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   assert(! url.empty());
 
   result._statusCode = 0;
-  
-  LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s", 
+
+/*  
+  LOG_INFO("sending %s request to agency at endpoint '%s', url '%s': %s", 
             triagens::rest::HttpRequest::translateMethod(method).c_str(),
             connection->getEndpoint()->getSpecification().c_str(),
             url.c_str(), 
             body.c_str());
-  
+ */ 
   triagens::httpclient::SimpleHttpClient client(connection,
                                                 timeout, 
                                                 false);
@@ -1014,12 +1116,12 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   if (found) {
     result._index    = triagens::basics::StringUtils::uint64(lastIndex);
   }
-  
-  LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
+/*  
+  LOG_INFO("request to agency returned status code %d, message: '%s', body: '%s'", 
             result._statusCode,
             result._message.c_str(),
             result._body.c_str());
-
+*/
   delete response;
 
   return result.successful();
