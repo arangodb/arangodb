@@ -100,12 +100,13 @@
       var idPrefix = "#control_adapter_collections";
 
       beforeEach(function() {
-        adapterUI.addControlChangeCollections();
-        
-        expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
-        expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
-        helper.simulateMouseEvent("click", "control_adapter_collections");
-        expect($(idPrefix + "_modal").length).toEqual(1);
+        runs(function() {
+          adapterUI.addControlChangeCollections();
+          expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
+          expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
+          expect($(idPrefix + "_modal").length).toEqual(1);
+        });
       });
       
       afterEach(function() {
@@ -191,25 +192,29 @@
     });
 
     describe('change priority list control', function() {
+
+      var idPrefix;
+
       beforeEach(function() {
+        idPrefix = "#control_adapter_priority";
         adapterUI.addControlChangePriority();
         
-        expect($("#control_adapter_list #control_adapter_priority").length).toEqual(1);
-        expect($("#control_adapter_list #control_adapter_priority")[0]).toConformToListCSS();
-        helper.simulateMouseEvent("click", "control_adapter_priority");
-        expect($("#control_adapter_priority_modal").length).toEqual(1);
+        expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
+        expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
+        helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
+        expect($(idPrefix + "_modal").length).toEqual(1);
       });
       
       afterEach(function() {
         waitsFor(function() {
-          return $("#control_adapter_priority_modal").length === 0;
+          return $(idPrefix + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
       });
       
       it('should be added to the list', function() {
         runs(function() {
-          $("#control_adapter_priority_attribute_1").attr("value", "foo");
-          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          $(idPrefix + "_attribute_1").attr("value", "foo");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
           expect(adapter.changeTo).toHaveBeenCalledWith({
             prioList: ["foo"]
           });
@@ -218,8 +223,8 @@
       
       it('should not add empty attributes to priority', function() {
         runs(function() {
-          $("#control_adapter_priority_attribute_1").attr("value", "");
-          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          $(idPrefix + "_attribute_1").attr("value", "");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
           expect(adapter.changeTo).toHaveBeenCalledWith({
             prioList: []
           });
@@ -228,13 +233,13 @@
       
       it('should add a new line to priority on demand', function() {
         runs(function() {
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
-          expect($("#control_adapter_priority_attribute_1").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_2").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
-          $("#control_adapter_priority_attribute_1").attr("value", "foo");
-          $("#control_adapter_priority_attribute_2").attr("value", "bar");
-          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_attribute_addLine");
+          expect($(idPrefix + "_attribute_1").length).toEqual(1);
+          expect($(idPrefix + "_attribute_2").length).toEqual(1);
+          expect($(idPrefix + "_attribute_addLine").length).toEqual(1);
+          $(idPrefix + "_attribute_1").attr("value", "foo");
+          $(idPrefix + "_attribute_2").attr("value", "bar");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
           expect(adapter.changeTo).toHaveBeenCalledWith({
             prioList: ["foo", "bar"]
           });
@@ -291,6 +296,8 @@
           });
         });
       });
+
+      /* TO_DO
       
       it('should load the current prioList from the adapter', function() {
         
@@ -326,7 +333,7 @@
           helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
         });
       });
-      
+      */
     });
     
     it('should be able to add all controls to the list', function() {

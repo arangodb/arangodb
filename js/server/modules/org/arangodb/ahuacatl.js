@@ -261,13 +261,17 @@ function FIX_VALUE (value) {
   }
 
   if (type === 'object') {
+    var result = { };
     for (i in value) {
       if (value.hasOwnProperty(i)) {
-        value[i] = FIX_VALUE(value[i]);
+        if (typeof value[i] === 'function') {
+          continue;
+        }
+        result[i] = FIX_VALUE(value[i]);
       }
     }
 
-    return value;
+    return result;
   }
 
   return null;

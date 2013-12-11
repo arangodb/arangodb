@@ -252,7 +252,9 @@
         
         expect(adapter.createNode).toHaveBeenCalledWith(
           {},
-          jasmine.any(Function)
+          jasmine.any(Function),
+          jasmine.any(Number), // Number not yet correctly tested
+          jasmine.any(Number) 
         );
         /*
         expect(adapter.createNode).toHaveBeenCalledWith(

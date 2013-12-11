@@ -95,7 +95,6 @@ var uiMatchers = uiMatchers || {};
           expect(btn).toBeTag("button");
           expect(btn).toBeOfClass("btn");
           expect(btn).toBeOfClass("btn-icon");
-          // Correctness of buttons is checked in eventDispatcherUISpec.
         });
         return true;
       },

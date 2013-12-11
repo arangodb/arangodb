@@ -108,6 +108,12 @@ static bool Initialised = false;
 static bool ShutdownInitalised = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief name of first log file
+////////////////////////////////////////////////////////////////////////////////
+
+static char* LogfileName = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1706,6 +1712,11 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
   TRI_PushBackVectorPointer(&Appenders, &appender->base);
   TRI_UnlockSpin(&AppendersLock);
 
+  // register the name of the first logfile
+  if (LogfileName == NULL) {
+    LogfileName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, filename);
+  }
+
   // and return base structure
   return &appender->base;
 }
@@ -1963,6 +1974,14 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return global log file name
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_GetFilenameLogging () {
+  return LogfileName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2022,6 +2041,11 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
 
   // logging is now inactive (this will terminate the logging thread)
   LoggingActive = 0;
+
+  if (LogfileName != NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, LogfileName);
+    LogfileName = 0;
+  }
 
   // join with the logging thread
   if (ThreadedLogging) {
