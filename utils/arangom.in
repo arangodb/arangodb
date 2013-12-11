@@ -3,7 +3,7 @@
 CURL="curl -s -S --fail "
 
 AGENCY="http://localhost:4001"
-PREFIX=""
+PREFIX="/"
 
 if [ "$1" == "-a" ] ; then
     export AGENCY=$2
@@ -16,7 +16,9 @@ if [ "$1" == "-p" ] ; then
 fi
 
 if [ "$1" == "help" -o "$1" == "-h" -o "$1" == "--help" ] ; then
-    echo Usage: "arangom [-a AGENCY] [-p PREFIX] help|init"
+    echo "Usage: arangom [-a AGENCY] [-p PREFIX] help|init"
+    echo "       where AGENCY is an URL not ending in a slash"
+    echo "       and   PREFIX is a path starting and ending with a slash"
     exit 0
 fi
 
@@ -27,31 +29,35 @@ function set() {
   value=$2
   if [ "x$value" == "x" ] ; then
       echo "Creating directory $PREFIX$key"
-      $CURL -X PUT "$URL$key?dir=true" > /dev/null || exit 1
+      $CURL -X PUT "$URL$PREFIX$key?dir=true" > /dev/null || exit 1
   else
       echo "Setting key $PREFIX$key to value $value"
-      $CURL -X PUT "$URL$key" -d "value=$value" > /dev/null || exit 1
+      $CURL -X PUT "$URL$PREFIX$key" -d "value=$value" > /dev/null || exit 1
   fi
 }
 
 
 if [ "$1" == "init" ] ; then
-    $CURL -X DELETE "$URL/?recursive=true" > /dev/null 
-    set /Config/MapLocalToID
-    set /Config/MapIDToEndpoint
-    set /TmpConfig/DBServers
-    set /TmpConfig/Coordinators
-    set /TmpConfig/Databases
-    set /TmpConfig/Collections
-    set /TmpConfig/ShardsCurrent
-    set /TmpConfig/ShardsWanted
-    set /State/ServersRegistered
-    set /State/ServerStates
-    set /State/ShardsCopied
-    set /State/Problems
-    set /State/ClusterManager none
-    set /State/LatestID 0
-    set /Commands
+    $CURL -X DELETE "$URL$PREFIX?recursive=true" > /dev/null 
+    set Config/Version 1
+    set Config/MapLocalToID
+    set Config/MapIDToEndpoint
+    set Config/DBServers
+    set Config/Coordinators
+    set Config/Shards
+    set TmpConfig/DBServers
+    set TmpConfig/Coordinators
+    set TmpConfig/Databases
+    set TmpConfig/Collections
+    set TmpConfig/Shards
+    set State/ServersRegistered
+    set State/ServerStates
+    set State/Shards
+    set State/ShardsCopied
+    set State/Problems
+    set State/ClusterManager none
+    set State/LatestID 0
+    set Commands
     echo Initialisation complete.
 fi
 
