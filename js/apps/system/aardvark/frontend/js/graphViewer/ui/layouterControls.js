@@ -37,13 +37,12 @@ function LayouterControls(list, layouter) {
   if (layouter === undefined) {
     throw "The Layouter has to be given.";
   }
-  var self = this,
-    baseClass = "layout";
+  var self = this;
   
   this.addControlGravity = function() {
     var prefix = "control_layout_gravity",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(baseClass, list, "Gravity", prefix, function() {
+    uiComponentsHelper.createButton(list, "Gravity", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Gravity Strength",
         idprefix, [{
           type: "text",
@@ -61,7 +60,7 @@ function LayouterControls(list, layouter) {
   this.addControlCharge = function() {
     var prefix = "control_layout_charge",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(baseClass, list, "Charge", prefix, function() {
+    uiComponentsHelper.createButton(list, "Charge", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Charge Strength",
         idprefix, [{
           type: "text",
@@ -79,7 +78,7 @@ function LayouterControls(list, layouter) {
   this.addControlDistance = function() {
     var prefix = "control_layout_distance",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(baseClass, list, "Distance", prefix, function() {
+    uiComponentsHelper.createButton(list, "Distance", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Distance Strength",
         idprefix, [{
           type: "text",

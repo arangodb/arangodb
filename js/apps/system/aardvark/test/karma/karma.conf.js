@@ -32,7 +32,7 @@ module.exports = function(karma) {
       'frontend/js/lib/handlebars-1.0.rc.1.js',
       'frontend/js/lib/underscore.js',
       'frontend/js/lib/backbone.js',
-      'frontend/js/lib/d3.v3.js',
+      'frontend/js/lib/d3.v3.min.js',
       'frontend/js/lib/nv.d3.js',
       'frontend/js/lib/d3.fisheye.js',
       'frontend/js/lib/ejs_0.9_alpha_1_production.js',
@@ -171,9 +171,7 @@ module.exports = function(karma) {
 
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
-
       // Specs
-
       // GraphViewer
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
@@ -184,23 +182,23 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specAdapter/arangoAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/foxxAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/previewAdapterSpec.js',
-      // 'test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js',
+      'test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js',
       'test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js',
-      // 'test/specs/graphViewer/specNodeShaper/nodeShaperUISpec.js',
+      'test/specs/graphViewer/specNodeShaper/nodeShaperUISpec.js',
       'test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js',
-      // 'test/specs/graphViewer/specEdgeShaper/edgeShaperUISpec.js',
+      'test/specs/graphViewer/specEdgeShaper/edgeShaperUISpec.js',
       'test/specs/graphViewer/specForceLayouter/forceLayouterSpec.js',
-      // 'test/specs/graphViewer/specForceLayouter/forceLayouterUISpec.js',
+      'test/specs/graphViewer/specForceLayouter/forceLayouterUISpec.js',
       'test/specs/graphViewer/specEvents/eventLibrarySpec.js',
       'test/specs/graphViewer/specEvents/eventDispatcherSpec.js',
-      // 'test/specs/graphViewer/specEvents/eventDispatcherUISpec.js',
-      // 'test/specs/graphViewer/specZoomManager/zoomManagerSpec.js',
-      // 'test/specs/graphViewer/specGraphViewer/graphViewerSpec.js',
+      'test/specs/graphViewer/specEvents/eventDispatcherUISpec.js',
+      'test/specs/graphViewer/specZoomManager/zoomManagerSpec.js',
+      'test/specs/graphViewer/specGraphViewer/graphViewerSpec.js',
       'test/specs/graphViewer/specGraphViewer/graphViewerUISpec.js',
       'test/specs/graphViewer/specGraphViewer/graphViewerWidgetSpec.js',
       'test/specs/graphViewer/specGraphViewer/graphViewerPreviewSpec.js',
       'test/specs/graphViewer/specNodeReducer/nodeReducerSpec.js',
-      // 'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
+      'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
       'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
 
       // Arango
@@ -221,7 +219,6 @@ module.exports = function(karma) {
 
       // Router
       'test/specs/router/routerSpec.js',
-
       // JSLint
       'test/specJSLint/jsLintSpec.js'
     ],

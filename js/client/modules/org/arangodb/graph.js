@@ -59,6 +59,7 @@ Edge.prototype.setProperty = function (name, value) {
     update = this._properties;
 
   update[name] = value;
+  this._graph.emptyCachedPredecessors();
 
   results = GraphAPI.putEdge(this._graph._properties._key, this._properties._key, update);
 
@@ -278,6 +279,8 @@ Graph.prototype.drop = function () {
 
 Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, params) {
   var results;
+  
+  this.emptyCachedPredecessors();
 
   params._key = id;
   params._from = out_vertex_id;
@@ -378,6 +381,7 @@ Graph.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex) {
+  this.emptyCachedPredecessors();
   GraphAPI.deleteVertex(this._properties._key, vertex._properties._key);
   vertex._properties = undefined;
 };
@@ -387,7 +391,9 @@ Graph.prototype.removeVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeEdge = function (edge) {
+  this.emptyCachedPredecessors();
   GraphAPI.deleteEdge(this._properties._key, edge._properties._key);
+  this._edgesCache[edge._properties._id] = undefined;
   edge._properties = undefined;
 };
 

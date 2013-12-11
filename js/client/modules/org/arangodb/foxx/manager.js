@@ -367,7 +367,8 @@ function processSource (src) {
     processGithubRepository(src);
   }
   else {
-    throwBadParameter("Unknown application type '" + src.type + "'");
+    throwBadParameter("Unknown application type '" + src.type + "'. " + 
+                      "expected type: 'github', 'zip', or 'directory'.");
   }
 
   // upload file to the server 
@@ -1444,7 +1445,9 @@ exports.help = function () {
   }
 
   arangodb.print();
-  arangodb.print("use foxx-manager --help to show a list of global options"); 
+  arangodb.print("Use foxx-manager --help to show a list of global options\n"); 
+  arangodb.print("There is also an online manual available at:");
+  arangodb.print("https://www.arangodb.org/manuals/current/UserManualFoxxManager.html");
 
   // additional newline
   arangodb.print();

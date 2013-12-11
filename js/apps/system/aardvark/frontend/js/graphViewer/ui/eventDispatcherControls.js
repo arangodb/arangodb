@@ -76,7 +76,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       edit: "edit",
       view: "view"
     },
-    baseClass = "event",
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
     setCursorIcon = function(icon) {
@@ -102,7 +101,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     },
     createButton = function(title, callback) {
       uiComponentsHelper.createButton(
-        baseClass,
         list,
         title,
         "control_event_" + title,
