@@ -119,6 +119,10 @@ SERVER_OPT := \
 	--server.threads 4 \
 	$(SERVER_START)
 
+if ENABLE_CLUSTER
+SERVER_OPT += --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.agency-prefix UnitTests --cluster.my-id arangod --cluster.my-address tcp://127.0.0.1:8529
+endif
+
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
@@ -403,6 +407,11 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
                @top_srcdir@/js/server/tests/shell-skiplist-rm-performance.js \
                @top_srcdir@/js/server/tests/shell-skiplist-correctness.js
+
+if ENABLE_CLUSTER
+SHELL_SERVER_ONLY += \
+               @top_srcdir@/js/server/tests/agency.js
+endif
 
 SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
 
