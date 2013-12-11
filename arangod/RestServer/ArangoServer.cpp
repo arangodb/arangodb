@@ -501,6 +501,7 @@ void ArangoServer::buildApplicationServer () {
   
 #ifdef TRI_ENABLE_CLUSTER
   _applicationCluster = new ApplicationCluster();
+
   if (_applicationCluster == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
@@ -656,6 +657,12 @@ void ArangoServer::buildApplicationServer () {
       mode == OperationMode::MODE_UNITTESTS ||
       mode == OperationMode::MODE_JSLINT ||
       mode == OperationMode::MODE_SCRIPT) {
+
+#ifdef TRI_ENABLE_CLUSTER
+     // we need to prepare the cluster even in console mode
+    _applicationCluster->prepare();
+#endif
+
     int res = executeConsole(mode);
 
     TRI_EXIT_FUNCTION(res, NULL);
@@ -663,6 +670,11 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
+
+#ifdef TRI_ENABLE_CLUSTER
+     // we need to prepare the cluster even in console mode
+    _applicationCluster->prepare();
+#endif
     int res = executeRubyConsole();
 
     TRI_EXIT_FUNCTION(res, NULL);

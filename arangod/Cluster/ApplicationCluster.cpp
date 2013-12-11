@@ -205,15 +205,20 @@ bool ApplicationCluster::start () {
                        _myAddress.c_str());
   }
 
-
   ServerState::instance()->setRole(role);
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
+  
+  AgencyComm comm;
+  const std::string version = comm.getVersion();
 
-  LOG_INFO("Cluster feature is turned on. Server id: '%s', internal address: %s, role: %s, agency endpoints: %s",
+  LOG_INFO("Cluster feature is turned on. "
+           "Agency version: %s, Agency endpoints: %s, "
+           "server id: '%s', internal address: %s, role: %s",
+           version.c_str(),
+           endpoints.c_str(),
            _myId.c_str(),
            _myAddress.c_str(),
-           ServerState::roleToString(role).c_str(),
-           endpoints.c_str());
+           ServerState::roleToString(role).c_str());
 
   // start heartbeat thread
   _heartbeat = new HeartbeatThread(_myId, _heartbeatInterval * 1000, 5);
