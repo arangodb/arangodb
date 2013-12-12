@@ -74,6 +74,7 @@
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
+#include "Cluster/RestShardHandler.h"
 #endif
 
 #include "V8/V8LineEditor.h"
@@ -134,6 +135,12 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                             RestHandlerCreator<RestUploadHandler>::createNoData);
+  
+#ifdef TRI_ENABLE_CLUSTER  
+  // add "/shard-comm" handler
+  factory->addPrefixHandler("/_api/shard-comm",
+                            RestHandlerCreator<RestShardHandler>::createNoData);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
