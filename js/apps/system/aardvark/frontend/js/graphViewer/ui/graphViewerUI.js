@@ -299,9 +299,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       slider = document.createElement("div");
       slider.id = "gv_zoom_slider";
       slider.className = "gv_zoom_slider";
-      
+       
+      background.appendChild(zoomUI);
       background.insertBefore(zoomUI, svg[0][0]);
-      zoomUI.appendChild(zoomButtons);
       
       zoomUI.appendChild(slider);
       $( "#gv_zoom_slider" ).slider({

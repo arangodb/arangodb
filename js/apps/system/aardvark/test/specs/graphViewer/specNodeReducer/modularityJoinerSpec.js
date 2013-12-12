@@ -936,17 +936,26 @@
           this.addMatchers({
             toContainKarateClubCommunities: function() {
               var c1 = [
-                  "10", "15", "16", "19", "21", "23", "27",
-                  "30", "31", "33", "34", "9"
+                  "10", "15", "16", "19", "21", "23",
+                  "30", "33", "34"
                 ].sort().join(),
                 c2 = ["1", "12", "13", "14", "18", "2", "20", "22", "3", "4", "8"].sort().join(),
                 c3 = ["11", "17", "5", "6", "7"].sort().join(),
                 c4 = ["24", "25", "26", "28", "29", "32"].sort().join(),
+                swap = ["9", "27", "31"],
                 comms = this.actual,
                 failed = false,
                 msg = "Found incorrect: ";
               _.each(comms, function(o) {
-                var check = o.nodes.sort().join();
+                var check = o.nodes;
+                _.each(swap, function (s) {
+                  var index = _.indexOf(check, s);
+                  if (index > -1) {
+                    check = _.without(check, s);
+                    swap = _.without(swap, s);
+                  }
+                });
+                check = check.sort().join();
                 switch (check) {
                 case c1:
                   c1 = "";
@@ -979,6 +988,9 @@
                 }
                 if (c4 !== "") {
                   notFound += "[" + c4 + "] ";
+                }
+                if (swap.length > 0) {
+                  notFound += "[" + swap.join() + "] ";
                 }
                 return msg + " and did not find: " + notFound;
               };

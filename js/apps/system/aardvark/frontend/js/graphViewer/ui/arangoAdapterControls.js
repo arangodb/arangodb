@@ -37,15 +37,13 @@ function ArangoAdapterControls(list, adapter) {
   if (adapter === undefined) {
     throw "The ArangoAdapter has to be given.";
   }
-  var baseClass = "adapter";
-  
   this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",
       idprefix = prefix + "_";
       
     adapter.getCollections(function(nodeCols, edgeCols) {
       adapter.getGraphs(function(graphs) {
-        uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
+        uiComponentsHelper.createButton(list, "Collections", prefix, function() {
           modalDialogHelper.createModalDialog("Switch Collections",
             idprefix, [{
               type: "decission",
@@ -132,7 +130,7 @@ function ArangoAdapterControls(list, adapter) {
       prioList = adapter.getPrioList(),
       label = "Group vertices";
 
-      uiComponentsHelper.createButton(baseClass, list, label, prefix, function() {
+      uiComponentsHelper.createButton(list, label, prefix, function() {
         modalDialogHelper.createModalChangeDialog(label,
           idprefix, [{
             type: "extendable",
@@ -155,7 +153,7 @@ function ArangoAdapterControls(list, adapter) {
       });
     /*
     adapter.getCollections(function(nodeCols, edgeCols) {
-      uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
+      uiComponentsHelper.createButton(list, "Collections", prefix, function() {
         modalDialogHelper.createModalDialog("Switch Collections",
           idprefix, [{
             type: "list",
