@@ -26,9 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
+
+#include "Cluster/ServerState.h"
+#include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Cluster/ServerState.h"
 
 using namespace triagens::arango;
 
@@ -50,9 +52,14 @@ const string RestShardHandler::QUEUE_NAME = "STANDARD";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request) 
-  : RestBaseHandler(request) {
+RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
+                                    void* data) 
+  : RestBaseHandler(request),
+    _dispatcher(0) {
+  
+  _dispatcher = static_cast<triagens::rest::Dispatcher*>(data);    
 
+  assert(_dispatcher != 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -89,9 +96,39 @@ triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
     return HANDLER_DONE;
   }
 
+  bool found;
+  char const* coordinator = _request->header("x-arango-coordinator", found);
+
+  if (! found) {
+    generateError(triagens::rest::HttpResponse::BAD, 
+                  (int) triagens::rest::HttpResponse::BAD, 
+                  "header 'x-arango-coordinator' is missing");
+    return HANDLER_DONE;
+  }
+  
+  char const* operation = _request->header("x-arango-operation", found);
+  if (! found) {
+    generateError(triagens::rest::HttpResponse::BAD, 
+                  (int) triagens::rest::HttpResponse::BAD, 
+                  "header 'x-arango-operation' is missing");
+  }
+
+/*
+          Job* ajob = handler->createJob(this, true);
+          ServerJob* job = dynamic_cast<ServerJob*>(ajob);
+          if (jobId != 0) { 
+            _jobManager->initAsyncJob<S, HF>(job, jobId);
+          }
+          if (! _dispatcher->addJob(job)) {
+            // could not add job to job queue
+            delete handler;
+
+            return false;
+          }
+*/
   // respond with a 202
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
-  
+
   return HANDLER_DONE;
 }
 

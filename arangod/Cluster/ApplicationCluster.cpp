@@ -245,6 +245,10 @@ bool ApplicationCluster::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::open () {
+  if (! enabled()) {
+    return true;
+  }
+
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   // tell the agency that we are ready

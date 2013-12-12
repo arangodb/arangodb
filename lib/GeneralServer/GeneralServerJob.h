@@ -215,7 +215,6 @@ namespace triagens {
 
           switch (status) {
             case Handler::HANDLER_DONE:    return Job::JOB_DONE;
-            case Handler::HANDLER_DETACH:  return Job::JOB_DETACH;
             case Handler::HANDLER_REQUEUE: return Job::JOB_REQUEUE;
             case Handler::HANDLER_FAILED:  return Job::JOB_FAILED;
           }

@@ -31,6 +31,10 @@
 #include "Admin/RestBaseHandler.h"
 
 namespace triagens {
+  namespace rest {
+    class Dispatcher;
+  }
+
   namespace arango {
 
 // -----------------------------------------------------------------------------
@@ -53,7 +57,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestShardHandler (triagens::rest::HttpRequest* request);
+        RestShardHandler (triagens::rest::HttpRequest* request,
+                          void*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -84,6 +89,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::rest::Dispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue

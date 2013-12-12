@@ -107,6 +107,7 @@ using namespace triagens::arango;
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
                                ApplicationAdminServer* admin,
+                               ApplicationDispatcher* dispatcher,
                                AsyncJobManager* jobManager) {
 
   // add "/version" handler
@@ -139,7 +140,8 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 #ifdef TRI_ENABLE_CLUSTER  
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
-                            RestHandlerCreator<RestShardHandler>::createNoData);
+                            RestHandlerCreator<RestShardHandler>::createData<void*>,
+                            (void*) dispatcher->dispatcher());
 #endif
 }
 
@@ -149,6 +151,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
+                                 ApplicationDispatcher* dispatcher,
                                  AsyncJobManager* jobManager) {
 
   // add "/version" handler
@@ -792,8 +795,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer, _jobManager);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _jobManager);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
 
   // add action handler
   handlerFactory->addPrefixHandler(
