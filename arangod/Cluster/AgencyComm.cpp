@@ -812,13 +812,17 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 
 AgencyCommResult AgencyComm::watchValue (std::string const& key, 
                                          uint64_t waitIndex,
-                                         double timeout) {
+                                         double timeout,
+                                         bool recursive) {
 
-  std::string url(buildUrl(key));
-  url += "?wait=true";
+  std::string url(buildUrl(key) + "?wait=true");
 
   if (waitIndex > 0) {
     url += "&waitIndex=" + triagens::basics::StringUtils::itoa(waitIndex);
+  }
+
+  if (recursive) {
+    url += "&recursive=true";
   }
 
   AgencyCommResult result;

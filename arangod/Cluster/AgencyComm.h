@@ -360,7 +360,8 @@ namespace triagens {
         
         AgencyCommResult watchValue (std::string const&, 
                                      uint64_t,
-                                     double);
+                                     double,
+                                     bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

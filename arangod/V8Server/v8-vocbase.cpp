@@ -2290,14 +2290,18 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "get(<key>, <recursive>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "get(<key>, <recursive>, <withIndexes>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
   bool recursive = false;
+  bool withIndexes = false;
 
   if (argv.Length() > 1) {
     recursive = TRI_ObjectToBoolean(argv[1]);
+  }
+  if (argv.Length() > 2) {
+    withIndexes = TRI_ObjectToBoolean(argv[2]);
   }
   
   AgencyComm comm;
@@ -2308,20 +2312,52 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
     v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
     return scope.Close(v8::ThrowException(err));
   }
-
-  std::map<std::string, std::string> out;
   
-  result.flattenJson(out, "", false);
-  std::map<std::string, std::string>::const_iterator it = out.begin(); 
-
   v8::Handle<v8::Object> l = v8::Object::New();
 
-  while (it != out.end()) {
-    const std::string key = (*it).first;
-    const std::string value = (*it).second;
+  if (withIndexes) {
+    // return an object for each key
+    std::map<std::string, std::string> outValues;
+    std::map<std::string, std::string> outIndexes;
+  
+    result.flattenJson(outValues, "", false);
+    result.flattenJson(outIndexes, "", true);
+    
+    assert(outValues.size() == outIndexes.size());
 
-    l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
-    ++it;
+    std::map<std::string, std::string>::const_iterator it = outValues.begin(); 
+    std::map<std::string, std::string>::const_iterator it2 = outIndexes.begin(); 
+
+    while (it != outValues.end()) {
+      const std::string key = (*it).first;
+      const std::string value = (*it).second;
+      const std::string idx = (*it2).second;
+
+      v8::Handle<v8::Object> sub = v8::Object::New();
+      
+      sub->Set(v8::String::New("value"), v8::String::New(value.c_str(), value.size()));
+      sub->Set(v8::String::New("index"), v8::String::New(idx.c_str(), idx.size()));
+
+      l->Set(v8::String::New(key.c_str(), key.size()), sub);
+      
+      ++it;
+      ++it2;
+    }
+  }
+  else {
+    // return just the value for each key
+    std::map<std::string, std::string> out;
+  
+    result.flattenJson(out, "", false);
+    std::map<std::string, std::string>::const_iterator it = out.begin(); 
+
+    while (it != out.end()) {
+      const std::string key = (*it).first;
+      const std::string value = (*it).second;
+
+      l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
+      ++it;
+    }
   }
 
   return scope.Close(l);
@@ -2400,12 +2436,13 @@ static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "watch(<key>, <waitIndex>, <timeout)");
+    TRI_V8_EXCEPTION_USAGE(scope, "watch(<key>, <waitIndex>, <timeout>, <recursive>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
   double timeout = 1.0;
   uint64_t waitIndex = 0;
+  bool recursive = false;
 
   if (argv.Length() > 1) {
     waitIndex = TRI_ObjectToUInt64(argv[1], true);
@@ -2413,9 +2450,12 @@ static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
   if (argv.Length() > 2) {
     timeout = TRI_ObjectToDouble(argv[2]);
   }
+  if (argv.Length() > 3) {
+    recursive = TRI_ObjectToBoolean(argv[3]);
+  }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.watchValue(key, waitIndex, timeout);
+  AgencyCommResult result = comm.watchValue(key, waitIndex, timeout, recursive);
  
   if (result._statusCode == 0) {
     // watch timed out

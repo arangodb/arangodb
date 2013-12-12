@@ -92,9 +92,36 @@ function AgencySuite () {
       assertTrue(agency.set("UnitTestsAgency/foo", "baz"));
       assertTrue(agency.set("UnitTestsAgency/foo", "bart"));
       start = require("internal").time();
+      var result = agency.watch("UnitTestsAgency/foo", "1", wait);
+      end = require("internal").time();
+
+      assertEqual(0, Math.round(end - start));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test recursive watch
+////////////////////////////////////////////////////////////////////////////////
+
+    testWatchRecursive : function () {
+      assertTrue(agency.set("UnitTestsAgency/foo/1", "bar"));
+      assertTrue(agency.set("UnitTestsAgency/foo/2", "baz"));
+
+      var wait = 1;
+      var start = require("internal").time();
+      assertFalse(agency.watch("UnitTestsAgency/foo", 0, wait));
+      var end = require("internal").time();
+      assertEqual(wait, Math.round(end - start));
+
+      assertTrue(agency.set("UnitTestsAgency/foo/3", "bart"));
+      start = require("internal").time();
       var result = agency.watch("UnitTestsAgency/foo", 1, wait);
       end = require("internal").time();
 
+      assertEqual(0, Math.round(end - start));
+      
+      start = require("internal").time();
+      result = agency.watch("UnitTestsAgency/foo", 1, wait, true);
+      end = require("internal").time();
       assertEqual(0, Math.round(end - start));
     },
 
@@ -299,6 +326,61 @@ function AgencySuite () {
       var values = agency.get("UnitTestsAgency/someDir/foo");
       assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo"));
       assertEqual(values["UnitTestsAgency/someDir/foo"], "bar");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test get recursive
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetRecursive : function () {
+      assertTrue(agency.createDirectory("UnitTestsAgency/someDir"));
+
+      agency.set("UnitTestsAgency/someDir/foo/1/1/1", "bar1");
+      agency.set("UnitTestsAgency/someDir/foo/1/1/2", "bar2");
+      agency.set("UnitTestsAgency/someDir/foo/1/2/1", "bar3");
+      agency.set("UnitTestsAgency/someDir/foo/1/2/2", "bar4");
+      agency.set("UnitTestsAgency/someDir/foo/2/1/1", "bar5");
+      agency.set("UnitTestsAgency/someDir/foo/2/1/2", "bar6");
+      
+      var values = agency.get("UnitTestsAgency/someDir");
+      assertEqual({ }, values);
+      values = agency.get("UnitTestsAgency/someDir/foo");
+      assertEqual({ }, values);
+      
+      values = agency.get("UnitTestsAgency/someDir", true);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo/1/1/1"));
+      assertEqual("bar1", values["UnitTestsAgency/someDir/foo/1/1/1"]);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo/1/1/2"));
+      assertEqual("bar2", values["UnitTestsAgency/someDir/foo/1/1/2"]);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo/1/2/1"));
+      assertEqual("bar3", values["UnitTestsAgency/someDir/foo/1/2/1"]);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo/1/2/2"));
+      assertEqual("bar4", values["UnitTestsAgency/someDir/foo/1/2/2"]);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo/2/1/1"));
+      assertEqual("bar5", values["UnitTestsAgency/someDir/foo/2/1/1"]);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo/2/1/2"));
+      assertEqual("bar6", values["UnitTestsAgency/someDir/foo/2/1/2"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test get w/ indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetIndexes : function () {
+      assertTrue(agency.createDirectory("UnitTestsAgency/someDir"));
+
+      agency.set("UnitTestsAgency/someDir/foo", "bar");
+      agency.set("UnitTestsAgency/someDir/bar", "baz");
+      
+      var values = agency.get("UnitTestsAgency/someDir", true, true);
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foo"));
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/bar"));
+      assertEqual(values["UnitTestsAgency/someDir/foo"].value, "bar");
+      assertEqual(values["UnitTestsAgency/someDir/bar"].value, "baz");
+      assertTrue(values["UnitTestsAgency/someDir/foo"].hasOwnProperty("index"));
+      assertTrue(values["UnitTestsAgency/someDir/bar"].hasOwnProperty("index"));
+
+      assertNotEqual(values["UnitTestsAgency/someDir/foo"].index, values["UnitTestsAgency/someDir/bar"].index);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
