@@ -174,7 +174,7 @@ namespace triagens {
 /// @brief whether or not the job is detached
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDetached () const {
+        inline bool isDetached () const {
           return _isDetached;
         }
 
@@ -234,7 +234,7 @@ namespace triagens {
             abandon = _abandon;
           }
 
-          if (! abandon) {
+          if (! abandon && _server != 0) {
             _server->jobDone(this);
           }
 
