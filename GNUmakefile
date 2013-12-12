@@ -222,5 +222,5 @@ pack-arm-cmake:
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "### @brief\\|## --SECTION--"
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*-"
 ## End:
