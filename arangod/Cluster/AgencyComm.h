@@ -197,7 +197,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class AgencyComm {
-      friend AgencyCommResult;
+      friend struct AgencyCommResult;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -360,7 +360,8 @@ namespace triagens {
         
         AgencyCommResult watchValue (std::string const&, 
                                      uint64_t,
-                                     double);
+                                     double,
+                                     bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
