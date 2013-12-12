@@ -76,6 +76,10 @@
 #include "v8.h"
 #include "V8/JSLoader.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/AgencyComm.h"
+#endif
+
 #include "unicode/timezone.h"
 #include "unicode/utypes.h"
 #include "unicode/datefmt.h"
@@ -2204,6 +2208,309 @@ static TRI_general_cursor_t* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorO
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  agency functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a value in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <oldValue>, <newValue>, <throw>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  const std::string oldValue = TRI_ObjectToString(argv[1]);
+  const std::string newValue = TRI_ObjectToString(argv[2]);
+
+  bool shouldThrow = false;
+  if (argv.Length() > 3) {
+    shouldThrow = TRI_ObjectToBoolean(argv[3]);
+  }
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.casValue(key, oldValue, newValue);
+
+  if (! result.successful()) {
+    if (! shouldThrow) {
+      return scope.Close(v8::False());
+    }
+
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return scope.Close(v8::True());
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a directory in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_CreateDirectoryAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "createDirectory(<key>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.createDirectory(key);
+
+  if (! result.successful()) {
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return scope.Close(v8::True());
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets a value from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "get(<key>, <recursive>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  bool recursive = false;
+
+  if (argv.Length() > 1) {
+    recursive = TRI_ObjectToBoolean(argv[1]);
+  }
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues(key, recursive);
+
+  if (! result.successful()) {
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  std::map<std::string, std::string> out;
+  
+  result.flattenJson(out, "", false);
+  std::map<std::string, std::string>::const_iterator it = out.begin(); 
+
+  v8::Handle<v8::Object> l = v8::Object::New();
+
+  while (it != out.end()) {
+    const std::string key = (*it).first;
+    const std::string value = (*it).second;
+
+    l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
+    ++it;
+  }
+
+  return scope.Close(l);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a value from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_RemoveAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<key>, <recursive>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  bool recursive = false;
+
+  if (argv.Length() > 1) {
+    recursive = TRI_ObjectToBoolean(argv[1]);
+  }
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.removeValues(key, recursive);
+
+  if (! result.successful()) {
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return scope.Close(v8::True());
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a value in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_SetAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <value>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  const std::string value = TRI_ObjectToString(argv[1]);
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.setValue(key, value);
+  
+  if (! result.successful()) {
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return scope.Close(v8::True());
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief watches a value in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "watch(<key>, <waitIndex>, <timeout)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  double timeout = 1.0;
+  uint64_t waitIndex = 0;
+
+  if (argv.Length() > 1) {
+    waitIndex = TRI_ObjectToUInt64(argv[1], true);
+  }
+  if (argv.Length() > 2) {
+    timeout = TRI_ObjectToDouble(argv[2]);
+  }
+
+  AgencyComm comm;
+  AgencyCommResult result = comm.watchValue(key, waitIndex, timeout);
+ 
+  if (result._statusCode == 0) {
+    // watch timed out
+    return scope.Close(v8::False());
+  }
+
+  if (! result.successful()) {
+    const std::string errorDetails = result.errorDetails();
+    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  std::map<std::string, std::string> out;
+  result.flattenJson(out, "", false);
+  std::map<std::string, std::string>::const_iterator it = out.begin(); 
+
+  v8::Handle<v8::Object> l = v8::Object::New();
+
+  while (it != out.end()) {
+    const std::string key = (*it).first;
+    const std::string value = (*it).second;
+
+    l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
+    ++it;
+  }
+    
+  return scope.Close(l);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the agency endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_EndpointsAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "endpoints()");
+  }
+
+  const std::vector<std::string> endpoints = AgencyComm::getEndpoints();
+
+  v8::Handle<v8::Array> l = v8::Array::New();
+
+  for (size_t i = 0; i < endpoints.size(); ++i) {
+    const std::string endpoint = endpoints[i];
+
+    l->Set((uint32_t) i, v8::String::New(endpoint.c_str(), endpoint.size()));
+  }
+
+  return scope.Close(l);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the agency prefix
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_PrefixAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "prefix()");
+  }
+
+  const std::string prefix = AgencyComm::prefix();
+
+  return scope.Close(v8::String::New(prefix.c_str(), prefix.size()));
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the agency version
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_VersionAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "version()");
+  }
+
+  AgencyComm comm;
+  const std::string version = comm.getVersion();
+
+  return scope.Close(v8::String::New(version.c_str(), version.size()));
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
@@ -9027,6 +9334,31 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "LIST_ENDPOINTS", JS_ListEndpoints, true);
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
+
+#ifdef TRI_ENABLE_CLUSTER
+  // .............................................................................
+  // generate the agency template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("ArangoAgency"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  TRI_AddMethodVocbase(rt, "cas", JS_CasAgency);
+  TRI_AddMethodVocbase(rt, "createDirectory", JS_CreateDirectoryAgency);
+  TRI_AddMethodVocbase(rt, "get", JS_GetAgency);
+  TRI_AddMethodVocbase(rt, "remove", JS_RemoveAgency);
+  TRI_AddMethodVocbase(rt, "set", JS_SetAgency);
+  TRI_AddMethodVocbase(rt, "watch", JS_WatchAgency);
+  TRI_AddMethodVocbase(rt, "endpoints", JS_EndpointsAgency);
+  TRI_AddMethodVocbase(rt, "prefix", JS_PrefixAgency);
+  TRI_AddMethodVocbase(rt, "version", JS_VersionAgency);
+
+  v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  TRI_AddGlobalFunctionVocbase(context, "ArangoAgency", ft->GetFunction());
+#endif  
   
   // .............................................................................
   // create global variables
