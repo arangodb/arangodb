@@ -32,6 +32,11 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+#include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "GeneralServer/GeneralServerJob.h"
+#include "GeneralServer/GeneralServer.h"
+
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -95,7 +100,7 @@ triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
                   "this API is meant to be called on a coordinator node");
     return HANDLER_DONE;
   }
-
+/*
   bool found;
   char const* coordinator = _request->header("x-arango-coordinator", found);
 
@@ -112,20 +117,21 @@ triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
                   (int) triagens::rest::HttpResponse::BAD, 
                   "header 'x-arango-operation' is missing");
   }
+  
+  char const* url = _request->header("x-arango-url", found);
+  if (! found) {
+    generateError(triagens::rest::HttpResponse::BAD, 
+                  (int) triagens::rest::HttpResponse::BAD, 
+                  "header 'x-arango-url' is missing");
+  }
+*/
 
 /*
-          Job* ajob = handler->createJob(this, true);
-          ServerJob* job = dynamic_cast<ServerJob*>(ajob);
-          if (jobId != 0) { 
-            _jobManager->initAsyncJob<S, HF>(job, jobId);
-          }
-          if (! _dispatcher->addJob(job)) {
-            // could not add job to job queue
-            delete handler;
-
-            return false;
-          }
-*/
+  triagens::rest::HttpHandler* handler = this->_server->createHandler(_request);
+  triagens::rest::Job* job = new triagens::rest::GeneralServerJob<triagens::rest::HttpServer, triagens::rest::HttpHandlerFactory::GeneralHandler>(0, handler, true);
+          
+  _dispatcher->addJob(job);
+*/  
   // respond with a 202
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
 
