@@ -22,7 +22,7 @@ if [ "$1" == "help" -o "$1" == "-h" -o "$1" == "--help" ] ; then
     exit 0
 fi
 
-URL="$AGENCY/v2/keys$PREFIX"
+URL="$AGENCY/v2/keys"
 
 function set() {
   key=$1
