@@ -197,7 +197,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class AgencyComm {
-      friend AgencyCommResult;
+      friend class AgencyCommResult;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
