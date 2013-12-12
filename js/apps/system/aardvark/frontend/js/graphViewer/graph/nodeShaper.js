@@ -372,6 +372,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     parseColorFlag = function (color) {
+      colourMapper.reset();
       switch (color.type) {
         case "single":
           addColor = function (g) {
