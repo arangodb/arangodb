@@ -107,7 +107,8 @@ void HeartbeatThread::run () {
     // TODO: check if this is CPU-intensive and whether we need to sleep
     AgencyCommResult result = _agency.watchValue("Commands/" + _myId, 
                                                  lastCommandIndex + 1, 
-                                                 interval); 
+                                                 interval,
+                                                 false); 
       
     if (_stop) {
       break;
