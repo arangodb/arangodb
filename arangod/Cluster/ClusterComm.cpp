@@ -25,17 +25,35 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <arangod/Cluster/ClusterComm.h>
+#include "Cluster/ClusterComm.h"
+
+#include "VocBase/server.h"
 
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--
+// --SECTION--                                                ClusterComm class
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief
-////////////////////////////////////////////////////////////////////////////////
+ClusterComm::ClusterComm ( ) {
+  // ...
+}
+
+ClusterComm* ClusterComm::_theinstance = 0;
+
+ClusterComm* ClusterComm::instance( ) {
+  // This does not have to be thread-safe, because we guarantee that
+  // this is called very early in the startup phase when there is still
+  // a single thread.
+  if (0 == _theinstance) {
+    _theinstance = new ClusterComm( );  // this now happens exactly once
+  }
+  return _theinstance;
+}
+
+OperationID ClusterComm::getOperationID( ) {
+  return TRI_NewTickServer();
+}
 
 // Local Variables:
 // mode: outline-minor
