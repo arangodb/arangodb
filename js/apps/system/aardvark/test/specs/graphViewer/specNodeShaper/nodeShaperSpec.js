@@ -290,6 +290,52 @@
           expect(v.list.length).toEqual(1);
         });
       });
+
+      it('should reset the color <-> label mapping on color change', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1",
+              name: "Alice"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              label: "lbl2",
+              name: "Alice"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl1",
+              name: "Bob"
+            }
+          }
+        ],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        colorList;
+        
+        shaper.drawNodes(nodes);
+        
+        colorList = shaper.getColourMapping();
+        console.log(colorList);
+        shaper.changeTo({
+          color: {
+            type: "attribute",
+            key: "name"
+          }
+        });
+        colorList = shaper.getColourMapping();
+        console.log(colorList);
+        
+      });
       
       it('should be possible to add a change listener for the mapping', function() {
         var nodes = [
