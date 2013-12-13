@@ -29,11 +29,14 @@
 #define TRIAGENS_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
 #include "Rest/HttpRequest.h"
-#include "lib/SimpleHttpClient/SimpleHttpResult.h"
-#include "lib/SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
+
+#include "Cluster/ClusterState.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,8 +52,6 @@ namespace triagens {
     typedef string ClientTransactionID;         // Transaction ID from client
     typedef TRI_voc_tick_t TransactionID;       // Coordinator transaction ID
     typedef TRI_voc_tick_t OperationID;         // Coordinator operation ID
-    typedef string ShardID;               // ID of a shard
-    typedef string ServerID;              // ID of a server
 
     struct ClusterCommResult {
       ClientTransactionID clientTransactionID;
@@ -82,6 +83,13 @@ namespace triagens {
     };
 
     typedef double ClusterCommTimeout;    // in milliseconds
+
+    struct ClusterCommOptions {
+      double _connectTimeout;
+      double _requestTimeout;
+      size_t _connectRetries;
+      double _singleRequestTimeout;
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      ClusterComm
@@ -120,7 +128,7 @@ namespace triagens {
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
       
-        static ClusterComm* instance( );
+        static ClusterComm* instance ( );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces an operation ID which is unique in this process
@@ -266,11 +274,18 @@ namespace triagens {
                 
         httpclient::SimpleHttpResult* asyncAnswer (
                        rest::HttpRequest& origRequest,
-                       rest::HttpResponse& resonseToSend);
+                       rest::HttpResponse& responseToSend);
                      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process an answer coming in on the HTTP socket which is actually
+/// an answer to one of our earlier requests, return value of 0 means OK
+/// and nonzero is an error.
+////////////////////////////////////////////////////////////////////////////////
+                
+        int processAnswer(rest::HttpRequest& answer);
                  
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private data
+// --SECTION--                                         private methods and data
 // -----------------------------------------------------------------------------
 
        private: 
@@ -280,6 +295,42 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
          static ClusterComm* _theinstance;
+         
+         static ClusterCommOptions _globalConnectionOptions;
+
+         static int const maxConnectionsPerServer = 10;
+
+         struct SingleServerConnection {
+           httpclient::GeneralClientConnection* connection;
+           rest::Endpoint* endpoint;
+           time_t lastUsed;
+           ServerID serverID;
+
+           SingleServerConnection (httpclient::GeneralClientConnection* c,
+                                   rest::Endpoint* e,
+                                   ServerID s)
+             : connection(c), endpoint(e), lastUsed(0), serverID(s) {}
+           ~SingleServerConnection ();
+         };
+
+         struct ServerConnections {
+           vector<SingleServerConnection*> connections;
+           list<SingleServerConnection*> unused;
+           triagens::basics::ReadWriteLock lock;
+
+           ServerConnections () {}
+           ~ServerConnections ();   // closes all connections
+         };
+
+         // We keep connections to servers open but do not care
+         // if they are closed. The key is the server ID.
+         map<ServerID,ServerConnections*> allConnections;
+         triagens::basics::ReadWriteLock allLock;
+
+         SingleServerConnection* getConnection(ServerID& serverID);
+         void returnConnection(SingleServerConnection* singleConnection);
+         void brokenConnection(SingleServerConnection* singleConnection);
+         void closeUnusedConnections();
 
     };  // end of class ClusterComm
 
