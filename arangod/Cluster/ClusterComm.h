@@ -30,12 +30,15 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
 
+#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterState.h"
 
 #ifdef __cplusplus
@@ -52,6 +55,18 @@ namespace triagens {
     typedef string ClientTransactionID;         // Transaction ID from client
     typedef TRI_voc_tick_t TransactionID;       // Coordinator transaction ID
     typedef TRI_voc_tick_t OperationID;         // Coordinator operation ID
+
+    struct ClusterCommStatus {
+      ClientTransactionID clientTransactionID;
+      TransactionID       transactionID;
+      OperationID         operationID;
+      ShardID             shardID;
+      ServerID            serverID;   // the actual server ID of the sender
+      int                 status;     // FIXME:
+
+      ClusterCommStatus () {}
+      ~ClusterCommStatus () {}
+    };
 
     struct ClusterCommResult {
       ClientTransactionID clientTransactionID;
@@ -131,10 +146,19 @@ namespace triagens {
         static ClusterComm* instance ( );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief produces an operation ID which is unique in this process
+/// @brief initialise function to call once when still single-threaded
 ////////////////////////////////////////////////////////////////////////////////
-      
-        static OperationID getOperationID ( );
+        
+        static void initialise ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function to call once when shutting down
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void cleanup () {
+          delete _theinstance;
+          _theinstance = 0;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief submit an HTTP request to a shard asynchronously.
@@ -146,13 +170,13 @@ namespace triagens {
 /// original request, which is usually just a "202 Accepted". The actual
 /// answer is then delivered either in the callback or via poll. The
 /// caller has to call delete on the resulting ClusterCommResult*.
+/// FIXME: adjust to what Martin said
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncRequest (
                 ClientTransactionID const&          clientTransactionID,
                 TransactionID const                 coordTransactionID,
                 ShardID const&                      shardID,
-                string const&                       replyToPath,
                 rest::HttpRequest::HttpRequestType  reqtype,
                 string const&                       path,
                 char const *                        body,
@@ -174,6 +198,7 @@ namespace triagens {
                 char const *                       body,
                 size_t const                       bodyLength,
                 map<string, string> const&         headerFields);
+        // FIXME: do we need a timeout here?
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward an HTTP request we got from the client on to a shard 
@@ -211,7 +236,7 @@ namespace triagens {
                       const map<string, string>&    headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief poll one answer matching the criteria
+/// @brief wait for one answer matching the criteria
 ///
 /// If clientTransactionID is empty, then any answer with any 
 /// clientTransactionID matches. If coordTransactionID is 0, then
@@ -221,34 +246,14 @@ namespace triagens {
 /// is not 0, then the caller has to call delete on it.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult* poll (
+        ClusterCommResult* wait (
                 ClientTransactionID const& clientTransactionID,
                 TransactionID const        coordTransactionID,
                 OperationID const          operationID,
                 ShardID const&             shardID,
-                bool                       blocking = false, 
                 ClusterCommTimeout         timeout = 0.0);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief poll many answers matching the criteria
-///
-/// If clientTransactionID is empty, then any answer with any 
-/// clientTransactionID matches. If coordTransactionID is 0, then
-/// any answer with any coordTransactionID matches. If shardID is
-/// empty, then any answer from any ShardID matches. If operationID
-/// is 0, then any answer with any operationID matches. At most maxAnswers
-/// results are returned. If the answer is not 0, then the caller has to
-/// call delete on it.
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<ClusterCommResult*> multipoll (
-                ClientTransactionID const& clientTransactionID,
-                TransactionID const        coordTransactionID,
-                OperationID const          operationID,
-                ShardID const&             shardID,
-                int const                  maxAnswers = 0,
-                bool                       blocking = false,
-                ClusterCommTimeout         timeout = 0);
+        ClusterCommStatus* status (OperationID const operationID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore and drop current and future answers matching
@@ -288,52 +293,164 @@ namespace triagens {
 // --SECTION--                                         private methods and data
 // -----------------------------------------------------------------------------
 
-       private: 
+      private: 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the pointer to the singleton instance
 ////////////////////////////////////////////////////////////////////////////////
 
-         static ClusterComm* _theinstance;
+        static ClusterComm* _theinstance;
          
-         static ClusterCommOptions _globalConnectionOptions;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global options for connections
+////////////////////////////////////////////////////////////////////////////////
 
-         static int const maxConnectionsPerServer = 10;
+        static ClusterCommOptions _globalConnectionOptions;
 
-         struct SingleServerConnection {
-           httpclient::GeneralClientConnection* connection;
-           rest::Endpoint* endpoint;
-           time_t lastUsed;
-           ServerID serverID;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief produces an operation ID which is unique in this process
+////////////////////////////////////////////////////////////////////////////////
+      
+        static OperationID getOperationID ();
 
-           SingleServerConnection (httpclient::GeneralClientConnection* c,
-                                   rest::Endpoint* e,
-                                   ServerID s)
-             : connection(c), endpoint(e), lastUsed(0), serverID(s) {}
-           ~SingleServerConnection ();
-         };
+        static int const maxConnectionsPerServer = 10;
 
-         struct ServerConnections {
-           vector<SingleServerConnection*> connections;
-           list<SingleServerConnection*> unused;
-           triagens::basics::ReadWriteLock lock;
+        struct SingleServerConnection {
+          httpclient::GeneralClientConnection* connection;
+          rest::Endpoint* endpoint;
+          time_t lastUsed;
+          ServerID serverID;
 
-           ServerConnections () {}
-           ~ServerConnections ();   // closes all connections
-         };
+          SingleServerConnection (httpclient::GeneralClientConnection* c,
+                                  rest::Endpoint* e,
+                                  ServerID s)
+              : connection(c), endpoint(e), lastUsed(0), serverID(s) {}
+          ~SingleServerConnection ();
+        };
 
-         // We keep connections to servers open but do not care
-         // if they are closed. The key is the server ID.
-         map<ServerID,ServerConnections*> allConnections;
-         triagens::basics::ReadWriteLock allLock;
+        struct ServerConnections {
+          vector<SingleServerConnection*> connections;
+          list<SingleServerConnection*> unused;
+          triagens::basics::ReadWriteLock lock;
 
-         SingleServerConnection* getConnection(ServerID& serverID);
-         void returnConnection(SingleServerConnection* singleConnection);
-         void brokenConnection(SingleServerConnection* singleConnection);
-         void closeUnusedConnections();
+          ServerConnections () {}
+          ~ServerConnections ();   // closes all connections
+        };
+
+        // We keep connections to servers open but do not care
+        // if they are closed. The key is the server ID.
+        map<ServerID,ServerConnections*> allConnections;
+        triagens::basics::ReadWriteLock allLock;
+
+        SingleServerConnection* getConnection(ServerID& serverID);
+        void returnConnection(SingleServerConnection* singleConnection);
+        void brokenConnection(SingleServerConnection* singleConnection);
+        void closeUnusedConnections();
 
     };  // end of class ClusterComm
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                ClusterCommThread
+// -----------------------------------------------------------------------------
+
+    class ClusterCommThread : public basics::Thread {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+      
+      private:
+        ClusterCommThread (ClusterCommThread const&);
+        ClusterCommThread& operator= (ClusterCommThread const&);
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs the ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+        ClusterCommThread ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+        ~ClusterCommThread ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+      
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises the ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+        bool init ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+        void stop () {
+          if (_stop > 0) {
+            return;
+          }
+          
+          LOG_TRACE("stopping ClusterCommThread");
+
+          _stop = 1;
+          _condition.signal();
+
+          while (_stop != 2) {
+            usleep(1000);
+          }
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClusterCommThread main loop
+////////////////////////////////////////////////////////////////////////////////
+
+        void run ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+      
+      private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief AgencyComm instance
+////////////////////////////////////////////////////////////////////////////////
+
+        AgencyComm _agency;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief condition variable for ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::ConditionVariable _condition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop flag
+////////////////////////////////////////////////////////////////////////////////
+        
+        volatile sig_atomic_t _stop;
+
+    };
   }  // namespace arango
 }  // namespace triagens
 

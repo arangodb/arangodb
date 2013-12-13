@@ -29,6 +29,7 @@
 
 #include "BasicsC/logging.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/ConditionLocker.h"
 
 #include "VocBase/server.h"
 
@@ -49,8 +50,14 @@ ClusterCommOptions ClusterComm::_globalConnectionOptions = {
 // --SECTION--                                                ClusterComm class
 // -----------------------------------------------------------------------------
 
-ClusterComm::ClusterComm ( ) {
+ClusterComm::ClusterComm () {
   // FIXME: ...
+  // Among other things: Start background thread!
+}
+
+ClusterComm::~ClusterComm () {
+  // FIXME: ...
+  // Among other things: Stop background thread!
 }
 
 ClusterComm* ClusterComm::_theinstance = 0;
@@ -63,6 +70,9 @@ ClusterComm* ClusterComm::instance () {
     _theinstance = new ClusterComm( );  // this now happens exactly once
   }
   return _theinstance;
+}
+
+void ClusterComm::initialise () {
 }
 
 OperationID ClusterComm::getOperationID () {
@@ -264,6 +274,73 @@ void ClusterComm::closeUnusedConnections () {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                ClusterCommThread
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterCommThread::ClusterCommThread ()
+  : Thread("ClusterComm"),
+    _agency(),
+    _condition(),
+    _stop(0) {
+
+  allowAsynchronousCancelation();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a ClusterCommThread
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterCommThread::~ClusterCommThread () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         ClusterCommThread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClusterComm main loop
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterCommThread::run () {
+  LOG_TRACE("starting ClusterComm thread");
+
+  while (! _stop) {
+    usleep(1000);
+    // FIXME: ...
+    LOG_TRACE("ClusterComm alive");
+  }
+
+  // another thread is waiting for this value to shut down properly
+  _stop = 2;
+  
+  LOG_TRACE("stopped ClusterComm thread");
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises the heartbeat
+////////////////////////////////////////////////////////////////////////////////
+
+bool ClusterCommThread::init () {
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

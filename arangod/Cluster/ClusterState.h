@@ -28,6 +28,9 @@
 #ifndef TRIAGENS_CLUSTER_STATE_H
 #define TRIAGENS_CLUSTER_STATE_H 1
 
+#include "Basics/Common.h"
+#include "Cluster/AgencyComm.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -64,6 +67,8 @@ namespace triagens {
         ClusterState (ClusterState const&);    // not implemented
         void operator= (ClusterState const&);  // not implemented
 
+        static ClusterState* _theinstance;
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,6 +86,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static ClusterState* instance ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise function to call once when still single-threaded
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void initialise ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function to call once when shutting down
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void cleanup () {
+          delete _theinstance;
+          _theinstance = 0;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
@@ -127,6 +147,8 @@ namespace triagens {
         uint64_t fetchIDs (uint64_t number);
 
       private:
+
+        AgencyComm _agency;
 
         // Cached data from the agency, we reload whenever necessary:
         map<ServerID,string> serverAddresses;  // from State/ServersRegistered
