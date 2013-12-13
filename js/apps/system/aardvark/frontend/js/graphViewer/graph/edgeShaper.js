@@ -60,6 +60,9 @@ function EdgeShaper(parent, config, idfunc) {
     
     },
     colourMapper = new ColourMapper(),
+    resetColourMap = function() {
+      colourMapper.reset();
+    },
     events,
     addUpdate,
     addShape = noop,
@@ -265,6 +268,7 @@ function EdgeShaper(parent, config, idfunc) {
     
     parseColorFlag = function (color) {
       $("svg defs #gradientEdgeColor").remove();
+      resetColourMap();
       switch (color.type) {
         case "single":
           addColor = function (line, g) {
@@ -408,6 +412,8 @@ function EdgeShaper(parent, config, idfunc) {
       followEdge = {};
     }
   };
+
+  self.resetColourMap = resetColourMap;
 }
 
 EdgeShaper.shapes = Object.freeze({
