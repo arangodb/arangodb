@@ -82,6 +82,7 @@ function NodeShaper(parent, flags, idfunc) {
   var self = this,
     nodes = [],
     visibleLabels = true,
+    contextmenu = [],
     splitLabel = function(label) {
       if (label === undefined) {
         return [""];
@@ -222,6 +223,7 @@ function NodeShaper(parent, flags, idfunc) {
       g.selectAll("* > *").remove();
       addQue(g);
       updateNodes();
+      $(".node").contextMenu(contextmenu);
     },
 
     parseShapeFlag = function (shape) {
@@ -530,6 +532,14 @@ function NodeShaper(parent, flags, idfunc) {
   
   self.getColor = function() {
     return self.color.key || "";
+  };
+
+  self.addMenuEntry = function(name, func) {
+    var entry = {};
+    entry[name] = function() {
+      func(d3.select(this).data()[0]);
+    };
+    contextmenu.push(entry);
   };
 
   self.resetColourMap = resetColourMap;

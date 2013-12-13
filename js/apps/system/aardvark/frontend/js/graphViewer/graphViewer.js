@@ -53,10 +53,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   }
 
   // Globally disable the right-click menu
+  /*
   svg[0][0].oncontextmenu = function() {
     return false;
   };
-  
+  */
   var self = this,
     adapter,
     nodeShaper,
