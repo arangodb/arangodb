@@ -357,7 +357,8 @@ actions.defineHttp({
     try {
       result = {};
       result.system = internal.processStatistics();
-      result.client = internal.requestStatistics();
+      result.client = internal.clientStatistics();
+      result.http = internal.httpStatistics();
       result.server = internal.serverStatistics();
 
       actions.resultOk(req, res, actions.HTTP_OK, result);
@@ -432,8 +433,14 @@ actions.defineHttp({
 
           {
             group: "client",
-            name: "Client and Request Statistics",
-            description: "Statistics about the HTTP requests and clients connecting."
+            name: "Client Connection Statistics",
+            description: "Statistics about the connections."
+          },
+          
+          {
+            group: "http",
+            name: "HTTP Request Statistics",
+            description: "Statistics about the HTTP requests."
           },
           
           {
@@ -523,12 +530,12 @@ actions.defineHttp({
           // .............................................................................
           // client statistics
           // .............................................................................
-
+          
           {
             group: "client",
             identifier: "httpConnections",
-            name: "HTTP Client Connections",
-            description: "The number of http connections that are currently open.",
+            name: "Client Connections",
+            description: "The number of connections that are currently open.",
             type: "current",
             units: "number"
           },
@@ -594,7 +601,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsTotal",
             name: "Total requests",
             description: "Total number of HTTP requests.",
@@ -603,7 +610,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsAsync",
             name: "Async requests",
             description: "Number of asynchronously executed HTTP requests.",
@@ -612,7 +619,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsGet",
             name: "HTTP GET requests",
             description: "Number of HTTP GET requests.",
@@ -621,7 +628,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsHead",
             name: "HTTP HEAD requests",
             description: "Number of HTTP HEAD requests.",
@@ -630,7 +637,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsPost",
             name: "HTTP POST requests",
             description: "Number of HTTP POST requests.",
@@ -639,7 +646,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsPut",
             name: "HTTP PUT requests",
             description: "Number of HTTP PUT requests.",
@@ -648,7 +655,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsPatch",
             name: "HTTP PATCH requests",
             description: "Number of HTTP PATCH requests.",
@@ -657,7 +664,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsDelete",
             name: "HTTP DELETE requests",
             description: "Number of HTTP DELETE requests.",
@@ -666,7 +673,7 @@ actions.defineHttp({
           },
           
           {
-            group: "client",
+            group: "http",
             identifier: "requestsOptions",
             name: "HTTP OPTIONS requests",
             description: "Number of HTTP OPTIONS requests.",
