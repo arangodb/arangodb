@@ -32,7 +32,7 @@
 
       $('#collectionsThumbnailsIn', this.el).append(
         '<li class="span3"><a href="#new" class="add">' +
-        '<span id="newCollection" class="pull-left glyphicon glyphicon-plus-sign" />' +
+        '<span id="newCollection" class="pull-left icon_arangodb_roundminus arangoicon" />' +
         'Add Collection</a></li>'
       );
 
