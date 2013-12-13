@@ -42,6 +42,7 @@
     
     var nodes, edges,
     descendant,
+    viewer,
     
     getCommunityNodes = function() {
       return _.filter(nodes, function(n) {
@@ -99,6 +100,7 @@
     beforeEach(function() {
       nodes = [];
       edges = [];
+      viewer = {}; // Add functionality
       descendant = {
         loadNode: function(){}
       };
@@ -129,11 +131,20 @@
           }
         ).toThrow("An inheriting class has to be given.");
       });
+
+      it('should throw an error if the viewer is not given', function() {
+        expect(
+          function() {
+            var t = new AbstractAdapter([], [], descendant);
+          }
+        ).toThrow("A reference to the graph viewer has to be given.");
+      });
+      
       
       it('should not throw an error if setup correctly', function() {
         expect(
           function() {
-            var t = new AbstractAdapter([], [], descendant);
+            var t = new AbstractAdapter([], [], descendant, viewer);
           }
         ).not.toThrow();
       });
@@ -142,7 +153,7 @@
         spyOn(window, "NodeReducer");
         var nodes = [],
           edges = [],
-          t = new AbstractAdapter(nodes, edges, descendant);
+          t = new AbstractAdapter(nodes, edges, descendant, viewer);
         expect(window.NodeReducer).wasCalledWith();
       });
       
@@ -153,7 +164,7 @@
           config = {
             prioList: ["foo", "bar", "baz"]
           },
-          t = new AbstractAdapter(nodes, edges, descendant, config);
+          t = new AbstractAdapter(nodes, edges, descendant, viewer, config);
         expect(window.NodeReducer).wasCalledWith(["foo", "bar", "baz"]);        
       });
       
@@ -161,7 +172,7 @@
         spyOn(window, "WebWorkerWrapper");
         var nodes = [],
           edges = [],
-          t = new AbstractAdapter(nodes, edges, descendant);
+          t = new AbstractAdapter(nodes, edges, viewer, descendant);
         expect(window.WebWorkerWrapper).wasCalledWith(
           window.ModularityJoiner,
           jasmine.any(Function)
@@ -174,7 +185,7 @@
       var testee;
       
       beforeEach(function() {
-        testee = new AbstractAdapter([], [], descendant);
+        testee = new AbstractAdapter([], [], descendant, viewer);
         this.addMatchers({
           toHaveFunction: function(func, argCounter) {
             var obj = this.actual;
@@ -259,7 +270,7 @@
       var adapter;
       
       beforeEach(function() {
-        adapter = new AbstractAdapter(nodes, [], descendant);
+        adapter = new AbstractAdapter(nodes, [], descendant, viewer);
       });
       
       it('should be possible to insert a node', function() {
@@ -353,7 +364,7 @@
       targetid;
       
       beforeEach(function() {
-        adapter = new AbstractAdapter(nodes, edges, descendant);
+        adapter = new AbstractAdapter(nodes, edges, descendant, viewer);
         source = adapter.insertNode({_id: 1});
         target = adapter.insertNode({_id: 2});
         sourceid = source._id;
@@ -532,7 +543,7 @@
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges, descendant);
+        adapter = new AbstractAdapter(nodes, edges, descendant, viewer);
       });
      
       it('should expand a collapsed node', function() {
@@ -1093,7 +1104,7 @@
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges, descendant);
+        adapter = new AbstractAdapter(nodes, edges, descendant, viewer);
       });
       /*
       it('should not take any action if no limit is set', function() {
@@ -1441,7 +1452,7 @@
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges, descendant);
+        adapter = new AbstractAdapter(nodes, edges, descendant, viewer);
         source = adapter.insertNode({_id: "1"});
         target = adapter.insertNode({_id: "2"});
         sourceid = source._id;
@@ -2264,7 +2275,7 @@
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges, descendant);
+        adapter = new AbstractAdapter(nodes, edges, descendant, viewer);
       });
       
       it('should be able to change the reducer to a new prioList', function() {

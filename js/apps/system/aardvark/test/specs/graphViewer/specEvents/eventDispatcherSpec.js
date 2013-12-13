@@ -152,6 +152,7 @@
         expect(_.keys(t.events).length).toEqual(1);
         expect(t.events.EXPAND).toBeDefined();
         // Check immutability
+        //expect(t.events.EXPAND).not.toEqual();
         expect(function() {t.events.EXPAND = 0;}).toThrow();
       });
       
