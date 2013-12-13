@@ -81,11 +81,6 @@ v1.5.x (XXXX-XX-XX)
 
 * fixed issue #651: Allow addEdge() to take vertex ids in the JS library
 
-* added more detailed request statistics 
-
-  This adds the number of async-executed HTTP requests plus the number of HTTP
-  requests per individual HTTP method type.
-
 * removed command-line option `--log.format`
 
   In previous versions, this option did not have an effect for most log messages, so
@@ -105,6 +100,11 @@ v1.5.x (XXXX-XX-XX)
 
 v1.4.x (XXXX-XX-XX)
 -------------------
+
+* added more detailed request statistics 
+
+  This adds the number of async-executed HTTP requests plus the number of HTTP
+  requests per individual HTTP method type.
 
 * added `--force` option for arangorestore
   this option allows continuing a restore operation even if the server reports errors
@@ -130,7 +130,7 @@ v1.4.x (XXXX-XX-XX)
 * fixed typos in configuration files
 
 
-v1.4.3 (2013-XX-XX)
+v1.4.3 (2013-11-25)
 -------------------
 
 * fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
