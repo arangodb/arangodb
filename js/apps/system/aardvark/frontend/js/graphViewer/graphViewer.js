@@ -190,7 +190,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   };
   
   this.loadGraphWithAttributeValue = function(attribute, value, callback) {
-//    loadNodeFromTreeByAttributeValue
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
         callback(node);
@@ -202,6 +201,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         callback();
       }
     });
+  };
+
+  this.cleanUp = function() {
+    nodeShaper.resetColourMap();
+    edgeShaper.resetColourMap();
   };
   
   this.changeWidth = function(w) {

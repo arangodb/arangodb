@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
-/*global runs, waits */
+/*global runs, waits, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -134,6 +134,19 @@
     });
 
     describe('testing for colours', function() {
+
+      it("should offer a function to reset the colour map", function() {
+        var fakeMapper = {
+          reset: function() {}
+        }, shaper;
+        spyOn(fakeMapper, "reset");
+        spyOn(window, "ColourMapper").andReturn(fakeMapper);
+        shaper = new NodeShaper(d3.select("svg"));
+        expect(shaper.resetColourMap).toBeDefined();
+        shaper.resetColourMap();
+        expect(fakeMapper.reset).toHaveBeenCalled();
+      });
+      
       
       it('should have a default colouring of no colour flag is given', function() {
         var nodes = [{_id: 1}, {_id: 2}],

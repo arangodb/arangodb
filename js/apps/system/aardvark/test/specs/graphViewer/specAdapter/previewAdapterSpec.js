@@ -137,7 +137,9 @@
 
         beforeEach(function() {  
           var self = this;
-          viewer = {}; // todo
+          viewer = {
+            cleanUp: function(){}
+          };
           self.fakeReducerRequest = function() {};
           self.fakeReducerBucketRequest = function() {};
           spyOn(window, "NodeReducer").andCallFake(function() {
