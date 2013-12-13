@@ -140,8 +140,6 @@
         var t = new EventDispatcher(nodeShaper, edgeShaper);
         expect(t.events).toBeDefined();
         expect(_.keys(t.events).length).toEqual(0);
-        // Check immutability
-        expect(function() {t.events.blub = 0;}).toThrow();
       });
       
       it('should offer the expand event if config is correct', function() {
@@ -151,9 +149,6 @@
         expect(t.events).toBeDefined();
         expect(_.keys(t.events).length).toEqual(1);
         expect(t.events.EXPAND).toBeDefined();
-        // Check immutability
-        //expect(t.events.EXPAND).not.toEqual();
-        expect(function() {t.events.EXPAND = 0;}).toThrow();
       });
       
       it('should offer node editing events if config is correct', function() {
