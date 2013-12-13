@@ -379,6 +379,7 @@ int main (int argc, char* argv[]) {
         BaseClient.password(),
         BaseClient.requestTimeout(),
         BaseClient.connectTimeout(),
+        BaseClient.sslProtocol(),
         KeepAlive, 
         Async);
 

@@ -131,7 +131,8 @@ static V8ClientConnection* CreateConnection (Endpoint* endpoint) {
                                 300,        // request timeout
                                 3,          // connection timeout
                                 3,          // retries
-                                false);
+                                false,
+                                0);
 }
 
 // -----------------------------------------------------------------------------

@@ -439,7 +439,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                  const TRI_df_marker_type_e markerType,
                                  TRI_voc_key_t key,
                                  TRI_shaped_json_t const* shaped, 
-                                 void const* data) {
+                                 void const* data,
+                                 bool isRestore) {
   char* mem;
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
@@ -468,7 +469,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                tick,
                                key, 
                                (char*) &keyBuffer, 
-                               &keySize);
+                               &keySize,
+                               isRestore);
   
   if (res != TRI_ERROR_NO_ERROR) {
     // key generation failed
@@ -1583,7 +1585,8 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
                              TRI_shaped_json_t const* shaped,
                              void const* data,
                              const bool lock,
-                             const bool forceSync) {
+                             const bool forceSync,
+                             const bool isRestore) {
 
   TRI_primary_collection_t* primary;
   TRI_doc_document_key_marker_t* marker;
@@ -1611,7 +1614,8 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
                              markerType, 
                              key, 
                              shaped, 
-                             data);
+                             data,
+                             isRestore);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

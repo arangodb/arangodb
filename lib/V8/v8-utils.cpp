@@ -577,7 +577,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "invalid URL");
     }
 
-    GeneralClientConnection* connection = GeneralClientConnection::factory(ep, timeout, timeout, 3);
+    GeneralClientConnection* connection = GeneralClientConnection::factory(ep, timeout, timeout, 3, 0);
 
     if (connection == 0) {
       delete ep;
