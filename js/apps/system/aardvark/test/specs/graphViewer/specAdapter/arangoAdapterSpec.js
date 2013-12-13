@@ -40,7 +40,7 @@
 
   describe('Arango Adapter', function () {
     
-    describeInterface(new ArangoAdapter([], [], {
+    describeInterface(new ArangoAdapter([], [], {}, {
       nodeCollection: "",
       edgeCollection: ""
     }));
@@ -95,7 +95,7 @@
         }
       });
       
-      return new ArangoAdapter([], [], {
+      return new ArangoAdapter([], [], {}, {
         nodeCollection: "",
         edgeCollection: "",
         prioList: ["foo", "bar", "baz"]
@@ -105,6 +105,7 @@
     var adapter,
       nodes,
       edges,
+      viewer,
       arangodb = "http://localhost:8529",
       nodesCollection,
       altNodesCollection,
@@ -221,6 +222,9 @@
         nodes = [];
         edges = [];
         mockCollection = {};
+        viewer = {
+          cleanUp: function(){}
+        };
         nodesCollection = "TestNodes321";
         edgesCollection = "TestEdges321";
         altNodesCollection = "TestNodes654";
@@ -263,10 +267,18 @@
         ).toThrow("The edges have to be given.");
       });
       
+      it('should throw an error if a reference to the graph viewer is not given', function() {
+        expect(
+          function() {
+            var t = new ArangoAdapter([], []);
+          }
+        ).toThrow("A reference to the graph viewer has to be given.");
+      });
+
       it('should throw an error if no nodeCollection or graph is given', function() {
         expect(
           function() {
-            var t = new ArangoAdapter([], [], {
+            var t = new ArangoAdapter([], [], viewer, {
               edgeCollection: ""
             });
           }
@@ -276,7 +288,7 @@
       it('should throw an error if no edgeCollection or graph is given', function() {
         expect(
           function() {
-            var t = new ArangoAdapter([], [], {
+            var t = new ArangoAdapter([], [], viewer, {
               nodeCollection: ""
             });
           }
@@ -286,7 +298,7 @@
       it('should not throw an error if everything is given', function() {
         expect(
           function() {
-            var t = new ArangoAdapter([], [], {
+            var t = new ArangoAdapter([], [], viewer, {
               nodeCollection: "",
               edgeCollection: ""
             });
@@ -298,6 +310,7 @@
         var adapter = new ArangoAdapter(
           nodes,
           edges,
+          viewer,
           {
             nodeCollection: nodesCollection,
             edgeCollection: edgesCollection,
@@ -318,6 +331,7 @@
         var adapter = new ArangoAdapter(
           nodes,
           edges,
+          viewer,
           {
             nodeCollection: nodesCollection,
             edgeCollection: edgesCollection,
@@ -333,6 +347,7 @@
         var adapter = new ArangoAdapter(
           nodes,
           edges,
+          viewer,
           {
             nodeCollection: nodesCollection,
             edgeCollection: edgesCollection,
@@ -385,6 +400,7 @@
           adapter = new ArangoAdapter(
             nodes,
             edges,
+            viewer,
             {
               nodeCollection: nodesCollection,
               edgeCollection: edgesCollection,
