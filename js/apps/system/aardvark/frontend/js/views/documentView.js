@@ -183,7 +183,7 @@
             var linkedDoc = self.getLinkedDoc(value);
 
             if (linkedDoc !== null && linkedDoc !== undefined) {
-              preview = '<span class="docPreview glyphicon glyphicon-info-sign" title="' + 
+              preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' + 
                         self.escaped(JSON.stringify(linkedDoc)) + '"></span>';
             
               html = '<a href="#collection/' + value + 
