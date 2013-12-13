@@ -25,9 +25,12 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-using namespace triagens::arango;
+#include "Cluster/ClusterState.h"
 
-#include "ClusterState.h"
+#include "BasicsC/logging.h"
+#include "Basics/WriteLocker.h"
+
+using namespace triagens::arango;
 
 
 // -----------------------------------------------------------------------------
@@ -46,8 +49,16 @@ ClusterState* ClusterState::instance () {
   return _theinstance;
 }
 
-ClusterState::ClusterState () {
-  // FIXME:
+void ClusterState::initialise () {
+}
+
+ClusterState::ClusterState ()
+    : _agency() {
+  loadServerInformation();
+  loadShardInformation();
+}
+
+ClusterState::~ClusterState () {
 }
 
 void ClusterState::loadServerInformation () {
@@ -66,7 +77,7 @@ void ClusterState::loadShardInformation () {
   }
 }
 
-string ClusterState::getServerEndpoint (ServerID& serverID) {
+std::string ClusterState::getServerEndpoint (ServerID& serverID) {
   map<ServerID,string>::iterator i = serverAddresses.find(serverID);
   if (i != serverAddresses.end()) {
     return i->second;

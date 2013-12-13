@@ -29,6 +29,8 @@
 #include "Rest/Endpoint.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterState.h"
+#include "Cluster/ClusterComm.h"
 #include "BasicsC/logging.h"
 
 using namespace triagens;
@@ -237,6 +239,12 @@ bool ApplicationCluster::start () {
                        endpoints.c_str());
   }
  
+  // initialise ClusterState class
+  ClusterState::instance()->initialise();
+
+  // initialise ClusterComm library
+  ClusterComm::instance()->initialise();
+
   return true;
 }
   
@@ -316,6 +324,8 @@ void ApplicationCluster::stop () {
   // unregister ourselves 
   comm.removeValues("State/ServersRegistered/" + _myId, false);
   
+  ClusterComm::cleanup();
+  ClusterState::cleanup();
   AgencyComm::cleanup();
 }
 
