@@ -19,7 +19,7 @@
       });
       this.fillModal();
 
-      $('.modalTooltips, .glyphicon-info-sign').tooltip({
+      $('.modalTooltips, .arangoicon').tooltip({
         placement: "left"
       });
 
