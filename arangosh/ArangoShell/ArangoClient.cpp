@@ -111,7 +111,8 @@ ArangoClient::ArangoClient ()
     _password(""),
     _hasPassword(false),
     _connectTimeout(DEFAULT_CONNECTION_TIMEOUT),
-    _requestTimeout(DEFAULT_REQUEST_TIMEOUT) {
+    _requestTimeout(DEFAULT_REQUEST_TIMEOUT),
+    _sslProtocol(4) {
 
   char* p = TRI_GetTempPath();
 
@@ -242,6 +243,7 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
     ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
     ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
     ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
+    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
   ;
 
   description(clientOptions, false);
@@ -826,6 +828,14 @@ double ArangoClient::connectTimeout () const {
 
 double ArangoClient::requestTimeout () const {
   return _requestTimeout;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl protocol
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t ArangoClient::sslProtocol () const {
+  return _sslProtocol;
 }
 
 // -----------------------------------------------------------------------------

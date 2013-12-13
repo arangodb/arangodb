@@ -885,7 +885,8 @@ int main (int argc, char* argv[]) {
   Connection = GeneralClientConnection::factory(BaseClient.endpointServer(),
                                                 BaseClient.requestTimeout(),
                                                 BaseClient.connectTimeout(),
-                                                ArangoClient::DEFAULT_RETRIES);
+                                                ArangoClient::DEFAULT_RETRIES,
+                                                BaseClient.sslProtocol());
   
   if (Connection == 0) {
     cerr << "out of memory" << endl;

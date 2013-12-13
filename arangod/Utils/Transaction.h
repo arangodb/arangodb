@@ -847,7 +847,8 @@ namespace triagens {
                                     shaped, 
                                     data, 
                                     ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                    forceSync);
+                                    forceSync,
+                                    false);
 
           return res;
         }
