@@ -42,7 +42,8 @@ using namespace triagens::arango;
 ClusterCommOptions ClusterComm::_globalConnectionOptions = {
   15.0,  // connectTimeout 
   3.0,   // requestTimeout
-  3      // numRetries
+  3,     // numRetries,
+  5.0    // singleRequestTimeout
 };
 
 
