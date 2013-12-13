@@ -40,7 +40,7 @@
 
   describe('Foxx Adapter', function () {
     
-    describeInterface(new FoxxAdapter([], [], "foxx/route"));
+    describeInterface(new FoxxAdapter([], [], "foxx/route", {}));
     
     describeIntegeration(function() {
       spyOn($, "ajax").andCallFake(function(req) {
@@ -76,16 +76,20 @@
         }
       });
       
-      return new FoxxAdapter([], [], "foxx/route", {prioList: ["foo", "bar", "baz"]});
+      return new FoxxAdapter([], [], "foxx/route", {}, {prioList: ["foo", "bar", "baz"]});
     });
     
     var adapter,
+      viewer,
       nodes,
       edges;
     
       beforeEach(function() {
         nodes = [];
         edges = [];
+        viewer = {
+          cleanUp: function(){}
+        };
       });
             
       it('should throw an error if no nodes are given', function() {
@@ -112,10 +116,18 @@
         ).toThrow("The route has to be given.");
       }); 
       
-      it('should not throw an error if necessary info is given', function() {
+      it('should throw an error if no reference to the graph viewer is given', function() {
         expect(
           function() {
             var t = new FoxxAdapter([], [], "foxx/route");
+          }
+        ).toThrow("A reference to the graph viewer has to be given.");
+      }); 
+
+      it('should not throw an error if necessary info is given', function() {
+        expect(
+          function() {
+            var t = new FoxxAdapter([], [], "foxx/route", viewer);
           }
         ).not.toThrow();
       }); 
@@ -141,7 +153,8 @@
         var adapter = new FoxxAdapter(
           nodes,
           edges,
-          "foxx/route"
+          "foxx/route",
+          viewer
         );
         expect(window.NodeReducer).wasCalledWith();
       });
@@ -175,7 +188,8 @@
           adapter = new FoxxAdapter(
             nodes,
             edges,
-            route
+            route,
+            viewer
           );
           edgeRoute = host + "/edges";
           nodeRoute = host + "/nodes";

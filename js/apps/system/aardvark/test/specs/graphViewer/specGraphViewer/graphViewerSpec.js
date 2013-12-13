@@ -122,10 +122,46 @@ describe("Graph Viewer", function() {
         jasmine.any(Array),
         jasmine.any(Array),
         route,
+        gv,
         jasmine.any(Object)
       );
     });
     
+    it('should be able to be setup with a json adapter', function() {
+      var path = "json/path",
+        adapterConfig = {type: "json", path: path},
+        gv,
+        width = 20,
+        height = 10;
+      spyOn(window, "JSONAdapter");
+      gv = new GraphViewer(svg, width, height, adapterConfig);
+      expect(window.JSONAdapter).wasCalledWith(
+        path,
+        jasmine.any(Array),
+        jasmine.any(Array),
+        gv,
+        width,
+        height
+      );
+    });
+    
+    it('should be able to be setup with a arango adapter', function() {
+      var adapterConfig = {type: "arango"},
+        gv,
+        width = 20,
+        height = 10;
+      spyOn(window, "ArangoAdapter").andReturn({
+        setChildLimit: function(){}
+      });
+      gv = new GraphViewer(svg, width, height, adapterConfig);
+      expect(window.ArangoAdapter).wasCalledWith(
+        jasmine.any(Array),
+        jasmine.any(Array),
+        gv,
+        jasmine.any(Object)
+      );
+    });
+
     it('should be able to be setup with a preview adapter', function() {
       var adapterConfig = {type: "preview"},
         gv;
@@ -134,6 +170,7 @@ describe("Graph Viewer", function() {
       expect(window.PreviewAdapter).wasCalledWith(
         jasmine.any(Array),
         jasmine.any(Array),
+        gv,
         jasmine.any(Object)
       );
     });
@@ -219,6 +256,10 @@ describe("Graph Viewer", function() {
     it('should offer to load a new graph by attribute value', function() {
       expect(viewer.loadGraphWithAttributeValue).toBeDefined();
     });
+
+    it("should offer a function for cleanUp", function() {
+      expect(viewer.cleanUp).toBeDefined();
+    });
     
     
     it("should be able to load a root node", function() {
@@ -301,6 +342,13 @@ describe("Graph Viewer", function() {
       expect(viewer.start).wasCalled();
     });
     
+    it("should trigger colourlist resets on the shapers on cleanup", function() {
+      spyOn(viewer.edgeShaper, "resetColourMap");
+      spyOn(viewer.nodeShaper, "resetColourMap");
+      viewer.cleanUp();
+      expect(viewer.edgeShaper.resetColourMap).toHaveBeenCalled();
+      expect(viewer.nodeShaper.resetColourMap).toHaveBeenCalled();
+    });
     
   });
 
