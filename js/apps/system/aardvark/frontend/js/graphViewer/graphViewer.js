@@ -51,6 +51,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   if (adapterConfig === undefined || adapterConfig.type === undefined) {
     throw "An adapter configuration has to be given";
   }
+
+  // Globally disable the right-click menu
+  svg[0][0].oncontextmenu = function() {
+    return false;
+  };
   
   var self = this,
     adapter,

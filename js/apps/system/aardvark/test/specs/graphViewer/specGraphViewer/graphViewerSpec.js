@@ -261,6 +261,10 @@ describe("Graph Viewer", function() {
       expect(viewer.cleanUp).toBeDefined();
     });
     
+    it("should disable the right-click context menu", function() {
+      var onCTXMenu = docSVG.oncontextmenu;
+      expect(onCTXMenu()).toBeFalsy();
+    });
     
     it("should be able to load a root node", function() {
       runs (function() {
