@@ -155,6 +155,8 @@ bool ApplicationCluster::start () {
     return true;
   }
   
+  ServerState::instance()->setId(_myId);
+  
   // perfom an initial connect to the agency
   const std::string endpoints = AgencyComm::getEndpointsString();
 
@@ -207,8 +209,11 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setRole(role);
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
-  
+ 
+  // the agency about our state 
   AgencyComm comm;
+  comm.sendServerState();
+
   const std::string version = comm.getVersion();
 
   LOG_INFO("Cluster feature is turned on. "
@@ -221,7 +226,7 @@ bool ApplicationCluster::start () {
            ServerState::roleToString(role).c_str());
 
   // start heartbeat thread
-  _heartbeat = new HeartbeatThread(_myId, _heartbeatInterval * 1000, 5);
+  _heartbeat = new HeartbeatThread(_heartbeatInterval * 1000, 5);
 
   if (_heartbeat == 0) {
     LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
@@ -230,6 +235,44 @@ bool ApplicationCluster::start () {
   if (! _heartbeat->init() || ! _heartbeat->start()) {
     LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
                        endpoints.c_str());
+  }
+ 
+  return true;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationCluster::open () {
+  if (! enabled()) {
+    return true;
+  }
+
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  // tell the agency that we are ready
+  AgencyComm comm;
+  AgencyCommResult result = comm.setValue("State/ServersRegistered/" + _myId, _myAddress);
+
+  if (! result.successful()) {
+    LOG_FATAL_AND_EXIT("unable to register server in agency");
+  }
+
+  if (role == ServerState::ROLE_COORDINATOR) {
+    ServerState::instance()->setState(ServerState::STATE_SERVING);
+  
+    // register coordinator
+    AgencyCommResult result = comm.setValue("State/Coordinators/" + _myId, "none");
+    if (! result.successful()) {
+      LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
+    }
+  }
+  else if (role == ServerState::ROLE_PRIMARY) {
+    ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
+  }
+  else if (role == ServerState::ROLE_SECONDARY) {
+    LOG_FATAL_AND_EXIT("secondary server tasks are currently not implemented");
   }
 
   return true;
@@ -245,6 +288,12 @@ void ApplicationCluster::close () {
   }
   
   _heartbeat->stop();
+  
+  // change into shutdown state
+  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
+
+  AgencyComm comm;
+  comm.sendServerState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,9 +304,18 @@ void ApplicationCluster::stop () {
   if (! enabled()) {
     return;
   }
+  
+  // change into shutdown state
+  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
+
+  AgencyComm comm;
+  comm.sendServerState();
 
   _heartbeat->stop();
-
+ 
+  // unregister ourselves 
+  comm.removeValues("State/ServersRegistered/" + _myId, false);
+  
   AgencyComm::cleanup();
 }
 
@@ -304,17 +362,20 @@ std::string ApplicationCluster::getEndpointForId () const {
 ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   // fetch value at TmpConfig/DBServers
   // we need this to determine the server's role
+  const std::string key = "TmpConfig/Coordinators";
+
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues("TmpConfig/Coordinators", true);
+  AgencyCommResult result = comm.getValues(key, true);
  
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
     LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): "
-                       "got status code %d, message: %s",
+                       "got status code %d, message: %s, key: %s",
                        endpoints.c_str(), 
                        result._statusCode,
-                       result.errorMessage().c_str());
+                       result.errorMessage().c_str(),
+                       key.c_str());
   }
   
   std::map<std::string, std::string> out;
@@ -340,17 +401,20 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
 ServerState::RoleEnum ApplicationCluster::checkServersList () const {
   // fetch value at TmpConfig/DBServers
   // we need this to determine the server's role
+  const std::string key = "TmpConfig/DBServers";
+
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues("TmpConfig/DBServers", true);
+  AgencyCommResult result = comm.getValues(key, true);
  
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
     LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): "
-                       "got status code %d, message: %s", 
+                       "got status code %d, message: %s, key: %s", 
                        endpoints.c_str(), 
                        result._statusCode,
-                       result.errorMessage().c_str());
+                       result.errorMessage().c_str(),
+                       key.c_str());
   }
  
   std::map<std::string, std::string> out;

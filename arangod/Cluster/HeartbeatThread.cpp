@@ -44,13 +44,12 @@ using namespace triagens::arango;
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread (std::string const& myId,
-                                  uint64_t interval,
+HeartbeatThread::HeartbeatThread (uint64_t interval,
                                   uint64_t maxFailsBeforeWarning) 
   : Thread("heartbeat"),
     _agency(),
     _condition(),
-    _myId(myId),
+    _myId(ServerState::instance()->getId()),
     _interval(interval),
     _maxFailsBeforeWarning(maxFailsBeforeWarning),
     _numFails(0),
@@ -238,15 +237,9 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult const& result,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
-  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + 
-                            ":" + 
-                            AgencyComm::generateStamp();
+  const bool result = _agency.sendServerState();
 
-  // return value is intentionally not handled
-  // if sending the current state fails, we'll just try again in the next iteration
-  AgencyCommResult result(_agency.setValue("State/ServerStates/" + _myId, value));
-
-  if (result.successful()) {
+  if (result) {
     _numFails = 0;
   }
   else {
@@ -257,7 +250,7 @@ bool HeartbeatThread::sendState () {
     }
   }
 
-  return result.successful();
+  return result;
 }
 
 // Local Variables:

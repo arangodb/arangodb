@@ -388,6 +388,8 @@ namespace triagens {
             return;
           }
 
+          assert(job != 0);
+
           *jobId = (AsyncJobResult::IdType) generate();
           job->assignId((uint64_t) *jobId);
 
@@ -415,7 +417,7 @@ namespace triagens {
             return;
           }
             
-          double now = TRI_microtime();
+          const double now = TRI_microtime();
 
           WRITE_LOCKER(_lock);
           JobList::iterator it = _jobs.find(jobId); 

@@ -174,7 +174,7 @@ namespace triagens {
 /// @brief whether or not the job is detached
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDetached () const {
+        inline bool isDetached () const {
           return _isDetached;
         }
 
@@ -215,7 +215,6 @@ namespace triagens {
 
           switch (status) {
             case Handler::HANDLER_DONE:    return Job::JOB_DONE;
-            case Handler::HANDLER_DETACH:  return Job::JOB_DETACH;
             case Handler::HANDLER_REQUEUE: return Job::JOB_REQUEUE;
             case Handler::HANDLER_FAILED:  return Job::JOB_FAILED;
           }
@@ -235,7 +234,7 @@ namespace triagens {
             abandon = _abandon;
           }
 
-          if (! abandon) {
+          if (! abandon && _server != 0) {
             _server->jobDone(this);
           }
 
