@@ -1961,7 +1961,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false);
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -1970,7 +1970,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false);
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
@@ -2956,6 +2956,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._connectTimeout    = JsonHelper::getNumericValue<double>(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getNumericValue<uint64_t>(json, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = JsonHelper::getNumericValue<uint64_t>(json, "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol       = JsonHelper::getNumericValue<uint32_t>(json, "sslProtocol", config._sslProtocol);
   config._chunkSize         = JsonHelper::getNumericValue<uint64_t>(json, "chunkSize", config._chunkSize);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
