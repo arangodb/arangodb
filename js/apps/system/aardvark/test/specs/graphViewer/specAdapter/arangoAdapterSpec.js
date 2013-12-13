@@ -222,7 +222,9 @@
         nodes = [];
         edges = [];
         mockCollection = {};
-        viewer = {}; // todo
+        viewer = {
+          cleanUp: function(){}
+        };
         nodesCollection = "TestNodes321";
         edgesCollection = "TestEdges321";
         altNodesCollection = "TestNodes654";

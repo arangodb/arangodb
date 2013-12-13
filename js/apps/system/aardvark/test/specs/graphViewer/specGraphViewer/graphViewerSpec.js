@@ -256,6 +256,10 @@ describe("Graph Viewer", function() {
     it('should offer to load a new graph by attribute value', function() {
       expect(viewer.loadGraphWithAttributeValue).toBeDefined();
     });
+
+    it("should offer a function for cleanUp", function() {
+      expect(viewer.cleanUp).toBeDefined();
+    });
     
     
     it("should be able to load a root node", function() {
@@ -338,6 +342,13 @@ describe("Graph Viewer", function() {
       expect(viewer.start).wasCalled();
     });
     
+    it("should trigger colourlist resets on the shapers on cleanup", function() {
+      spyOn(viewer.edgeShaper, "resetColourMap");
+      spyOn(viewer.nodeShaper, "resetColourMap");
+      viewer.cleanUp();
+      expect(viewer.edgeShaper.resetColourMap).toHaveBeenCalled();
+      expect(viewer.nodeShaper.resetColourMap).toHaveBeenCalled();
+    });
     
   });
 

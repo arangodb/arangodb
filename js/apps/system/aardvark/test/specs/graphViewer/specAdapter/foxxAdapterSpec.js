@@ -87,7 +87,9 @@
       beforeEach(function() {
         nodes = [];
         edges = [];
-        viewer = {}; // todo
+        viewer = {
+          cleanUp: function(){}
+        };
       });
             
       it('should throw an error if no nodes are given', function() {
