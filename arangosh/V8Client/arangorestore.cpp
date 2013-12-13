@@ -138,6 +138,12 @@ static bool Overwrite = true;
 static bool RecycleIds = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief continue restore even in the face of errors
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Force = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -173,6 +179,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("import-data", &ImportData, "import data into collection")
     ("recycle-ids", &RecycleIds, "recycle collection and revision ids from dump")
+    ("force", &Force, "continue restore even in the face of some server-side errors")
     ("create-collection", &ImportStructure, "create collection structure")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
     ("input-directory", &InputDirectory, "input directory")
@@ -367,7 +374,8 @@ static int SendRestoreCollection (TRI_json_t const* json,
 
   const string url = "/_api/replication/restore-collection"
                      "?overwrite=" + string(Overwrite ? "true" : "false") +
-                     "&recycleIds=" + string(RecycleIds ? "true" : "false");
+                     "&recycleIds=" + string(RecycleIds ? "true" : "false") + 
+                     "&force=" + string(Force ? "true" : "false");
 
   const string body = JsonHelper::toString(json);
 
@@ -407,7 +415,7 @@ static int SendRestoreIndexes (TRI_json_t const* json,
                                string& errorMsg) {
   map<string, string> headers;
 
-  const string url = "/_api/replication/restore-indexes"; 
+  const string url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
   const string body = JsonHelper::toString(json);
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
@@ -451,7 +459,8 @@ static int SendRestoreData (string const& cid,
 
   const string url = "/_api/replication/restore-data?collection=" + 
                      StringUtils::urlEncode(cname) +
-                     "&recycleIds=" + (RecycleIds ? "true" : "false");
+                     "&recycleIds=" + (RecycleIds ? "true" : "false") + 
+                     "&force=" + (Force ? "true" : "false");
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
                                                url,
@@ -630,12 +639,22 @@ static int ProcessInputDirectory (string& errorMsg) {
       if (ImportStructure) {
         // re-create collection
         if (Progress) {
-          cout << "Creating collection '" << cname << "'..." << endl;
+          if (Overwrite) {
+            cout << "Re-creating collection '" << cname << "'..." << endl;
+          }
+          else {
+            cout << "Creating collection '" << cname << "'..." << endl;
+          }
         }
 
         int res = SendRestoreCollection(json, errorMsg);
 
         if (res != TRI_ERROR_NO_ERROR) {
+          if (Force) {
+            cerr << errorMsg << endl;
+            continue;
+          }
+
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
           return TRI_ERROR_INTERNAL;
@@ -728,9 +747,19 @@ static int ProcessInputDirectory (string& errorMsg) {
 
               if (res != TRI_ERROR_NO_ERROR) {
                 TRI_CLOSE(fd);
-                errorMsg = string(TRI_errno_string(res));
-                TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+                if (errorMsg.empty()) {
+                  errorMsg = string(TRI_errno_string(res));
+                }
+                else {
+                  errorMsg = string(TRI_errno_string(res)) + ": " + errorMsg;
+                }
 
+                if (Force) {
+                  cerr << errorMsg << endl;
+                  continue;
+                }
+
+                TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
                 return res;
               }
 
@@ -760,6 +789,11 @@ static int ProcessInputDirectory (string& errorMsg) {
           int res = SendRestoreIndexes(json, errorMsg);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            if (Force) {
+              cerr << errorMsg << endl;
+              continue;
+            }
+
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
             return TRI_ERROR_INTERNAL;
