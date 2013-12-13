@@ -100,9 +100,14 @@
 }
 
 .addAttribute, .deleteAttribute {
-  font-size: 20px;
+  font-size: 27px;
   float:right;
   padding-top: 2px;
+}
+
+#documentTableID .icon_arangodb_edit {
+  font-size: 27px;
+  margin-top: -2px;
 }
 
 #documentTableID {
