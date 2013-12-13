@@ -122,6 +122,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       adapter = new ArangoAdapter(
         nodes,
         edges,
+        this,
         adapterConfig
       );
       adapter.setChildLimit(10);
@@ -133,6 +134,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         nodes,
         edges,
         adapterConfig.route,
+        this,
         adapterConfig
       );
       break;
@@ -141,6 +143,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         adapterConfig.path,
         nodes,
         edges,
+        this,
         width,
         height
       );
@@ -151,6 +154,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       adapter = new PreviewAdapter(
         nodes,
         edges,
+        this,
         adapterConfig
       );
       break;

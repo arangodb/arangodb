@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function AbstractAdapter(nodes, edges, descendant, config) {
+function AbstractAdapter(nodes, edges, descendant, viewer, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -41,6 +41,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   }
   if (descendant === undefined) {
     throw "An inheriting class has to be given.";
+  }
+  if (viewer === undefined) {
+    throw "A reference to the graph viewer has to be given.";
   }
   config = config || {};
   
