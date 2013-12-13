@@ -130,7 +130,7 @@ v1.4.x (XXXX-XX-XX)
 * fixed typos in configuration files
 
 
-v1.4.3 (2013-XX-XX)
+v1.4.3 (2013-11-25)
 -------------------
 
 * fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
