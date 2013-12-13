@@ -280,3 +280,8 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
   right: 4px;
   top: 0px;
 }
+
+.modal-body .icon_arangodb_info {
+  font-size: 23px;
+  color: #736B68;
+}
