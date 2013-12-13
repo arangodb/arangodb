@@ -28,7 +28,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function FoxxAdapter(nodes, edges, route, config) {
+function FoxxAdapter(nodes, edges, route, viewer, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -39,6 +39,9 @@ function FoxxAdapter(nodes, edges, route, config) {
   }
   if (route === undefined) {
     throw "The route has to be given.";
+  }
+  if (viewer === undefined) {
+    throw "A reference to the graph viewer has to be given.";
   }
 
   config = config || {};
@@ -202,7 +205,7 @@ function FoxxAdapter(nodes, edges, route, config) {
   if (config.prioList) {
     absConfig.prioList = config.prioList;
   }
-  absAdapter = new AbstractAdapter(nodes, edges, this, absConfig);
+  absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
   
   parseConfig(config);
   fillRoutes();

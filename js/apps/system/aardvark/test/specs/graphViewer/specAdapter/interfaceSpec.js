@@ -129,11 +129,13 @@
         };
         
         
-        spyOn(window, "AbstractAdapter").andCallFake(function(nodes, edges, descendant, config) {
-          mockedAbstract.nodes = nodes;
-          mockedAbstract.edges = edges;
-          return mockedAbstract;
-        });
+        spyOn(window, "AbstractAdapter").andCallFake(
+          function(nodes, edges, descendant, viewer, config) {
+            mockedAbstract.nodes = nodes;
+            mockedAbstract.edges = edges;
+            return mockedAbstract;
+          }
+        );
       });
       
       it('should create the AbstractAdapter with correct values', function() {
@@ -142,6 +144,7 @@
           [],
           [],
           testee,
+          jasmine.any(Object),
           {prioList: ["foo", "bar", "baz"]}
         );
       });

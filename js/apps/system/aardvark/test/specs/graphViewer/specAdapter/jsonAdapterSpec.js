@@ -42,13 +42,14 @@
   
   describe('JSON Adapter', function () {
     
-    describeInterface(new JSONAdapter("", [], []));
+    describeInterface(new JSONAdapter("", [], [], {}));
     
     var adapter,
       nodes,
       edges,
       jsonPath,
       startNode,
+      viewer,
       
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
@@ -71,6 +72,7 @@
       jsonPath = "../test_data/";
       nodes = [];
       edges = [];
+      viewer = {};
       // Helper function to easily insert a node into the list
       nodes.insertNode = function(node) {
         this.push(node);
@@ -80,7 +82,7 @@
         this.push({source: source, target: target});
       };
       startNode = 0;
-      adapter = new JSONAdapter(jsonPath, nodes, edges);
+      adapter = new JSONAdapter(jsonPath, nodes, edges, viewer);
     });
     
     it('should be able to load a tree node from a json file', function() {

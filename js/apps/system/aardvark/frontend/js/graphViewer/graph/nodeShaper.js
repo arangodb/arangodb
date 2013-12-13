@@ -120,6 +120,9 @@ function NodeShaper(parent, flags, idfunc) {
       });
     },
     colourMapper = new ColourMapper(),
+    resetColourMap = function() {
+      colourMapper.reset();
+    },
     events,
     addUpdate,
     idFunction = function(d) {
@@ -372,7 +375,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     parseColorFlag = function (color) {
-      colourMapper.reset();
+      resetColourMap();
       switch (color.type) {
         case "single":
           addColor = function (g) {
@@ -528,6 +531,8 @@ function NodeShaper(parent, flags, idfunc) {
   self.getColor = function() {
     return self.color.key || "";
   };
+
+  self.resetColourMap = resetColourMap;
 }
 
 NodeShaper.shapes = Object.freeze({
