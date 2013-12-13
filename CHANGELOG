@@ -101,6 +101,12 @@ v1.5.x (XXXX-XX-XX)
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* added `--server.ssl-protocol` option for client tools
+  this allows connecting from arangosh, arangoimp, arangoimp etc. to an ArangoDB
+  server that uses a non-default value for `--server.ssl-protocol`. The default
+  value for the SSL protocol is 4 (TLSv1). If the server is configured to use a
+  different protocol, it was not possible to connect to it with the client tools.
+
 * added more detailed request statistics 
 
   This adds the number of async-executed HTTP requests plus the number of HTTP

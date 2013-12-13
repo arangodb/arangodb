@@ -173,6 +173,11 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                        json, 
                        "maxConnectRetries", 
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_maxConnectRetries));
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       json, 
+                       "sslProtocol", 
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_sslProtocol));
   
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
                        json, 
@@ -302,6 +307,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
 
   if (TRI_IsNumberJson(value)) {
     config->_maxConnectRetries = (uint64_t) value->_value._number;
+  }
+  
+  value = TRI_LookupArrayJson(json, "sslProtocol");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_sslProtocol = (uint32_t) value->_value._number;
   }
   
   value = TRI_LookupArrayJson(json, "chunkSize");
@@ -1184,6 +1195,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_requestTimeout    = 300.0;
   config->_connectTimeout    = 10.0;
   config->_maxConnectRetries = 100;
+  config->_sslProtocol       = 0;
   config->_autoStart         = false;
   config->_chunkSize         = 0;
   config->_adaptivePolling   = true;
@@ -1253,6 +1265,7 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   dst->_connectTimeout    = src->_connectTimeout;
   dst->_ignoreErrors      = src->_ignoreErrors;
   dst->_maxConnectRetries = src->_maxConnectRetries;
+  dst->_sslProtocol       = src->_sslProtocol;
   dst->_chunkSize         = src->_chunkSize;
   dst->_autoStart         = src->_autoStart;
   dst->_adaptivePolling   = src->_adaptivePolling;

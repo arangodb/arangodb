@@ -195,7 +195,7 @@ namespace triagens {
               return true;
             }
             else {
-              LOG_WARNING("error in SSL handshake: %s", triagens::basics::lastSSLError().c_str());
+              LOG_TRACE("error in SSL handshake: %s", triagens::basics::lastSSLError().c_str());
               return false;
             }
           }

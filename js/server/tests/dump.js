@@ -284,7 +284,15 @@ function dumpTestSuite () {
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(0, c.count());
+      assertEqual(1000, c.count());
+  
+      for (var i = 0; i < 1000; ++i) {
+        var doc = c.document(String(7 + (i * 42)));
+
+        assertEqual(String(7 + (i * 42)), doc._key);
+        assertEqual(i, doc.value);
+        assertEqual({ value: [ i, i ] }, doc.more);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
