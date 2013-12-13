@@ -2268,7 +2268,7 @@ static v8::Handle<v8::Value> JS_DebugCanUseFailAt (v8::Arguments const& argv) {
 /// @brief returns the current request and connection statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2298,6 +2298,26 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
   
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current http statistics
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HttpStatistics (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  StatisticsCounter httpConnections;
+  StatisticsCounter totalRequests;
+  vector<StatisticsCounter> methodRequests;
+  StatisticsCounter asyncRequests;
+  StatisticsDistribution connectionTime;
+
+  TRI_FillConnectionStatistics(httpConnections, totalRequests, methodRequests, asyncRequests, connectionTime);
+
   // request counters
   result->Set(v8::String::New("requestsTotal"), v8::Number::New(totalRequests._count));
   result->Set(v8::String::New("requestsAsync"), v8::Number::New(asyncRequests._count));
@@ -2778,6 +2798,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64DECODE", JS_Base64Decode);
   TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64ENCODE", JS_Base64Encode);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CLIENT_STATISTICS", JS_ClientStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
@@ -2788,6 +2809,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
@@ -2796,7 +2818,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
