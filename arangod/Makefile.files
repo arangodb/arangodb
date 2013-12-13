@@ -112,9 +112,11 @@ if ENABLE_CLUSTER
 bin_arangod_SOURCES += \
         arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
+	arangod/Cluster/ClusterComm.cpp \
 	arangod/Cluster/HeartbeatThread.cpp \
+	arangod/Cluster/RestShardHandler.cpp \
 	arangod/Cluster/ServerState.cpp \
-	arangod/Cluster/ServerState.cpp \
+	arangod/Cluster/ClusterState.cpp \
 	arangod/Cluster/ClusterComm.cpp
 endif
 

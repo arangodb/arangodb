@@ -163,10 +163,14 @@ ServerState::StateEnum ServerState::getState () {
 /// @brief set the current state
 ////////////////////////////////////////////////////////////////////////////////
         
-void ServerState::setState (StateEnum state) {
+void ServerState::setState (StateEnum state) { 
   bool result = false;
 
   WRITE_LOCKER(_lock);
+
+  if (state == _state) {
+    return;
+  }
 
   if (_role == ROLE_PRIMARY) {
     result = checkPrimaryState(state);
@@ -225,7 +229,9 @@ bool ServerState::checkPrimaryState (StateEnum state) {
   }
   else if (state == STATE_SHUTDOWN) {
     return (_state == STATE_STARTUP ||
-            _state == STATE_STOPPED);
+            _state == STATE_STOPPED ||
+            _state == STATE_SERVINGSYNC ||
+            _state == STATE_SERVINGASYNC);
   }
 
   // anything else is invalid

@@ -74,6 +74,7 @@
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
+#include "Cluster/RestShardHandler.h"
 #endif
 
 #include "V8/V8LineEditor.h"
@@ -106,6 +107,7 @@ using namespace triagens::arango;
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
                                ApplicationAdminServer* admin,
+                               ApplicationDispatcher* dispatcher,
                                AsyncJobManager* jobManager) {
 
   // add "/version" handler
@@ -134,6 +136,13 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                             RestHandlerCreator<RestUploadHandler>::createNoData);
+  
+#ifdef TRI_ENABLE_CLUSTER  
+  // add "/shard-comm" handler
+  factory->addPrefixHandler("/_api/shard-comm",
+                            RestHandlerCreator<RestShardHandler>::createData<void*>,
+                            (void*) dispatcher->dispatcher());
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +151,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
+                                 ApplicationDispatcher* dispatcher,
                                  AsyncJobManager* jobManager) {
 
   // add "/version" handler
@@ -785,8 +795,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer, _jobManager);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _jobManager);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
 
   // add action handler
   handlerFactory->addPrefixHandler(

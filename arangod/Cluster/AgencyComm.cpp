@@ -31,6 +31,7 @@
 #include "Basics/WriteLocker.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
+#include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -441,18 +442,20 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
       ++it;
     }
   
-    // not found a previous endpoint, now create one 
-    AgencyEndpoint* agencyEndpoint = createAgencyEndpoint(endpointSpecification);
+    // didn't find the endpoint in our list of endpoints, so now create a new one 
+    for (size_t i = 0; i < NumConnections; ++i) {
+      AgencyEndpoint* agencyEndpoint = createAgencyEndpoint(endpointSpecification);
 
-    if (agencyEndpoint == 0) {
-      return false;
-    }
+      if (agencyEndpoint == 0) {
+        return false;
+      }
     
-    if (toFront) {
-      AgencyComm::_globalEndpoints.push_front(agencyEndpoint);
-    }
-    else {
-      AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
+      if (toFront) {
+        AgencyComm::_globalEndpoints.push_front(agencyEndpoint);
+      }
+      else {
+        AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
+      }
     }
   }
 
@@ -664,6 +667,19 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sends the current server state to the agency
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::sendServerState () {
+  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + 
+                            ":" + 
+                            AgencyComm::generateStamp();
+  
+  AgencyCommResult result(setValue("State/ServerStates/" + ServerState::instance()->getId(), value));
+  return result.successful();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the backend version
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -845,7 +861,7 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
 /// @brief pop an endpoint from the queue
 ////////////////////////////////////////////////////////////////////////////////
     
-AgencyEndpoint* AgencyComm::popEndpoint () {
+AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
   while (1) {
     {
       WRITE_LOCKER(AgencyComm::_globalLock);
@@ -857,6 +873,14 @@ AgencyEndpoint* AgencyComm::popEndpoint () {
         AgencyEndpoint* agencyEndpoint = (*it);
 
         assert(agencyEndpoint != 0);
+
+        if (! endpoint.empty() && 
+            agencyEndpoint->_endpoint->getSpecification() != endpoint) {
+          // we're looking for a different endpoint
+          ++it;
+          continue;
+        }
+
 
         if (! agencyEndpoint->_busy) {
           agencyEndpoint->_busy = true;
@@ -940,13 +964,16 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
     numEndpoints = AgencyComm::_globalEndpoints.size(); 
     assert(numEndpoints > 0);
   }
-
+ 
   size_t tries = 0;
   std::string realUrl = url;
+  std::string forceEndpoint = "";
 
   while (tries++ < numEndpoints) {
-    AgencyEndpoint* agencyEndpoint = popEndpoint();
-  
+    AgencyEndpoint* agencyEndpoint = popEndpoint(forceEndpoint);
+
+    assert(agencyEndpoint != 0);
+
     send(agencyEndpoint->_connection, 
          method,
          timeout,
@@ -987,16 +1014,14 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
 
       realUrl = endpoint.substr(delim);
       endpoint = endpoint.substr(0, delim);
-      
-      LOG_WARNING("handling failover from '%s' to '%s'", 
-                  agencyEndpoint->_endpoint->getSpecification().c_str(),      
-                  endpoint.c_str());
 
       if (! AgencyComm::hasEndpoint(endpoint)) {
         // redirection to an unknown endpoint
-
         if (_addNewEndpoints) {
           AgencyComm::addEndpoint(endpoint, true);
+        
+          LOG_INFO("adding agency-endpoint '%s'", endpoint.c_str());
+
 
           // re-check the new endpoint
           if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1012,9 +1037,13 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
         return false;
       }
 
+      forceEndpoint = endpoint;
+
       // if we get here, we'll just use the next endpoint from the list
       continue;
     }
+
+    forceEndpoint = "";
 
     // we can stop iterating over endpoints if the operation succeeded,
     // if a watch timed out or 
@@ -1060,13 +1089,13 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
   result._statusCode = 0;
 
-/*  
-  LOG_INFO("sending %s request to agency at endpoint '%s', url '%s': %s", 
+  
+  LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s", 
             triagens::rest::HttpRequest::translateMethod(method).c_str(),
             connection->getEndpoint()->getSpecification().c_str(),
             url.c_str(), 
             body.c_str());
- */ 
+  
   triagens::httpclient::SimpleHttpClient client(connection,
                                                 timeout, 
                                                 false);
@@ -1120,12 +1149,12 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   if (found) {
     result._index    = triagens::basics::StringUtils::uint64(lastIndex);
   }
-/*  
-  LOG_INFO("request to agency returned status code %d, message: '%s', body: '%s'", 
+  
+  LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'", 
             result._statusCode,
             result._message.c_str(),
             result._body.c_str());
-*/
+
   delete response;
 
   return result.successful();
