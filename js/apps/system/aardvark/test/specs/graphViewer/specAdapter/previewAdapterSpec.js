@@ -40,7 +40,7 @@
 
   describe('Preview Adapter', function () {
     
-    describeInterface(new PreviewAdapter([], []));
+    describeInterface(new PreviewAdapter([], [], {}));
     /*
     describeIntegeration(function() {
       spyOn($, "ajax").andCallFake(function(req) {
@@ -110,6 +110,14 @@
           function() {
             var t = new PreviewAdapter([], []);
           }
+        ).toThrow("A reference to the graph viewer has to be given.");
+      }); 
+
+      it('should not throw an error if necessary info is given', function() {
+        expect(
+          function() {
+            var t = new PreviewAdapter([], [], {});
+          }
         ).not.toThrow();
       }); 
 
@@ -117,15 +125,19 @@
         spyOn(window, "NodeReducer");
         var adapter = new PreviewAdapter(
           nodes,
-          edges
+          edges,
+          {}
         );
         expect(window.NodeReducer).wasCalledWith();
       });
     
       describe('setup correctly', function() {
         
+        var viewer;
+
         beforeEach(function() {  
           var self = this;
+          viewer = {}; // todo
           self.fakeReducerRequest = function() {};
           self.fakeReducerBucketRequest = function() {};
           spyOn(window, "NodeReducer").andCallFake(function() {
@@ -143,7 +155,8 @@
           });
           adapter = new PreviewAdapter(
             nodes,
-            edges
+            edges,
+            viewer
           );
         });
         

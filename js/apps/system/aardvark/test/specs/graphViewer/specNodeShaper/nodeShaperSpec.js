@@ -325,7 +325,7 @@
         shaper.drawNodes(nodes);
         
         colorList = shaper.getColourMapping();
-        console.log(colorList);
+        expect(_.size(colorList)).toEqual(2);
         shaper.changeTo({
           color: {
             type: "attribute",
@@ -333,7 +333,11 @@
           }
         });
         colorList = shaper.getColourMapping();
-        console.log(colorList);
+        expect(_.size(colorList)).toEqual(2);
+        _.each(colorList, function(v) {
+          expect(v.list).not.toContain("lbl1");
+          expect(v.list).not.toContain("lbl2");
+        });
         
       });
       
