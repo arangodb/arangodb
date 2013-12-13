@@ -263,6 +263,40 @@
       it('should offer a function to get the current priority list', function() {
         expect(testee).toHaveFunction("getPrioList", 0);
       });
+
+      it("should offer a function to clean up the current node list", function() {
+        expect(testee).toHaveFunction("cleanUp", 0);
+      });
+    });
+
+    describe("checking general", function() {
+      
+      var adapter;
+      
+      beforeEach(function() {
+        viewer.cleanUp = function() {};
+        adapter = new AbstractAdapter(nodes, edges, descendant, viewer);
+      });
+      
+      it("should be able to clean up the lists", function() {
+        var source, target, sourceid, targetid;
+        source = adapter.insertNode({_id: 1});
+        target = adapter.insertNode({_id: 2});
+        sourceid = source._id;
+        targetid = target._id;
+        adapter.insertEdge({
+          _id: "1-2",
+          _from: sourceid,
+          _to: targetid
+        });
+        expect(nodes.length).toEqual(2);
+        expect(edges.length).toEqual(1);
+        spyOn(viewer, "cleanUp");
+        adapter.cleanUp();
+        expect(viewer.cleanUp).toHaveBeenCalled();
+        expect(nodes.length).toEqual(0);
+        expect(edges.length).toEqual(0);
+      });
     });
     
     describe('checking nodes', function() {
