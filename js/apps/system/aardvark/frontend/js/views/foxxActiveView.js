@@ -10,7 +10,7 @@
     template: templateEngine.createTemplate("foxxActiveView.ejs"),
 
     events: {
-      'click .glyphicon-info-sign' : 'showDocu',
+      'click .icon_arangodb_info' : 'showDocu',
       'click'                      : 'editFoxx'
     },
 

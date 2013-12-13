@@ -211,11 +211,11 @@
         else {
           $(self.table).dataTable().fnAddData([
             key,
-            '<a class="editFirstAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
+            '<a class="editFirstAttribute"><span class="icon_arangodb_edit"></span></a>',
             self.value2html(value),
             JSON.stringify(value, null, 4),
-            '<a class="editSecondAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
-            '<a class="deleteAttribute"><span class="glyphicon glyphicon-minus-sign" ' +
+            '<a class="editSecondAttribute"><span class="icon_arangodb_edit"></span></a>',
+            '<a class="deleteAttribute"><span class="icon_arangodb_roundminus" ' +
             'title="Delete attribute"></span></a>'
           ]);
         }
@@ -236,11 +236,11 @@
       $(this.table).dataTable().fnAddData(
         [
           self.currentKey,
-          '<a class="editFirstAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
+          '<a class="editFirstAttribute"><span class="icon_arangodb_edit"></span></a>',
           this.value2html("editme"),
           JSON.stringify("editme"),
-          '<a class="editSecondAttribute"><span class="glyphicon glyphicon-edit"></span></a>',
-          '<a class="deleteAttribute"><span class="glyphicon glyphicon-minus-sign" ' +
+          '<a class="editSecondAttribute"><span class="icon_arangodb_edit"></span></a>',
+          '<a class="deleteAttribute"><span class="icon_arangodb_roundminus" ' +
           'title="Delete attribute"></span></a>'
         ]
       );
