@@ -137,6 +137,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       edges.length = 0;
       joinedInCommunities = {};
       cachedCommunities = {};
+      viewer.cleanUp();
     },
     
     insertEdge = function(data) {
