@@ -445,7 +445,10 @@ add_subdirectory(UnitTests)
 ### @brief general information
 ################################################################################
 
-set(CPACK_SET_DESTDIR ON)
+if (MSVC)
+else ()
+  set(CPACK_SET_DESTDIR ON)
+endif ()
 
 
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
@@ -454,6 +457,8 @@ elseif (BUILD_PACKAGE STREQUAL "raspbian")
   set(CPACK_PACKAGE_NAME "arangodb")
 elseif (BUILD_PACKAGE STREQUAL "debian")
   set(CPACK_PACKAGE_NAME "arangodb")
+elseif (MSVC)
+  set(CPACK_PACKAGE_NAME "ArangoDB")
 endif ()
 
 
@@ -461,19 +466,10 @@ set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
 set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+
 
 set(CPACK_STRIP_FILES "ON")
-
-################################################################################
-### @brief MacOSX bundle
-################################################################################
-
-if (BUILD_PACKAGE STREQUAL "dmg-cli")
-  set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
-  set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
-  set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
-  set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
-endif ()
 
 ################################################################################
 ### @brief debian package
@@ -503,6 +499,46 @@ if ((BUILD_PACKAGE STREQUAL "debian") OR (BUILD_PACKAGE STREQUAL "raspbian"))
       "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink /var/lib/arangodb-apps \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/share/arangodb/js/apps/databases)")
 endif ()
 
+################################################################################
+### @brief MacOSX bundle
+################################################################################
+
+if (BUILD_PACKAGE STREQUAL "dmg-cli")
+  set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
+  set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
+  set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
+  set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
+endif ()
+
+################################################################################
+### @brief Micrsoft Installer
+################################################################################
+
+if (MSVC)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.bmp" ARANGO_IMG)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.ico" ARANGO_ICON)
+
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
+
+  message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
+  message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
+
+  set(CPACK_PACKAGE_ICON ${ARANGO_IMG})
+
+  set(CPACK_NSIS_MODIFY_PATH ON)
+  set(CPACK_NSIS_MUI_ICON ${ARANGO_ICON})
+  set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
+
+  set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
+  set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")
+  set(CPACK_NSIS_CONTACT "hackers@arangodb.org")
+endif ()
+
+################################################################################
+### @brief use CPack
+################################################################################
+
 include(CPack)
 
 ## -----------------------------------------------------------------------------
@@ -511,5 +547,5 @@ include(CPack)
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## outline-regexp: "### @brief\\|## --SECTION--\\|## -\\*- "
 ## End:
