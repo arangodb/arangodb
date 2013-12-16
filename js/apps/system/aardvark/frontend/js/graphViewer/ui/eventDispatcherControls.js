@@ -344,6 +344,11 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   nodeShaper.addMenuEntry("Spot", callbacks.nodes.spot);
   nodeShaper.addMenuEntry("Trash", callbacks.nodes.del);
 
+  edgeShaper.addMenuEntry("View", callbacks.edges.view);
+  edgeShaper.addMenuEntry("Edit", callbacks.edges.edit);
+  edgeShaper.addMenuEntry("Trash", callbacks.edges.del);
+
+
   /*******************************************
   * Functions to add controls
   *
