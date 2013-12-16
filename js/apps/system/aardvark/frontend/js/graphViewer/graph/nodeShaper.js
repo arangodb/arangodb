@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
-/*global ColourMapper*/
+/*global ColourMapper, ContextMenu*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -82,13 +82,12 @@ function NodeShaper(parent, flags, idfunc) {
   var self = this,
     nodes = [],
     visibleLabels = true,
-    contextmenu = [],
+    contextMenu = new ContextMenu("gv_node_cm"),
     splitLabel = function(label) {
       if (label === undefined) {
         return [""];
       }
       if (typeof label !== "string") {
-        
         label = String(label);
       }
       var chunks = label.match(/[\w\W]{1,10}(\s|$)|\S+?(\s|$)/g);
@@ -223,7 +222,7 @@ function NodeShaper(parent, flags, idfunc) {
       g.selectAll("* > *").remove();
       addQue(g);
       updateNodes();
-      $(".node").contextMenu(contextmenu);
+      contextMenu.bindMenu($(".node"));
     },
 
     parseShapeFlag = function (shape) {
@@ -535,11 +534,7 @@ function NodeShaper(parent, flags, idfunc) {
   };
 
   self.addMenuEntry = function(name, func) {
-    var entry = {};
-    entry[name] = function() {
-      func(d3.select(this).data()[0]);
-    };
-    contextmenu.push(entry);
+    contextMenu.addEntry(name, func);
   };
 
   self.resetColourMap = resetColourMap;

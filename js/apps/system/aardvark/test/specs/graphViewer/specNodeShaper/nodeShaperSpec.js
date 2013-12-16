@@ -50,6 +50,38 @@
       document.body.removeChild(svg);
     });
 
+    describe("checking the context menu", function() {
+
+      var node, shaper, fakeMenu, fakeCM;
+
+      beforeEach(function() {
+        node = [{_id: 1}];
+        fakeMenu = {};
+        fakeCM = {
+          addEntry: function() {},
+          bindMenu: function() {}
+        };
+        spyOn(window, "ContextMenu").andReturn(fakeCM);
+        spyOn(fakeCM, "addEntry");
+        spyOn(fakeCM, "bindMenu");
+        shaper = new NodeShaper(d3.select("svg"));
+      });
+
+      it("should create the context menu", function() {
+        expect(window.ContextMenu).toHaveBeenCalledWith("gv_node_cm");
+        expect(fakeCM.addEntry).not.toHaveBeenCalled();
+        expect(fakeCM.bindMenu).not.toHaveBeenCalled();
+        shaper.drawNodes(node);
+        expect(fakeCM.bindMenu).toHaveBeenCalledWith($(".node"));
+      });
+
+      it("should be able to insert an entry in the menu", function() {
+        var lbl = "Label", func = function() {};
+        shaper.addMenuEntry(lbl, func);
+        expect(fakeCM.addEntry).toHaveBeenCalledWith(lbl, jasmine.any(Function));
+      });
+    });
+
     it('should be able to draw a node', function () {
       var node = [{_id: 1}],
         shaper = new NodeShaper(d3.select("svg"));

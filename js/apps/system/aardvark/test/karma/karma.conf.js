@@ -29,6 +29,7 @@ module.exports = function(karma) {
       'frontend/js/lib/jquery.slideto.min.js',
       'frontend/js/lib/jquery.wiggle.min.js',
       'frontend/js/lib/jquery.ba-bbq.min.js',
+      'frontend/js/lib/jquery.contextmenu.js',
       'frontend/js/lib/handlebars-1.0.rc.1.js',
       'frontend/js/lib/underscore.js',
       'frontend/js/lib/backbone.js',
@@ -105,6 +106,7 @@ module.exports = function(karma) {
 
       // UI Modules
       'frontend/js/graphViewer/ui/modalDialogHelper.js',
+      'frontend/js/graphViewer/ui/contextMenuHelper.js',
       'frontend/js/graphViewer/ui/nodeShaperControls.js',
       'frontend/js/graphViewer/ui/edgeShaperControls.js',
       'frontend/js/graphViewer/ui/arangoAdapterControls.js',
@@ -183,9 +185,9 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specAdapter/foxxAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/previewAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js',
-      'test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js',
+      'test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js', 
       'test/specs/graphViewer/specNodeShaper/nodeShaperUISpec.js',
-      'test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js',
+      'test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js', 
       'test/specs/graphViewer/specEdgeShaper/edgeShaperUISpec.js',
       'test/specs/graphViewer/specForceLayouter/forceLayouterSpec.js',
       'test/specs/graphViewer/specForceLayouter/forceLayouterUISpec.js',
@@ -198,9 +200,9 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specGraphViewer/graphViewerWidgetSpec.js',
       'test/specs/graphViewer/specGraphViewer/graphViewerPreviewSpec.js',
       'test/specs/graphViewer/specNodeReducer/nodeReducerSpec.js',
-      'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
-      'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
-
+//      'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
+//      'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
+      'test/specs/graphViewer/specContextMenu/contextMenuSpec.js', 
       // Arango
       'test/specs/arango/arangoSpec.js',
       // Models
@@ -218,9 +220,9 @@ module.exports = function(karma) {
       'test/specs/views/addNewGraphViewSpec.js',
 
       // Router
-      'test/specs/router/routerSpec.js',
+      'test/specs/router/routerSpec.js'
       // JSLint
-      'test/specJSLint/jsLintSpec.js'
+//      'test/specJSLint/jsLintSpec.js'
     ],
 
 
@@ -229,22 +231,9 @@ module.exports = function(karma) {
       
     ],
 
-/*
-    plugins: [
-      'karma-junit-reporter'
-    ],
-*/
-
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
-    reporters: ['dots', 'junit'],
-
-    junitReporter: {
-      //outputFile: '../../../../frontend-results.xml',
-      outputFile: 'frontend-results.xml',
-      suite: ''
-    },
-
+    reporters: ['dots'],
 
     // web server port
     port: 9876,
@@ -253,9 +242,8 @@ module.exports = function(karma) {
     // cli runner port
     runnerPort: 9100,
 
-
     // enable / disable colors in the output (reporters and logs)
-    colors: true,
+    colors: false,
 
 
     // level of logging
@@ -275,7 +263,7 @@ module.exports = function(karma) {
     // - Safari (only Mac)
     // - PhantomJS
     // - IE (only Windows)
-    browsers: ["PhantomJS"],
+    browsers: ["PhantomJS", "Firefox", "Chrome"],
 
 
     // If browser does not capture in given timeout [ms], kill it

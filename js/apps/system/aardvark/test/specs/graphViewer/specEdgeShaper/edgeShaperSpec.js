@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, spyOn, jasmine */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -51,6 +51,47 @@
     });
     
     
+    describe("checking the context menu", function() {
+
+      var edges, shaper, fakeMenu, fakeCM;
+
+      beforeEach(function() {
+        var nodes = helper.createSimpleNodes([1, 2]),
+          source = nodes[0],
+          target = nodes[1],
+          fakeMenu = {};
+          fakeCM = {
+            addEntry: function() {},
+            bindMenu: function() {}
+          };
+        edges = [
+          {
+            _id: "1-2",
+            source: source,
+            target: target
+          }
+        ];
+        spyOn(window, "ContextMenu").andReturn(fakeCM);
+        spyOn(fakeCM, "addEntry");
+        spyOn(fakeCM, "bindMenu");
+        shaper = new EdgeShaper(d3.select("svg"));
+      });
+
+      it("should create the context menu", function() {
+        expect(window.ContextMenu).toHaveBeenCalledWith("gv_edge_cm");
+        expect(fakeCM.addEntry).not.toHaveBeenCalled();
+        expect(fakeCM.bindMenu).not.toHaveBeenCalled();
+        shaper.drawEdges(edges);
+        expect(fakeCM.bindMenu).toHaveBeenCalledWith($(".link"));
+      });
+
+      it("should be able to insert an entry in the menu", function() {
+        var lbl = "Label", func = function() {};
+        shaper.addMenuEntry(lbl, func);
+        expect(fakeCM.addEntry).toHaveBeenCalledWith(lbl, jasmine.any(Function));
+      });
+    });
+
     it('should be able to draw an edge', function () {
       var nodes = helper.createSimpleNodes([1, 2]),
         source = nodes[0],
