@@ -46,13 +46,14 @@ function ContextMenu(id) {
       button.onclick = function() {
         callback(d3.select(menu.target).data()[0]);
       };
+      button.className = "btn btn-primary gv_context_button";
       button.appendChild(document.createTextNode(label));
       li.appendChild(button);
       ul.appendChild(li);
     },
 
     bindMenu = function($objects) {
-      menu = $.contextMenu.create(jqId);
+      menu = $.contextMenu.create(jqId, {shadow: false});
       $objects.each(function() {
         $(this).bind('contextmenu', function(e){
           menu.show(this,e);
