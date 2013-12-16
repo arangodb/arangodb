@@ -273,3 +273,15 @@ button {
   width: 397px !important;
   font-weight: 400;
 }
+
+li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
+  font-size: 26px;
+  position: absolute;
+  right: 4px;
+  top: 0px;
+}
+
+.modal-body .icon_arangodb_info {
+  font-size: 23px;
+  color: #736B68;
+}

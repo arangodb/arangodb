@@ -549,7 +549,7 @@
               + '</div>',
 
               '<a id="deleteDoc" class="deleteButton">'
-              + '<span class="glyphicon glyphicon-minus-sign" data-original-title="'
+              + '<span class="icon_arangodb_roundminus" data-original-title="'
               +'Delete document" title="Delete document"></span><a>'
             ]
           );
@@ -820,7 +820,7 @@
               'data-original-title="No action"></span>';
           }
           else {
-            actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" ' +
+            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
               'data-original-title="Delete index" title="Delete index"></span>';
           }
 

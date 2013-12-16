@@ -78,7 +78,8 @@ MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
     _client(0),
     _httpResult(0) {
 
-  _connection = GeneralClientConnection::factory(endpoint, connectionTimeout, requestTimeout, numRetries);
+  _connection = GeneralClientConnection::factory(endpoint, connectionTimeout, requestTimeout, numRetries, 0);
+
   if (_connection == 0) {
     throw "out of memory";
   }

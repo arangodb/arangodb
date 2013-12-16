@@ -85,7 +85,7 @@
               '</th>'+
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="Number of active datafiles.">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
             '<tr>'+
@@ -96,7 +96,7 @@
               '</th>'+
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="Number of journal files.">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
             '<tr>'+
@@ -107,7 +107,7 @@
               '</th>'+
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="Number of compactor files.">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
             '<tr>'+
@@ -118,7 +118,7 @@
               '</th>'+
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="Number of shape files.">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
 
@@ -135,7 +135,7 @@
               '<th class="'+cssClass+'">'+this.data.figures.shapes.count+'</th>'+
                 '<th class="tooltipInfoTh '+cssClass+'">'+
             '<a class="modalInfoTooltips" title="Total number of shapes used in the collection">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
             '<tr>'+
@@ -144,7 +144,7 @@
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="' +
                 'Total number of attributes used in the collection">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
           '</table>'+
@@ -167,7 +167,7 @@
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="' + 
                 'Total number and size used by all living documents.">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
             '<tr>'+
@@ -180,7 +180,7 @@
               '<th class="tooltipInfoTh '+cssClass+'">'+
                 '<a class="modalInfoTooltips" title="' +
                 'Total number and size used by all dead documents.">'+
-                '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+                '<span class="arangoicon icon_arangodb_info"></span></a>'+
               '</th>'+
             '</tr>'+
           '</table>'
