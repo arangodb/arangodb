@@ -423,13 +423,36 @@
 }
 
 #documentsToolbar span {
-  font-size: 16px;
+  position: absolute;
+  top: 0;
+  right: 2px;
+  font-size: 25px;
   margin-right: 3px;
   margin-left: 0px;
 }
 
+/* better look of some icons */
+#documentsToolbar .icon_arangodb_filter {
+  top: 1px !important;
+}
+
+#documentsToolbar .icon_arangodb_import {
+  top: -1px !important;
+}
+
+#documentsToolbar .icon_arangodb_arrowleft,
+#documentsToolbar .icon_arangodb_arrowright {
+  font-weight:bold;
+}
+
 #indexHeaderContent > div {
   padding: 10px;
+}
+
+#indexHeaderContent .arangoicon {
+  font-size: 25px;
+  position: relative;
+  top: -3px !important;
 }
 
 #figuresHeader th {

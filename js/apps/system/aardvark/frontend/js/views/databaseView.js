@@ -15,7 +15,7 @@
       "click #createDatabase"       : "createDatabase",
       "click #submitCreateDatabase" : "submitCreateDatabase",
       "click #selectDatabase"       : "updateDatabase",
-      "click #databaseTable .glyphicon-minus-sign" : "removeDatabase",
+      "click #databaseTable .icon_arangodb_roundminus" : "removeDatabase",
       "click #submitDeleteDatabase" : "submitRemoveDatabase",
       "click .databaseInactive a" : "changeDatabase"
     },
@@ -36,7 +36,7 @@
       this.collection.map(function(dbs) {
         $("#databaseTable tbody").append(
           '<tr><td><a>' + dbs.get("name") + '</a></td>' +
-          '<td><span class="glyphicon glyphicon-minus-sign"' + 
+          '<td><span class="arangoicon icon_arangodb_roundminus"' + 
           'data-original-title="Delete database"></span></td></tr>'
         );
       });

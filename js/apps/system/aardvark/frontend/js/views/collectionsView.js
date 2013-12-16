@@ -32,7 +32,7 @@
 
       $('#collectionsThumbnailsIn', this.el).append(
         '<li class="span3"><a href="#new" class="add">' +
-        '<span id="newCollection" class="pull-left glyphicon glyphicon-plus-sign" />' +
+        '<span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon" />' +
         'Add Collection</a></li>'
       );
 
@@ -44,11 +44,11 @@
 
       //append info icon for loaded collections
       $('.loaded').parent().prev().append(
-        '<span class="glyphicon glyphicon-info-sign spanInfo ICON" ' + 
+        '<span class="icon_arangodb_info spanInfo ICON" ' + 
         'title="Show collection properties"</span>'
       );
       $('.unloaded').parent().prev().append(
-        '<span class="glyphicon glyphicon-info-sign spanDisabled ICON" alt="disabled"</span>'
+        '<span class="icon_arangodb_info spanDisabled ICON" alt="disabled"</span>'
       );
 
       $('#searchInput').val(searchOptions.searchPhrase);

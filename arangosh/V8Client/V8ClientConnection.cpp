@@ -62,6 +62,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         double requestTimeout,
                                         double connectTimeout,
                                         size_t numRetries,
+                                        uint32_t sslProtocol,
                                         bool warn)
   : _connection(0),
     _databaseName(databaseName),
@@ -71,7 +72,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _httpResult(0) {
 
 
-  _connection = GeneralClientConnection::factory(endpoint, requestTimeout, connectTimeout, numRetries);
+  _connection = GeneralClientConnection::factory(endpoint, requestTimeout, connectTimeout, numRetries, sslProtocol);
 
   if (_connection == 0) {
     throw "out of memory";

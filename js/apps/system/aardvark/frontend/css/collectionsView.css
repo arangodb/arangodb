@@ -10,9 +10,10 @@
 }
 
 #newCollection {
+  position: relative;
   margin-left: 22px;
-  font-size: 25px;
-  margin-top: -3px;
+  font-size: 28px;
+  margin-top: -5px;
   margin-right: 10px;
 }
 

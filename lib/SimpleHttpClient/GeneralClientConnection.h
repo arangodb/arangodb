@@ -117,7 +117,11 @@ namespace triagens {
 /// @brief create a new connection from an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        static GeneralClientConnection* factory (triagens::rest::Endpoint*, double, double, size_t);
+        static GeneralClientConnection* factory (triagens::rest::Endpoint*, 
+                                                 double, 
+                                                 double, 
+                                                 size_t, 
+                                                 uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the endpoint
