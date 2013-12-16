@@ -334,6 +334,10 @@ button.gv_dropdown_entry {
   margin: 4px 4px 4px 30px;
 }
 
+button.gv_context_button {
+  width: 65px;
+}
+
 span.gv_caret {
   margin-top: 2px !important;
 }
