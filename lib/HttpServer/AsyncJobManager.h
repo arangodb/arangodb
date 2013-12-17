@@ -40,6 +40,59 @@ namespace triagens {
   namespace rest {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        class AsyncCallbackContext
+// -----------------------------------------------------------------------------
+
+    class AsyncCallbackContext {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+      public:
+        AsyncCallbackContext (std::string const& url) 
+          : _url(url),
+            _response(0) {
+
+          std::cout << "generated async context " << _url << std::endl;
+        }
+
+        ~AsyncCallbackContext () {
+          if (_response != 0) {
+            delete _response;
+          }
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+      public:
+
+        bool callback (HttpResponse* response) {
+          if (response == 0) {
+            return false;
+          }
+
+          _response = response;
+
+          std::cout << "callback called for async context " << _url << ", BODY: " << _response->body().c_str() << std::endl;
+
+          return true;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+        std::string _url;
+
+        HttpResponse* _response;
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              class AsyncJobResult
 // -----------------------------------------------------------------------------
 
@@ -48,11 +101,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -73,18 +121,9 @@ namespace triagens {
         
         typedef uint64_t IdType;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for an unspecified job result
@@ -94,7 +133,8 @@ namespace triagens {
           _jobId(0),
           _response(0),
           _stamp(0.0),
-          _status(JOB_UNDEFINED) {
+          _status(JOB_UNDEFINED),
+          _ctx(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,11 +144,13 @@ namespace triagens {
         AsyncJobResult (IdType jobId, 
                         HttpResponse* response,
                         double stamp,
-                        Status status) :
+                        Status status,
+                        AsyncCallbackContext* ctx) :
           _jobId(jobId),
           _response(response),
           _stamp(stamp),
-          _status(status) {
+          _status(status),
+          _ctx(ctx) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,18 +160,9 @@ namespace triagens {
         ~AsyncJobResult () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job id
@@ -156,8 +189,10 @@ namespace triagens {
         Status        _status;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief callback context object (normally 0, used in cluster operations)
 ////////////////////////////////////////////////////////////////////////////////
+
+        AsyncCallbackContext* _ctx;
 
     };
 
@@ -174,11 +209,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors 
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -199,18 +229,9 @@ namespace triagens {
         ~AsyncJobManager () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -220,18 +241,9 @@ namespace triagens {
         
         typedef std::map<AsyncJobResult::IdType, AsyncJobResult> JobList;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the result of an async job, and remove it from the list
@@ -393,7 +405,16 @@ namespace triagens {
           *jobId = (AsyncJobResult::IdType) generate();
           job->assignId((uint64_t) *jobId);
 
-          AsyncJobResult ajr(*jobId, 0, TRI_microtime(), AsyncJobResult::JOB_PENDING);
+          AsyncCallbackContext* ctx = 0;
+
+          bool found;
+          char const* hdr = job->getHandler()->getRequest()->header("x-arango-coordinator", found);
+
+          if (found) {
+            ctx = new AsyncCallbackContext(std::string(hdr));
+          }
+
+          AsyncJobResult ajr(*jobId, 0, TRI_microtime(), AsyncJobResult::JOB_PENDING, ctx);
 
           WRITE_LOCKER(_lock);
 
@@ -418,34 +439,44 @@ namespace triagens {
           }
             
           const double now = TRI_microtime();
+          AsyncCallbackContext* ctx = 0;
+          HttpResponse* response    = 0;
 
-          WRITE_LOCKER(_lock);
-          JobList::iterator it = _jobs.find(jobId); 
+          {
+            WRITE_LOCKER(_lock);
+            JobList::iterator it = _jobs.find(jobId); 
           
-          if (it == _jobs.end()) {
-            // job is already deleted.
-            // do nothing here. the dispatcher will throw away the handler, which
-            // will also dispose the response
+            if (it == _jobs.end()) {
+              // job is already deleted.
+              // do nothing here. the dispatcher will throw away the handler, which
+              // will also dispose the response
+            }
+            else {
+              response = handler->stealResponse();
+
+              (*it).second._response = response;
+              (*it).second._status = AsyncJobResult::JOB_DONE;
+              (*it).second._stamp = now; 
+
+              ctx = (*it).second._ctx;
+
+              if (ctx != 0) {
+                // we have found a context object, so we can immediately remove the job
+                // from the list of "done" jobs
+                _jobs.erase(it);
+              }
+            }
           }
-          else {
-            (*it).second._response = handler->stealResponse();
-            (*it).second._status = AsyncJobResult::JOB_DONE;
-            (*it).second._stamp = now; 
+
+          // if callback is set, execute it now (outside of the wr-lock)
+          if (ctx != 0 && response != 0) {
+            ctx->callback(response);
           }
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -466,10 +497,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t (*generate)();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
 
