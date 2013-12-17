@@ -269,6 +269,72 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
+
+  this.addControlOpticLabelAndColourList = function(adapter) {
+    var prefix = "control_node_labelandcolourlist",
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+      modalDialogHelper.createModalChangeDialog("Change label attribute",
+        idprefix, [{
+          type: "extendable",
+          id: "label",
+          text: "Vertex label attribute",
+          objects: shaper.getLabel()
+        },{
+          type: "decission",
+          id: "samecolour",
+          group: "colour",
+          text: "Use this attribute for coloring, too",
+          isDefault: (shaper.getLabel() === shaper.getColor())
+        },{
+          type: "decission",
+          id: "othercolour",
+          group: "colour",
+          text: "Use different attribute for coloring",
+          isDefault: (shaper.getLabel() !== shaper.getColor()),
+          interior: [
+            {
+              type: "extendable",
+              id: "colour",
+              text: "Color attribute",
+              objects: shaper.getColor() || ""
+            }
+          ]
+        }], function () {
+          var lblList = $("input[id^=" + idprefix + "label_]"),
+            colList = $("input[id^=" + idprefix + "colour_]"),
+            selected = $("input[type='radio'][name='colour']:checked").attr("id"),
+            labels = [], colours = [];
+          lblList.each(function(i, t) {
+            var val = $(t).attr("value");
+            if (val !== "") {
+              labels.push(val);
+            }
+          });
+          colList.each(function(i, t) {
+            var val = $(t).attr("value");
+            if (val !== "") {
+              colours.push(val);
+            }
+          });
+          if (selected === idprefix + "samecolour") {
+            colours = labels;
+          }
+          shaper.changeTo({
+            label: labels,
+            color: {
+              type: "attribute",
+              key: colours
+            }
+          });
+          if (colourDiv === undefined) {
+            colourDiv = self.createColourMappingList();
+          }
+          
+        }
+      );
+    });
+  };
   
   //////////////////////////////////////////////////////////////////
   //  Multiple Buttons
