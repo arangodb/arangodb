@@ -1201,6 +1201,23 @@
         expect($(spans.get(1)).text()).toEqual("brown foxx...");
       });
 
+      it("should cut long-word labels", function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "pneumonoultramicroscopicsilicovolcanoconiosis"
+          }
+        }],
+        textEl,
+        spans;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        spans = $("tspan", textEl);
+        
+        expect($(spans.get(0)).text()).toEqual("pneumonoul-");
+        expect($(spans.get(1)).text()).toEqual("tramicrosc...");
+      });
+
     });
 
     describe('using a function for labels', function () {
@@ -1264,6 +1281,56 @@
         expect($("#3 text")[0].textContent).toEqual("correct");
         expect($("#4 text")[0].textContent).toEqual("correct");
         expect($("#5 text")[0].textContent).toEqual("default");
+      });
+
+    });
+
+    describe("using an array for label", function () {
+
+      var shaper,
+        lblArray;
+
+      beforeEach(function () {
+        lblArray = ["label", "alt"];
+        shaper = new NodeShaper(d3.select("svg"), {
+          "label": lblArray
+        });
+      });
+
+      it("should be able to display different attributes for labels", function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              "label": "correct"
+            }
+          },
+          {
+            _id: 2,
+            _data: {
+              "alt": "correct"
+            }
+          },
+          {
+            _id: 3,
+            _data: {
+              "label": "correct",
+              "alt": "incorrect"
+            }
+          },
+          {
+            _id: 4,
+            _data: {
+            
+            }
+          }
+        ];
+        shaper.drawNodes(nodes);
+        expect($("text").length).toEqual(4);
+        expect($("#1 text")[0].textContent).toEqual("correct");
+        expect($("#2 text")[0].textContent).toEqual("correct");
+        expect($("#3 text")[0].textContent).toEqual("correct");
+        expect($("#4 text")[0].textContent).toEqual("");
       });
 
     });

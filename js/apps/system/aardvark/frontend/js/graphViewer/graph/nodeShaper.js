@@ -93,6 +93,17 @@ function NodeShaper(parent, flags, idfunc) {
       var chunks = label.match(/[\w\W]{1,10}(\s|$)|\S+?(\s|$)/g);
       chunks[0] = $.trim(chunks[0]);
       chunks[1] = $.trim(chunks[1]);
+      if (chunks[0].length > 12) {
+        chunks[0] = $.trim(label.substring(0,10)) + "-";
+        chunks[1] = $.trim(label.substring(10));
+        if (chunks[1].length > 12) {
+          chunks[1] = chunks[1].split(/\W/)[0];
+          if (chunks[1].length > 12) {
+            chunks[1] = chunks[1].substring(0,10) + "...";
+          }
+        }
+        chunks.length = 2;
+      }
       if (chunks.length > 2) {
         chunks.length = 2;
         chunks[1] += "...";
@@ -340,6 +351,29 @@ function NodeShaper(parent, flags, idfunc) {
                   .text(chunks[1]);
               }
             });
+        };
+      } else if (_.isArray(label)) {
+        addLabel = function (node) {
+          var textN = node.append("text") // Append a label for the node
+            .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", addLabelColor) // Force a black color
+            .attr("stroke", "none"); // Make it readable
+          textN.each(function(d) {
+            var lbl = _.find(label, function(val) {
+                return d._data[val];
+              }),
+              chunks = splitLabel(d._data[lbl]);
+            d3.select(this).append("tspan")
+              .attr("x", "0")
+              .attr("dy", "-4")
+              .text(chunks[0]);
+            if (chunks.length === 2) {
+              d3.select(this).append("tspan")
+                .attr("x", "0")
+                .attr("dy", "16")
+                .text(chunks[1]);
+            }
+          });
         };
       } else {
         addLabel = function (node) {
