@@ -131,7 +131,6 @@ ClusterComm::getConnection(ServerID& serverID) {
     if (!s->unused.empty()) {
       c = s->unused.back();
       s->unused.pop_back();
-      c->lastUsed = time(0);
       return c;
     }
   }
@@ -283,6 +282,72 @@ void ClusterComm::closeUnusedConnections () {
   }
 }
 
+ClusterCommResult* ClusterComm::asyncRequest (
+                ClientTransactionID const&          clientTransactionID,
+                TransactionID const                 coordTransactionID,
+                ShardID const&                      shardID,
+                rest::HttpRequest::HttpRequestType  reqtype,
+                string const&                       path,
+                char const *                        body,
+                size_t const                        bodyLength,
+                map<string, string> const&          headerFields,
+                ClusterCommCallback*                callback,
+                ClusterCommTimeout                  timeout) {
+
+  OperationID opID = getOperationID();
+  
+  // Build HTTPRequest
+  // Build ClusterCommOperation object
+  // Put into queue
+  // signal on condition variable
+  // Build ClusterCommResult object
+  // return
+  return 0;
+}
+
+bool ClusterComm::match (ClientTransactionID const& clientTransactionID,
+            TransactionID const        coordTransactionID,
+            OperationID const          operationID,
+            ShardID const&             shardID,
+            ClusterCommOperation* op) {
+  // First check operationID, if given, can return false already
+  // then check other IDs.
+  return true;
+}
+
+ClusterCommResult* enquire (OperationID const operationID) {
+  // Find operation by its ID (fast)
+  // build ClusterCommResult object and return it.
+  return 0;
+}
+
+ClusterCommResult* ClusterComm::wait (
+                ClientTransactionID const& clientTransactionID,
+                TransactionID const        coordTransactionID,
+                OperationID const          operationID,
+                ShardID const&             shardID,
+                ClusterCommTimeout         timeout) {
+  // Only look at received queue, match, return the first with CL_COMM_RECEIVED
+  // dequeue it
+  // Initialise remaining time
+  // If nothing found, use condition variable and wait to get more with
+  // possible timeout, if timeout, return empty
+  // otherwise check again, if ...
+  return 0;
+}
+
+void ClusterComm::drop (ClientTransactionID const& clientTransactionID,
+           TransactionID const        coordTransactionID,
+           OperationID const          operationID,
+           ShardID const&             shardID) {
+  // Look at both send queue and recv queue, delete everything found
+}
+
+int ClusterComm::processAnswer(rest::HttpRequest* answer) {
+  // find matching operation, report if found, otherwise drop
+  return TRI_ERROR_NO_ERROR;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ClusterCommThread
 // -----------------------------------------------------------------------------
@@ -323,9 +388,9 @@ void ClusterCommThread::run () {
   LOG_TRACE("starting ClusterComm thread");
 
   while (! _stop) {
-    usleep(2000);
+    usleep(2000000);
     // FIXME: ...
-    LOG_TRACE("ClusterComm alive");
+    LOG_DEBUG("ClusterComm alive");
   }
 
   // another thread is waiting for this value to shut down properly
