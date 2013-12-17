@@ -255,6 +255,48 @@
         expect(c2f).not.toEqual(c3f);
       });
       
+      it('should be able to use a colour based on several attribute values', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              alt: "lbl2"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl2",
+              alt: "lbl1"
+            }
+          }],
+          shaper = new NodeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "attribute",
+              key: ["label", "alt"]
+            }
+          }),
+          c1f, c2f, c3f;
+        shaper.drawNodes(nodes);
+        
+        c1f = $("#1").attr("fill");
+        c2f = $("#2").attr("fill");
+        c3f = $("#3").attr("fill");
+        
+        expect(c1f).toBeDefined();
+        expect(c2f).toBeDefined();
+        expect(c3f).toBeDefined();
+        
+        expect(c1f).not.toEqual(c2f);
+        expect(c1f).not.toEqual(c3f);
+        expect(c2f).toEqual(c3f);
+      });
+      
       it('should be able to use colours based on _expanded attribute', function() {
         var nodes = [
           {
