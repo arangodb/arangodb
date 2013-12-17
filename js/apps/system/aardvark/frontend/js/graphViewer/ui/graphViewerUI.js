@@ -454,7 +454,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         graphViewer.start();
       });
       adapterUI.addControlChangePriority();
-      nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
+      // nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
+      nodeShaperUI.addControlOpticLabelAndColourList(graphViewer.adapter);
       
       /*
       buttons.appendChild(nodeShaperDropDown);
