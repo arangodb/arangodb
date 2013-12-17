@@ -83,6 +83,14 @@ function NodeShaper(parent, flags, idfunc) {
     nodes = [],
     visibleLabels = true,
     contextMenu = new ContextMenu("gv_node_cm"),
+    findFirstValue = function(list, data) {
+      if (_.isArray(list)) {
+        return data[_.find(list, function(val) {
+          return data[val];
+        })];
+      }
+      return data[list];
+    },
     splitLabel = function(label) {
       if (label === undefined) {
         return [""];
@@ -352,29 +360,6 @@ function NodeShaper(parent, flags, idfunc) {
               }
             });
         };
-      } else if (_.isArray(label)) {
-        addLabel = function (node) {
-          var textN = node.append("text") // Append a label for the node
-            .attr("text-anchor", "middle") // Define text-anchor
-            .attr("fill", addLabelColor) // Force a black color
-            .attr("stroke", "none"); // Make it readable
-          textN.each(function(d) {
-            var lbl = _.find(label, function(val) {
-                return d._data[val];
-              }),
-              chunks = splitLabel(d._data[lbl]);
-            d3.select(this).append("tspan")
-              .attr("x", "0")
-              .attr("dy", "-4")
-              .text(chunks[0]);
-            if (chunks.length === 2) {
-              d3.select(this).append("tspan")
-                .attr("x", "0")
-                .attr("dy", "16")
-                .text(chunks[1]);
-            }
-          });
-        };
       } else {
         addLabel = function (node) {
           var textN = node.append("text") // Append a label for the node
@@ -382,7 +367,8 @@ function NodeShaper(parent, flags, idfunc) {
             .attr("fill", addLabelColor) // Force a black color
             .attr("stroke", "none"); // Make it readable
           textN.each(function(d) {
-            var chunks = splitLabel(d._data[label]);
+            // var chunks = splitLabel(d._data[label]);
+            var chunks = splitLabel(findFirstValue(label, d._data));
             d3.select(this).append("tspan")
               .attr("x", "0")
               .attr("dy", "-4")
@@ -439,14 +425,14 @@ function NodeShaper(parent, flags, idfunc) {
                if (n._data === undefined) {
                  return colourMapper.getCommunityColour();
                }
-               return colourMapper.getColour(n._data[color.key]);
+               return colourMapper.getColour(findFirstValue(color.key, n._data));
              });
           };
           addLabelColor = function (n) {
             if (n._data === undefined) {
               return colourMapper.getForegroundCommunityColour();
             }
-            return colourMapper.getForegroundColour(n._data[color.key]);
+            return colourMapper.getForegroundColour(findFirstValue(color.key, n._data));
           };
           break; 
         default:
