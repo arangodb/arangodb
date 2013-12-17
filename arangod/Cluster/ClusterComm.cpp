@@ -325,7 +325,8 @@ void ClusterCommThread::run () {
   while (! _stop) {
     usleep(2000);
     // FIXME: ...
-    LOG_TRACE("ClusterComm alive");
+    // this is spamming my logs...
+    // LOG_TRACE("ClusterComm alive");
   }
 
   // another thread is waiting for this value to shut down properly
