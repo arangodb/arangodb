@@ -49,6 +49,12 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             forward declarations
+// -----------------------------------------------------------------------------
+
+    class ClusterCommThread;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                       some types for ClusterComm
 // -----------------------------------------------------------------------------
 
@@ -80,12 +86,23 @@ namespace triagens {
       rest::HttpRequest* answer;
 
       ClusterCommResult () : result(0), answer(0) {}
-      ~ClusterCommResult () {
+      virtual ~ClusterCommResult () {
         if (0 != result) {
           delete result;
         }
         if (0 != answer) {
           delete answer;
+        }
+      }
+    };
+
+    struct ClusterCommOperation : public ClusterCommResult {
+      rest::HttpRequest* question;
+
+      ClusterCommOperation () {}
+      virtual ~ClusterCommOperation () {
+        if (0 != question) {
+          delete question;
         }
       }
     };
@@ -225,7 +242,7 @@ namespace triagens {
 /// 
 /// This behaves as @ref asyncRequest except that the actual request is
 /// taken from `req`. We have to add a few headers and can use callback
-/// and timeout. The caller has to delete the result eventually.
+/// and timeout. The caller has to delete the result.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncDelegate (
@@ -243,7 +260,7 @@ namespace triagens {
 /// 
 /// This behaves as @ref syncRequest except that the actual request is
 /// taken from `req`. We have to add a few headers and can use callback
-/// and timeout. The caller has to delete the result eventually.
+/// and timeout. The caller has to delete the result.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* syncDelegate (
@@ -384,6 +401,20 @@ namespace triagens {
         void brokenConnection(SingleServerConnection* singleConnection);
         void closeUnusedConnections();
 
+        // The data structures for our internal queues:
+
+        // Sending questions:
+        list<ClusterCommOperation*> toSend;
+        map<OperationID,list<ClusterCommOperation*>::iterator> toSendByOpID;
+        triagens::basics::ConditionVariable somethingToSend;
+
+        // Receiving answers:
+        list<ClusterCommOperation*> received;
+        map<OperationID,list<ClusterCommOperation*>::iterator> receivedByOpID;
+        triagens::basics::ReadWriteLock receiveLock;
+
+        // Finally, our background communications thread:
+        ClusterCommThread *_backgroundThread;
     };  // end of class ClusterComm
 
 // -----------------------------------------------------------------------------
