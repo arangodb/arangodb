@@ -52,13 +52,19 @@ ClusterCommOptions ClusterComm::_globalConnectionOptions = {
 // -----------------------------------------------------------------------------
 
 ClusterComm::ClusterComm () {
-  // FIXME: ...
-  // Among other things: Start background thread!
+  _backgroundThread = new ClusterCommThread();
+  if (0 == _backgroundThread) {
+    LOG_FATAL_AND_EXIT("unable to start ClusterComm background thread");
+  }
+  if (! _backgroundThread->init() || ! _backgroundThread->start()) {
+    LOG_FATAL_AND_EXIT("ClusterComm background thread does not work");
+  }
 }
 
 ClusterComm::~ClusterComm () {
-  // FIXME: ...
-  // Among other things: Stop background thread!
+  // FIXME: Delete all stuff in queues, close all connections
+  _backgroundThread->stop();
+  _backgroundThread = 0;
 }
 
 ClusterComm* ClusterComm::_theinstance = 0;
@@ -74,6 +80,7 @@ ClusterComm* ClusterComm::instance () {
 }
 
 void ClusterComm::initialise () {
+
 }
 
 OperationID ClusterComm::getOperationID () {
@@ -316,7 +323,7 @@ void ClusterCommThread::run () {
   LOG_TRACE("starting ClusterComm thread");
 
   while (! _stop) {
-    usleep(1000);
+    usleep(2000);
     // FIXME: ...
     LOG_TRACE("ClusterComm alive");
   }
