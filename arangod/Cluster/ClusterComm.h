@@ -331,7 +331,7 @@ namespace triagens {
 /// and not in a DBServer node.
 ////////////////////////////////////////////////////////////////////////////////
                 
-        int processAnswer(rest::HttpRequest& answer);
+        int processAnswer(rest::HttpRequest* answer);
                  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send an answer HTTP request to a coordinator, which contains
@@ -411,7 +411,14 @@ namespace triagens {
         // Receiving answers:
         list<ClusterCommOperation*> received;
         map<OperationID,list<ClusterCommOperation*>::iterator> receivedByOpID;
-        triagens::basics::ReadWriteLock receiveLock;
+        triagens::basics::ConditionVariable somethingReceived;
+
+        // An internal function to match an operation:
+        bool match (ClientTransactionID const& clientTransactionID,
+                    TransactionID const        coordTransactionID,
+                    OperationID const          operationID,
+                    ShardID const&             shardID,
+                    ClusterCommOperation* op);
 
         // Finally, our background communications thread:
         ClusterCommThread *_backgroundThread;
