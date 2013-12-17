@@ -218,11 +218,10 @@ module.exports = function(karma) {
       'test/specs/views/graphViewSpec.js',
       'test/specs/views/graphManagementViewSpec.js',
       'test/specs/views/addNewGraphViewSpec.js',
-
       // Router
-      'test/specs/router/routerSpec.js'
+      'test/specs/router/routerSpec.js',
       // JSLint
-//      'test/specJSLint/jsLintSpec.js'
+      'test/specJSLint/jsLintSpec.js'
     ],
 
 
