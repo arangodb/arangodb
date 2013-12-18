@@ -1,11 +1,13 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollection,arangoHelper,dashboardView,arangoDatabase*/
 
-$(document).ready(function() {
+(function() {
+  "use strict";
 
   window.Router = Backbone.Router.extend({
     routes: {
       ""                                    : "dashboard",
+      "dashboard"                           : "dashboard",
       "collection/:colid"                   : "collection",
       "collections"                         : "collections",
       "collectionInfo/:colid"               : "collectionInfo",
@@ -17,7 +19,6 @@ $(document).ready(function() {
       "shell"                               : "shell",
       "query"                               : "query",
       "logs"                                : "logs",
-      "about"                               : "about",
       "api"                                 : "api",
       "databases"                           : "databases",
       "application/installed/:key"          : "applicationEdit",
@@ -26,10 +27,19 @@ $(document).ready(function() {
       "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
       "application/documentation/:key"      : "appDocumentation",
-      "graph"                               : "graph"
+      "graph"                               : "graph",
+      "graphManagement"                     : "graphManagement",
+      "graphManagement/add"                 : "graphAddNew"
     },
 
     initialize: function () {
+      this.graphs = new window.GraphCollection();
+
+      window.currentDB = new window.CurrentDatabase();
+      window.currentDB.fetch({
+        async: false
+      });
+
       window.activeSession = new window.ArangoSession();
 
       window.arangoDatabase = new window.ArangoDatabase();
@@ -38,46 +48,32 @@ $(document).ready(function() {
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
 
-      window.collectionsView = new window.collectionsView({
+      window.collectionsView = new window.CollectionsView({
         collection: window.arangoCollectionsStore
       });
       window.arangoCollectionsStore.fetch();
-
-      window.collectionView = new window.collectionView({
-        model: arangoCollection
-      });
-
-      window.collectionInfoView = new window.collectionInfoView({
-        model: arangoCollection
-      });
-
-      window.documentsView = new window.documentsView({
-        collection: window.arangoDocuments
-      });
-      window.documentView = new window.documentView({
-        collection: window.arangoDocument
-      });
-      window.documentSourceView = new window.documentSourceView({
-        collection: window.arangoDocument
-      });
-
-      window.arangoLogsStore = new window.arangoLogs();
+      window.collectionView = new window.CollectionView();
+      window.collectionInfoView = new window.CollectionInfoView();
+      window.documentsView = new window.DocumentsView();
+      window.documentView = new window.DocumentView();
+      window.documentSourceView = new window.DocumentSourceView();
+      window.arangoLogsStore = new window.ArangoLogs();
       window.arangoLogsStore.fetch({
         success: function () {
-          window.logsView = new window.logsView({
+          window.logsView = new window.LogsView({
             collection: window.arangoLogsStore
           });
         }
       });
 
-      this.footerView = new window.footerView();
-      this.naviView = new window.navigationView();
+      this.footerView = new window.FooterView();
+      this.naviView = new window.NavigationView();
       this.footerView.render();
       this.naviView.render();
-      this.graphView = new window.graphView({
+      this.graphView = new window.GraphView({
+        graphs: this.graphs,
         collection: window.arangoCollectionsStore
       });
-
 
       var self = this;
       $(window).resize(function() {
@@ -92,7 +88,7 @@ $(document).ready(function() {
 
     checkSession: function () {
       if (window.activeSession.models.length === 0) {
-        window.App.navigate("login", {trigger: true});
+        this.navigate("login", {trigger: true});
         return false;
       }
       return true;
@@ -207,19 +203,11 @@ $(document).ready(function() {
         this.naviView.selectMenuItem('databases-menu');
       }
       else {
-        window.App.navigate("#", {trigger: true});
+        this.navigate("#", {trigger: true});
         this.naviView.selectMenuItem('dashboard-menu');
         $('#databaseNavi').css('display','none');
         $('#databaseNaviSelect').css('display','none');
       }
-    },
-
-    about: function() {
-      if (!this.aboutView) {
-        this.aboutView = new window.aboutView();
-      }
-      this.aboutView.render();
-      this.naviView.selectMenuItem('about-menu');
     },
 
     logs: function() {
@@ -228,7 +216,6 @@ $(document).ready(function() {
         return;
       }
 
-      var self = this;
       window.arangoLogsStore.fetch({
         success: function () {
           window.logsView.render();
@@ -269,6 +256,25 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('graphviewer-menu');
         }
       });
+    },
+
+    graphManagement: function() {
+      if (!this.graphManagementView) {
+        this.graphManagementView = new window.GraphManagementView({collection: this.graphs});
+      }
+      this.graphManagementView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
+    },
+
+    graphAddNew: function() {
+      if (!this.addNewGraphView) {
+        this.addNewGraphView = new window.AddNewGraphView({
+          collection: window.arangoCollectionsStore,
+          graphs: this.graphs
+        });
+      }
+      this.addNewGraphView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
     applications: function() {
@@ -312,41 +318,26 @@ $(document).ready(function() {
 
     applicationEdit: function(appkey) {
       if (this.foxxList === undefined) {
-        var self = this;
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
-          success: function() {
-            var editAppView = new window.foxxEditView({
-              model: self.foxxList.findWhere({_key: appkey})
-            });
-            editAppView.render();
-          }
+          async: false
         });
-      } else {
-        var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
-        editAppView.render();
       }
+      var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
+      editAppView.render();
     },
 
     applicationInstall: function(appkey) {
       if (this.foxxList === undefined) {
-        var self = this;
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
-          success: function() {
-            var installAppView = new window.foxxMountView({
-              model: self.foxxList.findWhere({_key: appkey})
-            });
-            installAppView.render();
-          }
+          async: false
         });
-      } else {
-        var installAppView = new window.foxxMountView({
-          model: this.foxxList.findWhere({_key: appkey})
-        });
-        installAppView.render();
       }
-
+      var installAppView = new window.foxxMountView({
+        model: this.foxxList.findWhere({_key: appkey})
+      });
+      installAppView.render();
     },
 
     appDocumentation: function(key) {
@@ -356,7 +347,7 @@ $(document).ready(function() {
     },
 
     handleSelectDatabase: function () {
-      this.naviView.handleSelectDatabase(); 
+      this.footerView.handleSelectDatabase();
     },
 
     handleResize: function () {
@@ -368,23 +359,17 @@ $(document).ready(function() {
       var roundDiv = parseInt(divider, 10);
       var newWidth = roundDiv*spanWidth -2;
       var marginWidth = ((containerWidth+30) - newWidth)/2;
-      this.footerView.handleResize(marginWidth + 20);
+      this.footerView.handleResize(marginWidth);
       this.naviView.handleResize(marginWidth);
       $('#content').width(newWidth)
       .css('margin-left', marginWidth)
       .css('margin-right', marginWidth);
       // $('.footer-right p').css('margin-right', marginWidth + 20);
       // $('.footer-left p').css('margin-left', marginWidth + 20);
-      if (newWidth !== oldWidth && window.App) {
-        window.App.graphView.handleResize(newWidth);
+      if (newWidth !== oldWidth) {
+        this.graphView.handleResize(newWidth);
       }
     }
-
   });
 
-  window.App = new window.Router();
-  Backbone.history.start();
-  window.App.handleResize();
-
-});
-
+}());

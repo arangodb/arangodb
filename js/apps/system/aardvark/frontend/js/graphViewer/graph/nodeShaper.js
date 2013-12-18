@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
-/*global ColourMapper*/
+/*global ColourMapper, ContextMenu*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -82,17 +82,36 @@ function NodeShaper(parent, flags, idfunc) {
   var self = this,
     nodes = [],
     visibleLabels = true,
+    contextMenu = new ContextMenu("gv_node_cm"),
+    findFirstValue = function(list, data) {
+      if (_.isArray(list)) {
+        return data[_.find(list, function(val) {
+          return data[val];
+        })];
+      }
+      return data[list];
+    },
     splitLabel = function(label) {
       if (label === undefined) {
         return [""];
       }
       if (typeof label !== "string") {
-        
         label = String(label);
       }
       var chunks = label.match(/[\w\W]{1,10}(\s|$)|\S+?(\s|$)/g);
       chunks[0] = $.trim(chunks[0]);
       chunks[1] = $.trim(chunks[1]);
+      if (chunks[0].length > 12) {
+        chunks[0] = $.trim(label.substring(0,10)) + "-";
+        chunks[1] = $.trim(label.substring(10));
+        if (chunks[1].length > 12) {
+          chunks[1] = chunks[1].split(/\W/)[0];
+          if (chunks[1].length > 12) {
+            chunks[1] = chunks[1].substring(0,10) + "...";
+          }
+        }
+        chunks.length = 2;
+      }
       if (chunks.length > 2) {
         chunks.length = 2;
         chunks[1] += "...";
@@ -120,6 +139,9 @@ function NodeShaper(parent, flags, idfunc) {
       });
     },
     colourMapper = new ColourMapper(),
+    resetColourMap = function() {
+      colourMapper.reset();
+    },
     events,
     addUpdate,
     idFunction = function(d) {
@@ -219,6 +241,7 @@ function NodeShaper(parent, flags, idfunc) {
       g.selectAll("* > *").remove();
       addQue(g);
       updateNodes();
+      contextMenu.bindMenu($(".node"));
     },
 
     parseShapeFlag = function (shape) {
@@ -344,7 +367,8 @@ function NodeShaper(parent, flags, idfunc) {
             .attr("fill", addLabelColor) // Force a black color
             .attr("stroke", "none"); // Make it readable
           textN.each(function(d) {
-            var chunks = splitLabel(d._data[label]);
+            // var chunks = splitLabel(d._data[label]);
+            var chunks = splitLabel(findFirstValue(label, d._data));
             d3.select(this).append("tspan")
               .attr("x", "0")
               .attr("dy", "-4")
@@ -372,6 +396,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     parseColorFlag = function (color) {
+      resetColourMap();
       switch (color.type) {
         case "single":
           addColor = function (g) {
@@ -400,14 +425,14 @@ function NodeShaper(parent, flags, idfunc) {
                if (n._data === undefined) {
                  return colourMapper.getCommunityColour();
                }
-               return colourMapper.getColour(n._data[color.key]);
+               return colourMapper.getColour(findFirstValue(color.key, n._data));
              });
           };
           addLabelColor = function (n) {
             if (n._data === undefined) {
               return colourMapper.getForegroundCommunityColour();
             }
-            return colourMapper.getForegroundColour(n._data[color.key]);
+            return colourMapper.getForegroundColour(findFirstValue(color.key, n._data));
           };
           break; 
         default:
@@ -527,6 +552,12 @@ function NodeShaper(parent, flags, idfunc) {
   self.getColor = function() {
     return self.color.key || "";
   };
+
+  self.addMenuEntry = function(name, func) {
+    contextMenu.addEntry(name, func);
+  };
+
+  self.resetColourMap = resetColourMap;
 }
 
 NodeShaper.shapes = Object.freeze({

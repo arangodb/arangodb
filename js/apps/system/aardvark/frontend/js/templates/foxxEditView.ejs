@@ -16,8 +16,8 @@
       </tr>
       <tr>
         <th class="collectionTh">Mount:</th>
-        <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>" disabled/></th>
-        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="icon-info-sign"></i></a></th>
+        <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>"/></th>
+        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="arangoicon icon_arangodb_info"></i></a></th>
       </tr>
       <tr>
         <th class="collectionTh">Version:</th>
@@ -51,7 +51,7 @@
   </div>
   <div id="colFooter" class="modal-footer">
     <button id="uninstall" class="btn btn-danger"<%=(attributes.isSystem || attributes.development) ? " disabled" : ""%>>Uninstall</button>
-    <button id="change" class="btn btn-success pull-right" disabled>Save</button>
+    <button id="change" class="btn btn-success pull-right">Save</button>
     <%if (false && attributes.active) {%>
       <button id="deactivate" class="btn btn-warning pull-right" style="margin-right:8px" disabled>Deactivate</button>
     <%} else if (false) {%>

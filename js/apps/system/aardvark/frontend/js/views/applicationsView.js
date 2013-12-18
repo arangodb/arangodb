@@ -1,11 +1,11 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, arangoHelper, _ */
+/*global Backbone, EJS, $, window, arangoHelper, templateEngine, _ */
 
 window.ApplicationsView = Backbone.View.extend({
   el: '#content',
 
-  template: new EJS({url: 'js/templates/applicationsView.ejs'}),
-  
+  template: templateEngine.createTemplate("applicationsView.ejs"),
+
   events: {
     "click .toggle-icon": "toggleView",
     "click #checkDevel": "toggleDevel",

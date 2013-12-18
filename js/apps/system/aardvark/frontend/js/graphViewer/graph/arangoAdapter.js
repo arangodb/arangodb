@@ -28,7 +28,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function ArangoAdapter(nodes, edges, config) {
+function ArangoAdapter(nodes, edges, viewer, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -36,6 +36,9 @@ function ArangoAdapter(nodes, edges, config) {
   }
   if (edges === undefined) {
     throw "The edges have to be given.";
+  }
+  if (viewer === undefined) {
+    throw "A reference to the graph viewer has to be given.";
   }
   if (config === undefined) {
     throw "A configuration with node- and edgeCollection has to be given.";
@@ -124,9 +127,9 @@ function ArangoAdapter(nodes, edges, config) {
       if (query !== queries.getAllGraphs) {
         if (query !== queries.connectedEdges) {
           bindVars["@nodes"] = nodeCollection;
-        }
-        if (query !== queries.childrenCentrality) {
-          bindVars.dir = direction;
+          if (query !== queries.childrenCentrality) {
+            bindVars.dir = direction;
+          }
         }
         bindVars["@edges"] = edgeCollection;
       }
@@ -265,7 +268,7 @@ function ArangoAdapter(nodes, edges, config) {
           return;
         }
         callback(absAdapter.insertInitialNode(n));
-      }
+      };
     },
 
 
@@ -281,7 +284,7 @@ function ArangoAdapter(nodes, edges, config) {
   if (config.prioList) {
     absConfig.prioList = config.prioList;
   }
-  absAdapter = new AbstractAdapter(nodes, edges, this, absConfig);
+  absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
   
   parseConfig(config);
   

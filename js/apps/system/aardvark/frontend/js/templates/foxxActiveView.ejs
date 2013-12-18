@@ -3,7 +3,7 @@
     <% var appInfos = attributes.app.split(":"); %>
     <h5 class="applicationName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
     <div class="pull-right">
-        <span class="glyphicon glyphicon-info-sign" title="Show API documentation"></span>
+        <span class="icon_arangodb_info ICON" title="Show API documentation"></span>
     </div>
     <img src="foxxes/thumbnail/<%=attributes.app %>" alt="icon" class="foxxIcon"/>
     <p class="foxxDescription">

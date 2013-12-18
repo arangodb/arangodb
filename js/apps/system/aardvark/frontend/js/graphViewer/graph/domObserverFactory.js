@@ -35,6 +35,9 @@ function DomObserverFactory() {
   var Constructor = window.WebKitMutationObserver || window.MutationObserver;
   
   this.createObserver = function(callback) {
+    if (!Constructor) {
+      throw "Observer not supported";
+    }
     return new Constructor(callback);
   };
 }

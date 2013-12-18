@@ -326,30 +326,6 @@ Vertex.prototype.setProperty = function (name, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of edges
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype.degree = function () {
-  return this.getEdges().length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of in-edges
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype.inDegree = function () {
-  return this.getInEdges().length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of out-edges
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype.outDegree = function () {
-  return this.getOutEdges().length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -393,7 +369,15 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   if (typeof name !== "string" || name === "") {
     throw "<name> must be a string";
   }
-
+ 
+  // convert collection objects to collection names  
+  if (typeof vertices === 'object' && typeof vertices.name === 'function') {
+    vertices = vertices.name();
+  }
+  if (typeof edges === 'object' && typeof edges.name === 'function') {
+    edges = edges.name();
+  }
+  
   if (vertices === undefined && edges === undefined) {
 
     // Find an existing graph
@@ -427,7 +411,6 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
     throw "<edges> must be a string or null";
   }
   else {
-
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
@@ -493,7 +476,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   this._verticesCache = {};
   this._edgesCache = {};
   
-  // and store the cashes
+  // and store the caches
   this.predecessors = {};
   this.distances = {};
 };
@@ -520,7 +503,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 /// Returns all available graphs.
 ////////////////////////////////////////////////////////////////////////////////
 
-function getAllGraphs () {
+Graph.getAll = function getAllGraphs () {
   var gdb = db._collection("_graphs"),
     graphs = [ ];
 
@@ -538,9 +521,28 @@ function getAllGraphs () {
   });
 
   return graphs;
-}
+};
 
-Graph.getAll = getAllGraphs;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static drop function 
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.drop = function (name, waitForSync) {
+  var gdb = db._collection("_graphs");
+  var exists = gdb.exists(name);
+
+  try {
+    var obj = new Graph(name); 
+    return obj.drop(waitForSync);
+  }
+  catch (err) {
+    if (exists) {
+      // if the graph exists but cannot be deleted because one of the underlying
+      // collections is missing, delete from _graphs "manually"
+      gdb.remove(name, true, waitForSync);
+    }
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the graph, the vertices, and the edges
@@ -555,7 +557,10 @@ Graph.prototype.drop = function (waitForSync) {
 
   gdb.remove(this._properties, true, waitForSync);
 
-  this._vertices.drop();
+  if (gdb.byExample({vertices: this._vertices.name()}).count() === 0) {
+    this._vertices.drop();
+  }
+
   this._edges.drop();
 };
 
@@ -563,17 +568,17 @@ Graph.prototype.drop = function (waitForSync) {
 /// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitForSync) {
+Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, shallow, waitForSync) {
   this.emptyCachedPredecessors();
 
   if (id !== undefined && id !== null) {
     shallow._key = String(id);
   }
 
-  var ref = this._edges.save(out_vertex._properties._id,
-    in_vertex._properties._id,
-    shallow,
-    waitForSync);
+  var ref = this._edges.save(out_vertex_id,
+                             in_vertex_id,
+                             shallow,
+                             waitForSync);
 
   return this.constructEdge(ref._id);
 };
@@ -592,6 +597,22 @@ Graph.prototype._saveVertex = function (id, shallow, waitForSync) {
   ref = this._vertices.save(shallow, waitForSync);
 
   return this.constructVertex(ref._id);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a vertex to the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._replaceVertex = function (vertex_id, data) {
+  this._vertices.replace(vertex_id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an edge in the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._replaceEdge = function (edge_id, data) {
+  this._edges.replace(edge_id, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -645,9 +666,10 @@ Graph.prototype.getVertices = function () {
   var all = this._vertices.all(),
     graph = this,
     wrapper = function(object) {
-        return graph.constructVertex(object);
+      return graph.constructVertex(object);
     };
-  return new Iterator(wrapper, graph.constructVertex, "[vertex iterator]");
+
+  return new Iterator(wrapper, all, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -699,10 +721,10 @@ Graph.prototype.getEdge = function (id) {
 
 Graph.prototype.getEdges = function () {
   var all = this._edges.all(),
-    graph = this,
-    wrapper = function(object) {
-        return graph.constructEdge(object);
-    };
+  graph = this,
+  wrapper = function(object) {
+    return graph.constructEdge(object);
+  };
   return new Iterator(wrapper, all, "[edge iterator]");
 };
 
