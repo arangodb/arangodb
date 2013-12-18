@@ -31,7 +31,6 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   "use strict";
   
   var eventlib,
-    expandConfig,
     svgBase,
     svgTemp,
     svgObj,
@@ -45,7 +44,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           patch = new eventlib.PatchNode(config),
           del = new eventlib.DeleteNode(config);
         
-        self.events.CREATENODE = function(getNewData, callback) {
+        self.events.CREATENODE = function(getNewData, callback, x, y) {
           var data;
           if (!_.isFunction(getNewData)) {
             data = getNewData;
@@ -53,7 +52,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             data = getNewData();
           }
           return function() {
-            insert(data, callback);
+            insert(data, callback, x, y);
           };
         };
         self.events.PATCHNODE = function(node, getNewData, callback) {
@@ -268,4 +267,5 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     throw "Not implemented";
   };
   */
+  Object.freeze(self.events);
 }

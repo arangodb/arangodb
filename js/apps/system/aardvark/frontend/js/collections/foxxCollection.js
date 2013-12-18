@@ -1,7 +1,10 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
 /*global window, Backbone */
-window.FoxxCollection = Backbone.Collection.extend({
-  model: window.Foxx,
-  
-  url: "/_admin/aardvark/foxxes"
-});
+(function() {
+  "use strict";
+  window.FoxxCollection = Backbone.Collection.extend({
+    model: window.Foxx,
+    
+    url: "/_admin/aardvark/foxxes"
+  });
+}());

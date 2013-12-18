@@ -54,7 +54,8 @@
         "frontend/js/models/**",
         "frontend/js/collections/**",
         "frontend/js/views/**",
-        "frontend/js/routers/**"
+        "frontend/js/routers/router.js",
+        "frontend/js/routers/startApp.js"
       ]
     },
 
@@ -71,10 +72,11 @@
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
         "frontend/js/lib/jquery.ba-bbq.min.js",
+        "frontend/js/lib/jquery.contextmenu.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",
-        "frontend/js/lib/d3.v3.js",
+        "frontend/js/lib/d3.v3.min.js",
         "frontend/js/lib/nv.d3.js",
         "frontend/js/lib/d3.fisheye.js",
         "frontend/js/lib/ColVis.js",
@@ -92,6 +94,7 @@
 
     "css/style.css": {
       "files": [
+        "frontend/css/openSansFont.css",
         "frontend/css/swagger/hightlight.default.css",
         "frontend/css/bootstrap.css",
         "frontend/css/arangodbIcons.css",
@@ -123,7 +126,12 @@
         "frontend/css/modal.css",
         "frontend/css/ansi.css",
         "frontend/css/graphlayout.css",
-        "frontend/css/api.css"
+        "frontend/css/datatables.css",
+        "frontend/css/api.css",
+        "frontend/css/general.css",
+        "frontend/css/buttons.css",
+        "frontend/css/screenSizes.css",
+        "frontend/ttf/arangofont/style.css"
       ]
     }
   },

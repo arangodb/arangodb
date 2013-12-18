@@ -1,43 +1,45 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global describe, it, expect, jasmine, spyOn*/
-/*global $, d3*/
-
-describe("Collection View", function() {
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global runs, waitsFor, jasmine*/
+/*global $, arangoCollection*/
+(function() {
   "use strict";
-  var myView;
-  window.App = function() {};
-  window.App.navigate = function() {};
 
-  beforeEach(function() {
-    $('body').append('<div id="content" class="removeMe"></div>');
+  describe("Collection View", function() {
 
-    myView = new window.collectionView({
-      model: arangoCollection
-    });
+    var myView;
+    window.App = function() {};
+    window.App.navigate = function() {};
 
-  });
+    beforeEach(function() {
+      $('body').append('<div id="content" class="removeMe"></div>');
 
-  afterEach(function() {
-    $('.removeMe').remove();
-  });
-
-
-  describe("Collection Changes", function() {
-    it("Check if changes were submitted", function() {
-
-      var pressedEnter = false;
-      myView.render();
-
-      spyOn(myView, 'saveModifiedCollection').andCallFake(function(request) {
-        pressedEnter = true;
-        console.log("hasdhasd");
+      myView = new window.CollectionView({
+        model: arangoCollection
       });
 
-      myView.saveModifiedCollection();
-      expect(pressedEnter).toBeTruthy();
+    });
+
+    afterEach(function() {
+      $('.removeMe').remove();
     });
 
 
-  });
-});
+    describe("Collection Changes", function() {
+      it("Check if changes were submitted", function() {
 
+        var pressedEnter = false;
+        myView.render();
+
+        spyOn(myView, 'saveModifiedCollection').andCallFake(function(request) {
+          pressedEnter = true;
+        });
+
+        myView.saveModifiedCollection();
+        expect(pressedEnter).toBeTruthy();
+      });
+
+
+    });
+  });
+}());
