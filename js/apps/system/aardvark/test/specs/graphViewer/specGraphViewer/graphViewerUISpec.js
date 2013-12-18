@@ -194,7 +194,7 @@
         expect($("span", menuSelector)).toBeOfClass("glyphicon");
         expect($("span", menuSelector)).toBeOfClass("glyphicon-cog");
         expect($(dropDownSelector +  " #control_adapter_collections").length).toEqual(1);
-        expect($(dropDownSelector +  " #control_node_labelandcolour").length).toEqual(1);
+        expect($(dropDownSelector +  " #control_node_labelandcolourlist").length).toEqual(1);
         expect($(dropDownSelector +  " #control_adapter_priority").length).toEqual(1);
       });
       

@@ -13,13 +13,17 @@
     initialize: function () {
       this.newLineTmpl = templateEngine.createTemplate("graphViewGroupByEntry.ejs");
       this.graphs = this.options.graphs;
-      this.i = 1;
+      this.labelId = 1;
+      this.colourId = 1;
+      this.groupId = 1;
     },
 
     events: {
       "click input[type='radio'][name='loadtype']": "toggleLoadtypeDisplay",
       "click #createViewer": "createViewer",
-      "click #add_group_by": "insertNewAttrLine",
+      "click #add_label": "insertNewLabelLine",
+      "click #add_colour": "insertNewColourLine",
+      "click #add_group_by": "insertNewGroupLine",
       "click input[type='radio'][name='colour']": "toggleColourDisplay",
       "click .gv_internal_remove_line": "removeAttrLine",
       "click #manageGraphs": "showGraphManager"
@@ -37,10 +41,22 @@
       set.get(0).removeChild(g.get(0));
     }, 
 
+    insertNewLabelLine: function() {
+      this.labelId++;
+      var next = this.newLineTmpl.render({id: this.labelId});
+      $("#label_list").append(next);
+    },
 
-    insertNewAttrLine: function() {
-      this.i++;
-      var next = this.newLineTmpl.render({id: this.i});
+    insertNewColourLine: function() {
+      this.colourId++;
+      var next = this.newLineTmpl.render({id: this.colourId});
+      $("#colour_list").append(next);
+    },
+
+
+    insertNewGroupLine: function() {
+      this.groupId++;
+      var next = this.newLineTmpl.render({id: this.groupId});
       $("#group_by_list").append(next);
     },
 
@@ -82,13 +98,6 @@
         self = this;
 
       undirected = !!$("#undirected").attr("checked");
-      label = $("#nodeLabel").val();
-      sameColor = $("input[type='radio'][name='colour']:checked").attr("id") === "samecolour";
-      if (sameColor) {
-        color = label;
-      } else {
-        color = $("#nodeColor").val();
-      }
       randomStart = !!$("#randomStart").attr("checked");
       
       selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
@@ -105,6 +114,27 @@
           ecol = graph.get("edges");
           ncol = graph.get("vertices");
         }
+      }
+
+      label = [];
+      $("#label_list input").each(function() {
+        var a = $(this).val();
+        if (a) {
+          label.push(a);
+        }
+      });
+
+      sameColor = $("input[type='radio'][name='colour']:checked").attr("id") === "samecolour";
+      if (sameColor) {
+        color = label;
+      } else {
+      color = [];
+        $("#colour_list input").each(function() {
+          var a = $(this).val();
+          if (a) {
+            color.push(a);
+          }
+        });
       }
 
       groupByAttribute = [];
