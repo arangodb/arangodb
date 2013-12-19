@@ -140,7 +140,7 @@ LoggerStream::LoggerStream (LoggerData::Info const& info) :
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerStream::LoggerStream (LoggerStream const& copy) :
-  _stream(copy._stream), _info(copy._info) {
+  _stream(new stringstream(copy._stream->str())), _info(copy._info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,10 +150,7 @@ LoggerStream::LoggerStream (LoggerStream const& copy) :
 LoggerStream::~LoggerStream () {
   computeInfo(_info);
 
-  if (_stream != 0) {
-    Logger::output(static_cast<stringstream*> (_stream)->str(), _info);
-    delete _stream;
-  }
+  Logger::output(static_cast<stringstream*> (_stream)->str(), _info);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
