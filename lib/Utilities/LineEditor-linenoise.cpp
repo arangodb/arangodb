@@ -32,6 +32,7 @@ extern "C" {
 }
 
 #include "BasicsC/tri-strings.h"
+#include "BasicsC/files.h"
 
 using namespace std;
 
@@ -100,10 +101,8 @@ bool LineEditor::close () {
 string LineEditor::historyPath () {
   string path;
 
-  if (getenv("HOME")) {
-    path.append(getenv("HOME"));
-    path += '/';
-  }
+  path = TRI_HomeDirectory();
+  path += '/';
 
   path.append(_historyFilename);
 
