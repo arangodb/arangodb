@@ -640,72 +640,67 @@ void ClusterCommThread::run () {
 
   LOG_TRACE("starting ClusterComm thread");
 
-  while (! _stop) {
-    LOG_DEBUG("ClusterComm alive");
-    
+  while (0 == _stop) {
     // First check the sending queue, as long as it is not empty, we send
     // a request via SimpleHttpClient:
-    while (true) {   // will be left by break when queue is empty
-      {
-        basics::ConditionLocker locker(&cc->somethingToSend);
-        if (cc->toSend.empty()) {
-          break;
-        }
-        op = cc->toSend.front();
-        assert(op->status == CL_COMM_SUBMITTED);
-        op->status = CL_COMM_SENDING;
+    {
+      basics::ConditionLocker locker(&cc->somethingToSend);
+      while (cc->toSend.empty() && ! _stop) {
+        LOG_DEBUG("ClusterComm alive");
+        // Now wait for the condition variable, but use a timeout to notice
+        // a request to terminate the thread:
+        locker.wait(10000000);
       }
+      if (0 != _stop) {
+        break;
+      }
+      op = cc->toSend.front();
+      assert(op->status == CL_COMM_SUBMITTED);
+      op->status = CL_COMM_SENDING;
+    }
 
-      // We release the lock, if the operation is dropped now, the
-      // `dropped` flag is set. We find out about this after we have
-      // sent the request (happens in moveFromSendToReceived).
+    // We release the lock, if the operation is dropped now, the
+    // `dropped` flag is set. We find out about this after we have
+    // sent the request (happens in moveFromSendToReceived).
 
-      // First find the server to which the request goes from the shardID:
-      ServerID server = ClusterState::instance()->getResponsibleServer(
-                                                       op->shardID);
-      if (server == "") {
+    // First find the server to which the request goes from the shardID:
+    ServerID server = ClusterState::instance()->getResponsibleServer(
+                                                     op->shardID);
+    if (server == "") {
+      op->status = CL_COMM_ERROR;
+    }
+    else {
+      // We need a connection to this server:
+      ClusterComm::SingleServerConnection* connection 
+        = cc->getConnection(server);
+      if (0 == connection) {
         op->status = CL_COMM_ERROR;
       }
       else {
-        // We need a connection to this server:
-        ClusterComm::SingleServerConnection* connection 
-          = cc->getConnection(server);
-        if (0 == connection) {
-          op->status = CL_COMM_ERROR;
+
+        LOG_TRACE("sending %s request to DB server '%s': %s",
+           triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
+           server.c_str(), op->body);
+
+        {
+          triagens::httpclient::SimpleHttpClient client(
+                                     connection->connection,
+                                     op->timeout, false);
+
+          // We add this result to the operation struct without acquiring
+          // a lock, since we know that only we do such a thing:
+          op->result = client.request(op->reqtype, op->path, op->body, 
+                                      op->bodyLength, *(op->headerFields));
+          // FIXME: handle case that connection was no good and the request
+          // failed.
         }
-        else {
-
-          LOG_TRACE("sending %s request to DB server '%s': %s",
-             triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
-             server.c_str(), op->body);
-
-          {
-            triagens::httpclient::SimpleHttpClient client(
-                                       connection->connection,
-                                       op->timeout, false);
-
-            // We add this result to the operation struct without acquiring
-            // a lock, since we know that only we do such a thing:
-            op->result = client.request(op->reqtype, op->path, op->body, 
-                                        op->bodyLength, *(op->headerFields));
-            // FIXME: handle case that connection was no good and the request
-            // failed.
-          }
-          cc->returnConnection(connection);
-        }
-      }
-
-      if (!cc->moveFromSendToReceived(op->operationID)) {
-        // It was dropped in the meantime, so forget about it:
-        delete op;
+        cc->returnConnection(connection);
       }
     }
 
-    // Now wait for the condition variable, but use a timeout to notice
-    // a request to terminate the thread:
-    {
-      basics::ConditionLocker locker(&cc->somethingToSend);
-      locker.wait(10000000);
+    if (!cc->moveFromSendToReceived(op->operationID)) {
+      // It was dropped in the meantime, so forget about it:
+      delete op;
     }
   }
 
