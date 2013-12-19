@@ -406,6 +406,7 @@ static V8ClientConnection* CreateConnection () {
                                 BaseClient.requestTimeout(),
                                 BaseClient.connectTimeout(),
                                 ArangoClient::DEFAULT_RETRIES,
+                                BaseClient.sslProtocol(),
                                 false);
 }
 

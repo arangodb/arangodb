@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $ */
+/*global window, document, Backbone, EJS, SwaggerUi, hljs, templateEngine, $ */
 
 window.apiView = Backbone.View.extend({
   el: '#content',
   init: function () {
   },
 
-  template: new EJS({url: 'js/templates/apiView.ejs'}),
+  template: templateEngine.createTemplate("apiView.ejs"),
 
   initialize: function() {
     this.swaggerUi = new SwaggerUi({

@@ -36,6 +36,9 @@
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/EmbeddableTransaction.h"
+#include "Utils/RestTransactionContext.h"
+#include "Utils/SingleCollectionWriteTransaction.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
@@ -292,17 +295,28 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
     // invalid type
     return false;
   }
-
-  if (TRI_ExcludeCollectionReplication(collection->_name)) {
-    // collection is excluded
-    return false;
-  }
-
+  
   bool includeSystem = *((bool*) data);
   if (! includeSystem && collection->_name[0] == '_') {
     // exclude all system collections
     return false;
   }
+
+  if (TRI_ExcludeCollectionReplication(collection->_name)) {
+    // collection is excluded from replication
+
+    if (includeSystem) {
+      // now check if we still should include it in the dump
+      if (! TRI_EqualString(collection->_name, TRI_COL_NAME_USERS) &&
+          ! TRI_EqualString(collection->_name, "_aal") &&
+          ! TRI_EqualString(collection->_name, "_modules") &&
+          ! TRI_EqualString(collection->_name, "_routing")) {
+        return false;
+      }
+    }
+    // _aal, _modules, _routing should be included
+  }
+
 
   // all other cases should be included
   return true;
@@ -1601,10 +1615,16 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   if (found) {
     recycleIds = StringUtils::boolean(value);
   }
+  
+  bool force = false;
+  value = _request->value("force", found);
+  if (found) {
+    force = StringUtils::boolean(value);
+  }
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-  int res = processRestoreCollection(json, overwrite, recycleIds, remoteServerId, errorMsg);
+  int res = processRestoreCollection(json, overwrite, recycleIds, force, remoteServerId, errorMsg);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
@@ -1634,10 +1654,17 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
                   "invalid JSON");
     return;
   }
+  
+  bool found;
+  bool force = false;
+  char const* value = _request->value("force", found);
+  if (found) {
+    force = StringUtils::boolean(value);
+  }
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-  int res = processRestoreIndexes(json, remoteServerId, errorMsg);
+  int res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
@@ -1661,6 +1688,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collection,
                                                       bool dropExisting,
                                                       bool reuseId,
+                                                      bool force,
                                                       TRI_server_id_t remoteServerId,
                                                       string& errorMsg) {
   if (! JsonHelper::isArray(collection)) {
@@ -1725,9 +1753,34 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
   if (col != 0) {
     if (dropExisting) {
       int res = TRI_DropCollectionVocBase(_vocbase, col, remoteServerId);
+
+      if (res == TRI_ERROR_FORBIDDEN) {
+        // some collections must not be dropped
+
+        // instead, truncate them
+        CollectionNameResolver resolver(_vocbase);
+        SingleCollectionWriteTransaction<EmbeddableTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, col->_cid);
+
+        res = trx.begin();
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+
+        if (barrier == 0) {
+          return TRI_ERROR_INTERNAL;
+        }
+
+        res = trx.truncate(false);
+        res = trx.finish(res);
+
+        TRI_FreeBarrier(barrier);
+
+        return res;
+      }
  
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection: " + string(TRI_errno_string(res));
+        errorMsg = "unable to drop collection '" + name + "': " + string(TRI_errno_string(res));
 
         return res;
       }
@@ -1735,7 +1788,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
     else {
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
-      errorMsg = "unable to drop collection: " + string(TRI_errno_string(res));
+      errorMsg = "unable to create collection '" + name + "': " + string(TRI_errno_string(res));
 
       return res;
     }
@@ -1758,6 +1811,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreIndexes (TRI_json_t* const collection,
+                                                   bool force,
                                                    TRI_server_id_t remoteServerId,
                                                    string& errorMsg) {
   if (! JsonHelper::isArray(collection)) {
@@ -1907,7 +1961,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false);
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -1916,7 +1970,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false);
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
@@ -1977,6 +2031,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
                                                      TRI_transaction_collection_t* trxCollection,
                                                      TRI_server_id_t generatingServer,
                                                      bool useRevision,
+                                                     bool force,
                                                      std::string& errorMsg) {
   const string invalidMsg = "received invalid JSON data for collection " + 
                             StringUtils::itoa(trxCollection->_cid);
@@ -2065,7 +2120,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res != TRI_ERROR_NO_ERROR && ! force) {
         return res;
       }
     }
@@ -2084,6 +2139,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
                                                 TRI_voc_cid_t cid,
                                                 TRI_server_id_t generatingServer,
                                                 bool useRevision,
+                                                bool force,
                                                 string& errorMsg) {
 
   TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase, 
@@ -2127,7 +2183,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
     // TODO: waitForSync disabled here. use for initial replication, too
     // sync at end of trx
     trxCollection->_waitForSync = false;
-    res = processRestoreDataBatch(resolver, trxCollection, generatingServer, useRevision, errorMsg);
+    res = processRestoreDataBatch(resolver, trxCollection, generatingServer, useRevision, force, errorMsg);
   }
       
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2169,11 +2225,17 @@ void RestReplicationHandler::handleCommandRestoreData () {
   if (value != 0) {
     recycleIds = StringUtils::boolean(value);
   }
+  
+  bool force = false;
+  value = _request->value("force");
+  if (value != 0) {
+    force = StringUtils::boolean(value);
+  }
     
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
 
-  int res = processRestoreData(resolver, cid, remoteServerId, recycleIds, errorMsg);
+  int res = processRestoreData(resolver, cid, remoteServerId, recycleIds, force, errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -2894,6 +2956,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._connectTimeout    = JsonHelper::getNumericValue<double>(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getNumericValue<uint64_t>(json, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = JsonHelper::getNumericValue<uint64_t>(json, "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol       = JsonHelper::getNumericValue<uint32_t>(json, "sslProtocol", config._sslProtocol);
   config._chunkSize         = JsonHelper::getNumericValue<uint64_t>(json, "chunkSize", config._chunkSize);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);

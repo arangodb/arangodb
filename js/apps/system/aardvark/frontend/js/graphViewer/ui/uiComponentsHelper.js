@@ -33,11 +33,24 @@ var uiComponentsHelper = uiComponentsHelper || {};
 (function componentsHelper() {
   "use strict";
   
-  uiComponentsHelper.createButton = function(baseclass, list, title, prefix, callback) {
+  uiComponentsHelper.createButton = function(list, title, prefix, callback) {
+    var li = document.createElement("li"),
+      button = document.createElement("button");
+    li.className = "graph_control " + prefix;
+    li.id = prefix;
+    li.appendChild(button);
+    button.className = "btn btn-primary gv_dropdown_entry";
+    button.appendChild(document.createTextNode(title));
+    list.appendChild(li);
+    button.id = prefix + "_button";
+    button.onclick = callback;
+  };
+
+  uiComponentsHelper.createListEntry = function(list, title, prefix, callback) {
     var button = document.createElement("li"),
       a = document.createElement("a"),
       label = document.createElement("label");
-    button.className = baseclass + "_control " + prefix;
+    button.className = "graph_control " + prefix;
     button.id = prefix;
     button.appendChild(a);
     a.className = "gv_dropdown_entry";

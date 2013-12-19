@@ -79,90 +79,90 @@ function graph_by_request (req) {
 
   if (g._properties === null) {
     throw "no graph found for: " + key;
-    }
-
-    return g;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get vertex by request (throws exception)
-  ////////////////////////////////////////////////////////////////////////////////
+  return g;
+}
 
-  function vertex_by_request (req, g) {
-    if (req.suffix.length < 3) {
-      throw "no vertex found";
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get vertex by request (throws exception)
+////////////////////////////////////////////////////////////////////////////////
 
-    var key = req.suffix[2];
-    if (req.suffix.length > 3) {
-      key += "/" + req.suffix[3];
-    }
-
-    var vertex = g.getVertex(key);
-
-    if (vertex === null || vertex._properties === undefined) {
-      throw "no vertex found for: " + key;
-    }
-
-    return vertex;
+function vertex_by_request (req, g) {
+  if (req.suffix.length < 3) {
+    throw "no vertex found";
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get edge by request (throws exception)
-  ////////////////////////////////////////////////////////////////////////////////
-
-  function edge_by_request (req, g) {
-    if (req.suffix.length < 3) {
-      throw "no edge found";
-    }
-
-    var key = req.suffix[2];
-    if (req.suffix.length > 3) {
-      key += "/" + req.suffix[3];
-    }
-    var edge = g.getEdge(key);
-
-    if (edge === null || edge._properties === undefined) {
-      throw "no edge found for: " + key;
-    }
-
-    return edge;
+  var key = req.suffix[2];
+  if (req.suffix.length > 3) {
+    key += "/" + req.suffix[3];
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief returns true if a "if-match" or "if-none-match" error happens
-  ////////////////////////////////////////////////////////////////////////////////
+  var vertex = g.getVertex(key);
 
-  function matchError (req, res, doc, errorCode) {  
+  if (vertex === null || vertex._properties === undefined) {
+    throw "no vertex found for: " + key;
+  }
 
-    if (req.headers["if-none-match"] !== undefined) {
-      if (doc._rev === req.headers["if-none-match"]) {
-        // error      
-        res.responseCode = actions.HTTP_NOT_MODIFIED;
-        res.contentType = "application/json; charset=utf-8";
-        res.body = '';
-        res.headers = {};      
-        return true;
-      }
-    }  
-    
-    if (req.headers["if-match"] !== undefined) {
-      if (doc._rev !== req.headers["if-match"]) {
-        // error
-        actions.resultError(req, 
-                            res, 
-                            actions.HTTP_PRECONDITION_FAILED, 
-                            errorCode, 
-                            "wrong revision", 
-                            {});
-        return true;
-      }
-    }  
-    
-    var rev = req.parameters.rev;
-    if (rev !== undefined) {
-      if (doc._rev !== rev) {
-        // error
+  return vertex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edge by request (throws exception)
+////////////////////////////////////////////////////////////////////////////////
+
+function edge_by_request (req, g) {
+  if (req.suffix.length < 3) {
+    throw "no edge found";
+  }
+
+  var key = req.suffix[2];
+  if (req.suffix.length > 3) {
+    key += "/" + req.suffix[3];
+  }
+  var edge = g.getEdge(key);
+
+  if (edge === null || edge._properties === undefined) {
+    throw "no edge found for: " + key;
+  }
+
+  return edge;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a "if-match" or "if-none-match" error happens
+////////////////////////////////////////////////////////////////////////////////
+
+function matchError (req, res, doc, errorCode) {  
+
+  if (req.headers["if-none-match"] !== undefined) {
+    if (doc._rev === req.headers["if-none-match"]) {
+      // error      
+      res.responseCode = actions.HTTP_NOT_MODIFIED;
+      res.contentType = "application/json; charset=utf-8";
+      res.body = '';
+      res.headers = {};      
+      return true;
+    }
+  }  
+  
+  if (req.headers["if-match"] !== undefined) {
+    if (doc._rev !== req.headers["if-match"]) {
+      // error
+      actions.resultError(req, 
+                          res, 
+                          actions.HTTP_PRECONDITION_FAILED, 
+                          errorCode, 
+                          "wrong revision", 
+                          {});
+      return true;
+    }
+  }  
+  
+  var rev = req.parameters.rev;
+  if (rev !== undefined) {
+    if (doc._rev !== rev) {
+      // error
       actions.resultError(req, 
                           res, 
                           actions.HTTP_PRECONDITION_FAILED, 
@@ -455,9 +455,20 @@ function delete_graph_graph (req, res) {
   var g;
 
   try {
-    g = graph_by_request(req);
-    if (g === null || g === undefined) {
-      throw "graph not found";
+    var name = req.suffix[0];
+    var exists = arangodb.db._collection('_graphs').exists(name);
+
+    try {
+      g = graph_by_request(req);
+      if (g === null || g === undefined) {
+        throw "graph not found";
+      }
+    }
+    catch (graphNotFound) {
+      if (exists) {
+        graph.Graph.drop(name);
+        actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true });
+      }
     }
   }
   catch (err) {

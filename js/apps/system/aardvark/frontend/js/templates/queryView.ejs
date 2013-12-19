@@ -2,14 +2,14 @@
   <div id="transparentHeader">
     <div class="pagination pagination-small pagination-right toolbarUL">
       <ul><li class="enabled" style="visibility:hidden"><a id="aqlToggle" class="arangoHeaderA"><span class="glyphicon glyphicon-cog" title="Settings"></span></a></li></ul>
-      <ul><li class="enabled"><a id="editAQL" class="arangoHeaderA"><span class="glyphicon glyphicon-th-list" title="Edit custom Queries"></span></a></li></ul>
+      <ul><li class="enabled"><a id="editAQL" class="arangoHeaderA"><span class="icon_arangodb_checklist" title="Edit custom Queries"></span></a></li></ul>
     </div>
     <a class="arangoHeader">AQL Editor</a>
   </div>
 </ul>
 
-<div id="queryDropdown" class="dropdownOut" style="display:hidden">
-  <div class="dropdownIn" id="queryDropdownIn">
+<div id="queryDropdown" class="headerDropdown">
+  <div class="dropdownInner" id="queryDropdownIn">
     <a class="arangoHeader">Edit custom queries</a>
     <div id="queryDropdownLeft">
       Name
@@ -31,9 +31,9 @@
   </div>
 </div>
 
-<div id="queryDiv" class="form-actions" style="display:none">
+<div id="queryDiv" style="display:none">
   <div id="editorLabel"><h6>Query</h6></div>
-  <div id="editorToolbar">
+  <div id="editorToolbar" class="queryToolbar">
     <span class="arangoicon arango-icon-remove queryTooltips" title="Clear" id="clearInput"/>
     <span class="arangoicon arango-icon-disk queryTooltips" title="Save current query" id="addAQL"/>
     <span class="arangoicon arango-icon-comment queryTooltips" title="Comment" id="commentText"/>
@@ -52,7 +52,7 @@
     </div>
   </div>
   <div id="editorLabel"><h6>Result</h6></div>
-  <div id="outputToolbar">
+  <div id="outputToolbar" class="queryToolbar">
       <span class="arangoicon arango-icon-remove queryTooltips" title="Clear" id="clearOutput"></span>
       <span class="glyphicon glyphicon-resize-full queryTooltips" title="Unfold" id="bigOutput"></span>
   </div>
@@ -61,6 +61,7 @@
     <div id="shortcutDiv">
       <b>Submit:</b> CTRL/CMD + Return ; <b>Undo:</b> CTRL/CMD + Z ; <b>Redo:</b> CTRL/CMD + SHIFT + Z ;
       <b>Toggle Comments:</b> CTRL/CMD + SHIFT + C
+      <br /><b>Warning:</b> Right now there is a bug in Safari, the cursor is misplaced. Please use a different browser for now. Fix in progress.
     </div>
 
 </div>

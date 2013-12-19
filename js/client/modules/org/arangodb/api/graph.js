@@ -71,7 +71,10 @@ GraphAPI = {
   },
 
   deleteGraph: function (graphKey) {
-    return GraphAPI.sendWithoutData("DELETE", graphKey, "");
+    var results = GraphAPI.sendWithoutData("DELETE", graphKey, "");
+    // dropping a graph might have removed collections
+    arangodb.db._flushCache();
+    return results;
   },
 
   // Vertex
