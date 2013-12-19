@@ -28,6 +28,7 @@
 #include "Cluster/ClusterState.h"
 
 #include "BasicsC/logging.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 
 using namespace triagens::arango;
@@ -62,22 +63,64 @@ ClusterState::~ClusterState () {
 }
 
 void ClusterState::loadServerInformation () {
+  AgencyCommResult res;
   while (true) {
-    // tue die schmutzige Arbeit, verlasse mit return, sobald OK
-    return;   // FIXME ...
-    LOG_WARNING("ClusterState: Could not (re-)load agency data about servers");
+    {
+      WRITE_LOCKER(lock);
+      res = _agency.getValues("State/ServersRegistered", true);
+      if (res.successful()) {
+        if (res.flattenJson(serverAddresses,"State/ServersRegistered/", false)) {
+          LOG_DEBUG("State/ServersRegistered loaded successfully");
+          map<ServerID,string>::iterator i;
+          cout << "Servers registered:" << endl;
+          for (i = serverAddresses.begin(); i != serverAddresses.end(); ++i) {
+            cout << "   " << i->first << " with address " << i->second << endl;
+          }
+          return;
+        }
+        else {
+          LOG_DEBUG("State/ServersRegistered not loaded successfully");
+        }
+      }
+      else {
+        LOG_DEBUG("Error whilst loading State/ServersRegistered");
+      }
+    }
+    usleep(100);
   }
 }
 
 void ClusterState::loadShardInformation () {
+  AgencyCommResult res;
   while (true) {
-    // tue die schmutzige Arbeit, verlasse mit return, sobald OK
-    return;   // FIXME ...
-    LOG_WARNING("ClusterState: Could not (re-)load agency data about shards");
+    {
+      WRITE_LOCKER(lock);
+      res = _agency.getValues("State/Shards", true);
+      if (res.successful()) {
+        if (res.flattenJson(shards,"State/Shards/", false)) {
+          LOG_DEBUG("State/Shards loaded successfully");
+          map<ShardID,ServerID>::iterator i;
+          cout << "Shards:" << endl;
+          for (i = shards.begin(); i != shards.end(); ++i) {
+            cout << "   " << i->first << " with responsible server " 
+                 << i->second << endl;
+          }
+          return;
+        }
+        else {
+          LOG_DEBUG("State/ServersRegistered not loaded successfully");
+        }
+      }
+      else {
+        LOG_DEBUG("Error whilst loading State/ServersRegistered");
+      }
+    }
+    usleep(100);
   }
 }
 
 std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
+  READ_LOCKER(lock);
   map<ServerID,string>::iterator i = serverAddresses.find(serverID);
   if (i != serverAddresses.end()) {
     return i->second;
@@ -92,11 +135,12 @@ std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
 
 ServerID ClusterState::getResponsibleServer (ShardID const& shardID)
 {
+  READ_LOCKER(lock);
   map<ShardID,ServerID>::iterator i = shards.find(shardID);
   if (i != shards.end()) {
     return i->second;
   }
-  loadServerInformation();
+  loadShardInformation();
   i = shards.find(shardID);
   if (i != shards.end()) {
     return i->second;

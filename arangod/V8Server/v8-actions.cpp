@@ -904,6 +904,8 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 
 #ifdef TRI_ENABLE_CLUSTER
 
+#include "Cluster/ClusterComm.h"
+
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8::Isolate* isolate;
 
@@ -914,10 +916,35 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "SYS_TEST_SHARDING(<req>, <res>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "SYS_SHARDING_TEST(<req>, <res>)");
   }
 
-  LOG_DEBUG("JS_ShardingTest: we are back in C++");
+  ClusterComm* cc = ClusterComm::instance();
+  map<string, string>* headerFields = new map<string, string>;
+  (*headerFields)["X-ClientTransactionID"] = "BlaBlubb";
+
+  ClusterCommResult const* res =
+      cc->asyncRequest("ClientBla", 12345, "shardBlubb", 
+                       triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                       "/_admin/time", NULL, 0, headerFields, 0, 0);
+  OperationID opID = res->operationID;
+  LOG_DEBUG("JS_ShardingTest: request has been submitted");
+  delete res;
+
+  // Wait until the request has actually been sent:
+  while (true) {
+    res = cc->enquire(opID);
+    if (res->status >= CL_COMM_SENT) {
+      delete res;
+      break;
+    }
+    delete res;
+    LOG_DEBUG("JS_ShardingTest: request not yet sent");
+    
+    usleep(1000000);
+  }
+  LOG_DEBUG("JS_ShardingTest: request has been sent");
+  cc->drop("", 0, opID, "");
 
   return scope.Close(v8::Undefined());
 }

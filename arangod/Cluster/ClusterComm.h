@@ -66,15 +66,16 @@ namespace triagens {
     enum ClusterCommOpStatus {
       CL_COMM_SUBMITTED = 1,      // initial request queued, but not yet sent
       CL_COMM_SENDING = 2,        // in the process of sending
-      CL_COMM_DROPPING = 3,       // was dropped during send, will be dropped
-      CL_COMM_SENT = 4,           // initial request sent, response available
-      CL_COMM_TIMEOUT = 5,        // no answer received until timeout
-      CL_COMM_RECEIVED = 6,       // answer received
-      CL_COMM_DROPPED = 7         // nothing known about operation, was dropped
+      CL_COMM_SENT = 3,           // initial request sent, response available
+      CL_COMM_TIMEOUT = 4,        // no answer received until timeout
+      CL_COMM_RECEIVED = 5,       // answer received
+      CL_COMM_DROPPED = 6,        // nothing known about operation, was dropped
                                   // or actually already collected
+      CL_COMM_ERROR = 7,          // original request could not be sent
     };
 
     struct ClusterCommResult {
+      bool                _deleteOnDestruction;
       ClientTransactionID clientTransactionID;
       CoordTransactionID  coordTransactionID;
       OperationID         operationID;
@@ -84,16 +85,23 @@ namespace triagens {
       // The field result is != 0 ifs status is >= CL_COMM_SENT.
       // Note that if status is CL_COMM_TIMEOUT, then the result
       // field is a response object that only says "timeout"
+      bool                dropped; // this is set to true, if the operation
+                                   // is dropped whilst in state CL_COMM_SENDING
+                                   // it is then actually dropped when sent
       httpclient::SimpleHttpResult* result;
       // the field answer is != 0 iff status is == CL_COMM_RECEIVED
       rest::HttpRequest* answer;
 
-      ClusterCommResult () : result(0), answer(0) {}
+      ClusterCommResult () 
+        : _deleteOnDestruction(true), dropped(false), result(0), answer(0) {}
+      void doNotDeleteOnDestruction () {
+        _deleteOnDestruction = false;
+      }
       virtual ~ClusterCommResult () {
-        if (0 != result) {
+        if (_deleteOnDestruction && 0 != result) {
           delete result;
         }
-        if (0 != answer) {
+        if (_deleteOnDestruction && 0 != answer) {
           delete answer;
         }
       }
@@ -115,6 +123,7 @@ namespace triagens {
     typedef double ClusterCommTimeout;    // in milliseconds
 
     struct ClusterCommOperation : public ClusterCommResult {
+      rest::HttpRequest::HttpRequestType reqtype;
       string path;
       char const* body;
       size_t bodyLength;
@@ -124,14 +133,14 @@ namespace triagens {
 
       ClusterCommOperation () {}
       virtual ~ClusterCommOperation () {
-        if (0 != body) {
+        if (_deleteOnDestruction && 0 != body) {
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, 
                    reinterpret_cast<void*>(const_cast<char*>(body)));
         }
-        if (0 != headerFields) {
+        if (_deleteOnDestruction && 0 != headerFields) {
           delete headerFields;
         }
-        if (0 != callback) {
+        if (_deleteOnDestruction && 0 != callback) {
           delete callback;
         }
 
@@ -304,14 +313,16 @@ namespace triagens {
 ///
 /// This call never blocks and returns information about a specific operation
 /// given by `operationID`. Note that if the `status` is >= `CL_COMM_SENT`, 
-/// then `result` field in the returned object is set, if the `status`
+/// then the `result` field in the returned object is set, if the `status`
 /// is `CL_COMM_RECEIVED`, then `answer` is set. However, in both cases
 /// the ClusterComm library retains the operation in its queues! Therefore,
 /// you have to use @ref wait or @ref drop to dequeue. Do not delete
-/// `result` and `answer` before doing this!
+/// `result` and `answer` before doing this! However, you have to delete
+/// the ClusterCommResult pointer you get, it will automatically refrain
+/// from deleting `result` and `answer`.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult* enquire (OperationID const operationID);
+        ClusterCommResult const* enquire (OperationID const operationID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for one answer matching the criteria
