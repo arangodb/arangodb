@@ -51,6 +51,7 @@ namespace triagens {
 
     class LoggerStream {
       LoggerStream& operator= (LoggerStream const&);
+      LoggerStream (LoggerStream const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -80,10 +81,14 @@ namespace triagens {
         LoggerStream (LoggerData::Info const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy constructor
+/// @brief move or copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+        LoggerStream (LoggerStream&&);
+#else
         LoggerStream (LoggerStream const&);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a logger stream

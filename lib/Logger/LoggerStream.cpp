@@ -136,21 +136,34 @@ LoggerStream::LoggerStream (LoggerData::Info const& info) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy constructor
+/// @brief move or copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LoggerStream::LoggerStream (LoggerStream const& copy) :
-  _stream(new stringstream(copy._stream->str())), _info(copy._info) {
+#if defined(_MSC_VER)
+
+LoggerStream::LoggerStream (LoggerStream&& copy) :
+  _stream(copy._stream), _info(copy._info) {
+  copy._stream = 0;
 }
+
+#else
+
+LoggerStream::LoggerStream (LoggerStream const& copy) :
+  _stream(copy._stream), _info(copy._info) {
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a logger stream
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerStream::~LoggerStream () {
-  computeInfo(_info);
-
-  Logger::output(static_cast<stringstream*> (_stream)->str(), _info);
+  if (_stream != 0) {
+    computeInfo(_info);
+    Logger::output(static_cast<stringstream*> (_stream)->str(), _info);
+    delete _stream;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
