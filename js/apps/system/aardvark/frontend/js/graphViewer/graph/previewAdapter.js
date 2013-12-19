@@ -28,7 +28,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function PreviewAdapter(nodes, edges, config) {
+function PreviewAdapter(nodes, edges, viewer, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -37,9 +37,12 @@ function PreviewAdapter(nodes, edges, config) {
   if (edges === undefined) {
     throw "The edges have to be given.";
   }
+  if (viewer === undefined) {
+    throw "A reference to the graph viewer has to be given.";
+  }
 
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges, this),
+    absAdapter = new AbstractAdapter(nodes, edges, this, viewer),
     
     parseConfig = function(config) {
       if (config.width !== undefined) {

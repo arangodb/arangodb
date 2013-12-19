@@ -6,9 +6,7 @@
   margin-left: 22px;
 }
 
-.arangoBtn {
-  background: none repeat scroll 0 0 #FFFFFF;
-  color: #333232;
+.arangoBtn, .arangoBtnSuccess {
   float: left;
   font-family: 'Open Sans', sans-serif;
   font-size: 16px;
@@ -16,14 +14,14 @@
   text-decoration: none;
 }
 
+.arangoBtn {
+  background: none repeat scroll 0 0 #FFFFFF;
+  color: #333232;
+}
+
 .arangoBtnSuccess {
   background: none repeat scroll 0 0 #5E7B36;
   color: #FFFFFF;
-  float: left;
-  font-family: 'Open Sans', sans-serif;
-  font-size: 16px;
-  padding: 4px 10px;
-  text-decoration: none;
 }
 
 /* Radius */
@@ -138,16 +136,6 @@ textarea, .alert {
   color:#b9d375;
 }
 
-#content {
-  margin-top: 74px;
-  margin-bottom: 33px;
-  min-height: 80px;
-  height: 100%;
-  width: 100%;
-  margin-left: 20px;
-  margin-left: 0;
-}
-
 body {
   background-color: white !important;
   /*background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;*/
@@ -158,7 +146,8 @@ body {
 }
 
 .form-actions {
-  background-color: #FFFFFF;
+  margin-top: -10px !important;
+  background-color: rgba(0,0,0,0.05);
   border:none;
 }
 
@@ -172,13 +161,20 @@ body {
   margin-right: 12px;
 }
 
-.clearicon {
+.clearicon, .reloadicon {
   opacity: 0.2;
   cursor: pointer;
   margin-top: 3px;
   top: 20px;
-  right: 25px;
   position: absolute;
+}
+
+.clearicon {
+  right: 25px;
+}
+
+.reloadicon {
+  right: 45px;
 }
 
 #plusIcon {
@@ -188,26 +184,7 @@ body {
   opacity: 0.3;
 }
 
-#plusIcon:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-.reloadicon {
-  opacity: 0.2;
-  cursor: pointer;
-  margin-top: 3px;
-  top: 20px;
-  right: 45px;
-  position: absolute;
-}
-
-.clearicon:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-.reloadicon:hover {
+#plusIcon:hover, .clearicon:hover, .reloadicon:hover {
   opacity: 0.8;
   cursor: pointer;
 }
@@ -218,7 +195,6 @@ table .sorting {
 
 /* ABOUT VIEW */
 #aboutDiv {
-  background-color: rgba(0,0,0,0.15);
   padding-bottom: 5px;
 }
 
@@ -260,15 +236,12 @@ table .sorting {
 }
 
 .row {
-  margin: 0;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+  margin-bottom: 20px;
 }
 
-.marginRight10 {
-}
-
-.form-actions {
-  margin-top: -10px !important;
-}
 
 input,select,option {
   border-radius: 0 !important;
@@ -299,4 +272,16 @@ button {
   color: black;
   width: 397px !important;
   font-weight: 400;
+}
+
+li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
+  font-size: 26px;
+  position: absolute;
+  right: 4px;
+  top: 0px;
+}
+
+.modal-body .icon_arangodb_info {
+  font-size: 23px;
+  color: #736B68;
 }

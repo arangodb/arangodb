@@ -1,0 +1,56 @@
+#documentsTable thead {
+  border: 0 !important;
+}
+
+#tableDiv table.dataTable td {
+  padding:12px 18px !important;
+}
+
+#logContent .odd {
+  background-color: #F1F0EE;
+}
+
+#logContent .even {
+  background-color: #FFFFFF;
+}
+
+
+table.dataTable thead th {
+  border-bottom:none;
+  cursor: default !important;
+}
+
+table.arangoDataTable.dataTable td {
+  padding:10px 18px;
+}
+
+.arangoDataTable thead {
+  font-weight: 400 !important;
+  background-color: #FFFFFF !important;
+  text-align: left;
+}
+
+.arangoDataTable {
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+  width: 100% !important;
+  position: relative;
+  table-layout:fixed !important;
+  border-spacing:0 0px;
+}
+
+.arangoDataTable.dataTable thead tr {
+  border-bottom: 1px solid #C2C2C2;
+}
+
+.arangoDataTable .odd:hover,
+.arangoDataTable .even:hover,
+#logContent .odd:hover,
+#logContent .even:hover {
+  cursor: pointer;
+}
+
+.arangoDataTable .key {
+  margin-top: 4px;
+}
+

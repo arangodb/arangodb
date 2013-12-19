@@ -29,6 +29,8 @@
 
 #include "Basics/ssl-helper.h"
 #include "BasicsC/socket-utils.h"
+#include "GeneralServer/GeneralSslServer.h"
+#include "HttpServer/HttpsServer.h"
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
@@ -45,7 +47,7 @@
 
 #include <sys/types.h>
 
-
+#include <openssl/ssl.h>
 
 
 
@@ -70,15 +72,47 @@ using namespace std;
 SslClientConnection::SslClientConnection (Endpoint* endpoint,
                                           double requestTimeout,
                                           double connectTimeout,
-                                          size_t connectRetries) :
+                                          size_t connectRetries,
+                                          uint32_t sslProtocol) :
   GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
   _ssl(0),
   _ctx(0) {
+
   _socket.fileHandle = 0;
   _socket.fileDescriptor = 0;
-  _ctx = SSL_CTX_new(TLSv1_method());
+          
+  SSL_METHOD SSL_CONST* meth = 0;
+
+  switch (HttpsServer::protocol_e(sslProtocol)) {
+#ifndef OPENSSL_NO_SSL2
+    case HttpsServer::SSL_V2:
+      meth = SSLv2_method();
+      break;
+#endif
+    case HttpsServer::SSL_V3:
+      meth = SSLv3_method();
+      break;
+
+    case HttpsServer::SSL_V23:
+      meth = SSLv23_method();
+      break;
+
+    case HttpsServer::TLS_V1:
+      meth = TLSv1_method();
+      break;
+
+    default:
+      // fallback is to use tlsv1
+      meth = TLSv1_method();
+  }
+
+  _ctx = SSL_CTX_new(meth);
+
   if (_ctx) {
     SSL_CTX_set_cipher_list(_ctx, "ALL");
+    
+    const bool sslCache = true;
+    SSL_CTX_set_session_cache_mode(_ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
 }
 

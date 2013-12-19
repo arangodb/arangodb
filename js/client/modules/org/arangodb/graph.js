@@ -59,6 +59,7 @@ Edge.prototype.setProperty = function (name, value) {
     update = this._properties;
 
   update[name] = value;
+  this._graph.emptyCachedPredecessors();
 
   results = GraphAPI.putEdge(this._graph._properties._key, this._properties._key, update);
 
@@ -206,6 +207,13 @@ Graph.prototype.initialize = function (name, vertices, edges) {
   if (is.notExisty(vertices) && is.notExisty(edges)) {
     results = GraphAPI.getGraph(name);
   } else {
+    if (typeof vertices === 'object' && typeof vertices.name === 'function') {
+      vertices = vertices.name();
+    }
+    if (typeof edges === 'object' && typeof edges.name === 'function') {
+      edges = edges.name();
+    }
+
     results = GraphAPI.postGraph({
       _key: name,
       vertices: vertices,
@@ -250,6 +258,14 @@ Graph.getAll = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief static delete method
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.drop = function (name) {
+  GraphAPI.deleteGraph(name);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the graph, the vertices, and the edges
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -261,12 +277,14 @@ Graph.prototype.drop = function () {
 /// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
+Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, params) {
   var results;
+  
+  this.emptyCachedPredecessors();
 
   params._key = id;
-  params._from = out_vertex._properties._key;
-  params._to = in_vertex._properties._key;
+  params._from = out_vertex_id;
+  params._to = in_vertex_id;
 
   results = GraphAPI.postEdge(this._properties._key, params);
   return new Edge(this, results.edge);
@@ -285,6 +303,22 @@ Graph.prototype._saveVertex = function (id, params) {
 
   results = GraphAPI.postVertex(this._properties._key, params);
   return new Vertex(this, results.vertex);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a vertex in the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._replaceVertex = function (id, data) {
+  GraphAPI.putVertex(this._properties._key, id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace an edge in the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._replaceEdge = function (id, data) {
+  GraphAPI.putEdge(this._properties._key, id, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,6 +345,7 @@ Graph.prototype.getVertices = function () {
     wrapper = function(object) {
       return new Vertex(graph, object);
     };
+
   return new Iterator(wrapper, cursor, "[vertex iterator]");
 };
 
@@ -346,6 +381,7 @@ Graph.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex) {
+  this.emptyCachedPredecessors();
   GraphAPI.deleteVertex(this._properties._key, vertex._properties._key);
   vertex._properties = undefined;
 };
@@ -355,7 +391,9 @@ Graph.prototype.removeVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeEdge = function (edge) {
+  this.emptyCachedPredecessors();
   GraphAPI.deleteEdge(this._properties._key, edge._properties._key);
+  this._edgesCache[edge._properties._id] = undefined;
   edge._properties = undefined;
 };
 

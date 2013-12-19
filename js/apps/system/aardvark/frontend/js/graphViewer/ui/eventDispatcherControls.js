@@ -38,11 +38,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   if (list === undefined) {
     throw "A list element has to be given.";
   }
-  /*
-  if (cursorIconBox === undefined) {
-    throw "The cursor decoration box has to be given.";
-  }
-  */
   if (nodeShaper === undefined) {
     throw "The NodeShaper has to be given.";
   }
@@ -51,22 +46,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   }
   
   var self = this,
-    /* archive
-    firstButton = true, 
-    currentListGroup,
-    placeHolderBtn = uiComponentsHelper.createIconButton(
-      "none",
-      ""
-    ),
-    icons = {
-      expand: "plus",
-      add: "plus-sign",
-      trash: "trash",
-      drag: "move",
-      edge: "resize-horizontal",
-      edit: "pencil"
-    },
-    */
     icons = {
       expand: "expand",
       add: "add",
@@ -76,33 +55,13 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       edit: "edit",
       view: "view"
     },
-    baseClass = "event",
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
-    
-    setCursorIcon = function(icon) {
-      //cursorIconBox.className = "mousepointer icon-" + icon;
-    },
     
     appendToList = function(button) {
       list.appendChild(button);
-      /* archive
-      if (firstButton) {
-        currentListGroup = document.createElement("div");
-        currentListGroup.className = "btn btn-group";
-        currentListGroup.appendChild(button);
-        currentListGroup.appendChild(placeHolderBtn);
-        firstButton = false;
-        list.appendChild(currentListGroup);
-      } else {
-        currentListGroup.removeChild(placeHolderBtn);
-        currentListGroup.appendChild(button);
-        firstButton = true;
-      }
-      */
     },
     createButton = function(title, callback) {
       uiComponentsHelper.createButton(
-        baseClass,
         list,
         title,
         "control_event_" + title,
@@ -126,7 +85,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     rebindSVG = function(actions) {
       dispatcher.rebind("svg", actions);
     },
-    
     getCursorPosition = function (ev) {
       var e = ev || window.event,
         res = {};
@@ -136,37 +94,171 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       res.y += document.body.scrollTop;
       return res;
     },
-    
     getCursorPositionInSVG = function (ev) {
-      var pos = getCursorPosition(ev);
-      pos.x -= $('svg').offset().left;
-      pos.y -= $('svg').offset().top;
+      var pos = getCursorPosition(ev),
+        off = $('svg').offset();
+      // Hack for Firefox
+      /*
+      var off = {
+        left: 166,
+        top: 171
+      };
+      */
+      pos.x -= off.left;
+      pos.y -= off.top;
       return pos;
+    },
+    callbacks = {
+      nodes: {},
+      edges: {},
+      svg: {}
+    },
+
+  /*******************************************
+  * Create callbacks wenn clicking on objects
+  *
+  *******************************************/
+
+    createNewNodeCB = function() {
+      var prefix = "control_event_new_node",
+        idprefix = prefix + "_",
+        createCallback = function(ev) {
+          var pos = getCursorPositionInSVG(ev);
+          modalDialogHelper.createModalCreateDialog(
+            "Create New Node",
+            idprefix,
+            {},
+            function(data) {
+              dispatcher.events.CREATENODE(data, function(node) {
+                $("#" + idprefix + "modal").modal('hide');
+                nodeShaper.reshapeNodes();
+              }, pos.x, pos.y)();
+            }
+          );
+        };
+      callbacks.nodes.newNode = createCallback; 
+    },
+    createViewCBs = function() {
+      var prefix = "control_event_view",
+        idprefix = prefix + "_",
+        nodeCallback = function(n) {
+          modalDialogHelper.createModalViewDialog(
+            "View Node " + n._id,
+            "control_event_node_view_",
+            n._data,
+            function() {
+              modalDialogHelper.createModalEditDialog(
+                "Edit Node " + n._id,
+                "control_event_node_edit_",
+                n._data,
+                function(newData) {
+                  dispatcher.events.PATCHNODE(n, newData, function() {
+                    $("#control_event_node_edit_modal").modal('hide');
+                  })();
+                }
+              );
+            }
+          );
+        },
+        edgeCallback = function(e) {
+          modalDialogHelper.createModalViewDialog(
+            "View Edge " + e._id,
+            "control_event_edge_view_",
+            e._data,
+            function() {
+              modalDialogHelper.createModalEditDialog(
+                "Edit Edge " + e._id,
+                "control_event_edge_edit_",
+                e._data,
+                function(newData) {
+                  dispatcher.events.PATCHEDGE(e, newData, function() {
+                    $("#control_event_edge_edit_modal").modal('hide');
+                  })();
+                }
+              );
+            }
+          );
+        };
+
+      callbacks.nodes.view = nodeCallback;
+      callbacks.edges.view = edgeCallback;
+    },
+    createConnectCBs = function() {
+      var prefix = "control_event_connect",
+        idprefix = prefix + "_",
+        nodesDown = dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
+          var pos = getCursorPositionInSVG(ev),
+            moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
+          dispatcher.bind("svg", "mousemove", function(ev) {
+            var pos = getCursorPositionInSVG(ev);
+            moveCB(pos.x, pos.y);
+          });
+        }),
+        nodesUp = dispatcher.events.FINISHCREATEEDGE(function(edge){
+          edgeShaper.removeCursorFollowingEdge();
+          dispatcher.bind("svg", "mousemove", function(){});
+        }),
+        svgUp = function() {
+          dispatcher.events.CANCELCREATEEDGE();
+          edgeShaper.removeCursorFollowingEdge();
+        };
+      callbacks.nodes.startEdge = nodesDown;
+      callbacks.nodes.endEdge = nodesUp;
+      callbacks.svg.cancelEdge = svgUp;
+    },
+    createEditsCBs = function() {
+      var prefix = "control_event_edit",
+        idprefix = prefix + "_",
+        nodeCallback = function(n) {
+          modalDialogHelper.createModalEditDialog(
+            "Edit Node " + n._id,
+            "control_event_node_edit_",
+            n._data,
+            function(newData) {
+              dispatcher.events.PATCHNODE(n, newData, function() {
+                $("#control_event_node_edit_modal").modal('hide');
+              })();
+            }
+          );
+        },
+        edgeCallback = function(e) {
+          modalDialogHelper.createModalEditDialog(
+            "Edit Edge " + e._id,
+            "control_event_edge_edit_",
+            e._data,
+            function(newData) {
+              dispatcher.events.PATCHEDGE(e, newData, function() {
+                $("#control_event_edge_edit_modal").modal('hide');
+              })();
+            }
+          );
+        };
+      callbacks.nodes.edit = nodeCallback;
+      callbacks.edges.edit = edgeCallback;
+    },
+    createDeleteCBs = function() {
+      callbacks.nodes.del = dispatcher.events.DELETENODE(
+        function() {}
+      );
+      callbacks.edges.del = dispatcher.events.DELETEEDGE(
+        function() {}
+      );
+    },
+    createSpotCB = function() {
+     callbacks.nodes.spot = dispatcher.events.EXPAND;
     };
-    /* Archive
-    moveCursorBox = function(ev) {
-      var pos = getCursorPosition(ev);
-      pos.x += 7;
-      pos.y += 12;
-      cursorIconBox.style.position = "absolute";
-      cursorIconBox.style.left  = pos.x + 'px';
-      cursorIconBox.style.top = pos.y + 'px';
-    };
-    */
-  /* Archive
-  dispatcher.fixSVG("mousemove", moveCursorBox);
-  dispatcher.fixSVG("mouseout", function() {
-    cursorIconBox.style.display = "none";
-  });
-  dispatcher.fixSVG("mouseover", function() {
-    cursorIconBox.style.display = "block";
-  });
-  */
+
+  createNewNodeCB();
+  createViewCBs();
+  createConnectCBs();
+  createEditsCBs();
+  createDeleteCBs();
+  createSpotCB();
+
   /*******************************************
   * Raw rebind objects
   *
   *******************************************/
-  
   this.dragRebinds = function() {
     return {
       nodes: {
@@ -176,142 +268,43 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   };
   
   this.newNodeRebinds = function() {
-    var prefix = "control_event_new_node",
-      idprefix = prefix + "_",
-      createCallback = function(n) {
-        modalDialogHelper.createModalCreateDialog(
-          "Create New Node",
-          idprefix,
-          {},
-          function(data) {
-            dispatcher.events.CREATENODE(data, function(node) {
-              $("#" + idprefix + "modal").modal('hide');
-              nodeShaper.reshapeNodes();
-            })();
-          }
-        );
-      };
     return {
       svg: {
-        click: createCallback
+        click: callbacks.nodes.newNode
       }
     };
   };
   
   this.viewRebinds = function() {
-    var prefix = "control_event_view",
-      idprefix = prefix + "_",
-      nodeCallback = function(n) {
-        modalDialogHelper.createModalViewDialog(
-          "View Node " + n._id,
-          "control_event_node_view_",
-          n._data,
-          function() {
-            modalDialogHelper.createModalEditDialog(
-              "Edit Node " + n._id,
-              "control_event_node_edit_",
-              n._data,
-              function(newData) {
-                dispatcher.events.PATCHNODE(n, newData, function() {
-                  $("#control_event_node_edit_modal").modal('hide');
-                })();
-              }
-            );
-          }
-        );
-      },
-      edgeCallback = function(e) {
-        modalDialogHelper.createModalViewDialog(
-          "View Edge " + e._id,
-          "control_event_edge_view_",
-          e._data,
-          function() {
-            modalDialogHelper.createModalEditDialog(
-              "Edit Edge " + e._id,
-              "control_event_edge_edit_",
-              e._data,
-              function(newData) {
-                dispatcher.events.PATCHEDGE(e, newData, function() {
-                  $("#control_event_edge_edit_modal").modal('hide');
-                })();
-              }
-            );
-          }
-        );
-      };
       return {
         nodes: {
-          click: nodeCallback
+          click: callbacks.nodes.view
         },
         edges: {
-          click: edgeCallback
+          click: callbacks.edges.view
         }
       };
   };
   
   this.connectNodesRebinds = function() {
-    var prefix = "control_event_connect",
-      idprefix = prefix + "_",
-      nodesDown = dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
-        var pos = getCursorPositionInSVG(ev),
-          moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
-        dispatcher.bind("svg", "mousemove", function(ev) {
-          var pos = getCursorPositionInSVG(ev);
-          moveCB(pos.x, pos.y);
-        });
-      }),
-      nodesUp = dispatcher.events.FINISHCREATEEDGE(function(edge){
-        edgeShaper.removeCursorFollowingEdge();
-        dispatcher.bind("svg", "mousemove", function(){});
-      }),
-      svgUp = function() {
-        dispatcher.events.CANCELCREATEEDGE();
-        edgeShaper.removeCursorFollowingEdge();
-      };
     return {
       nodes: {
-        mousedown: nodesDown,
-        mouseup: nodesUp
+        mousedown: callbacks.nodes.startEdge,
+        mouseup: callbacks.nodes.endEdge
       },
       svg: {
-        mouseup: svgUp
+        mouseup: callbacks.svg.cancelEdge
       }
     };
   };
   
   this.editRebinds = function() {
-    var prefix = "control_event_edit",
-      idprefix = prefix + "_",
-      nodeCallback = function(n) {
-        modalDialogHelper.createModalEditDialog(
-          "Edit Node " + n._id,
-          "control_event_node_edit_",
-          n._data,
-          function(newData) {
-            dispatcher.events.PATCHNODE(n, newData, function() {
-              $("#control_event_node_edit_modal").modal('hide');
-            })();
-          }
-        );
-      },
-      edgeCallback = function(e) {
-        modalDialogHelper.createModalEditDialog(
-          "Edit Edge " + e._id,
-          "control_event_edge_edit_",
-          e._data,
-          function(newData) {
-            dispatcher.events.PATCHEDGE(e, newData, function() {
-              $("#control_event_edge_edit_modal").modal('hide');
-            })();
-          }
-        );
-      };
       return {
         nodes: {
-          click: nodeCallback
+          click: callbacks.nodes.edit
         },
         edges: {
-          click: edgeCallback
+          click: callbacks.edges.edit
         }
       };
   };
@@ -319,7 +312,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.expandRebinds = function() {
     return {
       nodes: {
-        click: dispatcher.events.EXPAND
+        click: callbacks.nodes.spot
       }
     };
   };
@@ -327,14 +320,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.deleteRebinds = function() {
     return {
       nodes: {
-        click: dispatcher.events.DELETENODE(
-          function() {}
-        )
+        click: callbacks.nodes.del
       },
       edges: {
-        click: dispatcher.events.DELETEEDGE(
-          function() {}
-        )
+        click: callbacks.edges.del
       }
     };
   };
@@ -346,6 +335,21 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   };
   
   /*******************************************
+  * Inject controls into right-click menus
+  *
+  *******************************************/
+  
+  nodeShaper.addMenuEntry("View", callbacks.nodes.view);
+  nodeShaper.addMenuEntry("Edit", callbacks.nodes.edit);
+  nodeShaper.addMenuEntry("Spot", callbacks.nodes.spot);
+  nodeShaper.addMenuEntry("Trash", callbacks.nodes.del);
+
+  edgeShaper.addMenuEntry("View", callbacks.edges.view);
+  edgeShaper.addMenuEntry("Edit", callbacks.edges.edit);
+  edgeShaper.addMenuEntry("Trash", callbacks.edges.del);
+
+
+  /*******************************************
   * Functions to add controls
   *
   *******************************************/
@@ -354,7 +358,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlNewNode = function() {
     var icon = icons.add,
       callback = function() {
-        setCursorIcon(icon);
         self.rebindAll(self.newNodeRebinds());
       };
     createIcon(icon, "new_node", callback);
@@ -363,7 +366,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlView = function() {
     var icon = icons.view,
       callback = function() {
-        setCursorIcon(icon);
         self.rebindAll(self.viewRebinds());
       };
     createIcon(icon, "view", callback);
@@ -374,7 +376,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       idprefix = prefix + "_",
       icon = icons.drag,
       callback = function() {
-        setCursorIcon(icon);
         self.rebindAll(self.dragRebinds());
       };
     createIcon(icon, "drag", callback);
@@ -383,7 +384,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlEdit = function() {
     var icon = icons.edit,
       callback = function() {
-        setCursorIcon(icon);
         self.rebindAll(self.editRebinds());
       };
     createIcon(icon, "edit", callback);
@@ -392,7 +392,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlExpand = function() {
     var icon = icons.expand,
       callback = function() {
-        setCursorIcon(icon);
         self.rebindAll(self.expandRebinds());
       };
     createIcon(icon, "expand", callback);
@@ -401,7 +400,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlDelete = function() {
     var icon = icons.trash,
       callback = function() {
-        setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
           
         })});
@@ -416,7 +414,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlConnect = function() {
     var icon = icons.edge,
       callback = function() {
-        setCursorIcon(icon);
         self.rebindAll(self.connectNodesRebinds());
       };
     createIcon(icon, "connect", callback);
@@ -431,5 +428,4 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     self.addControlConnect();
     self.addControlNewNode();
   };
-  
 }

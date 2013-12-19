@@ -63,8 +63,6 @@ var SimpleQueryWithin = sq.SimpleQueryWithin;
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryAll.prototype.execute = function (batchSize) {
-  var documents;
-
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
@@ -121,8 +119,6 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryByExample.prototype.execute = function (batchSize) {
-  var documents;
-
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
@@ -180,8 +176,6 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryRange.prototype.execute = function (batchSize) {
-  var documents;
-
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
@@ -242,8 +236,6 @@ SimpleQueryRange.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryNear.prototype.execute = function (batchSize) {
-  var documents;
-
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
@@ -310,8 +302,6 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryWithin.prototype.execute = function (batchSize) {
-  var documents;
-
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
@@ -379,8 +369,6 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryFulltext.prototype.execute = function (batchSize) {
-  var documents;
-
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;

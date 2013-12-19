@@ -60,7 +60,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
         .attr("width",width)
         .attr("height",height)
         .attr("class", "graphViewer")
-        .attr("style", "width:" + width + "px;height:" + height + ";");
+        .attr("style", "width:" + width + "px;height:" + height + "px;");
     },
     
     shouldCreateToolbox = function(config) {

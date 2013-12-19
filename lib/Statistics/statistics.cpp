@@ -106,6 +106,13 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   STATISTICS_LOCK(&RequestListLock);
 
+  TotalRequests.incCounter();
+  if (statistics->_async) {
+    AsyncRequests.incCounter();
+  }
+
+  MethodRequests[(int) statistics->_requestType].incCounter();
+
   // check the request was completely received and transmitted
   if (statistics->_readStart != 0.0 && statistics->_writeEnd != 0.0) {
     double totalTime = statistics->_writeEnd - statistics->_readStart;
@@ -125,6 +132,7 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
 
   // clear statistics and put back an the free list
   memset(statistics, 0, sizeof(TRI_request_statistics_t));
+  statistics->_requestType = triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL;
 
   if (RequestFreeList._first == NULL) {
     RequestFreeList._first = (TRI_statistics_entry_t*) statistics;
@@ -260,11 +268,17 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
+                                   StatisticsCounter& totalRequests,
+                                   vector<StatisticsCounter>& methodRequests,
+                                   StatisticsCounter& asyncRequests,
                                    StatisticsDistribution& connectionTime) {
   STATISTICS_LOCK(&ConnectionListLock);
 
   httpConnections = HttpConnections;
-  connectionTime = *ConnectionTimeDistribution;
+  totalRequests   = TotalRequests;
+  methodRequests  = MethodRequests;
+  asyncRequests   = AsyncRequests;
+  connectionTime  = *ConnectionTimeDistribution;
 
   STATISTICS_UNLOCK(&ConnectionListLock);
 }
@@ -364,10 +378,28 @@ void TRI_DestroyStatisticsList (TRI_statistics_list_t* list) {
 bool TRI_ENABLE_STATISTICS = true;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of http conntections
+/// @brief number of http connections
 ////////////////////////////////////////////////////////////////////////////////
 
 StatisticsCounter HttpConnections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of requests
+////////////////////////////////////////////////////////////////////////////////
+
+StatisticsCounter TotalRequests;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of requests by HTTP method
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<StatisticsCounter> MethodRequests;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of async requests
+////////////////////////////////////////////////////////////////////////////////
+
+StatisticsCounter AsyncRequests;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection time distribution vector
@@ -502,6 +534,14 @@ void TRI_InitialiseStatistics () {
   QueueTimeDistribution = new StatisticsDistribution(RequestTimeDistributionVector);
   BytesSentDistribution = new StatisticsDistribution(BytesSentDistributionVector);
   BytesReceivedDistribution = new StatisticsDistribution(BytesReceivedDistributionVector);
+
+  // initialise counters for all HTTP request types
+  MethodRequests.clear();
+
+  for (int i = 0; i < ((int) triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
+    StatisticsCounter c;
+    MethodRequests.push_back(c);
+  }
 
   // .............................................................................
   // generate the request statistics queue

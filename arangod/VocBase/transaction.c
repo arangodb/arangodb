@@ -438,6 +438,7 @@ static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
                         shaped, 
                         NULL, 
                         false, 
+                        false,
                         false);
 
   TRI_FreeShapedJson(primary->_shaper->_memoryZone, shaped);

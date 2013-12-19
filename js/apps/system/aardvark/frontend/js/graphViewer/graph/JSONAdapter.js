@@ -28,13 +28,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function JSONAdapter(jsonPath, nodes, edges, width, height) {
+function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
   "use strict";
   
   var self = this,
   initialX = {},
   initialY = {},
-  absAdapter = new AbstractAdapter(nodes, edges, this),
+  absAdapter = new AbstractAdapter(nodes, edges, this, viewer),
   findNode = function(n) {    
     var res = $.grep(nodes, function(e){
       return e._id === n._id;

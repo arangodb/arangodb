@@ -29,8 +29,7 @@ module.define("org/arangodb/graph-common", function(exports, module) {
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb"),
-  is = require("org/arangodb/is"),
+var is = require("org/arangodb/is"),
   Edge,
   Graph,
   Vertex,
@@ -525,6 +524,30 @@ Vertex.prototype.addOutEdge = function (ine, id, label, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of edges
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.degree = function () {
+  return this.getEdges().length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of in-edges
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.inDegree = function () {
+  return this.getInEdges().length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of out-edges
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.outDegree = function () {
+  return this.getOutEdges().length;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the identifier of a vertex
 ///
 /// @FUN{@FA{vertex}.getId()}
@@ -705,21 +728,25 @@ Graph.prototype.getOrAddVertex = function (id) {
 ///
 /// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
 /// identifier @FA{id} must be a unique identifier or null.
+/// out and in can either be vertices or their IDs
 ///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
 ///
 /// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
 /// edge object.
+/// out and in can either be vertices or their IDs
 ///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge contains the
 /// properties defined in @FA{data}.
+/// out and in can either be vertices or their IDs
 ///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge has the
 /// label @FA{label} and contains the properties defined in @FA{data}.
+/// out and in can either be vertices or their IDs
 ///
 /// @EXAMPLES
 ///
@@ -729,7 +756,25 @@ Graph.prototype.getOrAddVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
-  return this._saveEdge(id, out_vertex, in_vertex, this._prepareEdgeData(data, label), waitForSync);
+  var out_vertex_id, in_vertex_id;
+
+  if (is.string(out_vertex)) {
+    out_vertex_id = out_vertex;
+  } else {
+    out_vertex_id = out_vertex._properties._id;
+  }
+
+  if (is.string(in_vertex)) {
+    in_vertex_id = in_vertex;
+  } else {
+    in_vertex_id = in_vertex._properties._id;
+  }
+
+  return this._saveEdge(id,
+                        out_vertex_id,
+                        in_vertex_id,
+                        this._prepareEdgeData(data, label),
+                        waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,6 +803,30 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 
 Graph.prototype.addVertex = function (id, data, waitForSync) {
   return this._saveVertex(id, this._prepareVertexData(data), waitForSync);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an existing vertex by ID
+///
+/// @FUN{@FA{graph}.replaceVertex(@FA{id}, @FA{data})}
+///
+/// Replaces an existing vertex by ID
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.replaceVertex = function (id, data) {
+  this._replaceVertex(id, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an existing edge by ID
+///
+/// @FUN{@FA{graph}.replaceEdge(@FA{id}, @FA{data})}
+///
+/// Replaces an existing edge by ID
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.replaceEdge = function (id, data) {
+  this._replaceEdge(id, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

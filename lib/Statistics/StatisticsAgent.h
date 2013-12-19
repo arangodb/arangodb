@@ -261,6 +261,50 @@ namespace triagens {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the request type
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetRequestType(a,b)                                     \
+  do {                                                                                \
+    if (TRI_ENABLE_STATISTICS) {                                                      \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+        (a)->RequestStatisticsAgent::_statistics->_requestType = b;                   \
+      }                                                                               \
+    }                                                                                 \
+  }                                                                                   \
+  while (0)
+
+#else
+
+#define RequestStatisticsAgentSetRequestType(a,b) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the async flag
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetAsync(a)                                             \
+  do {                                                                                \
+    if (TRI_ENABLE_STATISTICS) {                                                      \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+        (a)->RequestStatisticsAgent::_statistics->_async = true;                      \
+      }                                                                               \
+    }                                                                                 \
+  }                                                                                   \
+  while (0)
+
+#else
+
+#define RequestStatisticsAgentSetAsync(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the read start
 ////////////////////////////////////////////////////////////////////////////////
 

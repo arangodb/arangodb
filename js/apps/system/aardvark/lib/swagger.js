@@ -2,7 +2,7 @@
 /*global exports, appCollection*/
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief A TODO-List Foxx-Application written for ArangoDB
+/// @brief functionality to expose API documentation for Foxx apps
 ///
 /// @file
 ///

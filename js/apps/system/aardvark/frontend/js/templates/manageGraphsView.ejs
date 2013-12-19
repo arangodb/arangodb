@@ -1,0 +1,71 @@
+<ul class="thumbnails2">
+  <div id="transparentHeader">
+    <div class="pull-left">
+      <a class="arangoHeader">Manage Graphs</a>
+    </div>
+    <div id="graphManagerToolbar" class="pagination pagination-small pagination-right" style="display:none;">
+      <ul><li class="enabled"><a id="filterGraphs"><span class="glyphicon glyphicon-filter" title="Filter graphs"></span></a></li></ul>
+    </div>
+  </div>
+</ul>
+
+<div class="arangoDropdown">
+  <div id="filterHeader" style="display:none">
+    <div class="queryline">
+       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0">
+           <option value="==">==</option>
+           <option value="!=">!=</option>
+           <option value="&lt;">&lt;</option>
+           <option value="&lt;=">&lt;=</option>
+           <option value="&gt;">&gt;</option>
+           <option value="&gt;=">&gt;=</option>
+       </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
+        <a id="addFilterItem"><i class="icon-plus"></i></a>
+        <button id="resetView" class="btn btn-primary btn-success btn-old-padding">Reset</button>
+        <button id="filterSend" class="btn btn-primary btn-success btn-old-padding">Filter</button>
+    </div>
+  </div>
+</div>
+
+<div id="graphManagementDiv" class="thumbnails">
+  <div id="graphTable_wrapper" class="dataTables_wrapper" role="grid">
+
+  <table cellpadding="0" cellspacing="0" border="0" class="display arangoDataTable dataTable" id="graphsTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Vertices</th>
+        <th>Edges</th>
+        <th>
+          <a id="addGraphButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a graph"></span></a>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <%
+        var odd = true;
+        graphs.each(function(g) {
+        %> 
+          <tr class="<%=odd?'odd':'even'%>">
+            <td><%=g.get("_key")%></td>
+            <td><%=g.get("vertices")%></td>
+            <td><%=g.get("edges")%></td>
+            <td class="docsThirdCol">
+              <a class="deleteButton" id="<%=g.get('_key')%>">
+                <span class="icon_arangodb_roundminus" data-original-title="Delete document"></span>
+              </a>
+            </td>
+          </tr>
+        <%
+          odd = !odd;
+        });
+      %>
+    </tbody>
+    </tbody>
+  </table>
+</div>
+
+<div id="documentsToolbarFL">
+  <div id="documentsToolbarF" class="pagination pagination-small pagination-centered">
+  </div>
+</div>
