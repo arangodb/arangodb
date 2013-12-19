@@ -897,6 +897,34 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function to test sharding
+///
+/// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
+  v8::Isolate* isolate;
+
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  isolate = v8::Isolate::GetCurrent();
+  v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (argv.Length() != 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "SYS_TEST_SHARDING(<req>, <res>)");
+  }
+
+  LOG_DEBUG("JS_ShardingTest: we are back in C++");
+
+  return scope.Close(v8::Undefined());
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -928,6 +956,9 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
+#ifdef TRI_ENABLE_CLUSTER
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHARDING_TEST", JS_ShardingTest);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

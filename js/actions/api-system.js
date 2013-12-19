@@ -763,6 +763,34 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_sharding_test
+/// @brief executes a test function for sharding
+///
+/// @RESTHEADER{POST /_admin/sharding-test,executes a test function}
+///
+/// @RESTDESCRIPTION
+///
+/// Executes a test function
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/sharding-test",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var x;
+    if (typeof SYS_SHARDING_TEST === "undefined") {
+      x = "Not compiled for cluster operation";
+    }
+    else {
+      x = SYS_SHARDING_TEST (req, res);
+    }
+    actions.resultOk(req, res, actions.HTTP_OK, { result : x });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
