@@ -154,6 +154,8 @@ namespace triagens {
         map<ServerID,string> serverAddresses;  // from State/ServersRegistered
         map<ShardID,ServerID> shards;          // from State/Shards
 
+        triagens::basics::ReadWriteLock lock;
+
     };
 
   }  // end namespace arango

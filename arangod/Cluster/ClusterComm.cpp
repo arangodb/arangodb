@@ -304,12 +304,13 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->serverID             = ClusterState::instance()->getResponsibleServer(
                                                              shardID);
   op->status               = CL_COMM_SUBMITTED;
+  op->reqtype              = reqtype;
   op->path                 = path;
   op->body                 = body;
   op->bodyLength           = bodyLength;
   op->headerFields         = headerFields;
   op->callback             = callback;
-  op->timeout              = timeout;
+  op->timeout              = timeout == 0.0 ? 1e50 : timeout;
 
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
@@ -339,7 +340,7 @@ bool ClusterComm::match (
             shardID == op->shardID) );
 }
 
-ClusterCommResult* ClusterComm::enquire (OperationID const operationID) {
+ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
   IndexIterator i;
   ClusterCommOperation* op = 0;
   ClusterCommResult* res;
@@ -355,6 +356,7 @@ ClusterCommResult* ClusterComm::enquire (OperationID const operationID) {
       }
       op = *(i->second);
       *res = *static_cast<ClusterCommResult*>(op);
+      res->doNotDeleteOnDestruction();
       return res;
     }
   }
@@ -376,6 +378,7 @@ ClusterCommResult* ClusterComm::enquire (OperationID const operationID) {
       }
       op = *(i->second);
       *res = *static_cast<ClusterCommResult*>(op);
+      res->doNotDeleteOnDestruction();
       return res;
     }
   }
@@ -438,7 +441,7 @@ ClusterCommResult* ClusterComm::wait (
       // Here it could either be in the receive or the send queue, let's wait
       timeleft = endtime - now();
       if (timeleft <= 0) break;
-      somethingReceived.wait(uint64_t(timeleft * 1000.0));
+      somethingReceived.wait(uint64_t(timeleft * 1000000.0));
     }
     // This place is only reached on timeout
   }
@@ -489,7 +492,7 @@ ClusterCommResult* ClusterComm::wait (
       // Here it could either be in the receive or the send queue, let's wait
       timeleft = endtime - now();
       if (timeleft <= 0) break;
-      somethingReceived.wait(uint64_t(timeleft * 1000.0));
+      somethingReceived.wait(uint64_t(timeleft * 1000000.0));
     }
     // This place is only reached on timeout
   }
@@ -580,10 +583,12 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   assert(op->operationID == operationID);
   toSendByOpID.erase(i);
   toSend.erase(q);
-  if (CL_COMM_DROPPING == op->status) {
+  if (op->dropped) {
     return false;
   }
-  op->status = CL_COMM_SENT;
+  if (op->status == CL_COMM_SENDING) {
+    op->status = CL_COMM_SENT;
+  }
   received.push_back(op);
   q = received.end();
   q--;
@@ -650,12 +655,46 @@ void ClusterCommThread::run () {
         assert(op->status == CL_COMM_SUBMITTED);
         op->status = CL_COMM_SENDING;
       }
-      // We release the lock, if it is dropped now, the status just goes
-      // to CL_COMM_DROPPING, we find out about this after we have sent
-      // the request.
 
-      LOG_DEBUG("ClusterComm faking a send");
-      
+      // We release the lock, if the operation is dropped now, the
+      // `dropped` flag is set. We find out about this after we have
+      // sent the request (happens in moveFromSendToReceived).
+
+      // First find the server to which the request goes from the shardID:
+      ServerID server = ClusterState::instance()->getResponsibleServer(
+                                                       op->shardID);
+      if (server == "") {
+        op->status = CL_COMM_ERROR;
+      }
+      else {
+        // We need a connection to this server:
+        ClusterComm::SingleServerConnection* connection 
+          = cc->getConnection(server);
+        if (0 == connection) {
+          op->status = CL_COMM_ERROR;
+        }
+        else {
+
+          LOG_TRACE("sending %s request to DB server '%s': %s",
+             triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
+             server.c_str(), op->body);
+
+          {
+            triagens::httpclient::SimpleHttpClient client(
+                                       connection->connection,
+                                       op->timeout, false);
+
+            // We add this result to the operation struct without acquiring
+            // a lock, since we know that only we do such a thing:
+            op->result = client.request(op->reqtype, op->path, op->body, 
+                                        op->bodyLength, *(op->headerFields));
+            // FIXME: handle case that connection was no good and the request
+            // failed.
+          }
+          cc->returnConnection(connection);
+        }
+      }
+
       if (!cc->moveFromSendToReceived(op->operationID)) {
         // It was dropped in the meantime, so forget about it:
         delete op;
@@ -666,7 +705,7 @@ void ClusterCommThread::run () {
     // a request to terminate the thread:
     {
       basics::ConditionLocker locker(&cc->somethingToSend);
-      locker.wait(100);
+      locker.wait(10000000);
     }
   }
 
