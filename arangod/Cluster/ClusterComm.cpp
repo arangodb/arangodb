@@ -283,69 +283,312 @@ void ClusterComm::closeUnusedConnections () {
 }
 
 ClusterCommResult* ClusterComm::asyncRequest (
-                ClientTransactionID const&          clientTransactionID,
-                TransactionID const                 coordTransactionID,
-                ShardID const&                      shardID,
+                ClientTransactionID const           clientTransactionID,
+                CoordTransactionID const            coordTransactionID,
+                ShardID const                       shardID,
                 rest::HttpRequest::HttpRequestType  reqtype,
-                string const&                       path,
-                char const *                        body,
+                string const                        path,
+                char const*                         body,
                 size_t const                        bodyLength,
-                map<string, string> const&          headerFields,
+                map<string, string>*                headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout) {
 
-  OperationID opID = getOperationID();
-  
-  // Build HTTPRequest
-  // Build ClusterCommOperation object
-  // Put into queue
-  // signal on condition variable
-  // Build ClusterCommResult object
-  // return
-  return 0;
+  ClusterCommOperation* op = new ClusterCommOperation();
+  op->clientTransactionID  = clientTransactionID;
+  op->coordTransactionID   = coordTransactionID;
+  do {
+    op->operationID          = getOperationID();
+  } while (op->operationID == 0);   // just to make sure
+  op->shardID              = shardID;
+  op->serverID             = ClusterState::instance()->getResponsibleServer(
+                                                             shardID);
+  op->status               = CL_COMM_SUBMITTED;
+  op->path                 = path;
+  op->body                 = body;
+  op->bodyLength           = bodyLength;
+  op->headerFields         = headerFields;
+  op->callback             = callback;
+  op->timeout              = timeout;
+
+  ClusterCommResult* res = new ClusterCommResult();
+  *res = *static_cast<ClusterCommResult*>(op);
+
+  {
+    basics::ConditionLocker locker(&somethingToSend);
+    toSend.push_back(op);
+    list<ClusterCommOperation*>::iterator i = toSend.end();
+    toSendByOpID[op->operationID] = --i;
+  }
+  somethingToSend.signal();
+
+  return res;
 }
 
-bool ClusterComm::match (ClientTransactionID const& clientTransactionID,
-            TransactionID const        coordTransactionID,
-            OperationID const          operationID,
+bool ClusterComm::match (
+            ClientTransactionID const& clientTransactionID,
+            CoordTransactionID const   coordTransactionID,
             ShardID const&             shardID,
             ClusterCommOperation* op) {
-  // First check operationID, if given, can return false already
-  // then check other IDs.
-  return true;
+
+  return ( (clientTransactionID == "" || 
+            clientTransactionID == op->clientTransactionID) &&
+           (0 == coordTransactionID ||
+            coordTransactionID == op->coordTransactionID) &&
+           (shardID == "" || 
+            shardID == op->shardID) );
 }
 
-ClusterCommResult* enquire (OperationID const operationID) {
-  // Find operation by its ID (fast)
-  // build ClusterCommResult object and return it.
+ClusterCommResult* ClusterComm::enquire (OperationID const operationID) {
+  IndexIterator i;
+  ClusterCommOperation* op = 0;
+  ClusterCommResult* res;
+
+  // First look into the send queue:
+  {
+    basics::ConditionLocker locker(&somethingToSend);
+    i = toSendByOpID.find(operationID);
+    if (i != toSendByOpID.end()) {
+      res = new ClusterCommResult();
+      if (0 == res) {
+        return 0;
+      }
+      op = *(i->second);
+      *res = *static_cast<ClusterCommResult*>(op);
+      return res;
+    }
+  }
+
+  // Note that operations only ever move from the send queue to the
+  // receive queue and never in the other direction. Therefore it is
+  // OK to use two different locks here, since we look first in the
+  // send queue and then in the receive queue; we can never miss 
+  // an operation that is actually there.
+  
+  // If the above did not give anything, look into the receive queue:
+  {
+    basics::ConditionLocker locker(&somethingReceived);
+    i = receivedByOpID.find(operationID);
+    if (i != toSendByOpID.end()) {
+      res = new ClusterCommResult();
+      if (0 == res) {
+        return 0;
+      }
+      op = *(i->second);
+      *res = *static_cast<ClusterCommResult*>(op);
+      return res;
+    }
+  }
+
   return 0;
 }
 
 ClusterCommResult* ClusterComm::wait (
                 ClientTransactionID const& clientTransactionID,
-                TransactionID const        coordTransactionID,
+                CoordTransactionID const   coordTransactionID,
                 OperationID const          operationID,
                 ShardID const&             shardID,
                 ClusterCommTimeout         timeout) {
-  // Only look at received queue, match, return the first with CL_COMM_RECEIVED
-  // dequeue it
-  // Initialise remaining time
-  // If nothing found, use condition variable and wait to get more with
-  // possible timeout, if timeout, return empty
-  // otherwise check again, if ...
-  return 0;
+  
+  IndexIterator i;
+  QueueIterator q;
+  ClusterCommOperation* op = 0;
+  ClusterCommResult* res = 0;
+  double endtime;
+  double timeleft;
+  bool found;
+
+  if (0.0 == timeout) {
+    endtime = 1.0e50;   // this is the Sankt Nimmerleinstag
+  }
+  else {
+    endtime = now() + timeout;
+  }
+
+  if (0 != operationID) {
+    // In this case we only have to look into at most one operation.
+    basics::ConditionLocker locker(&somethingReceived);
+    while (true) {   // will be left by return or break on timeout
+      i = receivedByOpID.find(operationID);
+      if (i == receivedByOpID.end()) {
+        // It could be that the operation is still in the send queue:
+        basics::ConditionLocker sendlocker(&somethingToSend);
+        i = toSendByOpID.find(operationID);
+        if (i == toSendByOpID.end()) {
+          // Nothing known about this operation, return with failure:
+          res = new ClusterCommResult();
+          res->operationID = operationID;
+          res->status = CL_COMM_DROPPED;
+          return res;
+        }
+      }
+      else {
+        // It is in the receive queue, now look at the status:
+        q = i->second;
+        op = *q;
+        if (op->status >= CL_COMM_TIMEOUT) {
+          // It is done, let's remove it from the queue and return it:
+          receivedByOpID.erase(i);
+          received.erase(q);
+          res = static_cast<ClusterCommResult*>(op);
+          return res;
+        }
+        // It is in the receive queue but still waiting, now wait actually
+      }
+      // Here it could either be in the receive or the send queue, let's wait
+      timeleft = endtime - now();
+      if (timeleft <= 0) break;
+      somethingReceived.wait(uint64_t(timeleft * 1000.0));
+    }
+    // This place is only reached on timeout
+  }
+  else {   
+    // here, operationID == 0, so we have to do matching, we are only 
+    // interested, if at least one operation matches, if it is ready,
+    // we return it immediately, otherwise, we report an error or wait.
+    basics::ConditionLocker locker(&somethingReceived);
+    while (true) {   // will be left by return or break on timeout
+      found = false;
+      for (q = received.begin(); q != received.end(); q++) {
+        op = *q;
+        if (match(clientTransactionID, coordTransactionID, shardID, op)) {
+          found = true;
+          if (op->status >= CL_COMM_TIMEOUT) {
+            // It is done, let's remove it from the queue and return it:
+            i = receivedByOpID.find(op->operationID);  // cannot fail!
+            assert(i != receivedByOpID.end());
+            assert(i->second == q);
+            receivedByOpID.erase(i);
+            received.erase(q);
+            res = static_cast<ClusterCommResult*>(op);
+            return res;
+          }
+        }
+      }
+      // If we found nothing, we have to look through the send queue:
+      if (!found) {
+        basics::ConditionLocker sendlocker(&somethingToSend);
+        for (q = toSend.begin(); q != toSend.end(); q++) {
+          op = *q;
+          if (match(clientTransactionID, coordTransactionID, shardID, op)) {
+            found = true;
+            break;
+          }
+        }
+      }
+      if (!found) {
+        // Nothing known about this operation, return with failure:
+        res = new ClusterCommResult();
+        res->clientTransactionID = clientTransactionID;
+        res->coordTransactionID = coordTransactionID;
+        res->operationID = operationID;
+        res->shardID = shardID;
+        res->status = CL_COMM_DROPPED;
+        return res;
+      }
+      // Here it could either be in the receive or the send queue, let's wait
+      timeleft = endtime - now();
+      if (timeleft <= 0) break;
+      somethingReceived.wait(uint64_t(timeleft * 1000.0));
+    }
+    // This place is only reached on timeout
+  }
+  // Now we have to react on timeout:
+  res = new ClusterCommResult();
+  res->clientTransactionID = clientTransactionID;
+  res->coordTransactionID = coordTransactionID;
+  res->operationID = operationID;
+  res->shardID = shardID;
+  res->status = CL_COMM_TIMEOUT;
+  return res;
 }
 
-void ClusterComm::drop (ClientTransactionID const& clientTransactionID,
-           TransactionID const        coordTransactionID,
+
+void ClusterComm::drop (
+           ClientTransactionID const& clientTransactionID,
+           CoordTransactionID const   coordTransactionID,
            OperationID const          operationID,
            ShardID const&             shardID) {
-  // Look at both send queue and recv queue, delete everything found
+
+  QueueIterator q;
+  QueueIterator nextq;
+  IndexIterator i;
+  ClusterCommOperation* op;
+
+  // First look through the send queue:
+  {
+    basics::ConditionLocker sendlocker(&somethingToSend);
+    for (q = toSend.begin(); q != toSend.end(); ) {
+      op = *q;
+      if ((0 != operationID && operationID == op->operationID) ||
+          match(clientTransactionID, coordTransactionID, shardID, op)) {
+        nextq = q;
+        nextq++;
+        i = toSendByOpID.find(op->operationID);   // cannot fail
+        assert(i != toSendByOpID.end());
+        assert(q == i->second);
+        receivedByOpID.erase(i);
+        toSend.erase(q);
+        q = nextq;
+      }
+      else {
+        q++;
+      }
+    }
+  }
+  // Now look through the receive queue:
+  {
+    basics::ConditionLocker locker(&somethingReceived);
+    for (q = received.begin(); q != received.end(); ) {
+      op = *q;
+      if ((0 != operationID && operationID == op->operationID) ||
+          match(clientTransactionID, coordTransactionID, shardID, op)) {
+        nextq = q;
+        nextq++;
+        i = receivedByOpID.find(op->operationID);   // cannot fail
+        assert(i != receivedByOpID.end());
+        assert(q == i->second);
+        receivedByOpID.erase(i);
+        toSend.erase(q);
+        q = nextq;
+      }
+      else {
+        q++;
+      }
+    }
+  }
 }
 
 int ClusterComm::processAnswer(rest::HttpRequest* answer) {
+
   // find matching operation, report if found, otherwise drop
   return TRI_ERROR_NO_ERROR;
+}
+
+// Move an operation from the send to the receive queue:
+bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
+  QueueIterator q;
+  IndexIterator i;
+  ClusterCommOperation* op;
+
+  basics::ConditionLocker locker(&somethingReceived);
+  basics::ConditionLocker sendlocker(&somethingToSend);
+  i = toSendByOpID.find(operationID);   // cannot fail
+  assert(i != toSendByOpID.end());
+  q = i->second;
+  op = *q;
+  assert(op->operationID == operationID);
+  toSendByOpID.erase(i);
+  toSend.erase(q);
+  if (CL_COMM_DROPPING == op->status) {
+    return false;
+  }
+  op->status = CL_COMM_SENT;
+  received.push_back(op);
+  q = received.end();
+  q--;
+  receivedByOpID[operationID] = q;
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -385,12 +628,46 @@ ClusterCommThread::~ClusterCommThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::run () {
+  ClusterComm::QueueIterator q;
+  ClusterComm::IndexIterator i;
+  ClusterCommOperation* op;
+  ClusterComm* cc = ClusterComm::instance();
+
   LOG_TRACE("starting ClusterComm thread");
 
   while (! _stop) {
-    usleep(2000000);
-    // FIXME: ...
     LOG_DEBUG("ClusterComm alive");
+    
+    // First check the sending queue, as long as it is not empty, we send
+    // a request via SimpleHttpClient:
+    while (true) {   // will be left by break when queue is empty
+      {
+        basics::ConditionLocker locker(&cc->somethingToSend);
+        if (cc->toSend.empty()) {
+          break;
+        }
+        op = cc->toSend.front();
+        assert(op->status == CL_COMM_SUBMITTED);
+        op->status = CL_COMM_SENDING;
+      }
+      // We release the lock, if it is dropped now, the status just goes
+      // to CL_COMM_DROPPING, we find out about this after we have sent
+      // the request.
+
+      LOG_DEBUG("ClusterComm faking a send");
+      
+      if (!cc->moveFromSendToReceived(op->operationID)) {
+        // It was dropped in the meantime, so forget about it:
+        delete op;
+      }
+    }
+
+    // Now wait for the condition variable, but use a timeout to notice
+    // a request to terminate the thread:
+    {
+      basics::ConditionLocker locker(&cc->somethingToSend);
+      locker.wait(100);
+    }
   }
 
   // another thread is waiting for this value to shut down properly

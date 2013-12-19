@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_CLUSTER_COMM_H
 #define TRIAGENS_CLUSTER_COMM_H 1
 
+#include "BasicsC/common.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ConditionVariable.h"
@@ -59,21 +60,23 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     typedef string ClientTransactionID;         // Transaction ID from client
-    typedef TRI_voc_tick_t TransactionID;       // Coordinator transaction ID
+    typedef TRI_voc_tick_t CoordTransactionID;  // Coordinator transaction ID
     typedef TRI_voc_tick_t OperationID;         // Coordinator operation ID
 
     enum ClusterCommOpStatus {
       CL_COMM_SUBMITTED = 1,      // initial request queued, but not yet sent
-      CL_COMM_SENT = 2,           // initial request sent, response available
-      CL_COMM_TIMEOUT = 3,        // no answer received until timeout
-      CL_COMM_RECEIVED = 4,       // answer received
-      CL_COMM_DROPPED = 5         // nothing known about operation, was dropped
+      CL_COMM_SENDING = 2,        // in the process of sending
+      CL_COMM_DROPPING = 3,       // was dropped during send, will be dropped
+      CL_COMM_SENT = 4,           // initial request sent, response available
+      CL_COMM_TIMEOUT = 5,        // no answer received until timeout
+      CL_COMM_RECEIVED = 6,       // answer received
+      CL_COMM_DROPPED = 7         // nothing known about operation, was dropped
                                   // or actually already collected
     };
 
     struct ClusterCommResult {
       ClientTransactionID clientTransactionID;
-      TransactionID       transactionID;
+      CoordTransactionID  coordTransactionID;
       OperationID         operationID;
       ShardID             shardID;
       ServerID            serverID;   // the actual server ID of the sender
@@ -96,21 +99,10 @@ namespace triagens {
       }
     };
 
-    struct ClusterCommOperation : public ClusterCommResult {
-      rest::HttpRequest* question;
-
-      ClusterCommOperation () {}
-      virtual ~ClusterCommOperation () {
-        if (0 != question) {
-          delete question;
-        }
-      }
-    };
-
-    class ClusterCommCallback {
+    struct ClusterCommCallback {
       // The idea is that one inherits from this class and implements
       // the callback.
-
+      
       ClusterCommCallback () {}
       virtual ~ClusterCommCallback ();
 
@@ -121,6 +113,30 @@ namespace triagens {
     };
 
     typedef double ClusterCommTimeout;    // in milliseconds
+
+    struct ClusterCommOperation : public ClusterCommResult {
+      string path;
+      char const* body;
+      size_t bodyLength;
+      map<string, string>* headerFields;
+      ClusterCommCallback* callback;
+      ClusterCommTimeout timeout;
+
+      ClusterCommOperation () {}
+      virtual ~ClusterCommOperation () {
+        if (0 != body) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, 
+                   reinterpret_cast<void*>(const_cast<char*>(body)));
+        }
+        if (0 != headerFields) {
+          delete headerFields;
+        }
+        if (0 != callback) {
+          delete callback;
+        }
+
+      }
+    };
 
     struct ClusterCommOptions {
       double _connectTimeout;
@@ -135,6 +151,8 @@ namespace triagens {
 
     class ClusterComm {
       
+      friend class ClusterCommThread;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                     constructors and destructors
 // -----------------------------------------------------------------------------
@@ -197,18 +215,22 @@ namespace triagens {
 /// queued (`status` is CL_COMM_SUBMITTED). Use @ref enquire below to get
 /// information about the progress. The actual answer is then delivered
 /// either in the callback or via poll. The caller has to call delete on
-/// the resulting ClusterCommResult*.
+/// the resulting ClusterCommResult*. The library takes ownerships of
+/// the pointers `body`, `headerFields` and `callback` and releases
+/// the memory when the operation has been finished. One has to use
+/// TRI_Allocate with memory zone TRI_UNKNOWN_MEM_ZONE to allocate the
+/// memory to which `body` points.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncRequest (
-                ClientTransactionID const&          clientTransactionID,
-                TransactionID const                 coordTransactionID,
-                ShardID const&                      shardID,
+                ClientTransactionID const           clientTransactionID,
+                CoordTransactionID const            coordTransactionID,
+                ShardID const                       shardID,
                 rest::HttpRequest::HttpRequestType  reqtype,
-                string const&                       path,
-                char const *                        body,
+                string const                        path,
+                char const*                         body,
                 size_t const                        bodyLength,
-                map<string, string> const&          headerFields,
+                map<string, string> *               headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout);
 
@@ -227,11 +249,11 @@ namespace triagens {
 
         ClusterCommResult* syncRequest (
                 ClientTransactionID const&         clientTransactionID,
-                TransactionID const                coordTransactionID,
+                CoordTransactionID const           coordTransactionID,
                 ShardID const&                     shardID,
                 rest::HttpRequest::HttpRequestType reqtype,
                 string const&                      path,
-                char const *                       body,
+                char const*                        body,
                 size_t const                       bodyLength,
                 map<string, string> const&         headerFields,
                 ClusterCommTimeout                 timeout);
@@ -242,15 +264,21 @@ namespace triagens {
 /// 
 /// This behaves as @ref asyncRequest except that the actual request is
 /// taken from `req`. We have to add a few headers and can use callback
-/// and timeout. The caller has to delete the result.
+/// and timeout. The caller has to delete the result. The library takes
+/// ownerships of the pointers `headerFields` and `callback` and
+/// releases the memory when the operation has been finished. Note that
+/// ClusterComm creates copy of relevant parts of the HTTP request
+/// object `req`, simply because it can neither delete nor not delete
+/// `req` and its children itself.
+
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncDelegate (
                 rest::HttpRequest const&   req,
-                TransactionID const        coordTransactionID,
-                ShardID const&             shardID,
-                const string&              path,
-                const map<string, string>& headerFields,
+                CoordTransactionID const   coordTransactionID,
+                ShardID const              shardID,
+                string const               path,
+                map<string, string> const* headerFields,
                 ClusterCommCallback*       callback,
                 ClusterCommTimeout         timeout);
 
@@ -265,31 +293,11 @@ namespace triagens {
 
         ClusterCommResult* syncDelegate (
                       rest::HttpRequest const&      req,
-                      TransactionID const           coordTransactionID,
+                      CoordTransactionID const      coordTransactionID,
                       ShardID const&                shardID,
                       const string&                 path,
                       const map<string, string>&    headerFields,
                       ClusterCommTimeout            timeout);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for one answer matching the criteria
-///
-/// If clientTransactionID is empty, then any answer with any 
-/// clientTransactionID matches. If coordTransactionID is 0, then
-/// any answer with any coordTransactionID matches. If shardID is
-/// empty, then any answer from any ShardID matches. If operationID
-/// is 0, then any answer with any operationID matches. If `timeout`
-/// is given, the result can be 0 indicating that no matching answer
-/// was available until the timeout was hit. The caller has to delete
-/// the result, if it is not 0.
-////////////////////////////////////////////////////////////////////////////////
-
-        ClusterCommResult* wait (
-                ClientTransactionID const& clientTransactionID,
-                TransactionID const        coordTransactionID,
-                OperationID const          operationID,
-                ShardID const&             shardID,
-                ClusterCommTimeout         timeout = 0.0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check on the status of an operation
@@ -306,6 +314,27 @@ namespace triagens {
         ClusterCommResult* enquire (OperationID const operationID);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for one answer matching the criteria
+///
+/// If clientTransactionID is empty, then any answer with any 
+/// clientTransactionID matches. If coordTransactionID is 0, then
+/// any answer with any coordTransactionID matches. If shardID is
+/// empty, then any answer from any ShardID matches. If operationID
+/// is 0, then any answer with any operationID matches. 
+/// This function returns 0 if noIf `timeout`
+/// is given, the result can be 0 indicating that no matching answer
+/// was available until the timeout was hit. The caller has to delete
+/// the result, if it is not 0.
+////////////////////////////////////////////////////////////////////////////////
+
+        ClusterCommResult* wait (
+                ClientTransactionID const& clientTransactionID,
+                CoordTransactionID const   coordTransactionID,
+                OperationID const          operationID,
+                ShardID const&             shardID,
+                ClusterCommTimeout         timeout = 0.0);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore and drop current and future answers matching
 ///
 /// If clientTransactionID is empty, then any answer with any 
@@ -320,7 +349,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void drop (ClientTransactionID const& clientTransactionID,
-                   TransactionID const        coordTransactionID,
+                   CoordTransactionID const   coordTransactionID,
                    OperationID const          operationID,
                    ShardID const&             shardID);
 
@@ -367,7 +396,21 @@ namespace triagens {
       
         static OperationID getOperationID ();
 
-        static int const maxConnectionsPerServer = 10;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get timestamp
+////////////////////////////////////////////////////////////////////////////////
+
+        static double now () {
+          struct timeval tv;
+          gettimeofday(&tv, 0);
+
+          double sec = (double) tv.tv_sec; // seconds
+          double usc = (double) tv.tv_usec; // microseconds
+
+          return sec + usc / 1000000.0;
+        }
+
+        static int const maxConnectionsPerServer = 2;
 
         struct SingleServerConnection {
           httpclient::GeneralClientConnection* connection;
@@ -413,12 +456,23 @@ namespace triagens {
         map<OperationID,list<ClusterCommOperation*>::iterator> receivedByOpID;
         triagens::basics::ConditionVariable somethingReceived;
 
+        // Note: If you really have to lock both `somethingToSend`
+        // and `somethingReceived` at the same time (usually you should
+        // not have to!), then: first lock `somethingToReceive`, then
+        // lock `somethingtoSend` in this order!
+
+        // We frequently need the following lengthy types:
+        typedef list<ClusterCommOperation*>::iterator QueueIterator;
+        typedef map<OperationID, QueueIterator>::iterator IndexIterator;
+
         // An internal function to match an operation:
         bool match (ClientTransactionID const& clientTransactionID,
-                    TransactionID const        coordTransactionID,
-                    OperationID const          operationID,
+                    CoordTransactionID const   coordTransactionID,
                     ShardID const&             shardID,
                     ClusterCommOperation* op);
+
+        // Move an operation from the send to the receive queue:
+        bool moveFromSendToReceived (OperationID operationID);
 
         // Finally, our background communications thread:
         ClusterCommThread *_backgroundThread;

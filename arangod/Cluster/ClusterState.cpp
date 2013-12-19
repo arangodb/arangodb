@@ -77,7 +77,7 @@ void ClusterState::loadShardInformation () {
   }
 }
 
-std::string ClusterState::getServerEndpoint (ServerID& serverID) {
+std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
   map<ServerID,string>::iterator i = serverAddresses.find(serverID);
   if (i != serverAddresses.end()) {
     return i->second;
@@ -90,7 +90,7 @@ std::string ClusterState::getServerEndpoint (ServerID& serverID) {
   return string("");
 }
 
-ServerID ClusterState::getResponsibleServer (ShardID& shardID)
+ServerID ClusterState::getResponsibleServer (ShardID const& shardID)
 {
   map<ShardID,ServerID>::iterator i = shards.find(shardID);
   if (i != shards.end()) {
