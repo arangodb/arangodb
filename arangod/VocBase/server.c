@@ -1723,7 +1723,7 @@ int TRI_StartServer (TRI_server_t* server,
 
   res = TRI_VerifyLockFile(server->_lockFilename);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("database is locked, please check the lock file '%s'",
               server->_lockFilename);
 
