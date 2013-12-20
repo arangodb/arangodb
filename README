@@ -1,8 +1,8 @@
 ArangoDB
 
 ArangoDB is a multi-purpose open-source database with flexible data models for
-documents, graphs, and key-values. Build high performance application using a
-convenient sql-like query language or JavaScript/Ruby extensions.
+documents, graphs, and key-values. Build high performance applications using a
+convenient SQL-like query language or JavaScript/Ruby extensions.
 Key features include:
 
 * Schema-free schemata let you combine the space efficiency of MySQL with the
@@ -21,7 +21,7 @@ Key features include:
 * No-nonsense storage: ArangoDB uses all of the power of modern storage
   hardware, like SSD and large caches
 * Powerful query language (AQL) to retrieve data
-* Transactions: run queries on multiple documents or collections with optional 
+* Transactions: run queries on multiple documents or collections with optional
   transactional consistency and isolation
 * Replication: set up the database in a master-slave configuration
 * It is open source (Apache Licence 2.0)
@@ -87,3 +87,11 @@ You can use the Google group for improvements, feature requests, comments
 
   http://www.arangodb.org/connect
 
+
+Citing ArangoDB
+
+Please kindly cite ArangoDB in your publications if it helps your research:
+bibtex @misc{ArangoDB2013, Author = {ArangoDB}, Title = { {ArangoDB}: An Open
+Source multi-purpose database supporting flexible data models for documents,
+graphs, and key-values.}, Year = {2013}, Howpublished = {\url{http://
+arangodb.org/} }
