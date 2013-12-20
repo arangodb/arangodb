@@ -1,6 +1,8 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* issue #703: Also show path of logfile for fm.config()
+
 * issue #675: Dropping a collection used in "graph" module breaks the graph
 
 * added "static" Graph.drop() method for graphs API
