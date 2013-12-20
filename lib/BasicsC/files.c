@@ -1871,7 +1871,131 @@ void TRI_SetUserTempPath (char* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locate the installation directory
+///
+/// Will always end in a directory separator.
+////////////////////////////////////////////////////////////////////////////////
+
+#if _WIN32
+
+char* TRI_LocateInstallDirectory () {
+  DWORD dwType;
+  char  szPath[1023];
+  DWORD dwDataSize;
+  HKEY key;
+
+  dwDataSize = sizeof(szPath);
+  memset(szPath, 0, dwDataSize);
+
+  // open the key for reading
+  // TODO: the installer always uses the 32bit path (Wow6432)
+  long lResult = RegOpenKeyEx(
+     HKEY_LOCAL_MACHINE,
+     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB 1.4.4", // TODO
+     0,
+     KEY_READ,
+     &key);
+
+  if (lResult == ERROR_SUCCESS) {
+
+    // read the version value
+    lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
+
+    if (lResult == ERROR_SUCCESS) {
+      return TRI_DuplicateString(szPath);
+    }
+
+    RegCloseKey(key);
+  }
+
+  return NULL;
+}
+
+#else
+
+char* TRI_LocateInstallDirectory () {
+  return NULL;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate the configuration directory
+///
+/// Will always end in a directory separator.
+////////////////////////////////////////////////////////////////////////////////
+
+#if _WIN32
+
+char* TRI_LocateConfigDirectory () {
+  DWORD dwType;
+  char  szPath[1023];
+  DWORD dwDataSize;
+  HKEY key;
+
+  dwDataSize = sizeof(szPath);
+  memset(szPath, 0, dwDataSize);
+
+  // open the key for reading
+  // TODO: the installer always uses the 32bit path (Wow6432)
+  long lResult = RegOpenKeyEx(
+     HKEY_LOCAL_MACHINE,
+     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB 1.4.4", // TODO
+     0,
+     KEY_READ,
+     &key);
+
+  if (lResult == ERROR_SUCCESS) {
+
+    // read the version value
+    lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
+
+    if (lResult == ERROR_SUCCESS) {
+      return TRI_Concatenate2File(szPath, "etc\\arangodb\\");
+    }
+
+    RegCloseKey(key);
+  }
+
+  return NULL;
+}
+
+#elif defined(_SYSCONFDIR_)
+
+char* TRI_LocateConfigDirectory () {
+  size_t len;
+  const char* dir = _SYSCONFDIR_;
+
+  if (*dir == '\0') {
+    return NULL;
+  }
+
+  len = strlen(dir);
+
+  if (dir[len - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    return TRI_Concatenate2String(dir, "/");
+  }
+  else {
+    return TRI_DuplicateString(dir);
+  }
+}
+
+#else
+
+char* TRI_LocateConfigDirectory () {
+  return NULL;
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  module functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the files subsystem
+///
+/// TODO: inialise logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseFiles (void) {
@@ -1881,6 +2005,8 @@ void TRI_InitialiseFiles (void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the files subsystem
+///
+/// TODO: inialise logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {
