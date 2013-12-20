@@ -74,7 +74,7 @@ gs = _.sortBy(gs, sortF);
                 <%}); %>
                 </select>
               </div>
-              <div class="controls gv_manageButtonContainer"">
+              <div class="controls gv_manageButtonContainer">
                 <button type="submit" class="btn btn-primary" id="manageGraphs">Manage Graphs</button>
               </div>
             </div>
@@ -109,12 +109,17 @@ gs = _.sortBy(gs, sortF);
                 </div>
                 
                 
-                <div class="control-group">
-                  <label for="nodeLabel" class="control-label">Vertex label attribute (e.g. "name")</label>
-                  <div class="controls">
-                    <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Attribute" maxlength="75" class="input-xlarge" value="_key">
+                <fieldset id="label_list">
+                  <legend class="gv_inner">Labeling of vertices:</legend>
+                  <div class="control-group">
+                    <label for="label_1" class="control-label">Attribute 1</label>
+                    <div class="controls">
+                      <input id="label_1" type="text" name="label_1" placeholder="Attribute" maxlength="75" class="input-xlarge" value="_key">
+                      <button id="add_label" class="graphViewer-icon-button gv-icon-small add">
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </fieldset>              
  
                 <div class="control-group">
                   <label class="radio">
@@ -126,10 +131,17 @@ gs = _.sortBy(gs, sortF);
                     Use different attribute for colouring
                   </label>
                   <div class="control-group" style="display:none" id="colourAttribute_config">
-                    <label for="nodeColor" class="control-label">Vertex color attribute (e.g. "name")</label>
-                    <div class="controls">
-                      <input id="nodeColor" type="text" name="nodeColor" placeholder="Attribute" maxlength="75" class="input-xlarge">
-                    </div>
+                    <fieldset id="colour_list">
+                      <legend class="gv_inner">Colouring of vertices:</legend>
+                      <div class="control-group">
+                        <label for="colour_1" class="control-label">Attribute 1</label>
+                        <div class="controls">
+                          <input id="colour_1" type="text" name="colour_1" placeholder="Attribute" maxlength="75" class="input-xlarge" value="_key">
+                          <button id="add_colour" class="graphViewer-icon-button gv-icon-small add">
+                          </button>
+                        </div>
+                      </div>
+                    </fieldset>              
                   </div>
                 </div>
                 

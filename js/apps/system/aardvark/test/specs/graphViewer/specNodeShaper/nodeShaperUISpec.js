@@ -343,6 +343,191 @@
       
     });    
     
+    describe('checking to change colour and label at once with a list', function() {
+
+      var listId, idPrefix, idOnly, modalId, colAttrPrefix, lblAttrPrefix,
+        submitId, checkBoxSelector, addColourLineId, addLabelLineId;
+
+      beforeEach(function() {
+        listId = "#control_node_list";
+        idPrefix = "#control_node_labelandcolourlist";
+        lblAttrPrefix = idPrefix + "_label_";
+        colAttrPrefix = idPrefix + "_colour_";
+        modalId = idPrefix + "_modal";
+        idOnly = idPrefix.substr(1);
+        submitId = idOnly + "_submit";
+        addLabelLineId = lblAttrPrefix.substr(1) + "addLine";
+        addColourLineId = colAttrPrefix.substr(1) + "addLine";
+        checkBoxSelector = "input[type='radio'][name='colour']";
+        shaperUI.addControlOpticLabelAndColourList();
+        expect($(idPrefix, $(listId)).length).toEqual(1);
+        expect($(idPrefix, $(listId))[0]).toConformToListCSS();
+        helper.simulateMouseEvent("click", idOnly + "_button");
+        expect($(modalId).length).toEqual(1);
+      });
+      
+      afterEach(function() {
+        waitsFor(function() {
+          return $(modalId).length === 0;
+        }, 2000, "The modal dialog should disappear.");
+      });
+      
+      it('should be added to the list', function() {
+        runs(function() {
+          var val = "foo";
+          $(lblAttrPrefix + "1").attr("value", val);
+          helper.simulateMouseEvent("click", submitId);
+          expect(shaper.changeTo).toHaveBeenCalledWith({
+            label: [val],
+            color: {
+              type: "attribute",
+              key: [val]
+            }
+          });
+
+        });
+      });
+      
+      it('should not add empty attributes for label', function() {
+        runs(function() {
+          $(lblAttrPrefix + "1").attr("value", "");
+          helper.simulateMouseEvent("click", submitId);
+          expect(shaper.changeTo).toHaveBeenCalledWith({
+            label: [],
+            color: {
+              type: "attribute",
+              key: []
+            }
+          });
+        });
+      });
+      
+      it('should add a new line to both on demand', function() {
+        runs(function() {
+          var lbl1 = "lbl1", lbl2 = "lbl2", col1 = "col1", col2 = "col2";
+          helper.simulateMouseEvent("click", addLabelLineId);
+          expect($(lblAttrPrefix + "1").length).toEqual(1);
+          expect($(lblAttrPrefix + "2").length).toEqual(1);
+          expect($("#" + addLabelLineId).length).toEqual(1);
+          $(lblAttrPrefix + "1").attr("value", lbl1);
+          $(lblAttrPrefix + "2").attr("value", lbl2);
+          $(checkBoxSelector).prop("checked", true);
+          helper.simulateMouseEvent("click", addColourLineId);
+          expect($(colAttrPrefix + "1").length).toEqual(1);
+          expect($(colAttrPrefix + "2").length).toEqual(1);
+          expect($("#" + addColourLineId).length).toEqual(1);
+          $(colAttrPrefix + "1").attr("value", col1);
+          $(colAttrPrefix + "2").attr("value", col2);
+          helper.simulateMouseEvent("click", submitId);
+          expect(shaper.changeTo).toHaveBeenCalledWith({
+            label: [lbl1, lbl2],
+            color: {
+              type: "attribute",
+              key: [col1, col2]
+            }
+          });
+        });
+      });
+
+      it('should add many new lines to label on demand', function() {
+        runs(function() {
+          var lbl1 = "foo", lbl2 = "baz", lbl3 = "bar", lbl4 = "foxx";
+          helper.simulateMouseEvent("click", addLabelLineId);
+          helper.simulateMouseEvent("click", addLabelLineId);
+          helper.simulateMouseEvent("click", addLabelLineId);
+          helper.simulateMouseEvent("click", addLabelLineId);
+          expect($(lblAttrPrefix + "1").length).toEqual(1);
+          expect($(lblAttrPrefix + "2").length).toEqual(1);
+          expect($(lblAttrPrefix + "3").length).toEqual(1);
+          expect($(lblAttrPrefix + "4").length).toEqual(1);
+          expect($(lblAttrPrefix + "5").length).toEqual(1);
+          
+          expect($(lblAttrPrefix + "1").attr("value")).toEqual("");
+          expect($(lblAttrPrefix + "2").attr("value")).toEqual("");
+          expect($(lblAttrPrefix + "3").attr("value")).toEqual("");
+          expect($(lblAttrPrefix + "4").attr("value")).toEqual("");
+          expect($(lblAttrPrefix + "5").attr("value")).toEqual("");
+          
+          expect($("#" + addLabelLineId).length).toEqual(1);
+          $(lblAttrPrefix + "1").attr("value", lbl1);
+          $(lblAttrPrefix + "2").attr("value", lbl2);
+          $(lblAttrPrefix + "3").attr("value", "");
+          $(lblAttrPrefix + "4").attr("value", lbl3);
+          $(lblAttrPrefix + "5").attr("value", lbl4);
+          helper.simulateMouseEvent("click", submitId);
+          expect(shaper.changeTo).toHaveBeenCalledWith({
+            label: [lbl1, lbl2, lbl3, lbl4],
+            color: {
+              type: "attribute",
+              key: [lbl1, lbl2, lbl3, lbl4]
+            }
+          });
+        });
+      });
+      
+      it('should remove all but the first line', function() {
+        runs(function() {
+          var lbl1 = "foo";
+          helper.simulateMouseEvent("click", addLabelLineId);
+          expect($(lblAttrPrefix + "1_remove").length).toEqual(0);
+          expect($(lblAttrPrefix + "2_remove").length).toEqual(1);
+          helper.simulateMouseEvent("click", lblAttrPrefix.substr(1) + "2_remove");
+          
+          expect($("#" + addLabelLineId).length).toEqual(1);
+          expect($(lblAttrPrefix + "2_remove").length).toEqual(0);
+          expect($(lblAttrPrefix + "2").length).toEqual(0);
+          
+          $(lblAttrPrefix + "1").attr("value", lbl1);
+          helper.simulateMouseEvent("click", submitId);
+          expect(shaper.changeTo).toHaveBeenCalledWith({
+            label: [lbl1],
+            color: {
+              type: "attribute",
+              key: [lbl1]
+            }
+          });
+        });
+      });
+
+      /* TO_DO
+      
+      it('should load the current prioList from the adapter', function() {
+        
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
+        });
+        
+        waitsFor(function() {
+          return $("#control_adapter_priority_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+        runs(function() {
+          expect($("#control_adapter_priority_cancel").length).toEqual(0);
+          prioList.push("foo");
+          prioList.push("bar");
+          prioList.push("baz");
+          helper.simulateMouseEvent("click", "control_adapter_priority");
+          expect(adapter.getPrioList).wasCalled();
+          var idPrefix = "#control_adapter_priority_attribute_";
+          expect($(idPrefix + "1").length).toEqual(1);
+          expect($(idPrefix + "2").length).toEqual(1);
+          expect($(idPrefix + "3").length).toEqual(1);
+          expect($(idPrefix + "4").length).toEqual(0);
+          expect($(idPrefix + "addLine").length).toEqual(1);
+          expect($(idPrefix + "1_remove").length).toEqual(0);
+          expect($(idPrefix + "2_remove").length).toEqual(1);
+          expect($(idPrefix + "3_remove").length).toEqual(1);
+          expect($(idPrefix + "1").attr("value")).toEqual("foo");
+          expect($(idPrefix + "2").attr("value")).toEqual("bar");
+          expect($(idPrefix + "3").attr("value")).toEqual("baz");
+          expect($("#control_adapter_priority_modal").length).toEqual(1);
+          expect($("#control_adapter_priority_cancel").length).toEqual(1);
+          helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
+        });
+      });
+      */
+    });
+
     describe('checking to change colour and label at once', function() {
       
       it('should be able to add the control and create the mapping list', function() {

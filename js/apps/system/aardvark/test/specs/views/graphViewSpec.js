@@ -117,10 +117,10 @@
         beforeEach(function() {
           defaultGVConfig = {
             nodeShaper: {
-              label: "_key",
+              label: ["_key"],
               color: {
                 type: "attribute",
-                key: "_key"
+                key: ["_key"]
               }
             }
           };

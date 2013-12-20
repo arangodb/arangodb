@@ -119,6 +119,9 @@
       increment: 42 
     }
   });
+  for (i = 0; i < 1000; ++i) {
+    c.save({ value: i, more: { value: [ i, i ] } });
+  }
   
   // strings
   c = db._create("UnitTestsDumpStrings");

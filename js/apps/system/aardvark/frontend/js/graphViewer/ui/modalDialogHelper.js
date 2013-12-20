@@ -196,9 +196,9 @@ var modalDialogHelper = modalDialogHelper || {};
     },
     
     displayDecissionRowsOfGroup = function(group) {
-      var rows = $(".decission_" + group),
+      var options = $(".decission_" + group),
       selected = $("input[type='radio'][name='" + group + "']:checked").attr("id");
-      rows.each(function() {
+      options.each(function() {
         if ($(this).attr("decider") === selected) {
           $(this).css("display", "");
         } else {
@@ -213,7 +213,8 @@ var modalDialogHelper = modalDialogHelper || {};
       text, isDefault, interior, contentTh, table) {
       var input = document.createElement("input"),
         id = idPre + idPost,
-        lbl = document.createElement("label");
+        lbl = document.createElement("label"),
+        tBody = document.createElement("tbody");
       input.id = id;
       input.type = "radio";
       input.name = group;
@@ -222,10 +223,11 @@ var modalDialogHelper = modalDialogHelper || {};
       contentTh.appendChild(lbl);
       lbl.appendChild(input);
       lbl.appendChild(document.createTextNode(text));
+      table.appendChild(tBody);
+      $(tBody).toggleClass("decission_" + group, true);
+      $(tBody).attr("decider", id);
       _.each(interior, function(o) {
-        var row = $(insertModalRow(table, idPre, o));
-        row.toggleClass("decission_" + group, true);
-        row.attr("decider", id);
+        insertModalRow(tBody, idPre, o);
       });
       if (isDefault) {
         input.checked = true;
