@@ -102,6 +102,7 @@ bool ClientConnection::checkSocket () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errno);
+    _isConnected = false;
     return false;
   }
 
@@ -110,6 +111,7 @@ bool ClientConnection::checkSocket () {
   }
 
   TRI_set_errno(so_error);
+  _isConnected = false;
   
   return false;
 }
@@ -264,6 +266,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
 
     if (lenRead == 0) {
       // nothing more to read
+      _isConnected = false;
       break;
     }
 
