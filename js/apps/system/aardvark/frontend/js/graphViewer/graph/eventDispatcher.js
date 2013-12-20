@@ -267,4 +267,5 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     throw "Not implemented";
   };
   */
+  Object.freeze(self.events);
 }

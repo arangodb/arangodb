@@ -112,7 +112,7 @@
     },
 
     handleSelectDatabase: function() {
-      this.dbSelectionView.render();
+      this.dbSelectionView.render($("#dbSelect"));
     },
 
     render: function () {

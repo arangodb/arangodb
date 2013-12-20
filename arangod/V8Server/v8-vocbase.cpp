@@ -3940,6 +3940,12 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
       }
     }
     
+    if (object->Has(TRI_V8_SYMBOL("sslProtocol"))) {
+      if (object->Get(TRI_V8_SYMBOL("sslProtocol"))->IsNumber()) {
+        config._sslProtocol = (uint32_t) TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("sslProtocol")), false);
+      }
+    }
+    
     if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
       if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
         config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);

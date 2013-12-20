@@ -72,6 +72,7 @@
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
         "frontend/js/lib/jquery.ba-bbq.min.js",
+        "frontend/js/lib/jquery.contextmenu.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",

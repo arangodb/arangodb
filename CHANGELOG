@@ -1,6 +1,8 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* issue #703: Also show path of logfile for fm.config()
+
 * issue #675: Dropping a collection used in "graph" module breaks the graph
 
 * added "static" Graph.drop() method for graphs API
@@ -81,11 +83,6 @@ v1.5.x (XXXX-XX-XX)
 
 * fixed issue #651: Allow addEdge() to take vertex ids in the JS library
 
-* added more detailed request statistics 
-
-  This adds the number of async-executed HTTP requests plus the number of HTTP
-  requests per individual HTTP method type.
-
 * removed command-line option `--log.format`
 
   In previous versions, this option did not have an effect for most log messages, so
@@ -106,12 +103,44 @@ v1.5.x (XXXX-XX-XX)
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* fixed issue #711, #687: foxx-manager throws internal errors
+
+* added `--server.ssl-protocol` option for client tools
+  this allows connecting from arangosh, arangoimp, arangoimp etc. to an ArangoDB
+  server that uses a non-default value for `--server.ssl-protocol`. The default
+  value for the SSL protocol is 4 (TLSv1). If the server is configured to use a
+  different protocol, it was not possible to connect to it with the client tools.
+
+* added more detailed request statistics 
+
+  This adds the number of async-executed HTTP requests plus the number of HTTP
+  requests per individual HTTP method type.
+
+* added `--force` option for arangorestore
+  this option allows continuing a restore operation even if the server reports errors
+  in the middle of the restore operation
+
+* better error reporting for arangorestore
+  in case the server returned an HTTP error, arangorestore previously reported this
+  error as `internal error` without any details only. Now server-side errors are
+  reported by arangorestore with the server's error message
+
+* include more system collections in dumps produced by arangodump
+  previously some system collections were intentionally excluded from dumps, even if the
+  dump was run with `--include-system-collections`. for example, the collections `_aal`,
+  `_modules`, `_routing`, and `_users` were excluded. This makes sense in a replication
+  context but not always in a dump context.
+  When specifying `--include-system-collections`, arangodump will now include the above-
+  mentioned collections in the dump, too. Some other system collections are still excluded
+  even when the dump is run with `--include-system-collections`, for example `_replication`
+  and `_trx`.
+
 * fixed issue #701: ArangoStatement undefined in arangosh
 
 * fixed typos in configuration files
 
 
-v1.4.3 (2013-XX-XX)
+v1.4.3 (2013-11-25)
 -------------------
 
 * fixed a segfault in the AQL optimiser, occurring when a constant non-list value was

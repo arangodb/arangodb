@@ -303,6 +303,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       background.appendChild(zoomUI);
       background.insertBefore(zoomUI, svg[0][0]);
       
+      zoomUI.appendChild(zoomButtons);
       zoomUI.appendChild(slider);
       $( "#gv_zoom_slider" ).slider({
         orientation: "vertical",
@@ -453,7 +454,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         graphViewer.start();
       });
       adapterUI.addControlChangePriority();
-      nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
+      // nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
+      nodeShaperUI.addControlOpticLabelAndColourList(graphViewer.adapter);
       
       /*
       buttons.appendChild(nodeShaperDropDown);

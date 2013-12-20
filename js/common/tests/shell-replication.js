@@ -2728,7 +2728,7 @@ function ReplicationApplierSuite () {
 
       // configure && start 
       replication.applier.properties({ 
-        endpoint: "tcp://9.9.9.9:9999",
+        endpoint: "tcp://9.9.9.9:9999", // should not exist
         connectTimeout: 3,
         maxConnectRetries: 1 
       });
@@ -2775,15 +2775,14 @@ function ReplicationApplierSuite () {
       state = replication.applier.state();
 
       assertFalse(state.state.running);
-
       // configure && start 
       replication.applier.properties({ 
-        endpoint: "tcp://www.arangodb.org:80",
+        endpoint: "tcp://www.arangodb.org:7999", // should not exist
         connectTimeout: 3,
         maxConnectRetries: 1 
       });
-      replication.applier.start();
 
+      replication.applier.start();
       state = replication.applier.state();
       assertTrue(state.state.running);
       
@@ -2797,9 +2796,11 @@ function ReplicationApplierSuite () {
         }
 
         assertFalse(state.state.running);
-        assertTrue(state.state.totalFailedConnects <= i);
+        assertTrue(state.state.totalFailedConnects > 0);
+        assertTrue(state.state.progress.failedConnects > 0);
         assertTrue(state.state.lastError.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
-                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code);
+                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code ||
+                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
         break;
       }
 
@@ -2827,7 +2828,7 @@ function ReplicationApplierSuite () {
 
       // configure && start 
       replication.applier.properties({ 
-        endpoint: "tcp://9.9.9.9:9999" 
+        endpoint: "tcp://9.9.9.9:9999" // should not exist
       });
       
       replication.applier.start();
@@ -2874,7 +2875,7 @@ function ReplicationApplierSuite () {
       }
       
       replication.applier.properties({
-        endpoint: "tcp://9.9.9.9:9999"
+        endpoint: "tcp://9.9.9.9:9999" 
       });
       
       properties = replication.applier.properties();
@@ -3139,7 +3140,7 @@ function ReplicationSyncSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ReplicationLoggerSuite);
+//jsunity.run(ReplicationLoggerSuite);
 jsunity.run(ReplicationApplierSuite);
 jsunity.run(ReplicationSyncSuite);
 

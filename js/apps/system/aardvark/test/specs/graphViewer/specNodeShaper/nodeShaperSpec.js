@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
-/*global runs, waits */
+/*global runs, waits, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -48,6 +48,38 @@
 
     afterEach(function () {
       document.body.removeChild(svg);
+    });
+
+    describe("checking the context menu", function() {
+
+      var node, shaper, fakeMenu, fakeCM;
+
+      beforeEach(function() {
+        node = [{_id: 1}];
+        fakeMenu = {};
+        fakeCM = {
+          addEntry: function() {},
+          bindMenu: function() {}
+        };
+        spyOn(window, "ContextMenu").andReturn(fakeCM);
+        spyOn(fakeCM, "addEntry");
+        spyOn(fakeCM, "bindMenu");
+        shaper = new NodeShaper(d3.select("svg"));
+      });
+
+      it("should create the context menu", function() {
+        expect(window.ContextMenu).toHaveBeenCalledWith("gv_node_cm");
+        expect(fakeCM.addEntry).not.toHaveBeenCalled();
+        expect(fakeCM.bindMenu).not.toHaveBeenCalled();
+        shaper.drawNodes(node);
+        expect(fakeCM.bindMenu).toHaveBeenCalledWith($(".node"));
+      });
+
+      it("should be able to insert an entry in the menu", function() {
+        var lbl = "Label", func = function() {};
+        shaper.addMenuEntry(lbl, func);
+        expect(fakeCM.addEntry).toHaveBeenCalledWith(lbl, jasmine.any(Function));
+      });
     });
 
     it('should be able to draw a node', function () {
@@ -134,6 +166,19 @@
     });
 
     describe('testing for colours', function() {
+
+      it("should offer a function to reset the colour map", function() {
+        var fakeMapper = {
+          reset: function() {}
+        }, shaper;
+        spyOn(fakeMapper, "reset");
+        spyOn(window, "ColourMapper").andReturn(fakeMapper);
+        shaper = new NodeShaper(d3.select("svg"));
+        expect(shaper.resetColourMap).toBeDefined();
+        shaper.resetColourMap();
+        expect(fakeMapper.reset).toHaveBeenCalled();
+      });
+      
       
       it('should have a default colouring of no colour flag is given', function() {
         var nodes = [{_id: 1}, {_id: 2}],
@@ -208,6 +253,48 @@
         expect(c1f).not.toEqual(c2f);
         expect(c1f).not.toEqual(c3f);
         expect(c2f).not.toEqual(c3f);
+      });
+      
+      it('should be able to use a colour based on several attribute values', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              alt: "lbl2"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl2",
+              alt: "lbl1"
+            }
+          }],
+          shaper = new NodeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "attribute",
+              key: ["label", "alt"]
+            }
+          }),
+          c1f, c2f, c3f;
+        shaper.drawNodes(nodes);
+        
+        c1f = $("#1").attr("fill");
+        c2f = $("#2").attr("fill");
+        c3f = $("#3").attr("fill");
+        
+        expect(c1f).toBeDefined();
+        expect(c2f).toBeDefined();
+        expect(c3f).toBeDefined();
+        
+        expect(c1f).not.toEqual(c2f);
+        expect(c1f).not.toEqual(c3f);
+        expect(c2f).toEqual(c3f);
       });
       
       it('should be able to use colours based on _expanded attribute', function() {
@@ -289,6 +376,56 @@
           expect(v.list).toEqual(jasmine.any(Array));
           expect(v.list.length).toEqual(1);
         });
+      });
+
+      it('should reset the color <-> label mapping on color change', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1",
+              name: "Alice"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              label: "lbl2",
+              name: "Alice"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl1",
+              name: "Bob"
+            }
+          }
+        ],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        colorList;
+        
+        shaper.drawNodes(nodes);
+        
+        colorList = shaper.getColourMapping();
+        expect(_.size(colorList)).toEqual(2);
+        shaper.changeTo({
+          color: {
+            type: "attribute",
+            key: "name"
+          }
+        });
+        colorList = shaper.getColourMapping();
+        expect(_.size(colorList)).toEqual(2);
+        _.each(colorList, function(v) {
+          expect(v.list).not.toContain("lbl1");
+          expect(v.list).not.toContain("lbl2");
+        });
+        
       });
       
       it('should be possible to add a change listener for the mapping', function() {
@@ -1106,6 +1243,23 @@
         expect($(spans.get(1)).text()).toEqual("brown foxx...");
       });
 
+      it("should cut long-word labels", function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "pneumonoultramicroscopicsilicovolcanoconiosis"
+          }
+        }],
+        textEl,
+        spans;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        spans = $("tspan", textEl);
+        
+        expect($(spans.get(0)).text()).toEqual("pneumonoul-");
+        expect($(spans.get(1)).text()).toEqual("tramicrosc...");
+      });
+
     });
 
     describe('using a function for labels', function () {
@@ -1169,6 +1323,56 @@
         expect($("#3 text")[0].textContent).toEqual("correct");
         expect($("#4 text")[0].textContent).toEqual("correct");
         expect($("#5 text")[0].textContent).toEqual("default");
+      });
+
+    });
+
+    describe("using an array for label", function () {
+
+      var shaper,
+        lblArray;
+
+      beforeEach(function () {
+        lblArray = ["label", "alt"];
+        shaper = new NodeShaper(d3.select("svg"), {
+          "label": lblArray
+        });
+      });
+
+      it("should be able to display different attributes for labels", function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              "label": "correct"
+            }
+          },
+          {
+            _id: 2,
+            _data: {
+              "alt": "correct"
+            }
+          },
+          {
+            _id: 3,
+            _data: {
+              "label": "correct",
+              "alt": "incorrect"
+            }
+          },
+          {
+            _id: 4,
+            _data: {
+            
+            }
+          }
+        ];
+        shaper.drawNodes(nodes);
+        expect($("text").length).toEqual(4);
+        expect($("#1 text")[0].textContent).toEqual("correct");
+        expect($("#2 text")[0].textContent).toEqual("correct");
+        expect($("#3 text")[0].textContent).toEqual("correct");
+        expect($("#4 text")[0].textContent).toEqual("");
       });
 
     });

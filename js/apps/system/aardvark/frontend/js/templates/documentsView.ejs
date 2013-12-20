@@ -3,12 +3,12 @@
     <div id="documentsToolbar" class="pagination pagination-small pagination-right">
 
     <!-- remove marker for docupdiv--!>
-      <ul><li class="enabled"><a id="indexCollection"><span class="glyphicon glyphicon-list-alt" title="Index collection"></span></a></li></ul>
-      <ul><li class="enabled"><a id="filterCollection"><span class="glyphicon glyphicon-filter" title="Filter collection"></span></a></li></ul>
-      <ul><li class="enabled"><a id="importCollection"><span class="arangoicon arango-icon-import" title="Upload documents"></span></a></li></ul>
+      <ul><li class="enabled"><a id="indexCollection"><span class="icon_arangodb_checklist" title="Index collection"></span></a></li></ul>
+      <ul><li class="enabled"><a id="filterCollection"><span class="icon_arangodb_filter" title="Filter collection"></span></a></li></ul>
+      <ul><li class="enabled"><a id="importCollection"><span class="icon_arangodb_import" title="Upload documents"></span></a></li></ul>
     <ul>
-      <li class="enabled"><a id="collectionPrev"><span class="glyphicon glyphicon-chevron-left" title="Previous collection"></span></a></li>
-      <li class="enabled"><a id="collectionNext"><span class="glyphicon glyphicon-chevron-right" title="Next collection"></span></a></li>
+      <li class="enabled"><a id="collectionPrev"><span class="icon_arangodb_arrowleft" title="Previous collection"></span></a></li>
+      <li class="enabled"><a id="collectionNext"><span class="icon_arangodb_arrowright" title="Next collection"></span></a></li>
     </ul>
     </div>
 
@@ -80,12 +80,12 @@
               <tr>
                 <th class="collectionTh">Size:</th>
                 <th><input type="text" id="newCapSize" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal number of documents for the collection."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="The maximal number of documents for the collection."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Bytesize:</th>
                 <th><input type="text" id="newCapByteSize" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal size of the active document data in the collection."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="The maximal size of the active document data in the collection."/></th>
               </tr>
             </table>
           </div>
@@ -94,28 +94,28 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newGeoFields" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list with one or two attribute paths."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list with one or two attribute paths."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Geo JSON:</th>
                 <th>
                   <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
                 </th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Constraint:</th>
                 <th>
                   <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
                 </th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If constraint is true, then a geo-spatial constraint is created."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="If constraint is true, then a geo-spatial constraint is created."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Ignore Null:</th>
                 <th>
                   <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
                 </th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored."/>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored."/>
                 </th>
               </tr>
             </table>
@@ -126,14 +126,14 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newHashFields" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list of attribute paths."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Unique:</th>
                 <th>
                   <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
                 </th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="If true, then create a unique index."/>
                 </th>
               </tr>
             </table>
@@ -143,12 +143,12 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newFulltextFields" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ]."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ]."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Min. length:</th>
                 <th><input type="text" id="newFulltextMinLength" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."/></th>
               </tr>
             </table>
 
@@ -159,14 +159,14 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newSkiplistFields" value=""/></th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list of attribute paths."/></th>
               </tr>
               <tr>
                 <th class="collectionTh">Unique:</th>
                 <th>
                   <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
                 </th>
-                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                <th><span class="icon_arangodb_info arangoicon" data-original-title="If true, then create a unique index."/>
                 </th>
               </tr>
             </table>
@@ -190,7 +190,7 @@
       <th>Content</th>
       <th>_key</th>
       <th>
-        <a id="addDocumentButton" class="pull-right addButton"><span class="glyphicon glyphicon-plus-sign" title="Add a document"></span></a>
+        <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
       </th>
     </tr>
   </thead>

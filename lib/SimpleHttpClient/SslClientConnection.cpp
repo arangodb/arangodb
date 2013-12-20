@@ -29,6 +29,8 @@
 
 #include "Basics/ssl-helper.h"
 #include "BasicsC/socket-utils.h"
+#include "GeneralServer/GeneralSslServer.h"
+#include "HttpServer/HttpsServer.h"
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
@@ -45,7 +47,7 @@
 
 #include <sys/types.h>
 
-
+#include <openssl/ssl.h>
 
 
 
@@ -70,15 +72,47 @@ using namespace std;
 SslClientConnection::SslClientConnection (Endpoint* endpoint,
                                           double requestTimeout,
                                           double connectTimeout,
-                                          size_t connectRetries) :
+                                          size_t connectRetries,
+                                          uint32_t sslProtocol) :
   GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
   _ssl(0),
   _ctx(0) {
+
   _socket.fileHandle = 0;
   _socket.fileDescriptor = 0;
-  _ctx = SSL_CTX_new(TLSv1_method());
+          
+  SSL_METHOD SSL_CONST* meth = 0;
+
+  switch (HttpsServer::protocol_e(sslProtocol)) {
+#ifndef OPENSSL_NO_SSL2
+    case HttpsServer::SSL_V2:
+      meth = SSLv2_method();
+      break;
+#endif
+    case HttpsServer::SSL_V3:
+      meth = SSLv3_method();
+      break;
+
+    case HttpsServer::SSL_V23:
+      meth = SSLv23_method();
+      break;
+
+    case HttpsServer::TLS_V1:
+      meth = TLSv1_method();
+      break;
+
+    default:
+      // fallback is to use tlsv1
+      meth = TLSv1_method();
+  }
+
+  _ctx = SSL_CTX_new(meth);
+
   if (_ctx) {
     SSL_CTX_set_cipher_list(_ctx, "ALL");
+    
+    const bool sslCache = true;
+    SSL_CTX_set_session_cache_mode(_ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
 }
 
@@ -240,7 +274,7 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
-  if (_ssl == 0) {
+  if (_ssl == 0 || ! _isConnected) {
     return false;
   }
 
@@ -251,6 +285,7 @@ bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
       return false;
     }
 
+again:
     int lenRead = SSL_read(_ssl, stringBuffer.end(), READBUFFER_SIZE - 1);
 
     switch (SSL_get_error(_ssl, lenRead)) {
@@ -260,9 +295,12 @@ bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
 
       case SSL_ERROR_ZERO_RETURN:
         SSL_shutdown(_ssl);
+        _isConnected = false;
         return true;
 
       case SSL_ERROR_WANT_READ:
+        goto again;
+
       case SSL_ERROR_WANT_WRITE:
       case SSL_ERROR_WANT_CONNECT:
       case SSL_ERROR_SYSCALL:
@@ -292,7 +330,43 @@ bool SslClientConnection::readable () {
   // which are available inside ssl for reading.
   // ...........................................................................
 
-  return (SSL_pending(_ssl) > 0);
+  if (SSL_pending(_ssl) > 0) {
+    return true;
+  }
+
+  if (prepare(0.0, false)) {
+    return checkSocket();
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the socket is workable
+////////////////////////////////////////////////////////////////////////////////
+
+bool SslClientConnection::checkSocket () {
+  int so_error = -1;
+  socklen_t len = sizeof so_error;
+
+  assert(_socket.fileHandle > 0);
+
+  int res = getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    _isConnected = false;
+    TRI_set_errno(errno);
+    return false;
+  }
+
+  if (so_error == 0) {
+    return true;
+  }
+
+  TRI_set_errno(so_error);
+  _isConnected = false;
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

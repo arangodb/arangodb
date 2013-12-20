@@ -232,7 +232,8 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
                                 const TRI_voc_tick_t tick,
                                 const char* const userKey,
                                 char* const outBuffer,
-                                size_t* const outLength) {
+                                size_t* const outLength,
+                                bool isRestore) {
   traditional_keygen_t* data;
   char* current;
 
@@ -245,7 +246,7 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
     size_t userKeyLength;
 
     // user has specified a key
-    if (! data->_allowUserKeys) {
+    if (! data->_allowUserKeys && ! isRestore) {
       // we do not allow user-generated keys
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
     }
@@ -475,7 +476,8 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
                                   const TRI_voc_tick_t tick,
                                   const char* const userKey,
                                   char* const outBuffer,
-                                  size_t* const outLength) {
+                                  size_t* const outLength,
+                                  bool isRestore) {
   autoincrement_keygen_t* data;
   char* current;
 
@@ -489,7 +491,7 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
     size_t userKeyLength;
 
     // user has specified a key
-    if (! data->_allowUserKeys) {
+    if (! data->_allowUserKeys && ! isRestore) {
       // we do not allow user-generated keys
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
     }
