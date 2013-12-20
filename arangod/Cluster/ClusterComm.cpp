@@ -42,8 +42,9 @@ using namespace triagens::arango;
 ClusterCommOptions ClusterComm::_globalConnectionOptions = {
   15.0,  // connectTimeout 
   3.0,   // requestTimeout
-  3,     // numRetries,
-  5.0    // singleRequestTimeout
+  3,     // numRetries
+  5.0,   // singleRequestTimeout
+  0      // sslProtocol
 };
 
 
@@ -150,7 +151,8 @@ ClusterComm::getConnection(ServerID& serverID) {
                    e,
                    _globalConnectionOptions._requestTimeout,
                    _globalConnectionOptions._connectTimeout,
-                   _globalConnectionOptions._connectRetries);
+                   _globalConnectionOptions._connectRetries,
+                   _globalConnectionOptions._sslProtocol);
   if (0 == g) {
     delete e;
     return 0;

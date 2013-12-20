@@ -152,6 +152,7 @@ namespace triagens {
       double _requestTimeout;
       size_t _connectRetries;
       double _singleRequestTimeout;
+      uint32_t _sslProtocol;
     };
 
 // -----------------------------------------------------------------------------
