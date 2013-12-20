@@ -407,10 +407,12 @@ namespace triagens {
 
           AsyncCallbackContext* ctx = 0;
 
+            std::cout << "ASYNC REQUEST\n";
           bool found;
           char const* hdr = job->getHandler()->getRequest()->header("x-arango-coordinator", found);
 
           if (found) {
+            std::cout << "FOUND COORDINATOR HEADER\n";
             ctx = new AsyncCallbackContext(std::string(hdr));
           }
 

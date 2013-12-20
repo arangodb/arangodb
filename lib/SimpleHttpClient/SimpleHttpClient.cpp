@@ -350,7 +350,10 @@ namespace triagens {
       else {
         _writeBuffer.appendText("\r\n");
       }
-      _writeBuffer.appendText(body, bodyLength);
+
+      if (body != 0) {
+        _writeBuffer.appendText(body, bodyLength);
+      }
 
       LOG_TRACE("Request: %s", _writeBuffer.c_str());
 

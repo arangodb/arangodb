@@ -41,6 +41,14 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
+#include "VocBase/server.h"
+
+#ifdef TRI_ENABLE_CLUSTER
+
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ServerState.h"
+
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -904,8 +912,6 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 
 #ifdef TRI_ENABLE_CLUSTER
 
-#include "Cluster/ClusterComm.h"
-
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8::Isolate* isolate;
 
@@ -919,30 +925,52 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "SYS_SHARDING_TEST(<req>, <res>)");
   }
 
+  const string clientTransactionId = StringUtils::itoa(TRI_NewTickServer());
+
   ClusterComm* cc = ClusterComm::instance();
+
+  if (cc == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "clustercomm object not found");
+  }
+
   map<string, string>* headerFields = new map<string, string>;
-  (*headerFields)["X-ClientTransactionID"] = "BlaBlubb";
+  (*headerFields)["X-ClientTransactionID"] = clientTransactionId;
+  (*headerFields)["X-Arango-Async"] = "store";
+  (*headerFields)["X-Arango-Coordinator"] = ServerState::instance()->getAddress();
 
   ClusterCommResult const* res =
-      cc->asyncRequest("ClientBla", 12345, "shardBlubb", 
+      cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), "shardBlubb", 
                        triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                        "/_admin/time", NULL, 0, headerFields, 0, 0);
-  OperationID opID = res->operationID;
+
+  if (res == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't queue async request");
+  }
+  
   LOG_DEBUG("JS_ShardingTest: request has been submitted");
+
+  OperationID opID = res->operationID;
   delete res;
 
   // Wait until the request has actually been sent:
   while (true) {
     res = cc->enquire(opID);
-    if (res->status >= CL_COMM_SENT) {
-      delete res;
+    if (res == 0) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't enquire operation");
+    }
+
+    ClusterCommOpStatus status = res->status;
+
+    delete res;
+
+    if (status >= CL_COMM_SENT) {
       break;
     }
-    delete res;
     LOG_DEBUG("JS_ShardingTest: request not yet sent");
     
-    usleep(1000000);
+    usleep(500000);
   }
+
   LOG_DEBUG("JS_ShardingTest: request has been sent");
   cc->drop("", 0, opID, "");
 

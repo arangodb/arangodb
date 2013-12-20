@@ -125,6 +125,8 @@ ClusterComm::getConnection(ServerID& serverID) {
       allConnections[serverID] = s;
     }
   }
+
+  assert(s != 0);
   
   // Now get an unused one:
   {
@@ -138,6 +140,7 @@ ClusterComm::getConnection(ServerID& serverID) {
   
   // We need to open a new one:
   string a = ClusterState::instance()->getServerEndpoint(serverID);
+
   if (a == "") {
     // Unknown server address, probably not yet connected
     return 0;
@@ -305,6 +308,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->shardID              = shardID;
   op->serverID             = ClusterState::instance()->getResponsibleServer(
                                                              shardID);
+
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
@@ -312,8 +316,8 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->bodyLength           = bodyLength;
   op->headerFields         = headerFields;
   op->callback             = callback;
-  op->timeout              = timeout == 0.0 ? 1e50 : timeout;
-
+  op->timeout              = timeout == 0.0 ? 3600.0 : timeout;
+  
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
 
@@ -677,9 +681,9 @@ void ClusterCommThread::run () {
         = cc->getConnection(server);
       if (0 == connection) {
         op->status = CL_COMM_ERROR;
+        LOG_ERROR("cannot create connection to server '%s'", server.c_str());
       }
       else {
-
         LOG_TRACE("sending %s request to DB server '%s': %s",
            triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
            server.c_str(), op->body);
