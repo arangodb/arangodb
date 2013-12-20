@@ -142,6 +142,7 @@ namespace triagens {
           case (IN_READ_CHUNKED_HEADER):
           case (IN_READ_CHUNKED_BODY): {
             TRI_set_errno(TRI_ERROR_NO_ERROR);
+
             if (_connection->handleRead(remainingTime, _readBuffer)) {
               switch (_state) {
                 case (IN_READ_HEADER):
@@ -161,6 +162,15 @@ namespace triagens {
               }
             }
             else {
+              if (! _result->hasContentLength() && 
+                  ! _connection->isConnected() && 
+                  _state == IN_READ_BODY) {
+                // no content-length header in response, now set the length
+                _result->setContentLength(_readBuffer.length());
+                readBody();
+                break;
+              }
+
               setErrorMessage(TRI_last_error(), false);
               this->close();
             }
@@ -387,8 +397,13 @@ namespace triagens {
             _state = IN_READ_CHUNKED_HEADER;
             return readChunkedHeader();
           }
-          else if (_result->getContentLength()) {
-
+          else if (! _result->hasContentLength()) {
+            // no content-length header in response
+            _state = IN_READ_BODY;
+            return readBody();
+          }
+          else if (_result->hasContentLength() && _result->getContentLength() > 0) {
+            // found content-length header in response
             if (_result->getContentLength() > _maxPacketSize) {
               setErrorMessage("Content-Length > max packet size found", true);
 
@@ -432,7 +447,7 @@ namespace triagens {
         return true;
       }
 
-      if (_readBuffer.length() >= _result->getContentLength()) {
+      if (_result->hasContentLength() && _readBuffer.length() >= _result->getContentLength()) {
         if (_result->isDeflated()) {
           // body is compressed using deflate. inflate it
           _readBuffer.inflate(_result->getBody());
