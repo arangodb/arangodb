@@ -3,20 +3,19 @@
 (function() {
   "use strict";
   window.DBSelectionView = Backbone.View.extend({
+
     template: templateEngine.createTemplate("dbSelectionView.ejs"),
 
     events: {
       "change #dbSelectionList": "changeDatabase"
     },
 
-    initialize: function() {
-                  var self = this;
+    initialize: function(opts) {
+      var self = this;
+      this.current = opts.current;
       this.collection.fetch({
-        success: function(){
-          self.render(self.$el);
-         } 
+        async: false
       });
-      this.current = this.collection.getCurrentDatabase();
     },
 
     changeDatabase: function(e) {
@@ -27,12 +26,12 @@
 
     render: function(el) {
       this.$el = el;
-      el.html(this.template.render({
+      this.$el.html(this.template.render({
         list: this.collection,
-        current: this.current
+        current: this.current.get("name")
       }));
       this.delegateEvents();
-      return el;
+      return this.el;
     }
   });
 }());

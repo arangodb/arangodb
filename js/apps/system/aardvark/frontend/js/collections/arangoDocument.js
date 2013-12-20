@@ -161,10 +161,10 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-          result = true;
+        result = true;
       },
       error: function(data) {
-          result = false;
+        result = false;
       }
     });
     return result;

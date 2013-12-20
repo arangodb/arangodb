@@ -34,7 +34,7 @@
   to { opacity: 0.0; }
 }
 
-.jqconsole-ansi-blink {
+.jqconsole-ansi-blink, .jqconsole-ansi-blink-rapid {
   -webkit-animation-name: blinker;
   -moz-animation-name: blinker;
   -ms-animation-name: blinker;
@@ -47,6 +47,9 @@
   -ms-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
   -o-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
   -moz-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
+}
+
+.jqconsole-ansi-blink {
   -webkit-animation-duration: 1s; 
   -moz-animation-duration: 1s;
   -o-animation-duration: 1s;
@@ -54,18 +57,6 @@
 }
 
 .jqconsole-ansi-blink-rapid {
-  -webkit-animation-name: blinker;
-  -moz-animation-name: blinker;
-  -ms-animation-name: blinker;
-  -o-animation-name: blinker;
-  -webkit-animation-iteration-count: infinite;
-  -moz-animation-iteration-count: infinite;
-  -ms-animation-iteration-count: infinite; 
-  -o-animation-iteration-count: infinite; 
-  -webkit-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
-  -ms-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
-  -o-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
-  -moz-animation-timing-function: cubic-bezier(1.0,0,0,1.0);
   -webkit-animation-duration: 0.5s; 
   -moz-animation-duration: 0.5s;
   -o-animation-duration: 0.5s;

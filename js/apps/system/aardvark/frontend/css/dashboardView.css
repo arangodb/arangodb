@@ -25,6 +25,8 @@
   margin-top: 6px;
   margin-bottom: 0;
   padding-bottom: 0;
+  border-radius: 0 !important;
+  max-height: 30px !important;
 }
 
 #dashboardHeader ul a {
@@ -202,7 +204,7 @@ li:hover h6, li.hover h6 {
   font-family: 'Open Sans', sans-serif !important;
 }
 
-#dashboardHeader {
+#dashboardHeader, #transparentHeader {
   margin-left: 5px;
   margin-right: 5px;
   padding-right: 5px;
@@ -213,10 +215,6 @@ li:hover h6, li.hover h6 {
   margin-top: 5px !important;
 }
 
-#dashboardHeader .btn-group {
-  border-radius: 0 !important;
-  max-height: 30px !important;
-}
 
 /*NVD3*/
 .nv-series {
@@ -356,6 +354,8 @@ li:hover h6, li.hover h6 {
 #detailReplicationDiv table {
   margin-top: 10px;
   border-spacing: 0 0px;
+  width: 100%;
+  text-align:left !important;
 }
 
 #detailReplicationDiv table thead {
@@ -367,35 +367,27 @@ li:hover h6, li.hover h6 {
   font-weight: 400 !important;
 }
 
-#detailReplicationDiv table {
-  width: 100%;
-}
-
-#detailReplicationDiv table {
-  text-align:left !important;
-}
-
-#detailReplicationDiv table tr {
-}
-
 #detailReplicationDiv table tbody tr th {
   padding-bottom: 4px;
   padding-top: 4px;
 }
 
-#rightReplicationDiv {
-  min-height: 150px;
+#leftReplicationDiv, #rightReplicationDiv {
+  padding: 10px !important;
   padding-top: 5px;
+  min-height: 150px;
   margin-right: 10px;
-  margin-bottom: 8px;
   background-color: #FFFFFF;
 }
 
-#leftReplicationDiv, #rightReplicationDiv {
-  padding: 10px !important;
+#rightReplicationDiv {
+  margin-bottom: 8px;
 }
 
-#leftReplicationDiv h4, #rightReplicationDiv h4 {
+#leftReplicationDiv {
+  width: auto;
+  margin-top: -1px;
+  border-top: 1px solid #888;
 }
 
 #leftReplicationDiv table, #rightReplicationDiv table {
@@ -428,15 +420,6 @@ li:hover h6, li.hover h6 {
 #leftReplicationDiv tbody tr, #rightReplicationDiv tbody tr {
 }
 
-#leftReplicationDiv {
-  padding-top: 5px;
-  width: auto;
-  min-height: 150px;
-  margin-right: 10px;
-  margin-top: -1px;
-  border-top: 1px solid #888;
-  background-color: #FFFFFF;
-}
 
 .alignLeft {
   width: 240px !important;
@@ -572,32 +555,26 @@ li:hover h6, li.hover h6 {
   visibility: hidden !important;
 }
 
-.greenLight {
-  background: green;
-  background-image: radial-gradient(lime, transparent);
+.greenLight, .redLight {
   background-size: 3px 3px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  box-shadow:
   margin-top: 1px;
-  0 0 10px #111 inset,
-  0 0 5px lime;
+}
+
+.greenLight {
+  background: green;
+  background-image: radial-gradient(lime, transparent);
+  box-shadow: 0 0 10px #111 inset, 0 0 5px lime;
   animation: 13s green infinite;
 }
 
 .redLight {
   background: red;
   background-image: radial-gradient(brown, transparent);
-  background-size: 3px 3px; 
-  margin-top: 1px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
   animation: 13s red infinite;
-  box-shadow:
-    0 0 10px #111 inset,
-    0 0 5px red;
+  box-shadow: 0 0 10px #111 inset, 0 0 5px red;
 }
 
 #dashboardDropdown > ul > li > a > .radio {

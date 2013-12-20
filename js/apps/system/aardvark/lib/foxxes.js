@@ -111,5 +111,20 @@ exports.Foxxes = function () {
       message: "To be implemented."
     };
   };
+
+  this.move = function(key, app, mount, prefix) {
+    var success;
+    try {
+      success = foxxmanager.mount(app, mount, {collectionPrefix: prefix});
+      foxxmanager.unmount(key);
+    } catch (e) {
+      return {
+        error: true,
+        status: 409,
+        message: "Mount-Point already in use"
+      };
+    }
+    return success;
+  };
   
 };

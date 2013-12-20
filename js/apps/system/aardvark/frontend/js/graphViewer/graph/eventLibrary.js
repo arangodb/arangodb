@@ -121,7 +121,7 @@ function EventLibrary() {
     var adapter = config.adapter,
     nodeShaper = config.shaper;
     
-    return function(data, callback) {
+    return function(data, callback, x, y) {
       var cb, d;
       if (_.isFunction(data) && !callback) {
         cb = data;
@@ -132,8 +132,8 @@ function EventLibrary() {
       }
       adapter.createNode(d, function(newNode) {
         nodeShaper.reshapeNodes();
-        callback(newNode);
-      });
+        cb(newNode);
+      }, x, y);
     };
   };
   

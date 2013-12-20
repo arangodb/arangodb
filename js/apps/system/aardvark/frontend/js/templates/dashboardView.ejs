@@ -5,12 +5,12 @@
     </div>
 
     <div class="pagination pagination-small pull-right btn-group">
-      <ul><li class="enabled"><a id="dashboardToggle" class="arangoHeaderA"><span class="glyphicon glyphicon-cog" title="Settings"></span></a></li></ul>
+      <ul><li class="enabled"><a id="dashboardToggle" class="arangoHeaderA"><span class="icon_arangodb_settings2" title="Settings"></span></a></li></ul>
     </div>
   </div>
 
-  <div id="dashboardDropdownOut">
-    <div id="dashboardDropdown">
+  <div id="dashboardDropdownOut" class="headerDropdown">
+    <div id="dashboardDropdown" class="dropdownInner">
       <ul id="intervalUL">
         <li class="nav-header">Update every:</li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every5seconds" value="5"><label><span></span>5 seconds</label></label></a></li>
@@ -24,8 +24,8 @@
     </div>
   </div>
   
-  <div id="replicationDropdownOut" class="dropdownOut">
-    <div id="replicationDropdown" class="dropdownIn">
+  <div id="replicationDropdownOut" class="dropdownOut headerDropdown">
+    <div id="replicationDropdown" class="dropdownIn dropdownInner">
       <ul id="intervalULR">
         <li class="nav-header">Update every:</li>
         <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every5secondsR" value="5"><label><span></span>5 seconds</label></label></a></li>

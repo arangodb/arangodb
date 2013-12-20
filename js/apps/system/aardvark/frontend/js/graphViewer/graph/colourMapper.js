@@ -30,13 +30,12 @@
 function ColourMapper() {
   "use strict";
   
-  var mapCreated = false,
-  mapping = {},
-  reverseMapping = {},
-  colours = [],
-  listener,
-  self = this,
-  nextColour = 0;
+  var mapping = {},
+    reverseMapping = {},
+    colours = [],
+    listener,
+    self = this,
+    nextColour = 0;
   
   colours.push({back: "navy", front: "white"});
   colours.push({back: "green", front: "white"});

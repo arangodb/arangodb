@@ -301,6 +301,7 @@ int main (int argc, char* argv[]) {
                                             BaseClient.requestTimeout(),
                                             BaseClient.connectTimeout(),
                                             ArangoClient::DEFAULT_RETRIES,
+                                            BaseClient.sslProtocol(),
                                             false);
 
   if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {

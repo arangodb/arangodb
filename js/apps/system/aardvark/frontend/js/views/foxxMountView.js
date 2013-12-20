@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, forin: true, regexp: true */
-/*global alert, Backbone, EJS, $, window */
+/*global alert, Backbone, EJS, $, window, templateEngine */
 
 window.foxxMountView = Backbone.View.extend({
   el: '#modalPlaceholder',
@@ -8,7 +8,7 @@ window.foxxMountView = Backbone.View.extend({
   initialize: function () {
     this.m = this.model.attributes;
   },
-  template: new EJS({url: 'js/templates/foxxMountView.ejs'}),
+  template: templateEngine.createTemplate("foxxMountView.ejs"),
 
   render: function() {
     $(this.el).html(this.template.render(this.model));
