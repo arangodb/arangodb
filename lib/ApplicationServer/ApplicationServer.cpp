@@ -45,6 +45,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/delete_object.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/tri-strings.h"
 #include "Logger/Logger.h"
 
 using namespace triagens::basics;
@@ -124,7 +126,6 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _configFile(),
     _userConfigFile(),
     _systemConfigFile(),
-    _systemConfigPath(),
     _uid(),
     _realUid(0),
     _effectiveUid(0),
@@ -166,7 +167,6 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _configFile(),
     _userConfigFile(),
     _systemConfigFile(),
-    _systemConfigPath(),
     _uid(),
     _realUid(0),
     _effectiveUid(0),
@@ -225,20 +225,11 @@ void ApplicationServer::addFeature (ApplicationFeature* feature) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the name of the system config file with a path
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationServer::setSystemConfigFile (std::string const& name, std::string const& path) {
-  _systemConfigFile = name;
-  _systemConfigPath = path;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the name of the system config file without a path
+/// @brief sets the name of the system config file
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::setSystemConfigFile (std::string const& name) {
-  return setSystemConfigFile(name, "");
+  _systemConfigFile = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -968,7 +959,7 @@ bool ApplicationServer::readConfigurationFile () {
     // A safer approach below
     // .........................................................................
 
-    string homeDir = FileUtils::homeDirectory();
+    string homeDir = FileUtils::homeDirectory(); // TODO homedirectory should either always or never end in "/"
 
     if (! homeDir.empty()) {
       if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -994,9 +985,7 @@ bool ApplicationServer::readConfigurationFile () {
         return ok;
       }
       else {
-
         LOGGER_DEBUG("no user init file '" << homeDir << "' found");
-
       }
     }
     else {
@@ -1005,56 +994,17 @@ bool ApplicationServer::readConfigurationFile () {
   }
 
 
-  if (_systemConfigPath.empty()) {
-
-#ifdef _SYSCONFDIR_
-
-    // try the configuration file in the system directory - if there is one
+  // try the configuration file in the system directory - if there is one
+  if (! _systemConfigFile.empty()) {
 
     // Please note that the system directory changes depending on
     // where the user installed the application server.
 
-    if (! _systemConfigFile.empty()) {
-      string sysDir = string(_SYSCONFDIR_);
+    char* d = TRI_LocateConfigDirectory();
 
-      if (! sysDir.empty()) {
-        if (sysDir[sysDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-          sysDir += TRI_DIR_SEPARATOR_CHAR + _systemConfigFile;
-        }
-        else {
-          sysDir += _systemConfigFile;
-        }
-
-        // check and see if file exists
-        if (FileUtils::exists(sysDir)) {
-          LOGGER_INFO("using init file '" << sysDir << "'");
-
-          bool ok = _options.parse(_descriptionFile, sysDir);
-
-          // Observe that this is treated as an error - the configuration file exists
-          // but for some reason can not be parsed. Best to report an error.
-
-          if (! ok) {
-            LOGGER_ERROR("cannot parse config file '" << sysDir << "': " << _options.lastError());
-          }
-
-          return ok;
-        }
-        else {
-          LOGGER_INFO("no system init file '" << sysDir << "' found");
-        }
-      }
-      else {
-        LOGGER_DEBUG("no system init file, not system directory is known");
-      }
-    }
-
-#endif
-
-  }
-  else {
-    if (! _systemConfigFile.empty()) {
-      string sysDir = _systemConfigPath + TRI_DIR_SEPARATOR_CHAR + _systemConfigFile;
+    if (d != 0) {
+      string sysDir = string(d) + _systemConfigFile;
+      TRI_FreeString(TRI_CORE_MEM_ZONE, d);
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {
@@ -1076,7 +1026,7 @@ bool ApplicationServer::readConfigurationFile () {
       }
     }
     else {
-      LOGGER_DEBUG("no system init file specified");
+      LOGGER_DEBUG("no system init file, system directory is not known");
     }
   }
 

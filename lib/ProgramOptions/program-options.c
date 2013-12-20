@@ -178,8 +178,23 @@ static char * FillVariables (const char* value) {
           char* k = TRI_DuplicateString2(t, q - t);
           char* v = getenv(k);
 
+          if (v != NULL && *v == '\0') {
+            TRI_FreeString(TRI_CORE_MEM_ZONE, v);
+            v = NULL;
+          }
+
+          if (v == NULL) {
+            if (TRI_EqualString(k, "ROOTDIR")) {
+              v = TRI_LocateInstallDirectory();
+            }
+          }
+          else {
+            v = TRI_DuplicateString(v);
+          }
+
           if (v != NULL) {
             TRI_AppendStringStringBuffer(&buffer, v);
+            TRI_FreeString(TRI_CORE_MEM_ZONE, v);
           }
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, k);

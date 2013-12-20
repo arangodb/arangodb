@@ -33,17 +33,6 @@
 #include <malloc.h>
 #include <crtdbg.h>
 
-/*
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <share.h>
-*/
-
-
-
-
 // .............................................................................
 // Some global variables which may be required throughout the lifetime of the
 // server
@@ -317,39 +306,20 @@ int TRI_openFile (const char* filename, int openFlags) {
   int    fileDescriptor;
 
   fileHandle = CreateFileA(filename,
-                          GENERIC_READ | GENERIC_WRITE,
-                          FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                          NULL,
-                          OPEN_EXISTING,
-                          0,
-                          NULL);
+                           GENERIC_READ | GENERIC_WRITE,
+                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL,
+                           OPEN_EXISTING,
+                           0,
+                           NULL);
+
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
   fileDescriptor = _open_osfhandle( (intptr_t)(fileHandle), O_RDWR| _O_BINARY);
   return fileDescriptor;
-
-/*
-#define O_RDONLY        _O_RDONLY
-#define O_WRONLY        _O_WRONLY
-#define O_RDWR          _O_RDWR
-#define O_APPEND        _O_APPEND
-#define O_CREAT         _O_CREAT
-#define O_TRUNC         _O_TRUNC
-#define O_EXCL          _O_EXCL
-#define O_TEXT          _O_TEXT
-#define O_BINARY        _O_BINARY
-#define O_RAW           _O_BINARY
-#define O_TEMPORARY     _O_TEMPORARY
-#define O_NOINHERIT     _O_NOINHERIT
-#define O_SEQUENTIAL    _O_SEQUENTIAL
-#define O_RANDOM        _O_RANDOM
-//filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR
-*/
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
