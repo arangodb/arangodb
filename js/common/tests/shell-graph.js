@@ -59,6 +59,12 @@ function GraphCreationSuite() {
         edge = "UnitTestsCollectionEdge",
         graph = null;
 
+      try {
+        Graph.drop(graph_name);
+      }
+      catch (err) {
+      }
+
       graph = new Graph(graph_name, vertex, edge);
 
       assertEqual(graph_name, graph._properties._key);
@@ -66,6 +72,85 @@ function GraphCreationSuite() {
       assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
 
       graph.drop();
+    },
+
+    testCreationWithCollections : function () {
+      // clean up
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+
+      try {
+        require("org/arangodb/graph").Graph.drop("UnitTestsCollectionGraph");
+      }
+      catch (err) {
+      }
+
+      // create collections
+      var Graph = require("org/arangodb/graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        vertex = arangodb.db._create("UnitTestsCollectionGraphVertices"),
+        edge = arangodb.db._createEdgeCollection("UnitTestsCollectionGraphEdges"),
+        graph = null;
+
+      graph = new Graph(graph_name, vertex, edge);
+      assertEqual(graph_name, graph._properties._key);
+      assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
+      assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
+
+      graph.drop();
+
+      // clean up
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+    },
+
+    testDroppingIfVertexCollectionIsUsedTwice : function () {
+      var Graph = require("org/arangodb/graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        other_graph_name = "UnitTestsCollectionOtherGraph",
+        vertex = "UnitTestsCollectionVertex",
+        edges = "UnitTestsCollectionEdge",
+        other_edges = "UnitTestsCollectionOtherEdges",
+        graph = new Graph(graph_name, vertex, edges),
+        other_graph = new Graph(other_graph_name, vertex, other_edges);
+
+      graph.drop();
+      assertTrue(arangodb.db._collection("UnitTestsCollectionVertex") !== null);
+      other_graph.drop();
+    },
+    
+    testDropStatic : function () {
+      // clean up
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+
+      // create collections
+      var Graph = require("org/arangodb/graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        vertex = arangodb.db._create("UnitTestsCollectionGraphVertices"),
+        edge = arangodb.db._createEdgeCollection("UnitTestsCollectionGraphEdges"),
+        graph = null;
+
+      assertNotNull(arangodb.db._collection("UnitTestsCollectionGraphVertices"));
+      assertNotNull(arangodb.db._collection("UnitTestsCollectionGraphEdges"));
+      // create the graph
+      graph = new Graph(graph_name, vertex, edge);
+       
+      // clean up the collections
+      arangodb.db._drop("UnitTestsCollectionGraphVertices");
+      arangodb.db._drop("UnitTestsCollectionGraphEdges");
+      
+      assertNull(arangodb.db._collection("UnitTestsCollectionGraphVertices"));
+      assertNull(arangodb.db._collection("UnitTestsCollectionGraphEdges"));
+      
+      // statically remove the graph
+      try {
+        Graph.drop(graph_name);
+      }
+      catch (err) {
+      }
+
+      assertNull(arangodb.db._collection('_graphs').firstExample({ _key: graph_name }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,6 +280,30 @@ function GraphBasicsSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all vertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetAllVertices : function () {
+      var v1 = graph.addVertex("my_vertex", { test: 123 }),
+        vertices = graph.getVertices(),
+        v2 = vertices.next();
+
+      assertEqual(v1.getProperty('test'), v2.getProperty('test'));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceVertex : function () {
+      var v = graph.addVertex("vertex_to_replace", { age : 23 });
+      graph.replaceVertex("vertex_to_replace", { age: 24 });
+      v = graph.getVertex("vertex_to_replace");
+
+      assertEqual(24, v.getProperty("age"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -227,6 +336,22 @@ function GraphBasicsSuite() {
       assertEqual(edge._properties._key, edge.getId());
     },
 
+    testReplaceEdge : function () {
+      var v1,
+        v2,
+        edge;
+
+      v1 = graph.addVertex("vertex1");
+      v2 = graph.addVertex("vertex2");
+
+      graph.addEdge(v1, v2, "my-edge");
+
+      graph.replaceEdge("my-edge", { weight: 2 });
+      edge = graph.getEdge("my-edge");
+
+      assertEqual(2, edge.getProperty("weight"));
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,6 +366,25 @@ function GraphBasicsSuite() {
 
       edge = graph.addEdge(v1,
         v2,
+        "edge1",
+        "label",
+        { testProperty: "testValue" });
+
+      assertEqual("edge1", edge.getId());
+      assertEqual("label", edge.getLabel());
+      assertEqual("testValue", edge.getProperty("testProperty"));
+    },
+
+    testAddEdgeViaId : function () {
+      var v1,
+        v2,
+        edge;
+
+      v1 = graph.addVertex("vertex1");
+      v2 = graph.addVertex("vertex2");
+
+      edge = graph.addEdge(v1._properties._id,
+        v2._properties._id,
         "edge1",
         "label",
         { testProperty: "testValue" });

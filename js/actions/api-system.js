@@ -357,7 +357,8 @@ actions.defineHttp({
     try {
       result = {};
       result.system = internal.processStatistics();
-      result.client = internal.requestStatistics();
+      result.client = internal.clientStatistics();
+      result.http = internal.httpStatistics();
       result.server = internal.serverStatistics();
 
       actions.resultOk(req, res, actions.HTTP_OK, result);
@@ -391,7 +392,7 @@ actions.defineHttp({
 /// - `group`: The identifier of the group to which this figure belongs.
 /// - `identifier`: The identifier of the figure. It is unique within the group.
 /// - `name`: The name of the figure.
-/// - `description`: A description of the group.
+/// - `description`: A description of the figure.
 /// - `type`: Either `current`, `accumulated`, or `distribution`.
 /// - `cuts`: The distribution vector.
 /// - `units`: Units in which the figure is measured.
@@ -432,10 +433,16 @@ actions.defineHttp({
 
           {
             group: "client",
-            name: "Client Statistics",
-            description: "Statistics about the clients connecting to the server."
+            name: "Client Connection Statistics",
+            description: "Statistics about the connections."
           },
-
+          
+          {
+            group: "http",
+            name: "HTTP Request Statistics",
+            description: "Statistics about the HTTP requests."
+          },
+          
           {
             group: "server",
             name: "Server Statistics",
@@ -523,12 +530,12 @@ actions.defineHttp({
           // .............................................................................
           // client statistics
           // .............................................................................
-
+          
           {
             group: "client",
             identifier: "httpConnections",
-            name: "HTTP Client Connections",
-            description: "The number of http connections that are currently open.",
+            name: "Client Connections",
+            description: "The number of connections that are currently open.",
             type: "current",
             units: "number"
           },
@@ -562,7 +569,7 @@ actions.defineHttp({
             cuts: internal.requestTimeDistribution,
             units: "seconds"
           },
-
+          
           {
             group: "client",
             identifier: "bytesSent",
@@ -591,6 +598,87 @@ actions.defineHttp({
             type: "distribution",
             cuts: internal.connectionTimeDistribution,
             units: "seconds"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsTotal",
+            name: "Total requests",
+            description: "Total number of HTTP requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsAsync",
+            name: "Async requests",
+            description: "Number of asynchronously executed HTTP requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsGet",
+            name: "HTTP GET requests",
+            description: "Number of HTTP GET requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsHead",
+            name: "HTTP HEAD requests",
+            description: "Number of HTTP HEAD requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsPost",
+            name: "HTTP POST requests",
+            description: "Number of HTTP POST requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsPut",
+            name: "HTTP PUT requests",
+            description: "Number of HTTP PUT requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsPatch",
+            name: "HTTP PATCH requests",
+            description: "Number of HTTP PATCH requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsDelete",
+            name: "HTTP DELETE requests",
+            description: "Number of HTTP DELETE requests.",
+            type: "accumulated",
+            units: "number"
+          },
+          
+          {
+            group: "http",
+            identifier: "requestsOptions",
+            name: "HTTP OPTIONS requests",
+            description: "Number of HTTP OPTIONS requests.",
+            type: "accumulated",
+            units: "number"
           },
 
           // .............................................................................

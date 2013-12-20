@@ -82,6 +82,7 @@ namespace triagens {
                          const string& password,
                          double requestTimeout,
                          double connectTimeout,
+                         uint32_t sslProtocol,
                          bool keepAlive,
                          bool async)
           : Thread("arangob"),
@@ -99,6 +100,7 @@ namespace triagens {
             _password(password),
             _requestTimeout(requestTimeout),
             _connectTimeout(connectTimeout),
+            _sslProtocol(sslProtocol),
             _keepAlive(keepAlive),
             _async(async),
             _client(0),
@@ -146,7 +148,8 @@ namespace triagens {
         virtual void run () {
           allowAsynchronousCancelation();
 
-          _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3);
+          _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
+
           if (_connection == 0) {
             LOGGER_FATAL_AND_EXIT("out of memory");
           }
@@ -518,6 +521,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _connectTimeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl protocol
+////////////////////////////////////////////////////////////////////////////////
+
+        uint32_t _sslProtocol;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use HTTP keep-alive

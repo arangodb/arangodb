@@ -13,8 +13,7 @@ for script in $SCRIPTS; do
     echo "#!/bin/bash"
     echo
     echo "export ARANGODB_ROOT=\"${ARANGODB_ROOT}Contents/MacOS/\""
-    echo "export DATABASEDIR=\"\${ARANGODB_ROOT}opt/arangodb/var/lib/arangodb\""
-    echo "export LOGDIR=\"\${ARANGODB_ROOT}opt/arangodb/var/log/arangodb\""
+    echo "export LOCALSTATEDIR=\"\${ARANGODB_ROOT}opt/arangodb/var\""
     echo "export PKGDATADIR=\"\${ARANGODB_ROOT}opt/arangodb/share/arangodb\""
     echo
     if [ "$base" == "arango-dfdb" ];  then

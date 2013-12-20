@@ -71,7 +71,8 @@ namespace triagens {
         SslClientConnection (triagens::rest::Endpoint* endpoint,
                              double,
                              double,
-                             size_t);
+                             size_t,
+                             uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection

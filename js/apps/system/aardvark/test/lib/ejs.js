@@ -476,6 +476,7 @@ EJS.Helpers.prototype = {
 	EJS.request = function(path){
 	   var request = new EJS.newRequest()
 	   request.open("GET", path, false);
+     console.log(path);
 	   
 	   try{request.send(null);}
 	   catch(e){return null;}

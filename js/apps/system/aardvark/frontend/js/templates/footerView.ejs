@@ -12,6 +12,6 @@
 </div>
 
 <div class="footer-right">
-  <p <%=margin?"style='margin-right:"+margin+"px'":""%>><% if(n) { %>Server: <%=n%> <%=v%>, Database: <%=db%><% } %></p>
+  <p <%=margin?"style='margin-right:" + (margin + 40) + "px'":""%>><% if(n) { %>Server: <%=n%> <%=v%>, Database: <span id="dbSelect" class="selectDB"></span><% } %></p>
 </div>
 <div class="footer-invisible" id="databaseName"></div>

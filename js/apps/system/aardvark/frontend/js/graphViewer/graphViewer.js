@@ -51,7 +51,13 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   if (adapterConfig === undefined || adapterConfig.type === undefined) {
     throw "An adapter configuration has to be given";
   }
-  
+
+  // Globally disable the right-click menu
+  /*
+  svg[0][0].oncontextmenu = function() {
+    return false;
+  };
+  */
   var self = this,
     adapter,
     nodeShaper,
@@ -122,6 +128,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       adapter = new ArangoAdapter(
         nodes,
         edges,
+        this,
         adapterConfig
       );
       adapter.setChildLimit(10);
@@ -133,6 +140,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         nodes,
         edges,
         adapterConfig.route,
+        this,
         adapterConfig
       );
       break;
@@ -141,6 +149,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         adapterConfig.path,
         nodes,
         edges,
+        this,
         width,
         height
       );
@@ -151,6 +160,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       adapter = new PreviewAdapter(
         nodes,
         edges,
+        this,
         adapterConfig
       );
       break;
@@ -186,7 +196,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   };
   
   this.loadGraphWithAttributeValue = function(attribute, value, callback) {
-//    loadNodeFromTreeByAttributeValue
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
         callback(node);
@@ -198,6 +207,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         callback();
       }
     });
+  };
+
+  this.cleanUp = function() {
+    nodeShaper.resetColourMap();
+    edgeShaper.resetColourMap();
   };
   
   this.changeWidth = function(w) {

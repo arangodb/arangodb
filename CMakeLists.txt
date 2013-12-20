@@ -137,17 +137,14 @@ endif ()
 
 file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+
 ################################################################################
 ### @brief TRI_BINDIR
 ################################################################################
 
 set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-
-################################################################################
-### @brief database directory
-################################################################################
-
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
 
 ################################################################################
 ### @brief apps directory

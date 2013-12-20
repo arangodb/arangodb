@@ -87,12 +87,13 @@ GeneralClientConnection::~GeneralClientConnection () {
 GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
                                                            double requestTimeout,
                                                            double connectTimeout,
-                                                           size_t numRetries) {
+                                                           size_t numRetries,
+                                                           uint32_t sslProtocol) {
   if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   }
   else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
+    return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries, sslProtocol);
   }
   else {
     return 0;

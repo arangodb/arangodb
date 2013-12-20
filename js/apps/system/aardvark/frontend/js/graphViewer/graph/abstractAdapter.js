@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function AbstractAdapter(nodes, edges, descendant, config) {
+function AbstractAdapter(nodes, edges, descendant, viewer, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -41,6 +41,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   }
   if (descendant === undefined) {
     throw "An inheriting class has to be given.";
+  }
+  if (viewer === undefined) {
+    throw "A reference to the graph viewer has to be given.";
   }
   config = config || {};
   
@@ -104,7 +107,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       throw "Too many edges with the same ID, should never happen";
     },
     
-    insertNode = function(data) {
+    insertNode = function(data, x, y) {
       var node = {
         _data: data,
         _id: data._id
@@ -113,8 +116,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       if (n) {
         return n;
       }
-      node.x = initialX.getStart();
-      node.y = initialY.getStart();
+      node.x = x || initialX.getStart();
+      node.y = y || initialY.getStart();
       nodes.push(node);
       node._outboundCounter = 0;
       node._inboundCounter = 0;
@@ -134,6 +137,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       edges.length = 0;
       joinedInCommunities = {};
       cachedCommunities = {};
+      viewer.cleanUp();
     },
     
     insertEdge = function(data) {
