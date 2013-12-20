@@ -124,6 +124,14 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the response contained a content length header
+////////////////////////////////////////////////////////////////////////////////
+
+      bool hasContentLength () const {
+        return _hasContentLength;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the content length
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,6 +145,7 @@ namespace triagens {
 
       void setContentLength (size_t len) {
         _contentLength = len;
+        _hasContentLength = true;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +239,7 @@ namespace triagens {
       int _returnCode;
       string _returnMessage;
       size_t _contentLength;
+      bool _hasContentLength;
       bool _chunked;
       bool _deflated;
 
