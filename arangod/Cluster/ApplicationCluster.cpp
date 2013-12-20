@@ -201,6 +201,9 @@ bool ApplicationCluster::start () {
                        _myId.c_str());
   }
   
+  // register our own address
+  ServerState::instance()->setAddress(_myAddress);
+  
   // now we can validate --cluster.my-address
   const string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
 
