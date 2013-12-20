@@ -651,7 +651,8 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
     triagens::httpclient::GeneralClientConnection::factory(endpoint, 
                                                            _globalConnectionOptions._requestTimeout, 
                                                            _globalConnectionOptions._connectTimeout, 
-                                                           _globalConnectionOptions._connectRetries);
+                                                           _globalConnectionOptions._connectRetries,
+                                                           0);
 
   if (connection == 0) {
     delete endpoint;
