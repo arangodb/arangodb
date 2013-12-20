@@ -274,7 +274,7 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
-  if (_ssl == 0) {
+  if (_ssl == 0 || ! _isConnected) {
     return false;
   }
 
@@ -285,6 +285,7 @@ bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
       return false;
     }
 
+again:
     int lenRead = SSL_read(_ssl, stringBuffer.end(), READBUFFER_SIZE - 1);
 
     switch (SSL_get_error(_ssl, lenRead)) {
@@ -294,9 +295,12 @@ bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
 
       case SSL_ERROR_ZERO_RETURN:
         SSL_shutdown(_ssl);
+        _isConnected = false;
         return true;
 
       case SSL_ERROR_WANT_READ:
+        goto again;
+
       case SSL_ERROR_WANT_WRITE:
       case SSL_ERROR_WANT_CONNECT:
       case SSL_ERROR_SYSCALL:
@@ -326,7 +330,43 @@ bool SslClientConnection::readable () {
   // which are available inside ssl for reading.
   // ...........................................................................
 
-  return (SSL_pending(_ssl) > 0);
+  if (SSL_pending(_ssl) > 0) {
+    return true;
+  }
+
+  if (prepare(0.0, false)) {
+    return checkSocket();
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the socket is workable
+////////////////////////////////////////////////////////////////////////////////
+
+bool SslClientConnection::checkSocket () {
+  int so_error = -1;
+  socklen_t len = sizeof so_error;
+
+  assert(_socket.fileHandle > 0);
+
+  int res = getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    _isConnected = false;
+    TRI_set_errno(errno);
+    return false;
+  }
+
+  if (so_error == 0) {
+    return true;
+  }
+
+  TRI_set_errno(so_error);
+  _isConnected = false;
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
