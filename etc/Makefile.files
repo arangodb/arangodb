@@ -11,7 +11,8 @@ BUILT_SOURCES += \
 	etc/arangodb/arangoimp.conf \
 	etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangorestore.conf \
-	etc/arangodb/arangosh.conf
+	etc/arangodb/arangosh.conf \
+	etc/arangodb/foxx-manager.conf
 
 ################################################################################
 ### @brief config
