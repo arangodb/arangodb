@@ -5,6 +5,7 @@
 ## -----------------------------------------------------------------------------
 
 BUILT_SOURCES += \
+	etc/arangodb/arango-dfdb.conf \
 	etc/arangodb/arangob.conf \
 	etc/arangodb/arangod.conf \
 	etc/arangodb/arangodump.conf \

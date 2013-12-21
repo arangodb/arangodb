@@ -334,11 +334,15 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_FATAL_AND_EXIT("out of memory");
   }
 
-  _applicationServer->setSystemConfigFile("arangod.conf");
+  char* p = TRI_BinaryName(_argv[0]);
+  string conf = p;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+  conf += ".conf";
+
+  _applicationServer->setSystemConfigFile(conf);
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
-  _applicationServer->setUserConfigFile(string(".arango") + string(1, TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
-
+  _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf) );
 
   // .............................................................................
   // multi-threading scheduler
