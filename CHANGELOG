@@ -1,7 +1,7 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
-* arangosh now uses the config-file which maps the binary name, i. e. if you
+* arangosh and arangod now uses the config-file which maps the binary name, i. e. if you
   rename arangosh to foxx-manager it will use the config file foxx-manager.conf
 
 * fixed issue #711, #687: foxx-manager throws internal errors
