@@ -1891,10 +1891,19 @@ char* TRI_LocateInstallDirectory () {
   // TODO: the installer always uses the 32bit path (Wow6432)
   long lResult = RegOpenKeyEx(
      HKEY_LOCAL_MACHINE,
-     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB 1.4.4", // TODO
+     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
      0,
      KEY_READ,
      &key);
+
+  if (lResult != ERROR_SUCCESS) {
+    lResult = RegOpenKeyEx(
+        HKEY_LOCAL_MACHINE,
+        "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+        0,
+        KEY_READ,
+        &key);
+  }
 
   if (lResult == ERROR_SUCCESS) {
 
@@ -1902,7 +1911,7 @@ char* TRI_LocateInstallDirectory () {
     lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
 
     if (lResult == ERROR_SUCCESS) {
-      return TRI_DuplicateString(szPath);
+      return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
     }
 
     RegCloseKey(key);
@@ -1928,36 +1937,15 @@ char* TRI_LocateInstallDirectory () {
 #if _WIN32
 
 char* TRI_LocateConfigDirectory () {
-  DWORD dwType;
-  char  szPath[1023];
-  DWORD dwDataSize;
-  HKEY key;
+  char* v;
 
-  dwDataSize = sizeof(szPath);
-  memset(szPath, 0, dwDataSize);
+  v = TRI_LocateInstallDirectory();
 
-  // open the key for reading
-  // TODO: the installer always uses the 32bit path (Wow6432)
-  long lResult = RegOpenKeyEx(
-     HKEY_LOCAL_MACHINE,
-     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB 1.4.4", // TODO
-     0,
-     KEY_READ,
-     &key);
-
-  if (lResult == ERROR_SUCCESS) {
-
-    // read the version value
-    lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
-
-    if (lResult == ERROR_SUCCESS) {
-      return TRI_Concatenate2File(szPath, "etc\\arangodb\\");
-    }
-
-    RegCloseKey(key);
+  if (v != NULL) {
+    TRI_AppendString(&v, "etc\\arangodb\\");
   }
 
-  return NULL;
+  return v;
 }
 
 #elif defined(_SYSCONFDIR_)
