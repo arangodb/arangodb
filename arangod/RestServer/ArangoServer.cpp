@@ -434,6 +434,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("no-upgrade", "skip a database upgrade")
+    ("start-service", "used to start as windows service")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -697,7 +698,6 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
-  v8::HandleScope scope;
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -715,7 +715,7 @@ int ArangoServer::startupServer () {
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
   assert(vocbase != 0);
 
-
+  // initialise V8
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
 

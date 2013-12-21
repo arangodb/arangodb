@@ -1,6 +1,8 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* added --install-service and --uninstall-service for Windows
+
 * removed --daemon and --supervisor for Windows
 
 * arangosh and arangod now uses the config-file which maps the binary name, i. e. if you

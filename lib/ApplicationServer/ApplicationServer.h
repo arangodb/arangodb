@@ -59,9 +59,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class ApplicationServer {
-      private:
-        ApplicationServer (const ApplicationServer&);
-        ApplicationServer& operator= (const ApplicationServer&);
+      ApplicationServer (const ApplicationServer&);
+      ApplicationServer& operator= (const ApplicationServer&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
