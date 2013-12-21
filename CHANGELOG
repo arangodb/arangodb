@@ -1,6 +1,11 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* arangosh and arangod now uses the config-file which maps the binary name, i. e. if you
+  rename arangosh to foxx-manager it will use the config file foxx-manager.conf
+
+* fixed issue #711, #687: foxx-manager throws internal errors
+
 * added `--server.ssl-protocol` option for client tools
   this allows connecting from arangosh, arangoimp, arangoimp etc. to an ArangoDB
   server that uses a non-default value for `--server.ssl-protocol`. The default

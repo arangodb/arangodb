@@ -1141,11 +1141,11 @@ BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
 	etc/arangodb/arangod.conf etc/arangodb/arangodump.conf \
 	etc/arangodb/arangoimp.conf etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangorestore.conf etc/arangodb/arangosh.conf \
-	$(am__append_12) Doxygen/.setup-directories \
-	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
-	$(am__append_13) $(am__append_15) $(am__append_16) @ZLIB_LIBS@ \
-	$(am__append_17) $(am__append_19) $(am__append_21) \
-	$(am__append_23)
+	etc/arangodb/foxx-manager.conf $(am__append_12) \
+	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
+	@builddir@/.setup-js-directories $(am__append_13) \
+	$(am__append_15) $(am__append_16) @ZLIB_LIBS@ $(am__append_17) \
+	$(am__append_19) $(am__append_21) $(am__append_23)
 
 ################################################################################
 ### @brief man pages to install

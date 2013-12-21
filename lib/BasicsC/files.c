@@ -1472,6 +1472,30 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the binary name without any path or suffix
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_BinaryName (const char* argv0) {
+  char* name;
+  char* p;
+  char* e;
+
+  name = TRI_Basename(argv0);
+
+  p = name;
+  e = name + strlen(name);
+
+  for (;  p < e;  ++p) {
+    if (*p == '.') {
+      *p = '\0';
+      break;
+    }
+  }
+
+  return name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program
 ////////////////////////////////////////////////////////////////////////////////
 
