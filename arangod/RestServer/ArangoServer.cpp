@@ -286,7 +286,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // set working directory and database directory
+#ifdef _WIN32
+  _workingDirectory = ".";
+#else
   _workingDirectory = "/var/tmp";
+#endif
 
   _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 
@@ -421,15 +425,11 @@ void ArangoServer::buildApplicationServer () {
   // define server options
   // .............................................................................
 
-  // .............................................................................
-  // daemon and supervisor mode
-  // .............................................................................
-
-
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
     ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
+    ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
@@ -442,13 +442,20 @@ void ArangoServer::buildApplicationServer () {
   ;
 #endif
 
+  // .............................................................................
+  // daemon and supervisor mode
+  // .............................................................................
+
+#ifndef _WIN32
+
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
-    ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
+
+#endif
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("development-mode", "start server in development mode")

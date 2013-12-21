@@ -1,6 +1,8 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* removed --daemon and --supervisor for Windows
+
 * arangosh and arangod now uses the config-file which maps the binary name, i. e. if you
   rename arangosh to foxx-manager it will use the config file foxx-manager.conf
 
