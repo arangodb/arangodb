@@ -45,7 +45,7 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGOIRB}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
 if (USE_RAW_CONFIG)
   install(

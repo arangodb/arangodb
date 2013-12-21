@@ -4,7 +4,15 @@
 ## --SECTION--                                                    COMMON DEFINES
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief required cmake version
+################################################################################
+
 cmake_minimum_required(VERSION 2.6)
+
+################################################################################
+### @brief cmake build types
+################################################################################
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -173,11 +181,9 @@ file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
 
-################################################################################
-### @brief TRI_BINDIR
-################################################################################
-
-set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       DIRECTORIES
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief apps directory
@@ -198,16 +204,79 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
 set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
 
 ################################################################################
+### @brief TRI_BINDIR
+################################################################################
+
+if (MSVC)
+  set(TRI_BINDIR_INSTALL "bin")
+  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+else ()
+  set(TRI_BINDIR_INSTALL "bin")
+  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+endif ()
+
+################################################################################
 ### @brief TRI_SBINDIR
 ################################################################################
 
-set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
+if (MSVC)
+  set(TRI_SBINDIR_INSTALL "bin")
+  set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+else ()
+  set(TRI_SBINDIR_INSTALL "sbin")
+  set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
+endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   COMMON INCLUDES
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief project source
+################################################################################
+
 include_directories(${PROJECT_SOURCE_DIR})
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                     COMMON MACROS
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief generate root config file
+################################################################################
+
+macro (generate_root_config name)
+  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
+
+  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb" 
+         FileContent "${FileContent}")
+
+  STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var" 
+         FileContent "${FileContent}")
+
+  STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
+         FileContent "${FileContent}")
+
+  FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")
+endmacro ()
+
+################################################################################
+### @brief install a config file
+################################################################################
+
+macro (install_config name)
+  if (MSVC)
+    generate_root_config(${name})
+
+    install(
+      FILES ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf
+      DESTINATION ${ETCDIR_INSTALL})
+  else ()
+    install(
+      FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf
+      DESTINATION ${ETCDIR_INSTALL})
+  endif ()
+endmacro ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                EXTERNAL LIBRARIES
@@ -412,19 +481,45 @@ add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ## --SECTION--                                                      SUB-PROJECTS
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief lib
+################################################################################
+
 add_subdirectory(lib)
+
+################################################################################
+### @brief arangosh
+################################################################################
+
 add_subdirectory(arangosh)
+
+################################################################################
+### @brief arangod
+################################################################################
+
 add_subdirectory(arangod)
+
+################################################################################
+### @brief arangoirb
+################################################################################
 
 if (USE_MRUBY)
   add_subdirectory(arangoirb)
 endif ()
+
+################################################################################
+### @brief utils
+################################################################################
 
 add_subdirectory(utils)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                    DOCUMENTATIONS
 ## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief install manual
+################################################################################
 
 INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
         DESTINATION share/man)
@@ -450,6 +545,13 @@ else ()
   set(CPACK_SET_DESTDIR ON)
 endif ()
 
+set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
+set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
+set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
+
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+
+set(CPACK_STRIP_FILES "ON")
 
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
@@ -460,16 +562,6 @@ elseif (BUILD_PACKAGE STREQUAL "debian")
 elseif (MSVC)
   set(CPACK_PACKAGE_NAME "ArangoDB")
 endif ()
-
-
-set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
-set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
-set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
-
-set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
-
-
-set(CPACK_STRIP_FILES "ON")
 
 ################################################################################
 ### @brief debian package

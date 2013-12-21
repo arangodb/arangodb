@@ -15,7 +15,11 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 ### @brief output directory
 ################################################################################
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+if (MSVC)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/")
+else ()
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+endif()
 
 ################################################################################
 ### @brief arangob
@@ -42,7 +46,7 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGOB}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
 if (USE_RAW_CONFIG)
   install(
@@ -51,9 +55,7 @@ if (USE_RAW_CONFIG)
     RENAME arangob-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangob)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -88,7 +90,7 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGODUMP}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
 if (USE_RAW_CONFIG)
   install(
@@ -97,9 +99,7 @@ if (USE_RAW_CONFIG)
     RENAME arangodump-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangodump)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -136,7 +136,7 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGOIMP}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
 if (USE_RAW_CONFIG)
   install(
@@ -145,9 +145,7 @@ if (USE_RAW_CONFIG)
     RENAME arangoimp-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangoimp)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -182,7 +180,7 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGORESTORE}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
 if (USE_RAW_CONFIG)
   install(
@@ -191,9 +189,7 @@ if (USE_RAW_CONFIG)
     RENAME arangorestore-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangorestore)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
@@ -230,7 +226,7 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGOSH}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
 if (USE_RAW_CONFIG)
   install(
@@ -239,9 +235,7 @@ if (USE_RAW_CONFIG)
     RENAME arangosh-relative.conf)
 endif ()
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangosh)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client

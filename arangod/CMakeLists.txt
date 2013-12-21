@@ -149,7 +149,11 @@ target_link_libraries(
 
 install(
   TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION sbin)
+  RUNTIME DESTINATION ${TRI_SBINDIR_INSTALL})
+
+################################################################################
+### @brief install arangod config
+################################################################################
 
 if (USE_RAW_CONFIG)
   install(
@@ -168,6 +172,12 @@ if (BUILD_PACKAGE STREQUAL "raspbian")
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
     DESTINATION ${ETCDIR_INSTALL}
     RENAME arangod-uid.conf)
+elseif (MSVC)
+  generate_root_config(arangod)
+
+  install(
+    FILES ${PROJECT_BINARY_DIR}/etc/arangodb/arangod.conf
+    DESTINATION ${ETCDIR_INSTALL})
 else ()
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
@@ -177,6 +187,10 @@ else ()
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
     DESTINATION ${ETCDIR_INSTALL})
 endif ()
+
+################################################################################
+### @brief install arangod JavaScript files
+################################################################################
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
@@ -197,18 +211,34 @@ install(
   DESTINATION share/arangodb/js
   PATTERN "databases" EXCLUDE)
 
+################################################################################
+### @brief install arangod mruby files
+################################################################################
+
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
   DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 
+################################################################################
+### @brief install log directory
+################################################################################
+
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
   DESTINATION ${VARDIR_INSTALL}/log)
 
+################################################################################
+### @brief install database directory
+################################################################################
+
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
   DESTINATION ${VARDIR_INSTALL}/lib)
+
+################################################################################
+### @brief install apps directory
+################################################################################
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps
