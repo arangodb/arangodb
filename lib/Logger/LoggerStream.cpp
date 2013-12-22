@@ -139,7 +139,7 @@ LoggerStream::LoggerStream (LoggerData::Info const& info) :
 /// @brief move or copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_MSC_VER)
+#ifdef _MSC_VER
 
 LoggerStream::LoggerStream (LoggerStream&& copy) :
   _stream(copy._stream), _info(copy._info) {
