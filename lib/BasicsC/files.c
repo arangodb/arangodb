@@ -102,8 +102,9 @@ static TRI_read_write_lock_t FileNamesLock;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove trailing path separators from path.
-/// path will be modified in-place
+/// @brief removes trailing path separators from path
+///
+/// @note path will be modified in-place
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveTrailingSeparator (char* path) {
@@ -116,9 +117,31 @@ static void RemoveTrailingSeparator (char* path) {
   if (n > 0) {
     char* p = path + n - 1;
 
-    while (p > s && *p == TRI_DIR_SEPARATOR_CHAR) {
+    while (p > s && (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/')) {
       *p = '\0';
       --p;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes path
+///
+/// @note path will be modified in-place
+////////////////////////////////////////////////////////////////////////////////
+
+static void NormalizePath (char* path) {
+  char* p;
+  char *e;
+
+  RemoveTrailingSeparator(path);
+
+  p = path;
+  e = path + strlen(p);
+
+  for (; p < e;  ++p) {
+    if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+      *p = TRI_DIR_SEPARATOR_CHAR;
     }
   }
 }
@@ -673,12 +696,8 @@ char* TRI_Concatenate2File (char const* path, char const* name) {
   char* result;
 
   if (0 < len) {
-    if (path[len - 1] == '/' || path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      result = TRI_DuplicateString2(path, len - 1);
-    }
-    else {
-      result = TRI_DuplicateString2(path, len);
-    }
+    result = TRI_DuplicateString(path);
+    RemoveTrailingSeparator(result);
 
     TRI_AppendString(&result, TRI_DIR_SEPARATOR_STR);
   }
@@ -687,6 +706,7 @@ char* TRI_Concatenate2File (char const* path, char const* name) {
   }
 
   TRI_AppendString(&result, name);
+  NormalizePath(result);
 
   return result;
 }
