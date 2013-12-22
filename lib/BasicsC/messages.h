@@ -56,7 +56,7 @@ extern "C" {
 #define TRI_BYE_MESSAGE_RU "До свидания!"
 #define TRI_BYE_MESSAGE_SV "Adjö!"
 
-#define TRI_BYE_MESSAGE (\
+#define TRI_BYE_MESSAGE \
   TRI_BYE_MESSAGE_CH " " \
   TRI_BYE_MESSAGE_CZ " " \
   TRI_BYE_MESSAGE_DE " " \
@@ -69,7 +69,7 @@ extern "C" {
   TRI_BYE_MESSAGE_JP " " \
   TRI_BYE_MESSAGE_NL " " \
   TRI_BYE_MESSAGE_RU " " \
-  TRI_BYE_MESSAGE_SV)
+  TRI_BYE_MESSAGE_SV
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
