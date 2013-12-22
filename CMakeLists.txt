@@ -96,7 +96,7 @@ if (MSVC)
 
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
 
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO")
 endif ()
 
 ################################################################################
@@ -530,13 +530,15 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
 
 if (MSVC)
   install(FILES ${PROJECT_SOURCE_DIR}/README
-          DESTINATION .)
+          DESTINATION .
+          RENAME README.txt)
 
   install(FILES ${PROJECT_SOURCE_DIR}/README.md
           DESTINATION .)
 
   install(FILES ${PROJECT_SOURCE_DIR}/README.windows
-          DESTINATION .)
+          DESTINATION .
+          RENAME README.windows.txt)
 endif ()
 
 ################################################################################
@@ -545,7 +547,8 @@ endif ()
 
 if (MSVC)
   install(FILES ${PROJECT_SOURCE_DIR}/LICENSE
-          DESTINATION .)
+          DESTINATION .
+          RENAME LICENSE.txt)
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -671,5 +674,5 @@ include(CPack)
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "### @brief\\|## --SECTION--\\|## -\\*- "
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
 ## End:

@@ -8,9 +8,6 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
-VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
-VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FILES

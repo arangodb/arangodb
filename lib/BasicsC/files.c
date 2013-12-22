@@ -669,7 +669,26 @@ char* TRI_Basename (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate2File (char const* path, char const* name) {
-  return TRI_Concatenate3String(path, TRI_DIR_SEPARATOR_STR, name);
+  size_t len = strlen(path);
+  char* result;
+
+  if (0 < len) {
+    if (path[len - 1] == '/' || path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      result = TRI_DuplicateString2(path, len - 1);
+    }
+    else {
+      result = TRI_DuplicateString2(path, len);
+    }
+
+    TRI_AppendString(&result, TRI_DIR_SEPARATOR_STR);
+  }
+  else {
+    result = TRI_DuplicateString("");
+  }
+
+  TRI_AppendString(&result, name);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -677,7 +696,15 @@ char* TRI_Concatenate2File (char const* path, char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate3File (char const* path1, char const* path2, char const* name) {
-  return TRI_Concatenate5String(path1, TRI_DIR_SEPARATOR_STR, path2, TRI_DIR_SEPARATOR_STR, name);
+  char* tmp;
+  char* result;
+
+  tmp = TRI_Concatenate2File(path1, path2);
+  result = TRI_Concatenate2File(tmp, name);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

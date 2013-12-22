@@ -1,10 +1,18 @@
 # -*- mode: Makefile; -*-
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                   SPECIAL TARGETS
+## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
 -include Makefile
+
+VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
+VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
+VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                   SPECIAL TARGETS
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief setup
@@ -215,6 +223,37 @@ pack-arm-cmake:
 
 	cd Build && cpack \
 		-G DEB
+
+################################################################################
+### @brief Windows 64-bit bundle
+################################################################################
+
+.PHONY: pack-win32 pack-winXX pack-winXX-cmake
+
+pack-win32:
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
+
+pack-win64:
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
+
+pack-winXX:
+	rm -rf Build$(BITS) && mkdir Build$(BITS)
+
+	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)"
+
+pack-winXX-cmake:
+	cd Build$(BITS) && cmake \
+		-G "$(TARGET)" \
+		-D "USE_MRUBY=OFF" \
+		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		..
+
+	cd Build$(BITS) && cmake --build . --config Release
+
+	cd Build$(BITS) && cpack -G NSIS
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
