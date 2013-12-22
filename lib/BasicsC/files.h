@@ -299,13 +299,13 @@ void TRI_SetUserTempPath (char*);
 /// @brief locate the installation directory
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LocateInstallDirectory ();
+char* TRI_LocateInstallDirectory (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the configuration directory
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LocateConfigDirectory ();
+char* TRI_LocateConfigDirectory (void);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  module functions
