@@ -87,12 +87,6 @@ etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
       | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
 
 
-BUILT_SOURCES += etc/arangodb/arangod-root.conf
-
-etc/arangodb/arangod-root.conf: @srcdir@/etc/arangodb/arangod.conf.in
-	sed -e 's:@LOCALSTATEDIR@:@ROOTDIR@/var:' $< \
-      | sed -e 's:@PKGDATADIR@:@ROOTDIR/share/arangodb@:' > $@
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
 ## -----------------------------------------------------------------------------
