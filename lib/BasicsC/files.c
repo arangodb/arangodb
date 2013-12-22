@@ -649,42 +649,45 @@ char* TRI_Basename (char const* path) {
   char const* p;
 
   n = strlen(path);
-  m = 0;
 
   if (1 < n) {
-    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      m = 1;
+    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR || path[n - 1] == '/') {
+      n -= 1;
     }
   }
 
   if (n == 0) {
     return TRI_DuplicateString("");
   }
-  else if (n == 1 && *path == TRI_DIR_SEPARATOR_CHAR) {
-    return TRI_DuplicateString("");
-  }
-  else if (n - m == 1 && *path == '.') {
-    return TRI_DuplicateString("");
-  }
-  else if (n - m == 2 && path[0] == '.' && path[1] == '.') {
-    return TRI_DuplicateString("");
-  }
-
-  for (p = path + (n - m - 1); path < p; --p) {
-    if (*p == TRI_DIR_SEPARATOR_CHAR) {
-      break;
+  else if (n == 1) {
+    if (*path == TRI_DIR_SEPARATOR_CHAR || *path == '/') {
+      return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
+    }
+    else {
+      TRI_DuplicateString2(path, n);
     }
   }
+  else {
+    for (p = path + (n - 2);  path < p;  --p) {
+      if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+        break;
+      }
+    }
 
-  if (path == p) {
-    if (*p == TRI_DIR_SEPARATOR_CHAR) {
-      return TRI_DuplicateString2(path + 1, n - m);
+    if (path == p) {
+      if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+        return TRI_DuplicateString2(path + 1, n - 1);
+      }
+      else {
+        return TRI_DuplicateString2(path, n);
+      }
+    }
+    else {
+      n -= p - path;
+
+      return TRI_DuplicateString2(p + 1, n - 1);
     }
   }
-
-  n -= p - path;
-
-  return TRI_DuplicateString2(p + 1, n - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
