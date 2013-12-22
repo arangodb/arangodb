@@ -1,0 +1,94 @@
+----------------------------------------------------------------------------------------
+-- Full documentation is available online at:                                         --
+--                    http://www.arangodb.org/manuals/windows                         --
+----------------------------------------------------------------------------------------
+
+
+   ***************************************************************************
+   **** Please read sections 5 & 6 below if you have an existing database ****
+   ***************************************************************************
+
+1) The default installation directory is "c:\Program Files\ArangoDB-1.x.y". During the
+   installation process you may change this. In what follows we will assume that
+   ArangoDB has been installed in the location <ROOTDIR>.
+
+2) Please note that ArangoDB consists of a database server and client tools. If you
+   start the server, it will place a (read-only) lock file to prevent accidental
+   access to the data. The server will attempt to remove this lock file when it
+   is started to see if the lock is still valid - this is in case the
+   installation did not proceed correctly or if the server terminated
+   unexpectedly.
+
+3) To start an ArangoDB server instance with networking enabled, use the executable
+   "arangod.exe" located in "<ROOTDIR>/bin". This will use the configuration
+   file "arangod.conf" located in "<ROOTDIR>/etc/arangodb", which you can adjust
+   to your needs and use the data directory "<ROOTDIR>/var/lib/arangodb". This
+   is the place where all your data (databases and collections) will be stored
+   by default.
+
+   Please check the output of the "arangod.exe" executable before going on. If
+   the server started successully, you should see a line "ArangoDB is ready for
+   business. Have fun!"  at the end of its output.
+
+   We now wish to check that the installation is working correctly and to do
+   this we will be using the administration web interface. Execute "arangod.exe"
+   if you have not already done so, then open up your web browser and point it
+   to the page: http://127.0.0.1:8529/
+
+   To check if your installation was successful, click the "Collection" tab and
+   open the configutation. Select the "System" TYPE. If the installation was
+   successful, then the page should display a few system collections.
+
+   Try to add a new collection and then add some documents to this new
+   collection.  If you have succeeded in creating a new collection and inserting
+   one or more documents, then your installation is working correctly.
+
+4) To connect to an already running ArangoDB server instance, there is a shell
+   "arangosh.exe" located in "<ROOTDIR>/bin". This starts a shell which can be
+   used (amongst other things) to administer and query a local or remote
+   ArangoDB server.
+
+   Note that "arangosh.exe" does NOT start a separate server, it only starts the
+   shell.  To use it, you must have a server running somewhere, e.g. by using
+   the "arangod.exe" executable.
+
+   "arangosh.exe" uses configuration from the file "arangosh.conf" located in
+   "<ROOTDIR>/etc/arangodb/". Please adjust this to your needs if you want to
+   use different connection settings etc.
+
+5) If you have an EXISTING database, then please note that currently a 32 bit
+   version of ArangoDB is NOT compatible with a 64 bit version. This means that
+   if you have a database created with a 32 bit version of ArangoDB it may
+   become corrupted if you execute a 64 bit version of ArangoDB against the same
+   database, and vice versa.
+
+6) To upgrade an EXISTING database created with a previous version of ArangoDB,
+   please execute the server "arangod.exe" with the option
+   "--upgrade". Otherwise starting ArangoDB may fail with errors.
+
+   Note that there is no harm in running the upgrade. So you should run this
+   batch file if you are unsure of the database version you are using.
+
+   You should always check the output for errors to see if the upgrade was
+   completed successfully.
+
+7) To uninstall the Arango server application you can use the windows control panel
+   (as you would normally uninstall an application). Note however, that any data
+   files created by the Arango server will remain as well as the <ROOTDIR>
+   directory.  To complete the uninstallation process, remove the data files and
+   the <ROOTDIR> directory manually.
+
+If you have any questions regarding the installation or other matters please use
+
+    http://groups.google.com/group/arangodb
+
+For bug reports please use
+
+    https://github.com/triAGENS/ArangoDB/issues
+
+To obtain the version of the currently installed ArangoDB instance, execute the
+following on a Command Prompt:
+
+    arangod.exe --version
+
+Thanks for choosing ArangoDB!

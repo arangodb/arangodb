@@ -1,12 +1,20 @@
 v1.4.x (XXXX-XX-XX)
 -------------------
 
+* foxx-manager is now an alias for arangosh under Windows
+
+* arango-dfdb is now an alias for arangod under Windows
+
+* changed from readline to linenoise for Windows
+
 * added --install-service and --uninstall-service for Windows
 
 * removed --daemon and --supervisor for Windows
 
 * arangosh and arangod now uses the config-file which maps the binary name, i. e. if you
   rename arangosh to foxx-manager it will use the config file foxx-manager.conf
+
+* fixed lock file for Windows
 
 * fixed issue #711, #687: foxx-manager throws internal errors
 

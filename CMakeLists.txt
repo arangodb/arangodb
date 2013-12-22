@@ -521,14 +521,46 @@ add_subdirectory(utils)
 ### @brief install manual
 ################################################################################
 
-INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
         DESTINATION share/man)
+
+################################################################################
+### @brief install arangod readme
+################################################################################
+
+if (MSVC)
+  install(FILES ${PROJECT_SOURCE_DIR}/README
+          DESTINATION .)
+
+  install(FILES ${PROJECT_SOURCE_DIR}/README.md
+          DESTINATION .)
+
+  install(FILES ${PROJECT_SOURCE_DIR}/README.windows
+          DESTINATION .)
+endif ()
+
+################################################################################
+### @brief install arangod license
+################################################################################
+
+if (MSVC)
+  install(FILES ${PROJECT_SOURCE_DIR}/LICENSE
+          DESTINATION .)
+endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             TESTS
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief enable testing
+################################################################################
+
 enable_testing()
+
+################################################################################
+### @brief load test definition
+################################################################################
 
 add_subdirectory(UnitTests)
 
