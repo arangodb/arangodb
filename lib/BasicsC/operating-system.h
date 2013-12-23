@@ -502,7 +502,7 @@
 // This directive below suppresses warnings about 'inline'
 // ..............................................................................
 
-#define _ALLOW_KEYWORD_MACROS			    1
+#define _ALLOW_KEYWORD_MACROS                       1
 
 // ..............................................................................
 // This directive below suppresses warnings about using the 'new' more secure CRT
@@ -657,7 +657,7 @@ typedef unsigned char bool;
 #define TRI_GETCWD                      _getcwd
 #define TRI_LSEEK                       _lseek
 #define TRI_MKDIR(a,b)                  _mkdir((a))
-#define TRI_OPEN(a,b)                   TRI_openFile((a), (b))
+#define TRI_OPEN(a,b)                   TRI_OPEN_WIN32((a), (b))
 #define TRI_READ                        _read
 #define TRI_RMDIR                       _rmdir
 #define TRI_UNLINK                      _unlink

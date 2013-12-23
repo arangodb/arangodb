@@ -645,7 +645,6 @@ char* TRI_Dirname (char const* path) {
 
 char* TRI_Basename (char const* path) {
   size_t n;
-  size_t m;
   char const* p;
 
   n = strlen(path);
@@ -664,7 +663,7 @@ char* TRI_Basename (char const* path) {
       return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
     }
     else {
-      TRI_DuplicateString2(path, n);
+      return TRI_DuplicateString2(path, n);
     }
   }
   else {
