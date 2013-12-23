@@ -37,7 +37,7 @@
 #include "BasicsC/tri-strings.h"
 #include "V8/v8-utils.h"
 
-#ifdef TRI_HAVE_LINENOISE
+#ifndef TRI_HAVE_LINENOISE
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
 #endif

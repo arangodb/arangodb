@@ -1,5 +1,5 @@
-v1.4.x (XXXX-XX-XX)
--------------------
+v1.4.4-rc1 (2013-12-22)
+-----------------------
 
 * foxx-manager is now an alias for arangosh under Windows
 

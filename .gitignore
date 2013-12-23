@@ -83,6 +83,7 @@ etc/arangodb/arangoirb.conf
 etc/arangodb/arangorestore.conf
 etc/arangodb/arangosh.conf
 etc/arangodb/foxx-manager.conf
+etc/arangodb/arango-dfdb.conf
 js/common/bootstrap/errors.js
 lib/BasicsC/local-configuration.h
 lib/BasicsC/stamp-h2
