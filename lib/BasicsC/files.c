@@ -1541,6 +1541,20 @@ char* TRI_BinaryName (const char* argv0) {
     }
   }
 
+  for (;  name < p;  --p) {
+    if (*p == '-') {
+      break;
+    }
+  }
+
+  // TODO this needs to be fixed: the install script should do some transformation
+  //      on the config files installed. But in this case all programs must use
+  //      config files based on their name.
+
+  if (*p == '-' && TRI_EqualString(p, "-unstable")) {
+    *p = '\0';
+  }
+
   return name;
 }
 
