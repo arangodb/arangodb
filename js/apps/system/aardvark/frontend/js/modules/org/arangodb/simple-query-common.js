@@ -275,6 +275,8 @@ function SimpleQuery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function joinLimits (query, limit) {
+  var q;
+
   // original limit is 0, keep it
   if (query._limit === 0) {
     query = query.clone();
@@ -445,6 +447,7 @@ SimpleQuery.prototype.skip = function (skip) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.toArray = function () {
+  var cursor;
   var result;
 
   this.execute();

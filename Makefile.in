@@ -458,7 +458,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/ShapedJson/lib_libarango_a-shape-accessor.$(OBJEXT) \
 	lib/ShapedJson/lib_libarango_a-shaped-json.$(OBJEXT) \
 	lib/Statistics/lib_libarango_a-statistics.$(OBJEXT) \
-	lib/Utilities/lib_libarango_a-LineEditor.$(OBJEXT) \
+	lib/Utilities/lib_libarango_a-LineEditor-readline.$(OBJEXT) \
 	lib/Utilities/lib_libarango_a-ScriptLoader.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-ioapi.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-unzip.$(OBJEXT) \
@@ -1120,9 +1120,6 @@ comma := ,
 empty := 
 space := $(empty) $(empty)
 MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
-VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
-VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
 ################################################################################
 ### @brief source to build before compile
@@ -1137,7 +1134,8 @@ VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 ################################################################################
 BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
 	etc/arangodb/arangod-arm.conf \
-	etc/arangodb/arangod-uid-arm.conf etc/arangodb/arangob.conf \
+	etc/arangodb/arangod-uid-arm.conf \
+	etc/arangodb/arango-dfdb.conf etc/arangodb/arangob.conf \
 	etc/arangodb/arangod.conf etc/arangodb/arangodump.conf \
 	etc/arangodb/arangoimp.conf etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangorestore.conf etc/arangodb/arangosh.conf \
@@ -1376,7 +1374,7 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/shape-accessor.c \
 	lib/ShapedJson/shaped-json.c \
 	lib/Statistics/statistics.cpp \
-	lib/Utilities/LineEditor.cpp \
+	lib/Utilities/LineEditor-readline.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Zip/ioapi.c \
 	lib/Zip/unzip.c \
@@ -2459,7 +2457,7 @@ lib/Utilities/$(am__dirstamp):
 lib/Utilities/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/Utilities/$(DEPDIR)
 	@: > lib/Utilities/$(DEPDIR)/$(am__dirstamp)
-lib/Utilities/lib_libarango_a-LineEditor.$(OBJEXT):  \
+lib/Utilities/lib_libarango_a-LineEditor-readline.$(OBJEXT):  \
 	lib/Utilities/$(am__dirstamp) \
 	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
 lib/Utilities/lib_libarango_a-ScriptLoader.$(OBJEXT):  \
@@ -3697,7 +3695,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/lib_libarango_a-statistics.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
@@ -5970,19 +5968,19 @@ lib/Statistics/lib_libarango_a-statistics.obj: lib/Statistics/statistics.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Statistics/lib_libarango_a-statistics.obj `if test -f 'lib/Statistics/statistics.cpp'; then $(CYGPATH_W) 'lib/Statistics/statistics.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Statistics/statistics.cpp'; fi`
 
-lib/Utilities/lib_libarango_a-LineEditor.o: lib/Utilities/LineEditor.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LineEditor.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Tpo -c -o lib/Utilities/lib_libarango_a-LineEditor.o `test -f 'lib/Utilities/LineEditor.cpp' || echo '$(srcdir)/'`lib/Utilities/LineEditor.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LineEditor.cpp' object='lib/Utilities/lib_libarango_a-LineEditor.o' libtool=no @AMDEPBACKSLASH@
+lib/Utilities/lib_libarango_a-LineEditor-readline.o: lib/Utilities/LineEditor-readline.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LineEditor-readline.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Tpo -c -o lib/Utilities/lib_libarango_a-LineEditor-readline.o `test -f 'lib/Utilities/LineEditor-readline.cpp' || echo '$(srcdir)/'`lib/Utilities/LineEditor-readline.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LineEditor-readline.cpp' object='lib/Utilities/lib_libarango_a-LineEditor-readline.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LineEditor.o `test -f 'lib/Utilities/LineEditor.cpp' || echo '$(srcdir)/'`lib/Utilities/LineEditor.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LineEditor-readline.o `test -f 'lib/Utilities/LineEditor-readline.cpp' || echo '$(srcdir)/'`lib/Utilities/LineEditor-readline.cpp
 
-lib/Utilities/lib_libarango_a-LineEditor.obj: lib/Utilities/LineEditor.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LineEditor.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Tpo -c -o lib/Utilities/lib_libarango_a-LineEditor.obj `if test -f 'lib/Utilities/LineEditor.cpp'; then $(CYGPATH_W) 'lib/Utilities/LineEditor.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LineEditor.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LineEditor.cpp' object='lib/Utilities/lib_libarango_a-LineEditor.obj' libtool=no @AMDEPBACKSLASH@
+lib/Utilities/lib_libarango_a-LineEditor-readline.obj: lib/Utilities/LineEditor-readline.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LineEditor-readline.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Tpo -c -o lib/Utilities/lib_libarango_a-LineEditor-readline.obj `if test -f 'lib/Utilities/LineEditor-readline.cpp'; then $(CYGPATH_W) 'lib/Utilities/LineEditor-readline.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LineEditor-readline.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor-readline.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LineEditor-readline.cpp' object='lib/Utilities/lib_libarango_a-LineEditor-readline.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LineEditor.obj `if test -f 'lib/Utilities/LineEditor.cpp'; then $(CYGPATH_W) 'lib/Utilities/LineEditor.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LineEditor.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LineEditor-readline.obj `if test -f 'lib/Utilities/LineEditor-readline.cpp'; then $(CYGPATH_W) 'lib/Utilities/LineEditor-readline.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LineEditor-readline.cpp'; fi`
 
 lib/Utilities/lib_libarango_a-ScriptLoader.o: lib/Utilities/ScriptLoader.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ScriptLoader.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ScriptLoader.Tpo -c -o lib/Utilities/lib_libarango_a-ScriptLoader.o `test -f 'lib/Utilities/ScriptLoader.cpp' || echo '$(srcdir)/'`lib/Utilities/ScriptLoader.cpp

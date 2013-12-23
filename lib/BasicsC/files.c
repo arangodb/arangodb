@@ -1334,7 +1334,7 @@ int TRI_DestroyLockFile (char const* filename) {
 
   TRI_WriteLockReadWriteLock(&FileNamesLock);
   TRI_RemoveVectorString(&FileNames, n);
-  TRI_RemoveVectorString(&FileDescriptors, n);
+  TRI_RemoveVector(&FileDescriptors, n);
   TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 
   return res;
