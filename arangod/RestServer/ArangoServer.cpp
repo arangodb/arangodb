@@ -75,6 +75,7 @@
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/RestShardHandler.h"
+#include "Cluster/ClusterComm.h"
 #endif
 
 #include "V8/V8LineEditor.h"
@@ -555,7 +556,12 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
-  _jobManager = new AsyncJobManager(&TRI_NewTickServer);
+#ifdef TRI_ENABLE_CLUSTER
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer, 
+                                    ClusterCommRestCallback);
+#else
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer, 0);
+#endif
 
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,

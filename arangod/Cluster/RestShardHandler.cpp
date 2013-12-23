@@ -27,7 +27,9 @@
 
 #include "RestShardHandler.h"
 
+#include "Basics/ConditionLocker.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -94,46 +96,35 @@ string const& RestShardHandler::queue () const {
 triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
-  if (role == ServerState::ROLE_COORDINATOR) {
+  if (role != ServerState::ROLE_COORDINATOR) {
     generateError(triagens::rest::HttpResponse::BAD, 
                   (int) triagens::rest::HttpResponse::BAD, 
                   "this API is meant to be called on a coordinator node");
     return HANDLER_DONE;
   }
-/*
+
   bool found;
-  char const* coordinator = _request->header("x-arango-coordinator", found);
+  char const* _coordinator = _request->header("x-arango-coordinator", found);
 
   if (! found) {
     generateError(triagens::rest::HttpResponse::BAD, 
                   (int) triagens::rest::HttpResponse::BAD, 
-                  "header 'x-arango-coordinator' is missing");
+                  "header 'X-Arango-Coordinator' is missing");
     return HANDLER_DONE;
   }
   
-  char const* operation = _request->header("x-arango-operation", found);
-  if (! found) {
-    generateError(triagens::rest::HttpResponse::BAD, 
-                  (int) triagens::rest::HttpResponse::BAD, 
-                  "header 'x-arango-operation' is missing");
-  }
-  
-  char const* url = _request->header("x-arango-url", found);
-  if (! found) {
-    generateError(triagens::rest::HttpResponse::BAD, 
-                  (int) triagens::rest::HttpResponse::BAD, 
-                  "header 'x-arango-url' is missing");
-  }
-*/
+  string coordinatorHeader = _coordinator;
+  string result = ClusterComm::instance()->processAnswer(coordinatorHeader,
+                                                         stealRequest());
 
-/*
-  triagens::rest::HttpHandler* handler = this->_server->createHandler(_request);
-  triagens::rest::Job* job = new triagens::rest::GeneralServerJob<triagens::rest::HttpServer, triagens::rest::HttpHandlerFactory::GeneralHandler>(0, handler, true);
-          
-  _dispatcher->addJob(job);
-*/  
-  // respond with a 202
-  _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  if (result == "") {
+    _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  }
+  else {
+    generateError(triagens::rest::HttpResponse::BAD, 
+                  (int) triagens::rest::HttpResponse::BAD, 
+                  result.c_str());
+  }
 
   return HANDLER_DONE;
 }

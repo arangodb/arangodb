@@ -41,10 +41,7 @@
 
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterState.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Cluster/ServerState.h"
 
 namespace triagens {
   namespace arango {
@@ -69,9 +66,10 @@ namespace triagens {
       CL_COMM_SENT = 3,           // initial request sent, response available
       CL_COMM_TIMEOUT = 4,        // no answer received until timeout
       CL_COMM_RECEIVED = 5,       // answer received
-      CL_COMM_DROPPED = 6,        // nothing known about operation, was dropped
-                                  // or actually already collected
-      CL_COMM_ERROR = 7,          // original request could not be sent
+      CL_COMM_ERROR = 6,          // original request could not be sent
+      CL_COMM_DROPPED = 7         // operation was dropped, not known
+                                  // this is only used to report an error
+                                  // in the wait or enquire methods
     };
 
     struct ClusterCommResult {
@@ -154,6 +152,13 @@ namespace triagens {
       double _singleRequestTimeout;
       uint32_t _sslProtocol;
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global callback for asynchronous REST handler
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      ClusterComm
@@ -367,12 +372,13 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process an answer coming in on the HTTP socket which is actually
-/// an answer to one of our earlier requests, return value of 0 means OK
-/// and nonzero is an error. This is only called in a coordinator node
+/// an answer to one of our earlier requests, return value of "" means OK
+/// and nonempty is an error. This is only called in a coordinator node
 /// and not in a DBServer node.
 ////////////////////////////////////////////////////////////////////////////////
                 
-        int processAnswer(rest::HttpRequest* answer);
+        string processAnswer(string& coordinatorHeader,
+                             rest::HttpRequest* answer);
                  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send an answer HTTP request to a coordinator, which contains
@@ -380,9 +386,8 @@ namespace triagens {
 /// a DBServer node and never in a coordinator node.
 ////////////////////////////////////////////////////////////////////////////////
                 
-        httpclient::SimpleHttpResult* asyncAnswer (
-                       rest::HttpRequest& origRequest,
-                       rest::HttpResponse& responseToSend);
+        void asyncAnswer (string& coordinatorHeader,
+                          rest::HttpResponse* responseToSend);
                      
 // -----------------------------------------------------------------------------
 // --SECTION--                                         private methods and data
@@ -594,10 +599,6 @@ namespace triagens {
     };
   }  // namespace arango
 }  // namespace triagens
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

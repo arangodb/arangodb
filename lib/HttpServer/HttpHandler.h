@@ -79,7 +79,7 @@ namespace triagens {
 /// @brief constructs a new handler
 ///
 /// Note that the handler owns the request and the response. It is its
-/// responsibility to destroy them both.
+/// responsibility to destroy them both. See also the two steal methods.
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -148,6 +148,12 @@ namespace triagens {
         HttpRequest const* getRequest () const {
           return _request;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the pointer to the request
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpRequest* stealRequest ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
