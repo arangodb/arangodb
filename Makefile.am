@@ -259,7 +259,10 @@ noinst_PROGRAMS =
 ################################################################################
 
 install-exec-hook:
+	rm -f $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
 	$(LN_S) `echo arangosh | sed '$(program_transform_name)'` $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
+
+	rm -f $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
 	$(LN_S) `echo arangod | sed '$(program_transform_name)'` $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
 
 
