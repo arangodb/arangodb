@@ -24,7 +24,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 ### @brief output directory
 ################################################################################
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ### @brief arangod
@@ -202,7 +202,26 @@ else ()
 endif ()
 
 ################################################################################
-### @brief install arangod JavaScript files
+### @brief install arango-dfdb binary
+################################################################################
+
+install_command_alias(${BIN_ARANGOD} ${TRI_BINDIR_INSTALL} arango-dfdb)
+
+################################################################################
+### @brief install arango-dfdb config
+################################################################################
+
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arango-dfdb.conf.in
+    DESTINATION ${ETCDIR_INSTALL}
+    RENAME arango-dfdb-relative.conf)
+endif ()
+
+install_config(arango-dfdb)
+
+################################################################################
+### @brief install server-side JavaScript files
 ################################################################################
 
 install(
@@ -263,5 +282,5 @@ install(
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
 ## End:

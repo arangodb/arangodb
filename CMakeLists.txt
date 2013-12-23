@@ -242,7 +242,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief generate root config file
+### @brief generates root config file
 ################################################################################
 
 macro (generate_root_config name)
@@ -261,7 +261,7 @@ macro (generate_root_config name)
 endmacro ()
 
 ################################################################################
-### @brief install a config file
+### @brief installs a config file
 ################################################################################
 
 macro (install_config name)
@@ -275,6 +275,62 @@ macro (install_config name)
     install(
       FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf
       DESTINATION ${ETCDIR_INSTALL})
+  endif ()
+endmacro ()
+
+################################################################################
+### @brief installs a readme file converting EOL
+################################################################################
+
+macro (install_readme input where output)
+  FILE(READ ${PROJECT_SOURCE_DIR}/${input} FileContent)
+
+  STRING(REPLACE "\r" "" FileContent "${FileContent}")
+
+  if (MSVC)
+    STRING(REPLACE "\n" "\r\n" FileContent "${FileContent}")
+  endif ()
+
+  FILE(WRITE ${PROJECT_BINARY_DIR}/${output} "${FileContent}")
+
+  install(
+    FILES ${PROJECT_BINARY_DIR}/${output}
+    DESTINATION ${where})
+endmacro ()
+
+################################################################################
+### @brief installs a link to an executable
+################################################################################
+
+macro (install_command_alias name where alias)
+  if (MSVC)
+
+  add_custom_command(
+    TARGET ${name}
+    POST_BUILD
+      COMMAND 
+	${CMAKE_COMMAND} -E copy
+	  $<TARGET_FILE:${name}>
+	  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}.exe)
+
+    install(
+      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}.exe
+      DESTINATION ${where})
+
+  else ()
+
+  add_custom_command(
+    TARGET ${name}
+    POST_BUILD
+      COMMAND 
+	${CMAKE_COMMAND} -E create_symlink
+	  $<TARGET_FILE:${name}>
+	  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias})
+
+    install(
+      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
+      DESTINATION ${where})
+
   endif ()
 endmacro ()
 
@@ -507,12 +563,6 @@ if (USE_MRUBY)
   add_subdirectory(arangoirb)
 endif ()
 
-################################################################################
-### @brief utils
-################################################################################
-
-add_subdirectory(utils)
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                    DOCUMENTATIONS
 ## -----------------------------------------------------------------------------
@@ -529,16 +579,9 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
 ################################################################################
 
 if (MSVC)
-  install(FILES ${PROJECT_SOURCE_DIR}/README
-          DESTINATION .
-          RENAME README.txt)
-
-  install(FILES ${PROJECT_SOURCE_DIR}/README.md
-          DESTINATION .)
-
-  install(FILES ${PROJECT_SOURCE_DIR}/README.windows
-          DESTINATION .
-          RENAME README.windows.txt)
+  install_readme(README . README.txt)
+  install_readme(README.md . README.md)
+  install_readme(README.windows . README.windows.txt)
 endif ()
 
 ################################################################################
@@ -546,9 +589,7 @@ endif ()
 ################################################################################
 
 if (MSVC)
-  install(FILES ${PROJECT_SOURCE_DIR}/LICENSE
-          DESTINATION .
-          RENAME LICENSE.txt)
+  install_readme(LICENSE . LICENSE.txt)
 endif ()
 
 ## -----------------------------------------------------------------------------
