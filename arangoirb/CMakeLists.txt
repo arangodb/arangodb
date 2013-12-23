@@ -16,7 +16,7 @@ include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 ### @brief output directory
 ################################################################################
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ### @brief arangoirb

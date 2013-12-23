@@ -15,11 +15,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 ### @brief output directory
 ################################################################################
 
-if (MSVC)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/")
-else ()
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
-endif()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ### @brief arangob
@@ -44,9 +40,17 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+################################################################################
+### @brief install arangob binary
+################################################################################
+
 install(
   TARGETS ${BIN_ARANGOB}
   RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
+
+################################################################################
+### @brief install arangob config
+################################################################################
 
 if (USE_RAW_CONFIG)
   install(
@@ -56,14 +60,6 @@ if (USE_RAW_CONFIG)
 endif ()
 
 install_config(arangob)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
 
 ################################################################################
 ### @brief arangodump
@@ -88,9 +84,17 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+################################################################################
+### @brief install arangodump binary
+################################################################################
+
 install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
+
+################################################################################
+### @brief install arangodump config
+################################################################################
 
 if (USE_RAW_CONFIG)
   install(
@@ -100,14 +104,6 @@ if (USE_RAW_CONFIG)
 endif ()
 
 install_config(arangodump)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
 
 ################################################################################
 ### @brief arangoimp
@@ -134,9 +130,17 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+################################################################################
+### @brief install arangoimp binary
+################################################################################
+
 install(
   TARGETS ${BIN_ARANGOIMP}
   RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
+
+################################################################################
+### @brief install arangoimp config
+################################################################################
 
 if (USE_RAW_CONFIG)
   install(
@@ -146,14 +150,6 @@ if (USE_RAW_CONFIG)
 endif ()
 
 install_config(arangoimp)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
 
 ################################################################################
 ### @brief arangorestore
@@ -178,9 +174,17 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+################################################################################
+### @brief install arangorestore binary
+################################################################################
+
 install(
   TARGETS ${BIN_ARANGORESTORE}
   RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
+
+################################################################################
+### @brief install arangorestore config
+################################################################################
 
 if (USE_RAW_CONFIG)
   install(
@@ -190,14 +194,6 @@ if (USE_RAW_CONFIG)
 endif ()
 
 install_config(arangorestore)
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
 
 ################################################################################
 ### @brief arangosh
@@ -224,9 +220,17 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+################################################################################
+### @brief install arangosh binary
+################################################################################
+
 install(
   TARGETS ${BIN_ARANGOSH}
   RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
+
+################################################################################
+### @brief install arangosh config
+################################################################################
 
 if (USE_RAW_CONFIG)
   install(
@@ -236,6 +240,29 @@ if (USE_RAW_CONFIG)
 endif ()
 
 install_config(arangosh)
+
+################################################################################
+### @brief install foxx-manager binary
+################################################################################
+
+install_command_alias(${BIN_ARANGOSH} ${TRI_BINDIR_INSTALL} foxx-manager)
+
+################################################################################
+### @brief install foxx-manager config
+################################################################################
+
+if (USE_RAW_CONFIG)
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/foxx-manager.conf.in
+    DESTINATION ${ETCDIR_INSTALL}
+    RENAME foxx-manager-relative.conf)
+endif ()
+
+install_config(foxx-manager)
+
+################################################################################
+### @brief install client-side JavaScript files
+################################################################################
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client

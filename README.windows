@@ -12,6 +12,46 @@
    installation process you may change this. In what follows we will assume that
    ArangoDB has been installed in the location <ROOTDIR>.
 
+   You have to be careful when choosing an isntallation directory. You need either
+   write permission to this directoy or you need to modify the config file for the
+   server process. In the latter case the database directory and the Foxx directory
+   should must be writable by the user.
+
+   Installating for a single user:
+
+       Select a different directory during installation. For example 
+       "C:/Users/<username>/arangodb" or "C:/ArangoDB".
+
+   Installating for multiple users:
+
+       Keep the default directory. After the installation edit the file
+       "<ROOTDIR>/etc/arangodb/arangod.conf". Adjust the "directory" and "app-path"
+       so that these paths point into your home directory.
+
+       [database]
+       directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
+
+       [javascript]
+       app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
+
+       Create the directories for each user that wants to use ArangoDB.
+
+   Installating as Service
+
+       Keep the default directory. After the installation open a command line
+       as administrator (search for "cmd" and right click "run as administrator")
+
+       cmd> arangod --install-service
+       INFO: adding service 'ArangoDB - the multi-purpose database' (internal 'ArangoDB')
+       INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 1.4.4\bin\arangod.exe" --start-service'
+
+       Open the service manager and start ArangoDB. In order to enable logging
+       edit the file "<ROOTDIR>/etc/arangodb/arangod.conf" and uncomment the file
+       option.
+
+       [log]
+       file = @ROOTDIR@/var/log/arangodb/arangod.log
+
 2) Please note that ArangoDB consists of a database server and client tools. If you
    start the server, it will place a (read-only) lock file to prevent accidental
    access to the data. The server will attempt to remove this lock file when it
