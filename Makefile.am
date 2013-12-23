@@ -184,7 +184,7 @@ bin_PROGRAMS = \
 	bin/arangodump \
 	bin/arangorestore \
 	bin/arangosh \
-	bin/arangoimp 
+	bin/arangoimp
 
 if ENABLE_MRUBY
 bin_PROGRAMS += bin/arangoirb
@@ -259,8 +259,9 @@ noinst_PROGRAMS =
 ################################################################################
 
 install-exec-hook:
-	ln -s arangosh$(EXEEXT) $(DESTDIR)$(bindir)/foxx-manager$(EXEEXT)
-	ln -s arangod$(EXEEXT) $(DESTDIR)$(sbindir)/arango-dfdb$(EXEEXT)
+	$(LN_S) `echo arangosh | sed '$(program_transform_name)'` $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
+	$(LN_S) `echo arangod | sed '$(program_transform_name)'` $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
+
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
