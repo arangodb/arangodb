@@ -30,6 +30,7 @@
 #include "BasicsC/logging.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/StringUtils.h"
 
 #include "VocBase/server.h"
 
@@ -47,6 +48,15 @@ ClusterCommOptions ClusterComm::_globalConnectionOptions = {
   0      // sslProtocol
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global callback for asynchronous REST handler
+////////////////////////////////////////////////////////////////////////////////
+
+void triagens::arango::ClusterCommRestCallback(string& coordinator, 
+                             triagens::rest::HttpResponse* response)
+{
+  ClusterComm::instance()->asyncAnswer(coordinator, response);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ClusterComm class
@@ -309,6 +319,13 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->serverID             = ClusterState::instance()->getResponsibleServer(
                                                              shardID);
 
+  // Add the header fields for asynchronous mode:
+  (*headerFields)["X-Arango-Async"] = "store";
+  (*headerFields)["X-Arango-Coordinator"] = ServerState::instance()->getId() +
+                              ":" + clientTransactionID + ":" +
+                              basics::StringUtils::itoa(coordTransactionID) + 
+                              ":" + basics::StringUtils::itoa(op->operationID);
+
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
@@ -327,6 +344,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
+  cout << "In asyncRequest, put into queue " << op->operationID << endl;
   somethingToSend.signal();
 
   return res;
@@ -389,7 +407,13 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
     }
   }
 
-  return 0;
+  res = new ClusterCommResult();
+  if (0 == res) {
+    return 0;
+  }
+  res->operationID = operationID;
+  res->status = CL_COMM_DROPPED;
+  return res;
 }
 
 ClusterCommResult* ClusterComm::wait (
@@ -568,10 +592,156 @@ void ClusterComm::drop (
   }
 }
 
-int ClusterComm::processAnswer(rest::HttpRequest* answer) {
+void ClusterComm::asyncAnswer (string& coordinatorHeader,
+                               rest::HttpResponse* responseToSend) {
 
-  // find matching operation, report if found, otherwise drop
-  return TRI_ERROR_NO_ERROR;
+  // First take apart the header to get various IDs:
+  ServerID coordinatorID;
+  string clientTransactionID;
+  CoordTransactionID coordTransactionID;
+  OperationID operationID;
+  size_t start = 0;
+  size_t pos;
+
+  cout << "In asyncAnswer, seeing " << coordinatorHeader << endl;
+  pos = coordinatorHeader.find(":",start);
+  if (pos == string::npos) {
+    cout << "Hallo1" << endl;
+    LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
+    return;
+  }
+  coordinatorID = coordinatorHeader.substr(start,pos-start);
+  start = pos+1;
+  pos = coordinatorHeader.find(":",start);
+  if (pos == string::npos) {
+    cout << "Hallo2" << endl;
+    LOG_ERROR("Could not find clientTransactionID in X-Arango-Coordinator");
+    return;
+  }
+  clientTransactionID = coordinatorHeader.substr(start,pos-start);
+  start = pos+1;
+  pos = coordinatorHeader.find(":",start);
+  if (pos == string::npos) {
+    cout << "Hallo3" << endl;
+    LOG_ERROR("Could not find coordTransactionID in X-Arango-Coordinator");
+    return;
+  }
+  coordTransactionID = basics::StringUtils::uint64(
+                              coordinatorHeader.substr(start,pos-start));
+  start = pos+1;
+  operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
+
+  cout << "Hallo4" << endl;
+
+  // Now find the connection to which the request goes from the coordinatorID:
+  ClusterComm::SingleServerConnection* connection 
+          = getConnection(coordinatorID);
+  if (0 == connection) {
+    cout << "asyncAnswer: did not get connection" << endl;
+    LOG_ERROR("asyncAnswer: cannot create connection to server '%s'", 
+              coordinatorID.c_str());
+    return;
+  }
+
+  map<string, string> headers = responseToSend->headers();
+  headers["X-Arango-Coordinator"] = coordinatorHeader;
+  char const* body = responseToSend->body().c_str();
+  size_t len = responseToSend->body().length();
+
+  LOG_TRACE("asyncAnswer: sending PUT request to DB server '%s'",
+            coordinatorID.c_str());
+
+  cout << "asyncAnswer: initialising client" << endl;
+
+  triagens::httpclient::SimpleHttpClient client(
+                             connection->connection,
+                             _globalConnectionOptions._singleRequestTimeout, 
+                             false);
+
+  cout << "asyncAnswer: sending request" << endl;
+
+  // We add this result to the operation struct without acquiring
+  // a lock, since we know that only we do such a thing:
+  httpclient::SimpleHttpResult* result = 
+                 client.request(rest::HttpRequest::HTTP_REQUEST_PUT, 
+                                "/_api/shard-comm", body, len, headers);
+  cout << "In asyncAnswer, error msg: " << endl
+       << client.getErrorMessage() << endl
+       << result->getResultTypeMessage() << endl;
+  // FIXME: handle case that connection was no good and the request
+  // failed.
+  returnConnection(connection);
+}
+
+string ClusterComm::processAnswer(string& coordinatorHeader,
+                                  rest::HttpRequest* answer) {
+  // First take apart the header to get various IDs:
+  ServerID coordinatorID;
+  string clientTransactionID;
+  CoordTransactionID coordTransactionID;
+  OperationID operationID;
+  size_t start = 0;
+  size_t pos;
+
+  cout << "In processAnswer, seeing " << coordinatorHeader << endl;
+
+  pos = coordinatorHeader.find(":",start);
+  if (pos == string::npos) {
+    return string("could not find coordinator ID in 'X-Arango-Coordinator'");
+  }
+  coordinatorID = coordinatorHeader.substr(start,pos-start);
+  start = pos+1;
+  pos = coordinatorHeader.find(":",start);
+  if (pos == string::npos) {
+    return 
+      string("could not find clientTransactionID in 'X-Arango-Coordinator'");
+  }
+  clientTransactionID = coordinatorHeader.substr(start,pos-start);
+  start = pos+1;
+  pos = coordinatorHeader.find(":",start);
+  if (pos == string::npos) {
+    return 
+      string("could not find coordTransactionID in 'X-Arango-Coordinator'");
+  }
+  coordTransactionID = basics::StringUtils::uint64(
+                              coordinatorHeader.substr(start,pos-start));
+  start = pos+1;
+  operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
+
+  // Finally find the ClusterCommOperation record for this operation:
+  ClusterCommOperation* op;
+  {
+    basics::ConditionLocker locker(&somethingReceived);
+    ClusterComm::IndexIterator i;
+    i = receivedByOpID.find(operationID);
+    if (i != receivedByOpID.end()) {
+      op = *(i->second);
+      op->answer = answer;
+      op->status = CL_COMM_RECEIVED;
+      somethingReceived.broadcast();
+    }
+    else {
+      // We have to look in the send queue as well, as it might not yet
+      // have been moved to the received queue. Note however, that it must
+      // have been fully sent, so this is highly unlikely, but not impossible.
+      basics::ConditionLocker sendlocker(&somethingToSend);
+      i = toSendByOpID.find(operationID);
+      if (i != toSendByOpID.end()) {
+        op = *(i->second);
+        op->answer = answer;
+        op->status = CL_COMM_RECEIVED;
+        somethingReceived.broadcast();
+      }
+      else {
+        // Nothing known about the request, get rid of it:
+        delete answer;
+        return string("operation was already dropped by sender");
+      }
+    }
+  }
+
+  cout << "end of processAnswer" << endl;
+  return string("");
 }
 
 // Move an operation from the send to the receive queue:
@@ -580,9 +750,18 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   IndexIterator i;
   ClusterCommOperation* op;
 
+  cout << "In moveFromSendToReceived " << operationID << endl;
   basics::ConditionLocker locker(&somethingReceived);
   basics::ConditionLocker sendlocker(&somethingToSend);
   i = toSendByOpID.find(operationID);   // cannot fail
+  if (i == toSendByOpID.end()) {
+    IndexIterator j;
+    cout << "Looking for operationID:" << operationID << endl;
+    for (j = toSendByOpID.begin(); j != toSendByOpID.end(); ++j) {
+      cout << "Have operationID:" << (*j->second)->operationID << endl;
+    }
+  }
+
   assert(i != toSendByOpID.end());
   q = i->second;
   op = *q;
@@ -593,12 +772,17 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
     return false;
   }
   if (op->status == CL_COMM_SENDING) {
+    // Note that in the meantime the status could have changed to
+    // CL_COMM_ERROR or indeed to CL_COMM_RECEIVED in these cases, we do
+    // not want to overwrite this result
     op->status = CL_COMM_SENT;
   }
   received.push_back(op);
   q = received.end();
   q--;
   receivedByOpID[operationID] = q;
+  somethingReceived.broadcast();
+  cout << "In moveFromSendToReceived moved " << operationID << endl;
   return true;
 }
 
@@ -660,6 +844,7 @@ void ClusterCommThread::run () {
       if (0 != _stop) {
         break;
       }
+      cout << "Noticed something to send" << endl;
       op = cc->toSend.front();
       assert(op->status == CL_COMM_SUBMITTED);
       op->status = CL_COMM_SENDING;
@@ -672,16 +857,20 @@ void ClusterCommThread::run () {
     // First find the server to which the request goes from the shardID:
     ServerID server = ClusterState::instance()->getResponsibleServer(
                                                      op->shardID);
+    cout << "Have responsible server " << server << endl;
     if (server == "") {
       op->status = CL_COMM_ERROR;
     }
     else {
       // We need a connection to this server:
+      cout << "Urgh1" << endl;
       ClusterComm::SingleServerConnection* connection 
         = cc->getConnection(server);
+      cout << "Urgh2" << endl;
       if (0 == connection) {
         op->status = CL_COMM_ERROR;
         LOG_ERROR("cannot create connection to server '%s'", server.c_str());
+        cout << "did not get connection object" << endl;
       }
       else {
         LOG_TRACE("sending %s request to DB server '%s': %s",
@@ -689,6 +878,7 @@ void ClusterCommThread::run () {
            server.c_str(), op->body);
 
         {
+          cout << "initialising client" << endl;
           triagens::httpclient::SimpleHttpClient client(
                                      connection->connection,
                                      op->timeout, false);
@@ -697,6 +887,9 @@ void ClusterCommThread::run () {
           // a lock, since we know that only we do such a thing:
           op->result = client.request(op->reqtype, op->path, op->body, 
                                       op->bodyLength, *(op->headerFields));
+          cout << "Sending msg:" << endl
+               << client.getErrorMessage() << endl
+               << op->result->getResultTypeMessage() << endl;
           // FIXME: handle case that connection was no good and the request
           // failed.
         }

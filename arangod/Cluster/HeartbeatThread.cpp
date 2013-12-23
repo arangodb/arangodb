@@ -124,6 +124,8 @@ void HeartbeatThread::run () {
     else {
       // value did not change, but we already blocked waiting for a change...
       // nothing to do here
+      LOG_ERROR("HeartbeatThread suspended for 10 seconds");
+      sleep(10);
     }
   }
 

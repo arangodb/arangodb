@@ -50,11 +50,11 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
-        AsyncCallbackContext (std::string const& url) 
-          : _url(url),
+        AsyncCallbackContext (std::string const& coordHeader)
+          : _coordHeader(coordHeader),
             _response(0) {
 
-          std::cout << "generated async context " << _url << std::endl;
+          std::cout << "generated async context " << _coordHeader << std::endl;
         }
 
         ~AsyncCallbackContext () {
@@ -69,16 +69,8 @@ namespace triagens {
 
       public:
 
-        bool callback (HttpResponse* response) {
-          if (response == 0) {
-            return false;
-          }
-
-          _response = response;
-
-          std::cout << "callback called for async context " << _url << ", BODY: " << _response->body().c_str() << std::endl;
-
-          return true;
+        string& getCoordinatorHeader() {
+          return _coordHeader;
         }
 
 // -----------------------------------------------------------------------------
@@ -87,7 +79,7 @@ namespace triagens {
 
       private:
 
-        std::string _url;
+        std::string _coordHeader;
 
         HttpResponse* _response;
     };
@@ -216,10 +208,12 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        AsyncJobManager (uint64_t (*idFunc)()) 
+        AsyncJobManager (uint64_t (*idFunc)(), 
+                         void (*callbackFunc)(string&, HttpResponse*))
           : _lock(),
             _jobs(),
-            generate(idFunc) {
+            generate(idFunc),
+            callback(callbackFunc) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,11 +406,12 @@ namespace triagens {
           char const* hdr = job->getHandler()->getRequest()->header("x-arango-coordinator", found);
 
           if (found) {
-            std::cout << "FOUND COORDINATOR HEADER\n";
+              std::cout << "FOUND COORDINATOR HEADER\n";
             ctx = new AsyncCallbackContext(std::string(hdr));
           }
 
-          AsyncJobResult ajr(*jobId, 0, TRI_microtime(), AsyncJobResult::JOB_PENDING, ctx);
+          AsyncJobResult ajr(*jobId, 0, TRI_microtime(), 
+                             AsyncJobResult::JOB_PENDING, ctx);
 
           WRITE_LOCKER(_lock);
 
@@ -471,8 +466,8 @@ namespace triagens {
           }
 
           // if callback is set, execute it now (outside of the wr-lock)
-          if (ctx != 0 && response != 0) {
-            ctx->callback(response);
+          if (ctx != 0 && response != 0 && 0 != callback) {
+            callback(ctx->getCoordinatorHeader(), response);
           }
         }
 
@@ -499,6 +494,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t (*generate)();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function pointer for callback registered at initialisation
+////////////////////////////////////////////////////////////////////////////////
+
+        void (*callback)(string& coordinator, HttpResponse* response);
 
     };
 

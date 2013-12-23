@@ -934,9 +934,6 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   }
 
   map<string, string>* headerFields = new map<string, string>;
-  (*headerFields)["X-ClientTransactionID"] = clientTransactionId;
-  (*headerFields)["X-Arango-Async"] = "store";
-  (*headerFields)["X-Arango-Coordinator"] = ServerState::instance()->getAddress();
 
   ClusterCommResult const* res =
       cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), "shardBlubb", 
@@ -968,7 +965,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     }
     LOG_DEBUG("JS_ShardingTest: request not yet sent");
     
-    usleep(500000);
+    usleep(50000);
   }
 
   LOG_DEBUG("JS_ShardingTest: request has been sent");
