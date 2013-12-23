@@ -1308,7 +1308,7 @@ int TRI_DestroyLockFile (char const* filename) {
 int TRI_DestroyLockFile (char const* filename) {
   int fd;
   int res;
-  size_t n;
+  ssize_t n;
 
   InitialiseLockFiles();
   n = LookupElementVectorString(&FileNames, filename);
