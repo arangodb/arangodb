@@ -31,6 +31,8 @@ endpoint = tcp://0.0.0.0:8529
 
 disable-authentication = yes
 threads = 5
+
+# the user and group are normally set in the start script
 # uid = arangodb
 # gid = arangodb
 

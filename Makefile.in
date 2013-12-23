@@ -45,12 +45,6 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief /sbin programs
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
 ################################################################################
 
 ################################################################################
@@ -88,7 +82,7 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief zlib
+### @brief ICU
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -100,19 +94,19 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief V8
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
 ### @brief mruby
 ################################################################################
 
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief ICU
+### @brief V8
+################################################################################
+
+# -*- mode: Makefile; -*-
+
+################################################################################
+### @brief zlib
 ################################################################################
 
 
@@ -195,40 +189,34 @@ target_triplet = @target@
 ################################################################################
 @ENABLE_MRUBY_TRUE@am__append_3 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_4 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a
 bin_PROGRAMS = bin/arangob$(EXEEXT) bin/arangodump$(EXEEXT) \
 	bin/arangorestore$(EXEEXT) bin/arangosh$(EXEEXT) \
 	bin/arangoimp$(EXEEXT) $(am__EXEEXT_1)
-sbin_PROGRAMS = bin/arangod$(EXEEXT)
-noinst_PROGRAMS = $(am__EXEEXT_2)
-
-################################################################################
-### @brief ruby additions
-################################################################################
-@ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a
 @ENABLE_MRUBY_TRUE@am__append_6 = bin/arangoirb
+sbin_PROGRAMS = bin/arangod$(EXEEXT)
 @ENABLE_MRUBY_TRUE@am__append_7 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/common -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/server -name "*.rb" -print)
 
+noinst_PROGRAMS = $(am__EXEEXT_2)
 DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/arangod/Makefile.files \
 	$(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files \
-	$(srcdir)/utils/Makefile.files \
 	$(srcdir)/arangoirb/Makefile.files \
 	$(srcdir)/UnitTests/Makefile.unittests \
 	$(srcdir)/Documentation/Makefile.files \
 	$(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby \
 	$(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison \
-	$(srcdir)/3rdParty/Makefile.zlib \
-	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
-	$(srcdir)/3rdParty/Makefile.all-in-one-v8 \
-	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
 	$(srcdir)/3rdParty/Makefile.all-in-one-icu \
-	$(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/configure $(am__configure_deps) \
-	$(top_srcdir)/config/config.h.in \
+	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
+	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
+	$(srcdir)/3rdParty/Makefile.all-in-one-v8 \
+	$(srcdir)/3rdParty/Makefile.zlib $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.am $(top_srcdir)/configure \
+	$(am__configure_deps) $(top_srcdir)/config/config.h.in \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Documentation/arango.template.in \
 	$(top_srcdir)/Installation/MacOSX/Bundle/Info.plist.in \
@@ -306,18 +294,18 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_16 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_17 = @LIBEV_LIBS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_17 = @ICU_BUILT@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_18 = clean-libev
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_19 = @V8_LIBS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_18 = clean-icu
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_19 = @LIBEV_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_20 = clean-v8
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_20 = clean-libev
 @ENABLE_MRUBY_TRUE@am__append_21 = @MRUBY_LIBS@
 
 ################################################################################
@@ -326,12 +314,12 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ### "clean" in mruby is broken
 ################################################################################
 @ENABLE_MRUBY_TRUE@am__append_22 = clean-mruby
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_23 = @ICU_BUILT@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_24 = clean-icu
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_24 = clean-v8
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -1126,24 +1114,18 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ################################################################################
 
 ################################################################################
-### @brief configuration files
-################################################################################
-
-################################################################################
 ### @brief sets up the directories
 ################################################################################
-BUILT_SOURCES = build.h etc/arangodb/arangod-uid.conf \
-	etc/arangodb/arangod-arm.conf \
-	etc/arangodb/arangod-uid-arm.conf \
-	etc/arangodb/arango-dfdb.conf etc/arangodb/arangob.conf \
-	etc/arangodb/arangod.conf etc/arangodb/arangodump.conf \
-	etc/arangodb/arangoimp.conf etc/arangodb/arangoirb.conf \
-	etc/arangodb/arangorestore.conf etc/arangodb/arangosh.conf \
-	etc/arangodb/foxx-manager.conf $(am__append_12) \
-	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
-	@builddir@/.setup-js-directories $(am__append_13) \
-	$(am__append_15) $(am__append_16) @ZLIB_LIBS@ $(am__append_17) \
-	$(am__append_19) $(am__append_21) $(am__append_23)
+BUILT_SOURCES = build.h etc/arangodb/arango-dfdb.conf \
+	etc/arangodb/arangob.conf etc/arangodb/arangod.conf \
+	etc/arangodb/arangodump.conf etc/arangodb/arangoimp.conf \
+	etc/arangodb/arangoirb.conf etc/arangodb/arangorestore.conf \
+	etc/arangodb/arangosh.conf etc/arangodb/foxx-manager.conf \
+	$(am__append_12) Doxygen/.setup-directories \
+	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
+	$(am__append_13) $(am__append_15) $(am__append_16) \
+	$(am__append_17) $(am__append_19) $(am__append_21) \
+	$(am__append_23) @ZLIB_LIBS@
 
 ################################################################################
 ### @brief man pages to install
@@ -1169,8 +1151,8 @@ dist_man_MANS = Documentation/man/man1/arangob.1 \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_10) $(bin_SCRIPTS) Doxygen/.setup-directories \
-	Doxygen/* $(am__append_14)
+CLEANUP = $(am__append_10) Doxygen/.setup-directories Doxygen/* \
+	$(am__append_14)
 
 ################################################################################
 ### @brief targets for cleanup of 3rd party libraries
@@ -1179,8 +1161,8 @@ CLEANUP = $(am__append_10) $(bin_SCRIPTS) Doxygen/.setup-directories \
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-CLEANUP_3RD = clean-zlib $(am__append_18) $(am__append_20) \
-	$(am__append_22) $(am__append_24)
+CLEANUP_3RD = $(am__append_18) $(am__append_20) $(am__append_22) \
+	$(am__append_24) clean-zlib
 
 ################################################################################
 ### @brief flex files
@@ -1268,7 +1250,7 @@ noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 ################################################################################
 ### @brief /sbin scripts
 ################################################################################
-bin_SCRIPTS = bin/arango-dfdb bin/foxx-manager
+bin_SCRIPTS = 
 
 ################################################################################
 ### @brief /etc data
@@ -2105,7 +2087,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -2128,7 +2110,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu:
+$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -7371,7 +7353,8 @@ install-dvi-am:
 
 install-exec-am: install-binPROGRAMS install-binSCRIPTS \
 	install-sbinPROGRAMS
-
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) install-exec-hook
 install-html: install-html-am
 
 install-html-am:
@@ -7417,7 +7400,7 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 
 uninstall-man: uninstall-man1 uninstall-man8
 
-.MAKE: all check install install-am install-strip
+.MAKE: all check install install-am install-exec-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-am clean \
 	clean-binPROGRAMS clean-cscope clean-generic clean-local \
@@ -7430,29 +7413,19 @@ uninstall-man: uninstall-man1 uninstall-man8
 	info-am install install-am install-arangosysconfDATA \
 	install-binPROGRAMS install-binSCRIPTS install-data \
 	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-man1 \
-	install-man8 install-nobase_pkgdataDATA install-pdf \
-	install-pdf-am install-ps install-ps-am install-sbinPROGRAMS \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am \
-	uninstall-arangosysconfDATA uninstall-binPROGRAMS \
+	install-exec install-exec-am install-exec-hook install-html \
+	install-html-am install-info install-info-am install-man \
+	install-man1 install-man8 install-nobase_pkgdataDATA \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-sbinPROGRAMS install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man uninstall-man1 \
 	uninstall-man8 uninstall-nobase_pkgdataDATA \
 	uninstall-sbinPROGRAMS
 
-
-etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:^# \([ug]id\):\1:' $< > $@
-
-etc/arangodb/arangod-arm.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' $< > $@
-
-etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:^# \([ug]id\):\1:' $< \
-      | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
 
 ################################################################################
 ### @brief /var data
@@ -7466,7 +7439,13 @@ install-data-local:
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb
 
-#endif
+################################################################################
+### @brief symbolic links
+################################################################################
+
+install-exec-hook:
+	ln -s arangosh$(EXEEXT) $(DESTDIR)$(bindir)/foxx-manager$(EXEEXT)
+	ln -s arangod$(EXEEXT) $(DESTDIR)$(sbindir)/arango-dfdb$(EXEEXT)
 
 ################################################################################
 ### @brief version number
@@ -7491,28 +7470,6 @@ etc/arangodb/%.conf: etc/arangodb/%.conf.in Makefile
 		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		$< > $@
-
-################################################################################
-### @brief arango datafile debugger
-################################################################################
-
-bin/arango-dfdb: utils/arango-dfdb.in
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
-		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
-		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
-		$< > $@
-	chmod 755 $@
-
-################################################################################
-### @brief foxx manager
-################################################################################
-
-bin/foxx-manager: utils/foxx-manager.in
-	sed \
-		-e 's%@BINDIR@%${TRI_BINDIR}%g' \
-		$< > $@
-	chmod 755 $@
 
 ################################################################################
 ################################################################################
@@ -8507,107 +8464,6 @@ js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.j
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.yy
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
-@ZLIB_LIBS@: @srcdir@/.zlib-build-@TRI_BITS@
-
-@srcdir@/.zlib-build-@TRI_BITS@:
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILDING zlib"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-	mkdir @top_srcdir@/3rdParty/zlib-1.2.7 || true
-	cd @top_srcdir@/3rdParty/zlib-1.2.7 && ./configure 
-	cd @top_srcdir@/3rdParty/zlib-1.2.7 && $(MAKE)
-
-	@touch @srcdir@/.zlib-build-@TRI_BITS@
-
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILD zlib FINISHED"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-clean-zlib:
-	rm -f @srcdir@/.zlib-build-@TRI_BITS@
-	cd @top_srcdir@/3rdParty/zlib-1.2.7 && $(MAKE) clean
-
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
-
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@srcdir@/.libev-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILDING libev"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
-
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && ../configure --disable-shared
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE)
-
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	touch @srcdir@/.libev-build-@TRI_BITS@
-
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILD libev FINISHED"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
-
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@clean-libev:
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -f @srcdir@/.libev-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -rf @top_srcdir@/3rdParty/libev/BUILD
-
-@ENABLE_ALL_IN_ONE_V8_TRUE@@V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
-
-@ENABLE_ALL_IN_ONE_V8_TRUE@@srcdir@/.v8-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILDING V8"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
-
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" GYP_DEFINES="armv7=0" $(MAKE) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
-
-@ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
-
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILD V8 FINISHED"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
-
-@ENABLE_ALL_IN_ONE_V8_TRUE@clean-v8:
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -f @srcdir@/.v8-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/out
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
-
-@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: @srcdir@/.mruby-build-@TRI_BITS@
-
-@ENABLE_MRUBY_TRUE@@srcdir@/.mruby-build-@TRI_BITS@:
-@ENABLE_MRUBY_TRUE@	@echo
-@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo "BUILDING mruby"
-@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo
-
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
-
-@ENABLE_MRUBY_TRUE@	touch @srcdir@/.mruby-build-@TRI_BITS@
-
-@ENABLE_MRUBY_TRUE@	@echo
-@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo "BUILD mruby FINISHED"
-@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo
-
-@ENABLE_MRUBY_TRUE@clean-mruby:
-@ENABLE_MRUBY_TRUE@	rm -f @srcdir@/.mruby-build-@TRI_BITS@
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/MRUBY && ( $(MAKE) -k clean || true )
-
 @ENABLE_ALL_IN_ONE_ICU_TRUE@@ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@@srcdir@/.icu-build-@TRI_BITS@:
@@ -8643,6 +8499,107 @@ clean-zlib:
 @ENABLE_ALL_IN_ONE_ICU_TRUE@	rm -f @srcdir@/.icu-build-@TRI_BITS@
 @ENABLE_ALL_IN_ONE_ICU_TRUE@	rm -rf $(ICUDIR)
 
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
+
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@srcdir@/.libev-build-@TRI_BITS@:
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILDING libev"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && ../configure --disable-shared
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE)
+
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	touch @srcdir@/.libev-build-@TRI_BITS@
+
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILD libev FINISHED"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@clean-libev:
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -f @srcdir@/.libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -rf @top_srcdir@/3rdParty/libev/BUILD
+
+@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: @srcdir@/.mruby-build-@TRI_BITS@
+
+@ENABLE_MRUBY_TRUE@@srcdir@/.mruby-build-@TRI_BITS@:
+@ENABLE_MRUBY_TRUE@	@echo
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo "BUILDING mruby"
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo
+
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
+
+@ENABLE_MRUBY_TRUE@	touch @srcdir@/.mruby-build-@TRI_BITS@
+
+@ENABLE_MRUBY_TRUE@	@echo
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo "BUILD mruby FINISHED"
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo
+
+@ENABLE_MRUBY_TRUE@clean-mruby:
+@ENABLE_MRUBY_TRUE@	rm -f @srcdir@/.mruby-build-@TRI_BITS@
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/MRUBY && ( $(MAKE) -k clean || true )
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@@V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@@srcdir@/.v8-build-@TRI_BITS@:
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILDING V8"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" GYP_DEFINES="armv7=0" $(MAKE) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g" CXXFLAGS="-O2 -g" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILD V8 FINISHED"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_V8_TRUE@clean-v8:
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -f @srcdir@/.v8-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/out
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
+
+@ZLIB_LIBS@: @srcdir@/.zlib-build-@TRI_BITS@
+
+@srcdir@/.zlib-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING zlib"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	mkdir @top_srcdir@/3rdParty/zlib-1.2.7 || true
+	cd @top_srcdir@/3rdParty/zlib-1.2.7 && ./configure 
+	cd @top_srcdir@/3rdParty/zlib-1.2.7 && $(MAKE)
+
+	@touch @srcdir@/.zlib-build-@TRI_BITS@
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD zlib FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+clean-zlib:
+	rm -f @srcdir@/.zlib-build-@TRI_BITS@
+	cd @top_srcdir@/3rdParty/zlib-1.2.7 && $(MAKE) clean
+
 ################################################################################
 ### @brief generate all flex files
 ################################################################################
@@ -8652,7 +8609,7 @@ clean-zlib:
 ################################################################################
 
 ################################################################################
-### @brief zlib
+### @brief ICU
 ################################################################################
 
 ################################################################################
@@ -8660,15 +8617,15 @@ clean-zlib:
 ################################################################################
 
 ################################################################################
-### @brief V8
-################################################################################
-
-################################################################################
 ### @brief mruby
 ################################################################################
 
 ################################################################################
-### @brief ICU
+### @brief V8
+################################################################################
+
+################################################################################
+### @brief zlib
 ################################################################################
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

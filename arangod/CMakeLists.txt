@@ -168,27 +168,7 @@ install(
 ### @brief install arangod config
 ################################################################################
 
-if (BUILD_PACKAGE STREQUAL "raspbian")
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangod.conf)
-
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangod-uid.conf)
-elseif (BUILD_PACKAGE STREQUAL "dmg-cli")
-  install_config(arangod)
-elseif (MSVC)
-  install_config(arangod)
-else ()
-  install_config(arangod)
-
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
-    DESTINATION ${ETCDIR_INSTALL})
-endif ()
+install_config(arangod)
 
 ################################################################################
 ### @brief install arango-dfdb binary
