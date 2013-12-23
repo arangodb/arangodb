@@ -5,9 +5,11 @@
 # 
 
 [database]
-directory= @LOCALSTATEDIR@/lib/arangodb
-# maximal-journal-size=33554432
-# remove-on-drop=true
+directory = @LOCALSTATEDIR@/lib/arangodb
+# directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
+
+# maximal-journal-size = 33554432
+# remove-on-drop = true
 
 [server]
 # Specify the endpoint for HTTP requests by clients.
@@ -40,7 +42,9 @@ startup-directory = @PKGDATADIR@/js
 action-directory = @PKGDATADIR@/js/actions
 modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules;@PKGDATADIR@/js/node
 package-path = @PKGDATADIR@/js/npm
+
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
+# app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
 
 [ruby]
 action-directory = @PKGDATADIR@/mr/actions
