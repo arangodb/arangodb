@@ -236,7 +236,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief generates root config file
+### @brief generates config file using ROOTDIR
 ################################################################################
 
 macro (generate_root_config name)
@@ -257,27 +257,40 @@ macro (generate_root_config name)
 endmacro ()
 
 ################################################################################
+### @brief generates config file using the configured paths
+################################################################################
+
+macro (generate_path_config name)
+  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
+
+  STRING(REPLACE "@PKGDATADIR@" "${TRI_PKGDATADIR}" 
+         FileContent "${FileContent}")
+
+  STRING(REPLACE "@LOCALSTATEDIR@" "${VARDIR_NATIVE}" 
+         FileContent "${FileContent}")
+
+  if ((${name} STREQUAL "arangod") AND (BUILD_PACKAGE STREQUAL "raspbian"))
+    STRING(REGEX REPLACE "[\r\n]threads =.*" "\nthreads = 1" 
+           FileContent "${FileContent}")
+  endif ()
+
+  FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")
+endmacro ()
+
+################################################################################
 ### @brief installs a config file
 ################################################################################
 
 macro (install_config name)
-  if (MSVC)
+  if (MSVC OR (BUILD_PACKAGE STREQUAL "dmg-cli"))
     generate_root_config(${name})
-
-    install(
-      FILES ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf
-      DESTINATION ${ETCDIR_INSTALL})
-  elseif (BUILD_PACKAGE STREQUAL "dmg-cli")
-    generate_root_config(${name})
-
-    install(
-      FILES ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf
-      DESTINATION ${ETCDIR_INSTALL})
   else ()
-    install(
-      FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf
-      DESTINATION ${ETCDIR_INSTALL})
+    generate_path_config(${name})
   endif ()
+
+  install(
+    FILES ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf
+    DESTINATION ${ETCDIR_INSTALL})
 endmacro ()
 
 ################################################################################
