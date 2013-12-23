@@ -47,16 +47,7 @@ install(
   TARGETS ${BIN_ARANGOIRB}
   RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangoirb-relative.conf)
-endif ()
-
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangoirb)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/client

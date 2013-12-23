@@ -52,13 +52,6 @@ install(
 ### @brief install arangob config
 ################################################################################
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangob-relative.conf)
-endif ()
-
 install_config(arangob)
 
 ################################################################################
@@ -95,13 +88,6 @@ install(
 ################################################################################
 ### @brief install arangodump config
 ################################################################################
-
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangodump-relative.conf)
-endif ()
 
 install_config(arangodump)
 
@@ -142,13 +128,6 @@ install(
 ### @brief install arangoimp config
 ################################################################################
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangoimp-relative.conf)
-endif ()
-
 install_config(arangoimp)
 
 ################################################################################
@@ -185,13 +164,6 @@ install(
 ################################################################################
 ### @brief install arangorestore config
 ################################################################################
-
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangorestore-relative.conf)
-endif ()
 
 install_config(arangorestore)
 
@@ -232,13 +204,6 @@ install(
 ### @brief install arangosh config
 ################################################################################
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangosh-relative.conf)
-endif ()
-
 install_config(arangosh)
 
 ################################################################################
@@ -250,13 +215,6 @@ install_command_alias(${BIN_ARANGOSH} ${TRI_BINDIR_INSTALL} foxx-manager)
 ################################################################################
 ### @brief install foxx-manager config
 ################################################################################
-
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/foxx-manager.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME foxx-manager-relative.conf)
-endif ()
 
 install_config(foxx-manager)
 
