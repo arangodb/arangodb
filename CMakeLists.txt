@@ -138,12 +138,6 @@ if (USE_MRUBY)
 endif ()
 
 ################################################################################
-### @brief RAW_CONFIG
-################################################################################
-
-option(USE_RAW_CONFIG "Do you want to install configuration files with variables" OFF)
-
-################################################################################
 ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
 ################################################################################
 
@@ -254,8 +248,10 @@ macro (generate_root_config name)
   STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var" 
          FileContent "${FileContent}")
 
-  STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
-         FileContent "${FileContent}")
+  if (MSVC)
+    STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
+           FileContent "${FileContent}")
+  endif ()
 
   FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")
 endmacro ()
@@ -266,6 +262,12 @@ endmacro ()
 
 macro (install_config name)
   if (MSVC)
+    generate_root_config(${name})
+
+    install(
+      FILES ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf
+      DESTINATION ${ETCDIR_INSTALL})
+  elseif (BUILD_PACKAGE STREQUAL "dmg-cli")
     generate_root_config(${name})
 
     install(
@@ -324,7 +326,7 @@ macro (install_command_alias name where alias)
     POST_BUILD
       COMMAND 
 	${CMAKE_COMMAND} -E create_symlink
-	  $<TARGET_FILE:${name}>
+	  ${name}
 	  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias})
 
     install(

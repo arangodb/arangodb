@@ -168,13 +168,6 @@ install(
 ### @brief install arangod config
 ################################################################################
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangod-relative.conf)
-endif ()
-
 if (BUILD_PACKAGE STREQUAL "raspbian")
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
@@ -185,16 +178,12 @@ if (BUILD_PACKAGE STREQUAL "raspbian")
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
     DESTINATION ${ETCDIR_INSTALL}
     RENAME arangod-uid.conf)
+elseif (BUILD_PACKAGE STREQUAL "dmg-cli")
+  install_config(arangod)
 elseif (MSVC)
-  generate_root_config(arangod)
-
-  install(
-    FILES ${PROJECT_BINARY_DIR}/etc/arangodb/arangod.conf
-    DESTINATION ${ETCDIR_INSTALL})
+  install_config(arangod)
 else ()
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
-    DESTINATION ${ETCDIR_INSTALL})
+  install_config(arangod)
 
   install(
     FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
@@ -205,18 +194,11 @@ endif ()
 ### @brief install arango-dfdb binary
 ################################################################################
 
-install_command_alias(${BIN_ARANGOD} ${TRI_BINDIR_INSTALL} arango-dfdb)
+install_command_alias(${BIN_ARANGOD} ${TRI_SBINDIR_INSTALL} arango-dfdb)
 
 ################################################################################
 ### @brief install arango-dfdb config
 ################################################################################
-
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arango-dfdb.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arango-dfdb-relative.conf)
-endif ()
 
 install_config(arango-dfdb)
 
