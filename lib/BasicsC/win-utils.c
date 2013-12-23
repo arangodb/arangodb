@@ -296,28 +296,47 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Creates or opens a file using the windows CreateFile method. Notice below we
-// have used the method CreateFileA to avoid unicode characters - for now anyway
-// TODO oreste: map the flags e.g. O_RDWR to the equivalents for CreateFileA
+/// @brief opens a file for windows
+///
+/// Creates or opens a file using the windows CreateFile method. Notice below we
+/// have used the method CreateFileA to avoid unicode characters - for now
+/// anyway.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_openFile (const char* filename, int openFlags) {
+int TRI_OPEN_WIN32 (const char* filename, int openFlags) {
+  static const int O_ACCMODE = 3;
   HANDLE fileHandle;
-  int    fileDescriptor;
+  int fileDescriptor;
+  DWORD mode;
 
-  fileHandle = CreateFileA(filename,
-                           GENERIC_READ | GENERIC_WRITE,
-                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL,
-                           OPEN_EXISTING,
-                           0,
-                           NULL);
+  switch (openFlags & O_ACCMODE) {
+    case O_RDONLY:
+      mode = GENERIC_READ;
+      break;
+
+    case O_WRONLY:
+      mode = GENERIC_WRITE;
+      break;
+
+    case O_RDWR:
+      mode = GENERIC_READ | GENERIC_WRITE;
+      break;
+  }
+
+  fileHandle = CreateFileA(
+    filename,
+    mode,
+    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+    NULL,
+    OPEN_EXISTING,
+    0,
+    NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle( (intptr_t)(fileHandle), O_RDWR| _O_BINARY);
+  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle), (openFlags & O_ACCMODE) | _O_BINARY);
   return fileDescriptor;
 }
 

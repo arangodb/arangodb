@@ -82,7 +82,11 @@ int getpagesize (void);
 
 int TRI_createFile (const char* filename, int openFlags, int modeFlags);
 
-int TRI_openFile (const char* filename, int openFlags);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens a file for windows
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_OPEN_WIN32 (const char* filename, int openFlags);
 
 // .............................................................................
 // the sleep function in windows is for milliseconds, on linux it is for seconds
