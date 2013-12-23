@@ -239,7 +239,7 @@ pack-win64:
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
-	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)"
+	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
 
 pack-winXX-cmake:
 	cd Build$(BITS) && cmake \
