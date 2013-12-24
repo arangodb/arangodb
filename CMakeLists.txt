@@ -270,7 +270,7 @@ macro (generate_path_config name)
          FileContent "${FileContent}")
 
   if ((${name} STREQUAL "arangod") AND (BUILD_PACKAGE STREQUAL "raspbian"))
-    STRING(REGEX REPLACE "[\r\n]threads =.*" "\nthreads = 1" 
+    STRING(REGEX REPLACE "[\r\n]threads =[^\r\n]*" "\nthreads = 1" 
            FileContent "${FileContent}")
   endif ()
 
