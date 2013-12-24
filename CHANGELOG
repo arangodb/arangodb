@@ -1,5 +1,5 @@
-v1.4.4-rc1 (2013-12-22)
------------------------
+v1.4.4 (2013-12-24)
+-------------------
 
 * uid and gid are now set in the scripts, there is no longer a separate config file for 
   arangod when started from a script

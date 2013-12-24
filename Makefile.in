@@ -7922,7 +7922,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)/databases"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --database.directory "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 ################################################################################
 ### @brief FOXX MANAGER TESTS
