@@ -12,7 +12,7 @@
    installation process you may change this. In the following description we will assume
    that ArangoDB has been installed in the location <ROOTDIR>.
 
-   You have to be careful when choosing an isntallation directory. You need either
+   You have to be careful when choosing an installation directory. You need either
    write permission to this directoy or you need to modify the config file for the
    server process. In the latter case the database directory and the Foxx directory
    should must be writable by the user.
