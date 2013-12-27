@@ -1,0 +1,11 @@
+pretty-print = true
+
+[server]
+endpoint = tcp://localhost:8529
+disable-authentication = true
+
+[javascript]
+startup-directory = @PKGDATADIR@/js
+modules-path = @PKGDATADIR@/js/client/modules;@PKGDATADIR@/js/common/modules;@PKGDATADIR@/js/node
+package-path = @PKGDATADIR@/js/npm
+execute-string = require("org/arangodb/foxx/manager").run(ARGUMENTS);

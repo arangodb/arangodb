@@ -368,7 +368,7 @@ function CompactionSuite () {
       assertTrue(0 <= fig["dead"]["size"]);
       assertTrue(0 <= fig["dead"]["deletion"]);
       assertTrue(0 <= fig["journals"]["count"]);
-      assertTrue(0 < fig["datafiles"]["count"]);
+      assertTrue(0 <= fig["datafiles"]["count"]);
 
       // wait for compactor to run
       require("console").log("waiting for compactor to run");

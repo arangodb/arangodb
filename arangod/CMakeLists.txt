@@ -4,7 +4,16 @@
 ## --SECTION--                                                   COMMON INCLUDES
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief local directory
+################################################################################
+
 include_directories(.)
+
+################################################################################
+### @brief library source
+################################################################################
+
 include_directories(${PROJECT_SOURCE_DIR}/lib)
 
 ## -----------------------------------------------------------------------------
@@ -15,7 +24,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 ### @brief output directory
 ################################################################################
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ### @brief arangod
@@ -140,38 +149,39 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
-    ${CMAKE_THREAD_LIBS_INIT})
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${MSVC_LIBS}
+)
+
+################################################################################
+### @brief install arangod binary
+################################################################################
 
 install(
   TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION sbin)
+  RUNTIME DESTINATION ${TRI_SBINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangod-relative.conf)
-endif ()
+################################################################################
+### @brief install arangod config
+################################################################################
 
-if (BUILD_PACKAGE STREQUAL "raspbian")
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-arm.conf
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangod.conf)
+install_config(arangod)
 
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid-arm.conf
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangod-uid.conf)
-else ()
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod.conf
-    DESTINATION ${ETCDIR_INSTALL})
+################################################################################
+### @brief install arango-dfdb binary
+################################################################################
 
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangod-uid.conf
-    DESTINATION ${ETCDIR_INSTALL})
-endif ()
+install_command_alias(${BIN_ARANGOD} ${TRI_SBINDIR_INSTALL} arango-dfdb)
+
+################################################################################
+### @brief install arango-dfdb config
+################################################################################
+
+install_config(arango-dfdb)
+
+################################################################################
+### @brief install server-side JavaScript files
+################################################################################
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/server ${PROJECT_SOURCE_DIR}/js/actions
@@ -192,17 +202,37 @@ install(
   DESTINATION share/arangodb/js
   PATTERN "databases" EXCLUDE)
 
+################################################################################
+### @brief install arangod mruby files
+################################################################################
+
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
   DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 
+################################################################################
+### @brief install log directory
+################################################################################
+
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
   DESTINATION ${VARDIR_INSTALL}/log)
 
+################################################################################
+### @brief install database directory
+################################################################################
+
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
+  DESTINATION ${VARDIR_INSTALL}/lib)
+
+################################################################################
+### @brief install apps directory
+################################################################################
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps
   DESTINATION ${VARDIR_INSTALL}/lib)
 
 ## -----------------------------------------------------------------------------
@@ -211,5 +241,5 @@ install(
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
 ## End:

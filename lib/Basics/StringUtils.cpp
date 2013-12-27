@@ -38,10 +38,12 @@
 #include "Basics/StringBuffer.h"
 
 // TODO need to this in another way
+#ifndef TRI_HAVE_GLOBAL_TIMEZONE_PROTO
 #ifdef GLOBAL_TIMEZONE
 extern long GLOBAL_TIMEZONE;
 #else
 static long GLOBAL_TIMEZONE = 0;
+#endif
 #endif
 
 using namespace std;

@@ -100,8 +100,26 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.x (XXXX-XX-XX)
+v1.4.4 (2013-12-24)
 -------------------
+
+* uid and gid are now set in the scripts, there is no longer a separate config file for 
+  arangod when started from a script
+
+* foxx-manager is now an alias for arangosh
+
+* arango-dfdb is now an alias for arangod, moved from bin to sbin
+
+* changed from readline to linenoise for Windows
+
+* added --install-service and --uninstall-service for Windows
+
+* removed --daemon and --supervisor for Windows
+
+* arangosh and arangod now uses the config-file which maps the binary name, i. e. if you
+  rename arangosh to foxx-manager it will use the config file foxx-manager.conf
+
+* fixed lock file for Windows
 
 * fixed issue #711, #687: foxx-manager throws internal errors
 
