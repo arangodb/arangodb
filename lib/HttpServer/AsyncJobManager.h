@@ -445,8 +445,8 @@ namespace triagens {
           
             if (it == _jobs.end()) {
               // job is already deleted.
-              // do nothing here. the dispatcher will throw away the handler, which
-              // will also dispose the response
+              // do nothing here. the dispatcher will throw away the handler, 
+              // which will also dispose the response
             }
             else {
               response = handler->stealResponse();
@@ -465,9 +465,12 @@ namespace triagens {
             }
           }
 
-          // if callback is set, execute it now (outside of the wr-lock)
-          if (ctx != 0 && response != 0 && 0 != callback) {
-            callback(ctx->getCoordinatorHeader(), response);
+          if (response != 0) {
+            // if callback is set, execute it now (outside of the wr-lock)
+            if (0 != ctx && 0 != callback) {
+              callback(ctx->getCoordinatorHeader(), response);
+            }
+            delete response;
           }
         }
 

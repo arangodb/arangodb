@@ -113,21 +113,23 @@ std::string AgencyCommResult::errorMessage () const {
 
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
+  if (0 == json) {
+    result = "OUT OF MEMORY";
+    return result;
+  }
+
   if (! TRI_IsArrayJson(json)) {
-    if (json != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return result;
   }
 
   // get "message" attribute
   TRI_json_t const* message = TRI_LookupArrayJson(json, "message");
 
-  if (! TRI_IsStringJson(message)) {
-    return result;
+  if (TRI_IsStringJson(message)) {
+    result = std::string(message->_value._string.data, message->_value._string.length - 1);
   }
 
-  result = std::string(message->_value._string.data, message->_value._string.length - 1);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;

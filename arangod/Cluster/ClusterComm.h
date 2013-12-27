@@ -80,12 +80,14 @@ namespace triagens {
       ShardID             shardID;
       ServerID            serverID;   // the actual server ID of the sender
       ClusterCommOpStatus status;
+      bool                dropped; // this is set to true, if the operation
+                                   // is dropped whilst in state CL_COMM_SENDING
+                                   // it is then actually dropped when it has
+                                   // been sent
+
       // The field result is != 0 ifs status is >= CL_COMM_SENT.
       // Note that if status is CL_COMM_TIMEOUT, then the result
       // field is a response object that only says "timeout"
-      bool                dropped; // this is set to true, if the operation
-                                   // is dropped whilst in state CL_COMM_SENDING
-                                   // it is then actually dropped when sent
       httpclient::SimpleHttpResult* result;
       // the field answer is != 0 iff status is == CL_COMM_RECEIVED
       rest::HttpRequest* answer;
@@ -107,15 +109,18 @@ namespace triagens {
 
     struct ClusterCommCallback {
       // The idea is that one inherits from this class and implements
-      // the callback.
+      // the callback. Note however that the callback is called whilst 
+      // holding the lock for the receiving (or indeed also the sending) 
+      // queue! Therefore the operation should be quick.
       
       ClusterCommCallback () {}
-      virtual ~ClusterCommCallback ();
+      virtual ~ClusterCommCallback () {};
 
-      // Result indicates whether or not the returned result shall be queued.
-      // If one returns false here, one has to call delete on the
-      // ClusterCommResult*.
-      virtual bool operator() (ClusterCommResult*);
+      // Result indicates whether or not the returned result is already
+      // fully processed. If so, it is removed from all queues. In this
+      // case the object is automatically destructed, so that the
+      // callback must not call delete in any case.
+      virtual bool operator() (ClusterCommResult*) = 0;
     };
 
     typedef double ClusterCommTimeout;    // in milliseconds
@@ -459,7 +464,9 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
         SingleServerConnection* getConnection(ServerID& serverID);
         void returnConnection(SingleServerConnection* singleConnection);
         void brokenConnection(SingleServerConnection* singleConnection);
-        void closeUnusedConnections();
+        // The following closes all connections that have been unused for
+        // more than limit seconds
+        void closeUnusedConnections(double limit);
 
         // The data structures for our internal queues:
 
@@ -490,6 +497,9 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 
         // Move an operation from the send to the receive queue:
         bool moveFromSendToReceived (OperationID operationID);
+
+        // Cleanup all queues:
+        void cleanupAllQueues();
 
         // Finally, our background communications thread:
         ClusterCommThread *_backgroundThread;

@@ -912,6 +912,19 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 
 #ifdef TRI_ENABLE_CLUSTER
 
+class CallbackTest : public ClusterCommCallback {
+    string _msg;
+
+  public:
+    CallbackTest(string msg) : _msg(msg) {}
+    virtual ~CallbackTest() {}
+    virtual bool operator() (ClusterCommResult* res) {
+      cout << "ClusterCommCallback called on operation "
+           << res->operationID << "Msg: " << _msg << endl;
+      return false;  // Keep it in the queue
+    }
+};
+
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8::Isolate* isolate;
 
@@ -938,16 +951,19 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   ClusterCommResult const* res =
       cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), "shardBlubb", 
                        triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                       "/_admin/time", NULL, 0, headerFields, 0, 0);
+                       "/_admin/time", NULL, 0, headerFields, 
+                       new CallbackTest("Bla"), 0);
 
   if (res == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't queue async request");
   }
   
-  LOG_DEBUG("JS_ShardingTest: request has been submitted");
+  cout << "JS_ShardingTest: request has been submitted" << endl;
 
   OperationID opID = res->operationID;
   delete res;
+
+  ClusterCommOpStatus status;
 
   // Wait until the request has actually been sent:
   while (true) {
@@ -956,20 +972,37 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't enquire operation");
     }
 
-    ClusterCommOpStatus status = res->status;
+    status = res->status;
 
     delete res;
 
     if (status >= CL_COMM_SENT) {
       break;
     }
-    LOG_DEBUG("JS_ShardingTest: request not yet sent");
+    cout << "JS_ShardingTest: request not yet sent" << endl;
     
     usleep(50000);
   }
 
-  LOG_DEBUG("JS_ShardingTest: request has been sent");
-  cc->drop("", 0, opID, "");
+  cout << "JS_ShardingTest: request has been sent, status: " << status << endl;
+  res = cc->wait("", 0, opID, "");
+  if (res->status == CL_COMM_RECEIVED) {
+    cout << "JS_ShardingTest: have answer" << endl;
+    cout << "HTTP request type: " 
+         << res->answer->translateMethod(res->answer->requestType()) << endl;
+    cout << "HTTP headers:" << endl;
+    map<string,string> headers =res->answer->headers();
+    map<string,string>::iterator i;
+    for (i = headers.begin(); i != headers.end(); ++i) {
+      cout << "  " << i->first << ":" << i->second << endl;
+    }
+    cout << "HTTP body:" << endl << res->answer->body() << endl;
+  }
+  else {
+    cout << "JS_ShardingTest: error code " << res->status << endl;
+  }
+
+  delete res;
 
   return scope.Close(v8::Undefined());
 }
