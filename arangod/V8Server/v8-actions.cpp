@@ -951,8 +951,8 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   ClusterCommResult const* res =
       cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), "shardBlubb", 
                        triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                       "/_admin/time", NULL, 0, headerFields, 
-                       new CallbackTest("Bla"), 0);
+                       "/_admin/sleep?duration=5", NULL, 0, headerFields, 
+                       new CallbackTest("Bla"), 2);
 
   if (res == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't queue async request");
