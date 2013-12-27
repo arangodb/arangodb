@@ -15,7 +15,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 ### @brief output directory
 ################################################################################
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ### @brief arangob
@@ -37,30 +37,22 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
+
+################################################################################
+### @brief install arangob binary
+################################################################################
 
 install(
   TARGETS ${BIN_ARANGOB}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangob-relative.conf)
-endif ()
+################################################################################
+### @brief install arangob config
+################################################################################
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangob.conf
-  DESTINATION ${ETCDIR_INSTALL})
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
+install_config(arangob)
 
 ################################################################################
 ### @brief arangodump
@@ -82,30 +74,22 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
+
+################################################################################
+### @brief install arangodump binary
+################################################################################
 
 install(
   TARGETS ${BIN_ARANGODUMP}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangodump-relative.conf)
-endif ()
+################################################################################
+### @brief install arangodump config
+################################################################################
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangodump.conf
-  DESTINATION ${ETCDIR_INSTALL})
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
+install_config(arangodump)
 
 ################################################################################
 ### @brief arangoimp
@@ -129,30 +113,22 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
+
+################################################################################
+### @brief install arangoimp binary
+################################################################################
 
 install(
   TARGETS ${BIN_ARANGOIMP}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangoimp-relative.conf)
-endif ()
+################################################################################
+### @brief install arangoimp config
+################################################################################
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoimp.conf
-  DESTINATION ${ETCDIR_INSTALL})
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
+install_config(arangoimp)
 
 ################################################################################
 ### @brief arangorestore
@@ -174,30 +150,22 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
+
+################################################################################
+### @brief install arangorestore binary
+################################################################################
 
 install(
   TARGETS ${BIN_ARANGORESTORE}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangorestore-relative.conf)
-endif ()
+################################################################################
+### @brief install arangorestore config
+################################################################################
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangorestore.conf
-  DESTINATION ${ETCDIR_INSTALL})
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
+install_config(arangorestore)
 
 ################################################################################
 ### @brief arangosh
@@ -221,22 +189,38 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
+
+################################################################################
+### @brief install arangosh binary
+################################################################################
 
 install(
   TARGETS ${BIN_ARANGOSH}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangosh-relative.conf)
-endif ()
+################################################################################
+### @brief install arangosh config
+################################################################################
 
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangosh.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangosh)
+
+################################################################################
+### @brief install foxx-manager binary
+################################################################################
+
+install_command_alias(${BIN_ARANGOSH} ${TRI_BINDIR_INSTALL} foxx-manager)
+
+################################################################################
+### @brief install foxx-manager config
+################################################################################
+
+install_config(foxx-manager)
+
+################################################################################
+### @brief install client-side JavaScript files
+################################################################################
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client

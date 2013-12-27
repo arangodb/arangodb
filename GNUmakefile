@@ -1,10 +1,18 @@
 # -*- mode: Makefile; -*-
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                   SPECIAL TARGETS
+## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
 -include Makefile
+
+VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
+VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
+VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                   SPECIAL TARGETS
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief setup
@@ -103,7 +111,6 @@ pack-dmg-cmake:
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "USE_MRUBY=ON" \
-		-D "USE_RAW_CONFIG=ON" \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
@@ -149,7 +156,6 @@ pack-macosx-cmake:
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "USE_MRUBY=ON" \
-		-D "USE_RAW_CONFIG=ON" \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
@@ -194,7 +200,6 @@ pack-arm-cmake:
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		-D "USE_MRUBY=OFF" \
-		-D "USE_RAW_CONFIG=OFF" \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
@@ -216,11 +221,42 @@ pack-arm-cmake:
 	cd Build && cpack \
 		-G DEB
 
+################################################################################
+### @brief Windows 64-bit bundle
+################################################################################
+
+.PHONY: pack-win32 pack-winXX pack-winXX-cmake
+
+pack-win32:
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
+
+pack-win64:
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
+
+pack-winXX:
+	rm -rf Build$(BITS) && mkdir Build$(BITS)
+
+	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+
+pack-winXX-cmake:
+	cd Build$(BITS) && cmake \
+		-G "$(TARGET)" \
+		-D "USE_MRUBY=OFF" \
+		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		..
+
+	cd Build$(BITS) && cmake --build . --config Release
+
+	cd Build$(BITS) && cpack -G NSIS
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*-"
 ## End:

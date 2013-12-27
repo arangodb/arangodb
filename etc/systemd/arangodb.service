@@ -20,7 +20,7 @@ After=syslog.target network.target
 Type=forking
 PIDFile=/var/run/arangodb/arangod.pid
 ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/run/arangodb
-ExecStart=/usr/sbin/arangod -c /etc/arangodb/arangod-uid.conf --pid-file /var/run/arangodb/arangod.pid --supervisor
+ExecStart=/usr/sbin/arangod -c /etc/arangodb/arangod.conf --uid arangodb --gid arangodb --pid-file /var/run/arangodb/arangod.pid --supervisor
 
 [Install]
 WantedBy=multi-user.target
