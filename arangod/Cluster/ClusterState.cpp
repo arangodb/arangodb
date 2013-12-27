@@ -120,17 +120,22 @@ void ClusterState::loadShardInformation () {
 }
 
 std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
-  READ_LOCKER(lock);
-  map<ServerID,string>::iterator i = serverAddresses.find(serverID);
-  if (i != serverAddresses.end()) {
-    return i->second;
+  int tries = 0;
+
+  while (++tries < 3) {
+    {
+      READ_LOCKER(lock);
+      map<ServerID,string>::iterator i = serverAddresses.find(serverID);
+      if (i != serverAddresses.end()) {
+        return i->second;
+      }
+    }
+    
+    // must call loadServerInformation outside the lock
+    loadServerInformation();
   }
-  loadServerInformation();
-  i = serverAddresses.find(serverID);
-  if (i != serverAddresses.end()) {
-    return i->second;
-  }
-  return string("");
+
+  return std::string("");
 }
 
 ServerID ClusterState::getResponsibleServer (ShardID const& shardID) {
