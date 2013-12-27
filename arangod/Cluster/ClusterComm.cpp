@@ -73,9 +73,16 @@ ClusterComm::ClusterComm () {
 }
 
 ClusterComm::~ClusterComm () {
-  // FIXME: Delete all stuff in queues, close all connections
   _backgroundThread->stop();
+  _backgroundThread->shutdown();
+  delete _backgroundThread;
   _backgroundThread = 0;
+  WRITE_LOCKER(allLock);
+  map<ServerID,ServerConnections*>::iterator i;
+  for (i = allConnections.begin(); i != allConnections.end(); ++i) {
+    delete i->second;
+  }
+  cleanupAllQueues();
 }
 
 ClusterComm* ClusterComm::_theinstance = 0;
@@ -122,7 +129,9 @@ ClusterComm::getConnection(ServerID& serverID) {
   ServerConnections* s;
   SingleServerConnection* c;
 
-  // First find a collections list:
+  cout << "getConnection: find connections list" << endl;
+
+  // First find a connections list:
   {
     WRITE_LOCKER(allLock);
 
@@ -138,6 +147,8 @@ ClusterComm::getConnection(ServerID& serverID) {
 
   assert(s != 0);
   
+  cout << "getConnection: find unused one" << endl;
+  
   // Now get an unused one:
   {
     WRITE_LOCKER(s->lock);
@@ -148,8 +159,12 @@ ClusterComm::getConnection(ServerID& serverID) {
     }
   }
   
+  cout << "getConnection: need to open a new one" << endl;
+
   // We need to open a new one:
   string a = ClusterState::instance()->getServerEndpoint(serverID);
+
+  cout << "getConnection: have server endpoint: " << a << endl;
 
   if (a == "") {
     // Unknown server address, probably not yet connected
@@ -159,6 +174,7 @@ ClusterComm::getConnection(ServerID& serverID) {
   if (0 == e) {
     return 0;
   }
+  cout << "getConnection: made endpoint " << endl;
   triagens::httpclient::GeneralClientConnection*
          g = triagens::httpclient::GeneralClientConnection::factory(
                    e,
@@ -170,6 +186,7 @@ ClusterComm::getConnection(ServerID& serverID) {
     delete e;
     return 0;
   }
+  cout << "getConnection: made general connection" << endl;
   c = new SingleServerConnection(g,e,serverID);
   if (0 == c) {
     delete g;
@@ -177,12 +194,15 @@ ClusterComm::getConnection(ServerID& serverID) {
     return 0;
   }
 
+  cout << "getConnection: made singleserverconnection" << endl;
+
   // Now put it into our administration:
   {
     WRITE_LOCKER(s->lock);
     s->connections.push_back(c);
   }
   c->lastUsed = time(0);
+  cout << "getConnection: registered it" << endl;
   return c;
 }
 
@@ -252,7 +272,7 @@ void ClusterComm::brokenConnection(SingleServerConnection* c) {
   delete c;
 }
 
-void ClusterComm::closeUnusedConnections () {
+void ClusterComm::closeUnusedConnections (double limit) {
   WRITE_LOCKER(allLock);
   map<ServerID,ServerConnections*>::iterator s;
   list<SingleServerConnection*>::iterator i;
@@ -268,7 +288,7 @@ void ClusterComm::closeUnusedConnections () {
       WRITE_LOCKER(sc->lock);
       haveprev = false;
       for (i = sc->unused.begin(); i != sc->unused.end(); ) {
-        if (t - (*i)->lastUsed > 120) {
+        if (t - (*i)->lastUsed > limit) {
           vector<SingleServerConnection*>::iterator j;
           for (j = sc->connections.begin(); j != sc->connections.end(); j++) {
             if (*j == *i) {
@@ -631,11 +651,12 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   start = pos+1;
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
 
-  cout << "Hallo4" << endl;
+  cout << "AsyncAnswer: need connection" << endl;
 
   // Now find the connection to which the request goes from the coordinatorID:
   ClusterComm::SingleServerConnection* connection 
           = getConnection(coordinatorID);
+  cout << "AsyncAnswer: got answer about connection" << endl;
   if (0 == connection) {
     cout << "asyncAnswer: did not get connection" << endl;
     LOG_ERROR("asyncAnswer: cannot create connection to server '%s'", 
@@ -648,12 +669,14 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
+  cout << "asyncAnswer: sending PUT request to DB server " << coordinatorID << endl;
   LOG_TRACE("asyncAnswer: sending PUT request to DB server '%s'",
             coordinatorID.c_str());
 
   cout << "asyncAnswer: initialising client" << endl;
 
-  triagens::httpclient::SimpleHttpClient client(
+  triagens::httpclient::SimpleHttpClient* client
+    = new triagens::httpclient::SimpleHttpClient(
                              connection->connection,
                              _globalConnectionOptions._singleRequestTimeout, 
                              false);
@@ -663,13 +686,15 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   httpclient::SimpleHttpResult* result = 
-                 client.request(rest::HttpRequest::HTTP_REQUEST_PUT, 
-                                "/_api/shard-comm", body, len, headers);
+                 client->request(rest::HttpRequest::HTTP_REQUEST_PUT, 
+                                 "/_api/shard-comm", body, len, headers);
   cout << "In asyncAnswer, error msg: " << endl
-       << client.getErrorMessage() << endl
+       << client->getErrorMessage() << endl
        << result->getResultTypeMessage() << endl;
   // FIXME: handle case that connection was no good and the request
   // failed.
+  delete result;
+  delete client;
   returnConnection(connection);
 }
 
@@ -718,11 +743,20 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
       op = *(i->second);
       op->answer = answer;
       op->status = CL_COMM_RECEIVED;
-      somethingReceived.broadcast();
+      // Do we have to do a callback?
+      if (0 != op->callback) {
+        if ((*op->callback)(static_cast<ClusterCommResult*>(op))) {
+          // This is fully processed, so let's remove it from the queue:
+          QueueIterator q = i->second;
+          receivedByOpID.erase(i);
+          received.erase(q);
+          delete op;
+        }
+      }
     }
     else {
       // We have to look in the send queue as well, as it might not yet
-      // have been moved to the received queue. Note however, that it must
+      // have been moved to the received queue. Note however that it must
       // have been fully sent, so this is highly unlikely, but not impossible.
       basics::ConditionLocker sendlocker(&somethingToSend);
       i = toSendByOpID.find(operationID);
@@ -730,7 +764,15 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
         op = *(i->second);
         op->answer = answer;
         op->status = CL_COMM_RECEIVED;
-        somethingReceived.broadcast();
+        if (0 != op->callback) {
+          if ((*op->callback)(static_cast<ClusterCommResult*>(op))) {
+            // This is fully processed, so let's remove it from the queue:
+            QueueIterator q = i->second;
+            toSendByOpID.erase(i);
+            toSend.erase(q);
+            delete op;
+          }
+        }
       }
       else {
         // Nothing known about the request, get rid of it:
@@ -740,6 +782,8 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
     }
   }
 
+  // Finally tell the others:
+  somethingReceived.broadcast();
   cout << "end of processAnswer" << endl;
   return string("");
 }
@@ -784,6 +828,26 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   somethingReceived.broadcast();
   cout << "In moveFromSendToReceived moved " << operationID << endl;
   return true;
+}
+
+void ClusterComm::cleanupAllQueues() {
+  QueueIterator i;
+  {
+    basics::ConditionLocker locker(&somethingToSend);
+    for (i = toSend.begin(); i != toSend.end(); ++i) {
+      delete (*i);
+    }
+    toSendByOpID.clear();
+    toSend.clear();
+  }
+  {
+    basics::ConditionLocker locker(&somethingReceived);
+    for (i = received.begin(); i != received.end(); ++i) {
+      delete (*i);
+    }
+    receivedByOpID.clear();
+    received.clear();
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -863,10 +927,10 @@ void ClusterCommThread::run () {
     }
     else {
       // We need a connection to this server:
-      cout << "Urgh1" << endl;
+      cout << "Sender: need connection" << endl;
       ClusterComm::SingleServerConnection* connection 
         = cc->getConnection(server);
-      cout << "Urgh2" << endl;
+      cout << "Sender: got answer about connection" << endl;
       if (0 == connection) {
         op->status = CL_COMM_ERROR;
         LOG_ERROR("cannot create connection to server '%s'", server.c_str());
@@ -879,19 +943,21 @@ void ClusterCommThread::run () {
 
         {
           cout << "initialising client" << endl;
-          triagens::httpclient::SimpleHttpClient client(
-                                     connection->connection,
-                                     op->timeout, false);
+          triagens::httpclient::SimpleHttpClient* client
+            = new triagens::httpclient::SimpleHttpClient(connection->connection,
+                                                         op->timeout, false);
 
           // We add this result to the operation struct without acquiring
           // a lock, since we know that only we do such a thing:
-          op->result = client.request(op->reqtype, op->path, op->body, 
-                                      op->bodyLength, *(op->headerFields));
+          op->result = client->request(op->reqtype, op->path, op->body, 
+                                       op->bodyLength, *(op->headerFields));
           cout << "Sending msg:" << endl
-               << client.getErrorMessage() << endl
+               << client->getErrorMessage() << endl
                << op->result->getResultTypeMessage() << endl;
+          delete client;
           // FIXME: handle case that connection was no good and the request
           // failed.
+
         }
         cc->returnConnection(connection);
       }
