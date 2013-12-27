@@ -447,6 +447,7 @@ namespace triagens {
               // job is already deleted.
               // do nothing here. the dispatcher will throw away the handler, 
               // which will also dispose the response
+              return;
             }
             else {
               response = handler->stealResponse();
@@ -465,12 +466,18 @@ namespace triagens {
             }
           }
 
-          if (response != 0) {
-            // if callback is set, execute it now (outside of the wr-lock)
-            if (0 != ctx && 0 != callback) {
-              callback(ctx->getCoordinatorHeader(), response);
+          // If we got here, then we have stolen the pointer to the response
+
+          // If there is a callback context, the job is no longer in the
+          // list of "done" jobs, so we have to free the response and the
+          // callback context:
+
+          if (0 != ctx && 0 != callback) {
+            callback(ctx->getCoordinatorHeader(), response);
+            delete ctx;
+            if (response != 0) {
+              delete response;
             }
-            delete response;
           }
         }
 
