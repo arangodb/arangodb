@@ -276,6 +276,39 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_get_admin_sleep
+/// @brief sleeps, this is useful for timeout tests
+///
+/// @RESTHEADER{GET /_admin/sleep?duration=5,sleeps for 5 seconds}
+///
+/// @RESTDESCRIPTION
+///
+/// The call returns an object with the attribute `duration`. This takes
+/// as many seconds as the duration argument says.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Sleep was conducted successfully.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/sleep",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var time = parseFloat(req.parameters.duration);
+    if (isNaN(time)) {
+      time = 3.0;
+    }
+    internal.wait(time);
+    actions.resultOk(req, res, actions.HTTP_OK, { duration : time });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_get_admin_echo
 /// @brief returns the request
 ///

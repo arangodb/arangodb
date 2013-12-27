@@ -77,12 +77,12 @@ ClusterComm::~ClusterComm () {
   _backgroundThread->shutdown();
   delete _backgroundThread;
   _backgroundThread = 0;
+  cleanupAllQueues();
   WRITE_LOCKER(allLock);
   map<ServerID,ServerConnections*>::iterator i;
   for (i = allConnections.begin(); i != allConnections.end(); ++i) {
     delete i->second;
   }
-  cleanupAllQueues();
 }
 
 ClusterComm* ClusterComm::_theinstance = 0;
@@ -353,7 +353,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->bodyLength           = bodyLength;
   op->headerFields         = headerFields;
   op->callback             = callback;
-  op->timeout              = timeout == 0.0 ? 3600.0 : timeout;
+  op->endTime              = timeout == 0.0 ? now()+24*60*60.0 : now()+timeout;
   
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
@@ -897,75 +897,110 @@ void ClusterCommThread::run () {
   while (0 == _stop) {
     // First check the sending queue, as long as it is not empty, we send
     // a request via SimpleHttpClient:
-    {
-      basics::ConditionLocker locker(&cc->somethingToSend);
-      while (cc->toSend.empty() && ! _stop) {
-        LOG_DEBUG("ClusterComm alive");
-        // Now wait for the condition variable, but use a timeout to notice
-        // a request to terminate the thread:
-        locker.wait(10000000);
-      }
+    while (true) {  // left via break when there is no job in send queue
       if (0 != _stop) {
         break;
       }
-      cout << "Noticed something to send" << endl;
-      op = cc->toSend.front();
-      assert(op->status == CL_COMM_SUBMITTED);
-      op->status = CL_COMM_SENDING;
-    }
+      {
+        basics::ConditionLocker locker(&cc->somethingToSend);
+        if (cc->toSend.empty()) {
+          break;
+        }
+        else {
+          cout << "Noticed something to send" << endl;
+          op = cc->toSend.front();
+          assert(op->status == CL_COMM_SUBMITTED);
+          op->status = CL_COMM_SENDING;
+        }
+      }
 
-    // We release the lock, if the operation is dropped now, the
-    // `dropped` flag is set. We find out about this after we have
-    // sent the request (happens in moveFromSendToReceived).
+      // We release the lock, if the operation is dropped now, the
+      // `dropped` flag is set. We find out about this after we have
+      // sent the request (happens in moveFromSendToReceived).
 
-    // First find the server to which the request goes from the shardID:
-    ServerID server = ClusterState::instance()->getResponsibleServer(
-                                                     op->shardID);
-    cout << "Have responsible server " << server << endl;
-    if (server == "") {
-      op->status = CL_COMM_ERROR;
-    }
-    else {
-      // We need a connection to this server:
-      cout << "Sender: need connection" << endl;
-      ClusterComm::SingleServerConnection* connection 
-        = cc->getConnection(server);
-      cout << "Sender: got answer about connection" << endl;
-      if (0 == connection) {
-        op->status = CL_COMM_ERROR;
-        LOG_ERROR("cannot create connection to server '%s'", server.c_str());
-        cout << "did not get connection object" << endl;
+      // Have we already reached the timeout?
+      double currentTime = cc->now();
+      if (op->endTime <= currentTime) {
+        op->status = CL_COMM_TIMEOUT;
       }
       else {
-        LOG_TRACE("sending %s request to DB server '%s': %s",
-           triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
-           server.c_str(), op->body);
-
-        {
-          cout << "initialising client" << endl;
-          triagens::httpclient::SimpleHttpClient* client
-            = new triagens::httpclient::SimpleHttpClient(connection->connection,
-                                                         op->timeout, false);
-
-          // We add this result to the operation struct without acquiring
-          // a lock, since we know that only we do such a thing:
-          op->result = client->request(op->reqtype, op->path, op->body, 
-                                       op->bodyLength, *(op->headerFields));
-          cout << "Sending msg:" << endl
-               << client->getErrorMessage() << endl
-               << op->result->getResultTypeMessage() << endl;
-          delete client;
-          // FIXME: handle case that connection was no good and the request
-          // failed.
-
+        // First find the server to which the request goes from the shardID:
+        ServerID server = ClusterState::instance()->getResponsibleServer(
+                                                         op->shardID);
+        cout << "Have responsible server " << server << endl;
+        if (server == "") {
+          op->status = CL_COMM_ERROR;
         }
-        cc->returnConnection(connection);
+        else {
+          // We need a connection to this server:
+          cout << "Sender: need connection" << endl;
+          ClusterComm::SingleServerConnection* connection 
+            = cc->getConnection(server);
+          cout << "Sender: got answer about connection" << endl;
+          if (0 == connection) {
+            op->status = CL_COMM_ERROR;
+            LOG_ERROR("cannot create connection to server '%s'", server.c_str());
+            cout << "did not get connection object" << endl;
+          }
+          else {
+            LOG_TRACE("sending %s request to DB server '%s': %s",
+               triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
+               server.c_str(), op->body);
+
+            {
+              cout << "initialising client" << endl;
+              triagens::httpclient::SimpleHttpClient* client
+                = new triagens::httpclient::SimpleHttpClient(
+                                      connection->connection,
+                                      op->endTime-currentTime, false);
+
+              // We add this result to the operation struct without acquiring
+              // a lock, since we know that only we do such a thing:
+              op->result = client->request(op->reqtype, op->path, op->body, 
+                                           op->bodyLength, *(op->headerFields));
+              cout << "Sending msg:" << endl
+                   << client->getErrorMessage() << endl
+                   << op->result->getResultTypeMessage() << endl;
+              delete client;
+              // FIXME: handle case that connection was no good and the request
+              // failed.
+
+            }
+            cc->returnConnection(connection);
+          }
+        }
+      }
+
+      if (!cc->moveFromSendToReceived(op->operationID)) {
+        // It was dropped in the meantime, so forget about it:
+        delete op;
       }
     }
 
-    if (!cc->moveFromSendToReceived(op->operationID)) {
-      // It was dropped in the meantime, so forget about it:
-      delete op;
+    // Now the send queue is empty (at least was empty, when we looked
+    // just now, so we can check on our receive queue to detect timeouts:
+
+    {
+      double currentTime = cc->now();
+      basics::ConditionLocker locker(&cc->somethingReceived);
+      ClusterComm::QueueIterator q;
+      for (q = cc->received.begin(); q != cc->received.end(); ++q) {
+        op = *q;
+        if (op->status == CL_COMM_SENT) {
+          if (op->endTime < currentTime) {
+            op->status = CL_COMM_TIMEOUT;
+          }
+        }
+      }
+    }
+
+    LOG_DEBUG("ClusterComm alive");
+
+    // Finally, wait for some time or until something happens using 
+    // the condition variable:
+    {
+      basics::ConditionLocker locker(&cc->somethingToSend);
+      locker.wait(100000);
     }
   }
 

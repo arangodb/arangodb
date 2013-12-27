@@ -132,7 +132,7 @@ namespace triagens {
       size_t bodyLength;
       map<string, string>* headerFields;
       ClusterCommCallback* callback;
-      ClusterCommTimeout timeout;
+      ClusterCommTimeout endTime;
 
       ClusterCommOperation () {}
       virtual ~ClusterCommOperation () {
