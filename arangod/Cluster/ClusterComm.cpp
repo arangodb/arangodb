@@ -129,8 +129,6 @@ ClusterComm::getConnection(ServerID& serverID) {
   ServerConnections* s;
   SingleServerConnection* c;
 
-  cout << "getConnection: find connections list" << endl;
-
   // First find a connections list:
   {
     WRITE_LOCKER(allLock);
@@ -147,8 +145,6 @@ ClusterComm::getConnection(ServerID& serverID) {
 
   assert(s != 0);
   
-  cout << "getConnection: find unused one" << endl;
-  
   // Now get an unused one:
   {
     WRITE_LOCKER(s->lock);
@@ -159,12 +155,8 @@ ClusterComm::getConnection(ServerID& serverID) {
     }
   }
   
-  cout << "getConnection: need to open a new one" << endl;
-
   // We need to open a new one:
   string a = ClusterState::instance()->getServerEndpoint(serverID);
-
-  cout << "getConnection: have server endpoint: " << a << endl;
 
   if (a == "") {
     // Unknown server address, probably not yet connected
@@ -174,7 +166,6 @@ ClusterComm::getConnection(ServerID& serverID) {
   if (0 == e) {
     return 0;
   }
-  cout << "getConnection: made endpoint " << endl;
   triagens::httpclient::GeneralClientConnection*
          g = triagens::httpclient::GeneralClientConnection::factory(
                    e,
@@ -186,7 +177,6 @@ ClusterComm::getConnection(ServerID& serverID) {
     delete e;
     return 0;
   }
-  cout << "getConnection: made general connection" << endl;
   c = new SingleServerConnection(g,e,serverID);
   if (0 == c) {
     delete g;
@@ -194,15 +184,12 @@ ClusterComm::getConnection(ServerID& serverID) {
     return 0;
   }
 
-  cout << "getConnection: made singleserverconnection" << endl;
-
   // Now put it into our administration:
   {
     WRITE_LOCKER(s->lock);
     s->connections.push_back(c);
   }
   c->lastUsed = time(0);
-  cout << "getConnection: registered it" << endl;
   return c;
 }
 
@@ -370,7 +357,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
-  cout << "In asyncRequest, put into queue " << op->operationID << endl;
+  LOG_TRACE("In asyncRequest, put into queue %ld", op->operationID);
   somethingToSend.signal();
 
   return res;
@@ -626,23 +613,18 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  cout << "In asyncAnswer, seeing " << coordinatorHeader << endl;
+  LOG_TRACE("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
   pos = coordinatorHeader.find(":",start);
   if (pos == string::npos) {
-    cout << "Hallo1" << endl;
     LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
     return;
   }
   coordinatorID = coordinatorHeader.substr(start,pos-start);
 
-  cout << "AsyncAnswer: need connection" << endl;
-
   // Now find the connection to which the request goes from the coordinatorID:
   ClusterComm::SingleServerConnection* connection 
           = getConnection(coordinatorID);
-  cout << "AsyncAnswer: got answer about connection" << endl;
   if (0 == connection) {
-    cout << "asyncAnswer: did not get connection" << endl;
     LOG_ERROR("asyncAnswer: cannot create connection to server '%s'", 
               coordinatorID.c_str());
     return;
@@ -653,11 +635,8 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
-  cout << "asyncAnswer: sending PUT request to DB server " << coordinatorID << endl;
   LOG_TRACE("asyncAnswer: sending PUT request to DB server '%s'",
             coordinatorID.c_str());
-
-  cout << "asyncAnswer: initialising client" << endl;
 
   triagens::httpclient::SimpleHttpClient* client
     = new triagens::httpclient::SimpleHttpClient(
@@ -665,16 +644,11 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
                              _globalConnectionOptions._singleRequestTimeout, 
                              false);
 
-  cout << "asyncAnswer: sending request" << endl;
-
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   httpclient::SimpleHttpResult* result = 
                  client->request(rest::HttpRequest::HTTP_REQUEST_PUT, 
                                  "/_api/shard-comm", body, len, headers);
-  cout << "In asyncAnswer, error msg: " << endl
-       << client->getErrorMessage() << endl
-       << result->getResultTypeMessage() << endl;
   // FIXME: handle case that connection was no good and the request
   // failed.
   delete result;
@@ -689,7 +663,7 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  cout << "In processAnswer, seeing " << coordinatorHeader << endl;
+  LOG_TRACE("In processAnswer, seeing %s", coordinatorHeader.c_str());
 
   pos = coordinatorHeader.find(":",start);
   if (pos == string::npos) {
@@ -755,7 +729,6 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
 
   // Finally tell the others:
   somethingReceived.broadcast();
-  cout << "end of processAnswer" << endl;
   return string("");
 }
 
@@ -765,19 +738,13 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   IndexIterator i;
   ClusterCommOperation* op;
 
-  cout << "In moveFromSendToReceived " << operationID << endl;
+  LOG_TRACE("In moveFromSendToReceived %ld", operationID);
   basics::ConditionLocker locker(&somethingReceived);
   basics::ConditionLocker sendlocker(&somethingToSend);
   i = toSendByOpID.find(operationID);   // cannot fail
-  if (i == toSendByOpID.end()) {
-    IndexIterator j;
-    cout << "Looking for operationID:" << operationID << endl;
-    for (j = toSendByOpID.begin(); j != toSendByOpID.end(); ++j) {
-      cout << "Have operationID:" << (*j->second)->operationID << endl;
-    }
-  }
 
   assert(i != toSendByOpID.end());
+
   q = i->second;
   op = *q;
   assert(op->operationID == operationID);
@@ -797,7 +764,6 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   q--;
   receivedByOpID[operationID] = q;
   somethingReceived.broadcast();
-  cout << "In moveFromSendToReceived moved " << operationID << endl;
   return true;
 }
 
@@ -878,7 +844,7 @@ void ClusterCommThread::run () {
           break;
         }
         else {
-          cout << "Noticed something to send" << endl;
+          LOG_TRACE("Noticed something to send");
           op = cc->toSend.front();
           assert(op->status == CL_COMM_SUBMITTED);
           op->status = CL_COMM_SENDING;
@@ -898,20 +864,18 @@ void ClusterCommThread::run () {
         // First find the server to which the request goes from the shardID:
         ServerID server = ClusterState::instance()->getResponsibleServer(
                                                          op->shardID);
-        cout << "Have responsible server " << server << endl;
+        LOG_TRACE("Responsible server: %s", server.c_str());
         if (server == "") {
           op->status = CL_COMM_ERROR;
         }
         else {
           // We need a connection to this server:
-          cout << "Sender: need connection" << endl;
           ClusterComm::SingleServerConnection* connection 
             = cc->getConnection(server);
-          cout << "Sender: got answer about connection" << endl;
           if (0 == connection) {
             op->status = CL_COMM_ERROR;
-            LOG_ERROR("cannot create connection to server '%s'", server.c_str());
-            cout << "did not get connection object" << endl;
+            LOG_ERROR("cannot create connection to server '%s'", 
+                      server.c_str());
           }
           else {
             LOG_TRACE("sending %s request to DB server '%s': %s",
@@ -919,7 +883,6 @@ void ClusterCommThread::run () {
                server.c_str(), op->body);
 
             {
-              cout << "initialising client" << endl;
               triagens::httpclient::SimpleHttpClient* client
                 = new triagens::httpclient::SimpleHttpClient(
                                       connection->connection,
@@ -929,9 +892,6 @@ void ClusterCommThread::run () {
               // a lock, since we know that only we do such a thing:
               op->result = client->request(op->reqtype, op->path, op->body, 
                                            op->bodyLength, *(op->headerFields));
-              cout << "Sending msg:" << endl
-                   << client->getErrorMessage() << endl
-                   << op->result->getResultTypeMessage() << endl;
               delete client;
               // FIXME: handle case that connection was no good and the request
               // failed.

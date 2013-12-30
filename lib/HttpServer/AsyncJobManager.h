@@ -53,8 +53,6 @@ namespace triagens {
         AsyncCallbackContext (std::string const& coordHeader)
           : _coordHeader(coordHeader),
             _response(0) {
-
-          std::cout << "generated async context " << _coordHeader << std::endl;
         }
 
         ~AsyncCallbackContext () {
@@ -401,12 +399,11 @@ namespace triagens {
 
           AsyncCallbackContext* ctx = 0;
 
-            std::cout << "ASYNC REQUEST\n";
           bool found;
           char const* hdr = job->getHandler()->getRequest()->header("x-arango-coordinator", found);
 
           if (found) {
-              std::cout << "FOUND COORDINATOR HEADER\n";
+            LOG_TRACE("Found header X-Arango-Coordinator in async request");
             ctx = new AsyncCallbackContext(std::string(hdr));
           }
 
