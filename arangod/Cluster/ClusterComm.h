@@ -136,10 +136,6 @@ namespace triagens {
 
       ClusterCommOperation () {}
       virtual ~ClusterCommOperation () {
-        if (_deleteOnDestruction && 0 != body) {
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, 
-                   reinterpret_cast<void*>(const_cast<char*>(body)));
-        }
         if (_deleteOnDestruction && 0 != headerFields) {
           delete headerFields;
         }
@@ -236,10 +232,10 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// information about the progress. The actual answer is then delivered
 /// either in the callback or via poll. The caller has to call delete on
 /// the resulting ClusterCommResult*. The library takes ownerships of
-/// the pointers `body`, `headerFields` and `callback` and releases
-/// the memory when the operation has been finished. One has to use
-/// TRI_Allocate with memory zone TRI_UNKNOWN_MEM_ZONE to allocate the
-/// memory to which `body` points.
+/// the pointers `headerFields` and `callback` and releases
+/// the memory when the operation has been finished. It is the caller's
+/// responsibility to free the memory to which `body` points after the
+/// operation has finally terminated.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncRequest (
