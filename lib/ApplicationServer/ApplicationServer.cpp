@@ -1002,7 +1002,26 @@ bool ApplicationServer::readConfigurationFile () {
 
     if (d != 0) {
       string sysDir = string(d) + _systemConfigFile;
+      string localSysDir = sysDir + ".local";
+
       TRI_FreeString(TRI_CORE_MEM_ZONE, d);
+
+      // check and see if a local override file exists
+      if (FileUtils::exists(localSysDir)) {
+        LOG_INFO("using init override file '%s'", localSysDir.c_str());
+
+        bool ok = _options.parse(_descriptionFile, localSysDir);
+
+        // Observe that this is treated as an error - the configuration file exists
+        // but for some reason can not be parsed. Best to report an error.
+        if (! ok) {
+          LOG_ERROR("cannot parse config file '%s': %s", localSysDir.c_str(), _options.lastError().c_str());
+          return ok;
+        }
+      }
+      else {
+        LOG_TRACE("no system init override file '%s' found", sysDir.c_str());
+      }
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {
@@ -1012,7 +1031,6 @@ bool ApplicationServer::readConfigurationFile () {
 
         // Observe that this is treated as an error - the configuration file exists
         // but for some reason can not be parsed. Best to report an error.
-
         if (! ok) {
           LOG_ERROR("cannot parse config file '%s': %s", sysDir.c_str(), _options.lastError().c_str());
         }

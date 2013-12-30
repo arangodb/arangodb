@@ -279,6 +279,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   // parse config file
   string configFile = "";
+  bool allowLocal = false;
 
   if (! _configFile.empty()) {
     if (StringUtils::tolower(_configFile) == string("none")) {
@@ -299,6 +300,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
       if (FileUtils::exists(sysDir)) {
         configFile = sysDir;
+        allowLocal = true;
       }
       else {
         LOG_DEBUG("no system init file '%s'", sysDir.c_str());
@@ -307,6 +309,18 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   if (! configFile.empty()) {
+    if (allowLocal) {
+      string localConfigFile = configFile + ".local";
+
+      if (FileUtils::exists(localConfigFile)) {
+        LOG_DEBUG("using init override file '%s'", localConfigFile.c_str());
+
+        if (! options.parse(description, localConfigFile)) {
+          LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s", localConfigFile.c_str(), options.lastError().c_str());
+        }
+      }
+    }
+
     LOG_DEBUG("using init file '%s'", configFile.c_str());
 
     if (! options.parse(description, configFile)) {
