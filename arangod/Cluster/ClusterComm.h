@@ -280,12 +280,15 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// 
 /// This behaves as @ref asyncRequest except that the actual request is
 /// taken from `req`. We have to add a few headers and can use callback
-/// and timeout. The caller has to delete the result. The library takes
-/// ownerships of the pointers `headerFields` and `callback` and
-/// releases the memory when the operation has been finished. Note that
-/// ClusterComm creates copy of relevant parts of the HTTP request
-/// object `req`, simply because it can neither delete nor not delete
-/// `req` and its children itself.
+/// and timeout. The caller has to delete the result. The ClusterComm 
+/// library copies the map from the `req` object and adds (and possibly
+/// overwrites previous values) from `extraHeaderFields`. The library
+/// takes ownerships of the pointer `callback` and
+/// releases the memory when the operation has been completed. 
+/// Note that ClusterComm does not create a copy of the body of `req`,
+/// therefore it is the responsibility of the caller to ensure that `req`
+/// lives until the operation has been completed and that `req` is deleted
+/// afterwards.
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,7 +297,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                 CoordTransactionID const   coordTransactionID,
                 ShardID const              shardID,
                 string const               path,
-                map<string, string> const* headerFields,
+                map<string, string>&       extraHeaderFields,
                 ClusterCommCallback*       callback,
                 ClusterCommTimeout         timeout);
 
