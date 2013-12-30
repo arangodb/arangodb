@@ -649,8 +649,12 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   httpclient::SimpleHttpResult* result = 
                  client->request(rest::HttpRequest::HTTP_REQUEST_PUT, 
                                  "/_api/shard-comm", body, len, headers);
-  // FIXME: handle case that connection was no good and the request
-  // failed.
+  if (client->getErrorMessage() != "") {
+    brokenConnection(connection);
+  }
+  else {
+    returnConnection(connection);
+  }
   delete result;
   delete client;
   returnConnection(connection);
@@ -892,12 +896,15 @@ void ClusterCommThread::run () {
               // a lock, since we know that only we do such a thing:
               op->result = client->request(op->reqtype, op->path, op->body, 
                                            op->bodyLength, *(op->headerFields));
+              if (client->getErrorMessage() != "") {
+                cc->brokenConnection(connection);
+                op->status = CL_COMM_ERROR;
+              }
+              else {
+                cc->returnConnection(connection);
+              }
               delete client;
-              // FIXME: handle case that connection was no good and the request
-              // failed.
-
             }
-            cc->returnConnection(connection);
           }
         }
       }
