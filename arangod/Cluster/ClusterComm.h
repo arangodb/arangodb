@@ -275,50 +275,6 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                 ClusterCommTimeout                 timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward an HTTP request we got from the client on to a shard 
-/// asynchronously. 
-/// 
-/// This behaves as @ref asyncRequest except that the actual request is
-/// taken from `req`. We have to add a few headers and can use callback
-/// and timeout. The caller has to delete the result. The ClusterComm 
-/// library copies the map from the `req` object and adds (and possibly
-/// overwrites previous values) from `extraHeaderFields`. The library
-/// takes ownerships of the pointer `callback` and
-/// releases the memory when the operation has been completed. 
-/// Note that ClusterComm does not create a copy of the body of `req`,
-/// therefore it is the responsibility of the caller to ensure that `req`
-/// lives until the operation has been completed and that `req` is deleted
-/// afterwards.
-
-////////////////////////////////////////////////////////////////////////////////
-
-        ClusterCommResult* asyncDelegate (
-                rest::HttpRequest const&   req,
-                CoordTransactionID const   coordTransactionID,
-                ShardID const              shardID,
-                string const               path,
-                map<string, string>&       extraHeaderFields,
-                ClusterCommCallback*       callback,
-                ClusterCommTimeout         timeout);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief forward an HTTP request we got from the client on to a shard 
-/// synchronously. 
-/// 
-/// This behaves as @ref syncRequest except that the actual request is
-/// taken from `req`. We have to add a few headers and can use callback
-/// and timeout. The caller has to delete the result.
-////////////////////////////////////////////////////////////////////////////////
-
-        ClusterCommResult* syncDelegate (
-                      rest::HttpRequest const&      req,
-                      CoordTransactionID const      coordTransactionID,
-                      ShardID const&                shardID,
-                      const string&                 path,
-                      const map<string, string>&    headerFields,
-                      ClusterCommTimeout            timeout);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check on the status of an operation
 ///
 /// This call never blocks and returns information about a specific operation
