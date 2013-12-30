@@ -819,7 +819,6 @@ actions.defineHttp({
   prefix : true,
 
   callback : function (req, res) {
-    internal.print("Hallo1");
     var path;
     if (req.hasOwnProperty('suffix') && req.suffix.length !== 0) {
       path = "/"+req.suffix.join("/");
@@ -848,7 +847,6 @@ actions.defineHttp({
     if (params !== "") {
       path += params;
     }
-    internal.print("Path:",path);
     var headers = {};
     var transID = "";
     var timeout = 24*3600.0;
@@ -871,10 +869,6 @@ actions.defineHttp({
         }
       }
     }
-    internal.print("headers:",headers);
-    internal.print("transID:",transID);
-    internal.print("timeout:",timeout);
-    internal.print("shard:",shard);
 
     var body;
     if (req.requestBody === undefined || typeof req.requestBody !== "string") {
@@ -883,7 +877,6 @@ actions.defineHttp({
     else {
       body = req.requestBody;
     }
-    internal.print("body:",body);
     
     var r;
     if (typeof SYS_SHARDING_TEST === "undefined") {
@@ -892,10 +885,8 @@ actions.defineHttp({
     }
     else {
       try {
-        internal.print("Hallo2");
         r = SYS_SHARDING_TEST(req, res, shard, path, transID, 
                               headers, body, timeout);
-        internal.print("Hallo3: ",r);
         if (r.timeout) {
           res.responseCode = actions.HTTP_OK;
           res.contentType = "application/json; charset=utf-8";
@@ -910,7 +901,6 @@ actions.defineHttp({
         }
       }
       catch(err) {
-        internal.print("Hallo4");
         actions.resultError(req, res, actions.HTTP_FORBIDDEN, String(err));
       }
     }

@@ -919,8 +919,9 @@ class CallbackTest : public ClusterCommCallback {
     CallbackTest(string msg) : _msg(msg) {}
     virtual ~CallbackTest() {}
     virtual bool operator() (ClusterCommResult* res) {
-      cout << "ClusterCommCallback called on operation "
-           << res->operationID << "Msg: " << _msg << endl;
+      LOG_TRACE("ClusterCommCallback called on operation %ld",
+                res->operationID);
+      LOG_TRACE("Message: %s", _msg.c_str());
       return false;  // Keep it in the queue
     }
 };

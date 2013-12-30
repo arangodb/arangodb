@@ -70,12 +70,13 @@ void ClusterState::loadServerInformation () {
       res = _agency.getValues("State/ServersRegistered", true);
       if (res.successful()) {
         if (res.flattenJson(serverAddresses,"State/ServersRegistered/", false)) {
-          LOG_DEBUG("State/ServersRegistered loaded successfully");
-          map<ServerID,string>::iterator i;
-          cout << "Servers registered:" << endl;
-          for (i = serverAddresses.begin(); i != serverAddresses.end(); ++i) {
-            cout << "   " << i->first << " with address " << i->second << endl;
-          }
+          LOG_TRACE("State/ServersRegistered loaded successfully");
+          //map<ServerID,string>::iterator i;
+          //cout << "Servers registered:" << endl;
+          //for (i = serverAddresses.begin(); i != serverAddresses.end(); ++i) {
+          //  cout << "   " << i->first << " with address " << i->second 
+          //       << endl;
+          //}
           return;
         }
         else {
@@ -98,13 +99,13 @@ void ClusterState::loadShardInformation () {
       res = _agency.getValues("State/Shards", true);
       if (res.successful()) {
         if (res.flattenJson(shards,"State/Shards/", false)) {
-          LOG_DEBUG("State/Shards loaded successfully");
-          map<ShardID,ServerID>::iterator i;
-          cout << "Shards:" << endl;
-          for (i = shards.begin(); i != shards.end(); ++i) {
-            cout << "   " << i->first << " with responsible server " 
-                 << i->second << endl;
-          }
+          LOG_TRACE("State/Shards loaded successfully");
+          //map<ShardID,ServerID>::iterator i;
+          //cout << "Shards:" << endl;
+          //for (i = shards.begin(); i != shards.end(); ++i) {
+          //  cout << "   " << i->first << " with responsible server " 
+          //       << i->second << endl;
+          //}
           return;
         }
         else {
