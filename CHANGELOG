@@ -100,6 +100,12 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
+v1.4.5 (XXXX-XX-XX)
+-------------------
+
+* added override file "arangod.conf.local" (and co)
+
+
 v1.4.4 (2013-12-24)
 -------------------
 
