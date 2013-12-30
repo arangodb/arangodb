@@ -816,9 +816,75 @@ actions.defineHttp({
 actions.defineHttp({
   url : "_admin/sharding-test",
   context : "admin",
-  prefix : false,
+  prefix : true,
 
   callback : function (req, res) {
+    internal.print("Hallo1");
+    var path;
+    if (req.hasOwnProperty('suffix') && req.suffix.length !== 0) {
+      path = "/"+req.suffix.join("/");
+    }
+    else {
+      path = "/_admin/version";
+    }
+    var params = "";
+    var shard = "";
+    for (var p in req.parameters) {
+      if (req.parameters.hasOwnProperty(p)) {
+        if (p === "shardID") {
+          shard = req.parameters[p];
+        }
+        else {
+          if (params === "") {
+            params = "?";
+          }
+          else {
+            params += "&";
+          }
+          params += p+"="+String(req.parameters[p])
+        }
+      }
+    }
+    if (params !== "") {
+      path += params;
+    }
+    internal.print("Path:",path);
+    var headers = {};
+    var transID = "";
+    var timeout = 24*3600.0;
+    for (var p in req.headers) {
+      if (req.headers.hasOwnProperty(p)) {
+        if (p === "host" || p === "user-agent") {
+          // We ignore these
+        } 
+        else if (p === "clientTransactionID") {
+          transID = req.headers[p];
+        }
+        else if (p === "timeout") {
+          timeout = parseFloat(req.headers[p]);
+          if (isNaN(timeout)) {
+            timeout = 24*3600.0;
+          }
+        }
+        else {
+          headers[p] = req.headers[p];
+        }
+      }
+    }
+    internal.print("headers:",headers);
+    internal.print("transID:",transID);
+    internal.print("timeout:",timeout);
+    internal.print("shard:",shard);
+
+    var body;
+    if (req.requestBody === undefined || typeof req.requestBody !== "string") {
+      body = "";
+    }
+    else {
+      body = req.requestBody;
+    }
+    internal.print("body:",body);
+    
     var r;
     if (typeof SYS_SHARDING_TEST === "undefined") {
       actions.resultError(req, res, actions.HTTP_NOT_FOUND,
@@ -826,10 +892,25 @@ actions.defineHttp({
     }
     else {
       try {
-        r = { result: SYS_SHARDING_TEST (req, res) };
-        actions.resultOk(req, res, actions.HTTP_OK, r);
+        internal.print("Hallo2");
+        r = SYS_SHARDING_TEST(req, res, shard, path, transID, 
+                              headers, body, timeout);
+        internal.print("Hallo3: ",r);
+        if (r.timeout) {
+          res.responseCode = actions.HTTP_OK;
+          res.contentType = "application/json; charset=utf-8";
+          var s = JSON.stringify(r);
+          res.body = s;
+        }
+        else {
+          res.responseCode = actions.HTTP_OK;
+          res.contentType = r.headers.contentType;
+          res.headers = r.headers;
+          res.body = r.body;
+        }
       }
       catch(err) {
+        internal.print("Hallo4");
         actions.resultError(req, res, actions.HTTP_FORBIDDEN, String(err));
       }
     }

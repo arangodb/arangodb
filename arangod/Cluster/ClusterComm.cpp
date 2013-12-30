@@ -349,8 +349,14 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
-  op->body                 = body;
-  op->bodyLength           = bodyLength;
+  if (0 != bodyLength) {
+    op->body               = body;
+    op->bodyLength         = bodyLength;
+  }
+  else {
+    op->body               = 0;
+    op->bodyLength         = 0;
+  }
   op->headerFields         = headerFields;
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? now()+24*60*60.0 : now()+timeout;

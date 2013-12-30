@@ -926,43 +926,87 @@ class CallbackTest : public ClusterCommCallback {
 };
 
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
-  //v8::Isolate* isolate;
-
-  //TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  //isolate = v8::Isolate::GetCurrent();
-  //v8g = (TRI_v8_global_t*) isolate->GetData();
-
-  if (argv.Length() != 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "SYS_SHARDING_TEST(<req>, <res>)");
+  if (argv.Length() != 8) {
+    TRI_V8_EXCEPTION_USAGE(scope, 
+      "SYS_SHARDING_TEST(<req>, <res>, <shard>, <path>, <clientTransactionID>, "
+      "<headers>, <body>, <timeout>)");
   }
 
   if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
     TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
   }
 
-  const string clientTransactionId = StringUtils::itoa(TRI_NewTickServer());
-
   ClusterComm* cc = ClusterComm::instance();
 
   if (cc == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "clustercomm object not found");
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "clustercomm object not found");
+  }
+
+  // Now get the arguments to form our request:
+  triagens::rest::HttpRequest::HttpRequestType reqType 
+    = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
+  if (argv[0]->IsObject()) {
+    v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+    v8::Handle<v8::Value> meth = obj->Get(v8::String::New("requestType"));
+    if (meth->IsString()) {
+      TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, meth);
+      string methstring = *UTF8;
+      reqType = triagens::rest::HttpRequest::translateMethod(methstring);
+    }
+  }
+  
+  string shard = TRI_ObjectToString(argv[2]);
+  if (shard == "") {
+    shard = "shardBlubb";
+  }
+
+  string path = TRI_ObjectToString(argv[3]);
+  if (path == "") {
+    path = "/_admin/version";
+  }
+
+  string clientTransactionId = TRI_ObjectToString(argv[4]);
+  if (clientTransactionId == "") {
+    clientTransactionId = StringUtils::itoa(TRI_NewTickServer());
   }
 
   map<string, string>* headerFields = new map<string, string>;
+  if (argv[5]->IsObject()) {
+    v8::Handle<v8::Object> obj = argv[5].As<v8::Object>();
+    v8::Handle<v8::Array> props = obj->GetOwnPropertyNames();
+    uint32_t i;
+    for (i = 0; i < props->Length(); ++i) {
+      v8::Handle<v8::Value> prop = props->Get(i);
+      v8::Handle<v8::Value> val = obj->Get(prop);
+      string propstring = TRI_ObjectToString(prop);
+      string valstring = TRI_ObjectToString(val);
+      if (propstring != "") {
+        headerFields->insert(pair<string,string>(propstring, valstring));
+      }
+    }
+  }
+
+  string body = TRI_ObjectToString(argv[6]);
+
+  double timeout = TRI_ObjectToDouble(argv[7]);
+  if (timeout == 0.0) {
+    timeout = 24*3600.0;
+  }
 
   ClusterCommResult const* res =
-      cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), "shardBlubb", 
-                       triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                       "/_admin/sleep?duration=5", NULL, 0, headerFields, 
-                       new CallbackTest("Bla"), 2);
+      cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), shard, reqType,
+                       path, body.c_str(), body.size(), headerFields, 
+                       new CallbackTest("Hello Callback"), timeout);
 
   if (res == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't queue async request");
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "couldn't queue async request");
   }
   
-  cout << "JS_ShardingTest: request has been submitted" << endl;
+  LOG_TRACE("JS_ShardingTest: request has been submitted");
 
   OperationID opID = res->operationID;
   delete res;
@@ -973,42 +1017,49 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   while (true) {
     res = cc->enquire(opID);
     if (res == 0) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "couldn't enquire operation");
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                               "couldn't enquire operation");
     }
-
     status = res->status;
-
     delete res;
-
     if (status >= CL_COMM_SENT) {
       break;
     }
-    cout << "JS_ShardingTest: request not yet sent" << endl;
+    LOG_TRACE("JS_ShardingTest: request not yet sent");
     
     usleep(50000);
   }
 
-  cout << "JS_ShardingTest: request has been sent, status: " << status << endl;
+  LOG_TRACE("JS_ShardingTest: request has been sent, status: %d",status);
+
   res = cc->wait("", 0, opID, "");
-  if (res->status == CL_COMM_RECEIVED) {
-    cout << "JS_ShardingTest: have answer" << endl;
-    cout << "HTTP request type: " 
-         << res->answer->translateMethod(res->answer->requestType()) << endl;
-    cout << "HTTP headers:" << endl;
-    map<string,string> headers =res->answer->headers();
+  v8::Handle<v8::Object> r = v8::Object::New();
+  if (0 == res || res->status != CL_COMM_RECEIVED) {
+    r->Set(v8::String::New("timeout"),v8::BooleanObject::New(true));
+  }
+  else {   // Everything is OK
+    // The headers:
+    v8::Handle<v8::Object> h = v8::Object::New();
+    map<string,string> headers = res->answer->headers();
     map<string,string>::iterator i;
     for (i = headers.begin(); i != headers.end(); ++i) {
-      cout << "  " << i->first << ":" << i->second << endl;
+      h->Set(v8::String::New(i->first.c_str()),
+             v8::String::New(i->second.c_str()));
     }
-    cout << "HTTP body:" << endl << res->answer->body() << endl;
-  }
-  else {
-    cout << "JS_ShardingTest: error code " << res->status << endl;
+    r->Set(v8::String::New("headers"), h);
+
+    // The body:
+    if (0 != res->answer->body()) {
+      r->Set(v8::String::New("body"), v8::String::New(res->answer->body(),
+                                                      res->answer->bodySize()));
+    }
   }
 
-  delete res;
+  if (0 != res) {
+    delete res;
+  }
 
-  return scope.Close(v8::Undefined());
+  return scope.Close(r);
 }
 
 #endif
