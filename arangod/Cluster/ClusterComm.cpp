@@ -925,7 +925,7 @@ void ClusterCommThread::run () {
       }
     }
 
-    LOG_DEBUG("ClusterComm alive");
+    LOG_TRACE("ClusterComm alive");
 
     // Finally, wait for some time or until something happens using 
     // the condition variable:
