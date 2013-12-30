@@ -1035,8 +1035,20 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
 
   res = cc->wait("", 0, opID, "");
   v8::Handle<v8::Object> r = v8::Object::New();
-  if (0 == res || res->status != CL_COMM_RECEIVED) {
+  if (0 == res) {
+    r->Set(v8::String::New("errorMsg"),v8::String::New("out of memory"));
+  }
+  else if (res->status == CL_COMM_TIMEOUT) {
     r->Set(v8::String::New("timeout"),v8::BooleanObject::New(true));
+  }
+  else if (res->status == CL_COMM_ERROR) {
+    r->Set(v8::String::New("errorMessage"),
+           v8::String::New("could not send request, DBServer gone"));
+  }
+  else if (res->status == CL_COMM_DROPPED) {
+    // Note that this can basically not happen
+    r->Set(v8::String::New("errorMessage"),
+           v8::String::New("request dropped whilst waiting for answer"));
   }
   else {   // Everything is OK
     // The headers:

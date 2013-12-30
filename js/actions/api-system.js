@@ -887,7 +887,7 @@ actions.defineHttp({
       try {
         r = SYS_SHARDING_TEST(req, res, shard, path, transID, 
                               headers, body, timeout);
-        if (r.timeout) {
+        if (r.timeout || typeof r.errorMessage === 'string') {
           res.responseCode = actions.HTTP_OK;
           res.contentType = "application/json; charset=utf-8";
           var s = JSON.stringify(r);
