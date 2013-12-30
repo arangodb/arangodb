@@ -819,14 +819,20 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    var x;
+    var r;
     if (typeof SYS_SHARDING_TEST === "undefined") {
-      x = "Not compiled for cluster operation";
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND,
+                          "Not compiled for cluster operation");
     }
     else {
-      x = SYS_SHARDING_TEST (req, res);
+      try {
+        r = { result: SYS_SHARDING_TEST (req, res) };
+        actions.resultOk(req, res, actions.HTTP_OK, r);
+      }
+      catch(err) {
+        actions.resultError(req, res, actions.HTTP_FORBIDDEN, String(err));
+      }
     }
-    actions.resultOk(req, res, actions.HTTP_OK, { result : x });
   }
 });
 

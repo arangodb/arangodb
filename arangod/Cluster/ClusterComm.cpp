@@ -342,9 +342,9 @@ ClusterCommResult* ClusterComm::asyncRequest (
   // Add the header fields for asynchronous mode:
   (*headerFields)["X-Arango-Async"] = "store";
   (*headerFields)["X-Arango-Coordinator"] = ServerState::instance()->getId() +
+                              ":" + basics::StringUtils::itoa(op->operationID) +
                               ":" + clientTransactionID + ":" +
-                              basics::StringUtils::itoa(coordTransactionID) + 
-                              ":" + basics::StringUtils::itoa(op->operationID);
+                              basics::StringUtils::itoa(coordTransactionID);
 
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
@@ -615,11 +615,8 @@ void ClusterComm::drop (
 void ClusterComm::asyncAnswer (string& coordinatorHeader,
                                rest::HttpResponse* responseToSend) {
 
-  // First take apart the header to get various IDs:
+  // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
-  string clientTransactionID;
-  CoordTransactionID coordTransactionID;
-  OperationID operationID;
   size_t start = 0;
   size_t pos;
 
@@ -631,25 +628,6 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
     return;
   }
   coordinatorID = coordinatorHeader.substr(start,pos-start);
-  start = pos+1;
-  pos = coordinatorHeader.find(":",start);
-  if (pos == string::npos) {
-    cout << "Hallo2" << endl;
-    LOG_ERROR("Could not find clientTransactionID in X-Arango-Coordinator");
-    return;
-  }
-  clientTransactionID = coordinatorHeader.substr(start,pos-start);
-  start = pos+1;
-  pos = coordinatorHeader.find(":",start);
-  if (pos == string::npos) {
-    cout << "Hallo3" << endl;
-    LOG_ERROR("Could not find coordTransactionID in X-Arango-Coordinator");
-    return;
-  }
-  coordTransactionID = basics::StringUtils::uint64(
-                              coordinatorHeader.substr(start,pos-start));
-  start = pos+1;
-  operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
 
   cout << "AsyncAnswer: need connection" << endl;
 
@@ -700,10 +678,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
 string ClusterComm::processAnswer(string& coordinatorHeader,
                                   rest::HttpRequest* answer) {
-  // First take apart the header to get various IDs:
-  ServerID coordinatorID;
-  string clientTransactionID;
-  CoordTransactionID coordTransactionID;
+  // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;
   size_t pos;
@@ -714,23 +689,13 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
   if (pos == string::npos) {
     return string("could not find coordinator ID in 'X-Arango-Coordinator'");
   }
-  coordinatorID = coordinatorHeader.substr(start,pos-start);
+  //coordinatorID = coordinatorHeader.substr(start,pos-start);
   start = pos+1;
   pos = coordinatorHeader.find(":",start);
   if (pos == string::npos) {
     return 
-      string("could not find clientTransactionID in 'X-Arango-Coordinator'");
+      string("could not find operationID in 'X-Arango-Coordinator'");
   }
-  clientTransactionID = coordinatorHeader.substr(start,pos-start);
-  start = pos+1;
-  pos = coordinatorHeader.find(":",start);
-  if (pos == string::npos) {
-    return 
-      string("could not find coordTransactionID in 'X-Arango-Coordinator'");
-  }
-  coordTransactionID = basics::StringUtils::uint64(
-                              coordinatorHeader.substr(start,pos-start));
-  start = pos+1;
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
 
   // Finally find the ClusterCommOperation record for this operation:
