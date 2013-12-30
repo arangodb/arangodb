@@ -929,10 +929,10 @@ class CallbackTest : public ClusterCommCallback {
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 8) {
+  if (argv.Length() != 9) {
     TRI_V8_EXCEPTION_USAGE(scope, 
       "SYS_SHARDING_TEST(<req>, <res>, <shard>, <path>, <clientTransactionID>, "
-      "<headers>, <body>, <timeout>)");
+      "<headers>, <body>, <timeout>, <asyncMode>)");
   }
 
   if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
@@ -997,43 +997,55 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     timeout = 24*3600.0;
   }
 
-  ClusterCommResult const* res =
-      cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), shard, reqType,
-                       path, body.c_str(), body.size(), headerFields, 
-                       new CallbackTest("Hello Callback"), timeout);
+  bool asyncMode = TRI_ObjectToBoolean(argv[8]);
 
-  if (res == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
-                             "couldn't queue async request");
-  }
-  
-  LOG_TRACE("JS_ShardingTest: request has been submitted");
+  ClusterCommResult const* res;
 
-  OperationID opID = res->operationID;
-  delete res;
+  if (asyncMode) {
+    res = cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), shard, 
+                         reqType, path, body.c_str(), body.size(), headerFields, 
+                         new CallbackTest("Hello Callback"), timeout);
 
-  ClusterCommOpStatus status;
-
-  // Wait until the request has actually been sent:
-  while (true) {
-    res = cc->enquire(opID);
     if (res == 0) {
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
-                               "couldn't enquire operation");
+                               "couldn't queue async request");
     }
-    status = res->status;
-    delete res;
-    if (status >= CL_COMM_SENT) {
-      break;
-    }
-    LOG_TRACE("JS_ShardingTest: request not yet sent");
     
-    usleep(50000);
+    LOG_TRACE("JS_ShardingTest: request has been submitted");
+
+    OperationID opID = res->operationID;
+    delete res;
+
+    ClusterCommOpStatus status;
+
+    // Wait until the request has actually been sent:
+    while (true) {
+      res = cc->enquire(opID);
+      if (res == 0) {
+        TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                                 "couldn't enquire operation");
+      }
+      status = res->status;
+      delete res;
+      if (status >= CL_COMM_SENT) {
+        break;
+      }
+      LOG_TRACE("JS_ShardingTest: request not yet sent");
+      
+      usleep(50000);
+    }
+
+    LOG_TRACE("JS_ShardingTest: request has been sent, status: %d",status);
+
+    res = cc->wait("", 0, opID, "");
+  }
+  else {   // synchronous mode
+    res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(), shard, 
+                          reqType, path, body.c_str(), body.size(), 
+                          *headerFields, timeout);
+    delete headerFields;
   }
 
-  LOG_TRACE("JS_ShardingTest: request has been sent, status: %d",status);
-
-  res = cc->wait("", 0, opID, "");
   v8::Handle<v8::Object> r = v8::Object::New();
   if (0 == res) {
     r->Set(v8::String::New("errorMsg"),v8::String::New("out of memory"));

@@ -850,6 +850,7 @@ actions.defineHttp({
     var headers = {};
     var transID = "";
     var timeout = 24*3600.0;
+    var asyncMode = true;
     for (var p in req.headers) {
       if (req.headers.hasOwnProperty(p)) {
         if (p === "host" || p === "user-agent") {
@@ -863,6 +864,9 @@ actions.defineHttp({
           if (isNaN(timeout)) {
             timeout = 24*3600.0;
           }
+        }
+        else if (p === "synchronousMode") {
+          asyncMode = false;
         }
         else {
           headers[p] = req.headers[p];
@@ -886,7 +890,7 @@ actions.defineHttp({
     else {
       try {
         r = SYS_SHARDING_TEST(req, res, shard, path, transID, 
-                              headers, body, timeout);
+                              headers, body, timeout, asyncMode);
         if (r.timeout || typeof r.errorMessage === 'string') {
           res.responseCode = actions.HTTP_OK;
           res.contentType = "application/json; charset=utf-8";
