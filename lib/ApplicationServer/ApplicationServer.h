@@ -422,14 +422,18 @@ namespace triagens {
 /// Specifies the name of the configuration file to use.
 ///
 /// If this command is not passed to the server, then by default, the server
-/// will attempt to first locate a file named @LIT{~/.arango/arangod.conf} in the
+/// will attempt to first locate a file named `~/.arango/arangod.conf` in the
 /// user's home directory.
 ///
 /// If no such file is found, the server will proceed to look for a file
-/// @LIT{arangod.conf} in the system configuration directory. The system 
+/// `arangod.conf` in the system configuration directory. The system
 /// configuration directory is platform-specific, and may be changed when
-/// compiling ArangoDB yourself. It may default to @LIT{/etc} or 
-/// @LIT{/usr/local/etc}.
+/// compiling ArangoDB yourself. It may default to `/etc/arangodb` or
+/// `/usr/local/etc/arangodb`. This file is installed when using a package
+/// manager like rpm or dpkg. If you modify this file and later upgrade to a new
+/// version of ArangoDB, then the package manager normally warns you about the
+/// conflict. In order to avoid these warning for small adjustments, you can put
+/// local overrides into a file `arangod.conf.local`.
 ///
 /// Only command line options with a value should be set within the
 /// configuration file. Command line options which act as flags should be
