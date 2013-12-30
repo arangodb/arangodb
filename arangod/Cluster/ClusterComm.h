@@ -246,7 +246,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                 string const                        path,
                 char const*                         body,
                 size_t const                        bodyLength,
-                map<string, string> *               headerFields,
+                map<string, string>*                headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout);
 

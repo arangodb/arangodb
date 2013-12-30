@@ -363,6 +363,83 @@ ClusterCommResult* ClusterComm::asyncRequest (
   return res;
 }
 
+ClusterCommResult* ClusterComm::syncRequest (
+        ClientTransactionID const&         clientTransactionID,
+        CoordTransactionID const           coordTransactionID,
+        ShardID const&                     shardID,
+        triagens::rest::HttpRequest::HttpRequestType reqtype,
+        string const&                      path,
+        char const*                        body,
+        size_t const                       bodyLength,
+        map<string, string> const&         headerFields,
+        ClusterCommTimeout                 timeout) {
+
+  ClusterCommResult* res = new ClusterCommResult();
+  res->clientTransactionID  = clientTransactionID;
+  res->coordTransactionID   = coordTransactionID;
+  do {
+    res->operationID        = getOperationID();
+  } while (res->operationID == 0);   // just to make sure
+  res->shardID              = shardID;
+  res->status               = CL_COMM_SENDING;
+  
+  if (0 == bodyLength) {
+    body = 0;
+  }
+
+  double currentTime = now();
+  double endTime = timeout == 0.0 ? currentTime+24*60*60.0 
+                                  : currentTime+timeout;
+
+  res->serverID = ClusterState::instance()->getResponsibleServer(shardID);
+  LOG_TRACE("Responsible server: %s", res->serverID.c_str());
+
+  if (res->serverID == "") {
+    res->status = CL_COMM_ERROR;
+  }
+  else {
+    // We need a connection to this server:
+    SingleServerConnection* connection = getConnection(res->serverID);
+    if (0 == connection) {
+      res->status = CL_COMM_ERROR;
+      LOG_ERROR("cannot create connection to server '%s'", 
+                res->serverID.c_str());
+    }
+    else {
+      if (0 != body) {
+        LOG_TRACE("sending %s request to DB server '%s': %s",
+           triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
+           res->serverID.c_str(), body);
+      }
+      else {
+        LOG_TRACE("sending %s request to DB server '%s'",
+           triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
+           res->serverID.c_str());
+      }
+      triagens::httpclient::SimpleHttpClient* client
+          = new triagens::httpclient::SimpleHttpClient(
+                                connection->connection,
+                                endTime-currentTime, false);
+
+      res->result = client->request(reqtype, path, body, bodyLength, 
+                                    headerFields);
+      if (client->getErrorMessage() != "") {
+        brokenConnection(connection);
+        res->status = CL_COMM_ERROR;
+      }
+      else {
+        returnConnection(connection);
+      }
+      delete client;
+    }
+  }
+  if (res->status == CL_COMM_SENDING) {
+    // Everything was OK
+    res->status = CL_COMM_SENT;
+  }
+  return res;
+}
+
 bool ClusterComm::match (
             ClientTransactionID const& clientTransactionID,
             CoordTransactionID const   coordTransactionID,
@@ -882,29 +959,34 @@ void ClusterCommThread::run () {
                       server.c_str());
           }
           else {
-            LOG_TRACE("sending %s request to DB server '%s': %s",
-               triagens::rest::HttpRequest::translateMethod(op->reqtype).c_str(),
-               server.c_str(), op->body);
-
-            {
-              triagens::httpclient::SimpleHttpClient* client
-                = new triagens::httpclient::SimpleHttpClient(
-                                      connection->connection,
-                                      op->endTime-currentTime, false);
-
-              // We add this result to the operation struct without acquiring
-              // a lock, since we know that only we do such a thing:
-              op->result = client->request(op->reqtype, op->path, op->body, 
-                                           op->bodyLength, *(op->headerFields));
-              if (client->getErrorMessage() != "") {
-                cc->brokenConnection(connection);
-                op->status = CL_COMM_ERROR;
-              }
-              else {
-                cc->returnConnection(connection);
-              }
-              delete client;
+            if (0 != op->body) {
+              LOG_TRACE("sending %s request to DB server '%s': %s",
+                 triagens::rest::HttpRequest::translateMethod(op->reqtype)
+                   .c_str(), server.c_str(), op->body);
             }
+            else {
+              LOG_TRACE("sending %s request to DB server '%s'",
+                 triagens::rest::HttpRequest::translateMethod(op->reqtype)
+                    .c_str(), server.c_str());
+            }
+
+            triagens::httpclient::SimpleHttpClient* client
+              = new triagens::httpclient::SimpleHttpClient(
+                                    connection->connection,
+                                    op->endTime-currentTime, false);
+
+            // We add this result to the operation struct without acquiring
+            // a lock, since we know that only we do such a thing:
+            op->result = client->request(op->reqtype, op->path, op->body, 
+                                         op->bodyLength, *(op->headerFields));
+            if (client->getErrorMessage() != "") {
+              cc->brokenConnection(connection);
+              op->status = CL_COMM_ERROR;
+            }
+            else {
+              cc->returnConnection(connection);
+            }
+            delete client;
           }
         }
       }
