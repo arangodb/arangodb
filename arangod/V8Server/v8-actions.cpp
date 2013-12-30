@@ -926,16 +926,20 @@ class CallbackTest : public ClusterCommCallback {
 };
 
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
-  v8::Isolate* isolate;
+  //v8::Isolate* isolate;
 
-  TRI_v8_global_t* v8g;
+  //TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  isolate = v8::Isolate::GetCurrent();
-  v8g = (TRI_v8_global_t*) isolate->GetData();
+  //isolate = v8::Isolate::GetCurrent();
+  //v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "SYS_SHARDING_TEST(<req>, <res>)");
+  }
+
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
   }
 
   const string clientTransactionId = StringUtils::itoa(TRI_NewTickServer());
