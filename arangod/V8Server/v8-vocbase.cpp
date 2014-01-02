@@ -2214,6 +2214,36 @@ static TRI_general_cursor_t* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorO
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a v8 exception object
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+    
+static v8::Handle<v8::Value> CreateAgencyException (AgencyCommResult const& result) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  const std::string errorDetails = result.errorDetails();
+  v8::Handle<v8::String> errorMessage = v8::String::New(errorDetails.c_str(), errorDetails.size());
+  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+
+  errorObject->Set(v8::String::New("code"), v8::Number::New(result.httpCode()));
+  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(result.errorCode()));
+  errorObject->Set(v8::String::New("errorMessage"), errorMessage);
+  errorObject->Set(v8::String::New("error"), v8::True());
+  
+  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+  if (! proto.IsEmpty()) {
+    errorObject->SetPrototype(proto);
+  }
+
+  return scope.Close(errorObject);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a value in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2243,9 +2273,7 @@ static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
       return scope.Close(v8::False());
     }
 
-    const std::string errorDetails = result.errorDetails();
-    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
 
   return scope.Close(v8::True());
@@ -2271,9 +2299,7 @@ static v8::Handle<v8::Value> JS_CreateDirectoryAgency (v8::Arguments const& argv
   AgencyCommResult result = comm.createDirectory(key);
 
   if (! result.successful()) {
-    const std::string errorDetails = result.errorDetails();
-    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
 
   return scope.Close(v8::True());
@@ -2308,9 +2334,7 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
   AgencyCommResult result = comm.getValues(key, recursive);
 
   if (! result.successful()) {
-    const std::string errorDetails = result.errorDetails();
-    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
   
   v8::Handle<v8::Object> l = v8::Object::New();
@@ -2388,9 +2412,7 @@ static v8::Handle<v8::Value> JS_RemoveAgency (v8::Arguments const& argv) {
   AgencyCommResult result = comm.removeValues(key, recursive);
 
   if (! result.successful()) {
-    const std::string errorDetails = result.errorDetails();
-    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
 
   return scope.Close(v8::True());
@@ -2417,9 +2439,7 @@ static v8::Handle<v8::Value> JS_SetAgency (v8::Arguments const& argv) {
   AgencyCommResult result = comm.setValue(key, value);
   
   if (! result.successful()) {
-    const std::string errorDetails = result.errorDetails();
-    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
 
   return scope.Close(v8::True());
@@ -2463,9 +2483,7 @@ static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
   }
 
   if (! result.successful()) {
-    const std::string errorDetails = result.errorDetails();
-    v8::Handle<v8::Value> err = v8::String::New(errorDetails.c_str(), errorDetails.size());
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
 
   std::map<std::string, std::string> out;

@@ -89,7 +89,8 @@ AgencyCommResult::AgencyCommResult ()
     _message(),
     _body(),
     _index(0),
-    _statusCode(0) {
+    _statusCode(0),
+    _connected(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +105,50 @@ AgencyCommResult::~AgencyCommResult () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the connected flag from the result
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommResult::connected () const {
+  return _connected;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the http code from the result
+////////////////////////////////////////////////////////////////////////////////
+
+int AgencyCommResult::httpCode () const {
+  return _statusCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the error code from the result
+////////////////////////////////////////////////////////////////////////////////
+
+int AgencyCommResult::errorCode () const {
+  int result = 0;
+
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return result;
+  }
+
+  // get "errorCode" attribute
+  TRI_json_t const* errorCode = TRI_LookupArrayJson(json, "errorCode");
+
+  if (TRI_IsNumberJson(errorCode)) {
+    result = (int) errorCode->_value._number;
+  }
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the error message from the result
 /// if there is no error, an empty string will be returned
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,10 +156,15 @@ AgencyCommResult::~AgencyCommResult () {
 std::string AgencyCommResult::errorMessage () const {
   std::string result;
 
+  if (! _message.empty()) {
+    // return stored message first if set
+    return _message;
+  }
+
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
   if (0 == json) {
-    result = "OUT OF MEMORY";
+    result = "Out of memory";
     return result;
   }
 
@@ -1090,8 +1140,8 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
   assert(! url.empty());
 
+  result._connected  = false;
   result._statusCode = 0;
-
   
   LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s", 
             triagens::rest::HttpRequest::translateMethod(method).c_str(),
@@ -1119,15 +1169,19 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
                                                                     headers);
 
   if (response == 0) {
+    result._message = "could not send request to agency";
     LOG_TRACE("sending request to agency failed");
     return false;
   }
 
   if (! response->isComplete()) {
+    result._message = "sending request to agency failed";
     LOG_TRACE("sending request to agency failed");
     delete response;
     return false;
   }
+  
+  result._connected  = true;
 
   if (response->getHttpReturnCode() == 307) {
     // temporary redirect. now save location header
@@ -1138,6 +1192,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     if (! found) {
       // a 307 without a location header does not make any sense
       delete response;
+      result._message = "invalid agency response (header missing)";
       return false;
     }
   }

@@ -89,6 +89,7 @@ void HeartbeatThread::run () {
 
   // value of /Commands/my-id at startup 
   uint64_t lastCommandIndex = getLastCommandIndex(); 
+  bool valueFound = false;
 
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
@@ -101,31 +102,52 @@ void HeartbeatThread::run () {
       break;
     }
 
-    // watch Commands/my-id for changes
 
-    // TODO: check if this is CPU-intensive and whether we need to sleep
-    AgencyCommResult result = _agency.watchValue("Commands/" + _myId, 
-                                                 lastCommandIndex + 1, 
-                                                 interval,
-                                                 false); 
-      
+    {
+      // send an initial GET request to Commands/my-id
+      AgencyCommResult result = _agency.getValues("Commands/" + _myId, false);
+
+      if (result.successful()) {
+        handleStateChange(result, lastCommandIndex);
+        valueFound = true;
+      }
+    }
+    
     if (_stop) {
       break;
     }
+  
 
-    if (result.successful()) {
-      // value has changed!
-      handleStateChange(result, lastCommandIndex);
+    {
+      // watch Commands/my-id for changes
 
-      // sleep a while 
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(_interval);
-    }
-    else {
-      // value did not change, but we already blocked waiting for a change...
-      // nothing to do here
-      //LOG_ERROR("HeartbeatThread suspended for 10 seconds");
-      //sleep(10);
+      // TODO: check if this is CPU-intensive and whether we need to sleep
+      AgencyCommResult result = _agency.watchValue("Commands/" + _myId, 
+                                                   lastCommandIndex + 1, 
+                                                   interval,
+                                                   false); 
+      
+      if (_stop) {
+        break;
+      }
+
+      if (result.successful()) {
+        // value has changed!
+        handleStateChange(result, lastCommandIndex);
+
+        // sleep a while 
+        CONDITION_LOCKER(guard, _condition);
+        guard.wait(_interval);
+      }
+      else {
+        if (valueFound) {
+          // value did not change, but we already blocked waiting for a change...
+          // nothing to do here
+        }
+        else {
+          usleep((useconds_t) _interval); 
+        }
+      }
     }
   }
 
