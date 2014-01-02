@@ -127,6 +127,22 @@ static v8::Handle<v8::Value> JS_CreateDirectoryAgency (v8::Arguments const& argv
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the agency is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsEnabledAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "isEnabled()");
+  }
+
+  const std::string prefix = AgencyComm::prefix();
+
+  return scope.Close(v8::Boolean::New(! prefix.empty()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a value from the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -507,6 +523,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "cas", JS_CasAgency);
   TRI_AddMethodVocbase(rt, "createDirectory", JS_CreateDirectoryAgency);
   TRI_AddMethodVocbase(rt, "get", JS_GetAgency);
+  TRI_AddMethodVocbase(rt, "isEnabled", JS_IsEnabledAgency);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveAgency);
   TRI_AddMethodVocbase(rt, "set", JS_SetAgency);
   TRI_AddMethodVocbase(rt, "watch", JS_WatchAgency);
