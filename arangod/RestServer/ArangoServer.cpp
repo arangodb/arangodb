@@ -675,9 +675,16 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_ENABLE_CLUSTER
      // we need to prepare the cluster even in console mode
     _applicationCluster->prepare();
+    _applicationCluster->start();
+    _applicationCluster->open();
 #endif
 
     int res = executeConsole(mode);
+    
+#ifdef TRI_ENABLE_CLUSTER
+    _applicationCluster->close();
+    _applicationCluster->stop();
+#endif
 
     TRI_EXIT_FUNCTION(res, NULL);
   }
@@ -688,8 +695,16 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_ENABLE_CLUSTER
      // we need to prepare the cluster even in console mode
     _applicationCluster->prepare();
+    _applicationCluster->start();
+    _applicationCluster->open();
 #endif
+
     int res = executeRubyConsole();
+    
+#ifdef TRI_ENABLE_CLUSTER
+    _applicationCluster->close();
+    _applicationCluster->stop();
+#endif
 
     TRI_EXIT_FUNCTION(res, NULL);
   }

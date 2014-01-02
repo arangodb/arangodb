@@ -30,6 +30,7 @@
 #include "BasicsC/common.h"
 
 #include "Cluster/AgencyComm.h"
+#include "Cluster/ServerState.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -37,7 +38,6 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
-using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  agency functions
@@ -369,6 +369,60 @@ static v8::Handle<v8::Value> JS_VersionAgency (v8::Arguments const& argv) {
   return scope.Close(v8::String::New(version.c_str(), version.size()));
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                            server state functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the server is a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsCoordinatorServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "isCoordinator()");
+  }
+
+  return scope.Close(v8::Boolean::New(ServerState::instance()->getRole() == ServerState::ROLE_COORDINATOR));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server role
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RoleServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "role()");
+  }
+
+  const std::string role = ServerState::roleToString(ServerState::instance()->getRole());
+
+  return scope.Close(v8::String::New(role.c_str(), role.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server state
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "status()");
+  }
+
+  const std::string state = ServerState::stateToString(ServerState::instance()->getState());
+
+  return scope.Close(v8::String::New(state.c_str(), state.size()));
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,11 +460,24 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
 
   v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoAgency", ft->GetFunction());
-}
+  
+  // .............................................................................
+  // generate the server state template
+  // .............................................................................
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("ArangoServerState"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
+  TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
+  TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
+
+  v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  TRI_AddGlobalFunctionVocbase(context, "ArangoServerState", ft->GetFunction());
+}
 
 // Local Variables:
 // mode: outline-minor

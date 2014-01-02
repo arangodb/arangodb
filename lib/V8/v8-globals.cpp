@@ -41,6 +41,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
 
 #ifdef TRI_ENABLE_CLUSTER
     AgencyTempl(),
+    ServerStateTempl(),
 #endif
     ErrorTempl(),
     GeneralCursorTempl(),
