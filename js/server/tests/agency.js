@@ -534,7 +534,10 @@ function AgencySuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(AgencySuite);
+var agency = new ArangoAgency();
+if (agency.isEnabled()) {
+  jsunity.run(AgencySuite);
+}
 
 return jsunity.done();
 
