@@ -906,6 +906,49 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get unique id
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::uniqid (std::string const& key,
+                                     uint64_t count) {
+  static const int maxTries = 10;
+  int tries = 0;
+
+  AgencyCommResult result;
+
+  while (tries++ < maxTries) {
+    result = getValues(key, false);
+
+    if (! result.successful()) {
+      return result;
+    }
+
+    std::map<std::string, std::string> out;
+    result.flattenJson(out, "", false);
+    std::map<std::string, std::string>::const_iterator it = out.begin(); 
+
+    std::string oldValue;
+    if (it != out.end()) {
+      oldValue = (*it).second;
+    }
+    else {
+      oldValue = "0";
+   }
+  
+    uint64_t newValue = triagens::basics::StringUtils::int64(oldValue) + count;
+
+    result = casValue(key, oldValue, triagens::basics::StringUtils::itoa(newValue));
+
+    if (result.successful()) {
+      result._index = triagens::basics::StringUtils::int64(oldValue) + 1; 
+      break;
+    }
+  }
+
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
