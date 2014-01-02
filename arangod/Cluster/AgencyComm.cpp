@@ -841,11 +841,12 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
 
 AgencyCommResult AgencyComm::casValue (std::string const& key,
                                        std::string const& value,
-                                       bool prevExists) {
+                                       bool prevExists,
+                                       double timeout) {
   AgencyCommResult result;
   
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   _globalConnectionOptions._requestTimeout, 
+                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
                    buildUrl(key) + "?prevExists=" + (prevExists ? "true" : "false"), 
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
@@ -862,11 +863,12 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 
 AgencyCommResult AgencyComm::casValue (std::string const& key,
                                        std::string const& oldValue, 
-                                       std::string const& newValue) {
+                                       std::string const& newValue,
+                                       double timeout) {
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   _globalConnectionOptions._requestTimeout, 
+                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
                    buildUrl(key) + "?prevValue=" + triagens::basics::StringUtils::urlEncode(oldValue),
                    "value=" + triagens::basics::StringUtils::urlEncode(newValue),
@@ -907,6 +909,44 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire a read lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::lockRead (std::string const& key, 
+                           double ttl,
+                           double timeout) {
+  return lock(key, ttl, timeout, "READ");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire a write lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::lockWrite (std::string const& key, 
+                            double ttl,
+                            double timeout) {
+  return lock(key, ttl, timeout, "WRITE");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a read lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::unlockRead (std::string const& key,
+                             double timeout) {
+  return unlock(key, "READ", timeout);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a write lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::unlockWrite (std::string const& key,
+                              double timeout) {
+  return unlock(key, "WRITE", timeout);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get unique id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -938,7 +978,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
   
     uint64_t newValue = triagens::basics::StringUtils::int64(oldValue) + count;
 
-    result = casValue(key, oldValue, triagens::basics::StringUtils::itoa(newValue));
+    result = casValue(key, oldValue, triagens::basics::StringUtils::itoa(newValue), 0.0);
 
     if (result.successful()) {
       result._index = triagens::basics::StringUtils::int64(oldValue) + 1; 
@@ -952,6 +992,73 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires a lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::lock (std::string const& key,
+                       double ttl,
+                       double timeout,
+                       std::string const& value) {
+
+  assert(value == "READ" || value == "WRITE");
+  const double end = TRI_microtime() + timeout;
+
+  while (true) {
+    AgencyCommResult result = casValue(key, "UNLOCKED", value, timeout);
+ 
+    if (result.successful()) {
+      return true;
+    }
+
+    usleep(500);
+
+    const double now = TRI_microtime();
+
+    if (now >= end) {
+      return false;
+    }
+  }
+
+  assert(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::unlock (std::string const& key,
+                         std::string const& value,
+                         double timeout) {
+
+  assert(value == "READ" || value == "WRITE");
+  const double end = TRI_microtime() + timeout;
+
+  while (true) {
+    AgencyCommResult result = casValue(key, value, "UNLOCKED", timeout);
+ 
+    if (result.successful()) {
+      return true;
+    }
+
+    usleep(500);
+    
+    const double now = TRI_microtime();
+
+    if (now >= end) {
+      return false;
+    }
+  }
+
+  assert(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a lock
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pop an endpoint from the queue

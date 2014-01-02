@@ -77,20 +77,25 @@ static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <oldValue>, <newValue>, <throw>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "cas(<key>, <oldValue>, <newValue>, <timeout>, <throw>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
   const std::string oldValue = TRI_ObjectToString(argv[1]);
   const std::string newValue = TRI_ObjectToString(argv[2]);
-
-  bool shouldThrow = false;
+  
+  double timeout = 1.0;
   if (argv.Length() > 3) {
-    shouldThrow = TRI_ObjectToBoolean(argv[3]);
+    timeout = TRI_ObjectToDouble(argv[3]);
   }
   
+  bool shouldThrow = false;
+  if (argv.Length() > 4) {
+    shouldThrow = TRI_ObjectToBoolean(argv[4]);
+  }
+
   AgencyComm comm;
-  AgencyCommResult result = comm.casValue(key, oldValue, newValue);
+  AgencyCommResult result = comm.casValue(key, oldValue, newValue, timeout);
 
   if (! result.successful()) {
     if (! shouldThrow) {

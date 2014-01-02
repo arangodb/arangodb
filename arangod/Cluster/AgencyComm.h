@@ -367,7 +367,8 @@ namespace triagens {
 
         AgencyCommResult casValue (std::string const&,
                                    std::string const&,
-                                   bool);
+                                   bool,
+                                   double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the back end
@@ -377,7 +378,8 @@ namespace triagens {
         
         AgencyCommResult casValue (std::string const&, 
                                    std::string const&, 
-                                   std::string const&);
+                                   std::string const&,
+                                   double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get unique id
@@ -395,11 +397,58 @@ namespace triagens {
                                      double,
                                      bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire a read lock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool lockRead (std::string const&,
+                       double,
+                       double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire a write lock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool lockWrite (std::string const&,
+                        double,
+                        double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a read lock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool unlockRead (std::string const&,
+                         double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a write lock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool unlockWrite (std::string const&,
+                          double);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire a lock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool lock (std::string const&,
+                   double,
+                   double,
+                   std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a lock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool unlock (std::string const&,
+                     std::string const&,
+                     double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pop an endpoint from the queue
