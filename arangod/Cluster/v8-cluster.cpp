@@ -353,6 +353,40 @@ static v8::Handle<v8::Value> JS_PrefixAgency (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a uniqid
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UniqidAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "uniqid(<key>, <count>)");
+  }
+  
+  const std::string key = TRI_ObjectToString(argv[0]);
+
+  uint64_t count = 1;
+  if (argv.Length() == 2) {
+    count = TRI_ObjectToUInt64(argv[1], true);
+  }
+
+  if (count < 1 || count > 10000000) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<count> is invalid");
+  }
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.uniqid(key, count);
+
+  if (! result.successful() || result._index == 0) {
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
+  }
+
+  const std::string value = StringUtils::itoa(result._index);
+
+  return scope.Close(v8::String::New(value.c_str(), value.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the agency version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -456,6 +490,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "watch", JS_WatchAgency);
   TRI_AddMethodVocbase(rt, "endpoints", JS_EndpointsAgency);
   TRI_AddMethodVocbase(rt, "prefix", JS_PrefixAgency);
+  TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidAgency);
   TRI_AddMethodVocbase(rt, "version", JS_VersionAgency);
 
   v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
