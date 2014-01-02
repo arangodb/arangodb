@@ -453,6 +453,28 @@ static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
   return scope.Close(v8::String::New(state.c_str(), state.size()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a uniqid
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UniqidServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "uniqid()");
+  }
+  
+  uint64_t value = ServerState::instance()->uniqid();
+
+  if (value == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to generate unique id");
+  }
+
+  const std::string id = StringUtils::itoa(value);
+
+  return scope.Close(v8::String::New(id.c_str(), id.size()));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -509,6 +531,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
   TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
+  TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidServerState);
 
   v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoServerState", ft->GetFunction());
