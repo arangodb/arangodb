@@ -728,7 +728,7 @@ bool AgencyComm::sendServerState () {
                             ":" + 
                             AgencyComm::generateStamp();
   
-  AgencyCommResult result(setValue("State/ServerStates/" + ServerState::instance()->getId(), value));
+  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), value));
   return result.successful();
 }
 
