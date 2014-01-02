@@ -125,7 +125,7 @@ function AgencySuite () {
       assertTrue(agency.set("UnitTestsAgency/foo/3", "bart"));
       var idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
       start = require("internal").time();
-      var result = agency.watch("UnitTestsAgency/foo", idx - 5, wait);
+      var result = agency.watch("UnitTestsAgency/foo", idx - 10, wait);
       end = require("internal").time();
 
       assertEqual(0, Math.round(end - start));
@@ -149,13 +149,13 @@ function AgencySuite () {
       assertFalse(agency.cas("UnitTestsAgency/foo", "foo", "bar"));
       
       try {
-        agency.cas("UnitTestsAgency/foo", "foo", "bar", true);
+        agency.cas("UnitTestsAgency/foo", "foo", "bar", 1, true);
         fail();
       }
       catch (err) {
       }
         
-      assertTrue(agency.cas("UnitTestsAgency/foo", "bart", "baz", true));
+      assertTrue(agency.cas("UnitTestsAgency/foo", "bart", "baz", 1, true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
