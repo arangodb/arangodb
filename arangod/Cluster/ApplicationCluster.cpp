@@ -264,7 +264,7 @@ bool ApplicationCluster::open () {
 
   // tell the agency that we are ready
   AgencyComm comm;
-  AgencyCommResult result = comm.setValue("State/ServersRegistered/" + _myId, _myAddress);
+  AgencyCommResult result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress);
 
   if (! result.successful()) {
     LOG_FATAL_AND_EXIT("unable to register server in agency");
@@ -274,13 +274,19 @@ bool ApplicationCluster::open () {
     ServerState::instance()->setState(ServerState::STATE_SERVING);
   
     // register coordinator
-    AgencyCommResult result = comm.setValue("State/Coordinators/" + _myId, "none");
+    AgencyCommResult result = comm.setValue("Current/Coordinators/" + _myId, "none");
     if (! result.successful()) {
       LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
     }
   }
   else if (role == ServerState::ROLE_PRIMARY) {
     ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
+
+    // register server
+    AgencyCommResult result = comm.setValue("Current/DBServers/" + _myId, "none");
+    if (! result.successful()) {
+      LOG_FATAL_AND_EXIT("unable to register db server in agency");
+    }
   }
   else if (role == ServerState::ROLE_SECONDARY) {
     LOG_FATAL_AND_EXIT("secondary server tasks are currently not implemented");
@@ -325,7 +331,7 @@ void ApplicationCluster::stop () {
   _heartbeat->stop();
  
   // unregister ourselves 
-  comm.removeValues("State/ServersRegistered/" + _myId, false);
+  comm.removeValues("Current/ServersRegistered/" + _myId, false);
   
   ClusterComm::cleanup();
   ClusterState::cleanup();
@@ -337,20 +343,20 @@ void ApplicationCluster::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Config/MapIDToEnpdoint for 
+/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
 /// our id
 ////////////////////////////////////////////////////////////////////////////////
   
 std::string ApplicationCluster::getEndpointForId () const {
-  // fetch value at Config/MapIDToEndpoint
+  // fetch value at Target/MapIDToEndpoint
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues("Config/MapIDToEndpoint/" + _myId, false);
+  AgencyCommResult result = comm.getValues("Target/MapIDToEndpoint/" + _myId, false);
  
   if (result.successful()) {
     std::map<std::string, std::string> out;
 
-    if (! result.flattenJson(out, "Config/MapIDToEndpoint/", false)) {
-      LOG_FATAL_AND_EXIT("Got an invalid JSON response for Config/MapIDToEndpoint");
+    if (! result.flattenJson(out, "Target/MapIDToEndpoint/", false)) {
+      LOG_FATAL_AND_EXIT("Got an invalid JSON response for Target/MapIDToEndpoint");
     }
 
     // check if we can find ourselves in the list returned by the agency
@@ -369,13 +375,13 @@ std::string ApplicationCluster::getEndpointForId () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
+/// @brief lookup the server role by scanning Plan/Coordinators for our id
 ////////////////////////////////////////////////////////////////////////////////
   
 ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
-  // fetch value at TmpConfig/DBServers
+  // fetch value at Plan/Coordinators
   // we need this to determine the server's role
-  const std::string key = "TmpConfig/Coordinators";
+  const std::string key = "Plan/Coordinators";
 
   AgencyComm comm;
   AgencyCommResult result = comm.getValues(key, true);
@@ -392,8 +398,8 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   }
   
   std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "TmpConfig/Coordinators/", false)) {
-    LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/Coordinators");
+  if (! result.flattenJson(out, "Plan/Coordinators/", false)) {
+    LOG_FATAL_AND_EXIT("Got an invalid JSON response for Plan/Coordinators");
   }
 
   // check if we can find ourselves in the list returned by the agency
@@ -408,13 +414,13 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning TmpConfig/DBServers for our id
+/// @brief lookup the server role by scanning Plan/DBServers for our id
 ////////////////////////////////////////////////////////////////////////////////
   
 ServerState::RoleEnum ApplicationCluster::checkServersList () const {
-  // fetch value at TmpConfig/DBServers
+  // fetch value at Plan/DBServers
   // we need this to determine the server's role
-  const std::string key = "TmpConfig/DBServers";
+  const std::string key = "Plan/DBServers";
 
   AgencyComm comm;
   AgencyCommResult result = comm.getValues(key, true);
@@ -431,8 +437,8 @@ ServerState::RoleEnum ApplicationCluster::checkServersList () const {
   }
  
   std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "TmpConfig/DBServers/", false)) {
-    LOG_FATAL_AND_EXIT("Got an invalid JSON response for TmpConfig/DBServers");
+  if (! result.flattenJson(out, "Plan/DBServers/", false)) {
+    LOG_FATAL_AND_EXIT("Got an invalid JSON response for Plan/DBServers");
   }
 
   ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;

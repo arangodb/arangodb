@@ -39,25 +39,41 @@ function set() {
 
 if [ "$1" == "init" ] ; then
     $CURL -X DELETE "$URL$PREFIX?recursive=true" > /dev/null 
-    set Config/Version 1
-    set Config/MapLocalToID
-    set Config/MapIDToEndpoint
-    set Config/DBServers
-    set Config/Coordinators
-    set Config/Shards
-    set TmpConfig/DBServers
-    set TmpConfig/Coordinators
-    set TmpConfig/Databases
-    set TmpConfig/Collections
-    set TmpConfig/Shards
-    set State/ServersRegistered
-    set State/ServerStates
-    set State/Shards
-    set State/ShardsCopied
-    set State/Problems
-    set State/ClusterManager none
-    set State/LatestID 0
-    set Commands
+    set Target/Version 1
+    set Plan/Version 1
+    set Current/Version 1
+
+    set Target/Lock UNLOCKED
+    set Plan/Lock UNLOCKED
+    set Current/Lock UNLOCKED
+
+    set Target/MapLocalToID
+    set Target/MapIDToEndpoint
+    set Target/DBServers
+    set Target/Coordinators
+    set Target/ShardLocation
+
+    set Plan/DBServers
+    set Plan/Coordinators
+    set Plan/ShardLocation
+
+    set Target/Databases
+    set Plan/Databases
+    set Current/Databases
+
+    set Target/Collections
+    set Plan/Collections
+    set Current/Collections
+
+    set Current/ServersRegistered
+    set Current/ShardLocation
+    set Current/ShardsCopied
+    
+    set Sync/ServerStates
+    set Sync/Problems
+    set Sync/ClusterManager none
+    set Sync/LatestID 0
+    set Sync/Commands
     echo Initialisation complete.
 fi
 

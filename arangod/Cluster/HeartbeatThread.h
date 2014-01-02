@@ -128,7 +128,7 @@ namespace triagens {
                                 uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the last value of /Commands/my-id from the agency 
+/// @brief fetch the last value of Sync/Commands/my-id from the agency 
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t getLastCommandIndex ();

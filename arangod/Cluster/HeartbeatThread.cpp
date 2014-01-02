@@ -73,9 +73,9 @@ HeartbeatThread::~HeartbeatThread () {
 /// @brief heartbeat main loop
 /// the heartbeat thread constantly reports the current server status to the
 /// agency. it does so by sending the current state string to the key
-/// "State/ServerStates/" + my-id.
+/// "Sync/ServerStates/" + my-id.
 /// after transferring the current state to the agency, the heartbeat thread
-/// will wait for changes on the "Commands/" + my-id key. If no changes occur,
+/// will wait for changes on the "Sync/Commands/" + my-id key. If no changes occur,
 /// then the request it aborted and the heartbeat thread will go on with 
 /// reporting its state to the agency again. If it notices a change when 
 /// watching the command key, it will wake up and apply the change locally.
@@ -87,7 +87,7 @@ void HeartbeatThread::run () {
   // convert timeout to seconds  
   const double interval = (double) _interval / 1000.0 / 1000.0;
 
-  // value of /Commands/my-id at startup 
+  // value of Sync/Commands/my-id at startup 
   uint64_t lastCommandIndex = getLastCommandIndex(); 
   bool valueFound = false;
 
@@ -102,10 +102,9 @@ void HeartbeatThread::run () {
       break;
     }
 
-
     {
-      // send an initial GET request to Commands/my-id
-      AgencyCommResult result = _agency.getValues("Commands/" + _myId, false);
+      // send an initial GET request to Sync/Commands/my-id
+      AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
 
       if (result.successful()) {
         handleStateChange(result, lastCommandIndex);
@@ -119,10 +118,10 @@ void HeartbeatThread::run () {
   
 
     {
-      // watch Commands/my-id for changes
+      // watch Sync/Commands/my-id for changes
 
       // TODO: check if this is CPU-intensive and whether we need to sleep
-      AgencyCommResult result = _agency.watchValue("Commands/" + _myId, 
+      AgencyCommResult result = _agency.watchValue("Sync/Commands/" + _myId, 
                                                    lastCommandIndex + 1, 
                                                    interval,
                                                    false); 
@@ -180,19 +179,19 @@ bool HeartbeatThread::init () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the index id of the value of /Commands/my-id from the agency 
-/// this index value is determined initially and it is passed to the watch
-/// command (we're waiting for an entry with a higher id)
+/// @brief fetch the index id of the value of Sync/Commands/my-id from the 
+/// agency this index value is determined initially and it is passed to the 
+/// watch command (we're waiting for an entry with a higher id)
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t HeartbeatThread::getLastCommandIndex () {
   // get the initial command state  
-  AgencyCommResult result = _agency.getValues("Commands/" + _myId, false);
+  AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
 
   if (result.successful()) {
     std::map<std::string, std::string> out;
 
-    if (result.flattenJson(out, "Commands/", true)) {
+    if (result.flattenJson(out, "Sync/Commands/", true)) {
       // check if we can find ourselves in the list returned by the agency
       std::map<std::string, std::string>::const_iterator it = out.find(_myId);
 
@@ -225,7 +224,7 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult const& result,
                                          uint64_t& lastCommandIndex) {
   std::map<std::string, std::string> out;
 
-  if (result.flattenJson(out, "Commands/", true)) {
+  if (result.flattenJson(out, "Sync/Commands/", true)) {
     // get the new value of "modifiedIndex"
     std::map<std::string, std::string>::const_iterator it = out.find(_myId);
 
@@ -236,7 +235,7 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult const& result,
 
   out.clear();
      
-  if (result.flattenJson(out, "Commands/", false)) {
+  if (result.flattenJson(out, "Sync/Commands/", false)) {
     // get the new value!
     std::map<std::string, std::string>::const_iterator it = out.find(_myId);
 

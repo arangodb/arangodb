@@ -67,10 +67,10 @@ void ClusterState::loadServerInformation () {
   while (true) {
     {
       WRITE_LOCKER(lock);
-      res = _agency.getValues("State/ServersRegistered", true);
+      res = _agency.getValues("Current/ServersRegistered", true);
       if (res.successful()) {
-        if (res.flattenJson(serverAddresses,"State/ServersRegistered/", false)) {
-          LOG_TRACE("State/ServersRegistered loaded successfully");
+        if (res.flattenJson(serverAddresses,"Current/ServersRegistered/", false)) {
+          LOG_TRACE("Current/ServersRegistered loaded successfully");
           //map<ServerID,string>::iterator i;
           //cout << "Servers registered:" << endl;
           //for (i = serverAddresses.begin(); i != serverAddresses.end(); ++i) {
@@ -80,11 +80,11 @@ void ClusterState::loadServerInformation () {
           return;
         }
         else {
-          LOG_DEBUG("State/ServersRegistered not loaded successfully");
+          LOG_DEBUG("Current/ServersRegistered not loaded successfully");
         }
       }
       else {
-        LOG_DEBUG("Error whilst loading State/ServersRegistered");
+        LOG_DEBUG("Error whilst loading Current/ServersRegistered");
       }
     }
     usleep(100);
@@ -96,10 +96,10 @@ void ClusterState::loadShardInformation () {
   while (true) {
     {
       WRITE_LOCKER(lock);
-      res = _agency.getValues("State/Shards", true);
+      res = _agency.getValues("Current/ShardLocation", true);
       if (res.successful()) {
-        if (res.flattenJson(shards,"State/Shards/", false)) {
-          LOG_TRACE("State/Shards loaded successfully");
+        if (res.flattenJson(shards,"Current/ShardLocation/", false)) {
+          LOG_TRACE("Current/ShardLocation loaded successfully");
           //map<ShardID,ServerID>::iterator i;
           //cout << "Shards:" << endl;
           //for (i = shards.begin(); i != shards.end(); ++i) {
@@ -109,11 +109,11 @@ void ClusterState::loadShardInformation () {
           return;
         }
         else {
-          LOG_DEBUG("State/ServersRegistered not loaded successfully");
+          LOG_DEBUG("Current/ServersRegistered not loaded successfully");
         }
       }
       else {
-        LOG_DEBUG("Error whilst loading State/ServersRegistered");
+        LOG_DEBUG("Error whilst loading Current/ServersRegistered");
       }
     }
     usleep(100);

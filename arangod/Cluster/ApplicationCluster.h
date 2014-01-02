@@ -125,20 +125,20 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Config/MapIDToEnpdoint for 
+/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
 /// our id
 ////////////////////////////////////////////////////////////////////////////////
   
          std::string getEndpointForId () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning TmpConfig/Coordinators for our id
+/// @brief lookup the server role by scanning Plan/Coordinators for our id
 ////////////////////////////////////////////////////////////////////////////////
   
          ServerState::RoleEnum checkCoordinatorsList () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning TmpConfig/DBServers for our id
+/// @brief lookup the server role by scanning Plan/DBServers for our id
 ////////////////////////////////////////////////////////////////////////////////
 
          ServerState::RoleEnum checkServersList () const;

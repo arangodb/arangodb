@@ -151,8 +151,8 @@ namespace triagens {
         AgencyComm _agency;
 
         // Cached data from the agency, we reload whenever necessary:
-        map<ServerID,string> serverAddresses;  // from State/ServersRegistered
-        map<ShardID,ServerID> shards;          // from State/Shards
+        map<ServerID,string> serverAddresses;  // from Current/ServersRegistered
+        map<ShardID,ServerID> shards;          // from Current/ShardLocation
 
         triagens::basics::ReadWriteLock lock;
 
