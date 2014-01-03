@@ -25,8 +25,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_STATE_H
-#define TRIAGENS_CLUSTER_STATE_H 1
+#ifndef TRIAGENS_CLUSTER_CLUSTER_INFO_H
+#define TRIAGENS_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/AgencyComm.h"
@@ -42,13 +42,13 @@ namespace triagens {
 // --SECTION--                                       some types for ClusterInfo
 // -----------------------------------------------------------------------------
 
-    typedef string ServerID;              // ID of a server
-    typedef string DatabaseID;            // ID/name of a database
-    typedef string CollectionID;          // ID of a collection
-    typedef string ShardID;               // ID of a shard
+    typedef std::string ServerID;              // ID of a server
+    typedef std::string DatabaseID;            // ID/name of a database
+    typedef std::string CollectionID;          // ID of a collection
+    typedef std::string ShardID;               // ID of a shard
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class CollectionInfo
+// --SECTION--                                              class CollectionInfo
 // -----------------------------------------------------------------------------
 
     struct CollectionInfo {
@@ -75,13 +75,13 @@ namespace triagens {
 
     
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class ClusterInfo
+// --SECTION--                                                 class ClusterInfo
 // -----------------------------------------------------------------------------
 
     class ClusterInfo {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     constructors and destructors
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,19 +95,19 @@ namespace triagens {
         ClusterInfo (ClusterInfo const&);    // not implemented
         void operator= (ClusterInfo const&);  // not implemented
 
-        static ClusterInfo* _theinstance;
-
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
+      
+      public:
 
         ~ClusterInfo ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   public methods
+// --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
+      
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the unique instance
@@ -130,6 +130,12 @@ namespace triagens {
           _theinstance = 0;
         }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+      
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 ///
@@ -137,7 +143,7 @@ namespace triagens {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getServerEndpoint(ServerID const& serverID);
+        std::string getServerEndpoint (ServerID const& serverID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
@@ -154,7 +160,7 @@ namespace triagens {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ServerID getResponsibleServer(ShardID const& shardID);
+        ServerID getResponsibleServer (ShardID const& shardID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about shards from the agency
@@ -186,9 +192,8 @@ namespace triagens {
 /// must not delete the pointer.
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionInfo const* getCollectionInfo(
-                                   DatabaseID const& databaseID,
-                                   CollectionID const& collectionID);
+        CollectionInfo const* getCollectionInfo (DatabaseID const& databaseID,
+                                                 CollectionID const& collectionID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
@@ -205,17 +210,27 @@ namespace triagens {
         
         uint64_t fetchIDs (uint64_t number);
 
-      private:
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
+      private:
+        
         AgencyComm _agency;
 
         // Cached data from the agency, we reload whenever necessary:
-        map<ServerID,string> serverAddresses;  // from Current/ServersRegistered
-        map<ShardID,ServerID> shards;          // from Current/ShardLocation
-        map<CollectionID,CollectionInfo*> collections;
+        std::map<ServerID, std::string> serverAddresses;  // from Current/ServersRegistered
+        std::map<ShardID, ServerID> shards;          // from Current/ShardLocation
+        std::map<CollectionID, CollectionInfo*> collections;
                                                // from Current/Collections/
 
         triagens::basics::ReadWriteLock lock;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          private static variables
+// -----------------------------------------------------------------------------
+        
+        static ClusterInfo* _theinstance;
 
     };
 
@@ -232,5 +247,3 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

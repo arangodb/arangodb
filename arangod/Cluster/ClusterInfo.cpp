@@ -33,9 +33,8 @@
 
 using namespace triagens::arango;
 
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                ClusterInfo class
+// --SECTION--                                                 ClusterInfo class
 // -----------------------------------------------------------------------------
 
 ClusterInfo* ClusterInfo::_theinstance = 0;
@@ -45,7 +44,7 @@ ClusterInfo* ClusterInfo::instance () {
   // this is called very early in the startup phase when there is still
   // a single thread.
   if (0 == _theinstance) {
-    _theinstance = new ClusterInfo( );  // this now happens exactly once
+    _theinstance = new ClusterInfo();  // this now happens exactly once
   }
   return _theinstance;
 }
@@ -54,7 +53,8 @@ void ClusterInfo::initialise () {
 }
 
 ClusterInfo::ClusterInfo ()
-    : _agency() {
+  : _agency() {
+
   loadServerInformation();
   loadShardInformation();
 }
@@ -64,9 +64,10 @@ ClusterInfo::~ClusterInfo () {
 
 void ClusterInfo::loadServerInformation () {
   AgencyCommResult res;
+
   while (true) {
     {
-      WRITE_LOCKER(lock);
+      WRITE_LOCKER(lock); // TODO
       {
         AgencyCommLocker locker("Current", "READ");
         res = _agency.getValues("Current/ServersRegistered", true);
@@ -90,6 +91,7 @@ void ClusterInfo::loadServerInformation () {
         LOG_DEBUG("Error whilst loading Current/ServersRegistered");
       }
     }
+
     usleep(100);
   }
 }
@@ -115,6 +117,7 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 
 void ClusterInfo::loadShardInformation () {
   AgencyCommResult res;
+
   while (true) {
     {
       WRITE_LOCKER(lock);
@@ -152,6 +155,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
     {
       READ_LOCKER(lock);
       map<ShardID,ServerID>::iterator i = shards.find(shardID);
+
       if (i != shards.end()) {
         return i->second;
       }
@@ -168,5 +172,3 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-
