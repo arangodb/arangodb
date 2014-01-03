@@ -264,7 +264,7 @@ bool ApplicationCluster::open () {
 
   // tell the agency that we are ready
   {
-    AgencyCommLocker locker("Current", "WRITE", 0.0); 
+    AgencyCommLocker locker("Current", "WRITE"); 
      
     AgencyComm comm;
     AgencyCommResult result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
@@ -339,7 +339,7 @@ void ApplicationCluster::stop () {
   _heartbeat->stop();
 
   {
-    AgencyCommLocker locker("Current", "WRITE", 0.0); 
+    AgencyCommLocker locker("Current", "WRITE"); 
     
     // unregister ourselves 
     comm.removeValues("Current/ServersRegistered/" + _myId, false);
@@ -361,8 +361,11 @@ void ApplicationCluster::stop () {
   
 std::string ApplicationCluster::getEndpointForId () const {
   // fetch value at Target/MapIDToEndpoint
+  AgencyCommLocker locker("Target", "READ");
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues("Target/MapIDToEndpoint/" + _myId, false);
+  AgencyCommResult result = comm.getValues("Target/MapIDToEndpoint/" + _myId,
+                                           false);
+  locker.unlock();  // release as fast as possible
  
   if (result.successful()) {
     std::map<std::string, std::string> out;
@@ -394,7 +397,7 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   // fetch value at Plan/Coordinators
   // we need to do this to determine the server's role
   
-  AgencyCommLocker locker("Plan", "READ", 0.0); 
+  AgencyCommLocker locker("Plan", "READ"); 
 
   const std::string key = "Plan/Coordinators";
 
@@ -439,7 +442,7 @@ ServerState::RoleEnum ApplicationCluster::checkServersList () const {
   // fetch value at Plan/DBServers
   // we need to do this to determine the server's role
   
-  AgencyCommLocker locker("Plan", "READ", 0.0); 
+  AgencyCommLocker locker("Plan", "READ"); 
 
   const std::string key = "Plan/DBServers";
 
