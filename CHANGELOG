@@ -1,4 +1,4 @@
-v1.4.5 (XXXX-XX-XX)
+v1.4.5-rc1 (XXXX-XX-XX)
 -------------------
 
 * fixed potential deadlock in global context method execution
