@@ -69,6 +69,63 @@ function AgencySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test list
+////////////////////////////////////////////////////////////////////////////////
+
+    testList : function () {
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo"));
+      assertTrue(agency.set("UnitTestsAgency/foo/1", "foo1"));
+      assertTrue(agency.set("UnitTestsAgency/foo/2", "foo2"));
+      assertTrue(agency.set("UnitTestsAgency/foo/3", "foo3"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bam"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bar"));
+      assertTrue(agency.set("UnitTestsAgency/foo/bar/1", "bar1"));
+      assertTrue(agency.set("UnitTestsAgency/foo/bar/2", "bar2"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bar/baz"));
+      assertTrue(agency.set("UnitTestsAgency/foo/bar/baz/1", "baz1"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bar/baz/bam"));
+
+      var values = agency.list("UnitTestsAgency/foo");
+      assertEqual({ 
+        "UnitTestsAgency/foo" : true,
+        "UnitTestsAgency/foo/1" : false, 
+        "UnitTestsAgency/foo/2" : false, 
+        "UnitTestsAgency/foo/3" : false, 
+        "UnitTestsAgency/foo/bam" : true, 
+        "UnitTestsAgency/foo/bar" : true 
+      }, values);
+
+      values = agency.list("UnitTestsAgency/foo", true);
+      assertEqual({ 
+        "UnitTestsAgency/foo" : true, 
+        "UnitTestsAgency/foo/1" : false, 
+        "UnitTestsAgency/foo/2" : false, 
+        "UnitTestsAgency/foo/3" : false, 
+        "UnitTestsAgency/foo/bam" : true, 
+        "UnitTestsAgency/foo/bar" : true, 
+        "UnitTestsAgency/foo/bar/1" : false, 
+        "UnitTestsAgency/foo/bar/2" : false, 
+        "UnitTestsAgency/foo/bar/baz" : true, 
+        "UnitTestsAgency/foo/bar/baz/1" : false, 
+        "UnitTestsAgency/foo/bar/baz/bam" : true 
+      }, values);
+      
+      // insert a new directory (above the others, sort order is important)
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/abc"));
+      values = agency.list("UnitTestsAgency/foo");
+
+      assertEqual({ 
+        "UnitTestsAgency/foo" : true,
+        "UnitTestsAgency/foo/1" : false, 
+        "UnitTestsAgency/foo/2" : false, 
+        "UnitTestsAgency/foo/3" : false, 
+        "UnitTestsAgency/foo/abc" : true, 
+        "UnitTestsAgency/foo/bam" : true, 
+        "UnitTestsAgency/foo/bar" : true 
+      }, values);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test lockRead
 ////////////////////////////////////////////////////////////////////////////////
 
