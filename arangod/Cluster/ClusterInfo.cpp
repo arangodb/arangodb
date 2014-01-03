@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to get and cache information about the cluster state
 ///
-/// @file ClusterState.cpp
+/// @file ClusterInfo.cpp
 ///
 /// DISCLAIMER
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterState.h"
+#include "Cluster/ClusterInfo.h"
 
 #include "BasicsC/logging.h"
 #include "Basics/ReadLocker.h"
@@ -33,41 +33,45 @@
 
 using namespace triagens::arango;
 
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                               ClusterState class
+// --SECTION--                                                 ClusterInfo class
 // -----------------------------------------------------------------------------
 
-ClusterState* ClusterState::_theinstance = 0;
+ClusterInfo* ClusterInfo::_theinstance = 0;
 
-ClusterState* ClusterState::instance () {
+ClusterInfo* ClusterInfo::instance () {
   // This does not have to be thread-safe, because we guarantee that
   // this is called very early in the startup phase when there is still
   // a single thread.
   if (0 == _theinstance) {
-    _theinstance = new ClusterState( );  // this now happens exactly once
+    _theinstance = new ClusterInfo();  // this now happens exactly once
   }
   return _theinstance;
 }
 
-void ClusterState::initialise () {
+void ClusterInfo::initialise () {
 }
 
-ClusterState::ClusterState ()
-    : _agency() {
+ClusterInfo::ClusterInfo ()
+  : _agency() {
+
   loadServerInformation();
   loadShardInformation();
 }
 
-ClusterState::~ClusterState () {
+ClusterInfo::~ClusterInfo () {
 }
 
-void ClusterState::loadServerInformation () {
+void ClusterInfo::loadServerInformation () {
   AgencyCommResult res;
+
   while (true) {
     {
-      WRITE_LOCKER(lock);
-      res = _agency.getValues("Current/ServersRegistered", true);
+      WRITE_LOCKER(lock); // TODO
+      {
+        AgencyCommLocker locker("Current", "READ");
+        res = _agency.getValues("Current/ServersRegistered", true);
+      }
       if (res.successful()) {
         if (res.flattenJson(serverAddresses,"Current/ServersRegistered/", false)) {
           LOG_TRACE("Current/ServersRegistered loaded successfully");
@@ -87,16 +91,40 @@ void ClusterState::loadServerInformation () {
         LOG_DEBUG("Error whilst loading Current/ServersRegistered");
       }
     }
+
     usleep(100);
   }
 }
 
-void ClusterState::loadShardInformation () {
+std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
+  int tries = 0;
+
+  while (++tries <= 2) {
+    {
+      READ_LOCKER(lock);
+      map<ServerID,string>::iterator i = serverAddresses.find(serverID);
+      if (i != serverAddresses.end()) {
+        return i->second;
+      }
+    }
+    
+    // must call loadServerInformation outside the lock
+    loadServerInformation();
+  }
+
+  return std::string("");
+}
+
+void ClusterInfo::loadShardInformation () {
   AgencyCommResult res;
+
   while (true) {
     {
       WRITE_LOCKER(lock);
-      res = _agency.getValues("Current/ShardLocation", true);
+      {
+        AgencyCommLocker locker("Current", "READ");
+        res = _agency.getValues("Current/ShardLocation", true);
+      }
       if (res.successful()) {
         if (res.flattenJson(shards,"Current/ShardLocation/", false)) {
           LOG_TRACE("Current/ShardLocation loaded successfully");
@@ -120,32 +148,14 @@ void ClusterState::loadShardInformation () {
   }
 }
 
-std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
+ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
-  while (++tries < 3) {
-    {
-      READ_LOCKER(lock);
-      map<ServerID,string>::iterator i = serverAddresses.find(serverID);
-      if (i != serverAddresses.end()) {
-        return i->second;
-      }
-    }
-    
-    // must call loadServerInformation outside the lock
-    loadServerInformation();
-  }
-
-  return std::string("");
-}
-
-ServerID ClusterState::getResponsibleServer (ShardID const& shardID) {
-  int tries = 0;
-
-  while (++tries < 3) {
+  while (++tries <= 2) {
     {
       READ_LOCKER(lock);
       map<ShardID,ServerID>::iterator i = shards.find(shardID);
+
       if (i != shards.end()) {
         return i->second;
       }
@@ -162,5 +172,3 @@ ServerID ClusterState::getResponsibleServer (ShardID const& shardID) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

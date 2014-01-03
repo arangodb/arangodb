@@ -103,6 +103,7 @@ namespace triagens {
     struct AgencyConnectionOptions {
       double _connectTimeout;
       double _requestTimeout;
+      double _lockTimeout;
       size_t _connectRetries;
     };
 
@@ -181,6 +182,22 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the body (might be empty)
+////////////////////////////////////////////////////////////////////////////////
+      
+      const std::string body () const {
+        return _body;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively flatten the JSON response into a map
+////////////////////////////////////////////////////////////////////////////////
+
+      bool processJsonNode (struct TRI_json_s const*,
+                            std::map<std::string, bool>&,
+                            std::string const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -188,6 +205,13 @@ namespace triagens {
                             std::map<std::string, std::string>&,
                             std::string const&,
                             bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a result into a map
+////////////////////////////////////////////////////////////////////////////////
+
+      bool flattenJson (std::map<std::string, bool>&,
+                        std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief turn a result into a map
@@ -212,11 +236,70 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  AgencyCommLocker
+// -----------------------------------------------------------------------------
+    
+    class AgencyCommLocker {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs an agency comm locker
+////////////////////////////////////////////////////////////////////////////////
+
+        AgencyCommLocker (std::string const&,
+                          std::string const&,
+                          double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs an agency comm locker with default timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        AgencyCommLocker (std::string const&,
+                          std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an agency comm locker
+////////////////////////////////////////////////////////////////////////////////
+
+        ~AgencyCommLocker ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the lock
+////////////////////////////////////////////////////////////////////////////////
+
+        void unlock ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+        const std::string _key;
+        const std::string _type;
+        bool _isLocked;
+
+    };
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
 
     class AgencyComm {
       friend struct AgencyCommResult;
+      friend class AgencyCommLocker;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -307,6 +390,13 @@ namespace triagens {
 
         static std::string generateStamp ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validates the lock type
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool checkLockType (std::string const&,
+                                   std::string const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            private static methods
 // -----------------------------------------------------------------------------
@@ -344,7 +434,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AgencyCommResult setValue (std::string const&, 
-                                   std::string const&);
+                                   std::string const&,
+                                   double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the back end
@@ -368,6 +459,7 @@ namespace triagens {
         AgencyCommResult casValue (std::string const&,
                                    std::string const&,
                                    bool,
+                                   double,
                                    double);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,6 +471,7 @@ namespace triagens {
         AgencyCommResult casValue (std::string const&, 
                                    std::string const&, 
                                    std::string const&,
+                                   double,
                                    double);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +479,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AgencyCommResult uniqid (std::string const&,
-                                 uint64_t);
+                                 uint64_t, 
+                                 double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief blocks on a change of a single value in the back end
@@ -432,6 +526,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a URL parameter for a TTL value
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string ttlParam (double,
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief acquire a lock

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to get and cache information about the cluster state
 ///
-/// @file ClusterState.h
+/// @file ClusterInfo.h
 ///
 /// DISCLAIMER
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_STATE_H
-#define TRIAGENS_CLUSTER_STATE_H 1
+#ifndef TRIAGENS_CLUSTER_CLUSTER_INFO_H
+#define TRIAGENS_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/AgencyComm.h"
@@ -39,21 +39,49 @@ namespace triagens {
   namespace arango {
     
 // -----------------------------------------------------------------------------
-// --SECTION--                                      some types for ClusterState
+// --SECTION--                                       some types for ClusterInfo
 // -----------------------------------------------------------------------------
 
-    typedef string ServerID;              // ID of a server
-    typedef string CollectionID;          // ID of a collection
-    typedef string ShardID;               // ID of a shard
+    typedef std::string ServerID;              // ID of a server
+    typedef std::string DatabaseID;            // ID/name of a database
+    typedef std::string CollectionID;          // ID of a collection
+    typedef std::string ShardID;               // ID of a shard
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class ClusterState
+// --SECTION--                                              class CollectionInfo
 // -----------------------------------------------------------------------------
 
-    class ClusterState {
+    struct CollectionInfo {
+        enum Status {
+          LOADED = 1,
+          UNLOADED = 2
+        };
+        enum Type {
+          NORMAL = 1,
+          EDGES = 2
+        };
+        DatabaseID database;
+        string id;
+        string name;
+        Status status;
+        Type type;
+        vector<string> shards;
+
+        CollectionInfo () : id(""), name(""), status(LOADED), type(NORMAL) {
+        }
+        ~CollectionInfo () {
+        }
+    };
+
+    
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class ClusterInfo
+// -----------------------------------------------------------------------------
+
+    class ClusterInfo {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     constructors and destructors
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,29 +91,29 @@ namespace triagens {
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
       
-        ClusterState ();
-        ClusterState (ClusterState const&);    // not implemented
-        void operator= (ClusterState const&);  // not implemented
-
-        static ClusterState* _theinstance;
-
-      public:
+        ClusterInfo ();
+        ClusterInfo (ClusterInfo const&);    // not implemented
+        void operator= (ClusterInfo const&);  // not implemented
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
+      
+      public:
 
-        ~ClusterState ();
+        ~ClusterInfo ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   public methods
+// --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
+      
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ClusterState* instance ();
+        static ClusterInfo* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise function to call once when still single-threaded
@@ -102,42 +130,78 @@ namespace triagens {
           _theinstance = 0;
         }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+      
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the endpoint of a server from its ID.
+///
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string getServerEndpoint (ServerID const& serverID);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
+///
+/// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
         void loadServerInformation ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find the server who is responsible for a shard
+///
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+        ServerID getResponsibleServer (ShardID const& shardID);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about shards from the agency
+///
+/// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
         void loadShardInformation ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the endpoint of a server from its ID
+/// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getServerEndpoint(ServerID const& serverID);
+        bool doesDatabaseExist (DatabaseID const& databaseID);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about databases from the agency
+///
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadDatabaseInformation ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection
+///
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty 0 pointer is returned. The caller
+/// must not delete the pointer.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getCollectionInfo(CollectionID const& collectionID);
+        CollectionInfo const* getCollectionInfo (DatabaseID const& databaseID,
+                                                 CollectionID const& collectionID);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all shards in a collection
+/// @brief (re-)load the information about collections from the agency
+///
+/// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void getShardsCollection(CollectionID const& collectionID,
-                                 vector<ShardID> &shards);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find the server who is responsible for a shard
-////////////////////////////////////////////////////////////////////////////////
-
-        ServerID getResponsibleServer(ShardID const& shardID);
+        void loadCollectionsInformation ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -146,15 +210,27 @@ namespace triagens {
         
         uint64_t fetchIDs (uint64_t number);
 
-      private:
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
+      private:
+        
         AgencyComm _agency;
 
         // Cached data from the agency, we reload whenever necessary:
-        map<ServerID,string> serverAddresses;  // from Current/ServersRegistered
-        map<ShardID,ServerID> shards;          // from Current/ShardLocation
+        std::map<ServerID, std::string> serverAddresses;  // from Current/ServersRegistered
+        std::map<ShardID, ServerID> shards;          // from Current/ShardLocation
+        std::map<CollectionID, CollectionInfo*> collections;
+                                               // from Current/Collections/
 
         triagens::basics::ReadWriteLock lock;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          private static variables
+// -----------------------------------------------------------------------------
+        
+        static ClusterInfo* _theinstance;
 
     };
 
@@ -171,5 +247,3 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

@@ -111,6 +111,7 @@
     "ERROR_REPLICATION_APPLIER_STOPPED" : { "code" : 1412, "message" : "replication stopped" }, 
     "ERROR_REPLICATION_NO_START_TICK" : { "code" : 1413, "message" : "no start tick" }, 
     "ERROR_CLUSTER_NO_AGENCY"      : { "code" : 1450, "message" : "could not connect to agency" }, 
+    "ERROR_CLUSTER_NO_COORDINATOR_HEADER" : { "code" : 1451, "message" : "missing coordinator header" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" }, 

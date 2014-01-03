@@ -29,7 +29,7 @@
 #include "Rest/Endpoint.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterState.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "BasicsC/logging.h"
 
@@ -242,8 +242,8 @@ bool ApplicationCluster::start () {
                        endpoints.c_str());
   }
  
-  // initialise ClusterState class
-  ClusterState::instance()->initialise();
+  // initialise ClusterInfo class
+  ClusterInfo::instance()->initialise();
 
   // initialise ClusterComm library
   ClusterComm::instance()->initialise();
@@ -263,33 +263,41 @@ bool ApplicationCluster::open () {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   // tell the agency that we are ready
-  AgencyComm comm;
-  AgencyCommResult result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress);
+  {
+    AgencyCommLocker locker("Current", "WRITE"); 
+     
+    AgencyComm comm;
+    AgencyCommResult result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
 
-  if (! result.successful()) {
-    LOG_FATAL_AND_EXIT("unable to register server in agency");
-  }
+    if (! result.successful()) {
+      locker.unlock();
+      LOG_FATAL_AND_EXIT("unable to register server in agency");
+    }
 
-  if (role == ServerState::ROLE_COORDINATOR) {
-    ServerState::instance()->setState(ServerState::STATE_SERVING);
+    if (role == ServerState::ROLE_COORDINATOR) {
+      ServerState::instance()->setState(ServerState::STATE_SERVING);
   
-    // register coordinator
-    AgencyCommResult result = comm.setValue("Current/Coordinators/" + _myId, "none");
-    if (! result.successful()) {
-      LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
+      // register coordinator
+      AgencyCommResult result = comm.setValue("Current/Coordinators/" + _myId, "none", 0.0);
+      if (! result.successful()) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
+      }
     }
-  }
-  else if (role == ServerState::ROLE_PRIMARY) {
-    ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
+    else if (role == ServerState::ROLE_PRIMARY) {
+      ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
 
-    // register server
-    AgencyCommResult result = comm.setValue("Current/DBServers/" + _myId, "none");
-    if (! result.successful()) {
-      LOG_FATAL_AND_EXIT("unable to register db server in agency");
+      // register server
+      AgencyCommResult result = comm.setValue("Current/DBServers/" + _myId, "none", 0.0);
+      if (! result.successful()) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("unable to register db server in agency");
+      }
     }
-  }
-  else if (role == ServerState::ROLE_SECONDARY) {
-    LOG_FATAL_AND_EXIT("secondary server tasks are currently not implemented");
+    else if (role == ServerState::ROLE_SECONDARY) {
+      locker.unlock();
+      LOG_FATAL_AND_EXIT("secondary server tasks are currently not implemented");
+    }
   }
 
   return true;
@@ -329,12 +337,16 @@ void ApplicationCluster::stop () {
   comm.sendServerState();
 
   _heartbeat->stop();
- 
-  // unregister ourselves 
-  comm.removeValues("Current/ServersRegistered/" + _myId, false);
+
+  {
+    AgencyCommLocker locker("Current", "WRITE"); 
+    
+    // unregister ourselves 
+    comm.removeValues("Current/ServersRegistered/" + _myId, false);
+  }
   
   ClusterComm::cleanup();
-  ClusterState::cleanup();
+  ClusterInfo::cleanup();
   AgencyComm::cleanup();
 }
 
@@ -349,8 +361,11 @@ void ApplicationCluster::stop () {
   
 std::string ApplicationCluster::getEndpointForId () const {
   // fetch value at Target/MapIDToEndpoint
+  AgencyCommLocker locker("Target", "READ");
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues("Target/MapIDToEndpoint/" + _myId, false);
+  AgencyCommResult result = comm.getValues("Target/MapIDToEndpoint/" + _myId,
+                                           false);
+  locker.unlock();  // release as fast as possible
  
   if (result.successful()) {
     std::map<std::string, std::string> out;
@@ -380,11 +395,17 @@ std::string ApplicationCluster::getEndpointForId () const {
   
 ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   // fetch value at Plan/Coordinators
-  // we need this to determine the server's role
+  // we need to do this to determine the server's role
+  
+  AgencyCommLocker locker("Plan", "READ"); 
+
   const std::string key = "Plan/Coordinators";
 
   AgencyComm comm;
   AgencyCommResult result = comm.getValues(key, true);
+
+  // do this here because we might abort the program below
+  locker.unlock();
  
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
@@ -419,11 +440,17 @@ ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
   
 ServerState::RoleEnum ApplicationCluster::checkServersList () const {
   // fetch value at Plan/DBServers
-  // we need this to determine the server's role
+  // we need to do this to determine the server's role
+  
+  AgencyCommLocker locker("Plan", "READ"); 
+
   const std::string key = "Plan/DBServers";
 
   AgencyComm comm;
   AgencyCommResult result = comm.getValues(key, true);
+  
+  // do this here because we might abort the program below
+  locker.unlock();
  
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
