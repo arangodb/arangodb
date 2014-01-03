@@ -410,7 +410,8 @@ SHELL_SERVER_ONLY = \
 
 if ENABLE_CLUSTER
 SHELL_SERVER_ONLY += \
-               @top_srcdir@/js/server/tests/agency.js
+               @top_srcdir@/js/server/tests/agency.js \
+               @top_srcdir@/js/server/tests/cluster.js
 endif
 
 SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
