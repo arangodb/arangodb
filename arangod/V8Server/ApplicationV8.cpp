@@ -138,10 +138,20 @@ void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
   v8::HandleScope scope;
-  
-  MUTEX_LOCKER(_globalMethodsLock);
+ 
+  vector<string> copy;
 
-  for (vector<string>::iterator i = _globalMethods.begin();  i != _globalMethods.end();  ++i) {
+  { 
+    // we need to copy the vector of functions so we do not need to hold the
+    // lock while we execute them
+    // this avoids potential deadlocks when one of the executed functions itself
+    // registers a context method
+    MUTEX_LOCKER(_globalMethodsLock);
+    copy = _globalMethods;
+    _globalMethods.clear();
+  }
+
+  for (vector<string>::const_iterator i = copy.begin();  i != copy.end();  ++i) {
     string const& func = *i;
 
     LOGGER_DEBUG("executing global context methods '" << func << "' for context " << _id);
@@ -151,8 +161,6 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
                                 v8::String::New("global context method"),
                                 false);
   }
-
-  _globalMethods.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
