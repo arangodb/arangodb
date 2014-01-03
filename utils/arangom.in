@@ -46,14 +46,12 @@ if [ "$1" == "init" ] ; then
 
     set Target/DBServers
     set Target/Coordinators
-    set Target/Databases
     set Target/Collections
     set Target/ShardLocation
 
     set Plan/Version 1
     set Plan/DBServers
     set Plan/Coordinators
-    set Plan/Databases
     set Plan/Collections
     set Plan/ShardLocation
 
@@ -61,7 +59,6 @@ if [ "$1" == "init" ] ; then
     set Current/ServersRegistered
     set Current/DBServers
     set Current/Coordinators
-    set Current/Databases
     set Current/Collections
     set Current/ShardLocation
 
