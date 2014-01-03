@@ -91,6 +91,25 @@ void ClusterInfo::loadServerInformation () {
   }
 }
 
+std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
+  int tries = 0;
+
+  while (++tries <= 2) {
+    {
+      READ_LOCKER(lock);
+      map<ServerID,string>::iterator i = serverAddresses.find(serverID);
+      if (i != serverAddresses.end()) {
+        return i->second;
+      }
+    }
+    
+    // must call loadServerInformation outside the lock
+    loadServerInformation();
+  }
+
+  return std::string("");
+}
+
 void ClusterInfo::loadShardInformation () {
   AgencyCommResult res;
   while (true) {
@@ -120,29 +139,10 @@ void ClusterInfo::loadShardInformation () {
   }
 }
 
-std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
-  int tries = 0;
-
-  while (++tries < 3) {
-    {
-      READ_LOCKER(lock);
-      map<ServerID,string>::iterator i = serverAddresses.find(serverID);
-      if (i != serverAddresses.end()) {
-        return i->second;
-      }
-    }
-    
-    // must call loadServerInformation outside the lock
-    loadServerInformation();
-  }
-
-  return std::string("");
-}
-
 ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
-  while (++tries < 3) {
+  while (++tries <= 2) {
     {
       READ_LOCKER(lock);
       map<ShardID,ServerID>::iterator i = shards.find(shardID);
