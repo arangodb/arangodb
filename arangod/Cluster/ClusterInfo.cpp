@@ -67,7 +67,10 @@ void ClusterInfo::loadServerInformation () {
   while (true) {
     {
       WRITE_LOCKER(lock);
-      res = _agency.getValues("Current/ServersRegistered", true);
+      {
+        AgencyCommLocker locker("Current", "READ");
+        res = _agency.getValues("Current/ServersRegistered", true);
+      }
       if (res.successful()) {
         if (res.flattenJson(serverAddresses,"Current/ServersRegistered/", false)) {
           LOG_TRACE("Current/ServersRegistered loaded successfully");
@@ -115,7 +118,10 @@ void ClusterInfo::loadShardInformation () {
   while (true) {
     {
       WRITE_LOCKER(lock);
-      res = _agency.getValues("Current/ShardLocation", true);
+      {
+        AgencyCommLocker locker("Current", "READ");
+        res = _agency.getValues("Current/ShardLocation", true);
+      }
       if (res.successful()) {
         if (res.flattenJson(shards,"Current/ShardLocation/", false)) {
           LOG_TRACE("Current/ShardLocation loaded successfully");

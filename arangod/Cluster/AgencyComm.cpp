@@ -480,6 +480,23 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs an agency comm locker with default timeout
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommLocker::AgencyCommLocker (std::string const& key,
+                                    std::string const& type)
+  : _key(key),
+    _type(type),
+    _isLocked(false) {
+
+  AgencyComm comm;
+  if (comm.lock(key, AgencyComm::_globalConnectionOptions._lockTimeout, 
+                0.0, type)) {
+    _isLocked = true;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
