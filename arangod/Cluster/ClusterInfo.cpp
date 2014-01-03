@@ -94,8 +94,8 @@ void CollectionInfo::invalidate () {
   _id   = 0;
   _name = "";
   _type = TRI_COL_TYPE_UNKNOWN;
-  _shardKeys.empty();
-  _shards.empty();
+  _shardKeys.clear();
+  _shards.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
