@@ -1228,7 +1228,7 @@ bool AgencyComm::lock (std::string const& key,
       return true;
     }
 
-    usleep(500);
+    usleep(1000);
 
     const double now = TRI_microtime();
 
@@ -1269,7 +1269,7 @@ bool AgencyComm::unlock (std::string const& key,
       return true;
     }
 
-    usleep(500);
+    usleep(1000);
     
     const double now = TRI_microtime();
 
@@ -1328,7 +1328,7 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
 
     // if we got here, we ran out of non-busy connections...
 
-    usleep(500); // TODO: make this configurable
+    usleep(1000);
   }
 
   // just to shut up compilers

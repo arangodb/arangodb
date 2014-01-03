@@ -45,6 +45,48 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a JSON object from a list of strings
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* JsonHelper::stringList (TRI_memory_zone_t* zone,
+                                    std::vector<std::string> const& values) {
+  TRI_json_t* json = TRI_CreateList2Json(zone, values.size());
+
+  if (json == 0) {
+    return 0;
+  }
+
+  for (size_t i = 0, n = values.size(); i < n; ++i) {
+    TRI_json_t* v = TRI_CreateString2CopyJson(zone, values[i].c_str(), values[i].size());
+    if (v != 0) {
+      TRI_PushBack3ListJson(zone, json, v);
+    }
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a list of strings from a JSON (sub-) object
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> JsonHelper::stringList (TRI_json_t const* json) {
+  std::vector<std::string> result;
+
+  if (isList(json)) {
+    for (size_t i = 0, n = json->_value._objects._length; i < n; ++i) {
+      TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+      if (isString(v)) {
+        result.push_back(std::string(v->_value._string.data, v->_value._string.length - 1));
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
 ////////////////////////////////////////////////////////////////////////////////
         
