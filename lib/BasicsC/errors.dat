@@ -146,6 +146,7 @@ ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the re
 ################################################################################
 
 ERROR_CLUSTER_NO_AGENCY,1450,"could not connect to agency","Will be raised when none of the agency servers can be connected to."
+ERROR_CLUSTER_NO_COORDINATOR_HEADER,1451,"missing coordinator header","Will be raised when a DB server in a cluster receives a HTTP request without a coordinator header."
 
 ################################################################################
 ## ArangoDB query errors

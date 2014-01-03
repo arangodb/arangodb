@@ -37,7 +37,7 @@ var isCoordinator = function () {
     return false;
   }
 
-  return (new ArangoServerState).isCoordinator();
+  return (new ArangoServerState()).isCoordinator();
 };
 
 var role = function () {
@@ -45,7 +45,7 @@ var role = function () {
     return undefined;
   }
 
-  return (new ArangoServerState).role();
+  return (new ArangoServerState()).role();
 };
 
 var status = function () {
@@ -53,7 +53,7 @@ var status = function () {
     return undefined;
   }
 
-  return (new ArangoServerState).status();
+  return (new ArangoServerState()).status();
 };
 
 var isCoordinatorRequest = function (req) {
