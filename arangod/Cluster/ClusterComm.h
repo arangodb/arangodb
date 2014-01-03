@@ -40,7 +40,7 @@
 #include "VocBase/voc-types.h"
 
 #include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterState.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 
 namespace triagens {

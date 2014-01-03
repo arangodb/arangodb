@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to get and cache information about the cluster state
 ///
-/// @file ClusterState.cpp
+/// @file ClusterInfo.cpp
 ///
 /// DISCLAIMER
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterState.h"
+#include "Cluster/ClusterInfo.h"
 
 #include "BasicsC/logging.h"
 #include "Basics/ReadLocker.h"
@@ -35,34 +35,34 @@ using namespace triagens::arango;
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               ClusterState class
+// --SECTION--                                                ClusterInfo class
 // -----------------------------------------------------------------------------
 
-ClusterState* ClusterState::_theinstance = 0;
+ClusterInfo* ClusterInfo::_theinstance = 0;
 
-ClusterState* ClusterState::instance () {
+ClusterInfo* ClusterInfo::instance () {
   // This does not have to be thread-safe, because we guarantee that
   // this is called very early in the startup phase when there is still
   // a single thread.
   if (0 == _theinstance) {
-    _theinstance = new ClusterState( );  // this now happens exactly once
+    _theinstance = new ClusterInfo( );  // this now happens exactly once
   }
   return _theinstance;
 }
 
-void ClusterState::initialise () {
+void ClusterInfo::initialise () {
 }
 
-ClusterState::ClusterState ()
+ClusterInfo::ClusterInfo ()
     : _agency() {
   loadServerInformation();
   loadShardInformation();
 }
 
-ClusterState::~ClusterState () {
+ClusterInfo::~ClusterInfo () {
 }
 
-void ClusterState::loadServerInformation () {
+void ClusterInfo::loadServerInformation () {
   AgencyCommResult res;
   while (true) {
     {
@@ -91,7 +91,7 @@ void ClusterState::loadServerInformation () {
   }
 }
 
-void ClusterState::loadShardInformation () {
+void ClusterInfo::loadShardInformation () {
   AgencyCommResult res;
   while (true) {
     {
@@ -120,7 +120,7 @@ void ClusterState::loadShardInformation () {
   }
 }
 
-std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
+std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
   int tries = 0;
 
   while (++tries < 3) {
@@ -139,7 +139,7 @@ std::string ClusterState::getServerEndpoint (ServerID const& serverID) {
   return std::string("");
 }
 
-ServerID ClusterState::getResponsibleServer (ShardID const& shardID) {
+ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
   while (++tries < 3) {

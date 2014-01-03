@@ -29,7 +29,7 @@
 #include "Rest/Endpoint.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterState.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "BasicsC/logging.h"
 
@@ -242,8 +242,8 @@ bool ApplicationCluster::start () {
                        endpoints.c_str());
   }
  
-  // initialise ClusterState class
-  ClusterState::instance()->initialise();
+  // initialise ClusterInfo class
+  ClusterInfo::instance()->initialise();
 
   // initialise ClusterComm library
   ClusterComm::instance()->initialise();
@@ -334,7 +334,7 @@ void ApplicationCluster::stop () {
   comm.removeValues("Current/ServersRegistered/" + _myId, false);
   
   ClusterComm::cleanup();
-  ClusterState::cleanup();
+  ClusterInfo::cleanup();
   AgencyComm::cleanup();
 }
 
