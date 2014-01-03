@@ -164,7 +164,7 @@ uint64_t ServerState::uniqid () {
 
   if (_uniqid._currentValue >= _uniqid._upperValue) {
     AgencyComm comm;
-    AgencyCommResult result = comm.uniqid("Sync/LatestID", ValuesPerBatch);
+    AgencyCommResult result = comm.uniqid("Sync/LatestID", ValuesPerBatch, 0.0);
 
     if (! result.successful() || result._index == 0) {
       return 0;
