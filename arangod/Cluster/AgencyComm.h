@@ -31,13 +31,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "BasicsC/json.h"
 #include "Rest/HttpRequest.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct TRI_json_s;
 
 namespace triagens {
   namespace httpclient {
@@ -193,7 +192,7 @@ namespace triagens {
 /// @brief recursively flatten the JSON response into a map
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool processJsonNode (struct TRI_json_s const*,
+      bool processJsonNode (TRI_json_t const*,
                             std::map<std::string, bool>&,
                             std::string const&) const;
 
@@ -201,7 +200,7 @@ namespace triagens {
 /// @brief recursively flatten the JSON response into a map
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool processJsonNode (struct TRI_json_s const*,
+      bool processJsonNode (TRI_json_t const*,
                             std::map<std::string, std::string>&,
                             std::string const&,
                             bool) const;
