@@ -30,6 +30,7 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+var cluster = require("org/arangodb/cluster");
 
 var API = "_api/collection";
 
@@ -107,6 +108,82 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 /// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper to parse arguments for creating collections
+////////////////////////////////////////////////////////////////////////////////
+
+function parseBodyForCreateCollection (req, res) {
+  var body = actions.getJsonBody(req, res);
+
+  if (body === undefined) {
+    return { bodyIsEmpty: true };
+  }
+
+  var r = {};
+
+  if (! body.hasOwnProperty("name")) {
+    r.name = "";
+  }
+  else {
+    r.name = body.name;
+  }
+  r.parameter = { waitForSync : false };
+  r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
+
+  if (body.hasOwnProperty("doCompact")) {
+    r.parameter.doCompact = body.doCompact;
+  }
+
+  if (body.hasOwnProperty("isSystem")) {
+    r.parameter.isSystem = body.isSystem;
+  }
+  
+  if (body.hasOwnProperty("isVolatile")) {
+    r.parameter.isVolatile = body.isVolatile;
+  }
+  
+  if (body.hasOwnProperty("journalSize")) {
+    r.parameter.journalSize = body.journalSize;
+  }
+  
+  if (body.hasOwnProperty("keyOptions")) {
+    r.parameter.keyOptions = body.keyOptions;
+  }
+
+  if (body.hasOwnProperty("type")) {
+    r.type = body.type;
+  }
+  
+  if (body.hasOwnProperty("waitForSync")) {
+    r.parameter.waitForSync = body.waitForSync;
+  }
+  return r;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cluster collection
+////////////////////////////////////////////////////////////////////////////////
+
+function post_api_collection_coordinator (req, res) {
+  // We already know that we are in a cluster and that we are a coordinator.
+
+  var r = parseBodyForCreateCollection(req, res);
+
+  if (r.bodyIsEmpty) {
+    return;   // error in JSON, is already reported
+  }
+    
+  if (r.name === "") {
+    actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
+                      "name must be non-empty");
+    return;
+  }
+
+  // TODO
+
+  actions.resultOk(req, res, actions.HTTP_OK, { notYetImplemented: true });
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection
@@ -222,71 +299,55 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
-  var body = actions.getJsonBody(req, res);
 
-  if (body === undefined) {
-    return;
+  if (cluster.isCluster()) {
+    if (cluster.isCoordinator()) {
+      return post_api_collection_coordinator(req, res);
+    }
+    // If we get here, we are a DB server.
+    if (!cluster.isCoordinatorRequest(req)) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN,
+               arangodb.ERROR_CLUSTER_NO_COORDINATOR_HEADER,
+              "DB server in cluster got request without coordinator header");
+      
+      return;
+    }
+    // If the header is there, go on as usual.
   }
 
-  if (! body.hasOwnProperty("name")) {
+  var r = parseBodyForCreateCollection(req);
+
+  if (r.bodyIsEmpty) {
+    return;   // error in JSON, is already reported
+  }
+    
+  if (r.name === "") {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
                       "name must be non-empty");
     return;
   }
 
-  var name = body.name;
-  var parameter = { waitForSync : false };
-  var type = arangodb.ArangoCollection.TYPE_DOCUMENT;
-
-  if (body.hasOwnProperty("doCompact")) {
-    parameter.doCompact = body.doCompact;
-  }
-
-  if (body.hasOwnProperty("isSystem")) {
-    parameter.isSystem = body.isSystem;
-  }
-  
-  if (body.hasOwnProperty("isVolatile")) {
-    parameter.isVolatile = body.isVolatile;
-  }
-  
-  if (body.hasOwnProperty("journalSize")) {
-    parameter.journalSize = body.journalSize;
-  }
-  
-  if (body.hasOwnProperty("keyOptions")) {
-    parameter.keyOptions = body.keyOptions;
-  }
-
-  if (body.hasOwnProperty("type")) {
-    type = body.type;
-  }
-  
-  if (body.hasOwnProperty("waitForSync")) {
-    parameter.waitForSync = body.waitForSync;
-  }
-  
   try {
     var collection;
-    if (typeof(type) === "string") {
-      if (type.toLowerCase() === "edge") {
-        type = arangodb.ArangoCollection.TYPE_EDGE;
+    if (typeof(r.type) === "string") {
+      if (r.type.toLowerCase() === "edge") {
+        r.type = arangodb.ArangoCollection.TYPE_EDGE;
       }
     }
-    if (type === arangodb.ArangoCollection.TYPE_EDGE) {
-      collection = arangodb.db._createEdgeCollection(name, parameter);
+    if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
+      collection = arangodb.db._createEdgeCollection(r.name, r.parameter);
     }
     else {
-      collection = arangodb.db._createDocumentCollection(name, parameter);
+      collection = arangodb.db._createDocumentCollection(r.name, r.parameter);
     }
 
     var result = {};
 
     result.id = collection._id;
     result.name = collection.name();
-    result.waitForSync = parameter.waitForSync || false;
-    result.isVolatile = parameter.isVolatile || false;
-    result.isSystem = parameter.isSystem || false;
+    result.waitForSync = r.parameter.waitForSync || false;
+    result.isVolatile = r.parameter.isVolatile || false;
+    result.isSystem = r.parameter.isSystem || false;
     result.status = collection.status();
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;

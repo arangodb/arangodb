@@ -77,25 +77,30 @@ static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "cas(<key>, <oldValue>, <newValue>, <timeout>, <throw>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "cas(<key>, <oldValue>, <newValue>, <ttl>, <timeout>, <throw>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
   const std::string oldValue = TRI_ObjectToString(argv[1]);
   const std::string newValue = TRI_ObjectToString(argv[2]);
   
-  double timeout = 1.0;
+  double ttl = 0.0;
   if (argv.Length() > 3) {
-    timeout = TRI_ObjectToDouble(argv[3]);
+    ttl = TRI_ObjectToDouble(argv[3]);
+  }
+  
+  double timeout = 1.0;
+  if (argv.Length() > 4) {
+    timeout = TRI_ObjectToDouble(argv[4]);
   }
   
   bool shouldThrow = false;
-  if (argv.Length() > 4) {
-    shouldThrow = TRI_ObjectToBoolean(argv[4]);
+  if (argv.Length() > 5) {
+    shouldThrow = TRI_ObjectToBoolean(argv[5]);
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.casValue(key, oldValue, newValue, timeout);
+  AgencyCommResult result = comm.casValue(key, oldValue, newValue, ttl, timeout);
 
   if (! result.successful()) {
     if (! shouldThrow) {
@@ -227,6 +232,163 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lists a directory from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "list(<key>, <recursive>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  bool recursive = false;
+
+  if (argv.Length() > 1) {
+    recursive = TRI_ObjectToBoolean(argv[1]);
+  }
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues(key, recursive);
+
+  if (! result.successful()) {
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
+  }
+  
+  v8::Handle<v8::Object> l = v8::Object::New();
+
+  // return just the value for each key
+  std::map<std::string, bool> out;
+  result.flattenJson(out, "");
+  std::map<std::string, bool>::const_iterator it = out.begin(); 
+
+  while (it != out.end()) {
+    const std::string key = (*it).first;
+    const bool isDirectory = (*it).second;
+
+    l->Set(v8::String::New(key.c_str(), key.size()), v8::Boolean::New(isDirectory)); 
+    ++it;
+  }
+
+  return scope.Close(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires a read-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LockReadAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "lockRead(<part>, <ttl>, <timeout>)");
+  }
+
+  const std::string part = TRI_ObjectToString(argv[0]);
+
+  double ttl = 0.0;
+  if (argv.Length() > 1) {
+    ttl = TRI_ObjectToDouble(argv[1]);
+  }
+
+  double timeout = 0.0;
+  if (argv.Length() > 2) {
+    timeout = TRI_ObjectToDouble(argv[2]);
+  }
+  
+  AgencyComm comm;
+  if (! comm.lockRead(part, ttl, timeout)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to acquire lock");
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires a write-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LockWriteAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "lockWrite(<part>, <ttl>, <timeout>)");
+  }
+
+  const std::string part = TRI_ObjectToString(argv[0]);
+
+  double ttl = 0.0;
+  if (argv.Length() > 1) {
+    ttl = TRI_ObjectToDouble(argv[1]);
+  }
+  
+  double timeout = 0.0;
+  if (argv.Length() > 2) {
+    timeout = TRI_ObjectToDouble(argv[2]);
+  }
+  
+  AgencyComm comm;
+  if (! comm.lockWrite(part, ttl, timeout)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to acquire lock");
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a read-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UnlockReadAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "unlockRead(<part>, <timeout>)");
+  }
+
+  const std::string part = TRI_ObjectToString(argv[0]);
+  
+  double timeout = 0.0;
+  if (argv.Length() > 1) {
+    timeout = TRI_ObjectToDouble(argv[1]);
+  }
+
+  AgencyComm comm;
+  if (! comm.unlockRead(part, timeout)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to release lock");
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a write-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UnlockWriteAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "unlockWrite(<part>, <timeout>)");
+  }
+
+  const std::string part = TRI_ObjectToString(argv[0]);
+  
+  double timeout = 0.0;
+  if (argv.Length() > 1) {
+    timeout = TRI_ObjectToDouble(argv[1]);
+  }
+
+  AgencyComm comm;
+  if (! comm.unlockWrite(part, timeout)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to release lock");
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a value from the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -262,14 +424,19 @@ static v8::Handle<v8::Value> JS_SetAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <value>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "set(<key>, <value>, <ttl>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
   const std::string value = TRI_ObjectToString(argv[1]);
+
+  double ttl = 0.0;
+  if (argv.Length() > 2) {
+    ttl = TRI_ObjectToDouble(argv[2]);
+  }
   
   AgencyComm comm;
-  AgencyCommResult result = comm.setValue(key, value);
+  AgencyCommResult result = comm.setValue(key, value, ttl);
   
   if (! result.successful()) {
     return scope.Close(v8::ThrowException(CreateAgencyException(result)));
@@ -380,23 +547,28 @@ static v8::Handle<v8::Value> JS_PrefixAgency (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_UniqidAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "uniqid(<key>, <count>)");
+  if (argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "uniqid(<key>, <count>, <timeout>)");
   }
   
   const std::string key = TRI_ObjectToString(argv[0]);
 
   uint64_t count = 1;
-  if (argv.Length() == 2) {
+  if (argv.Length() > 1) {
     count = TRI_ObjectToUInt64(argv[1], true);
   }
 
   if (count < 1 || count > 10000000) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<count> is invalid");
   }
+
+  double timeout = 0.0;
+  if (argv.Length() > 2) {
+    timeout = TRI_ObjectToDouble(argv[2]);
+  }
   
   AgencyComm comm;
-  AgencyCommResult result = comm.uniqid(key, count);
+  AgencyCommResult result = comm.uniqid(key, count, timeout);
 
   if (! result.successful() || result._index == 0) {
     return scope.Close(v8::ThrowException(CreateAgencyException(result)));
@@ -529,12 +701,17 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "createDirectory", JS_CreateDirectoryAgency);
   TRI_AddMethodVocbase(rt, "get", JS_GetAgency);
   TRI_AddMethodVocbase(rt, "isEnabled", JS_IsEnabledAgency);
+  TRI_AddMethodVocbase(rt, "list", JS_ListAgency);
+  TRI_AddMethodVocbase(rt, "lockRead", JS_LockReadAgency);
+  TRI_AddMethodVocbase(rt, "lockWrite", JS_LockWriteAgency);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveAgency);
   TRI_AddMethodVocbase(rt, "set", JS_SetAgency);
   TRI_AddMethodVocbase(rt, "watch", JS_WatchAgency);
   TRI_AddMethodVocbase(rt, "endpoints", JS_EndpointsAgency);
   TRI_AddMethodVocbase(rt, "prefix", JS_PrefixAgency);
   TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidAgency);
+  TRI_AddMethodVocbase(rt, "unlockRead", JS_UnlockReadAgency);
+  TRI_AddMethodVocbase(rt, "unlockWrite", JS_UnlockWriteAgency);
   TRI_AddMethodVocbase(rt, "version", JS_VersionAgency);
 
   v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
