@@ -7941,8 +7941,8 @@ unittests-foxx-manager:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh -c etc/relative/foxx-manager.conf $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/arangosh -c etc/relative/foxx-manager.conf $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh -c etc/relative/foxx-manager.conf --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh -c etc/relative/foxx-manager.conf --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
