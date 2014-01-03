@@ -39,6 +39,12 @@ var internal = require("internal");
 function AgencySuite () {
   var agency;
 
+  var cleanupLocks = function () {
+    agency.set("Target/Lock", "UNLOCKED");
+    agency.set("Plan/Lock", "UNLOCKED");
+    agency.set("Current/Lock", "UNLOCKED");
+  };
+
   return {
 
     setUp : function () {
@@ -60,6 +66,219 @@ function AgencySuite () {
 
     testVersion : function () {
       assertMatch(/^etcd/, agency.version());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockRead
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockReadInvalid : function () {
+      cleanupLocks();
+
+      var invalidKeys = [ "foo", "bar", "baz", "plans", "PLAN" ];
+      
+      invalidKeys.forEach (function (key) {
+        try {
+          agency.lockRead(key);
+          fail();
+        }
+        catch (err) {
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockRead
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockRead : function () {
+      cleanupLocks();
+
+      assertTrue(agency.lockRead("Target"));
+      assertTrue(agency.unlockRead("Target"));
+
+      assertTrue(agency.lockRead("Plan"));
+      assertTrue(agency.unlockRead("Plan"));
+      
+      assertTrue(agency.lockRead("Current"));
+      assertTrue(agency.unlockRead("Current"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockRead
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockReadNotExisting : function () {
+      cleanupLocks();
+
+      assertTrue(agency.remove("Target/Lock"));
+      assertTrue(agency.remove("Plan/Lock"));
+      assertTrue(agency.remove("Current/Lock"));
+
+      assertTrue(agency.lockRead("Target"));
+      assertTrue(agency.unlockRead("Target"));
+
+      assertTrue(agency.lockRead("Plan"));
+      assertTrue(agency.unlockRead("Plan"));
+      
+      assertTrue(agency.lockRead("Current"));
+      assertTrue(agency.unlockRead("Current"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockRead
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockReadDouble : function () {
+      cleanupLocks();
+
+      assertTrue(agency.lockRead("Target", 5));
+
+      try {
+        // this will fail because of a duplicate lock
+        assertTrue(agency.lockRead("Target", 1, 1));
+        fail();
+      }
+      catch (err) {
+      }
+      
+      assertTrue(agency.unlockRead("Target"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockRead
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockReadWrongType : function () {
+      cleanupLocks();
+
+      assertTrue(agency.lockRead("Target", 5));
+
+      try {
+        // unlock of a wrong type
+        agency.unlockWrite("Target", 1);
+        fail();
+      }
+      catch (err) {
+      }
+      
+      assertTrue(agency.unlockRead("Target"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockWrite
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockWriteInvalid : function () {
+      cleanupLocks();
+
+      var invalidKeys = [ "foo", "bar", "baz", "plans", "PLAN" ];
+      
+      invalidKeys.forEach (function (key) {
+        try {
+          agency.lockWrite(key);
+          fail();
+        }
+        catch (err) {
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockWrite
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockWrite : function () {
+      cleanupLocks();
+
+      assertTrue(agency.lockWrite("Target"));
+      assertTrue(agency.unlockWrite("Target"));
+
+      assertTrue(agency.lockWrite("Plan"));
+      assertTrue(agency.unlockWrite("Plan"));
+      
+      assertTrue(agency.lockWrite("Current"));
+      assertTrue(agency.unlockWrite("Current"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lockWrite
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockWriteDouble : function () {
+      cleanupLocks();
+
+      assertTrue(agency.lockWrite("Target", 5));
+
+      try {
+        // this will fail because of a duplicate lock
+        assertTrue(agency.lockWrite("Target", 1, 1));
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertTrue(agency.unlockWrite("Target"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test re-lock 
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockRelock : function () {
+      cleanupLocks();
+
+      assertTrue(agency.lockRead("Target", 5));
+
+      var start = require("internal").time();
+      assertTrue(agency.lockWrite("Target", 5, 10));
+      var end = require("internal").time();
+
+      assertTrue(Math.round(end - start) >= 3);
+      assertTrue(agency.unlockWrite("Target"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test set
+////////////////////////////////////////////////////////////////////////////////
+
+    testSet : function () {
+      // insert
+      agency.set("UnitTestsAgency/foo", "test1");
+      var values = agency.get("UnitTestsAgency/foo");
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
+      assertEqual(values["UnitTestsAgency/foo"], "test1");
+
+      // overwrite
+      agency.set("UnitTestsAgency/foo", "test2", 2);
+      var values = agency.get("UnitTestsAgency/foo");
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
+      assertEqual(values["UnitTestsAgency/foo"], "test2");
+
+      assertTrue(agency.remove("UnitTestsAgency/foo"));
+      
+      // re-insert
+      agency.set("UnitTestsAgency/foo", "test3");
+      var values = agency.get("UnitTestsAgency/foo");
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
+      assertEqual(values["UnitTestsAgency/foo"], "test3");
+
+      // update with ttl
+      agency.set("UnitTestsAgency/foo", "test4", 2);
+      var values = agency.get("UnitTestsAgency/foo");
+      assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
+      assertEqual(values["UnitTestsAgency/foo"], "test4");
+
+      require("internal").wait(3);
+      
+      try {
+        values = agency.get("UnitTestsAgency/foo");
+        fail();
+      }
+      catch (e) {
+        assertEqual(404, e.code); 
+        assertEqual(100, e.errorNum);  // not found
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,6 +366,7 @@ function AgencySuite () {
       assertTrue(agency.cas("UnitTestsAgency/foo", "bar", "baz"));
       assertTrue(agency.cas("UnitTestsAgency/foo", "baz", "bart"));
       assertFalse(agency.cas("UnitTestsAgency/foo", "foo", "bar"));
+      assertFalse(agency.cas("UnitTestsAgency/boo", "foo", "bar"));
       
       try {
         agency.cas("UnitTestsAgency/foo", "foo", "bar", 1, true);
@@ -155,7 +375,7 @@ function AgencySuite () {
       catch (err) {
       }
         
-      assertTrue(agency.cas("UnitTestsAgency/foo", "bart", "baz", 1, true));
+      assertTrue(agency.cas("UnitTestsAgency/foo", "bart", "baz", 0, 1, true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
