@@ -241,10 +241,10 @@ bool ApplicationCluster::start () {
     LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
                        endpoints.c_str());
   }
+  
+  // initialise ClusterInfo library
+  ClusterInfo::instance();
  
-  // initialise ClusterInfo class
-  ClusterInfo::instance()->initialise();
-
   // initialise ClusterComm library
   ClusterComm::instance()->initialise();
 

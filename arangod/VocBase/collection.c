@@ -2454,8 +2454,12 @@ char* TRI_TypeNameCollection (const TRI_col_type_e type) {
       return "edge";
     case TRI_COL_TYPE_SHAPE_DEPRECATED:
       return "shape (deprecated)";
+    case TRI_COL_TYPE_UNKNOWN:
+    default:
+      return "unknown";
   }
 
+  assert(false);
   return "unknown";
 }
 
