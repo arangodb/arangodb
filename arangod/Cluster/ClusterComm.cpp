@@ -156,7 +156,7 @@ ClusterComm::getConnection(ServerID& serverID) {
   }
   
   // We need to open a new one:
-  string a = ClusterState::instance()->getServerEndpoint(serverID);
+  string a = ClusterInfo::instance()->getServerEndpoint(serverID);
 
   if (a == "") {
     // Unknown server address, probably not yet connected
@@ -323,7 +323,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
     op->operationID        = getOperationID();
   } while (op->operationID == 0);   // just to make sure
   op->shardID              = shardID;
-  op->serverID             = ClusterState::instance()->getResponsibleServer(
+  op->serverID             = ClusterInfo::instance()->getResponsibleServer(
                                                              shardID);
 
   // Add the header fields for asynchronous mode:
@@ -391,7 +391,7 @@ ClusterCommResult* ClusterComm::syncRequest (
   double endTime = timeout == 0.0 ? currentTime+24*60*60.0 
                                   : currentTime+timeout;
 
-  res->serverID = ClusterState::instance()->getResponsibleServer(shardID);
+  res->serverID = ClusterInfo::instance()->getResponsibleServer(shardID);
   LOG_TRACE("Responsible server: %s", res->serverID.c_str());
 
   if (res->serverID == "") {
@@ -943,7 +943,7 @@ void ClusterCommThread::run () {
       }
       else {
         // First find the server to which the request goes from the shardID:
-        ServerID server = ClusterState::instance()->getResponsibleServer(
+        ServerID server = ClusterInfo::instance()->getResponsibleServer(
                                                          op->shardID);
         LOG_TRACE("Responsible server: %s", server.c_str());
         if (server == "") {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to get and cache information about the cluster state
 ///
-/// @file ClusterState.h
+/// @file ClusterInfo.h
 ///
 /// DISCLAIMER
 ///
@@ -39,7 +39,7 @@ namespace triagens {
   namespace arango {
     
 // -----------------------------------------------------------------------------
-// --SECTION--                                      some types for ClusterState
+// --SECTION--                                       some types for ClusterInfo
 // -----------------------------------------------------------------------------
 
     typedef string ServerID;              // ID of a server
@@ -47,10 +47,10 @@ namespace triagens {
     typedef string ShardID;               // ID of a shard
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class ClusterState
+// --SECTION--                                                class ClusterInfo
 // -----------------------------------------------------------------------------
 
-    class ClusterState {
+    class ClusterInfo {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     constructors and destructors
@@ -63,11 +63,11 @@ namespace triagens {
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
       
-        ClusterState ();
-        ClusterState (ClusterState const&);    // not implemented
-        void operator= (ClusterState const&);  // not implemented
+        ClusterInfo ();
+        ClusterInfo (ClusterInfo const&);    // not implemented
+        void operator= (ClusterInfo const&);  // not implemented
 
-        static ClusterState* _theinstance;
+        static ClusterInfo* _theinstance;
 
       public:
 
@@ -75,7 +75,7 @@ namespace triagens {
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ClusterState ();
+        ~ClusterInfo ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   public methods
@@ -85,7 +85,7 @@ namespace triagens {
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ClusterState* instance ();
+        static ClusterInfo* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise function to call once when still single-threaded
