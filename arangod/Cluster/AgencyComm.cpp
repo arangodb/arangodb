@@ -351,8 +351,59 @@ std::list<AgencyEndpoint*> AgencyComm::_globalEndpoints;
 AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
   15.0,  // connectTimeout 
   3.0,   // requestTimeout
+  5.0,   // lockTimeout
   3      // numRetries
 };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  AgencyCommLocker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs an agency comm locker
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommLocker::AgencyCommLocker (std::string const& key,
+                                    std::string const& type,
+                                    double ttl) 
+  : _key(key),
+    _type(type),
+    _isLocked(false) {
+
+  AgencyComm comm;
+  if (comm.lock(key, ttl, 0.0, type)) {
+    _isLocked = true;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an agency comm locker
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommLocker::~AgencyCommLocker () {
+  unlock();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the lock
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyCommLocker::unlock () {
+  if (_isLocked) {
+    AgencyComm comm;
+    if (comm.unlock(_key, _type, 0.0)) {
+      _isLocked = false;
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
@@ -575,59 +626,6 @@ bool AgencyComm::hasEndpoint (std::string const& endpointSpecification) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the global prefix for all operations
-////////////////////////////////////////////////////////////////////////////////
-
-void AgencyComm::setPrefix (std::string const& prefix) {
-  // agency prefix must not be changed
-  if (! _globalPrefix.empty() && prefix != _globalPrefix) {
-    LOG_ERROR("agency-prefix cannot be changed at runtime");
-    return;
-  }
-
-  _globalPrefix = prefix;
-
-  // make sure prefix starts with a forward slash
-  if (prefix[0] != '/') {
-    _globalPrefix = '/' + _globalPrefix;
-  }
-
-  // make sure prefix ends with a forward slash
-  if (_globalPrefix.size() > 0) {
-    if (_globalPrefix[_globalPrefix.size() - 1] != '/') {
-      _globalPrefix += '/';
-    }
-  }
-
-  LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the global prefix for all operations
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AgencyComm::prefix () {
-  return _globalPrefix;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a timestamp
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AgencyComm::generateStamp () {
-  time_t tt = time(0);
-  struct tm tb;
-  char buffer[21];
-
-  // TODO: optimise this
-  TRI_gmtime(tt, &tb);
-
-  size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-
-  return std::string(buffer, len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -683,6 +681,76 @@ const std::string AgencyComm::getEndpointsString () {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the global prefix for all operations
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyComm::setPrefix (std::string const& prefix) {
+  // agency prefix must not be changed
+  if (! _globalPrefix.empty() && prefix != _globalPrefix) {
+    LOG_ERROR("agency-prefix cannot be changed at runtime");
+    return;
+  }
+
+  _globalPrefix = prefix;
+
+  // make sure prefix starts with a forward slash
+  if (prefix[0] != '/') {
+    _globalPrefix = '/' + _globalPrefix;
+  }
+
+  // make sure prefix ends with a forward slash
+  if (_globalPrefix.size() > 0) {
+    if (_globalPrefix[_globalPrefix.size() - 1] != '/') {
+      _globalPrefix += '/';
+    }
+  }
+
+  LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the global prefix for all operations
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::prefix () {
+  return _globalPrefix;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a timestamp
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::generateStamp () {
+  time_t tt = time(0);
+  struct tm tb;
+  char buffer[21];
+
+  // TODO: optimise this
+  TRI_gmtime(tt, &tb);
+
+  size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+
+  return std::string(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validates the lock type
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::checkLockType (std::string const& key,
+                                std::string const& value) {
+  if (key != "Plan" && key != "Current" && key != "Target") {
+    return false;
+  }
+
+  if (value != "READ" && value != "WRITE") {
+    return false;
+  }
+
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            private static methods
 // -----------------------------------------------------------------------------
@@ -728,7 +796,7 @@ bool AgencyComm::sendServerState () {
                             ":" + 
                             AgencyComm::generateStamp();
   
-  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), value));
+  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), value, 0.0));
   return result.successful();
 }
 
@@ -775,13 +843,14 @@ AgencyCommResult AgencyComm::createDirectory (std::string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
         
 AgencyCommResult AgencyComm::setValue (std::string const& key, 
-                                       std::string const& value) {
+                                       std::string const& value,
+                                       double ttl) {
   AgencyCommResult result;
   
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, 
                    result,
-                   buildUrl(key), 
+                   buildUrl(key) + ttlParam(ttl, true),
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
                    false);
 
@@ -842,13 +911,14 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
 AgencyCommResult AgencyComm::casValue (std::string const& key,
                                        std::string const& value,
                                        bool prevExists,
+                                       double ttl,
                                        double timeout) {
   AgencyCommResult result;
   
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevExists=" + (prevExists ? "true" : "false"), 
+                   buildUrl(key) + "?prevExists=" + (prevExists ? "true" : "false") + ttlParam(ttl, false), 
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
                    false);
 
@@ -864,13 +934,14 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 AgencyCommResult AgencyComm::casValue (std::string const& key,
                                        std::string const& oldValue, 
                                        std::string const& newValue,
+                                       double ttl,
                                        double timeout) {
   AgencyCommResult result;
-
+  
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevValue=" + triagens::basics::StringUtils::urlEncode(oldValue),
+                   buildUrl(key) + "?prevValue=" + triagens::basics::StringUtils::urlEncode(oldValue) + ttlParam(ttl, false),
                    "value=" + triagens::basics::StringUtils::urlEncode(newValue),
                    false);
 
@@ -951,7 +1022,8 @@ bool AgencyComm::unlockWrite (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::uniqid (std::string const& key,
-                                     uint64_t count) {
+                                     uint64_t count,
+                                     double timeout) {
   static const int maxTries = 10;
   int tries = 0;
 
@@ -978,7 +1050,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
   
     uint64_t newValue = triagens::basics::StringUtils::int64(oldValue) + count;
 
-    result = casValue(key, oldValue, triagens::basics::StringUtils::itoa(newValue), 0.0);
+    result = casValue(key, oldValue, triagens::basics::StringUtils::itoa(newValue), 0.0, timeout);
 
     if (result.successful()) {
       result._index = triagens::basics::StringUtils::int64(oldValue) + 1; 
@@ -994,6 +1066,19 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a ttl URL parameter
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::ttlParam (double ttl,
+                                  bool isFirst) {
+  if (ttl <= 0.0) {
+    return "";
+  }
+
+  return (isFirst ? "?ttl=" : "&ttl=") + triagens::basics::StringUtils::itoa((int) ttl);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires a lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1001,13 +1086,32 @@ bool AgencyComm::lock (std::string const& key,
                        double ttl,
                        double timeout,
                        std::string const& value) {
+  if (! checkLockType(key, value)) {
+    return false;
+  }
+  
+  if (timeout == 0.0) {
+    timeout = _globalConnectionOptions._lockTimeout;
+  }
 
-  assert(value == "READ" || value == "WRITE");
   const double end = TRI_microtime() + timeout;
 
   while (true) {
-    AgencyCommResult result = casValue(key, "UNLOCKED", value, timeout);
- 
+    AgencyCommResult result = casValue(key + "/Lock", 
+                                       "UNLOCKED", 
+                                       value, 
+                                       ttl,
+                                       timeout);
+
+    if (! result.successful() && result.httpCode() == 404) {
+      // key does not yet exist. create it now
+      result = casValue(key + "/Lock", 
+                        value,
+                        false,
+                        ttl,
+                        timeout);
+    }
+
     if (result.successful()) {
       return true;
     }
@@ -1032,13 +1136,23 @@ bool AgencyComm::lock (std::string const& key,
 bool AgencyComm::unlock (std::string const& key,
                          std::string const& value,
                          double timeout) {
+  if (! checkLockType(key, value)) {
+    return false;
+  }
+  
+  if (timeout == 0.0) {
+    timeout = _globalConnectionOptions._lockTimeout;
+  }
 
-  assert(value == "READ" || value == "WRITE");
   const double end = TRI_microtime() + timeout;
 
   while (true) {
-    AgencyCommResult result = casValue(key, value, "UNLOCKED", timeout);
- 
+    AgencyCommResult result = casValue(key + "/Lock", 
+                                       value, 
+                                       std::string("UNLOCKED"), 
+                                       0.0,
+                                       timeout);
+
     if (result.successful()) {
       return true;
     }
@@ -1055,10 +1169,6 @@ bool AgencyComm::unlock (std::string const& key,
   assert(false);
   return false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases a lock
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pop an endpoint from the queue
