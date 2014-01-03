@@ -108,8 +108,9 @@ v1.5.x (XXXX-XX-XX)
 v1.4.5 (XXXX-XX-XX)
 -------------------
 
-* added override file "arangod.conf.local" (and co)
+* fixed potential deadlock in global context method execution
 
+* added override file "arangod.conf.local" (and co)
 
 v1.4.4 (2013-12-24)
 -------------------
