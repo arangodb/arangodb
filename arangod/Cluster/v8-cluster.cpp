@@ -232,6 +232,49 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lists a directory from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "list(<key>, <recursive>)");
+  }
+
+  const std::string key = TRI_ObjectToString(argv[0]);
+  bool recursive = false;
+
+  if (argv.Length() > 1) {
+    recursive = TRI_ObjectToBoolean(argv[1]);
+  }
+  
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues(key, recursive);
+
+  if (! result.successful()) {
+    return scope.Close(v8::ThrowException(CreateAgencyException(result)));
+  }
+  
+  v8::Handle<v8::Object> l = v8::Object::New();
+
+  // return just the value for each key
+  std::map<std::string, bool> out;
+  result.flattenJson(out, "");
+  std::map<std::string, bool>::const_iterator it = out.begin(); 
+
+  while (it != out.end()) {
+    const std::string key = (*it).first;
+    const bool isDirectory = (*it).second;
+
+    l->Set(v8::String::New(key.c_str(), key.size()), v8::Boolean::New(isDirectory)); 
+    ++it;
+  }
+
+  return scope.Close(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires a read-lock in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -658,6 +701,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "createDirectory", JS_CreateDirectoryAgency);
   TRI_AddMethodVocbase(rt, "get", JS_GetAgency);
   TRI_AddMethodVocbase(rt, "isEnabled", JS_IsEnabledAgency);
+  TRI_AddMethodVocbase(rt, "list", JS_ListAgency);
   TRI_AddMethodVocbase(rt, "lockRead", JS_LockReadAgency);
   TRI_AddMethodVocbase(rt, "lockWrite", JS_LockWriteAgency);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveAgency);
