@@ -357,7 +357,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
-  LOG_TRACE("In asyncRequest, put into queue %ld", op->operationID);
+  LOG_DEBUG("In asyncRequest, put into queue %ld", op->operationID);
   somethingToSend.signal();
 
   return res;
@@ -392,7 +392,7 @@ ClusterCommResult* ClusterComm::syncRequest (
                                   : currentTime+timeout;
 
   res->serverID = ClusterInfo::instance()->getResponsibleServer(shardID);
-  LOG_TRACE("Responsible server: %s", res->serverID.c_str());
+  LOG_DEBUG("Responsible server: %s", res->serverID.c_str());
 
   if (res->serverID == "") {
     res->status = CL_COMM_ERROR;
@@ -407,12 +407,12 @@ ClusterCommResult* ClusterComm::syncRequest (
     }
     else {
       if (0 != body) {
-        LOG_TRACE("sending %s request to DB server '%s': %s",
+        LOG_DEBUG("sending %s request to DB server '%s': %s",
            triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
            res->serverID.c_str(), body);
       }
       else {
-        LOG_TRACE("sending %s request to DB server '%s'",
+        LOG_DEBUG("sending %s request to DB server '%s'",
            triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
            res->serverID.c_str());
       }
@@ -690,7 +690,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  LOG_TRACE("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
+  LOG_DEBUG("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
   pos = coordinatorHeader.find(":",start);
   if (pos == string::npos) {
     LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
@@ -712,7 +712,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
-  LOG_TRACE("asyncAnswer: sending PUT request to DB server '%s'",
+  LOG_DEBUG("asyncAnswer: sending PUT request to DB server '%s'",
             coordinatorID.c_str());
 
   triagens::httpclient::SimpleHttpClient* client
@@ -744,7 +744,7 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  LOG_TRACE("In processAnswer, seeing %s", coordinatorHeader.c_str());
+  LOG_DEBUG("In processAnswer, seeing %s", coordinatorHeader.c_str());
 
   pos = coordinatorHeader.find(":",start);
   if (pos == string::npos) {
@@ -819,7 +819,7 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   IndexIterator i;
   ClusterCommOperation* op;
 
-  LOG_TRACE("In moveFromSendToReceived %ld", operationID);
+  LOG_DEBUG("In moveFromSendToReceived %ld", operationID);
   basics::ConditionLocker locker(&somethingReceived);
   basics::ConditionLocker sendlocker(&somethingToSend);
   i = toSendByOpID.find(operationID);   // cannot fail
@@ -910,7 +910,7 @@ void ClusterCommThread::run () {
   ClusterCommOperation* op;
   ClusterComm* cc = ClusterComm::instance();
 
-  LOG_TRACE("starting ClusterComm thread");
+  LOG_DEBUG("starting ClusterComm thread");
 
   while (0 == _stop) {
     // First check the sending queue, as long as it is not empty, we send
@@ -925,7 +925,7 @@ void ClusterCommThread::run () {
           break;
         }
         else {
-          LOG_TRACE("Noticed something to send");
+          LOG_DEBUG("Noticed something to send");
           op = cc->toSend.front();
           assert(op->status == CL_COMM_SUBMITTED);
           op->status = CL_COMM_SENDING;
@@ -945,7 +945,7 @@ void ClusterCommThread::run () {
         // First find the server to which the request goes from the shardID:
         ServerID server = ClusterInfo::instance()->getResponsibleServer(
                                                          op->shardID);
-        LOG_TRACE("Responsible server: %s", server.c_str());
+        LOG_DEBUG("Responsible server: %s", server.c_str());
         if (server == "") {
           op->status = CL_COMM_ERROR;
         }
@@ -960,12 +960,12 @@ void ClusterCommThread::run () {
           }
           else {
             if (0 != op->body) {
-              LOG_TRACE("sending %s request to DB server '%s': %s",
+              LOG_DEBUG("sending %s request to DB server '%s': %s",
                  triagens::rest::HttpRequest::translateMethod(op->reqtype)
                    .c_str(), server.c_str(), op->body);
             }
             else {
-              LOG_TRACE("sending %s request to DB server '%s'",
+              LOG_DEBUG("sending %s request to DB server '%s'",
                  triagens::rest::HttpRequest::translateMethod(op->reqtype)
                     .c_str(), server.c_str());
             }
@@ -1014,8 +1014,6 @@ void ClusterCommThread::run () {
       }
     }
 
-    LOG_TRACE("ClusterComm alive");
-
     // Finally, wait for some time or until something happens using 
     // the condition variable:
     {
@@ -1027,7 +1025,7 @@ void ClusterCommThread::run () {
   // another thread is waiting for this value to shut down properly
   _stop = 2;
   
-  LOG_TRACE("stopped ClusterComm thread");
+  LOG_DEBUG("stopped ClusterComm thread");
 }
 
 // -----------------------------------------------------------------------------

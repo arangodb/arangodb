@@ -919,9 +919,9 @@ class CallbackTest : public ClusterCommCallback {
     CallbackTest(string msg) : _msg(msg) {}
     virtual ~CallbackTest() {}
     virtual bool operator() (ClusterCommResult* res) {
-      LOG_TRACE("ClusterCommCallback called on operation %ld",
+      LOG_DEBUG("ClusterCommCallback called on operation %ld",
                 res->operationID);
-      LOG_TRACE("Message: %s", _msg.c_str());
+      LOG_DEBUG("Message: %s", _msg.c_str());
       return false;  // Keep it in the queue
     }
 };
@@ -1011,7 +1011,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
                                "couldn't queue async request");
     }
     
-    LOG_TRACE("JS_ShardingTest: request has been submitted");
+    LOG_DEBUG("JS_ShardingTest: request has been submitted");
 
     OperationID opID = res->operationID;
     delete res;
@@ -1030,12 +1030,12 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
       if (status >= CL_COMM_SENT) {
         break;
       }
-      LOG_TRACE("JS_ShardingTest: request not yet sent");
+      LOG_DEBUG("JS_ShardingTest: request not yet sent");
       
       usleep(50000);
     }
 
-    LOG_TRACE("JS_ShardingTest: request has been sent, status: %d",status);
+    LOG_DEBUG("JS_ShardingTest: request has been sent, status: %d",status);
 
     res = cc->wait("", 0, opID, "");
   }
@@ -1043,24 +1043,31 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(), shard, 
                           reqType, path, body.c_str(), body.size(), 
                           *headerFields, timeout);
+    LOG_DEBUG("JS_ShardingTest: request has been sent synchronously, "
+              "status: %d",res->status);
+
     delete headerFields;
   }
 
   v8::Handle<v8::Object> r = v8::Object::New();
   if (0 == res) {
     r->Set(v8::String::New("errorMsg"),v8::String::New("out of memory"));
+    LOG_DEBUG("JS_ShardingTest: out of memory");
   }
   else if (res->status == CL_COMM_TIMEOUT) {
     r->Set(v8::String::New("timeout"),v8::BooleanObject::New(true));
+    LOG_DEBUG("JS_ShardingTest: timeout");
   }
   else if (res->status == CL_COMM_ERROR) {
     r->Set(v8::String::New("errorMessage"),
            v8::String::New("could not send request, DBServer gone"));
+    LOG_DEBUG("JS_ShardingTest: communications error");
   }
   else if (res->status == CL_COMM_DROPPED) {
     // Note that this can basically not happen
     r->Set(v8::String::New("errorMessage"),
            v8::String::New("request dropped whilst waiting for answer"));
+    LOG_DEBUG("JS_ShardingTest: dropped");
   }
   else {   // Everything is OK
     // The headers:
@@ -1078,6 +1085,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
       r->Set(v8::String::New("body"), v8::String::New(res->answer->body(),
                                                       res->answer->bodySize()));
     }
+    LOG_DEBUG("JS_ShardingTest: success");
   }
 
   if (0 != res) {
