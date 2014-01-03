@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module */
+/*global require, exports, module, SYS_SHARDING_TEST */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
@@ -936,7 +936,9 @@ actions.defineHttp({
     }
     var params = "";
     var shard = "";
-    for (var p in req.parameters) {
+    var p;
+
+    for (p in req.parameters) {
       if (req.parameters.hasOwnProperty(p)) {
         if (params === "") {
           params = "?";
@@ -944,7 +946,7 @@ actions.defineHttp({
         else {
           params += "&";
         }
-        params += p+"="+String(req.parameters[p])
+        params += p+"="+String(req.parameters[p]);
       }
     }
     if (params !== "") {
@@ -954,7 +956,8 @@ actions.defineHttp({
     var transID = "";
     var timeout = 24*3600.0;
     var asyncMode = true;
-    for (var p in req.headers) {
+
+    for (p in req.headers) {
       if (req.headers.hasOwnProperty(p)) {
         if (p === "x-client-transaction-id") {
           transID = req.headers[p];
