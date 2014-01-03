@@ -277,7 +277,7 @@ void ClusterComm::closeUnusedConnections (double limit) {
       for (i = sc->unused.begin(); i != sc->unused.end(); ) {
         if (t - (*i)->lastUsed > limit) {
           vector<SingleServerConnection*>::iterator j;
-          for (j = sc->connections.begin(); j != sc->connections.end(); j++) {
+          for (j = sc->connections.begin(); j != sc->connections.end(); ++j) {
             if (*j == *i) {
               sc->connections.erase(j);
               break;
@@ -296,7 +296,7 @@ void ClusterComm::closeUnusedConnections (double limit) {
         }
         else {
           prev = i;
-          i++;
+          ++i;
           haveprev = true;
         }
       }
@@ -519,7 +519,6 @@ ClusterCommResult* ClusterComm::wait (
   ClusterCommResult* res = 0;
   double endtime;
   double timeleft;
-  bool found;
 
   if (0.0 == timeout) {
     endtime = 1.0e50;   // this is the Sankt Nimmerleinstag
@@ -571,7 +570,7 @@ ClusterCommResult* ClusterComm::wait (
     // we return it immediately, otherwise, we report an error or wait.
     basics::ConditionLocker locker(&somethingReceived);
     while (true) {   // will be left by return or break on timeout
-      found = false;
+      bool found = false;
       for (q = received.begin(); q != received.end(); q++) {
         op = *q;
         if (match(clientTransactionID, coordTransactionID, shardID, op)) {
@@ -760,13 +759,12 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
 
   // Finally find the ClusterCommOperation record for this operation:
-  ClusterCommOperation* op;
   {
     basics::ConditionLocker locker(&somethingReceived);
     ClusterComm::IndexIterator i;
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
-      op = *(i->second);
+      ClusterCommOperation* op = *(i->second);
       op->answer = answer;
       op->status = CL_COMM_RECEIVED;
       // Do we have to do a callback?
@@ -787,7 +785,7 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
       basics::ConditionLocker sendlocker(&somethingToSend);
       i = toSendByOpID.find(operationID);
       if (i != toSendByOpID.end()) {
-        op = *(i->second);
+        ClusterCommOperation* op = *(i->second);
         op->answer = answer;
         op->status = CL_COMM_RECEIVED;
         if (0 != op->callback) {

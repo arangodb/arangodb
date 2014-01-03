@@ -95,7 +95,7 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare () {
-  _enableCluster = (_agencyEndpoints.size() > 0 || ! _agencyPrefix.empty());
+  _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
 
   if (! enabled()) {
     return true;
@@ -113,7 +113,7 @@ bool ApplicationCluster::prepare () {
 
   
   // validate --cluster.agency-endpoint
-  if (_agencyEndpoints.size() == 0) {
+  if (_agencyEndpoints.empty()) {
     LOG_FATAL_AND_EXIT("must at least specify one endpoint in --cluster.agency-endpoint");
   }
 

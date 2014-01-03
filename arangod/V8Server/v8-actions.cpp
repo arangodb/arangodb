@@ -1083,8 +1083,10 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(), shard, 
                           reqType, path, body.c_str(), body.size(), 
                           *headerFields, timeout);
-    LOG_DEBUG("JS_ShardingTest: request has been sent synchronously, "
-              "status: %d",res->status);
+    if (res != 0) {
+      LOG_DEBUG("JS_ShardingTest: request has been sent synchronously, "
+                "status: %d",res->status);
+    }
 
     if (0 == res) {
       r->Set(v8::String::New("errorMsg"),v8::String::New("out of memory"));
