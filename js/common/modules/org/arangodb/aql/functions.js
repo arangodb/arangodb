@@ -226,6 +226,8 @@ var unregisterFunctionsGroup = function (group) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message;
+
+    throw err;
   }
 
   var deleted = 0;
@@ -285,26 +287,49 @@ var registerFunction = function (name, code, isDeterministic) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
     err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
+    
+    throw err;
   }
 
   var exists = false;
+  var collection = getStorage();
     
-  try {
-    unregisterFunction(name);
-    exists = true;
-  }
-  catch (err2) {
-  }
+  var result = db._executeTransaction({
+    collections: {
+      write: collection.name()
+    },
+    action: function (params) {
+      var name = params.name;
+      var collection = params.collection;
+      try {
+        var doc = collection.document(name.toUpperCase());
+        if (doc !== null) {
+          collection.remove(doc._key);
+          exists = true;
+        }
+      }
+      catch (err2) {
+      }
+  
+      var data = {
+        _key: name.toUpperCase(),
+        name: name,
+        code: code,
+        isDeterministic: isDeterministic || false
+      };
+    
+      collection.save(data);
+      return true;
+    },
+    params: {
+      name: name,
+      collection: collection 
+    }
+  });
 
-  var data = {
-    _key: name.toUpperCase(),
-    name: name,
-    code: code,
-    isDeterministic: isDeterministic || false
-  };
-    
-  getStorage().save(data);
-  internal.reloadAqlFunctions();
+  if (result) {
+    internal.reloadAqlFunctions();
+  }
 
   return exists;
 };
