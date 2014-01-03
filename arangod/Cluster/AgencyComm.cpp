@@ -839,10 +839,6 @@ std::string AgencyComm::generateStamp () {
 
 bool AgencyComm::checkLockType (std::string const& key,
                                 std::string const& value) {
-  if (key != "Plan" && key != "Current" && key != "Target") {
-    return false;
-  }
-
   if (value != "READ" && value != "WRITE") {
     return false;
   }
