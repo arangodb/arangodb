@@ -43,9 +43,36 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     typedef string ServerID;              // ID of a server
+    typedef string DatabaseID;            // ID/name of a database
     typedef string CollectionID;          // ID of a collection
     typedef string ShardID;               // ID of a shard
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class CollectionInfo
+// -----------------------------------------------------------------------------
+
+    struct CollectionInfo {
+        enum Status {
+          LOADED = 1,
+          UNLOADED = 2
+        };
+        enum Type {
+          NORMAL = 1,
+          EDGES = 2
+        };
+        string id;
+        string name;
+        Status status;
+        Type type;
+        vector<string> shards;
+
+        CollectionInfo () : id(""), name(""), status(LOADED), type(NORMAL) {
+        }
+        ~CollectionInfo () {
+        }
+    };
+
+    
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ClusterInfo
 // -----------------------------------------------------------------------------
@@ -103,41 +130,79 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about servers from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-        void loadServerInformation ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about shards from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-        void loadShardInformation ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find the endpoint of a server from its ID
+/// @brief find the endpoint of a server from its ID.
+///
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
         string getServerEndpoint(ServerID const& serverID);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ask about a collection
+/// @brief (re-)load the information about servers from the agency
+///
+/// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getCollectionInfo(CollectionID const& collectionID);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all shards in a collection
-////////////////////////////////////////////////////////////////////////////////
-
-        void getShardsCollection(CollectionID const& collectionID,
-                                 vector<ShardID> &shards);
+        void loadServerInformation ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the server who is responsible for a shard
+///
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
         ServerID getResponsibleServer(ShardID const& shardID);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about shards from the agency
+///
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadShardInformation ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask whether a cluster database exists
+////////////////////////////////////////////////////////////////////////////////
+
+        bool doesDatabaseExist (DatabaseID const& databaseID);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current cluster database
+///
+/// This invalidates the cache about the collections data.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool setCurrentDatabase (DatabaseID const& databaseID);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about databases from the agency
+///
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadDatabaseInformation ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask about a collection
+///
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty 0 pointer is returned. The caller
+/// must not delete the pointer.
+////////////////////////////////////////////////////////////////////////////////
+
+        CollectionInfo const* getCollectionInfo(
+                                   CollectionID const& collectionID);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about collections from the agency
+///
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadCollectionsInformation ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -153,6 +218,8 @@ namespace triagens {
         // Cached data from the agency, we reload whenever necessary:
         map<ServerID,string> serverAddresses;  // from Current/ServersRegistered
         map<ShardID,ServerID> shards;          // from Current/ShardLocation
+        map<CollectionID,CollectionInfo*> collections;
+                                               // from Current/Collections/
 
         triagens::basics::ReadWriteLock lock;
 
