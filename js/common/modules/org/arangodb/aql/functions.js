@@ -292,15 +292,15 @@ var registerFunction = function (name, code, isDeterministic) {
   }
 
   var exists = false;
-  var collection = getStorage();
     
   var result = db._executeTransaction({
     collections: {
-      write: collection.name()
+      write: getStorage().name()
     },
     action: function (params) {
+      var collection = require("internal").db._collection(params.collection);
       var name = params.name;
-      var collection = params.collection;
+
       try {
         var doc = collection.document(name.toUpperCase());
         if (doc !== null) {
@@ -314,8 +314,8 @@ var registerFunction = function (name, code, isDeterministic) {
       var data = {
         _key: name.toUpperCase(),
         name: name,
-        code: code,
-        isDeterministic: isDeterministic || false
+        code: params.code,
+        isDeterministic: params.isDeterministic || false
       };
     
       collection.save(data);
@@ -323,7 +323,9 @@ var registerFunction = function (name, code, isDeterministic) {
     },
     params: {
       name: name,
-      collection: collection 
+      code: code,
+      isDeterministic: isDeterministic,
+      collection: getStorage().name() 
     }
   });
 
