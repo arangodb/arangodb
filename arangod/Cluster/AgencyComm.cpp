@@ -205,6 +205,79 @@ std::string AgencyCommResult::errorDetails () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
+                                        std::map<std::string, bool>& out,
+                                        std::string const& stripKeyPrefix) const {
+  if (! TRI_IsArrayJson(node)) {
+    return true;
+  }
+
+  // get "key" attribute
+  TRI_json_t const* key = TRI_LookupArrayJson(node, "key");
+
+  if (! TRI_IsStringJson(key)) {
+    return false;
+  }
+
+  // make sure we don't strip more bytes than the key is long
+  const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
+  const size_t length = key->_value._string.length - 1;
+
+  std::string prefix;
+  if (offset >= length) {
+    prefix = "";
+  }
+  else {
+    prefix = std::string(key->_value._string.data + offset, 
+                         key->_value._string.length - 1 - offset);
+  }
+
+  // get "dir" attribute
+  TRI_json_t const* dir = TRI_LookupArrayJson(node, "dir");
+  bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
+
+  if (isDir) {
+    out.insert(std::make_pair<std::string, bool>(prefix, true));
+
+    // is a directory, so there may be a "nodes" attribute
+    TRI_json_t const* nodes = TRI_LookupArrayJson(node, "nodes");
+
+    if (! TRI_IsListJson(nodes)) {
+      // if directory is empty...
+      return true;
+    }
+
+    const size_t n = TRI_LengthVector(&nodes->_value._objects);
+
+    for (size_t i = 0; i < n; ++i) {
+      if (! processJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), 
+                            out, 
+                            stripKeyPrefix)) { 
+        return false;
+      }
+    }
+  }
+  else {
+    // not a directory
+    
+    // get "value" attribute
+    TRI_json_t const* value = TRI_LookupArrayJson(node, "value");
+
+    if (TRI_IsStringJson(value)) {
+      if (! prefix.empty()) {
+        // otherwise return value
+        out.insert(std::make_pair<std::string, bool>(prefix, false));
+      }
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively flatten the JSON response into a map
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
                                         std::map<std::string, std::string>& out,
                                         std::string const& stripKeyPrefix,
                                         bool returnIndex) const {
@@ -273,11 +346,13 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
           }
 
           // convert the number to an integer  
-          out[prefix] = triagens::basics::StringUtils::itoa((uint64_t) modifiedIndex->_value._number);
+          out.insert(std::make_pair<std::string, std::string>(prefix, 
+                                                              triagens::basics::StringUtils::itoa((uint64_t) modifiedIndex->_value._number)));
         }
         else {
           // otherwise return value
-          out[prefix] = std::string(value->_value._string.data, value->_value._string.length - 1);
+          out.insert(std::make_pair<std::string, std::string>(prefix,
+                                                              std::string(value->_value._string.data, value->_value._string.length - 1)));
         }
   
       }
@@ -285,6 +360,30 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a result into a map
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommResult::flattenJson (std::map<std::string, bool>& out,
+                                    std::string const& stripKeyPrefix) const {
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return false;
+  }
+
+  // get "node" attribute
+  TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
+
+  const bool result = processJsonNode(node, out, stripKeyPrefix);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
