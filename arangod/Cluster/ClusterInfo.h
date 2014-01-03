@@ -60,6 +60,7 @@ namespace triagens {
           NORMAL = 1,
           EDGES = 2
         };
+        DatabaseID database;
         string id;
         string name;
         Status status;
@@ -170,14 +171,6 @@ namespace triagens {
         bool doesDatabaseExist (DatabaseID const& databaseID);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the current cluster database
-///
-/// This invalidates the cache about the collections data.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool setCurrentDatabase (DatabaseID const& databaseID);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about databases from the agency
 ///
 /// Usually one does not have to call this directly.
@@ -194,6 +187,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectionInfo const* getCollectionInfo(
+                                   DatabaseID const& databaseID,
                                    CollectionID const& collectionID);
 
 ////////////////////////////////////////////////////////////////////////////////
