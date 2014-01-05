@@ -34,7 +34,8 @@ var _ = require("underscore");
 // --SECTION--                                              agency-result-helper
 // -----------------------------------------------------------------------------
 
-var createResult = function(prefix, list) {
+var createResult = function(prefixes, list) {
+  var prefix = prefixes.join("/") + "/";
   var res = {};
   _.each(list, function(v, k) {
     res[prefix + k] = v; 
@@ -63,25 +64,25 @@ function runGoodCaseTests(test) {
   var registered;
 
   agencyRoutes = {
-    vision: "Vision/",
-    target: "Target/",
-    plan: "Plan/",
-    current: "Current/",
-    fail: "Fail/"
+    vision: "Vision",
+    target: "Target",
+    plan: "Plan",
+    current: "Current",
+    fail: "Fail"
   };
 
   resetToDefault = function() {
-    agencyTargetServers = createResult(agencyRoutes.target + "DBServers/", {
+    agencyTargetServers = createResult([agencyRoutes.target, "DBServers"], {
       "pavel": "sandro",
       "paul": "sally",
       "patricia": "sandra"
     });
-    plannedServers = createResult(agencyRoutes.plan + "DBServers/", {
+    plannedServers = createResult([agencyRoutes.plan, "DBServers"], {
       "pavel": "sandro",
       "paul": "sally",
       "patricia": "sandra"
     });
-    registered = createResult(agencyRoutes.current + "ServersRegistered/", {
+    registered = createResult([agencyRoutes.current, "ServersRegistered"], {
       "pavel": "tcp://192.168.0.1:8529",
       "paul": "tcp://192.168.0.2:8529",
       "patricia": "tcp://192.168.0.3:8529",
@@ -101,16 +102,26 @@ function runGoodCaseTests(test) {
 
   agencyMock = {
     get: function(route, recursive) {
-      if (route === agencyRoutes.target + "DBServers" && recursive) {
-        return agencyTargetServers;
+      var parts = route.split("/");
+      switch (parts[0]) {
+        case agencyRoutes.target:
+          if (parts[1] === "DBServers" && recursive) {
+            return agencyTargetServers;
+          }
+          break;
+        case agencyRoutes.plan:
+          if (parts[1] === "DBServers" && recursive) {
+            return plannedServers;
+          }
+          break;
+        case agencyRoutes.current:
+          if (parts[1] === "ServersRegesitered" && recursive) {
+            return registered;
+          }
+          break;
+        default:
+          fail();
       }
-      if (route === agencyRoutes.plan + "DBServers" && recursive) {
-        return plannedServers;
-      }
-      if (route === agencyRoutes.current + "ServersRegistered" && recursive) {
-        return registered;
-      }
-      fail();
     }
   };
   Communication._createAgency = function() {
@@ -176,7 +187,7 @@ function runGoodCaseTests(test) {
         var name = "pancho";
         var wasCalled = false;
         agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
+          assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, "none");
           agencyTargetServers[route] = value;
           wasCalled = true;
@@ -196,7 +207,7 @@ function runGoodCaseTests(test) {
         var secName = "samuel";
         var wasCalled = false;
         agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
+          assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, "none");
           assertFalse(wasCalled, "Set has been called multiple times");
           agencyTargetServers[route] = value;
@@ -207,7 +218,7 @@ function runGoodCaseTests(test) {
         assertTrue(wasCalled, "Agency has not been informed to insert primary.");
         wasCalled = false;
         agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
+          assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, secName);
           assertFalse(wasCalled, "Set has been called multiple times");
           agencyTargetServers[route] = value;
@@ -230,7 +241,7 @@ function runGoodCaseTests(test) {
         var secName = "samuel";
         var wasCalled = false;
         agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
+          assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, secName);
           assertFalse(wasCalled, "Set has been called multiple times");
           agencyTargetServers[route] = value;
@@ -252,7 +263,7 @@ function runGoodCaseTests(test) {
         var secondaryName = "sandro";
         var setWasCalled = false;
         agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + secondaryName);
+          assertEqual(route, [agencyRoutes.target, "DBServers", secondaryName].join("/"));
           assertEqual(value, "none");
           assertFalse(setWasCalled, "Set has been called multiple times");
           agencyTargetServers[route] = value;
@@ -261,7 +272,7 @@ function runGoodCaseTests(test) {
         };
         var delWasCalled = false;
         agencyMock.remove = function(route) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
+          assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertFalse(delWasCalled, "Delete has been called multiple times");
           delete agencyTargetServers[route];
           delWasCalled = true;
@@ -283,7 +294,7 @@ function runGoodCaseTests(test) {
         var pName = "pavel";
         var wasCalled = false;
         agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + pName);
+          assertEqual(route, [agencyRoutes.target, "DBServers", pName].join("/"));
           assertEqual(value, "none");
           assertFalse(wasCalled, "Set has been called multiple times");
           agencyTargetServers[route] = value;
@@ -310,61 +321,24 @@ function runGoodCaseTests(test) {
       tearDown: teardown,
 
       testGetDatabaseList: function() {
+        /*
+        var list = [
+          "_system",
+          "a_db",
+          "b_db",
+          "z_db"
+        ];
+        assertEqual(targetDBs.getList(), list);
+        */
         assertTrue(true);
       }
     }
   };
 
-  function DBServersSuite() {
-
-    var DBServers;
-
-    return {
-      setUp: function() {
-        DBServers = comm.DBServers();
-      },
-      tearDown: function() {},
-
-      testGetList: function() {
-        var expectedResult = {
-          pavel: {
-            address: "tcp://192.168.0.1:8529",
-            role: "primary",
-            secondary: "sandro"
-          },
-          paul: {
-            address: "tcp://192.168.0.2:8529",
-            role: "primary",
-            secondary: "sally"
-          },
-          patricia: {
-            address: "tcp://192.168.0.3:8529",
-            role: "primary",
-            secondary: "sandra"
-          },
-          sandro: {
-            address: "tcp://192.168.0.4:8529",
-            role: "secondary"
-          },
-          sally: {
-            address: "tcp://192.168.0.5:8529",
-            role: "secondary"
-          },
-          sandra: {
-            address: "tcp://192.168.0.6:8529",
-            role: "secondary"
-          }
-        };
-        var res = DBServers.list();
-        assertEqual(expectedResult, res);
-      }
-    };
-  };
 
 //  test.run(VisionSuite);
   test.run(TargetDBServersSuite);
   test.run(TargetShardSuite);
-//  test.run(DBServersSuite);
 };
 
 // -----------------------------------------------------------------------------
