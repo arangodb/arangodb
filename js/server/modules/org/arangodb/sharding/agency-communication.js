@@ -96,7 +96,9 @@ exports.Communication = function() {
     addLevel(target, "db", "Collections", ["list"]);
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
-    addLevel(plan, "dbServers", "DBServers", ["get"]);
+    addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
+    addLevel(plan, "db", "Collections", ["list"]);
+    addLevel(plan, "coordinators", "Coordinators", ["list", "checkVersion"]);
     var current = addLevel(this, "current", "Current");
     addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(current, "db", "Collections", ["list"]);
@@ -305,41 +307,65 @@ exports.Communication = function() {
   };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           Servers
+// --SECTION--                                                              Plan
 // -----------------------------------------------------------------------------
 
+  var Plan = function () {
+    var DBServers;
+    var Databases;
+    var Coordinators;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_agency-communication_servers_general
-/// @brief A generic communication interface for lists of servers
-///
-/// @FUN{new Servers(@FA{route})}
-///
-/// This creates a new Interface to the agency to handle a set of servers.
-/// The first argument is the subroute where the configuration of this type of
-/// servers is stored.
-///
-/// @EXAMPLES
-///
-/// @code
-///     list = new Servers("DBServers");
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-  this.DBServers = function() {
-    if (!DBServers) {
-      //Add DBServer specific functions
-      DBServers = {
-        list: function() {
-          return cache.getPlan();
-        },
-        add: function() {},
-        set: function() {},
-        get: function() {},
-        remove: function() {}
+    var DBServersObject = function() {
+      var cache = {};
+      var servers;
+      var getList = function() {
+        if (!agency.plan.dbServers.checkVersion()) {
+          cache = {};
+          servers = agency.plan.dbServers.get(true);
+          storeServersInCache(cache, servers);
+        }
+        return cache;
       };
-    }
-    return DBServers;
+      this.getList = function() {
+        return getList();
+      };
+    };
+    var DatabasesObject = function() {
+      this.getList = function() {
+        return agency.plan.db.list();            
+      };
+    };
+    var CoordinatorsObject = function() {
+      this.getList = function() {
+        return agency.plan.coordinators.list();
+      };
+    };
+
+    this.DBServers = function() {
+      if (!DBServers) {
+        DBServers = new DBServersObject();
+      }
+      return DBServers;
+    };
+
+    this.Databases = function() {
+      if (!Databases) {
+        Databases = new DatabasesObject();
+      }
+      return Databases;
+    };
+
+    this.Coordinators = function() {
+      if (!Coordinators) {
+        Coordinators = new CoordinatorsObject();
+      }
+      return Coordinators;
+    };
   };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           Current
+// -----------------------------------------------------------------------------
 
   var Current = function () {
     var DBServers;
@@ -425,6 +451,7 @@ exports.Communication = function() {
 // -----------------------------------------------------------------------------
 
   this.target = new Target();
+  this.plan = new Plan();
   this.current = new Current();
 
 }
