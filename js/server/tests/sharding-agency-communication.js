@@ -33,7 +33,6 @@
   var internal = require("internal");
   var _ = require("underscore");
 
-
   // -----------------------------------------------------------------------------
   // --SECTION--                                              agency-result-helper
   // -----------------------------------------------------------------------------
@@ -96,6 +95,8 @@
 
     dummy.plan = {};
     dummy.plan.servers = createResult([agencyRoutes.plan, agencyRoutes.sub.servers], dbServers);
+    dummy.plan.coordinators = createResult([agencyRoutes.target, agencyRoutes.sub.coords], coordinators);
+    dummy.plan.databases = databases;
 
     dummy.current = {};
     dummy.current.servers = createResult([agencyRoutes.current, agencyRoutes.sub.servers], dbServers);
@@ -143,6 +144,17 @@
           if (parts[1] === agencyRoutes.sub.coords) {
             return _.map(
               _.keys(dummy.target.coordinators),
+              function(k) {
+                var splits = k.split("/");
+                return splits[splits.length-1];
+              }
+            );
+          }
+          break;
+        case agencyRoutes.plan:
+          if (parts[1] === agencyRoutes.sub.coords) {
+            return _.map(
+              _.keys(dummy.plan.coordinators),
               function(k) {
                 var splits = k.split("/");
                 return splits[splits.length-1];
@@ -463,6 +475,87 @@
     test.run(DataSuite);
   };
 
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                              plan
+  // -----------------------------------------------------------------------------
+
+  function runPlanTests(test) {
+
+    function DBServersSuite() {
+      var servers;
+
+      return {
+        setUp: function() {
+          setup();
+          servers = comm.plan.DBServers();
+        },
+        tearDown: teardown,
+
+        testGetServerList: function() {
+          var expected = {
+            pavel: {
+              role: "primary",
+              secondary: "sandro"
+            },
+            paul: {
+              role: "primary",
+              secondary: "sally"
+            },
+            patricia: {
+              role: "primary",
+              secondary: "sandra"
+            },
+            sandro: {
+              role: "secondary"
+            },
+            sally: {
+              role: "secondary"
+            },
+            sandra: {
+              role: "secondary"
+            }
+          };
+          var res = servers.getList();
+          assertEqual(res, expected);
+        }
+
+      };
+    };
+
+    function CoordinatorSuite() {
+      var coordinators;
+
+      return {
+        setUp: function() {
+          setup();
+          coordinators = comm.plan.Coordinators();
+        },
+        tearDown: teardown,
+
+        testGetCoordinatorList: function() {
+          var list = [
+            "carlos",
+            "charly",
+            "cindy"
+          ].sort();
+          assertEqual(coordinators.getList(), list);
+        }
+      };
+    };
+
+    function DataSuite() {
+      return {
+        setUp: setup,
+        tearDown: teardown,
+      };
+    };
+
+    test.run(DBServersSuite);
+    test.run(CoordinatorSuite);
+    test.run(DataSuite);
+  };
+
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           current
   // -----------------------------------------------------------------------------
@@ -541,6 +634,14 @@
   };
 
   // -----------------------------------------------------------------------------
+  // --SECTION--                                                              Fail
+  // -----------------------------------------------------------------------------
+
+  function runFailTests(test) {
+
+  };
+
+  // -----------------------------------------------------------------------------
   // --SECTION--                                                              main
   // -----------------------------------------------------------------------------
 
@@ -548,8 +649,11 @@
   /// @brief executes the test suites
   ////////////////////////////////////////////////////////////////////////////////
 
+  runVisionTests(jsunity);
   runTargetTests(jsunity);
+  runPlanTests(jsunity);
   runCurrentTests(jsunity);
+  runFailTests(jsunity);
 
   return jsunity.done();
 
