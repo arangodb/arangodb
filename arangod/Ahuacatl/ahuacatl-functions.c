@@ -151,7 +151,8 @@ static bool CheckArgumentType (TRI_aql_node_t const* parameter,
   param_t found = InitParam();
 
   if (parameter->_type == TRI_AQL_NODE_REFERENCE ||
-      parameter->_type == TRI_AQL_NODE_FCALL) {
+      parameter->_type == TRI_AQL_NODE_FCALL ||
+      parameter->_type == TRI_AQL_NODE_FCALL_USER) {
     return true;
   }
   
