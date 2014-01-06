@@ -56,10 +56,7 @@ ServerState::ServerState ()
     _address(),
     _lock(),
     _role(ROLE_UNDEFINED),
-    _state(STATE_UNDEFINED),
-    _uniqid() {
-
-  _uniqid._currentValue = _uniqid._upperValue = 0;
+    _state(STATE_UNDEFINED) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,28 +151,6 @@ std::string ServerState::stateToString (StateEnum state) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets a unique id
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t ServerState::uniqid () {
-  WRITE_LOCKER(_lock);
-
-  if (_uniqid._currentValue >= _uniqid._upperValue) {
-    AgencyComm comm;
-    AgencyCommResult result = comm.uniqid("Sync/LatestID", ValuesPerBatch, 0.0);
-
-    if (! result.successful() || result._index == 0) {
-      return 0;
-    }
-
-    _uniqid._currentValue = result._index;
-    _uniqid._upperValue   = _uniqid._currentValue + ValuesPerBatch;
-  }
-
-  return _uniqid._currentValue++;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current state
