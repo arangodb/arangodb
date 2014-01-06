@@ -69,6 +69,9 @@ exports.Communication = function() {
       },
       checkVersion: function(route) {
         return false;
+      },
+      list: function(route) {
+        return _agency.list(route).sort();
       }
     };
     var addLevel = function(base, name, route, functions) {
@@ -90,6 +93,8 @@ exports.Communication = function() {
     };
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
+    addLevel(target, "db", "Collections", ["list"]);
+    addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get"]);
     
@@ -202,54 +207,87 @@ exports.Communication = function() {
 
   Target = function() {
     var DBServers;
+    var Databases;
+    var Coordinators;
+
+    var DBServersObject = function() {
+      this.getList = function() {
+        return cache.getTarget();
+      };
+      this.addPrimary = function(name) {
+        return agency.target.dbServers.set(name, "none");
+      };
+      this.addSecondary = function(name, primaryName) {
+        return agency.target.dbServers.set(primaryName, name);
+      };
+      this.addPair = function(primaryName, secondaryName) {
+        return agency.target.dbServers.set(primaryName, secondaryName);
+      },
+      this.removeServer = function(name) {
+        var res = -1;
+        _.each(cache.getTarget(), function(opts, n) {
+          if (n === name) {
+            // The removed server is a primary
+            if (opts.role === "primary") {
+              res = agency.target.dbServers.remove(name);
+              if (!res) {
+                res = -1;
+                return;
+              }
+              if (opts.secondary !== "none") {
+                res = agency.target.dbServers.set(opts.secondary, "none");
+              }
+              return;
+            }
+          }
+          if (opts.role === "primary" && opts.secondary === name) {
+            res = agency.target.dbServers.set(n, "none");
+            return;
+          }
+        });
+        if (res === -1) {
+          //TODO Debug info
+          require("internal").print("Trying to remove a server that is not known");
+        }
+        return res;
+      }
+    };
+    var DatabasesObject = function() {
+      this.getList = function() {
+        return agency.target.db.list();            
+      };
+    };
+    var CoordinatorsObject = function() {
+      this.getList = function() {
+        return agency.target.coordinators.list();
+      };
+      this.add = function(name) {
+        return agency.target.coordinators.set(name, true);
+      };
+      this.remove = function(name) {
+        return agency.target.coordinators.remove(name);
+      };
+    };
 
     this.DBServers = function() {
       if (!DBServers) {
-        //Add DBServer specific functions
-        DBServers = {
-          getList: function() {
-            return cache.getTarget();
-          },
-          addPrimary: function(name) {
-            return agency.target.dbServers.set(name, "none");
-          },
-          addSecondary: function(name, primaryName) {
-            return agency.target.dbServers.set(primaryName, name);
-          },
-          addPair: function(primaryName, secondaryName) {
-            return agency.target.dbServers.set(primaryName, secondaryName);
-          },
-          removeServer: function(name) {
-            var res = -1;
-            _.each(cache.getTarget(), function(opts, n) {
-              if (n === name) {
-                // The removed server is a primary
-                if (opts.role === "primary") {
-                  res = agency.target.dbServers.remove(name);
-                  if (!res) {
-                    res = -1;
-                    return;
-                  }
-                  if (opts.secondary !== "none") {
-                    res = agency.target.dbServers.set(opts.secondary, "none");
-                  }
-                  return;
-                }
-              }
-              if (opts.role === "primary" && opts.secondary === name) {
-                res = agency.target.dbServers.set(n, "none");
-                return;
-              }
-            });
-            if (res === -1) {
-              //TODO Debug info
-              require("internal").print("Trying to remove a server that is not known");
-            }
-            return res;
-          }
-        };
+        DBServers = new DBServersObject();
       }
       return DBServers;
+    };
+
+    this.Databases = function() {
+      if (!Databases) {
+        Databases = new DatabasesObject();
+      }
+      return Databases;
+    };
+
+    this.Coordinators = function() {
+      if (!Coordinators) {
+        Coordinators = new CoordinatorsObject();
+      }
+      return Coordinators;
     };
 
   };
