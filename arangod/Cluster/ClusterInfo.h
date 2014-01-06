@@ -70,6 +70,28 @@ namespace triagens {
         ~CollectionInfo ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_cid_t id () const {
+          return _id;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string name () const {
+          return _name;
+        }
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -173,28 +195,18 @@ namespace triagens {
       
       public:
 
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ask whether a cluster database exists
-////////////////////////////////////////////////////////////////////////////////
-
-        bool doesDatabaseExist (DatabaseID const& databaseID);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about databases from the agency
-///
-/// Usually one does not have to call this directly.
-////////////////////////////////////////////////////////////////////////////////
-
-        void loadDatabaseInformation ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a number of cluster-wide unique IDs, returns the first
 /// one and guarantees that <number> are reserved for the caller.
 ////////////////////////////////////////////////////////////////////////////////
         
-        uint64_t fetchIDs (uint64_t number);
-*/
+        uint64_t uniqid (uint64_t = 1);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask whether a cluster database exists
+////////////////////////////////////////////////////////////////////////////////
+
+        bool doesDatabaseExist (DatabaseID const& databaseID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
@@ -247,9 +259,19 @@ namespace triagens {
 
       private:
         
-        AgencyComm                              _agency;
-        triagens::basics::ReadWriteLock         _lock;
-        
+        AgencyComm                         _agency;
+        triagens::basics::ReadWriteLock    _lock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uniqid sequence
+////////////////////////////////////////////////////////////////////////////////
+
+        struct {
+          uint64_t _currentValue;
+          uint64_t _upperValue;
+        }
+        _uniqid;
+
         // Cached data from the agency, we reload whenever necessary:
         AllCollections                     _collections;  // from Current/Collections/
         std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered
@@ -258,8 +280,18 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the sole instance
+////////////////////////////////////////////////////////////////////////////////
         
         static ClusterInfo* _theinstance;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief how big a batch is for unique ids
+////////////////////////////////////////////////////////////////////////////////
+
+        static const uint64_t MinIdsPerBatch = 1000;
 
     };
 
