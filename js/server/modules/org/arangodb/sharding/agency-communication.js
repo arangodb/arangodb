@@ -97,9 +97,12 @@ exports.Communication = function() {
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get"]);
-    
-    //this.get = _agency.get;
-    //this.set = _agency.set;
+    var current = addLevel(this, "current", "Current");
+    addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
+    addLevel(current, "db", "Collections", ["list"]);
+    addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
+    addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
+
   }
 
   agency = new _AgencyWrapper(); 
@@ -156,7 +159,7 @@ exports.Communication = function() {
   };
 
   updateAddresses = function() {
-    if (cache.wanted && cache.current) {
+    if (cache.target && cache.plan && false) {
       var addresses = agency.get(agencyRoutes.current + "ServersRegistered", true);
       storeServerAddressesInCache(addresses);
     }
@@ -184,7 +187,6 @@ exports.Communication = function() {
       if (!agency.target.dbServers.checkVersion()) {
         updateTarget();
       }
-      // TODO Add Update on version mismatch
       return this.target;
     },
 
@@ -194,7 +196,7 @@ exports.Communication = function() {
   };
 
   //Fill Cache
-  updateTarget();
+  //updateTarget();
   updatePlan();
 
 // -----------------------------------------------------------------------------
@@ -211,8 +213,18 @@ exports.Communication = function() {
     var Coordinators;
 
     var DBServersObject = function() {
+      var cache = {};
+      var servers;
+      var getList = function() {
+        if (!agency.target.dbServers.checkVersion()) {
+          cache = {};
+          servers = agency.target.dbServers.get(true);
+          storeServersInCache(cache, servers);
+        }
+        return cache;
+      };
       this.getList = function() {
-        return cache.getTarget();
+        return getList();
       };
       this.addPrimary = function(name) {
         return agency.target.dbServers.set(name, "none");
@@ -225,7 +237,7 @@ exports.Communication = function() {
       },
       this.removeServer = function(name) {
         var res = -1;
-        _.each(cache.getTarget(), function(opts, n) {
+        _.each(getList(), function(opts, n) {
           if (n === name) {
             // The removed server is a primary
             if (opts.role === "primary") {
@@ -329,12 +341,91 @@ exports.Communication = function() {
     return DBServers;
   };
 
+  var Current = function () {
+    var DBServers;
+    var Databases;
+    var Coordinators;
+
+    var DBServersObject = function() {
+      var cache = {};
+      var servers;
+      var getList = function() {
+        if (
+            !agency.current.dbServers.checkVersion()
+            || !agency.current.registered.checkVersion()
+          ) {
+          cache = {};
+          servers = agency.current.dbServers.get(true);
+          storeServersInCache(cache, servers);
+          var addresses = agency.current.registered.get(true);
+          _.each(addresses, function(v, k) {
+            var pName = splitServerName(k);
+            if (cache[pName]) {
+              cache[pName].address = v;
+            }
+          });
+        }
+        return cache;
+      };
+      this.getList = function() {
+        return getList();
+      };
+    };
+    var DatabasesObject = function() {
+      this.getList = function() {
+        return agency.target.db.list();            
+      };
+    };
+    var CoordinatorsObject = function() {
+      var cache;
+      this.getList = function() {
+        if (
+            !agency.current.coordinators.checkVersion()
+            || !agency.current.registered.checkVersion()
+           ) {
+          cache = {};
+          servers = agency.current.coordinators.list();
+          var addresses = agency.current.registered.get(true);
+          _.each(addresses, function(v, k) {
+            var pName = splitServerName(k);
+            if (_.contains(servers, pName)) {
+              cache[pName] = v;
+            }
+          });
+        }
+        return cache;
+      };
+    };
+
+    this.DBServers = function() {
+      if (!DBServers) {
+        DBServers = new DBServersObject();
+      }
+      return DBServers;
+    };
+
+    this.Databases = function() {
+      if (!Databases) {
+        Databases = new DatabasesObject();
+      }
+      return Databases;
+    };
+
+    this.Coordinators = function() {
+      if (!Coordinators) {
+        Coordinators = new CoordinatorsObject();
+      }
+      return Coordinators;
+    };
+
+  };
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                             Global Object binding
 // -----------------------------------------------------------------------------
 
   this.target = new Target();
+  this.current = new Current();
 
 }
 ////////////////////////////////////////////////////////////////////////////////
