@@ -53,26 +53,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parameter type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_ACT_STRING,
-  TRI_ACT_NUMBER,
-  TRI_ACT_COLLECTION,
-  TRI_ACT_COLLECTION_NAME,
-  TRI_ACT_COLLECTION_ID
-}
-TRI_action_parameter_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief action descriptor
 ////////////////////////////////////////////////////////////////////////////////
 
 class TRI_action_t {
   public:
     TRI_action_t (std::set<std::string> const& context)
-      : _type(), _url(), _isPrefix(false), _urlParts(0), _parameters(), _contexts(context) {
+      : _type(), _url(), _isPrefix(false), _urlParts(0), _contexts(context) {
     }
 
     virtual ~TRI_action_t () {}
@@ -84,7 +71,6 @@ class TRI_action_t {
     bool _isPrefix;
 
     size_t _urlParts;
-    std::map<std::string, TRI_action_parameter_type_e> _parameters;
     std::set<std::string> _contexts;
 };
 

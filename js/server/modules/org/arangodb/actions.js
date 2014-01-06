@@ -932,17 +932,6 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ///
 /// You can use the functions @FN{ResultOk} and @FN{ResultError} to easily
 /// generate a response.
-///
-/// @FA{options.parameters}
-///
-/// Normally the parameters are passed to the callback as strings. You can
-/// use the @FA{options}, to force a converstion of the parameter to
-///
-/// - @c "collection"
-/// - @c "collection-identifier"
-/// - @c "collection-name"
-/// - @c "number"
-/// - @c "string"
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
@@ -951,7 +940,6 @@ function defineHttp (options) {
   var url = options.url;
   var context = options.context;
   var callback = options.callback;
-  var parameters = options.parameters;
   var prefix = true;
 
   if (typeof context === "undefined") {
@@ -968,7 +956,6 @@ function defineHttp (options) {
   }
 
   var parameter = {
-    parameters : parameters,
     prefix : prefix
   };
 
@@ -1994,11 +1981,6 @@ exports.redirectRequest          = redirectRequest;
 exports.pathHandler              = pathHandler;
 
 // some useful constants
-exports.COLLECTION               = "collection";
-exports.COLLECTION_IDENTIFIER    = "collection-identifier";
-exports.COLLECTION_NAME          = "collection-name";
-exports.NUMBER                   = "number";
-
 exports.DELETE                   = "DELETE";
 exports.GET                      = "GET";
 exports.HEAD                     = "HEAD";
