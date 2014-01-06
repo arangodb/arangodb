@@ -30,6 +30,7 @@
 #include "Basics/WriteLocker.h"
 #include "BasicsC/logging.h"
 #include "Cluster/AgencyComm.h"
+#include "Cluster/ClusterInfo.h"
 
 using namespace triagens::arango;
 
@@ -153,6 +154,117 @@ std::string ServerState::stateToString (StateEnum state) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the server state (used for testing)
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::flush () {
+  WRITE_LOCKER(_lock);
+  _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
+  _role = determineRole(_id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server id
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::RoleEnum ServerState::getRole () {
+  std::string id;
+
+  {
+    READ_LOCKER(_lock);
+    if (_role != ServerState::ROLE_UNDEFINED) {
+      return _role;
+    }
+
+    id = _id;
+  }
+
+  // role not yet set
+  RoleEnum role = determineRole(id);
+
+  { 
+    WRITE_LOCKER(_lock);
+    _role = role;
+  }
+  
+  return role;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server role
+////////////////////////////////////////////////////////////////////////////////
+        
+void ServerState::setRole (RoleEnum role) {
+  WRITE_LOCKER(_lock);
+  _role = role;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server id
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::getId () {
+  READ_LOCKER(_lock);
+  return _id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server id
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setId (std::string const& id) {
+  if (id.empty()) {
+    return;
+  }
+
+  WRITE_LOCKER(_lock);
+  _id = id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server address
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::getAddress () {
+  std::string id;
+
+  {
+    READ_LOCKER(_lock);
+    if (! _address.empty()) {
+      return _address;
+    }
+
+    id = _id;
+  }
+
+  // address not yet set
+  assert(! id.empty());
+
+  // fetch and set the address
+  const std::string address = ClusterInfo::instance()->getTargetServerEndpoint(id);
+
+  {
+    WRITE_LOCKER(_lock);
+    _address = address;
+  }
+  
+  return address;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server address
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setAddress (std::string const& address) {
+  if (address.empty()) {
+    return;
+  }
+
+  WRITE_LOCKER(_lock);
+  _address = address;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,7 +277,7 @@ ServerState::StateEnum ServerState::getState () {
 /// @brief set the current state
 ////////////////////////////////////////////////////////////////////////////////
         
-void ServerState::setState (StateEnum state) { 
+void ServerState::setState (StateEnum state) {
   bool result = false;
 
   WRITE_LOCKER(_lock);
@@ -173,7 +285,7 @@ void ServerState::setState (StateEnum state) {
   if (state == _state) {
     return;
   }
-
+  
   if (_role == ROLE_PRIMARY) {
     result = checkPrimaryState(state);
   }
@@ -203,6 +315,30 @@ void ServerState::setState (StateEnum state) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the server role by fetching data from the agency
+/// Note: this method must be called under the _lock
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::RoleEnum ServerState::determineRole (std::string const& id) {
+  ServerState::RoleEnum role  = checkServersList(id);
+  ServerState::RoleEnum role2 = checkCoordinatorsList(id);
+
+  if (role == ServerState::ROLE_UNDEFINED) {
+    // role is still unknown. check if we are a coordinator
+    role = role2; 
+  }
+  else {
+    // we are a primary or a secondary.
+    // now we double-check that we are not a coordinator as well
+    if (role2 != ServerState::ROLE_UNDEFINED) {
+      role = ServerState::ROLE_UNDEFINED;
+    }
+  }
+
+  return role;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a state transition for a primary server
@@ -293,6 +429,119 @@ bool ServerState::checkCoordinatorState (StateEnum state) {
 
   // anything else is invalid
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server role by scanning Plan/Coordinators for our id
+////////////////////////////////////////////////////////////////////////////////
+  
+ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id) {
+  // fetch value at Plan/Coordinators
+  // we need to do this to determine the server's role
+  
+  AgencyCommLocker locker("Plan", "READ"); 
+
+  const std::string key = "Plan/Coordinators";
+
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues(key, true);
+
+  locker.unlock();
+ 
+  if (! result.successful()) {
+    const std::string endpoints = AgencyComm::getEndpointsString();
+
+    LOG_TRACE("Could not fetch configuration from agency endpoints (%s): "
+              "got status code %d, message: %s, key: %s",
+              endpoints.c_str(), 
+              result._statusCode,
+              result.errorMessage().c_str(),
+              key.c_str());
+
+    return ServerState::ROLE_UNDEFINED;
+  }
+  
+  std::map<std::string, std::string> out;
+  if (! result.flattenJson(out, "Plan/Coordinators/", false)) {
+    LOG_TRACE("Got an invalid JSON response for Plan/Coordinators");
+
+    return ServerState::ROLE_UNDEFINED;
+  }
+
+  // check if we can find ourselves in the list returned by the agency
+  std::map<std::string, std::string>::const_iterator it = out.find(id);
+
+  if (it != out.end()) {
+    // we are in the list. this means we are a primary server
+    return ServerState::ROLE_COORDINATOR;
+  }
+
+  return ServerState::ROLE_UNDEFINED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server role by scanning Plan/DBServers for our id
+////////////////////////////////////////////////////////////////////////////////
+  
+ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
+  // fetch value at Plan/DBServers
+  // we need to do this to determine the server's role
+  
+  AgencyCommLocker locker("Plan", "READ"); 
+
+  const std::string key = "Plan/DBServers";
+
+  AgencyComm comm;
+  AgencyCommResult result = comm.getValues(key, true);
+  
+  // do this here because we might abort the program below
+  locker.unlock();
+ 
+  if (! result.successful()) {
+    const std::string endpoints = AgencyComm::getEndpointsString();
+
+    LOG_TRACE("Could not fetch configuration from agency endpoints (%s): "
+              "got status code %d, message: %s, key: %s", 
+              endpoints.c_str(), 
+              result._statusCode,
+              result.errorMessage().c_str(),
+              key.c_str());
+
+    return ServerState::ROLE_UNDEFINED;
+  }
+ 
+  std::map<std::string, std::string> out;
+  if (! result.flattenJson(out, "Plan/DBServers/", false)) {
+    LOG_TRACE("Got an invalid JSON response for Plan/DBServers");
+    
+    return ServerState::ROLE_UNDEFINED;
+  }
+
+  ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
+
+  // check if we can find ourselves in the list returned by the agency
+  std::map<std::string, std::string>::const_iterator it = out.find(id);
+
+  if (it != out.end()) {
+    // we are in the list. this means we are a primary server
+    role = ServerState::ROLE_PRIMARY;
+  }
+  else {
+    // check if we are a secondary...
+    it = out.begin();
+
+    while (it != out.end()) {
+      const std::string value = (*it).second;
+      if (value == id) {
+        role = ServerState::ROLE_SECONDARY;
+        break;
+      }
+
+      ++it;
+    }
+  }
+
+  return role;
 }
 
 // Local Variables:

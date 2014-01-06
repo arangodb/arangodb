@@ -344,7 +344,6 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
           if (! TRI_IsNumberJson(modifiedIndex)) {
             return false;
           }
-
           // convert the number to an integer  
           out.insert(std::make_pair<std::string, std::string>(prefix, 
                                                               triagens::basics::StringUtils::itoa((uint64_t) modifiedIndex->_value._number)));
@@ -471,10 +470,12 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
                                     double ttl) 
   : _key(key),
     _type(type),
+    _version(0),
     _isLocked(false) {
 
   AgencyComm comm;
   if (comm.lock(key, ttl, 0.0, type)) {
+    fetchVersion(comm);
     _isLocked = true;
   }
 }
@@ -487,12 +488,14 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
                                     std::string const& type)
   : _key(key),
     _type(type),
+    _version(0),
     _isLocked(false) {
 
   AgencyComm comm;
   if (comm.lock(key, AgencyComm::_globalConnectionOptions._lockTimeout, 
                 0.0, type)) {
     _isLocked = true;
+    fetchVersion(comm);
   }
 }
 
@@ -515,10 +518,77 @@ AgencyCommLocker::~AgencyCommLocker () {
 void AgencyCommLocker::unlock () {
   if (_isLocked) {
     AgencyComm comm;
+
+    updateVersion(comm);
     if (comm.unlock(_key, _type, 0.0)) {
       _isLocked = false;
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch a lock version from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommLocker::fetchVersion (AgencyComm& comm) {
+  if (_type != "WRITE") {
+    return true;
+  }
+
+  AgencyCommResult result = comm.getValues(_key + "/Version", false); 
+  if (! result.successful()) {
+    if (result.httpCode() != 404) {
+      return false;
+    }
+
+    return true;
+  }
+    
+  std::map<std::string, std::string> out;
+  result.flattenJson(out, "", false);
+  std::map<std::string, std::string>::const_iterator it = out.begin(); 
+
+  if (it == out.end()) {
+    return false;
+  }
+
+  _version = triagens::basics::StringUtils::uint64((*it).second);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a lock version in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
+  if (_type != "WRITE") {
+    return true;
+  }
+  
+  AgencyCommResult result;
+
+  if (_version == 0) {
+    // no Version key found, now set it
+    result = comm.casValue(_key + "/Version", 
+                           "1",
+                           false,
+                           0.0, 
+                           0.0);
+  }
+  else {
+    // Version key found, now update it
+    result = comm.casValue(_key + "/Version", 
+                           triagens::basics::StringUtils::itoa(_version),
+                           triagens::basics::StringUtils::itoa(_version + 1), 
+                           0.0, 
+                           0.0);
+  }
+
+  return result.successful();
 }
 
 // -----------------------------------------------------------------------------
@@ -801,13 +871,8 @@ const std::string AgencyComm::getEndpointsString () {
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyComm::setPrefix (std::string const& prefix) {
+bool AgencyComm::setPrefix (std::string const& prefix) {
   // agency prefix must not be changed
-  if (! _globalPrefix.empty() && prefix != _globalPrefix) {
-    LOG_ERROR("agency-prefix cannot be changed at runtime");
-    return;
-  }
-
   _globalPrefix = prefix;
 
   // make sure prefix starts with a forward slash
@@ -823,6 +888,7 @@ void AgencyComm::setPrefix (std::string const& prefix) {
   }
 
   LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -998,7 +1064,16 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
 
 AgencyCommResult AgencyComm::removeValues (std::string const& key, 
                                            bool recursive) {
-  std::string url(buildUrl(key));
+  std::string url;
+
+  if (key.empty() && recursive) {
+    // delete everything, recursive
+    url = buildUrl();
+  }
+  else {
+    url = buildUrl(key);
+  }
+
   if (recursive) {
     url += "?recursive=true";
   }
@@ -1370,6 +1445,14 @@ void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
 
 std::string AgencyComm::buildUrl (std::string const& relativePart) const {
   return AgencyComm::AGENCY_URL_PREFIX + _globalPrefix + relativePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a URL, without a key
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::buildUrl () const {
+  return AgencyComm::AGENCY_URL_PREFIX + _globalPrefix.substr(0, _globalPrefix.size() - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
