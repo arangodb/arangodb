@@ -22,6 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,8 +31,9 @@
 
 #include "Basics/Common.h"
 #include "Cluster/AgencyComm.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/collection.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -79,7 +81,7 @@ namespace triagens {
 /// @brief returns the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t id () const {
+        TRI_voc_cid_t cid () const {
           return _id;
         }
 
@@ -89,6 +91,56 @@ namespace triagens {
 
         std::string name () const {
           return _name;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection type
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_type_e type () const {
+          return _type;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection status
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_status_e status () const {
+          return _status;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection status
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string statusString () const {
+          return TRI_GetStatusStringCollectionVocBase(_status);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TODO: returns the indexes
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+        std::vector<std::string> indexes () const {
+          return _indexes;
+        }
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard keys
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> shardKeys () const {
+          return _shardKeys;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard ids
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> shardIds () const {
+          return _shardIds;
         }
 
 // -----------------------------------------------------------------------------
@@ -122,11 +174,11 @@ namespace triagens {
         TRI_voc_cid_t             _id;
         std::string               _name;
         TRI_col_type_e            _type;
+        TRI_vocbase_col_status_e  _status;
  
-        // TODO: status
         // TODO: indexes
         std::vector<std::string>  _shardKeys;
-        std::vector<std::string>  _shards;
+        std::vector<std::string>  _shardIds;
     };
 
     
@@ -203,6 +255,12 @@ namespace triagens {
         uint64_t uniqid (uint64_t = 1);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the caches (used for testing only)
+////////////////////////////////////////////////////////////////////////////////
+
+        void flush ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -237,6 +295,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string getServerEndpoint (ServerID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
+/// our id
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string getTargetServerEndpoint (ServerID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about shards from the agency
@@ -275,7 +340,7 @@ namespace triagens {
         // Cached data from the agency, we reload whenever necessary:
         AllCollections                     _collections;  // from Current/Collections/
         std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered
-        std::map<ShardID, ServerID>        _shards;       // from Current/ShardLocation
+        std::map<ShardID, ServerID>        _shardIds;     // from Current/ShardLocation
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables

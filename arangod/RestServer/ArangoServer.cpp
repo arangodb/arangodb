@@ -674,6 +674,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_CLUSTER
      // we need to prepare the cluster even in console mode
+    _applicationCluster->disableHeartbeat();
     _applicationCluster->prepare();
     _applicationCluster->start();
     _applicationCluster->open();
@@ -694,6 +695,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_CLUSTER
      // we need to prepare the cluster even in console mode
+    _applicationCluster->disableHeartbeat();
     _applicationCluster->prepare();
     _applicationCluster->start();
     _applicationCluster->open();

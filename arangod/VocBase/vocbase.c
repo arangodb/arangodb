@@ -1818,6 +1818,29 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a translation of a collection status
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_GetStatusStringCollectionVocBase (TRI_vocbase_col_status_e status) {
+  switch (status) {
+    case TRI_VOC_COL_STATUS_UNLOADED:
+      return "unloaded";
+    case TRI_VOC_COL_STATUS_LOADED:
+      return "loaded";
+    case TRI_VOC_COL_STATUS_UNLOADING:
+      return "unloading";
+    case TRI_VOC_COL_STATUS_DELETED:
+      return "deleted";
+    case TRI_VOC_COL_STATUS_LOADING:
+      return "loading";
+    case TRI_VOC_COL_STATUS_CORRUPTED:
+    case TRI_VOC_COL_STATUS_NEW_BORN:
+    default:
+      return "unkown";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a collection name by a collection id
 ///
 /// The name is fetched under a lock to make this thread-safe. Returns NULL if
