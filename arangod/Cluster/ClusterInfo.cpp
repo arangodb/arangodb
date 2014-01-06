@@ -210,8 +210,11 @@ ClusterInfo* ClusterInfo::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::ClusterInfo ()
-  : _agency() {
+  : _agency(),
+    _uniqid() {
 
+  _uniqid._currentValue = _uniqid._upperValue = 0ULL;
+  
   loadServers();
   loadShards();
   loadCollections();
@@ -227,6 +230,57 @@ ClusterInfo::~ClusterInfo () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask whether a cluster database exists
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t ClusterInfo::uniqid (uint64_t count) {
+  WRITE_LOCKER(_lock);
+
+  if (_uniqid._currentValue >= _uniqid._upperValue) {
+
+    uint64_t fetch = count;
+    if (fetch < MinIdsPerBatch) {
+      fetch = MinIdsPerBatch;
+    }
+
+    AgencyCommResult result = _agency.uniqid("Sync/LatestID", fetch, 0.0);
+
+    if (! result.successful() || result._index == 0) {
+      return 0;
+    }
+
+    _uniqid._currentValue = result._index;
+    _uniqid._upperValue   = _uniqid._currentValue + fetch;
+  }
+
+  return _uniqid._currentValue++;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask whether a cluster database exists
+////////////////////////////////////////////////////////////////////////////////
+
+bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
+  int tries = 0;
+
+  while (++tries <= 2) {
+    {
+      READ_LOCKER(_lock);
+      // look up database by id
+      AllCollections::const_iterator it = _collections.find(databaseID);
+
+      if (it != _collections.end()) {
+        return true;
+      }
+    }
+    
+    // must call loadCollections outside the lock
+    loadCollections();
+  }
+
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
@@ -279,6 +333,7 @@ void ClusterInfo::loadCollections () {
             DatabaseCollections empty;
             CollectionInfo collectionData((*it).second);
             empty.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
+            empty.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
 
             _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
           }
@@ -286,6 +341,7 @@ void ClusterInfo::loadCollections () {
             // insert the collection into the existing map
             CollectionInfo collectionData((*it).second);
             (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
+            (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
           }
         }
 

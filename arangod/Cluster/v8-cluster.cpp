@@ -32,6 +32,7 @@
 #include "VocBase/server.h"
 
 #include "Cluster/AgencyComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "V8/v8-conv.h"
@@ -600,6 +601,105 @@ static v8::Handle<v8::Value> JS_VersionAgency (v8::Arguments const& argv) {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            cluster info functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a specific database exists
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DoesDatabaseExistClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "doesDatabaseExist(<database-id>)");
+  }
+ 
+  const bool result = ClusterInfo::instance()->doesDatabaseExist(TRI_ObjectToString(argv[0]));
+
+  return scope.Close(v8::Boolean::New(result));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the responsible server
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getCollectionInfo(<database-id>, <collection-id>)");
+  }
+ 
+  ClusterInfo::instance()->getCollectionInfo(TRI_ObjectToString(argv[0]), TRI_ObjectToString(argv[1]));
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the responsible server
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetResponsibleServerClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getResponsibleServer(<shard-id>)");
+  }
+ 
+  const std::string result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(argv[0]));
+
+  return scope.Close(v8::String::New(result.c_str(), result.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server endpoint for a server
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetServerEndpointClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getServerEndpoint(<server-id>)");
+  }
+ 
+  const std::string result = ClusterInfo::instance()->getServerEndpoint(TRI_ObjectToString(argv[0]));
+
+  return scope.Close(v8::String::New(result.c_str(), result.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a unique id
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UniqidClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "uniqid(<count>)");
+  }
+ 
+  uint64_t count = 1;
+  if (argv.Length() > 0) {
+    count = TRI_ObjectToUInt64(argv[0], true);
+  } 
+
+  if (count == 0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<count> is invalid");
+  }
+
+  uint64_t value = ClusterInfo::instance()->uniqid();
+
+  if (value == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to generate unique id");
+  }
+
+  const std::string id = StringUtils::itoa(value);
+
+  return scope.Close(v8::String::New(id.c_str(), id.size()));
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                            server state functions
 // -----------------------------------------------------------------------------
 
@@ -647,28 +747,6 @@ static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
   const std::string state = ServerState::stateToString(ServerState::instance()->getState());
 
   return scope.Close(v8::String::New(state.c_str(), state.size()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a uniqid
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_UniqidServerState (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "uniqid()");
-  }
-  
-  uint64_t value = ServerState::instance()->uniqid();
-
-  if (value == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to generate unique id");
-  }
-
-  const std::string id = StringUtils::itoa(value);
-
-  return scope.Close(v8::String::New(id.c_str(), id.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -950,7 +1028,26 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoAgency", ft->GetFunction());
   
-  // ...........................................................................
+  // .............................................................................
+  // generate the cluster info template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("ArangoClusterInfo"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  TRI_AddMethodVocbase(rt, "doesDatabaseExist", JS_DoesDatabaseExistClusterInfo);
+  TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
+  TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
+  TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
+  TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidClusterInfo);
+
+  v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterInfo", ft->GetFunction());
+  
+  // .............................................................................
   // generate the server state template
   // ...........................................................................
 
@@ -963,7 +1060,6 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
   TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
-  TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidServerState);
 
   v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoServerState", ft->GetFunction());
