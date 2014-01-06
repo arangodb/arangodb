@@ -59,7 +59,7 @@ function runGoodCaseTests(test) {
   var agencyRoutes;
   var setup;
   var teardown;
-  var agencyTargetServers;
+  var dummy;
   var plannedServers;
   var registered;
 
@@ -72,11 +72,19 @@ function runGoodCaseTests(test) {
   };
 
   resetToDefault = function() {
-    agencyTargetServers = createResult([agencyRoutes.target, "DBServers"], {
+    dummy = {};
+    dummy.target = {};
+    dummy.target.servers = createResult([agencyRoutes.target, "DBServers"], {
       "pavel": "sandro",
       "paul": "sally",
       "patricia": "sandra"
     });
+    dummy.target.coordinators = createResult([agencyRoutes.target, "Coordinators"], {
+      "cindy": 2,
+      "carlos": true,
+      "charly": "alice"
+    });
+    dummy.target.databases = ["_system", "z_db", "a_db", "b_db"];
     plannedServers = createResult([agencyRoutes.plan, "DBServers"], {
       "pavel": "sandro",
       "paul": "sally",
@@ -94,6 +102,7 @@ function runGoodCaseTests(test) {
 
   setup = function() {
     resetToDefault();
+    comm = new Communication.Communication();
   };
 
   teardown = function() {
@@ -106,7 +115,7 @@ function runGoodCaseTests(test) {
       switch (parts[0]) {
         case agencyRoutes.target:
           if (parts[1] === "DBServers" && recursive) {
-            return agencyTargetServers;
+            return dummy.target.servers;
           }
           break;
         case agencyRoutes.plan:
@@ -122,14 +131,32 @@ function runGoodCaseTests(test) {
         default:
           fail();
       }
+    },
+    list: function(route) {
+      var parts = route.split("/");
+      switch (parts[0]) {
+        case agencyRoutes.target:
+          if (parts[1] === "Collections") {
+            return dummy.target.databases;
+          }
+          if (parts[1] === "Coordinators") {
+            return _.map(
+              _.keys(dummy.target.coordinators),
+              function(k) {
+                var splits = k.split("/");
+                return splits[splits.length-1];
+              }
+            );
+          }
+        default:
+          fail();
+      }
     }
   };
   Communication._createAgency = function() {
     return agencyMock;
   };
   
-  comm = new Communication.Communication();
-
   function VisionSuite() {
     
     return {
@@ -189,7 +216,7 @@ function runGoodCaseTests(test) {
         agencyMock.set = function(route, value) {
           assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, "none");
-          agencyTargetServers[route] = value;
+          dummy.target.servers[route] = value;
           wasCalled = true;
           return true;
         };
@@ -210,7 +237,7 @@ function runGoodCaseTests(test) {
           assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, "none");
           assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
+          dummy.target.servers[route] = value;
           wasCalled = true;
           return true;
         };
@@ -221,7 +248,7 @@ function runGoodCaseTests(test) {
           assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, secName);
           assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
+          dummy.target.servers[route] = value;
           wasCalled = true;
           return true;
         };
@@ -244,7 +271,7 @@ function runGoodCaseTests(test) {
           assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertEqual(value, secName);
           assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
+          dummy.target.servers[route] = value;
           wasCalled = true;
           return true;
         };
@@ -266,7 +293,7 @@ function runGoodCaseTests(test) {
           assertEqual(route, [agencyRoutes.target, "DBServers", secondaryName].join("/"));
           assertEqual(value, "none");
           assertFalse(setWasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
+          dummy.target.servers[route] = value;
           setWasCalled = true;
           return true;
         };
@@ -274,7 +301,7 @@ function runGoodCaseTests(test) {
         agencyMock.remove = function(route) {
           assertEqual(route, [agencyRoutes.target, "DBServers", name].join("/"));
           assertFalse(delWasCalled, "Delete has been called multiple times");
-          delete agencyTargetServers[route];
+          delete dummy.target.servers[route];
           delWasCalled = true;
           return true;
         };
@@ -297,7 +324,7 @@ function runGoodCaseTests(test) {
           assertEqual(route, [agencyRoutes.target, "DBServers", pName].join("/"));
           assertEqual(value, "none");
           assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
+          dummy.target.servers[route] = value;
           wasCalled = true;
           return true;
         };
@@ -309,36 +336,110 @@ function runGoodCaseTests(test) {
         assertEqual(newList[pName].role, "primary");
         assertUndefined(newList[pName].secondary);
       }
-
     };
-      
   };
 
-  function TargetShardSuite() {
+  function TargetCoordinatorSuite() {
+    var targetCoordinators;
+
+    return {
+      setUp: function() {
+        setup();
+        targetCoordinators = comm.target.Coordinators();
+      },
+      tearDown: teardown,
+
+      testGetCoordinatorList: function() {
+        var list = [
+          "carlos",
+          "charly",
+          "cindy"
+        ].sort();
+        assertEqual(targetCoordinators.getList(), list);
+      },
+
+      testAddCoordinator: function() {
+        var name = "carol";
+        var wasCalled = false;
+        agencyMock.set = function(route, value) {
+          assertEqual(route, [agencyRoutes.target, "Coordinators", name].join("/"));
+          assertEqual(value, true);
+          dummy.target.coordinators[route] = value;
+          wasCalled = true;
+          return true;
+        };
+        assertTrue(targetCoordinators.add(name), "Failed to insert a new coordinator.");
+        assertTrue(wasCalled, "Agency has not been informed to insert coordinator.");
+        var list = [
+          "carlos",
+          "charly",
+          "cindy",
+          name
+        ].sort();
+        assertEqual(targetCoordinators.getList(), list);
+      },
+
+      testRemoveCoordinator: function() {
+        var name = "cindy";
+        var delWasCalled = false;
+        agencyMock.remove = function(route) {
+          assertEqual(route, [agencyRoutes.target, "Coordinators", name].join("/"));
+          assertFalse(delWasCalled, "Delete has been called multiple times");
+          delete dummy.target.coordinators[route];
+          internal.print(route);
+          internal.print(dummy.target.coordinators);
+          delWasCalled = true;
+          return true;
+        };
+        assertTrue(targetCoordinators.remove(name), "Failed to remove a coordinator.");
+        assertTrue(delWasCalled, "Agency has not been informed to remove a coordinator.");
+        var list = [
+          "carlos",
+          "charly"
+        ].sort();
+        assertEqual(targetCoordinators.getList(), list);
+      }
+
+    };
+
+  };
+
+  function TargetDataSuite() {
    
     return {
       setUp: setup,
       tearDown: teardown,
 
       testGetDatabaseList: function() {
-        /*
         var list = [
           "_system",
           "a_db",
           "b_db",
           "z_db"
-        ];
+        ].sort();
+        var targetDBs = comm.target.Databases();
         assertEqual(targetDBs.getList(), list);
-        */
-        assertTrue(true);
+      },
+/*
+      testGetCollectionListForDatabase: function() {
+        var list = [
+          "_graphs",
+          "v",
+          "e"
+        ].sort();
+        var targetColls = comm.target._system();
+        assertEqual(targetColls.getList(), list);
       }
     }
+*/
+    };
   };
 
 
 //  test.run(VisionSuite);
   test.run(TargetDBServersSuite);
-  test.run(TargetShardSuite);
+  test.run(TargetCoordinatorSuite);
+  test.run(TargetDataSuite);
 };
 
 // -----------------------------------------------------------------------------
