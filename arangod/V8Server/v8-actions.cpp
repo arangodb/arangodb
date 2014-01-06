@@ -204,84 +204,12 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the action options "parameters" field of type string
-////////////////////////////////////////////////////////////////////////////////
-
-static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
-                                         TRI_action_t* action,
-                                         string const& key,
-                                         string const& parameter) {
-  TRI_action_parameter_type_e p;
-
-  if (parameter == "collection") {
-    p = TRI_ACT_COLLECTION;
-  }
-  else if (parameter == "collection-name") {
-    p = TRI_ACT_COLLECTION_NAME;
-  }
-  else if (parameter == "collection-identifier") {
-    p = TRI_ACT_COLLECTION_ID;
-  }
-  else if (parameter == "number") {
-    p = TRI_ACT_NUMBER;
-  }
-  else if (parameter == "string") {
-    p = TRI_ACT_STRING;
-  }
-  else {
-    LOG_ERROR("unknown parameter type '%s', falling back to string", parameter.c_str());
-    p = TRI_ACT_STRING;
-  }
-
-  action->_parameters[key] = p;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the action options "parameters" field
-////////////////////////////////////////////////////////////////////////////////
-
-static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
-                                         TRI_action_t* action,
-                                         string const& key,
-                                         v8::Handle<v8::Value> parameter) {
-  if (parameter->IsString() || parameter->IsStringObject()) {
-    ParseActionOptionsParameter(v8g, action, key, TRI_ObjectToString(parameter));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the action options "parameters" field
-////////////////////////////////////////////////////////////////////////////////
-
-static void ParseActionOptionsParameters (TRI_v8_global_t* v8g,
-                                          TRI_action_t* action,
-                                          v8::Handle<v8::Object> parameters) {
-  v8::Handle<v8::Array> keys = parameters->GetOwnPropertyNames();
-  uint32_t len = keys->Length();
-
-  for (uint32_t i = 0;  i < len;  ++i) {
-    v8::Handle<v8::Value> key = keys->Get(i);
-
-    ParseActionOptionsParameter(v8g, action, TRI_ObjectToString(key), parameters->Get(key));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the action options
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptions (TRI_v8_global_t* v8g,
                                 TRI_action_t* action,
                                 v8::Handle<v8::Object> options) {
-
-  // check "parameters" field
-  if (options->Has(v8g->ParametersKey)) {
-    v8::Handle<v8::Value> parameters = options->Get(v8g->ParametersKey);
-
-    if (parameters->IsObject()) {
-      ParseActionOptionsParameters(v8g, action, parameters->ToObject());
-    }
-  }
 
   // check the "prefix" field
   if (options->Has(v8g->PrefixKey)) {
@@ -296,7 +224,7 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 /// @brief add cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddCookie (TRI_v8_global_t* v8g, 
+static void AddCookie (TRI_v8_global_t const* v8g, 
                        HttpResponse* response, 
                        v8::Handle<v8::Object> data) {
   
@@ -349,21 +277,12 @@ static void AddCookie (TRI_v8_global_t* v8g,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an action
+/// @brief convert a C++ HttpRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           v8::Isolate* isolate,
-                                           TRI_action_t const* action,
-                                           v8::Handle<v8::Function> callback,
-                                           HttpRequest* request) {
-  TRI_v8_global_t* v8g;
-
+static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
+                                               HttpRequest* request) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  v8g = (TRI_v8_global_t*) isolate->GetData();
-
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New();
 
@@ -440,25 +359,6 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   req->Set(v8g->PrefixKey, v8::String::New(path.c_str(), path.size()));
 
-  // copy suffix
-  v8::Handle<v8::Array> suffixArray = v8::Array::New();
-  vector<string> const& suffix = request->suffix();
-
-  uint32_t index = 0;
-  char const* sep = "";
-
-  for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
-    suffixArray->Set(index++, v8::String::New(suffix[s].c_str(), suffix[s].size()));
-
-    path += sep + suffix[s];
-    sep = "/";
-  }
-
-  req->Set(v8g->SuffixKey, suffixArray);
-
-  // copy full path
-  req->Set(v8g->PathKey, v8::String::New(path.c_str(), path.size()));
-
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
 
@@ -466,8 +366,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   map<string, string>::const_iterator iter = headers.begin();
 
   for (; iter != headers.end(); ++iter) {
-    headerFields->Set(v8::String::New(iter->first.c_str(), iter->first.size()), 
-                      v8::String::New(iter->second.c_str(), iter->second.size()));
+    headerFields->Set(v8::String::New(iter->first.c_str(),
+                      iter->first.size()), 
+                      v8::String::New(iter->second.c_str(),
+                      iter->second.size()));
   }
 
   req->Set(v8g->HeadersKey, headerFields);
@@ -476,17 +378,20 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   switch (request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), request->bodySize()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), 
+               request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PUT:
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), request->bodySize()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(),
+               request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PATCH:
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), request->bodySize()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(),
+               request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_OPTIONS:
@@ -511,101 +416,20 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   v8::Handle<v8::Object> valuesObject = v8::Object::New();
   map<string, string> values = request->values();
 
-  for (map<string, string>::iterator i = values.begin();  i != values.end();  ++i) {
+  for (map<string, string>::iterator i = values.begin(); 
+       i != values.end();  ++i) {
     string const& k = i->first;
     string const& v = i->second;
 
-    map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
-
-    if (p == action->_parameters.end()) {
-      valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
-                        v8::String::New(v.c_str(), v.size()));
-    }
-    else {
-      TRI_action_parameter_type_e const& ap = p->second;
-
-      switch (ap) {
-        case TRI_ACT_COLLECTION: {
-          if (! v.empty()) {
-            char ch = v[0];
-            TRI_vocbase_col_t const* collection = 0;
-
-            if ('0' < ch && ch <= '9') {
-              collection = TRI_LookupCollectionByIdVocBase(vocbase, TRI_UInt64String(v.c_str()));
-            }
-            else {
-              collection = TRI_LookupCollectionByNameVocBase(vocbase, v.c_str());
-            }
-
-            if (collection != 0) {
-              v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
-
-              if (c.IsEmpty()) {
-                // TODO: raise exception here
-              }
-              else {
-                valuesObject->Set(v8::String::New(k.c_str(), k.size()), c);
-              }
-            }
-          }
-
-          break;
-        }
-
-        case TRI_ACT_COLLECTION_NAME: {
-          TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, v.c_str());
-
-          if (collection != 0) {
-            v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
-            
-            if (c.IsEmpty()) {
-              // TODO: raise exception here
-            }
-            else {
-              valuesObject->Set(v8::String::New(k.c_str(), k.size()), c);
-            }
-          }
-
-          break;
-        }
-
-        case TRI_ACT_COLLECTION_ID: {
-          TRI_vocbase_col_t const* collection = TRI_LookupCollectionByIdVocBase(
-            vocbase,
-            TRI_UInt64String(v.c_str()));
-
-          if (collection != 0) {
-            v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
-            
-            if (c.IsEmpty()) {
-              // TODO: raise exception here
-            }
-            else {
-              valuesObject->Set(v8::String::New(k.c_str(), k.size()), c);
-            }
-          }
-
-          break;
-        }
-
-        case TRI_ACT_NUMBER:
-          valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
-                            v8::Number::New(TRI_DoubleString(v.c_str())));
-          break;
-
-        case TRI_ACT_STRING: {
-          valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
-                            v8::String::New(v.c_str()));
-          break;
-        }
-      }
-    }
+    valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+                      v8::String::New(v.c_str(), v.size()));
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
   map<string, vector<char const*>* > arrayValues = request->arrayValues();
 
-  for (map<string, vector<char const*>* >::iterator i = arrayValues.begin();  i != arrayValues.end();  ++i) {
+  for (map<string, vector<char const*>* >::iterator i = arrayValues.begin();
+       i != arrayValues.end();  ++i) {
     string const& k = i->first;
     vector<char const*>* v = i->second;
 
@@ -627,17 +451,193 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   iter = cookies.begin();
 
   for (; iter != cookies.end(); ++iter) {
-    cookiesObject->Set(v8::String::New(iter->first.c_str(), iter->first.size()), 
-                       v8::String::New(iter->second.c_str(), iter->second.size()));
+    cookiesObject->Set(v8::String::New(iter->first.c_str(),
+                       iter->first.size()), 
+                       v8::String::New(iter->second.c_str(),
+                       iter->second.size()));
   }
 
   req->Set(v8g->CookiesKey, cookiesObject);
-
   
   // determine API compatibility version
   int32_t compatibility = request->compatibility();
   req->Set(v8g->CompatibilityKey, v8::Integer::New(compatibility));
-  
+
+  return scope.Close(req);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a C++ HttpRequest to a V8 request object
+////////////////////////////////////////////////////////////////////////////////
+
+static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
+                                      v8::Handle<v8::Object> res) {
+  HttpResponse::HttpResponseCode code = HttpResponse::OK;
+
+  if (res->Has(v8g->ResponseCodeKey)) {
+    // Windows has issues with converting from a double to an enumeration type
+    code = (HttpResponse::HttpResponseCode) 
+           ((int) (TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey))));
+  }
+
+  HttpResponse* response = new HttpResponse(code);
+
+  if (res->Has(v8g->ContentTypeKey)) {
+    response->setContentType(
+        TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
+  }
+
+  // .........................................................................
+  // body
+  // .........................................................................
+
+  if (res->Has(v8g->BodyKey)) {
+    // check if we should apply result transformations
+    // transformations turn the result from one type into another
+    // a Javascript action can request transformations by
+    // putting a list of transformations into the res.transformations
+    // array, e.g. res.transformations = [ "base64encode" ]
+    v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
+
+    if (val->IsArray()) {
+      string out(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+
+      for (uint32_t i = 0; i < transformations->Length(); i++) {
+        v8::Handle<v8::Value> transformator 
+              = transformations->Get(v8::Integer::New(i));
+        string name = TRI_ObjectToString(transformator);
+
+        // check available transformations
+        if (name == "base64encode") {
+          // base64-encode the result
+          out = StringUtils::encodeBase64(out);
+          // set the correct content-encoding header
+          response->setHeader("content-encoding", "base64");
+        }
+        else if (name == "base64decode") {
+          // base64-decode the result
+          out = StringUtils::decodeBase64(out);
+          // set the correct content-encoding header
+          response->setHeader("content-encoding", "binary");
+        }
+      }
+
+      response->body().appendText(out);
+    }
+    else {
+      response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+    }
+  }
+
+  // .........................................................................
+  // body from file
+  // .........................................................................
+
+  else if (res->Has(v8g->BodyFromFileKey)) {
+    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, 
+                              res->Get(v8g->BodyFromFileKey));
+    size_t length;
+    char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
+
+    if (content != 0) {
+      response->body().appendText(content, length);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+    }
+    else {
+      string msg = string("cannot read file '") + *filename + "': " + 
+                   TRI_last_error();
+
+      response->body().appendText(msg.c_str(), msg.size());
+      response->setResponseCode(HttpResponse::SERVER_ERROR);
+    }
+  }
+
+  // .........................................................................
+  // headers
+  // .........................................................................
+
+  if (res->Has(v8g->HeadersKey)) {
+    v8::Handle<v8::Value> val = res->Get(v8g->HeadersKey);
+    v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
+
+    if (v8Headers->IsObject()) {
+      v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+
+      for (uint32_t i = 0; i < props->Length(); i++) {
+        v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
+        response->setHeader(TRI_ObjectToString(key), 
+                            TRI_ObjectToString(v8Headers->Get(key)));
+      }
+    }
+  }
+
+  // .........................................................................
+  // cookies
+  // .........................................................................
+
+  if (res->Has(v8g->CookiesKey)) {
+    v8::Handle<v8::Value> val = res->Get(v8g->CookiesKey);
+    v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
+
+    if (v8Cookies->IsArray()) {
+      v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
+      
+      for (uint32_t i = 0; i < v8Array->Length(); i++) {
+        v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
+        if (v8Cookie->IsObject()) {
+          AddCookie(v8g, response, v8Cookie.As<v8::Object>());
+        }
+      }
+    }
+    else if (v8Cookies->IsObject()) {
+      // one cookie
+      AddCookie(v8g, response, v8Cookies);               
+    }
+  }
+
+  return response;
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an action
+////////////////////////////////////////////////////////////////////////////////
+
+static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                           v8::Isolate* isolate,
+                                           TRI_action_t const* action,
+                                           v8::Handle<v8::Function> callback,
+                                           HttpRequest* request) {
+  TRI_v8_global_t const* v8g;
+
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  v8g = (TRI_v8_global_t const*) isolate->GetData();
+
+  v8::Handle<v8::Object> req = RequestCppToV8(v8g, request);
+
+  // copy suffix, which comes from the action:
+  string path = request->prefix();
+  v8::Handle<v8::Array> suffixArray = v8::Array::New();
+  vector<string> const& suffix = request->suffix();
+
+  uint32_t index = 0;
+  char const* sep = "";
+
+  for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
+    suffixArray->Set(index++, v8::String::New(suffix[s].c_str(), 
+                     suffix[s].size()));
+
+    path += sep + suffix[s];
+    sep = "/";
+  }
+
+  req->Set(v8g->SuffixKey, suffixArray);
+
+  // copy full path
+  req->Set(v8g->PathKey, v8::String::New(path.c_str(), path.size()));
+
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
@@ -654,124 +654,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   else {
-    HttpResponse::HttpResponseCode code = HttpResponse::OK;
+    HttpResponse* response = ResponseV8ToCpp( v8g, res );
 
-    if (res->Has(v8g->ResponseCodeKey)) {
-      // Windows has issues with converting from a double to an enumeration type
-      code = (HttpResponse::HttpResponseCode) ((int) (TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey))));
-    }
-
-    HttpResponse* response = new HttpResponse(code);
-
-    if (res->Has(v8g->ContentTypeKey)) {
-      response->setContentType(TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
-    }
-
-    // .............................................................................
-    // body
-    // .............................................................................
-
-    if (res->Has(v8g->BodyKey)) {
-      // check if we should apply result transformations
-      // transformations turn the result from one type into another
-      // a Javascript action can request transformations by
-      // putting a list of transformations into the res.transformations
-      // array, e.g. res.transformations = [ "base64encode" ]
-      v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
-
-      if (val->IsArray()) {
-        string out(TRI_ObjectToString(res->Get(v8g->BodyKey)));
-        v8::Handle<v8::Array> transformations = val.As<v8::Array>();
-
-        for (uint32_t i = 0; i < transformations->Length(); i++) {
-          v8::Handle<v8::Value> transformator = transformations->Get(v8::Integer::New(i));
-          string name = TRI_ObjectToString(transformator);
-
-          // check available transformations
-          if (name == "base64encode") {
-            // base64-encode the result
-            out = StringUtils::encodeBase64(out);
-            // set the correct content-encoding header
-            response->setHeader("content-encoding", "base64");
-          }
-          else if (name == "base64decode") {
-            // base64-decode the result
-            out = StringUtils::decodeBase64(out);
-            // set the correct content-encoding header
-            response->setHeader("content-encoding", "binary");
-          }
-        }
-
-        response->body().appendText(out);
-      }
-      else {
-        response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
-      }
-    }
-
-    // .............................................................................
-    // body from file
-    // .............................................................................
-
-    else if (res->Has(v8g->BodyFromFileKey)) {
-      TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(v8g->BodyFromFileKey));
-      size_t length;
-      char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
-
-      if (content != 0) {
-        response->body().appendText(content, length);
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
-      }
-      else {
-        string msg = string("cannot read file '") + *filename + "': " + TRI_last_error();
-
-        response->body().appendText(msg.c_str(), msg.size());
-        response->setResponseCode(HttpResponse::SERVER_ERROR);
-      }
-    }
-
-    // .............................................................................
-    // headers
-    // .............................................................................
-
-    if (res->Has(v8g->HeadersKey)) {
-      v8::Handle<v8::Value> val = res->Get(v8g->HeadersKey);
-      v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
-
-      if (v8Headers->IsObject()) {
-        v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
-
-        for (uint32_t i = 0; i < props->Length(); i++) {
-          v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
-          response->setHeader(TRI_ObjectToString(key), TRI_ObjectToString(v8Headers->Get(key)));
-        }
-      }
-    }
-
-    // .............................................................................
-    // cookies
-    // .............................................................................
-
-    if (res->Has(v8g->CookiesKey)) {
-      v8::Handle<v8::Value> val = res->Get(v8g->CookiesKey);
-      v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
-
-      if (v8Cookies->IsArray()) {
-        v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
-        
-        for (uint32_t i = 0; i < v8Array->Length(); i++) {
-          v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
-          if (v8Cookie->IsObject()) {
-            AddCookie(v8g, response, v8Cookie.As<v8::Object>());
-          }
-        }
-      }
-      else if (v8Cookies->IsObject()) {
-        // one cookie
-        AddCookie(v8g, response, v8Cookies);               
-      }
-    }
-    
     return response;
   }
 }
