@@ -108,6 +108,8 @@ v1.5.x (XXXX-XX-XX)
 v1.4.5 (XXXX-XX-XX)
 -------------------
 
+* generally allow function return values as call parameters to AQL functions
+
 * fixed potential deadlock in global context method execution
 
 * added override file "arangod.conf.local" (and co)
