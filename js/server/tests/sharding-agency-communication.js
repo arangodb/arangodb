@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
+/*global require*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
 ///
@@ -24,362 +27,1199 @@
 /// @author Michael Hackstein
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+(function() {
+  "use strict";
+  var jsunity = require("jsunity");
+  var _ = require("underscore");
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var _ = require("underscore");
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                              agency-result-helper
+  // -----------------------------------------------------------------------------
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              agency-result-helper
-// -----------------------------------------------------------------------------
-
-var createResult = function(prefix, list) {
-  var res = {};
-  _.each(list, function(v, k) {
-    res[prefix + k] = v; 
-  });
-  return res;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         good-case
-// -----------------------------------------------------------------------------
-
-function runGoodCaseTests(test) {
-
-  var Communication = require("org/arangodb/sharding/agency-communication");
-  var configResult;
-  var tmpConfigResult;
-  var registeredResult;
-  var agencyMock;
-  var resetToDefault;
-  var comm;
-  var agencyRoutes;
-  var setup;
-  var teardown;
-  var agencyTargetServers;
-  var plannedServers;
-  var registered;
-
-  agencyRoutes = {
-    vision: "Vision/",
-    target: "Target/",
-    plan: "Plan/",
-    current: "Current/",
-    fail: "Fail/"
+  var createResult = function(prefixes, list) {
+    var prefix = prefixes.join("/") + "/";
+    var res = {};
+    _.each(list, function(v, k) {
+      res[prefix + k] = v; 
+    });
+    return res;
   };
 
-  resetToDefault = function() {
-    agencyTargetServers = createResult(agencyRoutes.target + "DBServers/", {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                     global values
+  // -----------------------------------------------------------------------------
+  var Communication = require("org/arangodb/sharding/agency-communication");
+  var comm;
+  var dummy;
+  var agencyRoutes = {
+    vision: "Vision",
+    target: "Target",
+    plan: "Plan",
+    current: "Current",
+    sync: "Sync",
+    sub: {
+      servers:"DBServers",
+      coords: "Coordinators",
+      colls: "Collections",
+      registered: "ServersRegistered",
+      beat: "ServerStates",
+      interval: "HeartbeatIntervalMs"
+    }
+  };
+  var resetToDefault = function() {
+    var dbServers = {
       "pavel": "sandro",
       "paul": "sally",
       "patricia": "sandra"
-    });
-    plannedServers = createResult(agencyRoutes.plan + "DBServers/", {
-      "pavel": "sandro",
-      "paul": "sally",
-      "patricia": "sandra"
-    });
-    registered = createResult(agencyRoutes.current + "ServersRegistered/", {
+    };
+    var coordinators = {
+      "cindy": 2,
+      "carlos": true,
+      "charly": "alice"
+    };
+    var databases = ["_system", "z_db", "a_db", "b_db"];
+    var vInfo = {
+      status: "loaded",
+      shardKeys: ["_key"],
+      name: "v",
+      shards: {
+        v1: "pavel",
+        v2: "paul",
+        v3: "patricia", 
+        v4: "pavel",
+        v5: "patricia",
+        v6: "pavel"
+      }
+    };
+    var collections = {
+      _system: {
+        "98213": JSON.stringify({name: "_graphs"}),
+        "87123": JSON.stringify(vInfo),
+        "89123": JSON.stringify({name: "e"})
+      },
+      a_db: {
+        "11235": JSON.stringify({name: "s"}),
+        "6512": JSON.stringify({name: "a"}),
+        "123": JSON.stringify({name: "d"})
+      }
+    };
+    var ips = {
       "pavel": "tcp://192.168.0.1:8529",
       "paul": "tcp://192.168.0.2:8529",
       "patricia": "tcp://192.168.0.3:8529",
       "sandro": "tcp://192.168.0.4:8529",
       "sally": "tcp://192.168.0.5:8529",
-      "sandra": "tcp://192.168.0.6:8529"
-    });
-  };
+      "sandra": "tcp://192.168.0.6:8529",
+      "carlos": "tcp://192.168.1.1:8529",
+      "charly": "tcp://192.168.1.2:8529",
+      "cindy": "tcp://192.168.1.3:8529"
+    };
+    var heartbeats = {
+      "pavel": JSON.stringify({
+        status: "SERVINGSYNC",
+        time: (new Date()).toISOString()
+      }),
+      "paul": JSON.stringify({
+        status: "SERVINGSYNC",
+        time: (new Date()).toISOString()
+      }),
+      "patricia": JSON.stringify({
+        status: "SERVINGASYNC",
+        time: (new Date()).toISOString()
+      }),
+      "sandro": JSON.stringify({
+        status: "INSYNC",
+        time: (new Date()).toISOString()
+      }),
+      "sandra": JSON.stringify({
+        status: "SYNCING",
+        time: (new Date()).toISOString()
+      }),
+      "sally": JSON.stringify({
+        status: "INSYNC",
+        time: (new Date()).toISOString()
+      })
+    };
+    dummy = {};
+    dummy.target = {};
+    dummy.target.servers = createResult([agencyRoutes.target, agencyRoutes.sub.servers], dbServers);
+    dummy.target.coordinators = createResult([agencyRoutes.target, agencyRoutes.sub.coords], coordinators);
+    dummy.target.databases = databases;
+    dummy.target.syscollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
+    dummy.target.acollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.target.vInfo = JSON.stringify(vInfo);
 
-  setup = function() {
+    dummy.plan = {};
+    dummy.plan.servers = createResult([agencyRoutes.plan, agencyRoutes.sub.servers], dbServers);
+    dummy.plan.coordinators = createResult([agencyRoutes.plan, agencyRoutes.sub.coords], coordinators);
+    dummy.plan.databases = databases;
+    dummy.plan.syscollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
+    dummy.plan.acollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.plan.vInfo = JSON.stringify(vInfo);
+
+    dummy.current = {};
+    dummy.current.servers = createResult([agencyRoutes.current, agencyRoutes.sub.servers], dbServers);
+    dummy.current.coordinators = createResult([agencyRoutes.current, agencyRoutes.sub.coords], coordinators);
+    dummy.current.registered = createResult([agencyRoutes.current, agencyRoutes.sub.registered], ips);
+    dummy.current.databases = databases;
+    dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
+    dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.current.vInfo = JSON.stringify(vInfo);
+
+    dummy.sync = {};
+    dummy.sync.heartbeats = heartbeats;
+  };
+  var setup = function() {
     resetToDefault();
+    comm = new Communication.Communication();
   };
-
-  teardown = function() {
-
-  };
-
-  agencyMock = {
+  var teardown = function() {};
+  var agencyMock = {
     get: function(route, recursive) {
-      if (route === agencyRoutes.target + "DBServers" && recursive) {
-        return agencyTargetServers;
-      }
-      if (route === agencyRoutes.plan + "DBServers" && recursive) {
-        return plannedServers;
-      }
-      if (route === agencyRoutes.current + "ServersRegistered" && recursive) {
-        return registered;
+      var parts = route.split("/");
+      var res;
+      var returnResult = function(base) {
+        if (parts[1] === agencyRoutes.sub.servers && recursive) {
+          return base.servers;
+        }
+        if (parts[1] === agencyRoutes.sub.colls) {
+          if (recursive) {
+            if (parts[2] === "_system") {
+              return base.syscollections;
+            }
+            if (parts[2] === "a_db") {
+              return base.acollections;
+            }
+            if (parts[2] === "b_db") {
+              return {};
+            }
+            if (parts[2] === "z_db") {
+              return {};
+            }
+          } else {
+            if (parts[2] === "_system" && parts[3] === "87123") {
+              var internalResult = {};
+              internalResult[route] = base.vInfo;
+              return internalResult;
+            }
+          }
+        }
+      };
+      switch (parts[0]) {
+        case agencyRoutes.target:
+          res = returnResult(dummy.target);
+          if (res) {
+            return res;
+          }
+          break;
+        case agencyRoutes.plan:
+          res = returnResult(dummy.plan);
+          if (res) {
+            return res;
+          }
+          break;
+        case agencyRoutes.current:
+          res = returnResult(dummy.current);
+          if (res) {
+            return res;
+          }
+          if (parts[1] === agencyRoutes.sub.registered && recursive) {
+            return dummy.current.registered;
+          }
+          break;
+        case agencyRoutes.sync:
+          if (parts[1] === agencyRoutes.sub.beat && recursive) {
+            return dummy.sync.heartbeats;
+          }
+          if (parts[1] === agencyRoutes.sub.interval) {
+            res = {};
+            res[route] = JSON.stringify(dummy.sync.interval);
+            return res;
+          }
+          break;
+        default:
+          fail();
       }
       fail();
+    },
+    list: function(route, recursive, flat) {
+      var parts = route.split("/");
+      var returnResult = function(route) {
+        if (parts[1] === agencyRoutes.sub.colls) {
+          return _.map(route.databases, function(d) {
+            return route + "/" + d;
+          });
+        }
+        if (parts[1] === agencyRoutes.sub.coords) {
+          return _.keys(route.coordinators);
+        }
+      };
+      if (!flat) {
+        fail("List is not requested flat");
+      }
+      var res;
+      switch (parts[0]) {
+        case agencyRoutes.target:
+          res = returnResult(dummy.target);
+          if (res) {
+            return res;
+          }
+          break;
+        case agencyRoutes.plan:
+          res = returnResult(dummy.plan);
+          if (res) {
+            return res;
+          }
+          break;
+        case agencyRoutes.current:
+          res = returnResult(dummy.current);
+          if (res) {
+            return res;
+          }
+          break;
+        default:
+          fail();
+      }
     }
   };
+
   Communication._createAgency = function() {
     return agencyMock;
   };
-  
-  comm = new Communication.Communication();
 
-  function VisionSuite() {
-    
-    return {
-      setUp: setup,
-      tearDown: teardown,
 
-      testGetVision: function() {
-        var expectedResult = {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                            vision
+  // -----------------------------------------------------------------------------
+  function runVisionTests(test) {
+   // Not yet defined and in use, changes are applied in Target directly 
+  };
 
-        };
-        assertTrue(false);
-      }
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                            target
+  // -----------------------------------------------------------------------------
+
+  function runTargetTests(test) {
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                         DBServers
+  // -----------------------------------------------------------------------------
+
+    function DBServersSuite() {
+      var targetServers;
+
+      return {
+        setUp: function() {
+          setup();
+          targetServers = comm.target.DBServers();
+        },
+        tearDown: teardown,
+
+        testGetServerList: function() {
+          var expected = {
+            pavel: {
+              role: "primary",
+              secondary: "sandro"
+            },
+            paul: {
+              role: "primary",
+              secondary: "sally"
+            },
+            patricia: {
+              role: "primary",
+              secondary: "sandra"
+            },
+            sandro: {
+              role: "secondary"
+            },
+            sally: {
+              role: "secondary"
+            },
+            sandra: {
+              role: "secondary"
+            }
+          };
+          var res = targetServers.getList();
+          assertEqual(res, expected);
+        },
+
+        testAddNewPrimaryServer: function() {
+          var name = "pancho";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, "none");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(targetServers.addPrimary(name), "Failed to insert a new primary");
+          assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertUndefined(newList[name].secondary);
+        },
+
+        testAddNewSecondaryServer: function() {
+          var name = "pancho";
+          var secName = "samuel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, "none");
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(targetServers.addPrimary(name), "Failed to insert a new primary");
+          assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+          wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, secName);
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(targetServers.addSecondary(secName, name), "Failed to insert a new secondary");
+          assertTrue(wasCalled, "Agency has not been informed to insert secondary.");
+
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertEqual(newList[name].secondary, secName);
+          assertNotUndefined(newList[secName]);
+          assertEqual(newList[secName].role, "secondary");
+        },
+
+        testAddNewServerPair: function() {
+          var name = "pancho";
+          var secName = "samuel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, secName);
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(targetServers.addPair(name, secName), "Failed to insert a new primary/secondary pair");
+          assertTrue(wasCalled, "Agency has not been informed to insert the new pair.");
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertEqual(newList[name].secondary, secName);
+          assertNotUndefined(newList[secName]);
+          assertEqual(newList[secName].role, "secondary");
+        },
+
+        testRemovePrimaryServer: function() {
+          var name = "pavel";
+          var secondaryName = "sandro";
+          var setWasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, secondaryName].join("/"));
+            assertEqual(value, "none");
+            assertFalse(setWasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            setWasCalled = true;
+            return true;
+          };
+          var delWasCalled = false;
+          agencyMock.remove = function(route) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertFalse(delWasCalled, "Delete has been called multiple times");
+            delete dummy.target.servers[route];
+            delWasCalled = true;
+            return true;
+          };
+          assertTrue(targetServers.removeServer(name), "Failed to remove a primary server");
+          assertTrue(setWasCalled, "Agency has not been informed to replace the primary with the secondary.");
+          assertTrue(delWasCalled, "Agency has not been informed to remove the primary/secondary pair.");
+
+          var newList = targetServers.getList();
+          assertUndefined(newList[name]);
+          assertNotUndefined(newList[secondaryName]);
+          assertEqual(newList[secondaryName].role, "primary");
+          assertUndefined(newList[secondaryName].secondary);
+        },
+
+        testRemoveSecondaryServer: function() {
+          var name = "sandro";
+          var pName = "pavel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, pName].join("/"));
+            assertEqual(value, "none");
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(targetServers.removeServer(name), "Failed to remove a secondary server.");
+          assertTrue(wasCalled, "Agency has not been informed to update the primary server.");
+          var newList = targetServers.getList();
+          assertUndefined(newList[name]);
+          assertNotUndefined(newList[pName]);
+          assertEqual(newList[pName].role, "primary");
+          assertUndefined(newList[pName].secondary);
+        }
+      };
     };
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                       Coordinator
+  // -----------------------------------------------------------------------------
+
+    function CoordinatorSuite() {
+      var targetCoordinators;
+
+      return {
+        setUp: function() {
+          setup();
+          targetCoordinators = comm.target.Coordinators();
+        },
+        tearDown: teardown,
+
+        testGetCoordinatorList: function() {
+          var list = [
+            "carlos",
+            "charly",
+            "cindy"
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        },
+
+        testAddCoordinator: function() {
+          var name = "carol";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
+            assertEqual(value, true);
+            dummy.target.coordinators[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(targetCoordinators.add(name), "Failed to insert a new coordinator.");
+          assertTrue(wasCalled, "Agency has not been informed to insert coordinator.");
+          var list = [
+            "carlos",
+            "charly",
+            "cindy",
+            name
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        },
+
+        testRemoveCoordinator: function() {
+          var name = "cindy";
+          var delWasCalled = false;
+          agencyMock.remove = function(route) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
+            assertFalse(delWasCalled, "Delete has been called multiple times");
+            delete dummy.target.coordinators[route];
+            delWasCalled = true;
+            return true;
+          };
+          assertTrue(targetCoordinators.remove(name), "Failed to remove a coordinator.");
+          assertTrue(delWasCalled, "Agency has not been informed to remove a coordinator.");
+          var list = [
+            "carlos",
+            "charly"
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        }
+      };
+    };
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                              data
+  // -----------------------------------------------------------------------------
+
+    function DataSuite() {
+      var dbs;
+
+      return {
+        setUp: function() {
+          setup();
+          dbs = comm.target.Databases();
+        },
+        tearDown: teardown,
+
+        testGetDatabaseList: function() {
+          var list = [
+            "_system",
+            "a_db",
+            "b_db",
+            "z_db"
+          ].sort();
+          assertEqual(dbs.getList(), list);
+        },
+
+        testGetCollectionListForDatabase: function() {
+          var syslist = [
+            "_graphs",
+            "v",
+            "e"
+          ].sort();
+          var alist = [
+            "s",
+            "a",
+            "d"
+          ].sort();
+          assertEqual(dbs.select("_system").getCollections(), syslist);
+          assertEqual(dbs.select("a_db").getCollections(), alist);
+        },
+
+        testSelectNotExistingDatabase: function() {
+          assertFalse(dbs.select("foxx"));
+        },
+
+        testGetCollectionMetaInfo: function() {
+          var sysdb = dbs.select("_system");
+          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+        },
+
+        testGetResponsibilitiesForCollection: function() {
+          var colV = dbs.select("_system").collection("v");
+          var expected = {
+            v1: "pavel",
+            v2: "paul",
+            v3: "patricia",
+            v4: "pavel",
+            v5: "patricia",
+            v6: "pavel"
+          };
+          assertEqual(colV.getShards(), expected);
+        },
+
+        testGetShardsForServer: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+        },
+
+        testGetServerForShard: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertEqual(colV.getServerForShard("v2"), "paul");
+        },
+
+        testMoveResponsibility: function() {
+          var colV = dbs.select("_system").collection("v");
+          var source = "pavel";
+          var target = "paul";
+          var shard = "v1";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.colls, "_system", "87123"].join("/"));
+            dummy.target.vInfo = value;
+            wasCalled = true;
+            return true;
+          };
+
+          assertEqual(colV.getServerForShard(shard), source);
+          assertTrue(colV.moveShard(shard, target), "Failed to move shard responsibility.");
+          assertTrue(wasCalled, "Agency has not been informed to move shard..");
+          assertEqual(colV.getServerForShard(shard), target);
+        }
+      };
+    };
+
+    test.run(DBServersSuite);
+    test.run(CoordinatorSuite);
+    test.run(DataSuite);
   };
 
-  function TargetDBServersSuite() {
-    var targetServers;
 
-    return {
-      setUp: function() {
-        setup();
-        targetServers = comm.target.DBServers();
-      },
-      tearDown: teardown,
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                              plan
+  // -----------------------------------------------------------------------------
 
-      testGetServerList: function() {
-        var expected = {
-          pavel: {
-            role: "primary",
-            secondary: "sandro"
-          },
-          paul: {
-            role: "primary",
-            secondary: "sally"
-          },
-          patricia: {
-            role: "primary",
-            secondary: "sandra"
-          },
-          sandro: {
-            role: "secondary"
-          },
-          sally: {
-            role: "secondary"
-          },
-          sandra: {
-            role: "secondary"
-          }
-        };
-        var res = targetServers.getList();
-        assertEqual(res, expected);
-      },
+  function runPlanTests(test) {
 
-      testAddNewPrimaryServer: function() {
-        var name = "pancho";
-        var wasCalled = false;
-        agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
-          assertEqual(value, "none");
-          agencyTargetServers[route] = value;
-          wasCalled = true;
-          return true;
-        };
-        assertTrue(targetServers.addPrimary(name), "Failed to insert a new primary");
-        assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+    function DBServersSuite() {
+      var servers;
 
-        var newList = targetServers.getList();
-        assertNotUndefined(newList[name]);
-        assertEqual(newList[name].role, "primary");
-        assertUndefined(newList[name].secondary);
-      },
+      return {
+        setUp: function() {
+          setup();
+          servers = comm.plan.DBServers();
+        },
+        tearDown: teardown,
 
-      testAddNewSecondaryServer: function() {
-        var name = "pancho";
-        var secName = "samuel";
-        var wasCalled = false;
-        agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
-          assertEqual(value, "none");
-          assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
-          wasCalled = true;
-          return true;
-        };
-        assertTrue(targetServers.addPrimary(name), "Failed to insert a new primary");
-        assertTrue(wasCalled, "Agency has not been informed to insert primary.");
-        wasCalled = false;
-        agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
-          assertEqual(value, secName);
-          assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
-          wasCalled = true;
-          return true;
-        };
-        assertTrue(targetServers.addSecondary(secName, name), "Failed to insert a new secondary");
-        assertTrue(wasCalled, "Agency has not been informed to insert secondary.");
+        testGetServerList: function() {
+          var expected = {
+            pavel: {
+              role: "primary",
+              secondary: "sandro"
+            },
+            paul: {
+              role: "primary",
+              secondary: "sally"
+            },
+            patricia: {
+              role: "primary",
+              secondary: "sandra"
+            },
+            sandro: {
+              role: "secondary"
+            },
+            sally: {
+              role: "secondary"
+            },
+            sandra: {
+              role: "secondary"
+            }
+          };
+          var res = servers.getList();
+          assertEqual(res, expected);
+        }
 
-        var newList = targetServers.getList();
-        assertNotUndefined(newList[name]);
-        assertEqual(newList[name].role, "primary");
-        assertEqual(newList[name].secondary, secName);
-        assertNotUndefined(newList[secName]);
-        assertEqual(newList[secName].role, "secondary");
-      },
+      };
+    };
 
-      testAddNewServerPair: function() {
-        var name = "pancho";
-        var secName = "samuel";
-        var wasCalled = false;
-        agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
-          assertEqual(value, secName);
-          assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
-          wasCalled = true;
-          return true;
-        };
-        assertTrue(targetServers.addPair(name, secName), "Failed to insert a new primary/secondary pair");
-        assertTrue(wasCalled, "Agency has not been informed to insert the new pair.");
-        var newList = targetServers.getList();
-        assertNotUndefined(newList[name]);
-        assertEqual(newList[name].role, "primary");
-        assertEqual(newList[name].secondary, secName);
-        assertNotUndefined(newList[secName]);
-        assertEqual(newList[secName].role, "secondary");
-      },
+    function CoordinatorSuite() {
+      var coordinators;
 
-      testRemovePrimaryServer: function() {
-        var name = "pavel";
-        var secondaryName = "sandro";
-        var setWasCalled = false;
-        agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + secondaryName);
-          assertEqual(value, "none");
-          assertFalse(setWasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
-          setWasCalled = true;
-          return true;
-        };
-        var delWasCalled = false;
-        agencyMock.remove = function(route) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + name);
-          assertFalse(delWasCalled, "Delete has been called multiple times");
-          delete agencyTargetServers[route];
-          delWasCalled = true;
-          return true;
-        };
-        assertTrue(targetServers.removeServer(name), "Failed to remove a primary server");
-        assertTrue(setWasCalled, "Agency has not been informed to replace the primary with the secondary.");
-        assertTrue(delWasCalled, "Agency has not been informed to remove the primary/secondary pair.");
+      return {
+        setUp: function() {
+          setup();
+          coordinators = comm.plan.Coordinators();
+        },
+        tearDown: teardown,
 
-        var newList = targetServers.getList();
-        assertUndefined(newList[name]);
-        assertNotUndefined(newList[secondaryName]);
-        assertEqual(newList[secondaryName].role, "primary");
-        assertUndefined(newList[secondaryName].secondary);
-      },
+        testGetCoordinatorList: function() {
+          var list = [
+            "carlos",
+            "charly",
+            "cindy"
+          ].sort();
+          assertEqual(coordinators.getList(), list);
+        }
+      };
+    };
 
-      testRemoveSecondaryServer: function() {
-        var name = "sandro";
-        var pName = "pavel";
-        var wasCalled = false;
-        agencyMock.set = function(route, value) {
-          assertEqual(route, agencyRoutes.target + "DBServers/" + pName);
-          assertEqual(value, "none");
-          assertFalse(wasCalled, "Set has been called multiple times");
-          agencyTargetServers[route] = value;
-          wasCalled = true;
-          return true;
-        };
-        assertTrue(targetServers.removeServer(name), "Failed to remove a secondary server.");
-        assertTrue(wasCalled, "Agency has not been informed to update the primary server.");
-        var newList = targetServers.getList();
-        assertUndefined(newList[name]);
-        assertNotUndefined(newList[pName]);
-        assertEqual(newList[pName].role, "primary");
-        assertUndefined(newList[pName].secondary);
-      }
+    function DataSuite() {
+      var dbs;
+
+      return {
+        setUp: function() {
+          setup();
+          dbs = comm.plan.Databases();
+        },
+        tearDown: teardown,
+
+        testGetDatabaseList: function() {
+          var list = [
+            "_system",
+            "a_db",
+            "b_db",
+            "z_db"
+          ].sort();
+          assertEqual(dbs.getList(), list);
+        },
+
+        testGetCollectionListForDatabase: function() {
+          var syslist = [
+            "_graphs",
+            "v",
+            "e"
+          ].sort();
+          var alist = [
+            "s",
+            "a",
+            "d"
+          ].sort();
+          assertEqual(dbs.select("_system").getCollections(), syslist);
+          assertEqual(dbs.select("a_db").getCollections(), alist);
+        },
+
+        testSelectNotExistingDatabase: function() {
+          assertFalse(dbs.select("foxx"));
+        },
+
+        testGetCollectionMetaInfo: function() {
+          var sysdb = dbs.select("_system");
+          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+        },
+
+        testGetResponsibilitiesForCollection: function() {
+          var colV = dbs.select("_system").collection("v");
+          var expected = {
+            v1: "pavel",
+            v2: "paul",
+            v3: "patricia",
+            v4: "pavel",
+            v5: "patricia",
+            v6: "pavel"
+          };
+          assertEqual(colV.getShards(), expected);
+        },
+
+        testGetShardsForServer: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+        },
+
+        testGetServerForShard: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertEqual(colV.getServerForShard("v2"), "paul");
+        }
+      };
+    };
+
+    test.run(DBServersSuite);
+    test.run(CoordinatorSuite);
+    test.run(DataSuite);
+  };
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                           current
+  // -----------------------------------------------------------------------------
+
+  function runCurrentTests(test) {
+
+    function DBServersSuite() {
+      var targetServers;
+
+      return {
+        setUp: function() {
+          setup();
+          targetServers = comm.current.DBServers();
+        },
+        tearDown: teardown,
+
+        testGetServerList: function() {
+          var expected = {
+            pavel: {
+              role: "primary",
+              secondary: "sandro",
+              address: "tcp://192.168.0.1:8529"
+            },
+            paul: {
+              role: "primary",
+              secondary: "sally",
+              address: "tcp://192.168.0.2:8529"
+            },
+            patricia: {
+              role: "primary",
+              secondary: "sandra",
+              address: "tcp://192.168.0.3:8529"
+            },
+            sandro: {
+              role: "secondary",
+              address: "tcp://192.168.0.4:8529"
+            },
+            sally: {
+              role: "secondary",
+              address: "tcp://192.168.0.5:8529"
+            },
+            sandra: {
+              role: "secondary",
+              address: "tcp://192.168.0.6:8529"
+            }
+          };
+          var res = targetServers.getList();
+          assertEqual(res, expected);
+        }
+
+      };
 
     };
-      
-  };
 
-  function TargetShardSuite() {
-   
-    return {
-      setUp: setup,
-      tearDown: teardown,
+    function CoordinatorSuite() {
 
-      testGetDatabaseList: function() {
-        assertTrue(true);
-      }
-    }
-  };
+      return {
+        setUp: setup,
+        tearDown: teardown,
 
-  function DBServersSuite() {
+        testGetServerList: function() {
+          var expected = {
+            "carlos": "tcp://192.168.1.1:8529",
+            "charly": "tcp://192.168.1.2:8529",
+            "cindy": "tcp://192.168.1.3:8529"
+          };
+          var res = comm.current.Coordinators().getList();
+          assertEqual(res, expected);
+        }
+      };
 
-    var DBServers;
-
-    return {
-      setUp: function() {
-        DBServers = comm.DBServers();
-      },
-      tearDown: function() {},
-
-      testGetList: function() {
-        var expectedResult = {
-          pavel: {
-            address: "tcp://192.168.0.1:8529",
-            role: "primary",
-            secondary: "sandro"
-          },
-          paul: {
-            address: "tcp://192.168.0.2:8529",
-            role: "primary",
-            secondary: "sally"
-          },
-          patricia: {
-            address: "tcp://192.168.0.3:8529",
-            role: "primary",
-            secondary: "sandra"
-          },
-          sandro: {
-            address: "tcp://192.168.0.4:8529",
-            role: "secondary"
-          },
-          sally: {
-            address: "tcp://192.168.0.5:8529",
-            role: "secondary"
-          },
-          sandra: {
-            address: "tcp://192.168.0.6:8529",
-            role: "secondary"
-          }
-        };
-        var res = DBServers.list();
-        assertEqual(expectedResult, res);
-      }
     };
+
+    function DataSuite() {
+      var dbs;
+
+      return {
+        setUp: function() {
+          setup();
+          dbs = comm.current.Databases();
+        },
+        tearDown: teardown,
+
+        testGetDatabaseList: function() {
+          var list = [
+            "_system",
+            "a_db",
+            "b_db",
+            "z_db"
+          ].sort();
+          assertEqual(dbs.getList(), list);
+        },
+
+        testGetCollectionListForDatabase: function() {
+          var syslist = [
+            "_graphs",
+            "v",
+            "e"
+          ].sort();
+          var alist = [
+            "s",
+            "a",
+            "d"
+          ].sort();
+          assertEqual(dbs.select("_system").getCollections(), syslist);
+          assertEqual(dbs.select("a_db").getCollections(), alist);
+        },
+
+        testSelectNotExistingDatabase: function() {
+          assertFalse(dbs.select("foxx"));
+        },
+
+        testGetCollectionMetaInfo: function() {
+          var sysdb = dbs.select("_system");
+          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+        },
+
+        testGetResponsibilitiesForCollection: function() {
+          var colV = dbs.select("_system").collection("v");
+          var expected = {
+            v1: "pavel",
+            v2: "paul",
+            v3: "patricia",
+            v4: "pavel",
+            v5: "patricia",
+            v6: "pavel"
+          };
+          assertEqual(colV.getShards(), expected);
+        },
+
+        testGetShardsForServer: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+        },
+
+        testGetServerForShard: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertEqual(colV.getServerForShard("v2"), "paul");
+        }
+      };
+    };
+
+    test.run(DBServersSuite);
+    test.run(CoordinatorSuite);
+    test.run(DataSuite);
   };
 
-//  test.run(VisionSuite);
-  test.run(TargetDBServersSuite);
-  test.run(TargetShardSuite);
-//  test.run(DBServersSuite);
-};
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                              Sync
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
+  function runSyncTests(test) {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+    function HeartbeatSuite() {
+      var beats;
 
-runGoodCaseTests(jsunity);
+      return {
+        setUp: function() {
+          setup();
+          beats = comm.sync.Heartbeats();
+        },
+        tearDown: teardown,
 
-return jsunity.done();
+        testGetHeartbeats: function() {
+          assertEqual(beats.list(), dummy.sync.heartbeats);
+        },
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
+        testGetInactiveServers: function() {
+          assertEqual(beats.getInactive(), []);
+        },
+
+        testGetServingServers: function() {
+          assertEqual(beats.getServing(), ["pavel", "paul", "patricia"].sort());
+        },
+
+        testGetInSyncPairs: function() {
+          assertEqual(beats.getInSync(), [
+            "pavel", "sandro",
+            "paul", "sally"
+          ].sort());
+        },
+
+        testGetOutOfSyncPairs: function() {
+          assertEqual(beats.getOutSync(), ["patricia", "sandra"].sort());
+        },
+
+        testGetNoBeat: function() {
+          assertEqual(beats.noBeat(), []);
+        }
+
+      };
+    };
+
+    function ProblemsSuite() {
+      // TODO Not yet fully defined
+      return {
+        setUp: setup,
+        tearDown: teardown
+
+      };
+    };
+
+    test.run(HeartbeatSuite);
+    test.run(ProblemsSuite);
+
+  };
+
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                        high-level
+  // -----------------------------------------------------------------------------
+
+  function runHighLevelTests(test) {
+
+    function ConfigureSuite() {
+
+      var targetServers;
+      var targetCoordinators;
+
+      return {
+        setUp: function() {
+          setup();  
+          targetServers = comm.target.DBServers();
+          targetCoordinators = comm.target.Coordinators();
+        },
+        tearDown: teardown,
+
+        testAddNewPrimaryServer: function() {
+          var name = "pancho";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, "none");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addPrimary(name), "Failed to insert a new primary");
+          assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertUndefined(newList[name].secondary);
+        },
+
+        testAddNewSecondaryServer: function() {
+          var name = "pancho";
+          var secName = "samuel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, "none");
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addPrimary(name), "Failed to insert a new primary");
+          assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+          wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, secName);
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addSecondary(secName, name), "Failed to insert a new secondary");
+          assertTrue(wasCalled, "Agency has not been informed to insert secondary.");
+
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertEqual(newList[name].secondary, secName);
+          assertNotUndefined(newList[secName]);
+          assertEqual(newList[secName].role, "secondary");
+        },
+
+        testAddNewServerPair: function() {
+          var name = "pancho";
+          var secName = "samuel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, secName);
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addPair(name, secName), "Failed to insert a new primary/secondary pair");
+          assertTrue(wasCalled, "Agency has not been informed to insert the new pair.");
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertEqual(newList[name].secondary, secName);
+          assertNotUndefined(newList[secName]);
+          assertEqual(newList[secName].role, "secondary");
+        },
+
+        testRemovePrimaryServer: function() {
+          var name = "pavel";
+          var secondaryName = "sandro";
+          var setWasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, secondaryName].join("/"));
+            assertEqual(value, "none");
+            assertFalse(setWasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            setWasCalled = true;
+            return true;
+          };
+          var delWasCalled = false;
+          agencyMock.remove = function(route) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertFalse(delWasCalled, "Delete has been called multiple times");
+            delete dummy.target.servers[route];
+            delWasCalled = true;
+            return true;
+          };
+          assertTrue(comm.removeServer(name), "Failed to remove a primary server");
+          assertTrue(setWasCalled, "Agency has not been informed to replace the primary with the secondary.");
+          assertTrue(delWasCalled, "Agency has not been informed to remove the primary/secondary pair.");
+
+          var newList = targetServers.getList();
+          assertUndefined(newList[name]);
+          assertNotUndefined(newList[secondaryName]);
+          assertEqual(newList[secondaryName].role, "primary");
+          assertUndefined(newList[secondaryName].secondary);
+        },
+
+        testRemoveSecondaryServer: function() {
+          var name = "sandro";
+          var pName = "pavel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, pName].join("/"));
+            assertEqual(value, "none");
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.removeServer(name), "Failed to remove a secondary server.");
+          assertTrue(wasCalled, "Agency has not been informed to update the primary server.");
+          var newList = targetServers.getList();
+          assertUndefined(newList[name]);
+          assertNotUndefined(newList[pName]);
+          assertEqual(newList[pName].role, "primary");
+          assertUndefined(newList[pName].secondary);
+        },
+
+        testAddCoordinator: function() {
+          var name = "carol";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
+            assertEqual(value, true);
+            dummy.target.coordinators[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addCoordinator(name), "Failed to insert a new coordinator.");
+          assertTrue(wasCalled, "Agency has not been informed to insert coordinator.");
+          var list = [
+            "carlos",
+            "charly",
+            "cindy",
+            name
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        },
+
+        testRemoveCoordinator: function() {
+          var name = "cindy";
+          var delWasCalled = false;
+          agencyMock.remove = function(route) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
+            assertFalse(delWasCalled, "Delete has been called multiple times");
+            delete dummy.target.coordinators[route];
+            delWasCalled = true;
+            return true;
+          };
+          assertTrue(comm.removeServer(name), "Failed to remove a coordinator.");
+          assertTrue(delWasCalled, "Agency has not been informed to remove a coordinator.");
+          var list = [
+            "carlos",
+            "charly"
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        }
+      };
+
+    };
+
+    function DifferenceSuite() {
+
+      return {
+        setUp: function() {
+          setup();  
+          targetServers = comm.target.DBServers();
+        },
+        tearDown: teardown
+      };
+
+
+    };
+
+    test.run(ConfigureSuite);
+    test.run(DifferenceSuite);
+
+  };
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                              main
+  // -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes the test suites
+  ////////////////////////////////////////////////////////////////////////////////
+
+  runVisionTests(jsunity);
+  runTargetTests(jsunity);
+  runPlanTests(jsunity);
+  runCurrentTests(jsunity);
+  runSyncTests(jsunity);
+  runHighLevelTests(jsunity);
+
+  return jsunity.done();
+
+  // Local Variables:
+  // mode: outline-minor
+  // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+  // End:
+}());
