@@ -233,7 +233,7 @@ bool ApplicationCluster::start () {
       
     // no value set in agency. use default
     if (_heartbeatInterval == 0) {
-      _heartbeatInterval = 1000; 
+      _heartbeatInterval = 1000; // 1/s
 
       LOG_WARNING("unable to read heartbeat interval from agency. Using default value '%llu ms'", 
                   (unsigned long long) _heartbeatInterval);
@@ -241,7 +241,7 @@ bool ApplicationCluster::start () {
    
 
     // start heartbeat thread
-    _heartbeat = new HeartbeatThread(_heartbeatInterval, 5);
+    _heartbeat = new HeartbeatThread(_heartbeatInterval * 1000, 5);
 
     if (_heartbeat == 0) {
       LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");

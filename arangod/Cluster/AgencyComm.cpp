@@ -971,9 +971,12 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::sendServerState () {
-  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + 
-                            ":" + 
-                            AgencyComm::generateStamp();
+  // construct JSON value { "status": "...", "time": "..." }
+  std::string value("{\"status\":\"");
+  value.append(ServerState::stateToString(ServerState::instance()->getState()));
+  value.append("\",\"time\":\""); 
+  value.append(AgencyComm::generateStamp());
+  value.append("\"}"); 
   
   AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), value, 0.0));
   return result.successful();
