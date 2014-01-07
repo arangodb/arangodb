@@ -52,11 +52,12 @@ var compareStringIds = function (l, r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterEnabledSuite () {
-  var agency = new ArangoAgency();
-  var ss = new ArangoServerState();
-  var ci = new ArangoClusterInfo();
+  var agency = ArangoAgency;
+  var ss = ArangoServerState;
+  var ci = ArangoClusterInfo;
   var oldPrefix = agency.prefix(true);
   var oldId = ss.id();
+  var oldRole = ss.role();
       
   var cleanDirectories = function () {
     [ "Target", "Plan", "Current" ].forEach(function (d) {
@@ -113,6 +114,7 @@ function ClusterEnabledSuite () {
       assertTrue(agency.setPrefix(oldPrefix));
       ss.setId(oldId);
       assertEqual(oldPrefix, agency.prefix(true));
+      ss.setRole(oldRole);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +235,7 @@ function ClusterEnabledSuite () {
         type: 2,
         status: 3, // LOADED 
         shardKeys: [ "_key" ],
-        shards: [ "s1", "s2" ]
+        shards: { "s1" : "myself", "s2" : "other" }
       };
       assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
 
@@ -252,7 +254,7 @@ function ClusterEnabledSuite () {
         type: 2,
         status: 3, // LOADED 
         shardKeys: [ "_key" ],
-        shards: [ "s1", "s2" ]
+        shards: { "s1" : "myself", "s2" : "other" }
       };
       assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
 
@@ -262,8 +264,34 @@ function ClusterEnabledSuite () {
       assertEqual(collection.name, data.name);
       assertEqual(collection.type, data.type);
       assertEqual(collection.status, data.status);
-      assertEqual([ "_key" ], data.shardKeys);
-      assertEqual([ "s1", "s2" ], data.shardIds);
+      assertEqual(collection.shardKeys, data.shardKeys);
+      assertEqual(collection.shards, data.shards);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test getCollectionInfo
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetCollectionInfo2 : function () {
+      var collection = {
+        id: "12345868390663",
+        name: "mycollection_test",
+        type: 3,
+        status: 2, // LOADED 
+        shardKeys: [ "_key", "a", "bc" ],
+        shards: { "s1" : "myself", "s2" : "other", "s3" : "foo", "s4" : "bar" }
+      };
+
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
+
+      var data = ci.getCollectionInfo("test", collection.id);
+
+      assertEqual(collection.id, data.id);
+      assertEqual(collection.name, data.name);
+      assertEqual(collection.type, data.type);
+      assertEqual(collection.status, data.status);
+      assertEqual(collection.shardKeys, data.shardKeys);
+      assertEqual(collection.shards, data.shards);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,7 +343,7 @@ function ClusterEnabledSuite () {
     testUniqid : function () {
       var last = "0";
 
-      for (var i = 0; i < 1000; ++i) {
+      for (var i = 0; i < 1005; ++i) {
         var id = ci.uniqid();
         assertEqual(-1, compareStringIds(last, id));
         last = id;
