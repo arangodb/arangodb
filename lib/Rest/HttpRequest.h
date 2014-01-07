@@ -225,7 +225,19 @@ namespace triagens {
         std::string const& databaseName () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the database name
+/// @brief set the originally request database name, in a coordinator context
+/// this is called when the request is processed by the ApplicationServer
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        void setOriginalDatabaseName (std::string const& name) {
+          _originalDatabaseName = name;
+        }
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the originally requested database name, in a coordinator
+/// context
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
