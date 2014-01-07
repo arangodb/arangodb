@@ -535,13 +535,38 @@ static v8::Handle<v8::Value> JS_EndpointsAgency (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_PrefixAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "prefix()");
+  if (argv.Length() > 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "prefix(<strip>)");
+  }
+
+  bool strip = false;
+  if (argv.Length() > 0) {
+    strip = TRI_ObjectToBoolean(argv[0]);
   }
 
   const std::string prefix = AgencyComm::prefix();
 
+  if (strip && prefix.size() > 2) {
+    return scope.Close(v8::String::New(prefix.c_str() + 1, prefix.size() - 2));
+  }
+  
   return scope.Close(v8::String::New(prefix.c_str(), prefix.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the agency prefix
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SetPrefixAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "setPrefix(<prefix>)");
+  }
+
+  const bool result = AgencyComm::setPrefix(TRI_ObjectToString(argv[0]));
+
+  return scope.Close(v8::Boolean::New(result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,19 +646,61 @@ static v8::Handle<v8::Value> JS_DoesDatabaseExistClusterInfo (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the caches (used for testing only)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_FlushClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "flush()");
+  }
+ 
+  ClusterInfo::instance()->flush();
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the responsible server
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 1) {
+  if (argv.Length() != 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "getCollectionInfo(<database-id>, <collection-id>)");
   }
  
-  ClusterInfo::instance()->getCollectionInfo(TRI_ObjectToString(argv[0]), TRI_ObjectToString(argv[1]));
+  CollectionInfo ci = ClusterInfo::instance()->getCollectionInfo(TRI_ObjectToString(argv[0]), 
+                                                                 TRI_ObjectToString(argv[1]));
 
-  return scope.Close(v8::True());
+  v8::Handle<v8::Object> result = v8::Object::New();
+  const std::string cid = triagens::basics::StringUtils::itoa(ci.cid());
+  const std::string& name = ci.name();
+  result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
+  result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
+  result->Set(v8::String::New("type"), v8::Number::New((int) ci.type()));
+  result->Set(v8::String::New("status"), v8::Number::New((int) ci.status()));
+
+  const std::vector<std::string>& sks = ci.shardKeys();
+  v8::Handle<v8::Array> shardKeys = v8::Array::New(sks.size());
+  for (uint32_t i = 0, n = sks.size(); i < n; ++i) {
+    shardKeys->Set(i, v8::String::New(sks[i].c_str(), sks[i].size()));
+  }
+  result->Set(v8::String::New("shardKeys"), shardKeys);
+
+  const std::vector<std::string>& sis = ci.shardIds();
+  v8::Handle<v8::Array> shardIds = v8::Array::New(sis.size());
+  for (uint32_t i = 0, n = sis.size(); i < n; ++i) {
+    shardIds->Set(i, v8::String::New(sis[i].c_str(), sis[i].size()));
+  }
+  result->Set(v8::String::New("shardIds"), shardIds);
+
+  // TODO: fill "indexes"
+  v8::Handle<v8::Array> indexes = v8::Array::New();
+  result->Set(v8::String::New("indexes"), indexes);
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,6 +771,52 @@ static v8::Handle<v8::Value> JS_UniqidClusterInfo (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the servers address
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AddressServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "address()");
+  }
+
+  const std::string address = ServerState::instance()->getAddress();
+  return scope.Close(v8::String::New(address.c_str(), address.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the server state (used for testing only)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_FlushServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "flush()");
+  }
+  
+  ServerState::instance()->flush();
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the servers id
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IdServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "id()");
+  }
+
+  const std::string id = ServerState::instance()->getId();
+  return scope.Close(v8::String::New(id.c_str(), id.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the server is a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -731,6 +844,23 @@ static v8::Handle<v8::Value> JS_RoleServerState (v8::Arguments const& argv) {
   const std::string role = ServerState::roleToString(ServerState::instance()->getRole());
 
   return scope.Close(v8::String::New(role.c_str(), role.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the server id (used for testing)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SetIdServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "setId(<id>)");
+  }
+
+  const std::string id = TRI_ObjectToString(argv[0]);
+  ServerState::instance()->setId(id);
+
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,6 +1150,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "watch", JS_WatchAgency);
   TRI_AddMethodVocbase(rt, "endpoints", JS_EndpointsAgency);
   TRI_AddMethodVocbase(rt, "prefix", JS_PrefixAgency);
+  TRI_AddMethodVocbase(rt, "setPrefix", JS_SetPrefixAgency, true);
   TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidAgency);
   TRI_AddMethodVocbase(rt, "unlockRead", JS_UnlockReadAgency);
   TRI_AddMethodVocbase(rt, "unlockWrite", JS_UnlockWriteAgency);
@@ -1039,6 +1170,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(rt, "doesDatabaseExist", JS_DoesDatabaseExistClusterInfo);
+  TRI_AddMethodVocbase(rt, "flush", JS_FlushClusterInfo, true);
   TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
   TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
   TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
@@ -1057,8 +1189,12 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
+  TRI_AddMethodVocbase(rt, "address", JS_AddressServerState);
+  TRI_AddMethodVocbase(rt, "flush", JS_FlushServerState, true);
+  TRI_AddMethodVocbase(rt, "id", JS_IdServerState);
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
+  TRI_AddMethodVocbase(rt, "setId", JS_SetIdServerState, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
 
   v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
