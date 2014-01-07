@@ -776,11 +776,17 @@ actions.defineHttp({
 /// @RESTHEADER{POST /_admin/execute,executes a program}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
-/// The body to be executed.
+/// The body to be executed. 
 ///
 /// @RESTDESCRIPTION
 ///
-/// Executes the javascript code in the body on the server.
+/// Executes the javascript code in the body on the server as the body
+/// of a function with no arguments. If you have a `return` statement
+/// then the return value you produce will be returned as content type
+/// `application/json`. If the parameter `returnAsJSON` is set to
+/// `true`, the result will be a JSON object describing the return value
+/// directly, otherwise a string produced by JSON.stringify will be
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -798,7 +804,15 @@ actions.defineHttp({
       result = eval("(function() {" + body + "}());");
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+    require("internal").print(req.parameters);
+
+    if (req.parameters.hasOwnProperty("returnAsJSON") &&
+        req.parameters.returnAsJSON === "true") {
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+    }
   }
 });
 
