@@ -47,26 +47,26 @@ if [ "$1" == "init" ] ; then
     set Target/DBServers
     set Target/Coordinators
     set Target/Collections
-    set Target/Collections/_system
-    set Target/Collections/_system/Version 1
-    set Target/Collections/_system/Lock UNLOCKED
+    set Target/Collections/system
+    set Target/Collections/system/Version 1
+    set Target/Collections/system/Lock UNLOCKED
 
     set Plan/Version 1
     set Plan/DBServers
     set Plan/Coordinators
     set Plan/Collections
-    set Plan/Collections/_system
-    set Plan/Collections/_system/Version 1
-    set Plan/Collections/_system/Lock UNLOCKED
+    set Plan/Collections/system
+    set Plan/Collections/system/Version 1
+    set Plan/Collections/system/Lock UNLOCKED
 
     set Current/Version 1
     set Current/ServersRegistered
     set Current/DBServers
     set Current/Coordinators
     set Current/Collections
-    set Current/Collections/_system
-    set Current/Collections/_system/Version 1
-    set Current/Collections/_system/Lock UNLOCKED
+    set Current/Collections/system
+    set Current/Collections/system/Version 1
+    set Current/Collections/system/Lock UNLOCKED
 
     set Current/ShardsCopied
 
