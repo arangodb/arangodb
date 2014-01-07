@@ -77,16 +77,13 @@ function ClusterEnabledSuite () {
       "Target/DBServers", 
       "Target/Coordinators", 
       "Target/Collections", 
-      "Target/ShardLocation", 
       "Plan/DBServers", 
       "Plan/Coordinators", 
       "Plan/Collections", 
-      "Plan/ShardLocation", 
       "Current/ServersRegistered", 
       "Current/DBServers", 
       "Current/Coordinators", 
       "Current/Collections",
-      "Current/ShardLocation",
       "Current/ShardsCopied"
     ].forEach(function (d) {
       try {
@@ -299,14 +296,23 @@ function ClusterEnabledSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetResponsibleServer : function () {
-      assertTrue(agency.set("Current/ShardLocation/s1", "myself"));
+      var collection = {
+        id: "12345868390663",
+        name: "mycollection_test",
+        type: 3,
+        status: 2, // LOADED 
+        shardKeys: [ "_key", "a", "bc" ],
+        shards: { "s1" : "myself" }
+      };
+
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
       ci.flush();
 
       assertEqual("myself", ci.getResponsibleServer("s1"));
       assertEqual("", ci.getResponsibleServer("s9999"));
-      
-      assertTrue(agency.set("Current/ShardLocation/s1", "other"));
-      assertTrue(agency.set("Current/ShardLocation/s2", "myself"));
+     
+      collection.shards = { s1: "other", s2: "myself" }; 
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
       ci.flush();
 
       assertEqual("other", ci.getResponsibleServer("s1"));

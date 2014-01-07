@@ -50,7 +50,6 @@ if [ "$1" == "init" ] ; then
     set Target/Collections/_system
     set Target/Collections/_system/Version 1
     set Target/Collections/_system/Lock UNLOCKED
-    set Target/ShardLocation
 
     set Plan/Version 1
     set Plan/DBServers
@@ -59,7 +58,6 @@ if [ "$1" == "init" ] ; then
     set Plan/Collections/_system
     set Plan/Collections/_system/Version 1
     set Plan/Collections/_system/Lock UNLOCKED
-    set Plan/ShardLocation
 
     set Current/Version 1
     set Current/ServersRegistered
@@ -69,7 +67,6 @@ if [ "$1" == "init" ] ; then
     set Current/Collections/_system
     set Current/Collections/_system/Version 1
     set Current/Collections/_system/Lock UNLOCKED
-    set Current/ShardLocation
 
     set Current/ShardsCopied
 
