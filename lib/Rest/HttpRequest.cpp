@@ -76,6 +76,9 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _suffix(),
     _version(HTTP_UNKNOWN),
     _databaseName(),
+#ifdef TRI_ENABLE_CLUSTER    
+    _originalDatabaseName(),
+#endif
     _user(),
     _requestContext(0),
     _isRequestContextOwner(false),
@@ -665,6 +668,16 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 string const& HttpRequest::databaseName () const {
   return _databaseName;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the database name
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+string const& HttpRequest::originalDatabaseName () const {
+  return _originalDatabaseName;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
