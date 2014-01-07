@@ -509,12 +509,22 @@ ClusterCommResult* ClusterComm::syncRequest (
 
       res->result = client->request(reqtype, path, body, bodyLength, 
                                     headerFields);
-      if (client->getErrorMessage() != "") {
+      if (res->result == 0 || ! res->result->isComplete()) {
         brokenConnection(connection);
         res->status = CL_COMM_ERROR;
       }
       else {
         returnConnection(connection);
+        if (res->result->wasHttpError()) {
+          res->status = CL_COMM_ERROR;
+        }
+        else if (client->getErrorMessage() == 
+                 "Request timeout reached") {
+          res->status = CL_COMM_TIMEOUT;
+        }
+        else if (client->getErrorMessage() != "") {
+          res->status = CL_COMM_ERROR;
+        }
       }
       delete client;
     }
@@ -589,7 +599,7 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
   {
     basics::ConditionLocker locker(&somethingReceived);
     i = receivedByOpID.find(operationID);
-    if (i != toSendByOpID.end()) {
+    if (i != receivedByOpID.end()) {
       res = new ClusterCommResult();
       if (0 == res) {
         return 0;
@@ -1132,12 +1142,23 @@ void ClusterCommThread::run () {
             // a lock, since we know that only we do such a thing:
             op->result = client->request(op->reqtype, op->path, op->body, 
                                          op->bodyLength, *(op->headerFields));
-            if (client->getErrorMessage() != "") {
+
+            if (op->result == 0 || ! op->result->isComplete()) {
               cc->brokenConnection(connection);
               op->status = CL_COMM_ERROR;
             }
             else {
               cc->returnConnection(connection);
+              if (op->result->wasHttpError()) {
+                op->status = CL_COMM_ERROR;
+              }
+              else if (client->getErrorMessage() == 
+                       "Request timeout reached") {
+                op->status = CL_COMM_TIMEOUT;
+              }
+              else if (client->getErrorMessage() != "") {
+                op->status = CL_COMM_ERROR;
+              }
             }
             delete client;
           }

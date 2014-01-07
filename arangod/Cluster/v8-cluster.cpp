@@ -1059,6 +1059,9 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
     if (res->status == CL_COMM_SUBMITTED) {
       r->Set(v8g->StatusKey, v8::String::New("SUBMITTED"));
     }
+    else if (res->status == CL_COMM_SENDING) {
+      r->Set(v8g->StatusKey, v8::String::New("SENDING"));
+    }
     else if (res->status == CL_COMM_SENT) {
       r->Set(v8g->StatusKey, v8::String::New("SENT"));
       // Maybe return the response of the initial request???
@@ -1071,6 +1074,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
       r->Set(v8g->StatusKey, v8::String::New("ERROR"));
       r->Set(v8g->ErrorMessageKey,
              v8::String::New("could not send request, DBServer gone"));
+      // TODO: give a better error result here, depending
     }
     else if (res->status == CL_COMM_DROPPED) {
       r->Set(v8g->StatusKey, v8::String::New("DROPPED"));
@@ -1078,8 +1082,10 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
              v8::String::New("request dropped whilst waiting for answer"));
     }
     else {   // Everything is OK
+      assert(res->status == CL_COMM_RECEIVED);
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New();
+      r->Set(v8g->StatusKey, v8::String::New("RECEIVED"));
       map<string,string> headers = res->answer->headers();
       map<string,string>::iterator i;
       for (i = headers.begin(); i != headers.end(); ++i) {
@@ -1157,6 +1163,102 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief send a synchronous request
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 4 || argv.Length() > 7) {
+    TRI_V8_EXCEPTION_USAGE(scope, "syncRequest("
+      "reqType, shardID, dbname, path, body, headers, options)");
+  }
+  // Possible options:
+  //   - clientTransactionID  (string)
+  //   - coordTransactionID   (number)
+  //   - timeout              (number)
+  
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  }
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "clustercomm object not found");
+  }
+
+  triagens::rest::HttpRequest::HttpRequestType reqType;
+  ShardID shardID;
+  string path;
+  string body;
+  map<string, string>* headerFields = new map<string, string>;
+  ClientTransactionID clientTransactionID;
+  CoordTransactionID coordTransactionID;
+  double timeout;
+
+  PrepareClusterCommRequest(argv, reqType, shardID, path, body, headerFields,
+                            clientTransactionID, coordTransactionID, timeout);
+
+  ClusterCommResult const* res;
+
+  res = cc->syncRequest(clientTransactionID, coordTransactionID, shardID, 
+                         reqType, path, body.c_str(), body.size(), 
+                         *headerFields, timeout);
+
+  delete headerFields;
+
+  if (res == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "couldn't do sync request");
+  }
+    
+  LOG_DEBUG("JS_SyncRequest: request has been done");
+
+  v8::Handle<v8::Object> result = PrepareClusterCommResultForJS(res);
+  delete res;
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enquire information about an asynchronous request
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Enquire (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(operationID)");
+  }
+  
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  }
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "clustercomm object not found");
+  }
+
+  OperationID operationID = TRI_ObjectToUInt64(argv[0], true);
+
+  ClusterCommResult const* res;
+
+  LOG_DEBUG("JS_Enquire: calling ClusterComm::enquire()");
+
+  res = cc->enquire(operationID);
+
+  v8::Handle<v8::Object> result = PrepareClusterCommResultForJS(res);
+  delete res;
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the result of an asynchronous request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1219,7 +1321,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 
   ClusterCommResult const* res;
 
-  LOG_DEBUG("JS_wait: calling ClusterComm::wait()");
+  LOG_DEBUG("JS_Wait: calling ClusterComm::wait()");
 
   res = cc->wait(clientTransactionID, coordTransactionID, operationID,
                  shardID, timeout);
@@ -1228,6 +1330,67 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   delete res;
 
   return scope.Close(result);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop the result of an asynchronous request
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Drop (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(obj)");
+  }
+  // Possible options:
+  //   - clientTransactionID  (string)
+  //   - coordTransactionID   (number)
+  //   - operationID          (number)
+  //   - shardID              (string)
+  
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  }
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "clustercomm object not found");
+  }
+
+  ClientTransactionID clientTransactionID = "";
+  CoordTransactionID coordTransactionID = 0;
+  OperationID operationID = 0;
+  ShardID shardID = "";
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
+                         v8::Isolate::GetCurrent()->GetData();
+
+  if (argv[0]->IsObject()) {
+    v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+    if (obj->Has(v8g->ClientTransactionIDKey)) {
+      clientTransactionID 
+        = TRI_ObjectToString(obj->Get(v8g->ClientTransactionIDKey));
+    }
+    if (obj->Has(v8g->CoordTransactionIDKey)) {
+      coordTransactionID 
+        = TRI_ObjectToUInt64(obj->Get(v8g->CoordTransactionIDKey), true);
+    }
+    if (obj->Has(v8g->OperationIDKey)) {
+      operationID = TRI_ObjectToUInt64(obj->Get(v8g->OperationIDKey), true);
+    }
+    if (obj->Has(v8g->ShardIDKey)) {
+      shardID = TRI_ObjectToString(obj->Get(v8g->ShardIDKey));
+    }
+  }
+
+  LOG_DEBUG("JS_Drop: calling ClusterComm::drop()");
+
+  cc->drop(clientTransactionID, coordTransactionID, operationID, shardID);
+
+  return scope.Close(v8::Undefined());
 }
 
 
@@ -1352,14 +1515,10 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(rt, "asyncRequest", JS_AsyncRequest);
-#if 0
   TRI_AddMethodVocbase(rt, "syncRequest", JS_SyncRequest);
   TRI_AddMethodVocbase(rt, "enquire", JS_Enquire);
-#endif
   TRI_AddMethodVocbase(rt, "wait", JS_Wait);
-#if 0
   TRI_AddMethodVocbase(rt, "drop", JS_Drop);
-#endif
 
   v8g->ClusterCommTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoClusterCommCtor", 

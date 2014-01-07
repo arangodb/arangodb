@@ -176,7 +176,7 @@ namespace triagens {
       ClusterCommCallback* callback;
       ClusterCommTimeout endTime;
 
-      ClusterCommOperation () {}
+      ClusterCommOperation () : headerFields(0), callback(0) {}
       virtual ~ClusterCommOperation () {
         if (_deleteOnDestruction && 0 != headerFields) {
           delete headerFields;
