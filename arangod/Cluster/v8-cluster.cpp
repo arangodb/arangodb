@@ -1140,6 +1140,66 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief send a synchronous request
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 4 || argv.Length() > 7) {
+    TRI_V8_EXCEPTION_USAGE(scope, "asyncRequest("
+      "reqType, shardID, dbname, path, body, headers, options)");
+  }
+  // Possible options:
+  //   - clientTransactionID  (string)
+  //   - coordTransactionID   (number)
+  //   - timeout              (number)
+  
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  }
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "clustercomm object not found");
+  }
+
+  triagens::rest::HttpRequest::HttpRequestType reqType;
+  ShardID shardID;
+  string path;
+  string body;
+  map<string, string>* headerFields = new map<string, string>;
+  ClientTransactionID clientTransactionID;
+  CoordTransactionID coordTransactionID;
+  double timeout;
+
+  PrepareClusterCommRequest(argv, reqType, shardID, path, body, headerFields,
+                            clientTransactionID, coordTransactionID, timeout);
+
+  ClusterCommResult const* res;
+
+  res = cc->syncRequest(clientTransactionID, coordTransactionID, shardID, 
+                         reqType, path, body.c_str(), body.size(), 
+                         *headerFields, timeout);
+
+  delete headerFields;
+
+  if (res == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "couldn't do sync request");
+  }
+    
+  LOG_DEBUG("JS_SyncRequest: request has been done");
+
+  v8::Handle<v8::Object> result = PrepareClusterCommResultForJS(res);
+  delete res;
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enquire information about an asynchronous request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1432,9 +1492,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(rt, "asyncRequest", JS_AsyncRequest);
-#if 0
   TRI_AddMethodVocbase(rt, "syncRequest", JS_SyncRequest);
-#endif
   TRI_AddMethodVocbase(rt, "enquire", JS_Enquire);
   TRI_AddMethodVocbase(rt, "wait", JS_Wait);
   TRI_AddMethodVocbase(rt, "drop", JS_Drop);
