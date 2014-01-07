@@ -243,7 +243,7 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "list(<key>, <recursive>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "list(<key>, <recursive>, <flat>)");
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
@@ -251,6 +251,11 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
 
   if (argv.Length() > 1) {
     recursive = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  bool flat = false;
+  if (argv.Length() > 2) {
+    flat = TRI_ObjectToBoolean(argv[2]);
   }
   
   AgencyComm comm;
@@ -260,22 +265,39 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
   
-  v8::Handle<v8::Object> l = v8::Object::New();
-
   // return just the value for each key
   std::map<std::string, bool> out;
   result.flattenJson(out, "");
   std::map<std::string, bool>::const_iterator it = out.begin(); 
 
-  while (it != out.end()) {
-    const std::string key = (*it).first;
-    const bool isDirectory = (*it).second;
+  // skip first entry
+  ++it;
 
-    l->Set(v8::String::New(key.c_str(), key.size()), v8::Boolean::New(isDirectory)); 
-    ++it;
+  if (flat) {
+    v8::Handle<v8::Array> l = v8::Array::New();
+
+    uint32_t i = 0;
+    while (it != out.end()) {
+      const std::string key = (*it).first;
+
+      l->Set(i++, v8::String::New(key.c_str(), key.size()));
+      ++it;
+    }
+    return scope.Close(l);
   }
 
-  return scope.Close(l);
+  else {
+    v8::Handle<v8::Object> l = v8::Object::New();
+
+    while (it != out.end()) {
+      const std::string key = (*it).first;
+      const bool isDirectory = (*it).second;
+
+      l->Set(v8::String::New(key.c_str(), key.size()), v8::Boolean::New(isDirectory)); 
+      ++it;
+    }
+    return scope.Close(l);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

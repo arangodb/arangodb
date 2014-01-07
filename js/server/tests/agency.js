@@ -101,7 +101,6 @@ function AgencySuite () {
 
       var values = agency.list("UnitTestsAgency/foo");
       assertEqual({ 
-        "UnitTestsAgency/foo" : true,
         "UnitTestsAgency/foo/1" : false, 
         "UnitTestsAgency/foo/2" : false, 
         "UnitTestsAgency/foo/3" : false, 
@@ -111,7 +110,6 @@ function AgencySuite () {
 
       values = agency.list("UnitTestsAgency/foo", true);
       assertEqual({ 
-        "UnitTestsAgency/foo" : true, 
         "UnitTestsAgency/foo/1" : false, 
         "UnitTestsAgency/foo/2" : false, 
         "UnitTestsAgency/foo/3" : false, 
@@ -129,7 +127,6 @@ function AgencySuite () {
       values = agency.list("UnitTestsAgency/foo");
 
       assertEqual({ 
-        "UnitTestsAgency/foo" : true,
         "UnitTestsAgency/foo/1" : false, 
         "UnitTestsAgency/foo/2" : false, 
         "UnitTestsAgency/foo/3" : false, 
@@ -137,6 +134,60 @@ function AgencySuite () {
         "UnitTestsAgency/foo/bam" : true, 
         "UnitTestsAgency/foo/bar" : true 
       }, values);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test list
+////////////////////////////////////////////////////////////////////////////////
+
+    testListFlat : function () {
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo"));
+      assertTrue(agency.set("UnitTestsAgency/foo/1", "foo1"));
+      assertTrue(agency.set("UnitTestsAgency/foo/2", "foo2"));
+      assertTrue(agency.set("UnitTestsAgency/foo/3", "foo3"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bam"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bar"));
+      assertTrue(agency.set("UnitTestsAgency/foo/bar/1", "bar1"));
+      assertTrue(agency.set("UnitTestsAgency/foo/bar/2", "bar2"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bar/baz"));
+      assertTrue(agency.set("UnitTestsAgency/foo/bar/baz/1", "baz1"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/bar/baz/bam"));
+
+      var values = agency.list("UnitTestsAgency/foo", false, true);
+      assertEqual([ 
+        "UnitTestsAgency/foo/1",
+        "UnitTestsAgency/foo/2",
+        "UnitTestsAgency/foo/3", 
+        "UnitTestsAgency/foo/bam", 
+        "UnitTestsAgency/foo/bar"
+      ], values);
+
+      values = agency.list("UnitTestsAgency/foo", true, true);
+      assertEqual([ 
+        "UnitTestsAgency/foo/1", 
+        "UnitTestsAgency/foo/2", 
+        "UnitTestsAgency/foo/3", 
+        "UnitTestsAgency/foo/bam", 
+        "UnitTestsAgency/foo/bar", 
+        "UnitTestsAgency/foo/bar/1", 
+        "UnitTestsAgency/foo/bar/2", 
+        "UnitTestsAgency/foo/bar/baz", 
+        "UnitTestsAgency/foo/bar/baz/1", 
+        "UnitTestsAgency/foo/bar/baz/bam" 
+      ], values);
+      
+      // insert a new directory (above the others, sort order is important)
+      assertTrue(agency.createDirectory("UnitTestsAgency/foo/abc"));
+      values = agency.list("UnitTestsAgency/foo", false, true);
+
+      assertEqual([
+        "UnitTestsAgency/foo/1", 
+        "UnitTestsAgency/foo/2", 
+        "UnitTestsAgency/foo/3", 
+        "UnitTestsAgency/foo/abc", 
+        "UnitTestsAgency/foo/bam", 
+        "UnitTestsAgency/foo/bar" 
+      ], values);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
