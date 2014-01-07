@@ -147,15 +147,7 @@ namespace triagens {
          bool _disableHeartbeat;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat interval (in ms)
-///
-/// @CMDOPT{\--cluster.heartbeat-interval @CA{interval}}
-///
-/// Specifies the cluster heartbeat interval in milliseconds. Lower values 
-/// mean more frequent heartbeats, but may result in higher overhead (more
-/// network traffic and CPU usage).
-///
-/// The default value is `1000` ms.
+/// @brief heartbeat interval (in milliseconds)
 ////////////////////////////////////////////////////////////////////////////////
 
          uint64_t _heartbeatInterval;

@@ -43,7 +43,6 @@ TOC {#CommandLineTOC}
   - @ref CommandLineDevelopment
     - @ref CommandLineArangoDevelopmentMode "development-mode"
   - @ref CommandLineCluster
-    - @ref CommandLineArangoClusterHeartbeatInterval "cluster.heartbeat-interval"
     - @ref CommandLineArangoClusterAgencyEndpoint "cluster.agency-endpoint"
     - @ref CommandLineArangoClusterAgencyPrefix "cluster.agency-prefix"
     - @ref CommandLineArangoClusterMyId "cluster.my-id"

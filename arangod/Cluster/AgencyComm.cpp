@@ -650,7 +650,9 @@ void AgencyComm::cleanup () {
 bool AgencyComm::tryConnect () {
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
-    assert(_globalEndpoints.size() > 0);
+    if (_globalEndpoints.size() == 0) {
+      return false;
+    }
 
     std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -969,9 +971,12 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::sendServerState () {
-  const std::string value = ServerState::stateToString(ServerState::instance()->getState()) + 
-                            ":" + 
-                            AgencyComm::generateStamp();
+  // construct JSON value { "status": "...", "time": "..." }
+  std::string value("{\"status\":\"");
+  value.append(ServerState::stateToString(ServerState::instance()->getState()));
+  value.append("\",\"time\":\""); 
+  value.append(AgencyComm::generateStamp());
+  value.append("\"}"); 
   
   AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), value, 0.0));
   return result.successful();
@@ -1473,9 +1478,13 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
   {
     READ_LOCKER(AgencyComm::_globalLock);
     numEndpoints = AgencyComm::_globalEndpoints.size(); 
-    assert(numEndpoints > 0);
+    if (numEndpoints == 0) {
+      return false;
+    }
   }
  
+  assert(numEndpoints > 0);
+
   size_t tries = 0;
   std::string realUrl = url;
   std::string forceEndpoint = "";

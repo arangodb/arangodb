@@ -233,7 +233,6 @@ ClusterInfo::ClusterInfo ()
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
   
   loadServers();
-  loadShards();
   loadCollections();
 }
 
@@ -334,6 +333,7 @@ void ClusterInfo::loadCollections () {
       
         WRITE_LOCKER(_lock);
         _collections.clear(); 
+        _shardIds.clear();
 
         std::map<std::string, std::string>::const_iterator it;
         for (it = collections.begin(); it != collections.end(); ++it) {
@@ -357,11 +357,11 @@ void ClusterInfo::loadCollections () {
 
           // check whether we have created an entry for the database already
           AllCollections::iterator it2 = _collections.find(database);
+          CollectionInfo collectionData((*it).second);
 
           if (it2 == _collections.end()) {
             // not yet, so create an entry for the database
             DatabaseCollections empty;
-            CollectionInfo collectionData((*it).second);
             empty.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
             empty.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
 
@@ -369,9 +369,19 @@ void ClusterInfo::loadCollections () {
           }
           else {
             // insert the collection into the existing map
-            CollectionInfo collectionData((*it).second);
             (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
             (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
+          }
+
+          std::map<std::string, std::string> shards = collectionData.shardIds();
+          std::map<std::string, std::string>::const_iterator it3 = shards.begin();
+          
+          while (it3 != shards.end()) {
+            const std::string shardId = (*it3).first;
+            const std::string serverId = (*it3).second;
+
+            _shardIds.insert(std::make_pair<ShardID, ServerID>(shardId, serverId));
+            ++it3;
           }
         }
 
@@ -514,45 +524,6 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about shards from the agency
-/// Usually one does not have to call this directly.
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::loadShards () {
-  while (true) {
-    AgencyCommResult result;
-
-    {
-      AgencyCommLocker locker("Current", "READ");
-      result = _agency.getValues("Current/ShardLocation", true);
-    }
-
-    if (result.successful()) {
-      std::map<std::string, std::string> shards;
-
-      if (result.flattenJson(shards, "Current/ShardLocation/", false)) {
-        LOG_TRACE("Current/ShardLocation loaded successfully");
-
-        // now update our internals with the results
-        WRITE_LOCKER(_lock);
-        _shardIds.clear();
-
-        std::map<ShardID, ServerID>::const_iterator it;
-        for (it = shards.begin(); it != shards.end(); ++it) {
-          _shardIds.insert(std::make_pair<ShardID, ServerID>((*it).first, (*it).second));
-        }
-        
-        return;
-      }
-    }
-    
-    LOG_TRACE("Error while loading Current/ServersRegistered");
-
-    usleep(1000);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find the server who is responsible for a shard
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
@@ -571,8 +542,8 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
       }
     }
 
-    // must call loadShards outside the lock
-    loadShards();
+    // must call loadCollections outside the lock
+    loadCollections();
   }
 
   return ServerID("");
