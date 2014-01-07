@@ -1108,6 +1108,80 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the result of an asynchronous request
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(obj)");
+  }
+  // Possible options:
+  //   - clientTransactionID  (string)
+  //   - coordTransactionID   (number)
+  //   - operationID          (number)
+  //   - shardID              (string)
+  //   - timeout              (number)
+  
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  }
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                             "clustercomm object not found");
+  }
+
+  ClientTransactionID clientTransactionID = "";
+  CoordTransactionID coordTransactionID = 0;
+  OperationID operationID = 0;
+  ShardID shardID = "";
+  double timeout = 24*3600.0;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
+                         v8::Isolate::GetCurrent()->GetData();
+
+  if (argv[0]->IsObject()) {
+    v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+    if (obj->Has(v8g->ClientTransactionIDKey)) {
+      clientTransactionID 
+        = TRI_ObjectToString(obj->Get(v8g->ClientTransactionIDKey));
+    }
+    if (obj->Has(v8g->CoordTransactionIDKey)) {
+      coordTransactionID 
+        = TRI_ObjectToUInt64(obj->Get(v8g->CoordTransactionIDKey), true);
+    }
+    if (obj->Has(v8g->OperationIDKey)) {
+      operationID = TRI_ObjectToUInt64(obj->Get(v8g->OperationIDKey), true);
+    }
+    if (obj->Has(v8g->ShardIDKey)) {
+      shardID = TRI_ObjectToString(obj->Get(v8g->ShardIDKey));
+    }
+    if (obj->Has(v8g->TimeoutKey)) {
+      timeout = TRI_ObjectToDouble(obj->Get(v8g->TimeoutKey));
+      if (timeout == 0.0) {
+        timeout = 24*3600.0;
+      }
+    }
+  }
+
+  ClusterCommResult const* res;
+
+  LOG_DEBUG("JS_wait: calling ClusterComm::wait()");
+
+  res = cc->wait(clientTransactionID, coordTransactionID, operationID,
+                 shardID, timeout);
+
+  v8::Handle<v8::Object> result = PrepareClusterCommResultForJS(res);
+  delete res;
+
+  return scope.Close(result);
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1214,7 +1288,9 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
 #if 0
   TRI_AddMethodVocbase(rt, "syncRequest", JS_SyncRequest);
   TRI_AddMethodVocbase(rt, "enquire", JS_Enquire);
+#endif
   TRI_AddMethodVocbase(rt, "wait", JS_Wait);
+#if 0
   TRI_AddMethodVocbase(rt, "drop", JS_Drop);
 #endif
 
