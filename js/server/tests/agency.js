@@ -37,27 +37,41 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function AgencySuite () {
-  var agency;
+  var agency = new ArangoAgency();
+  var oldPrefix = agency.prefix(true);
 
   var cleanupLocks = function () {
     agency.set("UnitTestsAgency/Target/Lock", "UNLOCKED");
     agency.set("UnitTestsAgency/Plan/Lock", "UNLOCKED");
     agency.set("UnitTestsAgency/Current/Lock", "UNLOCKED");
   };
-
+  
   return {
 
     setUp : function () {
-      agency = new ArangoAgency();
+      agency.setPrefix("UnitTestsAgency");
+      assertEqual("UnitTestsAgency", agency.prefix(true));
       
       try {
         agency.remove("UnitTestsAgency", true);
+        //agency.remove("UnitTestsAgency", true);
       }
       catch (err) {
         // dir may not exist. this is not a problem
       }
 
       agency.createDirectory("UnitTestsAgency");
+    },
+    
+    tearDown : function () {
+      try {
+        agency.remove("UnitTestsAgency", true);
+      }
+      catch (err) {
+      }
+
+      agency.setPrefix(oldPrefix);
+      assertEqual(oldPrefix, agency.prefix(true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

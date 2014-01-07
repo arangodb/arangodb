@@ -22,6 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,8 +54,9 @@ CollectionInfo::CollectionInfo ()
   : _id(),
     _name(),
     _type(TRI_COL_TYPE_UNKNOWN),
+    _status(TRI_VOC_COL_STATUS_CORRUPTED),
     _shardKeys(),
-    _shards() {
+    _shardIds() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +96,9 @@ void CollectionInfo::invalidate () {
   _id   = 0;
   _name = "";
   _type = TRI_COL_TYPE_UNKNOWN;
+  _status = TRI_VOC_COL_STATUS_CORRUPTED;
   _shardKeys.clear();
-  _shards.clear();
+  _shardIds.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,11 +107,12 @@ void CollectionInfo::invalidate () {
 
 bool CollectionInfo::createFromJson (TRI_json_t const* json) {
   // id
-  std::string id = JsonHelper::getStringValue(json, "id", "");
+  const std::string id = JsonHelper::getStringValue(json, "id", "");
   if (id.empty()) {
     return false;
   }
   _id = triagens::basics::StringUtils::uint64(id.c_str(), id.size());
+
 
   // name
   _name = JsonHelper::getStringValue(json, "name", "");
@@ -117,12 +121,22 @@ bool CollectionInfo::createFromJson (TRI_json_t const* json) {
   }
 
   // type
-  _type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, "type", (int) TRI_COL_TYPE_UNKNOWN);
+  _type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, 
+                                                            "type", 
+                                                            (int) TRI_COL_TYPE_UNKNOWN);
   if (_type == TRI_COL_TYPE_UNKNOWN) {
     return false;
   }
 
-  // TODO: status
+  // status
+  _status = (TRI_vocbase_col_status_e) JsonHelper::getNumericValue<int>(json, 
+                                                                        "status", 
+                                                                        (int) TRI_VOC_COL_STATUS_NEW_BORN);
+  if (_status == TRI_VOC_COL_STATUS_CORRUPTED || 
+      _status == TRI_VOC_COL_STATUS_NEW_BORN) {
+    return false;
+  }
+  
   // TODO: indexes
 
   // shardKeys
@@ -137,7 +151,7 @@ bool CollectionInfo::createFromJson (TRI_json_t const* json) {
   if (! JsonHelper::isList(value)) {
     return false;
   }
-  _shards = JsonHelper::stringList(value);
+  _shardIds = JsonHelper::stringList(value);
 
   return true;
 }
@@ -162,7 +176,10 @@ TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
 
   TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringJson(zone, data));
   TRI_Insert3ArrayJson(zone, json, "name", TRI_CreateStringCopyJson(zone, _name.c_str()));
-  TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateNumberJson(zone, (double) _type));
+  TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateNumberJson(zone, (int) _type));
+  TRI_Insert3ArrayJson(zone, json, "status", TRI_CreateNumberJson(zone, (int) _status));
+
+  // TODO: indexes
 
   TRI_json_t* values = JsonHelper::stringList(zone, _shardKeys);
 
@@ -173,7 +190,7 @@ TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
 
   TRI_Insert3ArrayJson(zone, json, "shardKeys", values);
   
-  values = JsonHelper::stringList(zone, _shards);
+  values = JsonHelper::stringList(zone, _shardIds);
 
   if (values == 0) {
     TRI_FreeJson(zone, json);
@@ -255,6 +272,18 @@ uint64_t ClusterInfo::uniqid (uint64_t count) {
   }
 
   return _uniqid._currentValue++;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the caches (used for testing)
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::flush () {
+  WRITE_LOCKER(_lock);
+
+  _collections.clear();
+  _servers.clear();
+  _shardIds.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,8 +379,8 @@ void ClusterInfo::loadCollections () {
     }
 
     LOG_TRACE("Error while loading Current/Collections");
-
-    usleep(1000);
+    return;
+    //usleep(1000);
   }
 }
 
@@ -412,7 +441,7 @@ void ClusterInfo::loadServers () {
 
         std::map<std::string, std::string>::const_iterator it;
         for (it = servers.begin(); it != servers.end(); ++it) {
-          _shards.insert(std::make_pair<ServerID, std::string>((*it).first, (*it).second));
+          _servers.insert(std::make_pair<ServerID, std::string>((*it).first, (*it).second));
         }
 
         return;
@@ -421,7 +450,8 @@ void ClusterInfo::loadServers () {
 
     LOG_TRACE("Error while loading Current/ServersRegistered");
 
-    usleep(1000);
+    return;
+    //usleep(1000);
   }
 }
 
@@ -452,6 +482,37 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
+/// our id
+////////////////////////////////////////////////////////////////////////////////
+  
+std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
+  // fetch value at Target/MapIDToEndpoint
+  AgencyCommLocker locker("Target", "READ");
+  AgencyCommResult result = _agency.getValues("Target/MapIDToEndpoint/" + serverID,
+                                              false);
+  locker.unlock();  // release as fast as possible
+ 
+  if (result.successful()) {
+    std::map<std::string, std::string> out;
+
+    if (! result.flattenJson(out, "Target/MapIDToEndpoint/", false)) {
+      LOG_FATAL_AND_EXIT("Got an invalid JSON response for Target/MapIDToEndpoint");
+    }
+
+    // check if we can find ourselves in the list returned by the agency
+    std::map<std::string, std::string>::const_iterator it = out.find(serverID);
+
+    if (it != out.end()) {
+      return (*it).second;
+    }
+  }
+
+  // not found
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about shards from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,11 +534,11 @@ void ClusterInfo::loadShards () {
 
         // now update our internals with the results
         WRITE_LOCKER(_lock);
-        _shards.clear();
+        _shardIds.clear();
 
         std::map<ShardID, ServerID>::const_iterator it;
         for (it = shards.begin(); it != shards.end(); ++it) {
-          _shards.insert(std::make_pair<ShardID, ServerID>((*it).first, (*it).second));
+          _shardIds.insert(std::make_pair<ShardID, ServerID>((*it).first, (*it).second));
         }
         
         return;
@@ -502,9 +563,9 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   while (++tries <= 2) {
     {
       READ_LOCKER(_lock);
-      std::map<ShardID, ServerID>::const_iterator it = _shards.find(shardID);
+      std::map<ShardID, ServerID>::const_iterator it = _shardIds.find(shardID);
 
-      if (it != _shards.end()) {
+      if (it != _shardIds.end()) {
         return (*it).second;
       }
     }
