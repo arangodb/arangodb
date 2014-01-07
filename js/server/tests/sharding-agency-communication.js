@@ -57,10 +57,11 @@
     target: "Target",
     plan: "Plan",
     current: "Current",
-    fail: "Fail",
+    fail: "Sync",
     sub: {
       servers:"DBServers",
       coords: "Coordinators",
+      colls: "Collections",
       registered: "ServersRegistered"
     }
   };
@@ -76,6 +77,31 @@
       "charly": "alice"
     };
     var databases = ["_system", "z_db", "a_db", "b_db"];
+    var vInfo = {
+      status: "loaded",
+      shardKeys: ["_key"],
+      name: "v",
+      shards: {
+        v1: "pavel",
+        v2: "paul",
+        v3: "patricia", 
+        v4: "pavel",
+        v5: "patricia",
+        v6: "pavel"
+      }
+    };
+    var collections = {
+      _system: {
+        "98213": JSON.stringify({name: "_graphs"}),
+        "87123": JSON.stringify(vInfo),
+        "89123": JSON.stringify({name: "e"})
+      },
+      a_db: {
+        "11235": JSON.stringify({name: "s"}),
+        "6512": JSON.stringify({name: "a"}),
+        "123": JSON.stringify({name: "d"})
+      }
+    };
     var ips = {
       "pavel": "tcp://192.168.0.1:8529",
       "paul": "tcp://192.168.0.2:8529",
@@ -92,16 +118,26 @@
     dummy.target.servers = createResult([agencyRoutes.target, agencyRoutes.sub.servers], dbServers);
     dummy.target.coordinators = createResult([agencyRoutes.target, agencyRoutes.sub.coords], coordinators);
     dummy.target.databases = databases;
+    dummy.target.syscollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
+    dummy.target.acollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.target.vInfo = JSON.stringify(vInfo);
 
     dummy.plan = {};
     dummy.plan.servers = createResult([agencyRoutes.plan, agencyRoutes.sub.servers], dbServers);
-    dummy.plan.coordinators = createResult([agencyRoutes.target, agencyRoutes.sub.coords], coordinators);
+    dummy.plan.coordinators = createResult([agencyRoutes.plan, agencyRoutes.sub.coords], coordinators);
     dummy.plan.databases = databases;
+    dummy.plan.syscollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
+    dummy.plan.acollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.plan.vInfo = JSON.stringify(vInfo);
 
     dummy.current = {};
     dummy.current.servers = createResult([agencyRoutes.current, agencyRoutes.sub.servers], dbServers);
     dummy.current.coordinators = createResult([agencyRoutes.current, agencyRoutes.sub.coords], coordinators);
     dummy.current.registered = createResult([agencyRoutes.current, agencyRoutes.sub.registered], ips);
+    dummy.current.databases = databases;
+    dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
+    dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.current.vInfo = JSON.stringify(vInfo);
   };
   var setup = function() {
     resetToDefault();
@@ -116,15 +152,75 @@
           if (parts[1] === agencyRoutes.sub.servers && recursive) {
             return dummy.target.servers;
           }
+          if (parts[1] === agencyRoutes.sub.colls) {
+            if (recursive) {
+              if (parts[2] === "_system") {
+                return dummy.target.syscollections;
+              }
+              if (parts[2] === "a_db") {
+                return dummy.target.acollections;
+              }
+              if (parts[2] === "b_db") {
+                return {};
+              }
+              if (parts[2] === "z_db") {
+                return {};
+              }
+            } else {
+              if (parts[2] === "_system" && parts[3] === "87123") {
+                return dummy.target.vInfo;
+              }
+            }
+          }
           break;
         case agencyRoutes.plan:
           if (parts[1] === agencyRoutes.sub.servers && recursive) {
             return dummy.plan.servers;
           }
+          if (parts[1] === agencyRoutes.sub.colls) {
+            if (recursive) {
+              if (parts[2] === "_system") {
+                return dummy.plan.syscollections;
+              }
+              if (parts[2] === "a_db") {
+                return dummy.plan.acollections;
+              }
+              if (parts[2] === "b_db") {
+                return {};
+              }
+              if (parts[2] === "z_db") {
+                return {};
+              }
+            } else {
+              if (parts[2] === "_system" && parts[3] === "87123") {
+                return dummy.plan.vInfo;
+              }
+            }
+          }
           break;
         case agencyRoutes.current:
           if (parts[1] === agencyRoutes.sub.servers && recursive) {
             return dummy.current.servers;
+          }
+          if (parts[1] === agencyRoutes.sub.colls) {
+            if (recursive) {
+              if (parts[2] === "_system") {
+                return dummy.current.syscollections;
+              }
+              if (parts[2] === "a_db") {
+                return dummy.current.acollections;
+              }
+              if (parts[2] === "b_db") {
+                return {};
+              }
+              if (parts[2] === "z_db") {
+                return {};
+              }
+            } else {
+              if (parts[2] === "_system" && parts[3] === "87123") {
+                return dummy.current.vInfo;
+              }
+            }
           }
           if (parts[1] === agencyRoutes.sub.registered && recursive) {
             return dummy.current.registered;
@@ -133,12 +229,13 @@
         default:
           fail();
       }
+      fail();
     },
     list: function(route) {
       var parts = route.split("/");
       switch (parts[0]) {
         case agencyRoutes.target:
-          if (parts[1] === "Collections") {
+          if (parts[1] === agencyRoutes.sub.colls) {
             return dummy.target.databases;
           }
           if (parts[1] === agencyRoutes.sub.coords) {
@@ -146,29 +243,35 @@
               _.keys(dummy.target.coordinators),
               function(k) {
                 var splits = k.split("/");
-                return splits[splits.length-1];
+                return splits[splits.length - 1];
               }
             );
           }
           break;
         case agencyRoutes.plan:
+          if (parts[1] === agencyRoutes.sub.colls) {
+            return dummy.plan.databases;
+          }
           if (parts[1] === agencyRoutes.sub.coords) {
             return _.map(
               _.keys(dummy.plan.coordinators),
               function(k) {
                 var splits = k.split("/");
-                return splits[splits.length-1];
+                return splits[splits.length - 1];
               }
             );
           }
           break;
         case agencyRoutes.current:
+          if (parts[1] === agencyRoutes.sub.colls) {
+            return dummy.current.databases;
+          }
           if (parts[1] === agencyRoutes.sub.coords) {
             return _.map(
               _.keys(dummy.current.coordinators),
               function(k) {
                 var splits = k.split("/");
-                return splits[splits.length-1];
+                return splits[splits.length - 1];
               }
             );
           }
@@ -188,7 +291,7 @@
   // --SECTION--                                                            vision
   // -----------------------------------------------------------------------------
   function runVisionTests(test) {
-    
+   // Not yet defined and in use, changes are applied in Target directly 
   };
 
   // -----------------------------------------------------------------------------
@@ -440,9 +543,13 @@
   // -----------------------------------------------------------------------------
 
     function DataSuite() {
-     
+      var dbs;
+
       return {
-        setUp: setup,
+        setUp: function() {
+          setup();
+          dbs = comm.target.Databases();
+        },
         tearDown: teardown,
 
         testGetDatabaseList: function() {
@@ -452,20 +559,77 @@
             "b_db",
             "z_db"
           ].sort();
-          var targetDBs = comm.target.Databases();
-          assertEqual(targetDBs.getList(), list);
+          assertEqual(dbs.getList(), list);
         },
 
         testGetCollectionListForDatabase: function() {
-          /*
-          var list = [
+          var syslist = [
             "_graphs",
             "v",
             "e"
           ].sort();
-          var targetColls = comm.target._system();
-          assertEqual(targetColls.getList(), list);
-          */
+          var alist = [
+            "s",
+            "a",
+            "d"
+          ].sort();
+          assertEqual(dbs.select("_system").getCollections(), syslist);
+          assertEqual(dbs.select("a_db").getCollections(), alist);
+        },
+
+        testSelectNotExistingDatabase: function() {
+          assertFalse(dbs.select("foxx"));
+        },
+
+        testGetCollectionMetaInfo: function() {
+          var sysdb = dbs.select("_system");
+          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+        },
+
+        testGetResponsibilitiesForCollection: function() {
+          var colV = dbs.select("_system").collection("v");
+          var expected = {
+            v1: "pavel",
+            v2: "paul",
+            v3: "patricia",
+            v4: "pavel",
+            v5: "patricia",
+            v6: "pavel"
+          };
+          assertEqual(colV.getShards(), expected);
+        },
+
+        testGetShardsForServer: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+        },
+
+        testGetServerForShard: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertEqual(colV.getServerForShard("v2"), "paul");
+        },
+
+        testMoveResponsibility: function() {
+          var colV = dbs.select("_system").collection("v");
+          var source = "pavel";
+          var target = "paul";
+          var shard = "v1";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.collections, "_system", "87123"].join("/"));
+            // TODO Check Object correctness
+            dummy.target.coordinators[route] = value;
+            wasCalled = true;
+            return true;
+          };
+
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertTrue(colV.moveShard("v1", "pavel"), "Failed to move shard responsibility.");
+          assertTrue(wasCalled, "Agency has not been informed to move shard..");
+          assertEqual(colV.getServerForShard("v1"), "paul");
         }
       };
     };
@@ -545,9 +709,74 @@
     };
 
     function DataSuite() {
+      var dbs;
+
       return {
-        setUp: setup,
+        setUp: function() {
+          setup();
+          dbs = comm.plan.Databases();
+        },
         tearDown: teardown,
+
+        testGetDatabaseList: function() {
+          var list = [
+            "_system",
+            "a_db",
+            "b_db",
+            "z_db"
+          ].sort();
+          assertEqual(dbs.getList(), list);
+        },
+
+        testGetCollectionListForDatabase: function() {
+          var syslist = [
+            "_graphs",
+            "v",
+            "e"
+          ].sort();
+          var alist = [
+            "s",
+            "a",
+            "d"
+          ].sort();
+          assertEqual(dbs.select("_system").getCollections(), syslist);
+          assertEqual(dbs.select("a_db").getCollections(), alist);
+        },
+
+        testSelectNotExistingDatabase: function() {
+          assertFalse(dbs.select("foxx"));
+        },
+
+        testGetCollectionMetaInfo: function() {
+          var sysdb = dbs.select("_system");
+          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+        },
+
+        testGetResponsibilitiesForCollection: function() {
+          var colV = dbs.select("_system").collection("v");
+          var expected = {
+            v1: "pavel",
+            v2: "paul",
+            v3: "patricia",
+            v4: "pavel",
+            v5: "patricia",
+            v6: "pavel"
+          };
+          assertEqual(colV.getShards(), expected);
+        },
+
+        testGetShardsForServer: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+        },
+
+        testGetServerForShard: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertEqual(colV.getServerForShard("v2"), "paul");
+        }
       };
     };
 
@@ -629,15 +858,88 @@
 
     };
 
+    function DataSuite() {
+      var dbs;
+
+      return {
+        setUp: function() {
+          setup();
+          dbs = comm.current.Databases();
+        },
+        tearDown: teardown,
+
+        testGetDatabaseList: function() {
+          var list = [
+            "_system",
+            "a_db",
+            "b_db",
+            "z_db"
+          ].sort();
+          assertEqual(dbs.getList(), list);
+        },
+
+        testGetCollectionListForDatabase: function() {
+          var syslist = [
+            "_graphs",
+            "v",
+            "e"
+          ].sort();
+          var alist = [
+            "s",
+            "a",
+            "d"
+          ].sort();
+          assertEqual(dbs.select("_system").getCollections(), syslist);
+          assertEqual(dbs.select("a_db").getCollections(), alist);
+        },
+
+        testSelectNotExistingDatabase: function() {
+          assertFalse(dbs.select("foxx"));
+        },
+
+        testGetCollectionMetaInfo: function() {
+          var sysdb = dbs.select("_system");
+          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+        },
+
+        testGetResponsibilitiesForCollection: function() {
+          var colV = dbs.select("_system").collection("v");
+          var expected = {
+            v1: "pavel",
+            v2: "paul",
+            v3: "patricia",
+            v4: "pavel",
+            v5: "patricia",
+            v6: "pavel"
+          };
+          assertEqual(colV.getShards(), expected);
+        },
+
+        testGetShardsForServer: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+        },
+
+        testGetServerForShard: function() {
+          var colV = dbs.select("_system").collection("v");
+          assertEqual(colV.getServerForShard("v1"), "pavel");
+          assertEqual(colV.getServerForShard("v2"), "paul");
+        }
+      };
+    };
+
     test.run(DBServersSuite);
     test.run(CoordinatorSuite);
+    test.run(DataSuite);
   };
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                              Fail
+  // --SECTION--                                                              Sync
   // -----------------------------------------------------------------------------
 
-  function runFailTests(test) {
+  function runSyncTests(test) {
 
   };
 
@@ -653,7 +955,7 @@
   runTargetTests(jsunity);
   runPlanTests(jsunity);
   runCurrentTests(jsunity);
-  runFailTests(jsunity);
+  runSyncTests(jsunity);
 
   return jsunity.done();
 

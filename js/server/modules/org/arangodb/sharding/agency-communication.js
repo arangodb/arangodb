@@ -45,8 +45,22 @@ exports.Communication = function() {
     DBServers,
     agencyRoutes,
     Target,
+    mapCollectionIDsToNames,
     _ = require("underscore");
 
+  splitServerName = function(route) {
+    var splits = route.split("/");
+    return splits[splits.length - 1];
+  };
+
+
+  mapCollectionIDsToNames = function(list) {
+    var res = {};
+    _.each(list, function(v, k) {
+      res[JSON.parse(v).name] = splitServerName(k);
+    });
+    return res;
+  };
 
   _AgencyWrapper = function() {
     var _agency = exports._createAgency();
@@ -91,17 +105,30 @@ exports.Communication = function() {
       base[name] = newLevel;
       return newLevel;
     };
+    var addLevelsForDBs = function(base) {
+      var list = base.list();
+      _.each(list, function(d) {
+        addLevel(base, d, d, ["get", "checkVersion"]);
+        var colList = mapCollectionIDsToNames(base[d].get(true));
+        _.each(colList, function(id, name) {
+          addLevel(base[d], name, id, ["get"]);
+        });
+      });
+    };
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
     addLevel(target, "db", "Collections", ["list"]);
+    addLevelsForDBs(target.db);
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(plan, "db", "Collections", ["list"]);
+    addLevelsForDBs(plan.db);
     addLevel(plan, "coordinators", "Coordinators", ["list", "checkVersion"]);
     var current = addLevel(this, "current", "Current");
     addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(current, "db", "Collections", ["list"]);
+    addLevelsForDBs(current.db);
     addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
     addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
 
@@ -120,11 +147,6 @@ exports.Communication = function() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                       Update Wanted Configuration
 // -----------------------------------------------------------------------------
-
-  splitServerName = function(route) {
-    var splits = route.split("/");
-    return splits[splits.length - 1];
-  };
 
   storeServersInCache = function(place, servers) {
     _.each(servers, function(v, k) {
@@ -202,6 +224,136 @@ exports.Communication = function() {
   updatePlan();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               Object Constructors
+// -----------------------------------------------------------------------------
+
+  var DBServersObject = function(route, writeAccess) {
+    var cache = {};
+    var servers;
+    var getList = function() {
+      if (!route.checkVersion()) {
+        cache = {};
+        servers = route.get(true);
+        storeServersInCache(cache, servers);
+      }
+      return cache;
+    };
+    this.getList = function() {
+      return getList();
+    };
+    if (writeAccess) {
+      this.addPrimary = function(name) {
+        return route.set(name, "none");
+      };
+      this.addSecondary = function(name, primaryName) {
+        return route.set(primaryName, name);
+      };
+      this.addPair = function(primaryName, secondaryName) {
+        return route.set(primaryName, secondaryName);
+      };
+      this.removeServer = function(name) {
+        var res = -1;
+        _.each(getList(), function(opts, n) {
+          if (n === name) {
+            // The removed server is a primary
+            if (opts.role === "primary") {
+              res = route.remove(name);
+              if (!res) {
+                res = -1;
+                return;
+              }
+              if (opts.secondary !== "none") {
+                res = route.set(opts.secondary, "none");
+              }
+              return;
+            }
+          }
+          if (opts.role === "primary" && opts.secondary === name) {
+            res = route.set(n, "none");
+            return;
+          }
+        });
+        if (res === -1) {
+          //TODO Debug info
+          require("internal").print("Trying to remove a server that is not known");
+        }
+        return res;
+      }
+    }
+  };
+
+  var CoordinatorsObject = function(route, writeAccess) {
+    this.getList = function() {
+      return route.list();
+    };
+    if (writeAccess) {
+      this.add = function(name) {
+        return route.set(name, true);
+      };
+      this.remove = function(name) {
+        return route.remove(name);
+      };
+    }
+  };
+
+  var ColObject = function(route) {
+    this.info = function() {
+      return JSON.parse(route.get());
+    };
+    this.getShards = function() {
+      var info = this.info();
+      return info.shards;
+    };
+    this.getShardsForServer = function(name) {
+      var list = this.getShards();
+      var res = [];
+      _.each(list, function(v, k) {
+        if (v === name) {
+          res.push(k);
+        }
+      });
+      return res;
+    };
+    this.getServerForShard = function(name) {
+      var list = this.getShards();
+      return list[name];
+    };
+  };
+
+  var DBObject = function(route) {
+    var cache;
+    var getList = function() {
+      if (!cache || !route.checkVersion()) {
+        cache = _.keys(mapCollectionIDsToNames(route.get(true))).sort();
+      }
+      return cache;
+    };
+    this.getCollections = function() {
+      return getList();
+    };
+    this.collection = function(name) {
+      var colroute = route[name];
+      if (!colroute) {
+        return false;
+      }
+      return new ColObject(colroute);
+    };
+  };
+
+  var DatabasesObject = function(route) {
+    this.getList = function() {
+      return route.list();            
+    };
+    this.select = function(name) {
+      var subroute = route[name];
+      if (!subroute) {
+        return false;
+      }
+      return new DBObject(subroute);
+    };
+  };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                            Vision
 // -----------------------------------------------------------------------------
 
@@ -214,92 +366,24 @@ exports.Communication = function() {
     var Databases;
     var Coordinators;
 
-    var DBServersObject = function() {
-      var cache = {};
-      var servers;
-      var getList = function() {
-        if (!agency.target.dbServers.checkVersion()) {
-          cache = {};
-          servers = agency.target.dbServers.get(true);
-          storeServersInCache(cache, servers);
-        }
-        return cache;
-      };
-      this.getList = function() {
-        return getList();
-      };
-      this.addPrimary = function(name) {
-        return agency.target.dbServers.set(name, "none");
-      };
-      this.addSecondary = function(name, primaryName) {
-        return agency.target.dbServers.set(primaryName, name);
-      };
-      this.addPair = function(primaryName, secondaryName) {
-        return agency.target.dbServers.set(primaryName, secondaryName);
-      },
-      this.removeServer = function(name) {
-        var res = -1;
-        _.each(getList(), function(opts, n) {
-          if (n === name) {
-            // The removed server is a primary
-            if (opts.role === "primary") {
-              res = agency.target.dbServers.remove(name);
-              if (!res) {
-                res = -1;
-                return;
-              }
-              if (opts.secondary !== "none") {
-                res = agency.target.dbServers.set(opts.secondary, "none");
-              }
-              return;
-            }
-          }
-          if (opts.role === "primary" && opts.secondary === name) {
-            res = agency.target.dbServers.set(n, "none");
-            return;
-          }
-        });
-        if (res === -1) {
-          //TODO Debug info
-          require("internal").print("Trying to remove a server that is not known");
-        }
-        return res;
-      }
-    };
-    var DatabasesObject = function() {
-      this.getList = function() {
-        return agency.target.db.list();            
-      };
-    };
-    var CoordinatorsObject = function() {
-      this.getList = function() {
-        return agency.target.coordinators.list();
-      };
-      this.add = function(name) {
-        return agency.target.coordinators.set(name, true);
-      };
-      this.remove = function(name) {
-        return agency.target.coordinators.remove(name);
-      };
-    };
 
     this.DBServers = function() {
       if (!DBServers) {
-        DBServers = new DBServersObject();
+        DBServers = new DBServersObject(agency.target.dbServers, true);
       }
       return DBServers;
     };
 
     this.Databases = function() {
       if (!Databases) {
-        Databases = new DatabasesObject();
+        Databases = new DatabasesObject(agency.target.db);
       }
       return Databases;
     };
 
     this.Coordinators = function() {
       if (!Coordinators) {
-        Coordinators = new CoordinatorsObject();
+        Coordinators = new CoordinatorsObject(agency.target.coordinators, true);
       }
       return Coordinators;
     };
@@ -315,49 +399,23 @@ exports.Communication = function() {
     var Databases;
     var Coordinators;
 
-    var DBServersObject = function() {
-      var cache = {};
-      var servers;
-      var getList = function() {
-        if (!agency.plan.dbServers.checkVersion()) {
-          cache = {};
-          servers = agency.plan.dbServers.get(true);
-          storeServersInCache(cache, servers);
-        }
-        return cache;
-      };
-      this.getList = function() {
-        return getList();
-      };
-    };
-    var DatabasesObject = function() {
-      this.getList = function() {
-        return agency.plan.db.list();            
-      };
-    };
-    var CoordinatorsObject = function() {
-      this.getList = function() {
-        return agency.plan.coordinators.list();
-      };
-    };
-
     this.DBServers = function() {
       if (!DBServers) {
-        DBServers = new DBServersObject();
+        DBServers = new DBServersObject(agency.plan.dbServers);
       }
       return DBServers;
     };
 
     this.Databases = function() {
       if (!Databases) {
-        Databases = new DatabasesObject();
+        Databases = new DatabasesObject(agency.plan.db);
       }
       return Databases;
     };
 
     this.Coordinators = function() {
       if (!Coordinators) {
-        Coordinators = new CoordinatorsObject();
+        Coordinators = new CoordinatorsObject(agency.plan.coordinators);
       }
       return Coordinators;
     };
@@ -397,11 +455,6 @@ exports.Communication = function() {
         return getList();
       };
     };
-    var DatabasesObject = function() {
-      this.getList = function() {
-        return agency.target.db.list();            
-      };
-    };
     var CoordinatorsObject = function() {
       var cache;
       this.getList = function() {
@@ -432,7 +485,7 @@ exports.Communication = function() {
 
     this.Databases = function() {
       if (!Databases) {
-        Databases = new DatabasesObject();
+        Databases = new DatabasesObject(agency.current.db);
       }
       return Databases;
     };
