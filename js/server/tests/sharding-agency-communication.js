@@ -30,7 +30,6 @@
 (function() {
   "use strict";
   var jsunity = require("jsunity");
-  var internal = require("internal");
   var _ = require("underscore");
 
   // -----------------------------------------------------------------------------
@@ -237,25 +236,23 @@
         default:
           fail();
       }
-      require("internal").print(parts);
       fail();
     },
-    list: function(route) {
+    list: function(route, recursive, flat) {
       var parts = route.split("/");
       var returnResult = function(route) {
         if (parts[1] === agencyRoutes.sub.colls) {
-          return route.databases;
+          return _.map(route.databases, function(d) {
+            return route + "/" + d;
+          });
         }
         if (parts[1] === agencyRoutes.sub.coords) {
-          return _.map(
-            _.keys(route.coordinators),
-            function(k) {
-              var splits = k.split("/");
-              return splits[splits.length - 1];
-            }
-          );
+          return _.keys(route.coordinators);
         }
       };
+      if (!flat) {
+        fail("List is not requested flat");
+      }
       var res;
       switch (parts[0]) {
         case agencyRoutes.target:
@@ -522,8 +519,6 @@
             assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
             assertFalse(delWasCalled, "Delete has been called multiple times");
             delete dummy.target.coordinators[route];
-            internal.print(route);
-            internal.print(dummy.target.coordinators);
             delWasCalled = true;
             return true;
           };
@@ -620,8 +615,6 @@
           var wasCalled = false;
           agencyMock.set = function(route, value) {
             assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.colls, "_system", "87123"].join("/"));
-            require("internal").print(value);
-            // TODO Check Object correctness
             dummy.target.vInfo = value;
             wasCalled = true;
             return true;

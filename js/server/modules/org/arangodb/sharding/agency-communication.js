@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
-/*global module, require, exports */
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, white: true, vars: true, stupid: true*/
+/*global module, require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Agency Communication
@@ -32,9 +32,9 @@
 // --SECTION--                                              Agency-Communication
 // -----------------------------------------------------------------------------
 exports.Communication = function() {
-  
+  "use strict"; 
   var agency,
-    _AgencyWrapper,
+    AgencyWrapper,
     splitServerName,
     storeServersInCache,
     Target,
@@ -55,7 +55,7 @@ exports.Communication = function() {
     return res;
   };
 
-  _AgencyWrapper = function() {
+  AgencyWrapper = function() {
     var _agency = exports._createAgency();
     var routes = { 
       vision: "Vision/",
@@ -81,7 +81,7 @@ exports.Communication = function() {
         return false;
       },
       list: function(route) {
-        return _agency.list(route).sort();
+        return _.map(_agency.list(route, false, true), splitServerName).sort();
       }
     };
     var addLevel = function(base, name, route, functions) {
@@ -136,9 +136,9 @@ exports.Communication = function() {
     addLevel(sync, "beat", "ServerStates", ["get"]);
     addLevel(sync, "interval", "HeartbeatIntervalMs", ["get"]);
 
-  }
+  };
 
-  agency = new _AgencyWrapper(); 
+  agency = new AgencyWrapper(); 
 
 
 // -----------------------------------------------------------------------------
@@ -211,7 +211,7 @@ exports.Communication = function() {
           }
         });
         return res;
-      }
+      };
     }
   };
 
@@ -397,6 +397,7 @@ exports.Communication = function() {
     };
     var CoordinatorsObject = function() {
       var cache;
+      var servers;
       this.getList = function() {
         if (
             !agency.current.coordinators.checkVersion()
@@ -557,7 +558,7 @@ exports.Communication = function() {
     }
     return res;
   };
-}
+};
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_agency-communication_agency
 /// @brief A wrapper around the Agency initialisation
@@ -573,6 +574,7 @@ exports.Communication = function() {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 exports._createAgency = function() {
+  "use strict";
   var agency;
   if (agency) {
     return agency;
