@@ -177,6 +177,10 @@ std::string ServerState::stateToString (StateEnum state) {
 
 void ServerState::flush () {
   WRITE_LOCKER(_lock);
+  if (_id.empty()) {
+    return;
+  }
+
   _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
   _role = determineRole(_id);
 }
@@ -256,7 +260,9 @@ std::string ServerState::getAddress () {
   }
 
   // address not yet set
-  assert(! id.empty());
+  if (id.empty()) {
+    return "";
+  }
 
   // fetch and set the address
   const std::string address = ClusterInfo::instance()->getTargetServerEndpoint(id);
@@ -340,6 +346,10 @@ void ServerState::setState (StateEnum state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::RoleEnum ServerState::determineRole (std::string const& id) {
+  if (id.empty()) {
+    return ServerState::ROLE_UNDEFINED;
+  }
+
   ServerState::RoleEnum role  = checkServersList(id);
   ServerState::RoleEnum role2 = checkCoordinatorsList(id);
 
