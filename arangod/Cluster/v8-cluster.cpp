@@ -687,12 +687,15 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
   }
   result->Set(v8::String::New("shardKeys"), shardKeys);
 
-  const std::vector<std::string>& sis = ci.shardIds();
-  v8::Handle<v8::Array> shardIds = v8::Array::New(sis.size());
-  for (uint32_t i = 0, n = sis.size(); i < n; ++i) {
-    shardIds->Set(i, v8::String::New(sis[i].c_str(), sis[i].size()));
+  const std::map<std::string, std::string>& sis = ci.shardIds();
+  v8::Handle<v8::Object> shardIds = v8::Object::New();
+  std::map<std::string, std::string>::const_iterator it = sis.begin();
+  while (it != sis.end()) {
+    shardIds->Set(v8::String::New((*it).first.c_str(), (*it).first.size()), 
+                  v8::String::New((*it).second.c_str(), (*it).second.size()));
+    ++it;
   }
-  result->Set(v8::String::New("shardIds"), shardIds);
+  result->Set(v8::String::New("shards"), shardIds);
 
   // TODO: fill "indexes"
   v8::Handle<v8::Array> indexes = v8::Array::New();
@@ -861,6 +864,29 @@ static v8::Handle<v8::Value> JS_SetIdServerState (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the server role (used for testing)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SetRoleServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "setRole(<role>)");
+  }
+
+  const std::string role = TRI_ObjectToString(argv[0]);
+  ServerState::RoleEnum r = ServerState::stringToRole(role);
+
+  if (r == ServerState::ROLE_UNDEFINED) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<role> is invalid");
+  }
+
+  ServerState::instance()->setRole(r);
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -962,6 +988,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
   TRI_AddMethodVocbase(rt, "setId", JS_SetIdServerState, true);
+  TRI_AddMethodVocbase(rt, "setRole", JS_SetRoleServerState, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
 
   v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);

@@ -139,7 +139,7 @@ namespace triagens {
 /// @brief returns the shard ids
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::string> shardIds () const {
+        std::map<std::string, std::string> shardIds () const {
           return _shardIds;
         }
 
@@ -171,14 +171,14 @@ namespace triagens {
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
         
-        TRI_voc_cid_t             _id;
-        std::string               _name;
-        TRI_col_type_e            _type;
-        TRI_vocbase_col_status_e  _status;
+        TRI_voc_cid_t                      _id;
+        std::string                        _name;
+        TRI_col_type_e                     _type;
+        TRI_vocbase_col_status_e           _status;
  
         // TODO: indexes
-        std::vector<std::string>  _shardKeys;
-        std::vector<std::string>  _shardIds;
+        std::vector<std::string>           _shardKeys;
+        std::map<std::string, std::string> _shardIds;
     };
 
     
