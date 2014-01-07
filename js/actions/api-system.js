@@ -804,8 +804,6 @@ actions.defineHttp({
       result = eval("(function() {" + body + "}());");
     }
 
-    require("internal").print(req.parameters);
-
     if (req.parameters.hasOwnProperty("returnAsJSON") &&
         req.parameters.returnAsJSON === "true") {
       actions.resultOk(req, res, actions.HTTP_OK, result);

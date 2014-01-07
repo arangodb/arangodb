@@ -145,13 +145,13 @@ bool CollectionInfo::createFromJson (TRI_json_t const* json) {
     return false;
   }
   _shardKeys = JsonHelper::stringList(value);
-  
+ 
   // shards
   value = TRI_LookupArrayJson(json, "shards");
-  if (! JsonHelper::isList(value)) {
+  if (! JsonHelper::isArray(value)) {
     return false;
   }
-  _shardIds = JsonHelper::stringList(value);
+  _shardIds = JsonHelper::stringObject(value);
 
   return true;
 }
@@ -190,7 +190,7 @@ TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
 
   TRI_Insert3ArrayJson(zone, json, "shardKeys", values);
   
-  values = JsonHelper::stringList(zone, _shardIds);
+  values = JsonHelper::stringObject(zone, _shardIds);
 
   if (values == 0) {
     TRI_FreeJson(zone, json);
@@ -255,7 +255,6 @@ uint64_t ClusterInfo::uniqid (uint64_t count) {
   WRITE_LOCKER(_lock);
 
   if (_uniqid._currentValue >= _uniqid._upperValue) {
-
     uint64_t fetch = count;
     if (fetch < MinIdsPerBatch) {
       fetch = MinIdsPerBatch;
@@ -268,10 +267,12 @@ uint64_t ClusterInfo::uniqid (uint64_t count) {
     }
 
     _uniqid._currentValue = result._index;
-    _uniqid._upperValue   = _uniqid._currentValue + fetch;
+    _uniqid._upperValue   = _uniqid._currentValue + fetch - 1;
+
+    return _uniqid._currentValue++;
   }
 
-  return _uniqid._currentValue++;
+  return ++_uniqid._currentValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

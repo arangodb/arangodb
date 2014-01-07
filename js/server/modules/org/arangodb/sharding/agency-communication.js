@@ -318,7 +318,7 @@ exports._createAgency = function() {
   if (agency) {
     return agency;
   }
-  agency = new ArangoAgency();
+  agency = ArangoAgency;
   return agency;
 };
 

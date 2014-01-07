@@ -103,6 +103,24 @@ std::string ServerState::roleToString (RoleEnum role) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to a role
+////////////////////////////////////////////////////////////////////////////////
+        
+ServerState::RoleEnum ServerState::stringToRole (std::string const& value) {
+  if (value == "PRIMARY") {
+    return ROLE_PRIMARY;
+  }
+  else if (value == "SECONDARY") {
+    return ROLE_SECONDARY;
+  }
+  else if (value == "COORDINATOR") {
+    return ROLE_COORDINATOR;
+  }
+
+  return ROLE_UNDEFINED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string representation to a state
 ////////////////////////////////////////////////////////////////////////////////
 

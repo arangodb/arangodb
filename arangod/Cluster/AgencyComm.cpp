@@ -492,10 +492,9 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
     _isLocked(false) {
 
   AgencyComm comm;
-  if (comm.lock(key, AgencyComm::_globalConnectionOptions._lockTimeout, 
-                0.0, type)) {
-    _isLocked = true;
+  if (comm.lock(key, AgencyComm::_globalConnectionOptions._lockTimeout, 0.0, type)) {
     fetchVersion(comm);
+    _isLocked = true;
   }
 }
 
@@ -710,7 +709,7 @@ void AgencyComm::disconnect () {
 
 bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
                               bool toFront) {
-  LOG_TRACE("adding global endpoint '%s'", endpointSpecification.c_str());
+  LOG_TRACE("adding global agency-endpoint '%s'", endpointSpecification.c_str());
 
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
@@ -756,7 +755,7 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::removeEndpoint (std::string const& endpointSpecification) {
-  LOG_TRACE("removing global endpoint '%s'", endpointSpecification.c_str());
+  LOG_TRACE("removing global agency-endpoint '%s'", endpointSpecification.c_str());
  
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
@@ -1275,6 +1274,10 @@ bool AgencyComm::lock (std::string const& key,
                        std::string const& value) {
   if (! checkLockType(key, value)) {
     return false;
+  }
+  
+  if (ttl == 0.0) {
+    ttl = _globalConnectionOptions._lockTimeout;
   }
   
   if (timeout == 0.0) {
