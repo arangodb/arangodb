@@ -78,6 +78,7 @@ if [ "$1" == "init" ] ; then
     set Sync/ClusterManager none
     set Sync/LatestID 0
     set Sync/Commands
+    set Sync/HeartbeatIntervalMs 1000
 
     echo Initialisation complete.
 fi
