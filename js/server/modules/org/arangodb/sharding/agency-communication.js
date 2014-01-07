@@ -50,7 +50,11 @@ exports.Communication = function() {
   mapCollectionIDsToNames = function(list) {
     var res = {};
     _.each(list, function(v, k) {
-      res[JSON.parse(v).name] = splitServerName(k);
+      var n = splitServerName(k);
+      if (n === "Lock" || n === "Version") {
+        return;
+      }
+      res[JSON.parse(v).name] = n;
     });
     return res;
   };
@@ -231,7 +235,8 @@ exports.Communication = function() {
 
   var ColObject = function(route, writeAccess) {
     this.info = function() {
-      return JSON.parse(route.get());
+      var res = route.get();
+      return JSON.parse(_.values(res)[0]);
     };
     this.getShards = function() {
       var info = this.info();
@@ -447,6 +452,7 @@ exports.Communication = function() {
   var Sync = function() {
     var Heartbeats;
     var interval = agency.sync.interval.get();
+    interval = _.values(interval)[0];
 
     var didBeatInTime = function(time) {
 
@@ -467,14 +473,17 @@ exports.Communication = function() {
 
     var HeartbeatsObject = function() {
       this.list = function() {
-        return agency.sync.beat.get(true);
+        var res = agency.sync.beat.get(true);
+        _.each(res, function(v, k) {
+          res[k] = JSON.parse(v);  
+        });
+        return res;
       };
       this.getInactive = function() {
         var list = this.list();
         var res = [];
         _.each(list, function(v, k) {
           if (isInactive(v.status)) {
-            require("internal").print(k, isInSync(v.status), isOutSync(v.status));
             res.push(k);
           }
         });

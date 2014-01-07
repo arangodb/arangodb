@@ -115,30 +115,30 @@
       "cindy": "tcp://192.168.1.3:8529"
     };
     var heartbeats = {
-      "pavel": {
+      "pavel": JSON.stringify({
         status: "SERVINGSYNC",
         time: (new Date()).toISOString()
-      },
-      "paul": {
+      }),
+      "paul": JSON.stringify({
         status: "SERVINGSYNC",
         time: (new Date()).toISOString()
-      },
-      "patricia": {
+      }),
+      "patricia": JSON.stringify({
         status: "SERVINGASYNC",
         time: (new Date()).toISOString()
-      },
-      "sandro": {
+      }),
+      "sandro": JSON.stringify({
         status: "INSYNC",
         time: (new Date()).toISOString()
-      },
-      "sandra": {
+      }),
+      "sandra": JSON.stringify({
         status: "SYNCING",
         time: (new Date()).toISOString()
-      },
-      "sally": {
+      }),
+      "sally": JSON.stringify({
         status: "INSYNC",
         time: (new Date()).toISOString()
-      }
+      })
     };
     dummy = {};
     dummy.target = {};
@@ -198,7 +198,9 @@
             }
           } else {
             if (parts[2] === "_system" && parts[3] === "87123") {
-              return base.vInfo;
+              var internalResult = {};
+              internalResult[route] = base.vInfo;
+              return internalResult;
             }
           }
         }
@@ -230,7 +232,9 @@
             return dummy.sync.heartbeats;
           }
           if (parts[1] === agencyRoutes.sub.interval) {
-            return dummy.sync.interval;
+            res = {};
+            res[route] = JSON.stringify(dummy.sync.interval);
+            return res;
           }
           break;
         default:
