@@ -1346,7 +1346,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   // register the global object
   ss = v8g->ClusterCommTempl->NewInstance();
   if (! ss.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(context, "ArangoServerState", ss);
+    TRI_AddGlobalVariableVocbase(context, "ArangoClusterComm", ss);
   }
 }
 
