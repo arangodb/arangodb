@@ -76,7 +76,10 @@ exports.Communication = function() {
         return _agency.get(route, recursive);
       },
       set: function(route, name, value) {
-        return _agency.set(route + "/" + name, value);
+        if (value !== undefined) {
+          return _agency.set(route + "/" + name, value);
+        }
+        return _agency.set(route, name);
       },
       remove: function(route, name) {
         return _agency.remove(route + "/" + name);
@@ -105,20 +108,24 @@ exports.Communication = function() {
       base[name] = newLevel;
       return newLevel;
     };
-    var addLevelsForDBs = function(base) {
+    var addLevelsForDBs = function(base, writeAccess) {
       var list = base.list();
       _.each(list, function(d) {
         addLevel(base, d, d, ["get", "checkVersion"]);
         var colList = mapCollectionIDsToNames(base[d].get(true));
+        var acts = ["get"];
+        if (writeAccess) {
+          acts.push("set");
+        }
         _.each(colList, function(id, name) {
-          addLevel(base[d], name, id, ["get"]);
+          addLevel(base[d], name, id, acts);
         });
       });
     };
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
     addLevel(target, "db", "Collections", ["list"]);
-    addLevelsForDBs(target.db);
+    addLevelsForDBs(target.db, true);
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
@@ -296,7 +303,7 @@ exports.Communication = function() {
     }
   };
 
-  var ColObject = function(route) {
+  var ColObject = function(route, writeAccess) {
     this.info = function() {
       return JSON.parse(route.get());
     };
@@ -318,9 +325,16 @@ exports.Communication = function() {
       var list = this.getShards();
       return list[name];
     };
+    if (writeAccess) {
+      this.moveShard = function(shard, target) {
+        var toUpdate = this.info();
+        toUpdate.shards[shard] = target;
+        return route.set(JSON.stringify(toUpdate));
+      };
+    }
   };
 
-  var DBObject = function(route) {
+  var DBObject = function(route, writeAccess) {
     var cache;
     var getList = function() {
       if (!cache || !route.checkVersion()) {
@@ -336,11 +350,11 @@ exports.Communication = function() {
       if (!colroute) {
         return false;
       }
-      return new ColObject(colroute);
+      return new ColObject(colroute, writeAccess);
     };
   };
 
-  var DatabasesObject = function(route) {
+  var DatabasesObject = function(route, writeAccess) {
     this.getList = function() {
       return route.list();            
     };
@@ -349,7 +363,7 @@ exports.Communication = function() {
       if (!subroute) {
         return false;
       }
-      return new DBObject(subroute);
+      return new DBObject(subroute, writeAccess);
     };
   };
 
@@ -376,7 +390,7 @@ exports.Communication = function() {
 
     this.Databases = function() {
       if (!Databases) {
-        Databases = new DatabasesObject(agency.target.db);
+        Databases = new DatabasesObject(agency.target.db, true);
       }
       return Databases;
     };
