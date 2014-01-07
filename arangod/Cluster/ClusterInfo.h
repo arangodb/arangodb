@@ -22,6 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,9 +31,14 @@
 
 #include "Basics/Common.h"
 #include "Cluster/AgencyComm.h"
+#include "VocBase/collection.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
+  struct TRI_json_s;
+  struct TRI_memory_zone_s;
 #endif
 
 namespace triagens {
@@ -51,26 +57,128 @@ namespace triagens {
 // --SECTION--                                              class CollectionInfo
 // -----------------------------------------------------------------------------
 
-    struct CollectionInfo {
-        enum Status {
-          LOADED = 1,
-          UNLOADED = 2
-        };
-        enum Type {
-          NORMAL = 1,
-          EDGES = 2
-        };
-        DatabaseID database;
-        string id;
-        string name;
-        Status status;
-        Type type;
-        vector<string> shards;
+    class CollectionInfo {
 
-        CollectionInfo () : id(""), name(""), status(LOADED), type(NORMAL) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+      public:
+
+        CollectionInfo ();
+        
+        CollectionInfo (std::string const&);
+        
+        ~CollectionInfo ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_cid_t cid () const {
+          return _id;
         }
-        ~CollectionInfo () {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string name () const {
+          return _name;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection type
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_type_e type () const {
+          return _type;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection status
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_status_e status () const {
+          return _status;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection status
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string statusString () const {
+          return TRI_GetStatusStringCollectionVocBase(_status);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TODO: returns the indexes
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+        std::vector<std::string> indexes () const {
+          return _indexes;
+        }
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard keys
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> shardKeys () const {
+          return _shardKeys;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard ids
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map<std::string, std::string> shardIds () const {
+          return _shardIds;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates a collection info object
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief populate object properties from the JSON given
+////////////////////////////////////////////////////////////////////////////////
+
+        bool createFromJson (struct TRI_json_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a JSON string from the object
+////////////////////////////////////////////////////////////////////////////////
+        
+        struct TRI_json_s* toJson (struct TRI_memory_zone_s*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+        
+        TRI_voc_cid_t                      _id;
+        std::string                        _name;
+        TRI_col_type_e                     _type;
+        TRI_vocbase_col_status_e           _status;
+ 
+        // TODO: indexes
+        std::vector<std::string>           _shardKeys;
+        std::map<std::string, std::string> _shardIds;
     };
 
     
@@ -78,15 +186,24 @@ namespace triagens {
 // --SECTION--                                                 class ClusterInfo
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
+
     class ClusterInfo {
+      private:
+
+        typedef std::map<CollectionID, CollectionInfo>     DatabaseCollections;
+        typedef std::map<DatabaseID, DatabaseCollections>  AllCollections;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises library
-///
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,12 +233,6 @@ namespace triagens {
         static ClusterInfo* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function to call once when still single-threaded
-////////////////////////////////////////////////////////////////////////////////
-        
-        static void initialise ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -137,38 +248,17 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the endpoint of a server from its ID.
-///
-/// If it is not found in the cache, the cache is reloaded once, if
-/// it is still not there an empty string is returned as an error.
+/// @brief get a number of cluster-wide unique IDs, returns the first
+/// one and guarantees that <number> are reserved for the caller.
 ////////////////////////////////////////////////////////////////////////////////
-
-        std::string getServerEndpoint (ServerID const& serverID);
+        
+        uint64_t uniqid (uint64_t = 1);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about servers from the agency
-///
-/// Usually one does not have to call this directly.
+/// @brief flush the caches (used for testing only)
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadServerInformation ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find the server who is responsible for a shard
-///
-/// If it is not found in the cache, the cache is reloaded once, if
-/// it is still not there an empty string is returned as an error.
-////////////////////////////////////////////////////////////////////////////////
-
-        ServerID getResponsibleServer (ShardID const& shardID);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about shards from the agency
-///
-/// Usually one does not have to call this directly.
-////////////////////////////////////////////////////////////////////////////////
-
-        void loadShardInformation ();
+        void flush ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask whether a cluster database exists
@@ -177,38 +267,49 @@ namespace triagens {
         bool doesDatabaseExist (DatabaseID const& databaseID);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about databases from the agency
-///
+/// @brief (re-)load the information about collections from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadDatabaseInformation ();
+        void loadCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection
-///
-/// If it is not found in the cache, the cache is reloaded once, if
-/// it is still not there an empty 0 pointer is returned. The caller
-/// must not delete the pointer.
+/// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionInfo const* getCollectionInfo (DatabaseID const& databaseID,
-                                                 CollectionID const& collectionID);
+        CollectionInfo getCollectionInfo (DatabaseID const&,
+                                          CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about collections from the agency
-///
+/// @brief (re-)load the information about servers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCollectionsInformation ();
+        void loadServers ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a number of cluster-wide unique IDs, returns the first
-/// one and guarantees that <number> are reserved for the caller.
+/// @brief find the endpoint of a server from its ID.
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
-        
-        uint64_t fetchIDs (uint64_t number);
+
+        std::string getServerEndpoint (ServerID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
+/// our id
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string getTargetServerEndpoint (ServerID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the server who is responsible for a shard
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+        ServerID getResponsibleServer (ShardID const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -216,21 +317,39 @@ namespace triagens {
 
       private:
         
-        AgencyComm _agency;
+        AgencyComm                         _agency;
+        triagens::basics::ReadWriteLock    _lock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uniqid sequence
+////////////////////////////////////////////////////////////////////////////////
+
+        struct {
+          uint64_t _currentValue;
+          uint64_t _upperValue;
+        }
+        _uniqid;
 
         // Cached data from the agency, we reload whenever necessary:
-        std::map<ServerID, std::string> serverAddresses;  // from Current/ServersRegistered
-        std::map<ShardID, ServerID> shards;          // from Current/ShardLocation
-        std::map<CollectionID, CollectionInfo*> collections;
-                                               // from Current/Collections/
-
-        triagens::basics::ReadWriteLock lock;
+        AllCollections                     _collections;  // from Current/Collections/
+        std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered
+        std::map<ShardID, ServerID>        _shardIds;     // from Current/ShardLocation
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the sole instance
+////////////////////////////////////////////////////////////////////////////////
         
         static ClusterInfo* _theinstance;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief how big a batch is for unique ids
+////////////////////////////////////////////////////////////////////////////////
+
+        static const uint64_t MinIdsPerBatch = 1000;
 
     };
 

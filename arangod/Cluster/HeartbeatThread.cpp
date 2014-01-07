@@ -94,6 +94,8 @@ void HeartbeatThread::run () {
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
 
+    const double start = TRI_microtime();
+
     // send our state to the agency. 
     // we don't care if this fails
     sendState();
@@ -144,7 +146,11 @@ void HeartbeatThread::run () {
           // nothing to do here
         }
         else {
-          usleep((useconds_t) _interval); 
+          const double remain = TRI_microtime() - start - interval;
+
+          if (remain > 0.0) {
+            usleep((useconds_t) (remain * 1000.0 * 1000.0)); 
+          }
         }
       }
     }

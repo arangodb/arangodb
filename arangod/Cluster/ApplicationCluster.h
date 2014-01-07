@@ -71,6 +71,14 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the heartbeat (used for testing)
+////////////////////////////////////////////////////////////////////////////////
+
+        void disableHeartbeat () {
+          _disableHeartbeat = true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the cluster is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -121,29 +129,6 @@ namespace triagens {
         void stop ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
-/// our id
-////////////////////////////////////////////////////////////////////////////////
-  
-         std::string getEndpointForId () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning Plan/Coordinators for our id
-////////////////////////////////////////////////////////////////////////////////
-  
-         ServerState::RoleEnum checkCoordinatorsList () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning Plan/DBServers for our id
-////////////////////////////////////////////////////////////////////////////////
-
-         ServerState::RoleEnum checkServersList () const;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -156,15 +141,13 @@ namespace triagens {
          HeartbeatThread* _heartbeat;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat interval (in ms)
-///
-/// @CMDOPT{\--cluster.heartbeat-interval @CA{interval}}
-///
-/// Specifies the cluster heartbeat interval in milliseconds. Lower values 
-/// mean more frequent heartbeats, but may result in higher overhead (more
-/// network traffic and CPU usage).
-///
-/// The default value is `1000` ms.
+/// @brief flag for turning off heartbeat (used for testing)
+////////////////////////////////////////////////////////////////////////////////
+
+         bool _disableHeartbeat;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat interval (in milliseconds)
 ////////////////////////////////////////////////////////////////////////////////
 
          uint64_t _heartbeatInterval;

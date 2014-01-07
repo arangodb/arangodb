@@ -52,7 +52,8 @@ using namespace triagens::arango;
 ApplicationCluster::ApplicationCluster () 
   : ApplicationFeature("Sharding"),
     _heartbeat(0),
-    _heartbeatInterval(1000),
+    _disableHeartbeat(false),
+    _heartbeatInterval(0),
     _agencyEndpoints(),
     _agencyPrefix(),
     _myId(),
@@ -84,7 +85,6 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
   options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
-    ("cluster.heartbeat-interval", &_heartbeatInterval, "heartbeat interval (in ms)")
     ("cluster.my-id", &_myId, "this server's id")
     ("cluster.my-address", &_myAddress, "this server's endpoint")
   ;
@@ -95,7 +95,7 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare () {
-  _enableCluster = (_agencyEndpoints.size() > 0 || ! _agencyPrefix.empty());
+  _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
 
   if (! enabled()) {
     return true;
@@ -113,7 +113,7 @@ bool ApplicationCluster::prepare () {
 
   
   // validate --cluster.agency-endpoint
-  if (_agencyEndpoints.size() == 0) {
+  if (_agencyEndpoints.empty()) {
     LOG_FATAL_AND_EXIT("must at least specify one endpoint in --cluster.agency-endpoint");
   }
 
@@ -140,10 +140,8 @@ bool ApplicationCluster::prepare () {
     }
   }
 
-  // validate --cluster.heartbeat-interval
-  if (_heartbeatInterval < 10) {
-    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.heartbeat-interval");
-  }
+  // initialise cluster info library
+  ClusterInfo::instance();
 
   return true;
 }
@@ -168,19 +166,7 @@ bool ApplicationCluster::start () {
   }
 
 
-  ServerState::RoleEnum role = checkServersList();
-
-  if (role == ServerState::ROLE_UNDEFINED) {
-    // role is still unknown. check if we are a coordinator
-    role = checkCoordinatorsList();
-  }
-  else {
-    // we are a primary or a secondary.
-    // now we double-check that we are not a coordinator as well
-    if (checkCoordinatorsList() != ServerState::ROLE_UNDEFINED) {
-      role = ServerState::ROLE_UNDEFINED;
-    }
-  }
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
@@ -192,17 +178,18 @@ bool ApplicationCluster::start () {
   // check if my-address is set
   if (_myAddress.empty()) {
     // no address given, now ask the agency for out address
-    _myAddress = getEndpointForId();
+    _myAddress = ServerState::instance()->getAddress();
   }
-    
+  else {
+    // register our own address
+    ServerState::instance()->setAddress(_myAddress);
+  }
+ 
   if (_myAddress.empty()) {
     LOG_FATAL_AND_EXIT("unable to determine internal address for server '%s'. "
                        "Please specify --cluster.my-address or configure the address for this server in the agency.", 
                        _myId.c_str());
   }
-  
-  // register our own address
-  ServerState::instance()->setAddress(_myAddress);
   
   // now we can validate --cluster.my-address
   const string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
@@ -212,7 +199,6 @@ bool ApplicationCluster::start () {
                        _myAddress.c_str());
   }
 
-  ServerState::instance()->setRole(role);
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
  
   // the agency about our state 
@@ -230,21 +216,43 @@ bool ApplicationCluster::start () {
            _myAddress.c_str(),
            ServerState::roleToString(role).c_str());
 
-  // start heartbeat thread
-  _heartbeat = new HeartbeatThread(_heartbeatInterval * 1000, 5);
+  if (! _disableHeartbeat) {
+    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
 
-  if (_heartbeat == 0) {
-    LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
+    if (result.successful()) {
+      std::map<std::string, std::string> value;
+      if (result.flattenJson(value, "", false)) {
+        std::map<std::string, std::string>::const_iterator it = value.begin();
+        if (it != value.end()) {
+          _heartbeatInterval = triagens::basics::StringUtils::uint64((*it).second);
+          LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
+                   (unsigned long long) _heartbeatInterval);
+        }
+      }
+    }
+      
+    // no value set in agency. use default
+    if (_heartbeatInterval == 0) {
+      _heartbeatInterval = 1000; // 1/s
+
+      LOG_WARNING("unable to read heartbeat interval from agency. Using default value '%llu ms'", 
+                  (unsigned long long) _heartbeatInterval);
+    }
+   
+
+    // start heartbeat thread
+    _heartbeat = new HeartbeatThread(_heartbeatInterval * 1000, 5);
+
+    if (_heartbeat == 0) {
+      LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
+    }
+
+    if (! _heartbeat->init() || ! _heartbeat->start()) {
+      LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
+                         endpoints.c_str());
+    }
   }
-
-  if (! _heartbeat->init() || ! _heartbeat->start()) {
-    LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
-                       endpoints.c_str());
-  }
- 
-  // initialise ClusterInfo class
-  ClusterInfo::instance()->initialise();
-
+  
   // initialise ClusterComm library
   ClusterComm::instance()->initialise();
 
@@ -311,8 +319,10 @@ void ApplicationCluster::close () {
   if (! enabled()) {
     return;
   }
-  
-  _heartbeat->stop();
+ 
+  if (_heartbeat != 0) { 
+    _heartbeat->stop();
+  }
   
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
@@ -336,7 +346,9 @@ void ApplicationCluster::stop () {
   AgencyComm comm;
   comm.sendServerState();
 
-  _heartbeat->stop();
+  if (_heartbeat != 0) {
+    _heartbeat->stop();
+  }
 
   {
     AgencyCommLocker locker("Current", "WRITE"); 
@@ -348,151 +360,6 @@ void ApplicationCluster::stop () {
   ClusterComm::cleanup();
   ClusterInfo::cleanup();
   AgencyComm::cleanup();
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
-/// our id
-////////////////////////////////////////////////////////////////////////////////
-  
-std::string ApplicationCluster::getEndpointForId () const {
-  // fetch value at Target/MapIDToEndpoint
-  AgencyCommLocker locker("Target", "READ");
-  AgencyComm comm;
-  AgencyCommResult result = comm.getValues("Target/MapIDToEndpoint/" + _myId,
-                                           false);
-  locker.unlock();  // release as fast as possible
- 
-  if (result.successful()) {
-    std::map<std::string, std::string> out;
-
-    if (! result.flattenJson(out, "Target/MapIDToEndpoint/", false)) {
-      LOG_FATAL_AND_EXIT("Got an invalid JSON response for Target/MapIDToEndpoint");
-    }
-
-    // check if we can find ourselves in the list returned by the agency
-    std::map<std::string, std::string>::const_iterator it = out.find(_myId);
-
-    if (it != out.end()) {
-      LOG_TRACE("using remote value '%s' for --cluster.my-address", 
-                (*it).second.c_str());
-
-      return (*it).second;
-    }
-  }
-
-  // not found
-  return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning Plan/Coordinators for our id
-////////////////////////////////////////////////////////////////////////////////
-  
-ServerState::RoleEnum ApplicationCluster::checkCoordinatorsList () const {
-  // fetch value at Plan/Coordinators
-  // we need to do this to determine the server's role
-  
-  AgencyCommLocker locker("Plan", "READ"); 
-
-  const std::string key = "Plan/Coordinators";
-
-  AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, true);
-
-  // do this here because we might abort the program below
-  locker.unlock();
- 
-  if (! result.successful()) {
-    const std::string endpoints = AgencyComm::getEndpointsString();
-
-    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): "
-                       "got status code %d, message: %s, key: %s",
-                       endpoints.c_str(), 
-                       result._statusCode,
-                       result.errorMessage().c_str(),
-                       key.c_str());
-  }
-  
-  std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "Plan/Coordinators/", false)) {
-    LOG_FATAL_AND_EXIT("Got an invalid JSON response for Plan/Coordinators");
-  }
-
-  // check if we can find ourselves in the list returned by the agency
-  std::map<std::string, std::string>::const_iterator it = out.find(_myId);
-
-  if (it != out.end()) {
-    // we are in the list. this means we are a primary server
-    return ServerState::ROLE_COORDINATOR;
-  }
-
-  return ServerState::ROLE_UNDEFINED;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning Plan/DBServers for our id
-////////////////////////////////////////////////////////////////////////////////
-  
-ServerState::RoleEnum ApplicationCluster::checkServersList () const {
-  // fetch value at Plan/DBServers
-  // we need to do this to determine the server's role
-  
-  AgencyCommLocker locker("Plan", "READ"); 
-
-  const std::string key = "Plan/DBServers";
-
-  AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, true);
-  
-  // do this here because we might abort the program below
-  locker.unlock();
- 
-  if (! result.successful()) {
-    const std::string endpoints = AgencyComm::getEndpointsString();
-
-    LOG_FATAL_AND_EXIT("Could not fetch configuration from agency endpoints (%s): "
-                       "got status code %d, message: %s, key: %s", 
-                       endpoints.c_str(), 
-                       result._statusCode,
-                       result.errorMessage().c_str(),
-                       key.c_str());
-  }
- 
-  std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "Plan/DBServers/", false)) {
-    LOG_FATAL_AND_EXIT("Got an invalid JSON response for Plan/DBServers");
-  }
-
-  ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
-
-  // check if we can find ourselves in the list returned by the agency
-  std::map<std::string, std::string>::const_iterator it = out.find(_myId);
-
-  if (it != out.end()) {
-    // we are in the list. this means we are a primary server
-    role = ServerState::ROLE_PRIMARY;
-  }
-  else {
-    // check if we are a secondary...
-    it = out.begin();
-
-    while (it != out.end()) {
-      const std::string value = (*it).second;
-      if (value == _myId) {
-        role = ServerState::ROLE_SECONDARY;
-        break;
-      }
-
-      ++it;
-    }
-  }
-
-  return role;
 }
 
 // Local Variables:

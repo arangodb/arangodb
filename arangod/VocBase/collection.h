@@ -207,6 +207,7 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
+  TRI_COL_TYPE_UNKNOWN          = 0, // only used when initialising
   TRI_COL_TYPE_SHAPE_DEPRECATED = 1, // not used since ArangoDB 1.5
   TRI_COL_TYPE_DOCUMENT         = 2,
   TRI_COL_TYPE_EDGE             = 3

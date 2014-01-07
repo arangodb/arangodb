@@ -56,9 +56,27 @@ namespace triagens {
 // --SECTION--                                       some types for ClusterComm
 // -----------------------------------------------------------------------------
 
-    typedef string ClientTransactionID;         // Transaction ID from client
-    typedef TRI_voc_tick_t CoordTransactionID;  // Coordinator transaction ID
-    typedef TRI_voc_tick_t OperationID;         // Coordinator operation ID
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of a client transaction ID
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef string ClientTransactionID;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of a coordinator transaction ID
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef TRI_voc_tick_t CoordTransactionID;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trype of an operation ID
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef TRI_voc_tick_t OperationID;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status of an (a-)synchronous cluster operation
+////////////////////////////////////////////////////////////////////////////////
 
     enum ClusterCommOpStatus {
       CL_COMM_SUBMITTED = 1,      // initial request queued, but not yet sent
@@ -71,6 +89,11 @@ namespace triagens {
                                   // this is only used to report an error
                                   // in the wait or enquire methods
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief used to report the status, progress and possibly result of
+/// an operation
+////////////////////////////////////////////////////////////////////////////////
 
     struct ClusterCommResult {
       bool                _deleteOnDestruction;
@@ -107,23 +130,42 @@ namespace triagens {
       }
     };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type for a callback for a cluster operation
+///
+/// The idea is that one inherits from this class and implements
+/// the callback. Note however that the callback is called whilst 
+/// holding the lock for the receiving (or indeed also the sending) 
+/// queue! Therefore the operation should be quick.
+////////////////////////////////////////////////////////////////////////////////
+
     struct ClusterCommCallback {
-      // The idea is that one inherits from this class and implements
-      // the callback. Note however that the callback is called whilst 
-      // holding the lock for the receiving (or indeed also the sending) 
-      // queue! Therefore the operation should be quick.
       
       ClusterCommCallback () {}
       virtual ~ClusterCommCallback () {};
 
-      // Result indicates whether or not the returned result is already
-      // fully processed. If so, it is removed from all queues. In this
-      // case the object is automatically destructed, so that the
-      // callback must not call delete in any case.
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual callback function
+///
+/// Result indicates whether or not the returned result is already
+/// fully processed. If so, it is removed from all queues. In this
+/// case the object is automatically destructed, so that the
+/// callback must not call delete in any case.
+////////////////////////////////////////////////////////////////////////////////
+
       virtual bool operator() (ClusterCommResult*) = 0;
     };
 
-    typedef double ClusterCommTimeout;    // in milliseconds
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of a timeout specification, is meant in seconds
+////////////////////////////////////////////////////////////////////////////////
+
+    typedef double ClusterCommTimeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief used to store the status, progress and possibly result of
+/// an operation
+////////////////////////////////////////////////////////////////////////////////
 
     struct ClusterCommOperation : public ClusterCommResult {
       rest::HttpRequest::HttpRequestType reqtype;
@@ -134,7 +176,7 @@ namespace triagens {
       ClusterCommCallback* callback;
       ClusterCommTimeout endTime;
 
-      ClusterCommOperation () {}
+      ClusterCommOperation () : headerFields(0), callback(0) {}
       virtual ~ClusterCommOperation () {
         if (_deleteOnDestruction && 0 != headerFields) {
           delete headerFields;
@@ -145,6 +187,10 @@ namespace triagens {
 
       }
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief options for cluster operations
+////////////////////////////////////////////////////////////////////////////////
 
     struct ClusterCommOptions {
       double _connectTimeout;
@@ -164,6 +210,10 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      ClusterComm
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the class for the cluster communications library
+////////////////////////////////////////////////////////////////////////////////
 
     class ClusterComm {
       
@@ -219,23 +269,6 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief submit an HTTP request to a shard asynchronously.
-///
-/// This function is only called when arangod is in coordinator mode. It
-/// queues a single HTTP request to one of the DBServers to be sent by
-/// ClusterComm in the background thread. This request actually orders
-/// an answer, which is an HTTP request sent from the target DBServer
-/// back to us. Therefore ClusterComm also creates an entry in a list of
-/// expected answers. One either has to use a callback for the answer,
-/// or poll for it, or drop it to prevent memory leaks. The result of
-/// this call is just a record that the initial HTTP request has been
-/// queued (`status` is CL_COMM_SUBMITTED). Use @ref enquire below to get
-/// information about the progress. The actual answer is then delivered
-/// either in the callback or via poll. The caller has to call delete on
-/// the resulting ClusterCommResult*. The library takes ownerships of
-/// the pointers `headerFields` and `callback` and releases
-/// the memory when the operation has been finished. It is the caller's
-/// responsibility to free the memory to which `body` points after the
-/// operation has finally terminated.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncRequest (
@@ -252,15 +285,6 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief submit a single HTTP request to a shard synchronously.
-///
-/// This function does an HTTP request synchronously, waiting for the
-/// result. Note that the result has `status` field set to `CL_COMM_SENT`
-/// and the field `result` is set to the HTTP response. The field `answer`
-/// is unused in this case. In case of a timeout the field `status` is
-/// `CL_COMM_TIMEOUT` and the field `result` points to an HTTP response
-/// object that only says "timeout". Note that the ClusterComm library
-/// does not keep a record of this operation, in particular, you cannot
-/// use @ref enquire to ask about it.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* syncRequest (
@@ -276,32 +300,12 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check on the status of an operation
-///
-/// This call never blocks and returns information about a specific operation
-/// given by `operationID`. Note that if the `status` is >= `CL_COMM_SENT`, 
-/// then the `result` field in the returned object is set, if the `status`
-/// is `CL_COMM_RECEIVED`, then `answer` is set. However, in both cases
-/// the ClusterComm library retains the operation in its queues! Therefore,
-/// you have to use @ref wait or @ref drop to dequeue. Do not delete
-/// `result` and `answer` before doing this! However, you have to delete
-/// the ClusterCommResult pointer you get, it will automatically refrain
-/// from deleting `result` and `answer`.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult const* enquire (OperationID const operationID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for one answer matching the criteria
-///
-/// If clientTransactionID is empty, then any answer with any 
-/// clientTransactionID matches. If coordTransactionID is 0, then
-/// any answer with any coordTransactionID matches. If shardID is
-/// empty, then any answer from any ShardID matches. If operationID
-/// is 0, then any answer with any operationID matches. 
-/// This function returns 0 if noIf `timeout`
-/// is given, the result can be 0 indicating that no matching answer
-/// was available until the timeout was hit. The caller has to delete
-/// the result, if it is not 0.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* wait (
@@ -313,16 +317,6 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore and drop current and future answers matching
-///
-/// If clientTransactionID is empty, then any answer with any 
-/// clientTransactionID matches. If coordTransactionID is 0, then
-/// any answer with any coordTransactionID matches. If shardID is
-/// empty, then any answer from any ShardID matches. If operationID
-/// is 0, then any answer with any operationID matches. If there
-/// is already an answer for a matching operation, it is dropped and
-/// freed. If not, any future answer coming in is automatically dropped.
-/// This function can be used to automatically delete all information about an
-/// operation, for which @ref enquire reported successful completion.
 ////////////////////////////////////////////////////////////////////////////////
 
         void drop (ClientTransactionID const& clientTransactionID,
@@ -331,19 +325,14 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                    ShardID const&             shardID);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process an answer coming in on the HTTP socket which is actually
-/// an answer to one of our earlier requests, return value of "" means OK
-/// and nonempty is an error. This is only called in a coordinator node
-/// and not in a DBServer node.
+/// @brief process an answer coming in on the HTTP socket 
 ////////////////////////////////////////////////////////////////////////////////
                 
         string processAnswer(string& coordinatorHeader,
                              rest::HttpRequest* answer);
                  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send an answer HTTP request to a coordinator, which contains
-/// in its body a HttpResponse that we already have. This is only called in
-/// a DBServer node and never in a coordinator node.
+/// @brief send an answer HTTP request to a coordinator
 ////////////////////////////////////////////////////////////////////////////////
                 
         void asyncAnswer (string& coordinatorHeader,
@@ -387,7 +376,9 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
           return sec + usc / 1000000.0;
         }
 
-        static int const maxConnectionsPerServer = 2;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class to administrate one connection to a server
+////////////////////////////////////////////////////////////////////////////////
 
         struct SingleServerConnection {
           httpclient::GeneralClientConnection* connection;
@@ -402,6 +393,10 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
           ~SingleServerConnection ();
         };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class to administrate all connections to a server
+////////////////////////////////////////////////////////////////////////////////
+
         struct ServerConnections {
           vector<SingleServerConnection*> connections;
           list<SingleServerConnection*> unused;
@@ -411,24 +406,51 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
           ~ServerConnections ();   // closes all connections
         };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map to store all connections to all servers with corresponding lock
+////////////////////////////////////////////////////////////////////////////////
+
         // We keep connections to servers open but do not care
         // if they are closed. The key is the server ID.
         map<ServerID,ServerConnections*> allConnections;
         triagens::basics::ReadWriteLock allLock;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief open or get a previously cached connection to a server
+////////////////////////////////////////////////////////////////////////////////
+
         SingleServerConnection* getConnection(ServerID& serverID);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return leased connection to a server
+////////////////////////////////////////////////////////////////////////////////
+
         void returnConnection(SingleServerConnection* singleConnection);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief report a leased connection as being broken
+////////////////////////////////////////////////////////////////////////////////
+
         void brokenConnection(SingleServerConnection* singleConnection);
-        // The following closes all connections that have been unused for
-        // more than limit seconds
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes all connections that have been unused for more than
+/// limit seconds
+////////////////////////////////////////////////////////////////////////////////
+
         void closeUnusedConnections(double limit);
 
-        // The data structures for our internal queues:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send queue with lock and index
+////////////////////////////////////////////////////////////////////////////////
 
-        // Sending questions:
         list<ClusterCommOperation*> toSend;
         map<OperationID,list<ClusterCommOperation*>::iterator> toSendByOpID;
         triagens::basics::ConditionVariable somethingToSend;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief received queue with lock and index
+////////////////////////////////////////////////////////////////////////////////
 
         // Receiving answers:
         list<ClusterCommOperation*> received;
@@ -440,29 +462,53 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
         // not have to!), then: first lock `somethingToReceive`, then
         // lock `somethingtoSend` in this order!
 
-        // We frequently need the following lengthy types:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterator type which is frequently used
+////////////////////////////////////////////////////////////////////////////////
+
         typedef list<ClusterCommOperation*>::iterator QueueIterator;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterator type which is frequently used
+////////////////////////////////////////////////////////////////////////////////
+
         typedef map<OperationID, QueueIterator>::iterator IndexIterator;
 
-        // An internal function to match an operation:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to match an operation:
+////////////////////////////////////////////////////////////////////////////////
+
         bool match (ClientTransactionID const& clientTransactionID,
                     CoordTransactionID const   coordTransactionID,
                     ShardID const&             shardID,
                     ClusterCommOperation* op);
 
-        // Move an operation from the send to the receive queue:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move an operation from the send to the receive queue
+////////////////////////////////////////////////////////////////////////////////
+
         bool moveFromSendToReceived (OperationID operationID);
 
-        // Cleanup all queues:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup all queues
+////////////////////////////////////////////////////////////////////////////////
+
         void cleanupAllQueues();
 
-        // Finally, our background communications thread:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our background communications thread
+////////////////////////////////////////////////////////////////////////////////
+
         ClusterCommThread *_backgroundThread;
     };  // end of class ClusterComm
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ClusterCommThread
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our background communications thread
+////////////////////////////////////////////////////////////////////////////////
 
     class ClusterCommThread : public basics::Thread {
 

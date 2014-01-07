@@ -493,6 +493,12 @@ struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
                                                     void*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a translation of a collection status
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_GetStatusStringCollectionVocBase (TRI_vocbase_col_status_e);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id
 ///
 /// the name is fetched under a lock to make this thread-safe. returns NULL if
