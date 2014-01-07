@@ -52,9 +52,9 @@ var compareStringIds = function (l, r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterEnabledSuite () {
-  var agency = new ArangoAgency();
-  var ss = new ArangoServerState();
-  var ci = new ArangoClusterInfo();
+  var agency = ArangoAgency;
+  var ss = ArangoServerState;
+  var ci = ArangoClusterInfo;
   var oldPrefix = agency.prefix(true);
   var oldId = ss.id();
   var oldRole = ss.role();

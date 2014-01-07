@@ -37,7 +37,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function AgencySuite () {
-  var agency = new ArangoAgency();
+  var agency = ArangoAgency;
   var oldPrefix = agency.prefix(true);
 
   var cleanupLocks = function () {
@@ -787,8 +787,7 @@ function AgencySuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-var agency = new ArangoAgency();
-if (agency.isEnabled()) {
+if (ArangoAgency.isEnabled()) {
   jsunity.run(AgencySuite);
 }
 
