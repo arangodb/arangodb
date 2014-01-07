@@ -950,7 +950,13 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "version", JS_VersionAgency);
 
   v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoAgency", ft->GetFunction());
+  TRI_AddGlobalFunctionVocbase(context, "ArangoAgencyCtor", ft->GetFunction());
+  
+  // register the global object
+  v8::Handle<v8::Object> aa = v8g->AgencyTempl->NewInstance();
+  if (! aa.IsEmpty()) {
+    TRI_AddGlobalVariableVocbase(context, "ArangoAgency", aa);
+  }
   
   // .............................................................................
   // generate the cluster info template
@@ -969,8 +975,14 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
   TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidClusterInfo);
 
-  v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterInfo", ft->GetFunction());
+  v8g->ClusterInfoTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterInfoCtor", ft->GetFunction(), true);
+  
+  // register the global object
+  v8::Handle<v8::Object> ci = v8g->ClusterInfoTempl->NewInstance();
+  if (! ci.IsEmpty()) {
+    TRI_AddGlobalVariableVocbase(context, "ArangoClusterInfo", ci);
+  }
   
   // .............................................................................
   // generate the server state template
@@ -992,7 +1004,13 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
 
   v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoServerState", ft->GetFunction());
+  TRI_AddGlobalFunctionVocbase(context, "ArangoServerStateCtor", ft->GetFunction(), true);
+
+  // register the global object
+  v8::Handle<v8::Object> ss = v8g->ServerStateTempl->NewInstance();
+  if (! ss.IsEmpty()) {
+    TRI_AddGlobalVariableVocbase(context, "ArangoServerState", ss);
+  }
 }
 
 // Local Variables:
