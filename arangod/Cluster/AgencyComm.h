@@ -31,13 +31,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "BasicsC/json.h"
 #include "Rest/HttpRequest.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct TRI_json_s;
 
 namespace triagens {
   namespace httpclient {
@@ -49,6 +48,7 @@ namespace triagens {
   }
 
   namespace arango {
+    class AgencyComm;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    AgencyEndpoint
@@ -193,7 +193,7 @@ namespace triagens {
 /// @brief recursively flatten the JSON response into a map
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool processJsonNode (struct TRI_json_s const*,
+      bool processJsonNode (TRI_json_t const*,
                             std::map<std::string, bool>&,
                             std::string const&) const;
 
@@ -201,7 +201,7 @@ namespace triagens {
 /// @brief recursively flatten the JSON response into a map
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool processJsonNode (struct TRI_json_s const*,
+      bool processJsonNode (TRI_json_t const*,
                             std::map<std::string, std::string>&,
                             std::string const&,
                             bool) const;
@@ -281,6 +281,24 @@ namespace triagens {
         void unlock ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch a lock version from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+        bool fetchVersion (AgencyComm&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a lock version in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+        bool updateVersion (AgencyComm&);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -288,6 +306,7 @@ namespace triagens {
 
         const std::string _key;
         const std::string _type;
+        uint64_t _version;
         bool _isLocked;
 
     };
@@ -376,7 +395,7 @@ namespace triagens {
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
         
-        static void setPrefix (std::string const&);
+        static bool setPrefix (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the global prefix for all operations
@@ -569,6 +588,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string buildUrl (std::string const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a URL, without a key
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string buildUrl () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends an HTTP request to the agency, handling failover 

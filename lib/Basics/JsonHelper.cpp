@@ -40,9 +40,95 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// @brief creates a JSON key/value object from a list of strings
 ////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
+                                      std::map<std::string, std::string> const& values) {
+  TRI_json_t* json = TRI_CreateArray2Json(zone, values.size());
+
+  if (json == 0) {
+    return 0;
+  }
+
+  std::map<std::string, std::string>::const_iterator it;
+  for (it = values.begin(); it != values.end(); ++it) {
+    const std::string key = (*it).first;
+    const std::string value = (*it).second;
+
+    TRI_json_t* v = TRI_CreateString2CopyJson(zone, value.c_str(), value.size());
+    if (v != 0) {
+      TRI_Insert3ArrayJson(zone, json, key.c_str(), v);
+    }
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a key/value object of strings from a JSON (sub-) object
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* json) {
+  std::map<std::string, std::string> result;
+
+  if (isArray(json)) {
+    for (size_t i = 0, n = json->_value._objects._length; i < n; i += 2) {
+      TRI_json_t const* k = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+      TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+
+      if (isString(k) && isString(v)) {
+        const std::string key = std::string(k->_value._string.data, k->_value._string.length - 1);
+        const std::string value = std::string(v->_value._string.data, v->_value._string.length - 1);
+        result.insert(std::pair<std::string, std::string>(key, value));
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a JSON object from a list of strings
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* JsonHelper::stringList (TRI_memory_zone_t* zone,
+                                    std::vector<std::string> const& values) {
+  TRI_json_t* json = TRI_CreateList2Json(zone, values.size());
+
+  if (json == 0) {
+    return 0;
+  }
+
+  for (size_t i = 0, n = values.size(); i < n; ++i) {
+    TRI_json_t* v = TRI_CreateString2CopyJson(zone, values[i].c_str(), values[i].size());
+    if (v != 0) {
+      TRI_PushBack3ListJson(zone, json, v);
+    }
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a list of strings from a JSON (sub-) object
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> JsonHelper::stringList (TRI_json_t const* json) {
+  std::vector<std::string> result;
+
+  if (isList(json)) {
+    for (size_t i = 0, n = json->_value._objects._length; i < n; ++i) {
+      TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+      if (isString(v)) {
+        result.push_back(std::string(v->_value._string.data, v->_value._string.length - 1));
+      }
+    }
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
@@ -130,10 +216,6 @@ bool JsonHelper::getBooleanValue (TRI_json_t const* json,
   return defaultValue;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-        
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"

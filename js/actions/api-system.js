@@ -770,17 +770,81 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_admin_test
+/// @brief executes one or multiple tests on the server
+///
+/// @RESTHEADER{POST /_admin/test,runs tests on the server}
+///
+/// @RESTBODYPARAM{body,javascript,required}
+/// A JSON body containing an attribute "tests" which lists the files 
+/// containing the test suites.
+///
+/// @RESTDESCRIPTION
+///
+/// Executes the specified tests on the server and returns an object with the
+/// test results. The object has an attribute "error" which states whether 
+/// any error occurred. The object also has an attribute "passed" which 
+/// indicates which tests passed and which did not.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/test",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+   
+    var tests = body.tests;
+    if (! Array.isArray(tests)) {
+      actions.resultError(req, res,
+                          actions.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
+                          "expected attribute 'tests' is missing");
+      return;
+    }
+
+    var jsUnity = require("jsunity");
+    var testResults = { passed: { }, error: false };
+    
+    tests.forEach (function (test) {
+      var result = false;
+      try {
+        result = jsUnity.runTest(test);
+      }
+      catch (err) {
+      }
+      testResults.passed[test] = result;
+      if (! result) {
+        testResults.error = true;
+      }
+    });
+
+    actions.resultOk(req, res, actions.HTTP_OK, testResults);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_get_admin_execute
 /// @brief executes a JavaScript program on the server
 ///
 /// @RESTHEADER{POST /_admin/execute,executes a program}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
-/// The body to be executed.
+/// The body to be executed. 
 ///
 /// @RESTDESCRIPTION
 ///
-/// Executes the javascript code in the body on the server.
+/// Executes the javascript code in the body on the server as the body
+/// of a function with no arguments. If you have a `return` statement
+/// then the return value you produce will be returned as content type
+/// `application/json`. If the parameter `returnAsJSON` is set to
+/// `true`, the result will be a JSON object describing the return value
+/// directly, otherwise a string produced by JSON.stringify will be
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -798,7 +862,13 @@ actions.defineHttp({
       result = eval("(function() {" + body + "}());");
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+    if (req.parameters.hasOwnProperty("returnAsJSON") &&
+        req.parameters.returnAsJSON === "true") {
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+    }
   }
 });
 
