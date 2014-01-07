@@ -76,6 +76,11 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     result.journalSize   = properties.journalSize;      
     result.keyOptions    = properties.keyOptions;
     result.waitForSync   = properties.waitForSync;
+
+    if (cluster.isCoordinator()) {
+      result.shardKeys = properties.shardKeys;
+      result.numberOfShards = properties.numberOfShards;
+    }
   }
 
   if (showCount) {
@@ -158,33 +163,18 @@ function parseBodyForCreateCollection (req, res) {
   if (body.hasOwnProperty("waitForSync")) {
     r.parameter.waitForSync = body.waitForSync;
   }
+  
+  if (body.hasOwnProperty("shardKeys") && cluster.isCoordinator()) {
+    r.parameter.shardKeys = body.shardKeys || { };
+  }
+  
+  if (body.hasOwnProperty("numberOfShards") && cluster.isCoordinator()) {
+    r.parameter.numberOfShards = body.numberOfShards || 0;
+  }
+
   return r;
 }
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a cluster collection
-////////////////////////////////////////////////////////////////////////////////
-
-function post_api_collection_coordinator (req, res) {
-  // We already know that we are in a cluster and that we are a coordinator.
-
-  var r = parseBodyForCreateCollection(req, res);
-
-  if (r.bodyIsEmpty) {
-    return;   // error in JSON, is already reported
-  }
-    
-  if (r.name === "") {
-    actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-                      "name must be non-empty");
-    return;
-  }
-
-  // TODO
-
-  actions.resultOk(req, res, actions.HTTP_OK, { notYetImplemented: true });
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection
 ///
@@ -299,22 +289,6 @@ function post_api_collection_coordinator (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
-
-  if (cluster.isCluster()) {
-    if (cluster.isCoordinator()) {
-      return post_api_collection_coordinator(req, res);
-    }
-    // If we get here, we are a DB server.
-    if (!cluster.isCoordinatorRequest(req)) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN,
-               arangodb.ERROR_CLUSTER_NO_COORDINATOR_HEADER,
-              "DB server in cluster got request without coordinator header");
-      
-      return;
-    }
-    // If the header is there, go on as usual.
-  }
-
   var r = parseBodyForCreateCollection(req);
 
   if (r.bodyIsEmpty) {
@@ -351,6 +325,12 @@ function post_api_collection (req, res) {
     result.status = collection.status();
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;
+
+    if (cluster.isCoordinator()) {
+      // TODO:
+      result.shardKeys = collection.shardKeys;
+      result.numberOfShards = collection.numberOfShards;
+    }
     
     var headers = {
       location: databasePrefix(req, "/" + API + "/" + result.name)

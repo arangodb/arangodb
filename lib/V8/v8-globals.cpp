@@ -77,6 +77,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     CoordTransactionIDKey(),
 #endif
     DatabaseKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    OriginalDatabaseKey(),
+#endif
     DoCompactKey(),
     DomainKey(),
     ErrorKey(),
@@ -154,10 +157,17 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   CompatibilityKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("compatibility"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
   CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
+
 #ifdef TRI_ENABLE_CLUSTER
   CoordTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("coordTransactionID"));
 #endif
+
   DatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("database"));
+
+#ifdef TRI_ENABLE_CLUSTER
+  OriginalDatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("originalDatabase"));
+#endif
+
   DoCompactKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("doCompact"));
   DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
   ErrorKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("error"));
