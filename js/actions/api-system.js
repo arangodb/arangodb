@@ -770,6 +770,61 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_admin_test
+/// @brief executes one or multiple tests on the server
+///
+/// @RESTHEADER{POST /_admin/test,runs tests on the server}
+///
+/// @RESTBODYPARAM{body,javascript,required}
+/// A JSON body containing an attribute "tests" which lists the files 
+/// containing the test suites.
+///
+/// @RESTDESCRIPTION
+///
+/// Executes the specified tests on the server and returns the test results.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/test",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+   
+    var tests = body.tests;
+    if (! Array.isArray(tests)) {
+      actions.resultError(req, res,
+                          actions.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
+                          "expected attribute 'tests' is missing");
+      return;
+    }
+
+    var jsUnity = require("jsunity");
+    var testResults = { passed: { }, error: false };
+    
+    tests.forEach (function (test) {
+      var result = false;
+      try {
+        result = jsUnity.runTest(test);
+      }
+      catch (err) {
+      }
+      testResults.passed[test] = result;
+      if (! result) {
+        testResults.error = true;
+      }
+    });
+
+    actions.resultOk(req, res, actions.HTTP_OK, testResults);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_get_admin_execute
 /// @brief executes a JavaScript program on the server
 ///
