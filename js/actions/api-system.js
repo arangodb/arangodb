@@ -781,7 +781,10 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// Executes the specified tests on the server and returns the test results.
+/// Executes the specified tests on the server and returns an object with the
+/// test results. The object has an attribute "error" which states whether 
+/// any error occurred. The object also has an attribute "passed" which 
+/// indicates which tests passed and which did not.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
