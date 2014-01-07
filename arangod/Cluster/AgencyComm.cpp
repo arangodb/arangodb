@@ -650,7 +650,9 @@ void AgencyComm::cleanup () {
 bool AgencyComm::tryConnect () {
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
-    assert(_globalEndpoints.size() > 0);
+    if (_globalEndpoints.size() == 0) {
+      return false;
+    }
 
     std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -1473,9 +1475,13 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
   {
     READ_LOCKER(AgencyComm::_globalLock);
     numEndpoints = AgencyComm::_globalEndpoints.size(); 
-    assert(numEndpoints > 0);
+    if (numEndpoints == 0) {
+      return false;
+    }
   }
  
+  assert(numEndpoints > 0);
+
   size_t tries = 0;
   std::string realUrl = url;
   std::string forceEndpoint = "";
