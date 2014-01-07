@@ -950,7 +950,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "version", JS_VersionAgency);
 
   v8g->AgencyTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoAgencyCtor", ft->GetFunction());
+  TRI_AddGlobalFunctionVocbase(context, "ArangoAgencyCtor", ft->GetFunction(), true);
   
   // register the global object
   v8::Handle<v8::Object> aa = v8g->AgencyTempl->NewInstance();
