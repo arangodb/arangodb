@@ -36,6 +36,8 @@
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/tri-strings.h"
+#include "Rest/HttpRequest.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -47,6 +49,7 @@
 #include "Actions/actions.h"
   
 #ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
 #endif
 
@@ -275,6 +278,7 @@ void ApplicationV8::skipUpgrade () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, 
+                                                       triagens::rest::HttpRequest* request,
                                                        bool initialise,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
@@ -308,6 +312,22 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
   v8g->_vocbase = vocbase;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (v8g->_originalDatabase != 0) {
+    TRI_Free(TRI_CORE_MEM_ZONE, v8g->_originalDatabase);
+  }
+
+  if (request != 0 && ServerState::instance()->isCoordinator()) {
+    // copy the name of the originally selected database into our reach
+    const string& dbName = request->originalDatabaseName();
+    v8g->_originalDatabase = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, dbName.c_str(), dbName.size());
+  }
+  else {
+    v8g->_originalDatabase = 0;
+  }
+#endif
+
   v8g->_allowUseDatabase = allowUseDatabase;
   
 
