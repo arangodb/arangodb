@@ -1339,15 +1339,15 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "drop", JS_Drop);
 #endif
 
-  v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterComm", 
+  v8g->ClusterCommTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterCommCtor", 
                                ft->GetFunction());
 
   // register the global object
-  //v8::Handle<v8::Object> ss = v8g->ClusterCommTempl->NewInstance();
-  //if (! ss.IsEmpty()) {
-  //  TRI_AddGlobalVariableVocbase(context, "ArangoServerState", ss);
- // }
+  ss = v8g->ClusterCommTempl->NewInstance();
+  if (! ss.IsEmpty()) {
+    TRI_AddGlobalVariableVocbase(context, "ArangoServerState", ss);
+  }
 }
 
 // Local Variables:
