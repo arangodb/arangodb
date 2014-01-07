@@ -619,17 +619,18 @@
           var shard = "v1";
           var wasCalled = false;
           agencyMock.set = function(route, value) {
-            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.collections, "_system", "87123"].join("/"));
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.colls, "_system", "87123"].join("/"));
+            require("internal").print(value);
             // TODO Check Object correctness
-            dummy.target.coordinators[route] = value;
+            dummy.target.vInfo = value;
             wasCalled = true;
             return true;
           };
 
-          assertEqual(colV.getServerForShard("v1"), "pavel");
-          assertTrue(colV.moveShard("v1", "pavel"), "Failed to move shard responsibility.");
+          assertEqual(colV.getServerForShard(shard), source);
+          assertTrue(colV.moveShard(shard, target), "Failed to move shard responsibility.");
           assertTrue(wasCalled, "Agency has not been informed to move shard..");
-          assertEqual(colV.getServerForShard("v1"), "paul");
+          assertEqual(colV.getServerForShard(shard), target);
         }
       };
     };
