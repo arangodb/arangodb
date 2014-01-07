@@ -304,13 +304,6 @@ namespace triagens {
         std::string getTargetServerEndpoint (ServerID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about shards from the agency
-/// Usually one does not have to call this directly.
-////////////////////////////////////////////////////////////////////////////////
-
-        void loadShards ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find the server who is responsible for a shard
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
