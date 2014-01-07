@@ -1038,7 +1038,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
       r->Set(v8g->StatusKey, v8::String::New("SUBMITTED"));
     }
     else if (res->status == CL_COMM_SENDING) {
-      r->Set(v8g->StatusKey, v8::String::New("SUBMITTED"));
+      r->Set(v8g->StatusKey, v8::String::New("SENDING"));
     }
     else if (res->status == CL_COMM_SENT) {
       r->Set(v8g->StatusKey, v8::String::New("SENT"));
@@ -1052,6 +1052,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
       r->Set(v8g->StatusKey, v8::String::New("ERROR"));
       r->Set(v8g->ErrorMessageKey,
              v8::String::New("could not send request, DBServer gone"));
+      // TODO: give a better error result here, depending
     }
     else if (res->status == CL_COMM_DROPPED) {
       r->Set(v8g->StatusKey, v8::String::New("DROPPED"));
@@ -1147,7 +1148,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 4 || argv.Length() > 7) {
-    TRI_V8_EXCEPTION_USAGE(scope, "asyncRequest("
+    TRI_V8_EXCEPTION_USAGE(scope, "syncRequest("
       "reqType, shardID, dbname, path, body, headers, options)");
   }
   // Possible options:
