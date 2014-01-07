@@ -181,6 +181,13 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
   // get database name from request
   string dbName = request->databaseName();
 
+#ifdef TRI_ENABLE_CLUSTER
+  // if we are a coordinator, we always work inside the system database
+  if (ServerState::instance()->isCoordinator()) {
+    dbName = TRI_VOC_SYSTEM_DATABASE;
+  }
+#endif
+
   if (databases.empty()) {
     // no databases defined. this means all databases are accessible via the endpoint
 

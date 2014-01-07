@@ -333,6 +333,12 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), database.size()));
 
+#ifdef TRI_ENABLE_CLUSTER
+  // set originally requested database
+  string const& originalDatabase = request->originalDatabaseName();
+  req->Set(v8g->OriginalDatabaseKey, v8::String::New(originalDatabase.c_str(), originalDatabase.size()));
+#endif  
+
   // set the full url
   string const& fullUrl = request->fullUrl();
   req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), fullUrl.size()));
