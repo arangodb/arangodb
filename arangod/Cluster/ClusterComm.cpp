@@ -589,7 +589,7 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
   {
     basics::ConditionLocker locker(&somethingReceived);
     i = receivedByOpID.find(operationID);
-    if (i != toSendByOpID.end()) {
+    if (i != receivedByOpID.end()) {
       res = new ClusterCommResult();
       if (0 == res) {
         return 0;
