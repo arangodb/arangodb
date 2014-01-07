@@ -35,15 +35,8 @@ exports.Communication = function() {
   
   var agency,
     _AgencyWrapper,
-    cache,
     splitServerName,
     storeServersInCache,
-    storeServerAddressesInCache,
-    updateAddresses,
-    updatePlan,
-    updateTarget,
-    DBServers,
-    agencyRoutes,
     Target,
     mapCollectionIDsToNames,
     _ = require("underscore");
@@ -139,16 +132,13 @@ exports.Communication = function() {
     addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
     addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
 
+    var sync = addLevel(this, "sync", "Sync");
+    addLevel(sync, "beat", "ServerStates", ["get"]);
+    addLevel(sync, "interval", "HeartbeatIntervalMs", ["get"]);
+
   }
 
   agency = new _AgencyWrapper(); 
-  agencyRoutes = {
-    vision: "Vision/",
-    target: "Target/",
-    plan: "Plan/",
-    current: "Current/",
-    fail: "Fail/"
-  };
 
 
 // -----------------------------------------------------------------------------
@@ -169,66 +159,6 @@ exports.Communication = function() {
       }
     });
   };
-
-  storeServerAddressesInCache = function(servers) {
-    _.each(servers, function(v, k) {
-      var pName = splitServerName(k);
-      // Data Servers
-      if (cache.wanted[pName]) {
-        cache.wanted[pName].address = v;
-      }
-      if (cache.current[pName]) {
-        cache.current[pName].address = v;
-      }
-      // Coordinators
-      /*
-      if (cache.wanted[pName]) {
-        cache.wanted[pName].address = v;
-      }
-      */
-    });
-  };
-
-  updateAddresses = function() {
-    if (cache.target && cache.plan && false) {
-      var addresses = agency.get(agencyRoutes.current + "ServersRegistered", true);
-      storeServerAddressesInCache(addresses);
-    }
-  };
-
-  updateTarget = function() {
-    cache.target = {};
-    var servers = agency.target.dbServers.get(true);
-    storeServersInCache(cache.target, servers);
-    updateAddresses();
-  };
-
-  updatePlan = function(force) {
-    cache.plan = {};
-    var servers = agency.plan.dbServers.get(true);
-    storeServersInCache(cache.plan, servers);
-    updateAddresses();
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               Configuration Cache
-// -----------------------------------------------------------------------------
-  cache = {
-    getTarget: function() {
-      if (!agency.target.dbServers.checkVersion()) {
-        updateTarget();
-      }
-      return this.target;
-    },
-
-    getPlan: function() {
-      return this.plan;
-    }
-  };
-
-  //Fill Cache
-  //updateTarget();
-  updatePlan();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               Object Constructors
@@ -280,10 +210,6 @@ exports.Communication = function() {
             return;
           }
         });
-        if (res === -1) {
-          //TODO Debug info
-          require("internal").print("Trying to remove a server that is not known");
-        }
         return res;
       }
     }
@@ -514,13 +440,123 @@ exports.Communication = function() {
   };
   
 // -----------------------------------------------------------------------------
+// --SECTION--                                                              Sync
+// -----------------------------------------------------------------------------
+
+  var Sync = function() {
+    var Heartbeats;
+    var interval = agency.sync.interval.get();
+
+    var didBeatInTime = function(time) {
+
+    };
+
+    var isInSync = function(status) {
+      return (status === "SERVINGSYNC" || status === "INSYNC");
+    };
+    var isOutSync = function(status) {
+      return (status === "SERVINGASYNC" || status === "SYNCING");
+    };
+    var isServing = function(status) {
+      return (status === "SERVINGASYNC" || status === "SERVINGSYNC");
+    };
+    var isInactive = function(status) {
+      return !isInSync(status) && !isOutSync(status);
+    };
+
+    var HeartbeatsObject = function() {
+      this.list = function() {
+        return agency.sync.beat.get(true);
+      };
+      this.getInactive = function() {
+        var list = this.list();
+        var res = [];
+        _.each(list, function(v, k) {
+          if (isInactive(v.status)) {
+            require("internal").print(k, isInSync(v.status), isOutSync(v.status));
+            res.push(k);
+          }
+        });
+        return res.sort();
+      };
+      this.getServing = function() {
+        var list = this.list();
+        var res = [];
+        _.each(list, function(v, k) {
+          if (isServing(v.status)) {
+            res.push(k);
+          }
+        });
+        return res.sort();
+      };
+      this.getInSync = function() {
+        var list = this.list();
+        var res = [];
+        _.each(list, function(v, k) {
+          if (isInSync(v.status)) {
+            res.push(k);
+          }
+        });
+        return res.sort();
+      };
+      this.getOutSync = function() {
+        var list = this.list();
+        var res = [];
+        _.each(list, function(v, k) {
+          if (isOutSync(v.status)) {
+            res.push(k);
+          }
+        });
+        return res.sort();
+      };
+      this.noBeat = function() {
+        var lastAccepted = new Date((new Date()).getTime() - (2 * interval));
+        var res = [];
+        var list = this.list();
+        _.each(list, function(v, k) {
+          if (new Date(v.time) < lastAccepted) {
+            res.push(k);
+          }
+        });
+        return res.sort();
+      };
+
+    };
+
+    this.Heartbeats = function() {
+      if (!Heartbeats) {
+        Heartbeats = new HeartbeatsObject();
+      }
+      return Heartbeats;
+    };
+
+  };
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             Global Object binding
 // -----------------------------------------------------------------------------
 
   this.target = new Target();
   this.plan = new Plan();
   this.current = new Current();
+  this.sync = new Sync();
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      Global Convenience functions
+// -----------------------------------------------------------------------------
+
+  this.addPrimary = this.target.DBServers().addPrimary;
+  this.addSecondary = this.target.DBServers().addSecondary;
+  this.addCoordinator = this.target.Coordinators().add;
+  this.addPair = this.target.DBServers().addPair;
+  this.removeServer = function(name) {
+    var res = this.target.DBServers().removeServer(name);
+    if (res === -1) {
+      return this.target.Coordinators().remove(name);
+    }
+    return res;
+  };
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_agency-communication_agency

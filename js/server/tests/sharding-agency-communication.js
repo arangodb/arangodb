@@ -57,12 +57,14 @@
     target: "Target",
     plan: "Plan",
     current: "Current",
-    fail: "Sync",
+    sync: "Sync",
     sub: {
       servers:"DBServers",
       coords: "Coordinators",
       colls: "Collections",
-      registered: "ServersRegistered"
+      registered: "ServersRegistered",
+      beat: "ServerStates",
+      interval: "HeartbeatIntervalMs"
     }
   };
   var resetToDefault = function() {
@@ -113,6 +115,32 @@
       "charly": "tcp://192.168.1.2:8529",
       "cindy": "tcp://192.168.1.3:8529"
     };
+    var heartbeats = {
+      "pavel": {
+        status: "SERVINGSYNC",
+        time: (new Date()).toISOString()
+      },
+      "paul": {
+        status: "SERVINGSYNC",
+        time: (new Date()).toISOString()
+      },
+      "patricia": {
+        status: "SERVINGASYNC",
+        time: (new Date()).toISOString()
+      },
+      "sandro": {
+        status: "INSYNC",
+        time: (new Date()).toISOString()
+      },
+      "sandra": {
+        status: "SYNCING",
+        time: (new Date()).toISOString()
+      },
+      "sally": {
+        status: "INSYNC",
+        time: (new Date()).toISOString()
+      }
+    };
     dummy = {};
     dummy.target = {};
     dummy.target.servers = createResult([agencyRoutes.target, agencyRoutes.sub.servers], dbServers);
@@ -138,6 +166,9 @@
     dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
     dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
     dummy.current.vInfo = JSON.stringify(vInfo);
+
+    dummy.sync = {};
+    dummy.sync.heartbeats = heartbeats;
   };
   var setup = function() {
     resetToDefault();
@@ -147,133 +178,102 @@
   var agencyMock = {
     get: function(route, recursive) {
       var parts = route.split("/");
+      var res;
+      var returnResult = function(base) {
+        if (parts[1] === agencyRoutes.sub.servers && recursive) {
+          return base.servers;
+        }
+        if (parts[1] === agencyRoutes.sub.colls) {
+          if (recursive) {
+            if (parts[2] === "_system") {
+              return base.syscollections;
+            }
+            if (parts[2] === "a_db") {
+              return base.acollections;
+            }
+            if (parts[2] === "b_db") {
+              return {};
+            }
+            if (parts[2] === "z_db") {
+              return {};
+            }
+          } else {
+            if (parts[2] === "_system" && parts[3] === "87123") {
+              return base.vInfo;
+            }
+          }
+        }
+      };
       switch (parts[0]) {
         case agencyRoutes.target:
-          if (parts[1] === agencyRoutes.sub.servers && recursive) {
-            return dummy.target.servers;
-          }
-          if (parts[1] === agencyRoutes.sub.colls) {
-            if (recursive) {
-              if (parts[2] === "_system") {
-                return dummy.target.syscollections;
-              }
-              if (parts[2] === "a_db") {
-                return dummy.target.acollections;
-              }
-              if (parts[2] === "b_db") {
-                return {};
-              }
-              if (parts[2] === "z_db") {
-                return {};
-              }
-            } else {
-              if (parts[2] === "_system" && parts[3] === "87123") {
-                return dummy.target.vInfo;
-              }
-            }
+          res = returnResult(dummy.target);
+          if (res) {
+            return res;
           }
           break;
         case agencyRoutes.plan:
-          if (parts[1] === agencyRoutes.sub.servers && recursive) {
-            return dummy.plan.servers;
-          }
-          if (parts[1] === agencyRoutes.sub.colls) {
-            if (recursive) {
-              if (parts[2] === "_system") {
-                return dummy.plan.syscollections;
-              }
-              if (parts[2] === "a_db") {
-                return dummy.plan.acollections;
-              }
-              if (parts[2] === "b_db") {
-                return {};
-              }
-              if (parts[2] === "z_db") {
-                return {};
-              }
-            } else {
-              if (parts[2] === "_system" && parts[3] === "87123") {
-                return dummy.plan.vInfo;
-              }
-            }
+          res = returnResult(dummy.plan);
+          if (res) {
+            return res;
           }
           break;
         case agencyRoutes.current:
-          if (parts[1] === agencyRoutes.sub.servers && recursive) {
-            return dummy.current.servers;
-          }
-          if (parts[1] === agencyRoutes.sub.colls) {
-            if (recursive) {
-              if (parts[2] === "_system") {
-                return dummy.current.syscollections;
-              }
-              if (parts[2] === "a_db") {
-                return dummy.current.acollections;
-              }
-              if (parts[2] === "b_db") {
-                return {};
-              }
-              if (parts[2] === "z_db") {
-                return {};
-              }
-            } else {
-              if (parts[2] === "_system" && parts[3] === "87123") {
-                return dummy.current.vInfo;
-              }
-            }
+          res = returnResult(dummy.current);
+          if (res) {
+            return res;
           }
           if (parts[1] === agencyRoutes.sub.registered && recursive) {
             return dummy.current.registered;
           }
           break;
+        case agencyRoutes.sync:
+          if (parts[1] === agencyRoutes.sub.beat && recursive) {
+            return dummy.sync.heartbeats;
+          }
+          if (parts[1] === agencyRoutes.sub.interval) {
+            return dummy.sync.interval;
+          }
+          break;
         default:
           fail();
       }
+      require("internal").print(parts);
       fail();
     },
     list: function(route) {
       var parts = route.split("/");
+      var returnResult = function(route) {
+        if (parts[1] === agencyRoutes.sub.colls) {
+          return route.databases;
+        }
+        if (parts[1] === agencyRoutes.sub.coords) {
+          return _.map(
+            _.keys(route.coordinators),
+            function(k) {
+              var splits = k.split("/");
+              return splits[splits.length - 1];
+            }
+          );
+        }
+      };
+      var res;
       switch (parts[0]) {
         case agencyRoutes.target:
-          if (parts[1] === agencyRoutes.sub.colls) {
-            return dummy.target.databases;
-          }
-          if (parts[1] === agencyRoutes.sub.coords) {
-            return _.map(
-              _.keys(dummy.target.coordinators),
-              function(k) {
-                var splits = k.split("/");
-                return splits[splits.length - 1];
-              }
-            );
+          res = returnResult(dummy.target);
+          if (res) {
+            return res;
           }
           break;
         case agencyRoutes.plan:
-          if (parts[1] === agencyRoutes.sub.colls) {
-            return dummy.plan.databases;
-          }
-          if (parts[1] === agencyRoutes.sub.coords) {
-            return _.map(
-              _.keys(dummy.plan.coordinators),
-              function(k) {
-                var splits = k.split("/");
-                return splits[splits.length - 1];
-              }
-            );
+          res = returnResult(dummy.plan);
+          if (res) {
+            return res;
           }
           break;
         case agencyRoutes.current:
-          if (parts[1] === agencyRoutes.sub.colls) {
-            return dummy.current.databases;
-          }
-          if (parts[1] === agencyRoutes.sub.coords) {
-            return _.map(
-              _.keys(dummy.current.coordinators),
-              function(k) {
-                var splits = k.split("/");
-                return splits[splits.length - 1];
-              }
-            );
+          res = returnResult(dummy.current);
+          if (res) {
+            return res;
           }
           break;
         default:
@@ -942,6 +942,266 @@
 
   function runSyncTests(test) {
 
+    function HeartbeatSuite() {
+      var beats;
+
+      return {
+        setUp: function() {
+          setup();
+          beats = comm.sync.Heartbeats();
+        },
+        tearDown: teardown,
+
+        testGetHeartbeats: function() {
+          assertEqual(beats.list(), dummy.sync.heartbeats);
+        },
+
+        testGetInactiveServers: function() {
+          assertEqual(beats.getInactive(), []);
+        },
+
+        testGetServingServers: function() {
+          assertEqual(beats.getServing(), ["pavel", "paul", "patricia"].sort());
+        },
+
+        testGetInSyncPairs: function() {
+          assertEqual(beats.getInSync(), [
+            "pavel", "sandro",
+            "paul", "sally"
+          ].sort());
+        },
+
+        testGetOutOfSyncPairs: function() {
+          assertEqual(beats.getOutSync(), ["patricia", "sandra"].sort());
+        },
+
+        testGetNoBeat: function() {
+          assertEqual(beats.noBeat(), []);
+        }
+
+      };
+    };
+
+    function ProblemsSuite() {
+      // TODO Not yet fully defined
+      return {
+        setUp: setup,
+        tearDown: teardown
+
+      };
+    };
+
+    test.run(HeartbeatSuite);
+    test.run(ProblemsSuite);
+
+  };
+
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                        high-level
+  // -----------------------------------------------------------------------------
+
+  function runHighLevelTests(test) {
+
+    function ConfigureSuite() {
+
+      var targetServers;
+      var targetCoordinators;
+
+      return {
+        setUp: function() {
+          setup();  
+          targetServers = comm.target.DBServers();
+          targetCoordinators = comm.target.Coordinators();
+        },
+        tearDown: teardown,
+
+        testAddNewPrimaryServer: function() {
+          var name = "pancho";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, "none");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addPrimary(name), "Failed to insert a new primary");
+          assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertUndefined(newList[name].secondary);
+        },
+
+        testAddNewSecondaryServer: function() {
+          var name = "pancho";
+          var secName = "samuel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, "none");
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addPrimary(name), "Failed to insert a new primary");
+          assertTrue(wasCalled, "Agency has not been informed to insert primary.");
+          wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, secName);
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addSecondary(secName, name), "Failed to insert a new secondary");
+          assertTrue(wasCalled, "Agency has not been informed to insert secondary.");
+
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertEqual(newList[name].secondary, secName);
+          assertNotUndefined(newList[secName]);
+          assertEqual(newList[secName].role, "secondary");
+        },
+
+        testAddNewServerPair: function() {
+          var name = "pancho";
+          var secName = "samuel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertEqual(value, secName);
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addPair(name, secName), "Failed to insert a new primary/secondary pair");
+          assertTrue(wasCalled, "Agency has not been informed to insert the new pair.");
+          var newList = targetServers.getList();
+          assertNotUndefined(newList[name]);
+          assertEqual(newList[name].role, "primary");
+          assertEqual(newList[name].secondary, secName);
+          assertNotUndefined(newList[secName]);
+          assertEqual(newList[secName].role, "secondary");
+        },
+
+        testRemovePrimaryServer: function() {
+          var name = "pavel";
+          var secondaryName = "sandro";
+          var setWasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, secondaryName].join("/"));
+            assertEqual(value, "none");
+            assertFalse(setWasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            setWasCalled = true;
+            return true;
+          };
+          var delWasCalled = false;
+          agencyMock.remove = function(route) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, name].join("/"));
+            assertFalse(delWasCalled, "Delete has been called multiple times");
+            delete dummy.target.servers[route];
+            delWasCalled = true;
+            return true;
+          };
+          assertTrue(comm.removeServer(name), "Failed to remove a primary server");
+          assertTrue(setWasCalled, "Agency has not been informed to replace the primary with the secondary.");
+          assertTrue(delWasCalled, "Agency has not been informed to remove the primary/secondary pair.");
+
+          var newList = targetServers.getList();
+          assertUndefined(newList[name]);
+          assertNotUndefined(newList[secondaryName]);
+          assertEqual(newList[secondaryName].role, "primary");
+          assertUndefined(newList[secondaryName].secondary);
+        },
+
+        testRemoveSecondaryServer: function() {
+          var name = "sandro";
+          var pName = "pavel";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.servers, pName].join("/"));
+            assertEqual(value, "none");
+            assertFalse(wasCalled, "Set has been called multiple times");
+            dummy.target.servers[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.removeServer(name), "Failed to remove a secondary server.");
+          assertTrue(wasCalled, "Agency has not been informed to update the primary server.");
+          var newList = targetServers.getList();
+          assertUndefined(newList[name]);
+          assertNotUndefined(newList[pName]);
+          assertEqual(newList[pName].role, "primary");
+          assertUndefined(newList[pName].secondary);
+        },
+
+        testAddCoordinator: function() {
+          var name = "carol";
+          var wasCalled = false;
+          agencyMock.set = function(route, value) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
+            assertEqual(value, true);
+            dummy.target.coordinators[route] = value;
+            wasCalled = true;
+            return true;
+          };
+          assertTrue(comm.addCoordinator(name), "Failed to insert a new coordinator.");
+          assertTrue(wasCalled, "Agency has not been informed to insert coordinator.");
+          var list = [
+            "carlos",
+            "charly",
+            "cindy",
+            name
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        },
+
+        testRemoveCoordinator: function() {
+          var name = "cindy";
+          var delWasCalled = false;
+          agencyMock.remove = function(route) {
+            assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
+            assertFalse(delWasCalled, "Delete has been called multiple times");
+            delete dummy.target.coordinators[route];
+            delWasCalled = true;
+            return true;
+          };
+          assertTrue(comm.removeServer(name), "Failed to remove a coordinator.");
+          assertTrue(delWasCalled, "Agency has not been informed to remove a coordinator.");
+          var list = [
+            "carlos",
+            "charly"
+          ].sort();
+          assertEqual(targetCoordinators.getList(), list);
+        }
+      };
+
+    };
+
+    function DifferenceSuite() {
+
+      return {
+        setUp: function() {
+          setup();  
+          targetServers = comm.target.DBServers();
+        },
+        tearDown: teardown
+      };
+
+
+    };
+
+    test.run(ConfigureSuite);
+    test.run(DifferenceSuite);
+
   };
 
   // -----------------------------------------------------------------------------
@@ -957,6 +1217,7 @@
   runPlanTests(jsunity);
   runCurrentTests(jsunity);
   runSyncTests(jsunity);
+  runHighLevelTests(jsunity);
 
   return jsunity.done();
 
