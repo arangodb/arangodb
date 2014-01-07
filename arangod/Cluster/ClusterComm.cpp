@@ -613,15 +613,16 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for one answer matching the criteria
 ///
-/// If clientTransactionID is empty, then any answer with any 
-/// clientTransactionID matches. If coordTransactionID is 0, then
-/// any answer with any coordTransactionID matches. If shardID is
-/// empty, then any answer from any ShardID matches. If operationID
-/// is 0, then any answer with any operationID matches. 
-/// This function returns 0 if noIf `timeout`
-/// is given, the result can be 0 indicating that no matching answer
-/// was available until the timeout was hit. The caller has to delete
-/// the result, if it is not 0.
+/// If clientTransactionID is empty, then any answer with any
+/// clientTransactionID matches. If coordTransactionID is 0, then any
+/// answer with any coordTransactionID matches. If shardID is empty,
+/// then any answer from any ShardID matches. If operationID is 0, then
+/// any answer with any operationID matches. This function returns
+/// a result structure with status CL_COMM_DROPPED if no operation
+/// matches. If `timeout` is given, the result can be a result structure
+/// with status CL_COMM_TIMEOUT indicating that no matching answer was
+/// available until the timeout was hit. The caller has to delete the
+/// result.
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult* ClusterComm::wait (
