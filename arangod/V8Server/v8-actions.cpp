@@ -1010,11 +1010,8 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
 
     }
   }
-  delete headerFields;
 
-  if (0 != res) {
-    delete res;
-  }
+  delete res;
 
   return scope.Close(r);
 }
