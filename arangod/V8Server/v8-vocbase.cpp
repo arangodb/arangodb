@@ -76,6 +76,11 @@
 #include "v8.h"
 #include "V8/JSLoader.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
+#endif
+
 #include "unicode/timezone.h"
 #include "unicode/utypes.h"
 #include "unicode/datefmt.h"
@@ -1756,6 +1761,53 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
   else {
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
   }
+
+
+#ifdef TRI_ENABLE_CLUSTER
+  const bool isCoordinator = ServerState::instance()->isCoordinator(); 
+#else 
+  const bool isCoordinator = false;
+#endif
+
+  if (isCoordinator) {
+    v8::Handle<v8::Object> p = argv[1]->ToObject();
+
+    int64_t numberOfShards = 0;
+    std::vector<std::string> shardKeys;
+
+    if (p->Has(v8::String::New("numberOfShards"))) {
+      numberOfShards = TRI_ObjectToInt64(p->Get(v8::String::New("numberOfShards")));
+    }
+    
+    if (p->Has(TRI_V8_SYMBOL("shardKeys"))) {
+      if (p->Get(TRI_V8_SYMBOL("shardKeys"))->IsArray()) {
+        v8::Handle<v8::Array> k = v8::Handle<v8::Array>::Cast(p->Get(TRI_V8_SYMBOL("shardKeys")));
+      
+        for (uint32_t i = 0 ; i < k->Length(); ++i) {
+          v8::Handle<v8::Value> v = k->Get(i);
+          if (v->IsString()) {
+            shardKeys.push_back(TRI_ObjectToString(v));
+          }
+        }
+      }
+    }
+
+    if (numberOfShards == 0) {
+      TRI_FreeCollectionInfoOptions(&parameter);
+      TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
+    }
+    
+    if (shardKeys.empty()) {
+      TRI_FreeCollectionInfoOptions(&parameter);
+      TRI_V8_EXCEPTION_PARAMETER(scope, "no shard keys specified");
+    }
+
+    if (! ClusterInfo::instance()->doesDatabaseExist(vocbase->_name)) {
+      TRI_FreeCollectionInfoOptions(&parameter);
+      TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
+    }
+  }
+
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, 
                                                                     &parameter, 

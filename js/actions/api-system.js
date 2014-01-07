@@ -1016,7 +1016,7 @@ actions.defineHttp({
         else {
           params += "&";
         }
-        params += p+"="+String(req.parameters[p]);
+        params += p+"="+ encodeURIComponent(String(req.parameters[p]));
       }
     }
     if (params !== "") {
