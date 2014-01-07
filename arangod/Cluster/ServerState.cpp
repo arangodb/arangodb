@@ -55,6 +55,7 @@ static ServerState* Instance = 0;
 ServerState::ServerState () 
   : _id(),
     _address(),
+    _initialised(false),
     _lock(),
     _role(ROLE_UNDEFINED),
     _state(STATE_UNDEFINED) {

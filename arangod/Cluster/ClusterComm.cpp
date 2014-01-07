@@ -1222,5 +1222,3 @@ bool ClusterCommThread::init () {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

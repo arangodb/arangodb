@@ -148,7 +148,7 @@ class v8_action_t : public TRI_action_t {
         allowEngineReset = true;
       }
       
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, ! allowEngineReset, false);
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, request, ! allowEngineReset, false);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {

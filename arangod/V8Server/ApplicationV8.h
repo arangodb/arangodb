@@ -49,6 +49,10 @@ namespace triagens {
     class Thread;
   }
 
+  namespace rest {
+    class HttpRequest;
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ApplicationV8
 // -----------------------------------------------------------------------------
@@ -239,7 +243,8 @@ namespace triagens {
 /// @brief enters an context
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Context* enterContext (TRI_vocbase_s*, 
+        V8Context* enterContext (TRI_vocbase_s*,
+                                 triagens::rest::HttpRequest*, 
                                  bool,
                                  bool);
 

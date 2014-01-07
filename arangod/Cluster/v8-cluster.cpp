@@ -842,6 +842,20 @@ static v8::Handle<v8::Value> JS_IdServerState (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the cluster is initialised
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_InitialisedServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "initialised()");
+  }
+
+  return scope.Close(v8::Boolean::New(ServerState::instance()->initialised()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the server is a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1050,10 +1064,14 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
     r->Set(v8g->ClientTransactionIDKey, 
            v8::String::New(res->clientTransactionID.c_str(),
                            res->clientTransactionID.size()));
-    r->Set(v8g->CoordTransactionIDKey,
-           v8::Number::New(res->coordTransactionID));
-    r->Set(v8g->OperationIDKey,
-           v8::Number::New(res->operationID));
+
+    // convert the ids to strings as uint64_t might be too big for JavaScript numbers
+    std::string id = StringUtils::itoa(res->coordTransactionID);
+    r->Set(v8g->CoordTransactionIDKey, v8::String::New(id.c_str(), id.size()));
+
+    id = StringUtils::itoa(res->operationID);
+    r->Set(v8g->OperationIDKey, v8::String::New(id.c_str(), id.size()));
+
     r->Set(v8g->ShardIDKey,
            v8::String::New(res->shardID.c_str(), res->shardID.size()));
     if (res->status == CL_COMM_SUBMITTED) {
@@ -1072,9 +1090,19 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
     }
     else if (res->status == CL_COMM_ERROR) {
       r->Set(v8g->StatusKey, v8::String::New("ERROR"));
+
       r->Set(v8g->ErrorMessageKey,
              v8::String::New("could not send request, DBServer gone"));
       // TODO: give a better error result here, depending
+
+      if (res->result && res->result->isComplete()) {
+        v8::Handle<v8::Object> details = v8::Object::New();
+        details->Set(v8::String::New("code"), v8::Number::New(res->result->getHttpReturnCode()));
+        details->Set(v8::String::New("message"), v8::String::New(res->result->getHttpReturnMessage().c_str()));
+        details->Set(v8::String::New("body"), v8::String::New(res->result->getBody().str().c_str(), res->result->getBody().str().length()));
+
+        r->Set(v8::String::New("details"), details);
+      }
     }
     else if (res->status == CL_COMM_DROPPED) {
       r->Set(v8g->StatusKey, v8::String::New("DROPPED"));
@@ -1489,6 +1517,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "address", JS_AddressServerState);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushServerState, true);
   TRI_AddMethodVocbase(rt, "id", JS_IdServerState);
+  TRI_AddMethodVocbase(rt, "initialised", JS_InitialisedServerState);
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
   TRI_AddMethodVocbase(rt, "setId", JS_SetIdServerState, true);
