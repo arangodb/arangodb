@@ -53,7 +53,7 @@ ApplicationCluster::ApplicationCluster ()
   : ApplicationFeature("Sharding"),
     _heartbeat(0),
     _disableHeartbeat(false),
-    _heartbeatInterval(1000),
+    _heartbeatInterval(0),
     _agencyEndpoints(),
     _agencyPrefix(),
     _myId(),
@@ -85,7 +85,6 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
   options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
-    ("cluster.heartbeat-interval", &_heartbeatInterval, "heartbeat interval (in ms)")
     ("cluster.my-id", &_myId, "this server's id")
     ("cluster.my-address", &_myAddress, "this server's endpoint")
   ;
@@ -139,11 +138,6 @@ bool ApplicationCluster::prepare () {
     if (found != std::string::npos) {
       LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
     }
-  }
-
-  // validate --cluster.heartbeat-interval
-  if (_heartbeatInterval < 10) {
-    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.heartbeat-interval");
   }
 
   // initialise cluster info library
@@ -223,8 +217,31 @@ bool ApplicationCluster::start () {
            ServerState::roleToString(role).c_str());
 
   if (! _disableHeartbeat) {
+    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
+
+    if (result.successful()) {
+      std::map<std::string, std::string> value;
+      if (result.flattenJson(value, "", false)) {
+        std::map<std::string, std::string>::const_iterator it = value.begin();
+        if (it != value.end()) {
+          _heartbeatInterval = triagens::basics::StringUtils::uint64((*it).second);
+          LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
+                   (unsigned long long) _heartbeatInterval);
+        }
+      }
+    }
+      
+    // no value set in agency. use default
+    if (_heartbeatInterval == 0) {
+      _heartbeatInterval = 1000; 
+
+      LOG_WARNING("unable to read heartbeat interval from agency. Using default value '%llu ms'", 
+                  (unsigned long long) _heartbeatInterval);
+    }
+   
+
     // start heartbeat thread
-    _heartbeat = new HeartbeatThread(_heartbeatInterval * 1000, 5);
+    _heartbeat = new HeartbeatThread(_heartbeatInterval, 5);
 
     if (_heartbeat == 0) {
       LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
