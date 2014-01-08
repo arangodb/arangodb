@@ -315,7 +315,7 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<DatabaseID> ClusterInfo::getDatabases () {
+vector<DatabaseID> ClusterInfo::listDatabases () {
   vector<DatabaseID> res;
 
   AllCollections::const_iterator it;
