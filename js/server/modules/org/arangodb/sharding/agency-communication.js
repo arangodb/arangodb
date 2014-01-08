@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global module, require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,7 +696,7 @@ exports.Communication = function() {
             return;
           }
           var compTo = _.clone(inferior[k]);
-          delete compTo["address"];
+          delete compTo.address;
           if (JSON.stringify(v) !== JSON.stringify(compTo)) {
             diff.difference[k] = {};
             diff.difference[k][supName] = v;
