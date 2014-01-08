@@ -39,6 +39,7 @@ exports.Communication = function() {
     storeServersInCache,
     Target,
     mapCollectionIDsToNames,
+    difference,
     _ = require("underscore");
 
   splitServerName = function(route) {
@@ -146,7 +147,7 @@ exports.Communication = function() {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       Update Wanted Configuration
+// --SECTION--                                                  Helper Functions
 // -----------------------------------------------------------------------------
 
   storeServersInCache = function(place, servers) {
@@ -163,6 +164,7 @@ exports.Communication = function() {
       }
     });
   };
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               Object Constructors
@@ -542,6 +544,66 @@ exports.Communication = function() {
 
   };
 
+  var Diff = function(target, plan, current) {
+
+    var DiffObject = function(supRoute, infRoute, supName) {
+      var infName;
+      switch (supName) {
+        case "target":
+          infName = "plan";
+          break;
+        case "plan":
+          infName = "current";
+          break;
+        default:
+          throw "Sorry please give a correct superior name";
+      }
+      var difference = function(superior, inferior) {
+        var diff = {
+          missing: [],
+          difference: {}
+        };
+        var comp;
+        if (_.isArray(superior)) {
+          comp = inferior;
+          if (!_.isArray(inferior)) {
+            // Current stores ips no array
+            comp = _.keys(inferior);
+          }
+          _.each(superior, function(v) {
+            if (!_.contains(comp, v)) {
+              diff.missing.push(v);
+            }
+          });
+          return diff;
+        }
+        _.each(superior, function(v, k) {
+          if (!inferior.hasOwnProperty(k)) {
+            diff.missing.push(k);
+            return;
+          }
+          var compTo = _.clone(inferior[k]);
+          delete compTo["address"];
+          if (JSON.stringify(v) !== JSON.stringify(compTo)) {
+            diff.difference[k] = {};
+            diff.difference[k][supName] = v;
+            diff.difference[k][infName] = inferior[k];
+          }
+        });
+        return diff;
+      };
+      this.DBServers = function() {
+        return difference(supRoute.DBServers().getList(), infRoute.DBServers().getList()); 
+      };
+      this.Coordinators = function() {
+        return difference(supRoute.Coordinators().getList(), infRoute.Coordinators().getList()); 
+      };
+    };
+
+    this.plan = new DiffObject(target, plan, "target");
+    this.current = new DiffObject(plan, current, "plan");
+
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             Global Object binding
@@ -551,6 +613,7 @@ exports.Communication = function() {
   this.plan = new Plan();
   this.current = new Current();
   this.sync = new Sync();
+  this.diff = new Diff(this.target, this.plan, this.current);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      Global Convenience functions
