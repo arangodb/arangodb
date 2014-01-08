@@ -312,6 +312,20 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get list of databases in the cluster
+////////////////////////////////////////////////////////////////////////////////
+
+vector<DatabaseID> ClusterInfo::getDatabases () {
+  vector<DatabaseID> res;
+
+  AllCollections::const_iterator it;
+  for (it = _collections.begin(); it != _collections.end(); ++it) {
+    res.push_back(it->first);
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////

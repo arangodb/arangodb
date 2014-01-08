@@ -671,6 +671,27 @@ static v8::Handle<v8::Value> JS_DoesDatabaseExistClusterInfo (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the list of databases in the cluster
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetDatabases (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "doesDatabaseExist()");
+  }
+ 
+  vector<DatabaseID> res = ClusterInfo::instance()->getDatabases();
+  v8::Handle<v8::Array> a = v8::Array::New(res.size());
+  vector<DatabaseID>::iterator it;
+  int count = 0;
+  for (it = res.begin(); it != res.end(); it++) {
+    a->Set(count++, v8::String::New(it->c_str(), it->size()));
+  }
+  return scope.Close(a);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the caches (used for testing only)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1494,6 +1515,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(rt, "doesDatabaseExist", JS_DoesDatabaseExistClusterInfo);
+  TRI_AddMethodVocbase(rt, "getDatabases", JS_GetDatabases);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushClusterInfo, true);
   TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
   TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
