@@ -270,7 +270,7 @@ namespace triagens {
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<DatabaseID> getDatabases ();
+        vector<DatabaseID> listDatabases ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
