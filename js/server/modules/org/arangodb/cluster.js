@@ -29,7 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var isCluster = function () {
-  return (typeof ArangoServerState !== "undefined");
+  return (typeof ArangoServerState !== "undefined" &&
+          ArangoServerState.initialised());
 };
 
 var isCoordinator = function () {
