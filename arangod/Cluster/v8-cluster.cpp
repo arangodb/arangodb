@@ -1091,10 +1091,6 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
     else if (res->status == CL_COMM_ERROR) {
       r->Set(v8g->StatusKey, v8::String::New("ERROR"));
 
-      r->Set(v8g->ErrorMessageKey,
-             v8::String::New("could not send request, DBServer gone"));
-      // TODO: give a better error result here, depending
-
       if (res->result && res->result->isComplete()) {
         v8::Handle<v8::Object> details = v8::Object::New();
         details->Set(v8::String::New("code"), v8::Number::New(res->result->getHttpReturnCode()));
@@ -1102,6 +1098,12 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
         details->Set(v8::String::New("body"), v8::String::New(res->result->getBody().str().c_str(), res->result->getBody().str().length()));
 
         r->Set(v8::String::New("details"), details);
+        r->Set(v8g->ErrorMessageKey,
+               v8::String::New("got bad HTTP response"));
+      }
+      else {
+        r->Set(v8g->ErrorMessageKey,
+               v8::String::New("got no HTTP response, DBserver seems gone"));
       }
     }
     else if (res->status == CL_COMM_DROPPED) {

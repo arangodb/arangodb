@@ -818,6 +818,9 @@ class CallbackTest : public ClusterCommCallback {
 
 static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
+                         v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 9) {
     TRI_V8_EXCEPTION_USAGE(scope, 
@@ -940,8 +943,24 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
       LOG_DEBUG("JS_ShardingTest: timeout");
     }
     else if (res->status == CL_COMM_ERROR) {
-      r->Set(v8::String::New("errorMessage"),
-             v8::String::New("could not send request, DBServer gone"));
+      if (res->result && res->result->isComplete()) {
+        v8::Handle<v8::Object> details = v8::Object::New();
+        details->Set(v8::String::New("code"),
+                  v8::Number::New(res->result->getHttpReturnCode()));
+        details->Set(v8::String::New("message"),
+                  v8::String::New(res->result->getHttpReturnMessage().c_str()));
+        details->Set(v8::String::New("body"),
+                v8::String::New(res->result->getBody().str().c_str(),
+                res->result->getBody().str().length()));
+
+        r->Set(v8::String::New("details"), details);
+        r->Set(v8g->ErrorMessageKey,
+               v8::String::New("got bad HTTP response"));
+      }
+      else {
+        r->Set(v8g->ErrorMessageKey,
+               v8::String::New("got no HTTP response, DBserver seems gone"));
+      }
       LOG_DEBUG("JS_ShardingTest: communications error");
     }
     else if (res->status == CL_COMM_DROPPED) {
