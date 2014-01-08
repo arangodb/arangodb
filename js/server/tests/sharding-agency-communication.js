@@ -1184,16 +1184,88 @@
     };
 
     function DifferenceSuite() {
+      var planMissingDB = ["pavel", "sandra"];
+      var planMissingCoords = ["carlos"];
+      var currentMissingDB = ["patricia"];
+      var currentMissingCoords = ["charly"];
+      var modified = "sandro";
+      var modtarget = dummy.target.servers[[agencyRoutes.target, agencyRoutes.sub.servers, modified].join("/")];
+      var modplan = "none";
+      var lonelyPrimary = "patricia";
 
       return {
         setUp: function() {
-          setup();  
-          targetServers = comm.target.DBServers();
+          /*
+          var ips = {
+            "pavel": "tcp://192.168.0.1:8529",
+            "paul": "tcp://192.168.0.2:8529",
+            "patricia": "tcp://192.168.0.3:8529",
+            "sandro": "tcp://192.168.0.4:8529",
+            "sally": "tcp://192.168.0.5:8529",
+            "sandra": "tcp://192.168.0.6:8529",
+            "carlos": "tcp://192.168.1.1:8529",
+            "charly": "tcp://192.168.1.2:8529",
+            "cindy": "tcp://192.168.1.3:8529"
+          };
+          */
+          _.each(planMissingDB, function(d) {
+            delete dummy.plan.servers[[agencyRoutes.plan, agencyRoutes.sub.servers, d].join("/")];
+            delete dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, d].join("/")];
+          });
+          dummy.plan.servers[[agencyRoutes.plan, agencyRoutes.sub.servers, lonelyPrimary].join("/")] = "none";
+          dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, lonelyPrimary].join("/")] = "none";
+
+          _.each(planMissingCoords, function(d) {
+            delete dummy.plan.coordinators[[agencyRoutes.plan, agencyRoutes.sub.coords, d].join("/")];
+            delete dummy.current.coordinators[[agencyRoutes.current, agencyRoutes.sub.coords, d].join("/")];
+          });
+          _.each(currentMissingDB, function(d) {
+            delete dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, d].join("/")];
+          });
+          _.each(currentMissingCoords, function(d) {
+            delete dummy.current.coordinators[[agencyRoutes.current, agencyRoutes.sub.coords, d].join("/")];
+          });
+          dummy.plan.servers[[agencyRoutes.plan, agencyRoutes.sub.servers, modified].join("/")] = modplan;
+          dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, modified].join("/")] = modplan;
+
+          comm = new Communication.Communication();
         },
-        tearDown: teardown
+        tearDown: teardown,
+
+        testDifferencePlanDBServers: function() {
+          var diff = comm.diff.plan.DBServers();
+          assertEqual(diff.missing, planMissingDB);
+          assertEqual(diff.difference[modified], {
+            target: {role: "secondary"},
+            plan: {role: "primary"}
+          });
+          assertEqual(diff.difference[lonelyPrimary], {
+            target: {
+              role: "primary",
+              secondary: "sandra"
+            },
+            plan: {role: "primary"}
+          });
+        },
+
+        testDifferencePlanCoordinators: function() {
+          var diff = comm.diff.plan.Coordinators();
+          assertEqual(diff.missing, planMissingCoords);
+          assertEqual(diff.difference, {});
+        },
+
+        testDifferenceCurrentDBServers: function() {
+          var diff = comm.diff.current.DBServers();
+          assertEqual(diff.missing, currentMissingDB);
+          assertEqual(diff.difference, {});
+        },
+
+        testDifferenceCurrentCoordinators: function() {
+          var diff = comm.diff.current.Coordinators();
+          assertEqual(diff.missing, currentMissingCoords);
+          assertEqual(diff.difference, {});
+        }
       };
-
-
     };
 
     test.run(ConfigureSuite);
