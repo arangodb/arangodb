@@ -79,6 +79,14 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a database-specific function prefix
+////////////////////////////////////////////////////////////////////////////////
+
+function DB_PREFIX () {
+  return INTERNAL.db._name();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -401,8 +409,13 @@ function FCALL (name, parameters) {
 function FCALL_USER (name, parameters) {
   "use strict";
 
-  if (UserFunctions.hasOwnProperty(name)) {
-    var result = UserFunctions[name].func.apply(null, parameters);
+  var prefix = DB_PREFIX();
+  if (! UserFunctions.hasOwnProperty(prefix)) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+  }
+
+  if (UserFunctions[prefix].hasOwnProperty(name)) {
+    var result = UserFunctions[prefix][name].func.apply(null, parameters);
 
     return FIX_VALUE(result);
   }
@@ -3908,8 +3921,6 @@ function reloadUserFunctions () {
 
   var c;
 
-  UserFunctions = { };
-
   c = INTERNAL.db._collection("_aqlfunctions");
 
   if (c === null) {
@@ -3917,6 +3928,9 @@ function reloadUserFunctions () {
   }
 
   var foundError = false;
+  var prefix = DB_PREFIX();
+
+  UserFunctions[prefix] = { };
 
   c.toArray().forEach(function (f) {
     var code = "(function() { var callback = " + f.code + "; return callback; })();";
@@ -3925,7 +3939,7 @@ function reloadUserFunctions () {
     try {
       var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")"); 
 
-      UserFunctions[key.toUpperCase()] = {
+      UserFunctions[prefix][key.toUpperCase()] = {
         name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
