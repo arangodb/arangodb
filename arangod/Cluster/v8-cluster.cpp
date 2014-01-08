@@ -537,7 +537,10 @@ static v8::Handle<v8::Value> JS_EndpointsAgency (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "endpoints()");
   }
 
-  const std::vector<std::string> endpoints = AgencyComm::getEndpoints();
+  std::vector<std::string> endpoints = AgencyComm::getEndpoints();
+  // make the list of endpoints unique
+  std::sort(endpoints.begin(), endpoints.end());
+  endpoints.assign(endpoints.begin(), std::unique(endpoints.begin(), endpoints.end()));
 
   v8::Handle<v8::Array> l = v8::Array::New();
 
@@ -598,7 +601,7 @@ static v8::Handle<v8::Value> JS_SetPrefixAgency (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_UniqidAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() > 3) {
+  if (argv.Length() < 1 || argv.Length() > 3) {
     TRI_V8_EXCEPTION_USAGE(scope, "uniqid(<key>, <count>, <timeout>)");
   }
   
