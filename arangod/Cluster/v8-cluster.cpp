@@ -598,7 +598,7 @@ static v8::Handle<v8::Value> JS_SetPrefixAgency (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_UniqidAgency (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() > 3) {
+  if (argv.Length() < 1 || argv.Length() > 3) {
     TRI_V8_EXCEPTION_USAGE(scope, "uniqid(<key>, <count>, <timeout>)");
   }
   
