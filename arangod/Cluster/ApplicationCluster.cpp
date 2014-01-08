@@ -207,6 +207,8 @@ bool ApplicationCluster::start () {
 
   const std::string version = comm.getVersion();
 
+  ServerState::instance()->setInitialised();
+
   LOG_INFO("Cluster feature is turned on. "
            "Agency version: %s, Agency endpoints: %s, "
            "server id: '%s', internal address: %s, role: %s",

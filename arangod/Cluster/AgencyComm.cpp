@@ -161,11 +161,14 @@ std::string AgencyCommResult::errorMessage () const {
     return _message;
   }
 
+  if (! _connected) {
+    return std::string("unable to connect to agency");
+  }
+
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
   if (0 == json) {
-    result = "Out of memory";
-    return result;
+    return std::string("Out of memory");
   }
 
   if (! TRI_IsArrayJson(json)) {

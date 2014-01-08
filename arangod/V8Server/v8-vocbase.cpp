@@ -506,8 +506,6 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
   // dispose and clear the persistent handle
   persistent.Dispose(isolate);
   persistent.Clear();
-  
-  v8g->_containsGarbage = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1673,7 +1671,6 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  
   // ...........................................................................
   // We require exactly 1 or exactly 2 arguments -- anything else is an error
   // ...........................................................................
@@ -1692,14 +1689,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   // extract the parameters
   TRI_col_info_t parameter;
-
+    
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
       TRI_V8_TYPE_ERROR(scope, "<properties> must be an object");
     }
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
-
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     if (p->Has(v8g->JournalSizeKey)) {
@@ -1765,12 +1761,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
 #ifdef TRI_ENABLE_CLUSTER
   const bool isCoordinator = ServerState::instance()->isCoordinator(); 
-#else 
-  const bool isCoordinator = false;
-#endif
 
   if (isCoordinator) {
     v8::Handle<v8::Object> p = argv[1]->ToObject();
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     int64_t numberOfShards = 0;
     std::vector<std::string> shardKeys;
@@ -1802,11 +1796,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
       TRI_V8_EXCEPTION_PARAMETER(scope, "no shard keys specified");
     }
 
-    if (! ClusterInfo::instance()->doesDatabaseExist(vocbase->_name)) {
+    char const* originalDatabase = static_cast<char const*>(v8g->_originalDatabase);
+    if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
       TRI_FreeCollectionInfoOptions(&parameter);
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
   }
+#endif
 
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, 
@@ -2193,8 +2189,6 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
                                        void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
   
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
-
   TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) parameter;
   
   TRI_ReleaseGeneralCursor(cursor);
@@ -2205,8 +2199,6 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
   // dispose and clear the persistent handle
   object.Dispose(isolate);
   object.Clear();
-  
-  v8g->_containsGarbage = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8251,8 +8243,6 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
     // decrease the reference-counter for the database
     TRI_ReleaseVocBase(vocbase);
   }
-  
-  v8g->_containsGarbage = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
