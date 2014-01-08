@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, white: true, vars: true, stupid: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global module, require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +59,17 @@ exports.Communication = function() {
     });
     return res;
   };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     AgencyWrapper
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Wrapper for Agency
+///
+/// Creates access to routes via objects instead of route strings.
+/// And defines specific operations allowed on these routes.
+////////////////////////////////////////////////////////////////////////////////
 
   AgencyWrapper = function() {
     var _agency = exports._createAgency();
@@ -150,6 +161,13 @@ exports.Communication = function() {
 // --SECTION--                                                  Helper Functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Stores database servers in cache
+///
+/// Stores a list of database servers into a cache object. 
+/// It will convert their roles accordingly. 
+////////////////////////////////////////////////////////////////////////////////
+
   storeServersInCache = function(place, servers) {
     _.each(servers, function(v, k) {
       var pName = splitServerName(k);
@@ -169,6 +187,14 @@ exports.Communication = function() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                               Object Constructors
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Object for DBServer configuration
+///
+/// Allows to list all database servers for the given hierarchy level.
+/// If write access is granted also options to add
+/// and remove servers are allowed.
+////////////////////////////////////////////////////////////////////////////////
 
   var DBServersObject = function(route, writeAccess) {
     var cache = {};
@@ -221,6 +247,13 @@ exports.Communication = function() {
     }
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Object for Coordinator configuration
+///
+/// Allows to list all coordinators for the given hierarchy level.
+/// If write access is granted also options to add
+/// and remove servers are allowed.
+////////////////////////////////////////////////////////////////////////////////
   var CoordinatorsObject = function(route, writeAccess) {
     this.getList = function() {
       return route.list();
@@ -235,6 +268,16 @@ exports.Communication = function() {
     }
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Object for Collection configuration
+///
+/// Allows to collect the information stored about a collection. 
+/// This includes indices, journalSize etc. and also shards. 
+/// Also convenience functions for shards are added,
+/// allowing to get a mapping server -> shards
+/// and a mapping shard -> server.
+/// If write access is granted also an option to move a shard is added.
+////////////////////////////////////////////////////////////////////////////////
   var ColObject = function(route, writeAccess) {
     this.info = function() {
       var res = route.get();
@@ -267,6 +310,13 @@ exports.Communication = function() {
     }
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Object for content of a Database
+///
+/// Allows to collect the information stored about a database. 
+/// It allos to get a list of collections and to select one of them for 
+/// further information.
+////////////////////////////////////////////////////////////////////////////////
   var DBObject = function(route, writeAccess) {
     var cache;
     var getList = function() {
@@ -287,6 +337,13 @@ exports.Communication = function() {
     };
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Object for Database configuration
+///
+/// Allows to list all added databases.
+/// Also allows to select one database for further information.
+////////////////////////////////////////////////////////////////////////////////
+
   var DatabasesObject = function(route, writeAccess) {
     this.getList = function() {
       return route.list();            
@@ -304,15 +361,24 @@ exports.Communication = function() {
 // --SECTION--                                                            Vision
 // -----------------------------------------------------------------------------
 
+  // Not yet defined
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Target
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Access point for "Target" level.
+///
+/// Gives access to all information stored in the target level.
+/// This includes DBServers, Databases and Coordinators.
+/// Also grants write access.
+////////////////////////////////////////////////////////////////////////////////
 
   Target = function() {
     var DBServers;
     var Databases;
     var Coordinators;
-
 
     this.DBServers = function() {
       if (!DBServers) {
@@ -334,12 +400,19 @@ exports.Communication = function() {
       }
       return Coordinators;
     };
-
   };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Plan
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Access point for "Plan" level.
+///
+/// Gives access to all information stored in the plan level.
+/// This includes DBServers, Databases and Coordinators.
+/// Does not grant write access.
+////////////////////////////////////////////////////////////////////////////////
 
   var Plan = function () {
     var DBServers;
@@ -371,6 +444,15 @@ exports.Communication = function() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Current
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Access point for "Current" level.
+///
+/// Gives access to all information stored in the current level.
+/// This includes DBServers, Databases and Coordinators.
+/// Furthermore this consideres IP addresses of all servers.
+/// Does not grant write access.
+////////////////////////////////////////////////////////////////////////////////
 
   var Current = function () {
     var DBServers;
@@ -450,6 +532,20 @@ exports.Communication = function() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Sync
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Access point for "Sync" level.
+///
+/// Gives access to all information stored in the sync level.
+/// This includes the heartbeat of the servers.
+/// Offers convenience functions to get serving primaries,
+/// list of primaries and secondaries inSync and out of sync
+/// and a list of all inactive servers (servers that do not serve
+/// or act as secondary).
+/// Furthermore offers a function to check if a server has not send a heartbeat
+/// in time.
+/// Does not grant write access.
+////////////////////////////////////////////////////////////////////////////////
 
   var Sync = function() {
     var Heartbeats;
@@ -543,6 +639,23 @@ exports.Communication = function() {
     };
 
   };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              Diff
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Access point to visualize differences between levels.
+///
+/// Gives convenient access to compute discrepancies between levels.
+/// It allows to get differences between target and plan.
+/// (These require a user to step in, the managers do not have enough
+/// resources to reach the target).
+/// And the differences between plan and current.
+/// (These do not require a user to step in, its the managers duty)
+/// Supports differences for DBServers and Coordinators.
+/// Databases not yet included.
+////////////////////////////////////////////////////////////////////////////////
 
   var Diff = function(target, plan, current) {
 
