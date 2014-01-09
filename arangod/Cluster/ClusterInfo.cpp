@@ -365,27 +365,24 @@ void ClusterInfo::loadCollections () {
           const std::string& database   = parts[0]; 
           const std::string& collection = parts[1]; 
 
+          // check whether we have created an entry for the database already
+          AllCollections::iterator it2 = _collections.find(database);
+          if (it2 == _collections.end()) {
+            // not yet, so create an entry for the database
+            DatabaseCollections empty;
+            _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
+            it2 = _collections.find(database);
+          }
+
           if (collection == "Lock") {
             continue;
           }
 
-          // check whether we have created an entry for the database already
-          AllCollections::iterator it2 = _collections.find(database);
           CollectionInfo collectionData((*it).second);
 
-          if (it2 == _collections.end()) {
-            // not yet, so create an entry for the database
-            DatabaseCollections empty;
-            empty.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
-            empty.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
-
-            _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
-          }
-          else {
-            // insert the collection into the existing map
-            (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
-            (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
-          }
+          // insert the collection into the existing map
+          (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
+          (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
 
           std::map<std::string, std::string> shards = collectionData.shardIds();
           std::map<std::string, std::string>::const_iterator it3 = shards.begin();
