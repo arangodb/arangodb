@@ -1013,7 +1013,7 @@ static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
 static void PrepareClusterCommRequest (
                         v8::Arguments const& argv,
                         triagens::rest::HttpRequest::HttpRequestType& reqType,
-                        ShardID& shardID,
+                        string& destination,
                         string& path,
                         string& body,
                         map<string, string>* headerFields,
@@ -1034,12 +1034,12 @@ static void PrepareClusterCommRequest (
     }
   }
 
-  shardID.clear();
+  destination.clear();
   if (argv.Length() > 1) {
-    shardID = TRI_ObjectToString(argv[1]);
+    destination = TRI_ObjectToString(argv[1]);
   }
-  if (shardID == "") {
-    shardID = "shardBlubb";
+  if (destination == "") {
+    destination = "shard:shardBlubb";
   }
   
   string dbname;
@@ -1206,7 +1206,7 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
 
   if (argv.Length() < 4 || argv.Length() > 7) {
     TRI_V8_EXCEPTION_USAGE(scope, "asyncRequest("
-      "reqType, shardID, dbname, path, body, headers, options)");
+      "reqType, destination, dbname, path, body, headers, options)");
   }
   // Possible options:
   //   - clientTransactionID  (string)
@@ -1225,7 +1225,7 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   }
 
   triagens::rest::HttpRequest::HttpRequestType reqType;
-  ShardID shardID;
+  string destination;
   string path;
   string body;
   map<string, string>* headerFields = new map<string, string>;
@@ -1233,12 +1233,12 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, shardID, path, body, headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
-  res = cc->asyncRequest(clientTransactionID, coordTransactionID, shardID, 
+  res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination, 
                          reqType, path, body.c_str(), body.size(), 
                          headerFields, 0, timeout);
 
@@ -1264,7 +1264,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
 
   if (argv.Length() < 4 || argv.Length() > 7) {
     TRI_V8_EXCEPTION_USAGE(scope, "syncRequest("
-      "reqType, shardID, dbname, path, body, headers, options)");
+      "reqType, destination, dbname, path, body, headers, options)");
   }
   // Possible options:
   //   - clientTransactionID  (string)
@@ -1283,7 +1283,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   }
 
   triagens::rest::HttpRequest::HttpRequestType reqType;
-  ShardID shardID;
+  string destination;
   string path;
   string body;
   map<string, string>* headerFields = new map<string, string>;
@@ -1291,12 +1291,12 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, shardID, path, body, headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
-  res = cc->syncRequest(clientTransactionID, coordTransactionID, shardID, 
+  res = cc->syncRequest(clientTransactionID, coordTransactionID, destination, 
                          reqType, path, body.c_str(), body.size(), 
                          *headerFields, timeout);
 
