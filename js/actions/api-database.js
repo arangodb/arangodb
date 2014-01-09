@@ -154,11 +154,6 @@ function get_api_database (req, res) {
     return;
   }
   
-  if (req.suffix.length > 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
   var result;
   if (req.suffix.length === 0) {
     // list of all databases
