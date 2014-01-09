@@ -1135,7 +1135,7 @@ function require (path) {
       if (fs.exists(n)) {
         try {
           var desc = JSON.parse(fs.read(n));
-          var mainfile = desc.main;
+          var mainfile = desc.main || "./index.js";
           var file;
 
           // the mainfile is always relative
