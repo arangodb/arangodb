@@ -288,6 +288,20 @@ namespace triagens {
                                           CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about all DBservers from the agency
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadDBServers ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a list of all DBServers in the cluster that have
+/// currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ServerID> getDBServers ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,7 +352,11 @@ namespace triagens {
 
         // Cached data from the agency, we reload whenever necessary:
         AllCollections                     _collections;  // from Current/Collections/
+        bool                               _collectionsValid;
         std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered
+        bool                               _serversValid;
+        std::map<ServerID, ServerID>       _DBServers;    // from Current/DBServers
+        bool                               _DBServersValid;
         std::map<ShardID, ServerID>        _shardIds;     // from Current/ShardLocation
 
 // -----------------------------------------------------------------------------

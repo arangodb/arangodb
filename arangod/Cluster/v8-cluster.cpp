@@ -785,6 +785,45 @@ static v8::Handle<v8::Value> JS_GetServerEndpointClusterInfo (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the DBServers currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetDBServers (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "DBServers()");
+  }
+
+  std::vector<std::string> DBServers = ClusterInfo::instance()->getDBServers();
+
+  v8::Handle<v8::Array> l = v8::Array::New();
+
+  for (size_t i = 0; i < DBServers.size(); ++i) {
+    ServerID const sid = DBServers[i];
+
+    l->Set((uint32_t) i, v8::String::New(sid.c_str(), sid.size()));
+  }
+
+  return scope.Close(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the cache of DBServers currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ReloadDBServers (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "reloadDBServers()");
+  }
+
+  ClusterInfo::instance()->loadDBServers();
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a unique id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1520,6 +1559,8 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
   TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
   TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
+  TRI_AddMethodVocbase(rt, "getDBServers", JS_GetDBServers);
+  TRI_AddMethodVocbase(rt, "reloadDBServers", JS_ReloadDBServers);
   TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidClusterInfo);
 
   v8g->ClusterInfoTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
