@@ -1082,25 +1082,34 @@ function require (path) {
       return null;
     }
 
-     // try to load the file
+    // try to load the file
     var n;
-
-    if (p === "") {
-      n = "." + main + ".js";
-    }
-    else if (p[p.length - 1] === '/') {
-      n = p + main.substr(1) + ".js";
-    }
-    else {
-      n = p + main + ".js";
+    
+    if (p !== "" && p[p.length - 1] === '/') {
+      p = p.substr(0, p.length - 1);
     }
 
+    n = p + main + ".js";
     if (fs.exists(n)) {
       return { name: main,
                path: 'file://' + n,
                content: fs.read(n) };
     }
-
+    
+    n = p + main + "/index.js";
+    if (fs.exists(n)) {
+      return { name: main,
+               path: 'file://' + n,
+               content: fs.read(n) };
+    }
+    
+    n = p + main;
+    if (fs.exists(n)) {
+      return { name: main,
+               path: 'file://' + n,
+               content: fs.read(n) };
+    }
+    
     return null;
   };
 
