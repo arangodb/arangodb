@@ -154,11 +154,6 @@ function get_api_database (req, res) {
     return;
   }
   
-  if (req.suffix.length > 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
   var result;
   if (req.suffix.length === 0) {
     // list of all databases
@@ -167,9 +162,10 @@ function get_api_database (req, res) {
   else {
     if (req.suffix[0] === 'user') {
       // return all databases for current user
-      var username = '', password = '';
+      var username = '', password = '', auth = '';
 
       if (req.headers.hasOwnProperty('authorization')) {
+        auth = req.headers.authorization;
         var header = req.headers.authorization.replace(/^Basic\s+/i, '');
         var decoded = require("internal").base64Decode(header);
         var pos = decoded.indexOf(':');
@@ -180,7 +176,7 @@ function get_api_database (req, res) {
         }
       }
 
-      result = arangodb.db._listDatabases(username, password);
+      result = arangodb.db._listDatabases(username, password, auth);
     }
     else if (req.suffix[0] === 'current') {
       // information about the current database

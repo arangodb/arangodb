@@ -671,6 +671,27 @@ static v8::Handle<v8::Value> JS_DoesDatabaseExistClusterInfo (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the list of databases in the cluster
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "doesDatabaseExist()");
+  }
+ 
+  vector<DatabaseID> res = ClusterInfo::instance()->listDatabases();
+  v8::Handle<v8::Array> a = v8::Array::New(res.size());
+  vector<DatabaseID>::iterator it;
+  int count = 0;
+  for (it = res.begin(); it != res.end(); it++) {
+    a->Set(count++, v8::String::New(it->c_str(), it->size()));
+  }
+  return scope.Close(a);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the caches (used for testing only)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -761,6 +782,45 @@ static v8::Handle<v8::Value> JS_GetServerEndpointClusterInfo (v8::Arguments cons
   const std::string result = ClusterInfo::instance()->getServerEndpoint(TRI_ObjectToString(argv[0]));
 
   return scope.Close(v8::String::New(result.c_str(), result.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the DBServers currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetDBServers (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "DBServers()");
+  }
+
+  std::vector<std::string> DBServers = ClusterInfo::instance()->getDBServers();
+
+  v8::Handle<v8::Array> l = v8::Array::New();
+
+  for (size_t i = 0; i < DBServers.size(); ++i) {
+    ServerID const sid = DBServers[i];
+
+    l->Set((uint32_t) i, v8::String::New(sid.c_str(), sid.size()));
+  }
+
+  return scope.Close(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the cache of DBServers currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ReloadDBServers (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "reloadDBServers()");
+  }
+
+  ClusterInfo::instance()->loadDBServers();
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -953,7 +1013,7 @@ static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
 static void PrepareClusterCommRequest (
                         v8::Arguments const& argv,
                         triagens::rest::HttpRequest::HttpRequestType& reqType,
-                        ShardID& shardID,
+                        string& destination,
                         string& path,
                         string& body,
                         map<string, string>* headerFields,
@@ -974,12 +1034,12 @@ static void PrepareClusterCommRequest (
     }
   }
 
-  shardID.clear();
+  destination.clear();
   if (argv.Length() > 1) {
-    shardID = TRI_ObjectToString(argv[1]);
+    destination = TRI_ObjectToString(argv[1]);
   }
-  if (shardID == "") {
-    shardID = "shardBlubb";
+  if (destination == "") {
+    destination = "shard:shardBlubb";
   }
   
   string dbname;
@@ -1146,7 +1206,7 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
 
   if (argv.Length() < 4 || argv.Length() > 7) {
     TRI_V8_EXCEPTION_USAGE(scope, "asyncRequest("
-      "reqType, shardID, dbname, path, body, headers, options)");
+      "reqType, destination, dbname, path, body, headers, options)");
   }
   // Possible options:
   //   - clientTransactionID  (string)
@@ -1165,7 +1225,7 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   }
 
   triagens::rest::HttpRequest::HttpRequestType reqType;
-  ShardID shardID;
+  string destination;
   string path;
   string body;
   map<string, string>* headerFields = new map<string, string>;
@@ -1173,12 +1233,12 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, shardID, path, body, headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
-  res = cc->asyncRequest(clientTransactionID, coordTransactionID, shardID, 
+  res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination, 
                          reqType, path, body.c_str(), body.size(), 
                          headerFields, 0, timeout);
 
@@ -1204,7 +1264,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
 
   if (argv.Length() < 4 || argv.Length() > 7) {
     TRI_V8_EXCEPTION_USAGE(scope, "syncRequest("
-      "reqType, shardID, dbname, path, body, headers, options)");
+      "reqType, destination, dbname, path, body, headers, options)");
   }
   // Possible options:
   //   - clientTransactionID  (string)
@@ -1223,7 +1283,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   }
 
   triagens::rest::HttpRequest::HttpRequestType reqType;
-  ShardID shardID;
+  string destination;
   string path;
   string body;
   map<string, string>* headerFields = new map<string, string>;
@@ -1231,12 +1291,12 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, shardID, path, body, headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
-  res = cc->syncRequest(clientTransactionID, coordTransactionID, shardID, 
+  res = cc->syncRequest(clientTransactionID, coordTransactionID, destination, 
                          reqType, path, body.c_str(), body.size(), 
                          *headerFields, timeout);
 
@@ -1494,10 +1554,13 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(rt, "doesDatabaseExist", JS_DoesDatabaseExistClusterInfo);
+  TRI_AddMethodVocbase(rt, "listDatabases", JS_ListDatabases);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushClusterInfo, true);
   TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
   TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
   TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
+  TRI_AddMethodVocbase(rt, "getDBServers", JS_GetDBServers);
+  TRI_AddMethodVocbase(rt, "reloadDBServers", JS_ReloadDBServers);
   TRI_AddMethodVocbase(rt, "uniqid", JS_UniqidClusterInfo);
 
   v8g->ClusterInfoTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);

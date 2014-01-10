@@ -274,7 +274,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
         ClusterCommResult* asyncRequest (
                 ClientTransactionID const           clientTransactionID,
                 CoordTransactionID const            coordTransactionID,
-                ShardID const                       shardID,
+                string const&                       destination,
                 rest::HttpRequest::HttpRequestType  reqtype,
                 string const                        path,
                 char const*                         body,
@@ -290,7 +290,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
         ClusterCommResult* syncRequest (
                 ClientTransactionID const&         clientTransactionID,
                 CoordTransactionID const           coordTransactionID,
-                ShardID const&                     shardID,
+                string const&                      destination,
                 rest::HttpRequest::HttpRequestType reqtype,
                 string const&                      path,
                 char const*                        body,

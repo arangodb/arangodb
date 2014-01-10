@@ -249,6 +249,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency comm locker
+///
+/// The keys mentioned in this class are all not yet encoded.
 ////////////////////////////////////////////////////////////////////////////////
 
         AgencyCommLocker (std::string const&,
@@ -539,6 +541,34 @@ namespace triagens {
 
         bool unlockWrite (std::string const&,
                           double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief encode a key for etcd
+///
+/// We need the following properties: The encoding of a concatenation
+/// of two strings is the concatenation of the two encodings. Thus the
+/// empty string is encoded to the empty string.
+///
+/// Here is an overview of where encoded keys and where decoded keys are
+/// used. The user gives normal, decoded keys. On the way "into" etcd,
+/// keys are encoded only in buildURL. This means in particular that all
+/// arguments to methods that take keys all get decoded, normal keys.
+/// AgencyCommLockers also completely work with unencoded keys.
+///
+/// On the way out, the JSON answers of etcd of course contain encoded
+/// keys and the response is only stored as a big string containing JSON.
+/// Therefore things stored in AgencyCommResult have encoded keys.
+/// We parse the JSON and when we recursively work on it in processJsonNode
+/// we decode the key when we see it.
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string encodeKey (std::string);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decode a key for etcd
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string decodeKey (std::string);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
