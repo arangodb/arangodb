@@ -205,6 +205,8 @@ std::string AgencyCommResult::errorDetails () const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
+///
+/// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
@@ -220,18 +222,21 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
   if (! TRI_IsStringJson(key)) {
     return false;
   }
+  
+  std::string keydecoded 
+    = AgencyComm::decodeKey(string(key->_value._string.data,
+                                   key->_value._string.length-1));
 
   // make sure we don't strip more bytes than the key is long
   const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
-  const size_t length = key->_value._string.length - 1;
+  const size_t length = keydecoded.size();
 
   std::string prefix;
   if (offset >= length) {
     prefix = "";
   }
   else {
-    prefix = std::string(key->_value._string.data + offset, 
-                         key->_value._string.length - 1 - offset);
+    prefix = keydecoded.substr(offset);
   }
 
   // get "dir" attribute
@@ -278,6 +283,8 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
+///
+/// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
@@ -295,17 +302,20 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
     return false;
   }
 
+  std::string keydecoded 
+    = AgencyComm::decodeKey(string(key->_value._string.data,
+                                   key->_value._string.length-1));
+
   // make sure we don't strip more bytes than the key is long
   const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
-  const size_t length = key->_value._string.length - 1;
+  const size_t length = keydecoded.size();
 
   std::string prefix;
   if (offset >= length) {
     prefix = "";
   }
   else {
-    prefix = std::string(key->_value._string.data + offset, 
-                         key->_value._string.length - 1 - offset);
+    prefix = keydecoded.substr(offset);
   }
 
   // get "dir" attribute
@@ -366,6 +376,8 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief turn a result into a map
+///
+/// note that stripKeyPrefix is a decoded, normal key!
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::flattenJson (std::map<std::string, bool>& out,
@@ -390,6 +402,8 @@ bool AgencyCommResult::flattenJson (std::map<std::string, bool>& out,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief turn a result into a map
+///
+/// note that stripKeyPrefix is a decoded, normal key!
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::flattenJson (std::map<std::string, std::string>& out,
@@ -1112,7 +1126,8 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevExists=" + (prevExists ? "true" : "false") + ttlParam(ttl, false), 
+                   buildUrl(key) + "?prevExists=" 
+                     + (prevExists ? "true" : "false") + ttlParam(ttl, false), 
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
                    false);
 
@@ -1135,7 +1150,9 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevValue=" + triagens::basics::StringUtils::urlEncode(oldValue) + ttlParam(ttl, false),
+                   buildUrl(key) + "?prevValue=" 
+                     + triagens::basics::StringUtils::urlEncode(oldValue) 
+                     + ttlParam(ttl, false),
                    "value=" + triagens::basics::StringUtils::urlEncode(newValue),
                    false);
 
@@ -1455,7 +1472,7 @@ void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::buildUrl (std::string const& relativePart) const {
-  return AgencyComm::AGENCY_URL_PREFIX + _globalPrefix + relativePart;
+  return AgencyComm::AGENCY_URL_PREFIX +encodeKey(_globalPrefix + relativePart);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1463,7 +1480,8 @@ std::string AgencyComm::buildUrl (std::string const& relativePart) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::buildUrl () const {
-  return AgencyComm::AGENCY_URL_PREFIX + _globalPrefix.substr(0, _globalPrefix.size() - 1);
+  return AgencyComm::AGENCY_URL_PREFIX 
+         + encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1686,6 +1704,53 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   delete response;
 
   return result.successful();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief encode a key for etcd
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::encodeKey (std::string s) {
+  string::iterator i;
+  string res;
+  for (i = s.begin(); i != s.end(); ++i) {
+    if (*i == '_') {
+      res.push_back('@');
+      res.push_back('U');
+    }
+    else if (*i == '@') {
+      res.push_back('@');
+      res.push_back('@');
+    }
+    else {
+      res.push_back(*i);
+    }
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decode a key for etcd
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::decodeKey (std::string s) {
+  string::iterator i;
+  string res;
+  for (i = s.begin(); i != s.end(); ++i) {
+    if (*i == '@') {
+      ++i;
+      if (*i == 'U') {
+        res.push_back('_');
+      }
+      else {
+        res.push_back('@');
+      }
+    }
+    else {
+      res.push_back(*i);
+    }
+  }
+  return res;
 }
 
 // Local Variables:

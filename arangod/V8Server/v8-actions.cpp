@@ -824,7 +824,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
 
   if (argv.Length() != 9) {
     TRI_V8_EXCEPTION_USAGE(scope, 
-      "SYS_SHARDING_TEST(<req>, <res>, <shard>, <path>, <clientTransactionID>, "
+      "SYS_SHARDING_TEST(<req>, <res>, <dest>, <path>, <clientTransactionID>, "
       "<headers>, <body>, <timeout>, <asyncMode>)");
   }
 
@@ -852,9 +852,9 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     }
   }
   
-  string shard = TRI_ObjectToString(argv[2]);
-  if (shard == "") {
-    shard = "shardBlubb";
+  string destination = TRI_ObjectToString(argv[2]);
+  if (destination == "") {
+    destination = "shard:shardBlubb";
   }
 
   string path = TRI_ObjectToString(argv[3]);
@@ -897,7 +897,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   v8::Handle<v8::Object> r = v8::Object::New();
 
   if (asyncMode) {
-    res = cc->asyncRequest(clientTransactionId, TRI_NewTickServer(), shard, 
+    res = cc->asyncRequest(clientTransactionId,TRI_NewTickServer(),destination, 
                          reqType, path, body.c_str(), body.size(), headerFields, 
                          new CallbackTest("Hello Callback"), timeout);
 
@@ -989,7 +989,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
     }
   }
   else {   // synchronous mode
-    res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(), shard, 
+    res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(),destination, 
                           reqType, path, body.c_str(), body.size(), 
                           *headerFields, timeout);
     delete headerFields;
