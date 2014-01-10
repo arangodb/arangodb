@@ -209,7 +209,7 @@
       }
 
       if (body !== undefined && body !== "") {
-        curl += "--data @- ";
+        curl += "--data-binary @- ";
       }
 
       curl += "--dump - http://localhost:8529" + url;

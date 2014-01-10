@@ -18,7 +18,7 @@ DESC="arango database server"
 NAME="arangod"
 PIDDIR=/var/run/arangodb
 PIDFILE=/var/run/arangodb/arangod.pid
-CONF=/etc/arangodb/arangod-uid.conf
+CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
@@ -39,9 +39,9 @@ start () {
     fi
 
     if [ "$1" = "--upgrade" ]; then
-      $DAEMON -c $CONF $@
+      $DAEMON -c $CONF --uid arangodb --gid arangodb $@
     else
-      $DAEMON -c $CONF --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
     fi
 
     RETVAL=$?

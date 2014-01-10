@@ -8,9 +8,6 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
-VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
-VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FILES
@@ -63,26 +60,6 @@ BISON_FILES =
 ################################################################################
 
 BISONXX_FILES = 
-
-################################################################################
-### @brief configuration files
-################################################################################
-
-BUILT_SOURCES += etc/arangodb/arangod-uid.conf
-
-etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:^# \([ug]id\):\1:' $< > $@
-
-BUILT_SOURCES += etc/arangodb/arangod-arm.conf
-
-etc/arangodb/arangod-arm.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' $< > $@
-
-BUILT_SOURCES += etc/arangodb/arangod-uid-arm.conf
-
-etc/arangodb/arangod-uid-arm.conf: @srcdir@/etc/arangodb/arangod.conf
-	sed -e 's:^# \([ug]id\):\1:' $< \
-      | sed -e '/^\[server\]/,/^\[/s:^threads.*:threads = 1:' > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
@@ -194,6 +171,10 @@ noinst_LIBRARIES = \
 	lib/libarango_fe.a \
 	lib/libarango_client.a
 
+if ENABLE_MRUBY
+noinst_LIBRARIES += lib/libarango_mruby.a
+endif
+
 ################################################################################
 ### @brief /bin programs
 ################################################################################
@@ -203,7 +184,11 @@ bin_PROGRAMS = \
 	bin/arangodump \
 	bin/arangorestore \
 	bin/arangosh \
-	bin/arangoimp 
+	bin/arangoimp
+
+if ENABLE_MRUBY
+bin_PROGRAMS += bin/arangoirb
+endif
 
 ################################################################################
 ### @brief /sbin programs
@@ -224,17 +209,6 @@ bin_SCRIPTS =
 
 noinst_PROGRAMS = \
 	bin/check-server
-
-################################################################################
-### @brief ruby additions
-################################################################################
-
-if ENABLE_MRUBY
-
-noinst_LIBRARIES += lib/libarango_mruby.a
-bin_PROGRAMS += bin/arangoirb
-
-endif
 
 ################################################################################
 ### @brief /etc data
@@ -281,6 +255,18 @@ install-data-local:
 
 #endif
 
+################################################################################
+### @brief symbolic links
+################################################################################
+
+install-exec-hook:
+	rm -f $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
+	$(LN_S) `echo arangosh | sed '$(program_transform_name)'` $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
+
+	rm -f $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
+	$(LN_S) `echo arangod | sed '$(program_transform_name)'` $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
+
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
 ## -----------------------------------------------------------------------------
@@ -300,7 +286,6 @@ include lib/Makefile.files
 include arangod/Makefile.files
 include arangosh/Makefile.files
 include etc/Makefile.files
-include utils/Makefile.files
 
 if ENABLE_MRUBY
 include arangoirb/Makefile.files
@@ -471,10 +456,12 @@ endif
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief zlib
+### @brief ICU
 ################################################################################
 
-include 3rdParty/Makefile.zlib
+if ENABLE_ALL_IN_ONE_ICU
+include 3rdParty/Makefile.all-in-one-icu
+endif
 
 ################################################################################
 ### @brief libev
@@ -482,14 +469,6 @@ include 3rdParty/Makefile.zlib
 
 if ENABLE_ALL_IN_ONE_LIBEV
 include 3rdParty/Makefile.all-in-one-libev
-endif
-
-################################################################################
-### @brief V8
-################################################################################
-
-if ENABLE_ALL_IN_ONE_V8
-include 3rdParty/Makefile.all-in-one-v8
 endif
 
 ################################################################################
@@ -501,12 +480,18 @@ include 3rdParty/Makefile.all-in-one-mruby
 endif
 
 ################################################################################
-### @brief ICU
+### @brief V8
 ################################################################################
 
-if ENABLE_ALL_IN_ONE_ICU
-include 3rdParty/Makefile.all-in-one-icu
+if ENABLE_ALL_IN_ONE_V8
+include 3rdParty/Makefile.all-in-one-v8
 endif
+
+################################################################################
+### @brief zlib
+################################################################################
+
+include 3rdParty/Makefile.zlib
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

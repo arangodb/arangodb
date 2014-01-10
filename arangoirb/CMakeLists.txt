@@ -16,7 +16,7 @@ include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 ### @brief output directory
 ################################################################################
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ### @brief arangoirb
@@ -40,22 +40,14 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 install(
   TARGETS ${BIN_ARANGOIRB}
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
 
-if (USE_RAW_CONFIG)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf.in
-    DESTINATION ${ETCDIR_INSTALL}
-    RENAME arangoirb-relative.conf)
-endif ()
-
-install(
-  FILES ${PROJECT_SOURCE_DIR}/etc/arangodb/arangoirb.conf
-  DESTINATION ${ETCDIR_INSTALL})
+install_config(arangoirb)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/client

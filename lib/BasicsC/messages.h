@@ -41,8 +41,34 @@ extern "C" {
 /// @brief bye bye message
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_BYE_MESSAGE_CH "Uf wiederluege!"
+#define TRI_BYE_MESSAGE_CZ "Na shledanou!" 
+#define TRI_BYE_MESSAGE_DE "Auf Wiedersehen!"
+#define TRI_BYE_MESSAGE_EN "Bye Bye!"
+#define TRI_BYE_MESSAGE_EO "Adiau!"
+#define TRI_BYE_MESSAGE_ES "¡Hasta luego!"
+#define TRI_BYE_MESSAGE_FR "Au revoir!"
+#define TRI_BYE_MESSAGE_GR "Εις το επανιδείν!"
+#define TRI_BYE_MESSAGE_IT "Arrivederci!"
+#define TRI_BYE_MESSAGE_JP "さようなら"
+#define TRI_BYE_MESSAGE_NL "Tot ziens!"
+#define TRI_BYE_MESSAGE_RU "До свидания!"
+#define TRI_BYE_MESSAGE_SV "Adjö!"
 
-#define TRI_BYE_MESSAGE "Auf Wiedersehen! Bye Bye! Arrivederci! Na shledanou! Au revoir! ¡Hasta luego! Εις το επανιδείν! Adjö! До свидания! さようなら"
+#define TRI_BYE_MESSAGE \
+  TRI_BYE_MESSAGE_CH " " \
+  TRI_BYE_MESSAGE_CZ " " \
+  TRI_BYE_MESSAGE_DE " " \
+  TRI_BYE_MESSAGE_EN " " \
+  TRI_BYE_MESSAGE_EO " " \
+  TRI_BYE_MESSAGE_ES " " \
+  TRI_BYE_MESSAGE_FR " " \
+  TRI_BYE_MESSAGE_GR " " \
+  TRI_BYE_MESSAGE_IT " " \
+  TRI_BYE_MESSAGE_JP " " \
+  TRI_BYE_MESSAGE_NL " " \
+  TRI_BYE_MESSAGE_RU " " \
+  TRI_BYE_MESSAGE_SV
 
 #ifdef __cplusplus
 }

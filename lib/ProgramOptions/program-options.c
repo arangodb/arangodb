@@ -31,6 +31,7 @@
 #include <regex.h>
 
 #include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
@@ -178,8 +179,35 @@ static char * FillVariables (const char* value) {
           char* k = TRI_DuplicateString2(t, q - t);
           char* v = getenv(k);
 
+          if (v != NULL && *v == '\0') {
+            TRI_FreeString(TRI_CORE_MEM_ZONE, v);
+            v = NULL;
+          }
+
+          if (v == NULL) {
+            if (TRI_EqualString(k, "ROOTDIR")) {
+              char* vv = TRI_LocateInstallDirectory();
+              size_t lv = strlen(vv);
+
+              if (0 < lv) {
+                if (vv[lv - 1] == TRI_DIR_SEPARATOR_CHAR || vv[lv - 1] == '/') {
+                  v = TRI_DuplicateString2(vv, lv - 1);
+                }
+                else {
+                  v = TRI_DuplicateString2(vv, lv);
+                }
+              }
+
+              TRI_FreeString(TRI_CORE_MEM_ZONE, vv);
+            }
+          }
+          else {
+            v = TRI_DuplicateString(v);
+          }
+
           if (v != NULL) {
             TRI_AppendStringStringBuffer(&buffer, v);
+            TRI_FreeString(TRI_CORE_MEM_ZONE, v);
           }
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, k);

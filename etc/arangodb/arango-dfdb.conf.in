@@ -1,0 +1,16 @@
+no-upgrade = true
+
+[database]
+directory= @LOCALSTATEDIR@/lib/arangodb
+# maximal-journal-size=33554432
+# remove-on-drop=true
+
+[javascript]
+startup-directory = @PKGDATADIR@/js
+modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules;@PKGDATADIR@/js/node
+package-path = @PKGDATADIR@/js/npm
+app-path = @LOCALSTATEDIR@/lib/arangodb-apps
+
+[log]
+level = info
+severity = human

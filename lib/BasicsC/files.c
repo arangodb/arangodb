@@ -48,6 +48,7 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
+
 #ifdef _WIN32
 #include <tchar.h>
 #endif
@@ -57,28 +58,14 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read buffer size (used for bulk file reading)
 ////////////////////////////////////////////////////////////////////////////////
 
 #define READBUFFER_SIZE 8192
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialised
@@ -110,22 +97,14 @@ static TRI_vector_t FileDescriptors;
 
 static TRI_read_write_lock_t FileNamesLock;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove trailing path separators from path.
-/// path will be modified in-place
+/// @brief removes trailing path separators from path
+///
+/// @note path will be modified in-place
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveTrailingSeparator (char* path) {
@@ -138,9 +117,31 @@ static void RemoveTrailingSeparator (char* path) {
   if (n > 0) {
     char* p = path + n - 1;
 
-    while (p > s && *p == TRI_DIR_SEPARATOR_CHAR) {
+    while (p > s && (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/')) {
       *p = '\0';
       --p;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes path
+///
+/// @note path will be modified in-place
+////////////////////////////////////////////////////////////////////////////////
+
+static void NormalizePath (char* path) {
+  char* p;
+  char *e;
+
+  RemoveTrailingSeparator(path);
+
+  p = path;
+  e = path + strlen(p);
+
+  for (; p < e;  ++p) {
+    if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+      *p = TRI_DIR_SEPARATOR_CHAR;
     }
   }
 }
@@ -152,7 +153,7 @@ static void RemoveTrailingSeparator (char* path) {
 ///         -1 when the element was not found
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
+static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
   size_t i;
   int idx = -1;
 
@@ -161,7 +162,7 @@ static int LookupElementVectorString (TRI_vector_string_t * vector, char const *
   for (i = 0;  i < vector->_length;  i++) {
     if (TRI_EqualString(element, vector->_buffer[i])) {
       // theoretically this might cap the value of i, but it is highly unlikely
-      idx = (int) i;
+      idx = (ssize_t) i;
       break;
     }
   }
@@ -176,16 +177,23 @@ static int LookupElementVectorString (TRI_vector_string_t * vector, char const *
 
 static void RemoveAllLockedFiles (void) {
   size_t i;
-  int fd;
 
   TRI_WriteLockReadWriteLock(&FileNamesLock);
 
   for (i = 0;  i < FileNames._length;  i++) {
-    TRI_UnlinkFile(FileNames._buffer[i]);
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+    HANDLE fd;
+
+    fd = * (HANDLE*) TRI_AtVector(&FileDescriptors, i);
+    CloseHandle(fd);
+#else
+    int fd;
 
     fd = * (int*) TRI_AtVector(&FileDescriptors, i);
-
     TRI_CLOSE(fd);
+#endif
+
+    TRI_UnlinkFile(FileNames._buffer[i]);
   }
 
   TRI_DestroyVectorString(&FileNames);
@@ -204,7 +212,12 @@ static void InitialiseLockFiles (void) {
   }
 
   TRI_InitVectorString(&FileNames, TRI_CORE_MEM_ZONE);
+
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+  TRI_InitVector(&FileDescriptors, TRI_CORE_MEM_ZONE, sizeof(HANDLE));
+#else
   TRI_InitVector(&FileDescriptors, TRI_CORE_MEM_ZONE, sizeof(int));
+#endif
 
   TRI_InitReadWriteLock(&FileNamesLock);
 
@@ -264,18 +277,9 @@ static void ListTreeRecursively (char const* full,
   TRI_DestroyVectorString(&dirs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets close-on-exit for a socket
@@ -332,6 +336,7 @@ int64_t TRI_SizeFile (char const* path) {
 #ifdef _WIN32
 
 bool TRI_IsWritable (char const* path) {
+
   // ..........................................................................
   // will attempt the following:
   //   if path is a directory, then attempt to create temporary file
@@ -339,7 +344,7 @@ bool TRI_IsWritable (char const* path) {
   // ..........................................................................
 
 // #error "TRI_IsWritable needs to be implemented for Windows"
-  // implementation for seems to be non-trivial
+  // TODO: implementation for seems to be non-trivial
   return true;
 }
 
@@ -372,7 +377,7 @@ bool TRI_IsDirectory (char const* path) {
 #ifdef _WIN32
 
 bool TRI_IsSymbolicLink (char const* path) {
-  // todo : check if a file is a symbolic link - without opening the file
+  // TODO : check if a file is a symbolic link - without opening the file
   return false;
 }
 
@@ -640,46 +645,48 @@ char* TRI_Dirname (char const* path) {
 
 char* TRI_Basename (char const* path) {
   size_t n;
-  size_t m;
   char const* p;
 
   n = strlen(path);
-  m = 0;
 
   if (1 < n) {
-    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      m = 1;
+    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR || path[n - 1] == '/') {
+      n -= 1;
     }
   }
 
   if (n == 0) {
     return TRI_DuplicateString("");
   }
-  else if (n == 1 && *path == TRI_DIR_SEPARATOR_CHAR) {
-    return TRI_DuplicateString("");
-  }
-  else if (n - m == 1 && *path == '.') {
-    return TRI_DuplicateString("");
-  }
-  else if (n - m == 2 && path[0] == '.' && path[1] == '.') {
-    return TRI_DuplicateString("");
-  }
-
-  for (p = path + (n - m - 1); path < p; --p) {
-    if (*p == TRI_DIR_SEPARATOR_CHAR) {
-      break;
+  else if (n == 1) {
+    if (*path == TRI_DIR_SEPARATOR_CHAR || *path == '/') {
+      return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
+    }
+    else {
+      return TRI_DuplicateString2(path, n);
     }
   }
+  else {
+    for (p = path + (n - 2);  path < p;  --p) {
+      if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+        break;
+      }
+    }
 
-  if (path == p) {
-    if (*p == TRI_DIR_SEPARATOR_CHAR) {
-      return TRI_DuplicateString2(path + 1, n - m);
+    if (path == p) {
+      if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+        return TRI_DuplicateString2(path + 1, n - 1);
+      }
+      else {
+        return TRI_DuplicateString2(path, n);
+      }
+    }
+    else {
+      n -= p - path;
+
+      return TRI_DuplicateString2(p + 1, n - 1);
     }
   }
-
-  n -= p - path;
-
-  return TRI_DuplicateString2(p + 1, n - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,7 +694,23 @@ char* TRI_Basename (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate2File (char const* path, char const* name) {
-  return TRI_Concatenate3String(path, TRI_DIR_SEPARATOR_STR, name);
+  size_t len = strlen(path);
+  char* result;
+
+  if (0 < len) {
+    result = TRI_DuplicateString(path);
+    RemoveTrailingSeparator(result);
+
+    TRI_AppendString(&result, TRI_DIR_SEPARATOR_STR);
+  }
+  else {
+    result = TRI_DuplicateString("");
+  }
+
+  TRI_AppendString(&result, name);
+  NormalizePath(result);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,7 +718,15 @@ char* TRI_Concatenate2File (char const* path, char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate3File (char const* path1, char const* path2, char const* name) {
-  return TRI_Concatenate5String(path1, TRI_DIR_SEPARATOR_STR, path2, TRI_DIR_SEPARATOR_STR, name);
+  char* tmp;
+  char* result;
+
+  tmp = TRI_Concatenate2File(path1, path2);
+  result = TRI_Concatenate2File(tmp, name);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,6 +827,7 @@ int TRI_RenameFile (char const* old, char const* filename) {
 #ifdef _WIN32
   BOOL moveResult = 0;
   moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
+
   if (! moveResult) {
     DWORD errorCode = GetLastError();
     res = -1;
@@ -1002,11 +1034,13 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_CreateLockFile (char const* filename) {
+  BOOL r;
+  DWORD len;
+  HANDLE fd;
+  OVERLAPPED ol;
   TRI_pid_t pid;
   char* buf;
   char* fn;
-  int fd;
-  int rv;
   int res;
 
   InitialiseLockFiles();
@@ -1015,49 +1049,40 @@ int TRI_CreateLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
-  if (fd == -1) {
+  if (fd == INVALID_HANDLE_VALUE) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
   pid = TRI_CurrentProcessId();
   buf = TRI_StringUInt32(pid);
 
-  rv = TRI_WRITE(fd, buf, (unsigned int) strlen(buf));
+  r = WriteFile(fd, buf, (unsigned int) strlen(buf), &len, NULL);
 
-  if (rv == -1) {
+  if (! r || len != strlen(buf)) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
 
-    TRI_CLOSE(fd);
+    if (r) {
+      CloseHandle(fd);
+    }
+
     TRI_UNLINK(filename);
 
     return res;
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
-  TRI_CLOSE(fd);
 
-  // try to open pid file
-  fd = TRI_OPEN(filename, O_RDONLY);
+  memset(&ol, 0, sizeof(ol));
+  r = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 0, 128, &ol);
 
-  if (fd < 0) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  // ..........................................................................
-  // TODO: use windows LockFile to lock the file
-  // ..........................................................................
-  //rv = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK, 0, 0, 0, 0);
-  // rv = flock(fd, LOCK_EX);
-  rv = true;
-
-  if (!rv) {
+  if (! r) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    TRI_CLOSE(fd);
+    CloseHandle(fd);
     TRI_UNLINK(filename);
 
     return res;
@@ -1069,7 +1094,6 @@ int TRI_CreateLockFile (char const* filename) {
   TRI_PushBackVectorString(&FileNames, fn);
   TRI_PushBackVector(&FileDescriptors, &fd);
   TRI_WriteUnlockReadWriteLock(&FileNamesLock);
-
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1153,85 +1177,25 @@ int TRI_CreateLockFile (char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_VerifyLockFile (char const* filename) {
-  TRI_pid_t pid;
-  char buffer[128];
-  int can_lock;
-  int fd;
-  int res;
-  ssize_t n;
-  uint32_t fc;
+  HANDLE fd;
 
   if (! TRI_ExistsFile(filename)) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  fd = TRI_OPEN(filename, O_RDONLY);
-  if (fd < 0) {
-    // this method if checking whether or not the database is locked is not suitable with the manner
-    // in which it is coded.
-    // windows assigns ownership of the file to the process for exclusive use
-    // the file exists, yet we can not open it, so being here we can only assume that the
-    // database is locked.
     return TRI_ERROR_NO_ERROR;
   }
-  n = TRI_READ(fd, buffer, sizeof(buffer));
-  TRI_CLOSE(fd);
 
-  // file empty or pid too long
-  if (n == 0 || n == sizeof(buffer)) {
-    return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if (fd == INVALID_HANDLE_VALUE) {
+    if (GetLastError() == ERROR_SHARING_VIOLATION) {
+      return TRI_ERROR_ARANGO_DATADIR_LOCKED;
+    }
+
+    return TRI_ERROR_NO_ERROR;
   }
 
-  // NUL-terminate buffer
-  buffer[n] = '\0';
+  CloseHandle(fd);
+  TRI_UnlinkFile(filename);
 
-  fc = TRI_UInt32String(buffer);
-  res = TRI_errno();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  pid = fc;
-
-
-  // ..........................................................................
-  // determine if a process with pid exists
-  // ..........................................................................
-  // use OpenProcess / TerminateProcess as a replacement for kill
-  //if (kill(pid, 0) == -1) {
-  //  return TRI_set_errno(TRI_ERROR_DEAD_PID);
-  //}
-
-  fd = TRI_OPEN(filename, O_RDONLY);
-
-  if (fd < 0) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  // ..........................................................................
-  // TODO: Use windows LockFileEx to determine if file can be locked
-  // ..........................................................................
-  // = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK, 0, 0, 0, 0);
-  //can_lock = flock(fd, LOCK_EX | LOCK_NB);
-  can_lock = true;
-
-
-  // file was not yet be locked
-  if (can_lock == 0) {
-    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    // ........................................................................
-    // TODO: Use windows LockFileEx to determine if file can be locked
-    // ........................................................................
-    //flock(fd, LOCK_UN);
-
-    TRI_CLOSE(fd);
-
-    return res;
-  }
-
-  TRI_CLOSE(fd);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1247,13 +1211,13 @@ int TRI_VerifyLockFile (char const* filename) {
   uint32_t fc;
 
   if (! TRI_ExistsFile(filename)) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return TRI_ERROR_NO_ERROR;
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
 
   if (fd < 0) {
-    return TRI_set_errno(errno);
+    return TRI_ERROR_NO_ERROR;
   }
 
   n = TRI_READ(fd, buffer, sizeof(buffer));
@@ -1261,50 +1225,48 @@ int TRI_VerifyLockFile (char const* filename) {
   TRI_CLOSE(fd);
   
   if (n < 0) {
-    return TRI_set_errno(errno);
+    return TRI_ERROR_NO_ERROR;
   }
 
   // file empty or pid too long
   if (n == 0 || n == sizeof(buffer)) {
-    return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+    return TRI_ERROR_NO_ERROR;
   }
 
-  // NUL-terminate buffer
+  // 0-terminate buffer
   buffer[n] = '\0';
 
   fc = TRI_UInt32String(buffer);
   res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return TRI_ERROR_NO_ERROR;
   }
 
   pid = fc;
 
   if (kill(pid, 0) == -1) {
-    return TRI_set_errno(TRI_ERROR_DEAD_PID);
+    return TRI_ERROR_NO_ERROR;
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
 
   if (fd < 0) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return TRI_ERROR_NO_ERROR;
   }
 
   can_lock = flock(fd, LOCK_EX | LOCK_NB);
 
   // file was not yet be locked
   if (can_lock == 0) {
-    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
     flock(fd, LOCK_UN);
     TRI_CLOSE(fd);
 
-    return res;
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_CLOSE(fd);
-  return TRI_ERROR_NO_ERROR;
+  return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
 
 #endif
@@ -1316,54 +1278,37 @@ int TRI_VerifyLockFile (char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_DestroyLockFile (char const* filename) {
-  int fd;
-  int n;
-  int res;
+  HANDLE fd;
+  ssize_t n;
 
   InitialiseLockFiles();
   n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
-    return false;
+    return TRI_ERROR_NO_ERROR;
   }
 
 
-  fd = TRI_OPEN(filename, O_RDWR);
+  fd = * (HANDLE*) TRI_AtVector(&FileDescriptors, n);
 
-  if (fd < 0) {
-    return false;
-  }
+  CloseHandle(fd);
 
-  // ..........................................................................
-  // TODO: Use windows LockFileEx to determine if file can be locked
-  // ..........................................................................
-  //flock(fd, LOCK_UN);
-  //res = flock(fd, LOCK_UN);
-  res = 0;
+  TRI_UnlinkFile(filename);
 
-  TRI_CLOSE(fd);
+  TRI_WriteLockReadWriteLock(&FileNamesLock);
+  TRI_RemoveVectorString(&FileNames, n);
+  TRI_RemoveVector(&FileDescriptors, n);
+  TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 
-  if (res == 0) {
-    TRI_UnlinkFile(filename);
-
-    TRI_WriteLockReadWriteLock(&FileNamesLock);
-
-    TRI_RemoveVectorString(&FileNames, n);
-    fd = * (int*) TRI_AtVector(&FileDescriptors, n);
-    TRI_CLOSE(fd);
-
-    TRI_WriteUnlockReadWriteLock(&FileNamesLock);
-  }
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 #else
 
 int TRI_DestroyLockFile (char const* filename) {
   int fd;
-  int n;
   int res;
+  ssize_t n;
 
   InitialiseLockFiles();
   n = LookupElementVectorString(&FileNames, filename);
@@ -1385,15 +1330,12 @@ int TRI_DestroyLockFile (char const* filename) {
 
   if (res == 0) {
     TRI_UnlinkFile(filename);
-
-    TRI_WriteLockReadWriteLock(&FileNamesLock);
-
-    TRI_RemoveVectorString(&FileNames, n);
-    fd = * (int*) TRI_AtVector(&FileDescriptors, n);
-    TRI_CLOSE(fd);
-
-    TRI_WriteUnlockReadWriteLock(&FileNamesLock);
   }
+
+  TRI_WriteLockReadWriteLock(&FileNamesLock);
+  TRI_RemoveVectorString(&FileNames, n);
+  TRI_RemoveVector(&FileDescriptors, n);
+  TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 
   return res;
 }
@@ -1577,6 +1519,44 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the binary name without any path or suffix
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_BinaryName (const char* argv0) {
+  char* name;
+  char* p;
+  char* e;
+
+  name = TRI_Basename(argv0);
+
+  p = name;
+  e = name + strlen(name);
+
+  for (;  p < e;  ++p) {
+    if (*p == '.') {
+      *p = '\0';
+      break;
+    }
+  }
+
+  for (;  name < p;  --p) {
+    if (*p == '-') {
+      break;
+    }
+  }
+
+  // TODO this needs to be fixed: the install script should do some transformation
+  //      on the config files installed. But in this case all programs must use
+  //      config files based on their name.
+
+  if (*p == '-' && TRI_EqualString(p, "-unstable")) {
+    *p = '\0';
+  }
+
+  return name;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program
@@ -1978,7 +1958,119 @@ void TRI_SetUserTempPath (char* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locate the installation directory
+///
+/// Will always end in a directory separator.
+////////////////////////////////////////////////////////////////////////////////
+
+#if _WIN32
+
+char* TRI_LocateInstallDirectory () {
+  DWORD dwType;
+  char  szPath[1023];
+  DWORD dwDataSize;
+  HKEY key;
+
+  dwDataSize = sizeof(szPath);
+  memset(szPath, 0, dwDataSize);
+
+  // open the key for reading
+  // TODO: the installer always uses the 32bit path (Wow6432)
+  long lResult = RegOpenKeyEx(
+     HKEY_LOCAL_MACHINE,
+     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+     0,
+     KEY_READ,
+     &key);
+
+  if (lResult != ERROR_SUCCESS) {
+    lResult = RegOpenKeyEx(
+        HKEY_LOCAL_MACHINE,
+        "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+        0,
+        KEY_READ,
+        &key);
+  }
+
+  if (lResult == ERROR_SUCCESS) {
+
+    // read the version value
+    lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
+
+    if (lResult == ERROR_SUCCESS) {
+      return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
+    }
+
+    RegCloseKey(key);
+  }
+
+  return NULL;
+}
+
+#else
+
+char* TRI_LocateInstallDirectory () {
+  return NULL;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate the configuration directory
+///
+/// Will always end in a directory separator.
+////////////////////////////////////////////////////////////////////////////////
+
+#if _WIN32
+
+char* TRI_LocateConfigDirectory () {
+  char* v;
+
+  v = TRI_LocateInstallDirectory();
+
+  if (v != NULL) {
+    TRI_AppendString(&v, "etc\\arangodb\\");
+  }
+
+  return v;
+}
+
+#elif defined(_SYSCONFDIR_)
+
+char* TRI_LocateConfigDirectory () {
+  size_t len;
+  const char* dir = _SYSCONFDIR_;
+
+  if (*dir == '\0') {
+    return NULL;
+  }
+
+  len = strlen(dir);
+
+  if (dir[len - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    return TRI_Concatenate2String(dir, "/");
+  }
+  else {
+    return TRI_DuplicateString(dir);
+  }
+}
+
+#else
+
+char* TRI_LocateConfigDirectory () {
+  return NULL;
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  module functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the files subsystem
+///
+/// TODO: inialise logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseFiles (void) {
@@ -1988,6 +2080,8 @@ void TRI_InitialiseFiles (void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the files subsystem
+///
+/// TODO: inialise logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {
