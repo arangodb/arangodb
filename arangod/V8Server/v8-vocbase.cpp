@@ -78,6 +78,7 @@
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Basics/JsonHelper.h"
+#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
@@ -7914,6 +7915,99 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new database, case of a coordinator in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // Arguments are already checked, there are 1 to 3.
+  
+  const string name = TRI_ObjectToString(argv[0]);
+
+#if 0
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  AgencyComm* ac = new AgencyComm();
+
+  int ourerrno = TRI_ERROR_NO_ERROR;
+
+  { 
+    AgencyCommLocker locker("/Target/Lock","WRITE");
+    AgencyCommResult res;
+    res = ac->casValue("/Target/Collections/"+name+"/Lock","UNLOCKED",
+                       false, 0.0, 0.0);
+    if (res.successful()) {
+      res = ac->casValue("/Target/Collections/"+name+"/Lock","UNLOCKED",
+                         false, 0.0, 0.0);
+
+    }
+    else if (res.httpCode() == 412) {
+      ourerrno = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+    }
+    else {
+      ourerrno = TRI_ERROR_INTERNAL;
+    }
+  }
+
+  if (ourerrno == TRI_ERROR_NO_ERROR) {  // everything OK in /Target
+    // Try to create /Plan/Collections/<name>/{Lock,Version}
+    if (error) {
+      ourerrno = TRI_ERROR_INTERNAL;
+    }
+    else {  // everything OK in /Plan
+      ClusterCommResult* res;
+      CoordTransactionID coordTransactionID = cc->getOperationID();
+      vector<ServerID> DBServers = ci->getDBServers();
+      vector<ServerID>::iterator it;
+      // build request to be sent to all servers
+      for (it = DBServers.begin(); it != DBServers.end(); ++it) {
+        // res = sendAsyncRequest(to *it);
+        // delete res;
+      }
+      int done = 0;
+      while (done < DBServers.size()) {
+        // res = cc->wait()
+        if (res->status == CL_COMM_RECEIVED) {
+          done++;
+          delete res;
+        }
+        else {
+          delete res;
+          break;
+        }
+      }
+      if (done == DBServers.size()) {
+        // Try to create /Current/Collections/<name>/{Lock,Version}
+        if (OK) {
+          return Scope.Close(v8::True());
+        }
+        // Remove /Current/Collections/<name>/{Lock,Version}
+      }
+      cc->drop( coordTransactionID );
+      // build removal req
+      for (it = DBServers.begin(); it != DBServers.end(); ++it) {
+        // res = sendAsyncRequest(db);
+        // delete res;
+      }
+      done = 0;
+      while (done < DBServers.size()) {
+        // res = cc->wait(coordTransactionID)
+        // done++;
+      }
+      // Remove /Plan/Collections/<name>/{Lock,Version}
+    }
+    // Remove /Target/Collections/<name>/{Lock,Version}
+  }
+
+  TRI_V8_EXCEPTION(scope, ourerrno);
+#endif
+  return scope.Close(v8::True());
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ///
 /// @FUN{@FA{db}._createDatabase(@FA{name}, @FA{options}, @FA{users})}
@@ -7965,6 +8059,13 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  // If we are a coordinator in a cluster, we have to behave differently:
+  if (ServerState::instance()->isCoordinator()) {
+    return JS_CreateDatabase_Coordinator(argv);
+  }
+#endif
 
   const string name = TRI_ObjectToString(argv[0]);
 
