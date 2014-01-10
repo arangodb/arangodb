@@ -687,13 +687,7 @@ bool RestDocumentHandler::readAllDocuments () {
   string result("{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix;
-  if (getCollectionType() == TRI_COL_TYPE_DOCUMENT) {
-    prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
-  }
-  else {
-    prefix = '"' + EDGE_PATH + '/' + _resolver.getCollectionName(cid) + '/';
-  }
+  string prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
 
   for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
     // collection names do not need to be JSON-escaped
