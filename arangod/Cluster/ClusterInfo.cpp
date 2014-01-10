@@ -389,7 +389,7 @@ void ClusterInfo::loadCollections () {
           it2 = _collections.find(database);
         }
 
-        if (collection == "Lock") {
+        if (collection == "Lock" || collection == "Version") {
           continue;
         }
 

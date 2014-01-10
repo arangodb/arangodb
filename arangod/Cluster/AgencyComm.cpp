@@ -1715,12 +1715,12 @@ std::string AgencyComm::encodeKey (std::string s) {
   string res;
   for (i = s.begin(); i != s.end(); ++i) {
     if (*i == '_') {
-      res.push_back('%');
+      res.push_back('@');
       res.push_back('U');
     }
-    else if (*i == '%') {
-      res.push_back('%');
-      res.push_back('%');
+    else if (*i == '@') {
+      res.push_back('@');
+      res.push_back('@');
     }
     else {
       res.push_back(*i);
@@ -1737,13 +1737,13 @@ std::string AgencyComm::decodeKey (std::string s) {
   string::iterator i;
   string res;
   for (i = s.begin(); i != s.end(); ++i) {
-    if (*i == '%') {
+    if (*i == '@') {
       ++i;
       if (*i == 'U') {
         res.push_back('_');
       }
       else {
-        res.push_back('%');
+        res.push_back('@');
       }
     }
     else {
