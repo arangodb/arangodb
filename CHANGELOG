@@ -108,6 +108,10 @@ v1.5.x (XXXX-XX-XX)
 v1.4.5 (XXXX-XX-XX)
 -------------------
 
+* added missing documentation for several methods in HTTP API `/_api/edge/...`
+
+* fixed typos in HTTP API `_api/document`
+
 * defer evaluation of AQL subqueries and logical operators (lazy evaluation)
 
 * Updated font in WebFrontend, it now contains a version that renders properly on windows
