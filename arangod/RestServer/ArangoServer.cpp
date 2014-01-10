@@ -318,7 +318,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // set working directory and database directory
+#ifdef _WIN32
+  _workingDirectory = ".";
+#else
   _workingDirectory = "/var/tmp";
+#endif
 
   _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 
@@ -366,11 +370,15 @@ void ArangoServer::buildApplicationServer () {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
-  _applicationServer->setSystemConfigFile("arangod.conf");
+  char* p = TRI_BinaryName(_argv[0]);
+  string conf = p;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+  conf += ".conf";
+
+  _applicationServer->setSystemConfigFile(conf);
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
-  _applicationServer->setUserConfigFile(string(".arango") + string(1, TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
-
+  _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
   // .............................................................................
   // multi-threading scheduler
@@ -449,19 +457,16 @@ void ArangoServer::buildApplicationServer () {
   // define server options
   // .............................................................................
 
-  // .............................................................................
-  // daemon and supervisor mode
-  // .............................................................................
-
-
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
     ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
+    ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("no-upgrade", "skip a database upgrade")
+    ("start-service", "used to start as windows service")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -470,13 +475,20 @@ void ArangoServer::buildApplicationServer () {
   ;
 #endif
 
+  // .............................................................................
+  // daemon and supervisor mode
+  // .............................................................................
+
+#ifndef _WIN32
+
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
-    ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
+
+#endif
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("development-mode", "start server in development mode")
@@ -770,7 +782,6 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
-  v8::HandleScope scope;
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -788,7 +799,7 @@ int ArangoServer::startupServer () {
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
   assert(vocbase != 0);
 
-
+  // initialise V8
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
 

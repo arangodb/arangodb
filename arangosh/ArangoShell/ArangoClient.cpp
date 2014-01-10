@@ -279,6 +279,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   // parse config file
   string configFile = "";
+  bool allowLocal = false;
 
   if (! _configFile.empty()) {
     if (StringUtils::tolower(_configFile) == string("none")) {
@@ -290,31 +291,36 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
 
-#ifdef _SYSCONFDIR_
   else {
-    // use packaged config file from etc/relative
-    string sysDir = string(_SYSCONFDIR_);
-    string systemConfigFile = initFilename;
+    char* d = TRI_LocateConfigDirectory();
 
-    if (! sysDir.empty()) {
-      if (sysDir[sysDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-        sysDir += TRI_DIR_SEPARATOR_CHAR + systemConfigFile;
-      }
-      else {
-        sysDir += systemConfigFile;
-      }
+    if (d != 0) {
+      string sysDir = string(d) + initFilename;
+      TRI_FreeString(TRI_CORE_MEM_ZONE, d);
 
       if (FileUtils::exists(sysDir)) {
         configFile = sysDir;
+        allowLocal = true;
       }
       else {
         LOG_DEBUG("no system init file '%s'", sysDir.c_str());
       }
     }
   }
-#endif
 
   if (! configFile.empty()) {
+    if (allowLocal) {
+      string localConfigFile = configFile + ".local";
+
+      if (FileUtils::exists(localConfigFile)) {
+        LOG_DEBUG("using init override file '%s'", localConfigFile.c_str());
+
+        if (! options.parse(description, localConfigFile)) {
+          LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s", localConfigFile.c_str(), options.lastError().c_str());
+        }
+      }
+    }
+
     LOG_DEBUG("using init file '%s'", configFile.c_str());
 
     if (! options.parse(description, configFile)) {

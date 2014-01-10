@@ -79,6 +79,12 @@ using namespace triagens::arango;
 static std::string DeprecatedPath;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief command prompt
+////////////////////////////////////////////////////////////////////////////////
+
+static string Prompt = "arangosh [%d]> ";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -163,12 +169,6 @@ static vector<string> UnitTests;
 ////////////////////////////////////////////////////////////////////////////////
 
 static vector<string> JsLint;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief command prompt
-////////////////////////////////////////////////////////////////////////////////
-
-static string Prompt = "arangosh [%u@%d]> ";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage collection interval
@@ -376,7 +376,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize UTF 16 strings
+/// @brief normalizes UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
@@ -409,24 +409,18 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                     private enums
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a new client connection instance
+/// @brief enum for wrapped V8 objects
 ////////////////////////////////////////////////////////////////////////////////
 
-static V8ClientConnection* CreateConnection () {
-  return new V8ClientConnection(BaseClient.endpointServer(),
-                                BaseClient.databaseName(),
-                                BaseClient.username(),
-                                BaseClient.password(),
-                                BaseClient.requestTimeout(),
-                                BaseClient.connectTimeout(),
-                                ArangoClient::DEFAULT_RETRIES,
-                                BaseClient.sslProtocol(),
-                                false);
-}
+enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
@@ -482,7 +476,13 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
 
   // and parse the command line and config file
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangosh.conf");
+
+  char* p = TRI_BinaryName(argv[0]);
+  string conf = p;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+  conf += ".conf";
+
+  BaseClient.parse(options, description, argc, argv, conf);
 
   // set V8 options
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
@@ -507,13 +507,15 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy v8::Object to std::map<string, string>
+/// @brief copies v8::Object to std::map<string, string>
 ////////////////////////////////////////////////////////////////////////////////
 
 static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) {
   v8::Handle<v8::Object> v8Headers = val.As<v8::Object> ();
+
   if (v8Headers->IsObject()) {
     v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+
     for (uint32_t i = 0; i < props->Length(); i++) {
       v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
       myMap[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
@@ -522,10 +524,20 @@ static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection class
+/// @brief returns a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
 
-enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
+static V8ClientConnection* CreateConnection () {
+  return new V8ClientConnection(BaseClient.endpointServer(),
+                                BaseClient.databaseName(),
+                                BaseClient.username(),
+                                BaseClient.password(),
+                                BaseClient.requestTimeout(),
+                                BaseClient.connectTimeout(),
+                                ArangoClient::DEFAULT_RETRIES,
+                                BaseClient.sslProtocol(),
+                                false);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for queries (call the destructor here)
@@ -1680,6 +1692,8 @@ static void arangoshExitFunction (int, void*);
 
 // .............................................................................
 // Call this function to do various initialistions for windows only
+//
+// TODO can we move this to a general function for all binaries?
 // .............................................................................
 
 void arangoshEntryFunction() {
@@ -1909,6 +1923,8 @@ int main (int argc, char* argv[]) {
       if (CodePage > 0) {
         SetConsoleOutputCP((UINT) CodePage);
       }
+
+      // TODO we should have a special "printf" which can handle the color escape sequences!
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
       printf("                                  ");
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);

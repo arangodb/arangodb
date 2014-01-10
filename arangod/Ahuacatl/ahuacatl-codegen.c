@@ -95,6 +95,124 @@ static void ProcessNode (TRI_aql_codegen_js_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a scope variable
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeVariable (TRI_aql_codegen_variable_t* const variable) {
+  assert(variable);
+  assert(variable->_name);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a scope variable
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
+                                                   const TRI_aql_codegen_register_t registerIndex,
+                                                   bool isCachedSubquery) {
+  TRI_aql_codegen_variable_t* variable;
+
+  variable = (TRI_aql_codegen_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_variable_t), false);
+
+  if (variable == NULL) {
+    return NULL;
+  }
+
+  variable->_register = registerIndex;
+  variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+  variable->_isCachedSubquery = isCachedSubquery;
+
+  if (variable->_name == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
+
+    return NULL;
+  }
+
+  return variable;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_aql_codegen_scope_t* CurrentScope (TRI_aql_codegen_js_t* const generator) {
+  size_t n;
+
+  if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
+  n = generator->_scopes._length;
+  if (n == 0) {
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+    return NULL;
+  }
+
+  return (TRI_aql_codegen_scope_t*) TRI_AtVectorPointer(&generator->_scopes, n - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enter a variable into the symbol table
+////////////////////////////////////////////////////////////////////////////////
+
+static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
+                         const char* const name,
+                         const TRI_aql_codegen_register_t registerIndex,
+                         bool isCachedSubquery) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator); 
+  TRI_aql_codegen_variable_t* variable;
+  
+  if (scope == NULL) {
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+    return;
+  }
+  
+  variable = CreateVariable(name, registerIndex, isCachedSubquery);
+
+  if (variable == NULL) {
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+    return;
+  }
+
+  if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false) != NULL) {
+    // variable already exists in symbol table. this should never happen
+    LOG_TRACE("variable already registered: %s", name);
+    generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_REDECLARED;
+    generator->_errorValue = (char*) name;
+
+    FreeVariable(variable);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a variable in the symbol table
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_codegen_variable_t* LookupVariable (TRI_aql_codegen_js_t* const generator,
+                                                   const char* const name) {
+  size_t i = generator->_scopes._length;
+
+  assert(name);
+
+  // iterate from current scope to the top level scope
+  while (i-- > 0) {
+    TRI_aql_codegen_scope_t* scope = (TRI_aql_codegen_scope_t*) generator->_scopes._buffer[i];
+    TRI_aql_codegen_variable_t* variable;
+
+    variable = (TRI_aql_codegen_variable_t*) TRI_LookupByKeyAssociativePointer(&scope->_variables, name);
+    // variable found in scope
+    if (variable != NULL) {
+      return variable;
+    }
+  }
+ 
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hash a variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -131,26 +249,6 @@ static inline TRI_aql_codegen_register_t IncRegister (TRI_aql_codegen_js_t* cons
 
 static inline TRI_aql_codegen_register_t IncFunction (TRI_aql_codegen_js_t* const generator) {
   return ++generator->_functionIndex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the current scope
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_aql_codegen_scope_t* CurrentScope (TRI_aql_codegen_js_t* const generator) {
-  size_t n;
-
-  if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
-    return NULL;
-  }
-
-  n = generator->_scopes._length;
-  if (n == 0) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-    return NULL;
-  }
-
-  return (TRI_aql_codegen_scope_t*) TRI_AtVectorPointer(&generator->_scopes, n - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,6 +486,41 @@ static inline void ScopeOutputRegister (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief print a register name in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static void ScopeOutputSymbol (TRI_aql_codegen_js_t* const generator,
+                               char const* name) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  TRI_aql_codegen_variable_t* variable;
+  
+  if (scope == NULL) {
+    return;
+  }
+
+  variable = LookupVariable(generator, name);
+
+  if (variable == NULL) {
+    generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN;
+    generator->_errorValue = (char*) name;
+    return;
+  }
+
+  if (variable->_isCachedSubquery) {
+    ScopeOutput(generator, "(");
+    ScopeOutputRegister(generator, variable->_register);
+    ScopeOutput(generator, ".executed ? ");
+    ScopeOutputRegister(generator, variable->_register);
+    ScopeOutput(generator, ".data : ");
+    ScopeOutputRegister(generator, variable->_register);
+    ScopeOutput(generator, ".execute())");
+  }
+  else {
+    ScopeOutputRegister(generator, variable->_register);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for indexed register access
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -398,44 +531,6 @@ static void ScopeOutputIndexedName (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "[");
   ScopeOutputQuoted(generator, indexName);
   ScopeOutput(generator, "]");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a scope variable
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeVariable (TRI_aql_codegen_variable_t* const variable) {
-  assert(variable);
-  assert(variable->_name);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a scope variable
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
-                                                   const TRI_aql_codegen_register_t registerIndex) {
-  TRI_aql_codegen_variable_t* variable;
-
-  variable = (TRI_aql_codegen_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_variable_t), false);
-
-  if (variable == NULL) {
-    return NULL;
-  }
-
-  variable->_register = registerIndex;
-  variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
-
-  if (variable->_name == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
-
-    return NULL;
-  }
-
-  return variable;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,16 +605,17 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
     }
   }
 
-  scope->_buffer         = buffer;
-  scope->_type           = NextScopeType(generator, type);
-  scope->_listRegister   = listRegister;
-  scope->_keyRegister    = keyRegister;
-  scope->_ownRegister    = ownRegister;
-  scope->_offsetRegister = offsetRegister;
-  scope->_limitRegister  = limitRegister;
-  scope->_resultRegister = resultRegister;
-  scope->_prefix         = NULL;
-  scope->_hint           = hint; // for-loop hint
+  scope->_buffer           = buffer;
+  scope->_type             = NextScopeType(generator, type);
+  scope->_listRegister     = listRegister;
+  scope->_keyRegister      = keyRegister;
+  scope->_ownRegister      = ownRegister;
+  scope->_offsetRegister   = offsetRegister;
+  scope->_limitRegister    = limitRegister;
+  scope->_resultRegister   = resultRegister;
+  scope->_subqueryRegister = 0;
+  scope->_prefix           = NULL;
+  scope->_hint             = hint; // for-loop hint
 
   // init symbol table
   res = TRI_InitAssociativePointer(&scope->_variables,
@@ -764,69 +860,6 @@ static void InitArray (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enter a variable into the symbol table
-////////////////////////////////////////////////////////////////////////////////
-
-static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
-                         const char* const name,
-                         const TRI_aql_codegen_register_t registerIndex) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator); 
-  TRI_aql_codegen_variable_t* variable;
-  
-  if (scope == NULL) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-    return;
-  }
-  
-  variable = CreateVariable(name, registerIndex);
-
-  if (variable == NULL) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-    return;
-  }
-
-  if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false) != NULL) {
-    // variable already exists in symbol table. this should never happen
-    LOG_TRACE("variable already registered: %s", name);
-    generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_REDECLARED;
-    generator->_errorValue = (char*) name;
-
-    FreeVariable(variable);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a variable in the symbol table
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const generator,
-                                                const char* const name) {
-  size_t i = generator->_scopes._length;
-
-  assert(name);
-
-  // iterate from current scope to the top level scope
-  while (i-- > 0) {
-    TRI_aql_codegen_scope_t* scope = (TRI_aql_codegen_scope_t*) generator->_scopes._buffer[i];
-    TRI_aql_codegen_variable_t* variable;
-
-    variable = (TRI_aql_codegen_variable_t*) TRI_LookupByKeyAssociativePointer(&scope->_variables, name);
-    // variable found in scope
-    if (variable) {
-      // return the variable register
-      return variable->_register;
-    }
-  }
-
-  // variable not found. this should never happen
-  LOG_TRACE("variable not found: %s", name);
-  generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN;
-  generator->_errorValue = (char*) name;
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief start a for loop
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -861,7 +894,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   }
 
   if (variableName) {
-    EnterSymbol(generator, variableName, ownRegister);
+    EnterSymbol(generator, variableName, ownRegister, false);
   }
 
   ScopeOutput(generator, "var ");
@@ -1135,7 +1168,7 @@ static void RestoreSymbols (TRI_aql_codegen_js_t* const generator,
 
     // re-enter symbols
     if (variableName) {
-      EnterSymbol(generator, variableName, registerIndex);
+      EnterSymbol(generator, variableName, registerIndex, false);
     }
 
     // unpack variables from current scope's iterator register
@@ -1188,7 +1221,7 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
     if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-      ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
     }
     else {
       ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1240,7 +1273,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ", ");
 
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
       }
       else {
         ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1278,7 +1311,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
              fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
       }
       else {
         ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1331,7 +1364,7 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
     if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-      ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+      ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
     }
     else {
       ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1383,7 +1416,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
       }
       else {
         ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1448,7 +1481,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "\", ");
 
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
       }
       else {
         ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1504,7 +1537,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-        ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+        ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
       }
       else {
         ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1545,7 +1578,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
 
       case TRI_AQL_ACCESS_REFERENCE: {
         if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
-          ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+          ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
         }
         else {
           ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
@@ -1589,8 +1622,7 @@ static void ProcessReference (TRI_aql_codegen_js_t* const generator,
   }
   else {
     // regular scope, we are using a register
-    TRI_aql_codegen_register_t registerIndex = LookupSymbol(generator, name);
-    ScopeOutputRegister(generator, registerIndex);
+    ScopeOutputSymbol(generator, name);
   }
 }
 
@@ -1887,7 +1919,7 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
 
   // for
   StartFor(generator, scope->_buffer, sourceRegister, isList, NULL, NULL);
-  EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode1), CurrentScope(generator)->_ownRegister);
+  EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode1), CurrentScope(generator)->_ownRegister, false);
 
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, ".push(");
@@ -1901,7 +1933,7 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
   EndScope(generator);
 
   // register the variable for the result
-  EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode2), resultRegister);
+  EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode2), resultRegister, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1939,28 +1971,30 @@ static void ProcessUnaryPlus (TRI_aql_codegen_js_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for binary and (a && b)
+/// this passes two functions to the operator for lazy evaluation 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.LOGICAL_AND(");
+  ScopeOutput(generator, "aql.LOGICAL_AND_FN(function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "}, function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ")");
+  ScopeOutput(generator, "})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for binary or (a || b)
+/// this passes two functions to the operator for lazy evaluation 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.LOGICAL_OR(");
+  ScopeOutput(generator, "aql.LOGICAL_OR_FN(function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "}, function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ")");
+  ScopeOutput(generator, "})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2125,13 +2159,13 @@ static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessTernary (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.TERNARY_OPERATOR(");
+  ScopeOutput(generator, "aql.TERNARY_OPERATOR_FN(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, ", function () { \nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "}, function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 2));
-  ScopeOutput(generator, ")");
+  ScopeOutput(generator, "})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2140,24 +2174,59 @@ static void ProcessTernary (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
-  TRI_aql_codegen_register_t subQueryRegister;
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  // get the subquery scope's result register
-  subQueryRegister = generator->_lastResultRegister;
+  if (scope == NULL) {
+    return;
+  }
 
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = ");
-  ScopeOutputRegister(generator, subQueryRegister);
-#if AQL_VERBOSE
-  ScopeOutput(generator, "; /* subquery */\n");
-#else
-  ScopeOutput(generator, ";\n");
-#endif
+  if (scope->_subqueryRegister > 0) {
+    ScopeOutputRegister(generator, scope->_subqueryRegister);
 
-  EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
+#if AQL_VERBOSE
+  ScopeOutput(generator, "(); /* subquery */\n");
+#else
+  ScopeOutput(generator, "();\n");
+#endif
+  }
+  else {
+    // subquery has been optimised away
+    ScopeOutput(generator, "[ ];\n");
+  }
+  
+  EnterSymbol(generator, nameNode->_value._value._string, resultRegister, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for cached subqueries (nested fors etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessSubqueryCached (TRI_aql_codegen_js_t* const generator,
+                             const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  
+  if (scope == NULL) {
+    return;
+  }
+
+  ScopeOutput(generator, "var ");
+  ScopeOutputRegister(generator, resultRegister);
+  ScopeOutput(generator, " = { data: null, executed: false, fn: ");
+  ScopeOutputRegister(generator, scope->_subqueryRegister);
+#if AQL_VERBOSE
+  ScopeOutput(generator, ", execute: function () { this.executed = true; return this.data = this.fn(); } }; /* subquery */\n");
+#else
+  ScopeOutput(generator, ", execute: function () { this.executed = true; return this.data = this.fn(); } };\n");
+#endif
+  
+  EnterSymbol(generator, nameNode->_value._value._string, resultRegister, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2195,10 +2264,23 @@ static void ProcessScopeStart (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t resultRegister;
   TRI_aql_codegen_register_t sourceRegister;
   TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
+  TRI_aql_codegen_scope_t* s;
 
   if (scope->_type != TRI_AQL_SCOPE_SUBQUERY) {
     return;
   }
+    
+  s = CurrentScope(generator);
+
+  if (s == NULL) {
+    return;
+  }
+
+  s->_subqueryRegister = IncRegister(generator);
+
+  ScopeOutput(generator, "var ");
+  ScopeOutputRegister(generator, s->_subqueryRegister);
+  ScopeOutput(generator, " = function() {\n");
 
   resultRegister = IncRegister(generator);
   InitList(generator, resultRegister);
@@ -2224,12 +2306,18 @@ static void ProcessScopeStart (TRI_aql_codegen_js_t* const generator,
 static void ProcessScopeEnd (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
   TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
+  TRI_aql_codegen_register_t resultRegister;
 
   if (scope->_type != TRI_AQL_SCOPE_SUBQUERY) {
     return;
   }
 
+  resultRegister = CurrentScope(generator)->_resultRegister;
   EndScope(generator);
+
+  ScopeOutput(generator, "return ");
+  ScopeOutputRegister(generator, resultRegister);
+  ScopeOutput(generator, ";\n};\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2442,7 +2530,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
     ScopeOutputIndexedName(generator, scope->_ownRegister, TRI_AQL_NODE_STRING(varNode));
     ScopeOutput(generator, ";\n");
 
-    EnterSymbol(generator, TRI_AQL_NODE_STRING(varNode), varRegister);
+    EnterSymbol(generator, TRI_AQL_NODE_STRING(varNode), varRegister, false);
   }
 
   // re-enter symbol for into
@@ -2457,7 +2545,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
     ScopeOutputIndexedName(generator, scope->_ownRegister, TRI_AQL_NODE_STRING(nameNode));
     ScopeOutput(generator, ";\n");
 
-    EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode), intoRegister);
+    EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode), intoRegister, false);
   }
 
 #if AQL_VERBOSE
@@ -2558,8 +2646,6 @@ static void ProcessReturn (TRI_aql_codegen_js_t* const generator,
   ScopeOutputRegister(generator, rowRegister);
   ScopeOutput(generator, ");\n");
   
-  generator->_lastResultRegister = scope->_resultRegister;
-
   // }
   CloseLoops(generator);
 }
@@ -2580,8 +2666,6 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
 #else
   ScopeOutput(generator, " = [ ];\n");
 #endif
-
-  generator->_lastResultRegister = resultRegister;
 
   // }
   CloseLoops(generator);
@@ -2604,7 +2688,7 @@ static void ProcessLet (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, ";\n");
 
   // enter the new variable in the symbol table
-  EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
+  EnterSymbol(generator, nameNode->_value._value._string, resultRegister, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2641,7 +2725,7 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
   }
 
   // enter the new variable in the symbol table
-  EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
+  EnterSymbol(generator, nameNode->_value._value._string, resultRegister, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2825,6 +2909,9 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
     case TRI_AQL_NODE_SUBQUERY:
       ProcessSubquery(generator, node);
       break;
+    case TRI_AQL_NODE_SUBQUERY_CACHED:
+      ProcessSubqueryCached(generator, node);
+      break;
     case TRI_AQL_NODE_SCOPE_START:
       ProcessScopeStart(generator, node);
       break;
@@ -2923,7 +3010,7 @@ static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) 
   generator->_errorValue = NULL;
   generator->_registerIndex = 0;
   generator->_functionIndex = 0;
-
+  
   return generator;
 }
 

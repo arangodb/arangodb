@@ -30,6 +30,7 @@
 
 var graph = require("org/arangodb/graph");
 
+var Edge = graph.Edge;
 var Graph = graph.Graph;
 var Vertex = graph.Vertex;
 
@@ -529,6 +530,10 @@ Graph.prototype.measurement = function (measurement) {
 ///
 /// Calculates the normalized degree, closeness, betweenness or eccentricity
 /// of all vertices in a graph
+/// `measurement` can either be: 
+/// - `closeness`: to calculate the closeness
+/// - `betweenness`: to calculate the betweenness
+/// - `eccentricity`: to calculate the eccentricity
 ///
 ////////////////////////////////////////////////////////////////////////////////
 

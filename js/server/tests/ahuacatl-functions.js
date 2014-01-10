@@ -1903,13 +1903,28 @@ function ahuacatlFunctionsTestSuite () {
       actual = getQueryResults("RETURN DOCUMENT(\"" + d2._id + "\")");
       assertEqual(expected, actual);
       
+      // test with function result parameter
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"foo\", \"bar\"))");
+      assertEqual([ null ], actual);
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"bart\"))");
+      assertEqual([ null ], actual);
+
+      var d3 = cx.save({ _key: "foo", value: "bar" });
+      expected = [ { value: "bar" } ];
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"foo\"))");
+      assertEqual([ null ], actual);
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(@c, \"/\", @k))", { c: cn, k: "foo" });
+      assertEqual(expected, actual);
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"/\", @k))", { k: "foo" });
+      assertEqual(expected, actual);
+      
       // test with bind parameter
       expected = [ { title: "nada", value : 123 } ];
       actual = getQueryResults("RETURN DOCUMENT(@id)", { id: d2._id });
       assertEqual(expected, actual);
       
       // test dynamic parameter
-      expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 } ];
+      expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
       actual = getQueryResults("FOR d IN @@cn SORT d.value RETURN DOCUMENT(d._id)", { "@cn" : cn });
       assertEqual(expected, actual);
       
