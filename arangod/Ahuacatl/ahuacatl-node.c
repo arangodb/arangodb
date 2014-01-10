@@ -40,6 +40,7 @@ bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
   if (type == TRI_AQL_NODE_SCOPE_START ||
       type == TRI_AQL_NODE_SCOPE_END ||
       type == TRI_AQL_NODE_SUBQUERY ||
+      type == TRI_AQL_NODE_SUBQUERY_CACHED ||
       type == TRI_AQL_NODE_EXPAND ||
       type == TRI_AQL_NODE_FOR ||
       type == TRI_AQL_NODE_FILTER ||
@@ -165,6 +166,8 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "ternary";
     case TRI_AQL_NODE_SUBQUERY:
       return "subquery";
+    case TRI_AQL_NODE_SUBQUERY_CACHED:
+      return "subquery (cached)";
     case TRI_AQL_NODE_ATTRIBUTE_ACCESS:
       return "attribute access";
     case TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS:

@@ -110,6 +110,8 @@ v1.5.x (XXXX-XX-XX)
 v1.4.5 (XXXX-XX-XX)
 -------------------
 
+* defer evaluation of AQL subqueries and logical operators (lazy evaluation)
+
 * generally allow function return values as call parameters to AQL functions
 
 * fixed potential deadlock in global context method execution
