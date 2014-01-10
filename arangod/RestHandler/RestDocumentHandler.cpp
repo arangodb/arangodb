@@ -176,7 +176,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document.  The response body contains an error document in this case.
+/// document. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -429,7 +429,7 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a `HTTP 304` is returned.
+/// given etag. Otherwise an `HTTP 304` is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
@@ -452,7 +452,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the document has
-/// same version
+/// the same version
 ///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
@@ -598,7 +598,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{collection,string,required}
-/// The Id of the collection.
+/// The name of the collection.
 ///
 /// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
@@ -614,7 +614,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// @EXAMPLES
 ///
-/// Returns a collection.
+/// Returns a all ids.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAll}
 ///     var cn = "products";
@@ -687,7 +687,13 @@ bool RestDocumentHandler::readAllDocuments () {
   string result("{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+  string prefix;
+  if (getCollectionType() == TRI_COL_TYPE_DOCUMENT) {
+    prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+  }
+  else {
+    prefix = '"' + EDGE_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+  }
 
   for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
     // collection names do not need to be JSON-escaped
@@ -724,18 +730,13 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally fetch a document based on a target revision id by
 /// using the `rev` URL parameter.
 /// 
-/// @RESTQUERYPARAM{policy,string,optional}
-/// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter. This is the same as when replacing
-/// documents (see replacing documents for more details).
-///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally get a document based on a target revision id by
+/// You can conditionally fetch a document based on a target revision id by
 /// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
@@ -812,8 +813,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter. This is the same as when replacing
-/// documents (see replacing documents for more details).
+/// can use the `policy` parameter (see below).
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -865,7 +865,7 @@ bool RestDocumentHandler::checkDocument () {
 /// by an HTTP `etag` header.
 ///
 /// For example, to conditionally replace a document based on a specific revision
-/// id, you the following request:
+/// id, you can use the following request:
 /// 
 /// - PUT /_api/document/`document-handle`?rev=`etag`
 ///
@@ -891,11 +891,11 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created successfully and `waitForSync` was
+/// is returned if the document was replaced successfully and `waitForSync` was
 /// `true`.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created successfully and `waitForSync` was
+/// is returned if the document was replaced successfully and `waitForSync` was
 /// `false`.
 ///
 /// @RESTRETURNCODE{400}
@@ -903,7 +903,7 @@ bool RestDocumentHandler::checkDocument () {
 /// document.  The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if collection or the document was not found
+/// is returned if the collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
@@ -1012,7 +1012,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTHEADER{PATCH /_api/document/`document-handle`,patches a document}
 ///
 /// @RESTBODYPARAM{document,json,required}
-/// A JSON representation of the new document.
+/// A JSON representation of the document update.
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1092,10 +1092,10 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document.  The response body contains an error document in this case.
+/// document. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if collection or the document was not found
+/// is returned if the collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
@@ -1329,8 +1329,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute `_id` contains the known
-/// `document-handle` of the updated document, the attribute `_rev`
-/// contains the known document revision.
+/// `document-handle` of the deleted document, the attribute `_rev`
+/// contains the document revision.
 ///
 /// If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
