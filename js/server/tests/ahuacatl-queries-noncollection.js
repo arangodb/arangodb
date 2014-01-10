@@ -52,6 +52,97 @@ function ahuacatlQueryNonCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief multiple subqueries
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleSubqueries1 : function () {
+      var expected = [ [ [ 2, 4 ], [ 6, 8 ] ] ];
+      var actual = getQueryResults("LET a = (FOR i IN [ 1, 2 ] RETURN i * 2), b = (FOR i IN [ 3, 4 ] RETURN i * 2) RETURN [ a, b ]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief multiple subqueries
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleSubqueries2 : function () {
+      var expected = [ [ [ 2, 4 ], [ 6, 8 ] ] ];
+      var actual = getQueryResults("LET a = (FOR i IN [ 1, 2 ] RETURN i * 2) LET b = (FOR i IN [ 3, 4 ] RETURN i * 2) RETURN [ a, b ]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval1 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year > 2013 && FAIL() RETURN year");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval2 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year > 2013 RETURN FAIL()");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval3 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year > 2013 && FAIL() RETURN FAIL()");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval4 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year > 2020 LET x = (FOR i IN [ 1, 2 ] RETURN FAIL()) RETURN year");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval5 : function () {
+      var expected = [ ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year > 2020 LET x = (FOR i IN [ 1, 2 ] RETURN FAIL()) RETURN FAIL()");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval6 : function () {
+      assertException(function() { getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year < 2020 RETURN FAIL()"); });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deferred evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeferredEval7 : function () {
+      assertException(function() { getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year < 2020 LET x = (FOR i IN [ 1, 2 ] RETURN FAIL()) RETURN year") });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a single value from a list
 ////////////////////////////////////////////////////////////////////////////////
 

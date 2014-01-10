@@ -228,6 +228,8 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
           size_t j = moveStart;
           size_t inserted = 0;
 
+          node->_type = TRI_AQL_NODE_SUBQUERY_CACHED;
+
           // moving statements from the middle to the beginning of the list will also
           // modify the positions we're moving from
           while (j < i + 2) {

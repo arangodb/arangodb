@@ -292,7 +292,8 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       break;
     }
 
-    case TRI_AQL_NODE_SUBQUERY: {
+    case TRI_AQL_NODE_SUBQUERY: 
+    case TRI_AQL_NODE_SUBQUERY_CACHED: {
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
