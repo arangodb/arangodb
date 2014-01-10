@@ -1,6 +1,11 @@
 v1.5.x (XXXX-XX-XX)
 -------------------
 
+* allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
+  `/_api/batch` HTTP API.
+
+* use `--data-binary` instead of `--data` parameter in generated cURL examples
+
 * issue #703: Also show path of logfile for fm.config()
 
 * issue #675: Dropping a collection used in "graph" module breaks the graph
@@ -103,8 +108,11 @@ v1.5.x (XXXX-XX-XX)
 v1.4.5 (XXXX-XX-XX)
 -------------------
 
-* added override file "arangod.conf.local" (and co)
+* generally allow function return values as call parameters to AQL functions
 
+* fixed potential deadlock in global context method execution
+
+* added override file "arangod.conf.local" (and co)
 
 v1.4.4 (2013-12-24)
 -------------------
