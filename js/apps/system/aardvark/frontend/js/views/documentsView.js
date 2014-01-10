@@ -138,7 +138,7 @@
                 }
 
                 catch (e) {
-                  arangoHelper.arangoNotification("Error: "+ e);
+                  arangoHelper.arangoError("Error: " + e);
                   self.hideSpinner();
                   self.hideImportModal();
                   self.resetView();
@@ -146,8 +146,8 @@
                 }
 
                 if (data.errors === 0) {
-                  arangoHelper.arangoError("Upload successful. " + 
-                                           data.created + " document(s) imported.");
+                  arangoHelper.arangoNotification("Upload successful. " + 
+                                                  data.created + " document(s) imported.");
                 }
                 else if (data.errors !== 0) {
                   arangoHelper.arangoError("Upload failed." + 
@@ -160,30 +160,20 @@
               }
             }
             self.hideSpinner();
-            arangoHelper.arangoNotification("Upload error");
+            arangoHelper.arangoError("Upload error");
           }
         });
-      }
-      else {
-        arangoHelper.arangoNotification("Unsupported filetype: " + self.file.type);
       }
     },
 
     uploadSetup: function () {
       var self = this;
 
-      //$('#documentsUploadFile').change(function(e) {
       $('#importDocuments').change(function(e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
 
-        if (self.file.type !== 'application/json') {
-          arangoHelper.arangoNotification("Unsupported filetype: " + self.file.type);
-          self.allowUpload = false;
-        }
-        else {
-          self.allowUpload = true;
-        }
+        self.allowUpload = true;
       });
     },
 
