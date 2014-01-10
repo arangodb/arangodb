@@ -1939,28 +1939,30 @@ static void ProcessUnaryPlus (TRI_aql_codegen_js_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for binary and (a && b)
+/// this passes two functions to the operator for lazy evaluation 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.LOGICAL_AND(");
+  ScopeOutput(generator, "aql.LOGICAL_AND_FN(function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "}, function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ")");
+  ScopeOutput(generator, "})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for binary or (a || b)
+/// this passes two functions to the operator for lazy evaluation 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.LOGICAL_OR(");
+  ScopeOutput(generator, "aql.LOGICAL_OR_FN(function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "}, function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ")");
+  ScopeOutput(generator, "})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2125,13 +2127,13 @@ static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessTernary (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.TERNARY_OPERATOR(");
+  ScopeOutput(generator, "aql.TERNARY_OPERATOR_FN(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, ", function () { \nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "}, function () {\nreturn ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 2));
-  ScopeOutput(generator, ")");
+  ScopeOutput(generator, "})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

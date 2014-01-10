@@ -238,18 +238,35 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAndShortCircuit1 : function () {
-      // TODO: FIXME                              
-      // var expected = [ false ];
-      // var actual = getQueryResults("RETURN false && FAIL('this will fail')");
-      //assertEqual(expected, actual);
+      var expected = [ false ];
+      var actual = getQueryResults("RETURN false && FAIL('this will fail')");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test binary and, short circuit evaluation
+/// @brief test binary or, short circuit evaluation
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAndShortCircuit2 : function () {
-      assertException(function() { getQueryResults("RETURN false && FAIL('this will fail')"); });
+      assertException(function() { getQueryResults("RETURN true && FAIL('this will fail')"); });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOrShortCircuit1 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN true || FAIL('this will fail')");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary or, short circuit evaluation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryOrShortCircuit2 : function () {
+      assertException(function() { getQueryResults("RETURN false || FAIL('this will fail')"); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
