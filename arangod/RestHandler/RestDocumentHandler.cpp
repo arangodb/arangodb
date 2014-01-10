@@ -1042,7 +1042,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally patch a document based on a target revision id by
 /// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
