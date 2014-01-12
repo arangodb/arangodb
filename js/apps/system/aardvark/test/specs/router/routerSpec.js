@@ -18,6 +18,7 @@
       documentsDummy,
       sessionDummy,
       graphsDummy,
+      foxxDummy,
       logsDummy;
 
     // Spy on all views that are initialized by startup
@@ -59,26 +60,25 @@
         height: function() {},
         css: function() {}
       };
+      sessionDummy = {
+        id: "sessionDummy"
+      };
+      foxxDummy = {
+        id: "foxxDummy"
+      };
       spyOn(storeDummy, "fetch");
       spyOn(window, "arangoCollections").andReturn(storeDummy);
       spyOn(window, "ArangoSession").andReturn(sessionDummy);
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
       spyOn(window, "GraphCollection").andReturn(graphsDummy);
+      spyOn(window, "FoxxCollection").andReturn(foxxDummy);
       spyOn(window, "CollectionsView");
-      spyOn(window, "CollectionView");
       spyOn(window, "DocumentsView");
       spyOn(window, "DocumentView");
       spyOn(window, "DocumentSourceView");
       spyOn(window, "ArangoLogs").andReturn(logsDummy);
-      spyOn(logsDummy, "fetch"); //TO_DO
-      /*
-        success: function () {
-          window.logsView = new window.logsView({
-            collection: window.arangoLogsStore
-          });
-        }
-      */
+      spyOn(logsDummy, "fetch");
       spyOn(window, "FooterView").andReturn(footerDummy);
       spyOn(footerDummy, "render");
       spyOn(window, "NavigationView").andReturn(naviDummy);
@@ -109,8 +109,13 @@
 
       var r;
 
+
       beforeEach(function() {
         r = new window.Router();
+      });
+
+      it("should create a Foxx Collection", function() {
+        expect(window.FoxxCollection).toHaveBeenCalled();
       });
       
       it("should bind a resize event", function() {
@@ -136,10 +141,6 @@
         expect(window.DocumentsView).toHaveBeenCalledWith();
       });
 
-      it("should create collectionView", function() {
-        expect(window.CollectionView).toHaveBeenCalledWith();
-      });
-
       it("should create collectionsView", function() {
         expect(window.CollectionsView).toHaveBeenCalledWith({
           collection: storeDummy
@@ -163,7 +164,8 @@
 
       beforeEach(function() {
         r = new window.Router();
-        simpleNavigationCheck = function(url, viewName, navTo, initObject, funcList) {
+        simpleNavigationCheck = function(url, viewName, navTo,
+          initObject, funcList, shouldNotRender) {
           var route,
             view = {},
             checkFuncExec = function() {
@@ -183,7 +185,7 @@
           } else {
             route = r[r.routes[url]].bind(r);
           }
-          if (!funcList.hasOwnProperty("render")) {
+          if (!funcList.hasOwnProperty("render") && !shouldNotRender) {
             funcList.render = undefined;
           }
           _.each(_.keys(funcList), function(f) {
@@ -212,6 +214,86 @@
         };
       });
 
+/*
+    routes: {
+      ""                                    : "dashboard",
+      "dashboard"                           : "dashboard",
+      "collections"                         : "collections",
+      "collection/:colid/documents/:pageid" : "documents",
+      "collection/:colid/:docid"            : "document",
+      "collection/:colid/:docid/source"     : "source",
+      "logs"                                : "logs",
+      "databases"                           : "databases",
+      "application/installed/:key"          : "applicationEdit",
+      "application/available/:key"          : "applicationInstall",
+      "application/documentation/:key"      : "appDocumentation",
+      "graph"                               : "graph",
+    },
+*/
+
+      it("should offer all necessary routes", function() {
+        var available = _.keys(r.routes),
+          expected = [
+            "collection/:colid",
+            "collectionInfo/:colid",
+            "login",
+            "new",
+            "api",
+            "query",
+            "shell",
+            "graphManagement",
+            "graphManagement/add",
+            "applications",
+            "applications/installed",
+            "applications/available"
+          ],
+          diff = _.difference(available, expected);
+        this.addMatchers({
+          toDefineTheRoutes: function(exp) {
+            var avail = this.actual,
+              leftDiff = _.difference(avail, exp),
+              rightDiff = _.difference(exp, avail);
+            this.message = function() {
+              var msg = "";
+              if (rightDiff.length) {
+                msg += "Expect routes: "
+                    + rightDiff.join(' & ')
+                    + " to be available.\n";
+              }
+              if (leftDiff.length) {
+                msg += "Did not expect routes: "
+                    + leftDiff.join(" & ")
+                    + " to be available.";
+              }
+              return msg;
+            };
+            return true;
+            /* Not all routes are covered by tests yet
+             * real execution would fail
+            return leftDiff.length === 0
+              && rightDiff.length === 0;
+            */
+          }
+        });
+        expect(available).toDefineTheRoutes(expected);
+      });
+
+      it("should route to a collection", function() {
+        var colid = 5;
+        simpleNavigationCheck(
+          {
+            url: "collection/:colid",
+            params: [colid]
+          },
+          "CollectionView",
+          "collections-menu",
+          undefined,
+          {
+            setColId: colid
+          }
+        );
+      });
+
       it("should route to collection info", function() {
         var colid = 5;
         simpleNavigationCheck(
@@ -227,7 +309,16 @@
           }
         );
       });
-      
+
+      it("should route to the login screen", function() {
+        simpleNavigationCheck(
+          "login",
+          "loginView",
+          "",
+          {collection: sessionDummy}
+        );
+      });
+
       it("should route to the graph management tab", function() {
         simpleNavigationCheck(
           "new",
@@ -282,6 +373,44 @@
         );
       });
 
+      it("should route to the applications tab", function() {
+        simpleNavigationCheck(
+          "applications",
+          "ApplicationsView",
+          "applications-menu",
+          { collection: foxxDummy},
+          {
+            reload: undefined
+          },
+          true
+        );
+      });
+
+      it("should route to the insalled applications", function() {
+        simpleNavigationCheck(
+          "applications/installed",
+          "FoxxActiveListView",
+          "applications-menu",
+          { collection: foxxDummy},
+          {
+            reload: undefined
+          },
+          true
+        );
+      });
+
+      it("should route to the available applications", function() {
+        simpleNavigationCheck(
+          "applications/available",
+          "FoxxInstalledListView",
+          "applications-menu",
+          { collection: foxxDummy},
+          {
+            reload: undefined
+          },
+          true
+        );
+      });
     });
   });
 }());

@@ -52,8 +52,6 @@
         collection: window.arangoCollectionsStore
       });
       window.arangoCollectionsStore.fetch();
-      window.collectionView = new window.CollectionView();
-      window.collectionInfoView = new window.CollectionInfoView();
       window.documentsView = new window.DocumentsView();
       window.documentView = new window.DocumentView();
       window.documentSourceView = new window.DocumentSourceView();
@@ -65,6 +63,8 @@
           });
         }
       });
+
+      this.foxxList = new window.FoxxCollection();
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView();
@@ -93,6 +93,7 @@
       }
       return true;
     },
+
     login: function () {
       if (!this.loginView) {
         this.loginView = new window.loginView({
@@ -102,15 +103,9 @@
       this.loginView.render();
       this.naviView.selectMenuItem('');
     },
+
     collections: function() {
       var naviView = this.naviView;
-
-      //DEV
-      //var currentSession = this.checkSession();
-      //if (currentSession === false) {
-      //  return;
-      //}
-
       window.arangoCollectionsStore.fetch({
         success: function () {
           window.collectionsView.render();
@@ -120,8 +115,12 @@
     },
 
     collection: function(colid) {
-      window.collectionView.options.colId = colid;
-      window.collectionView.render();
+      if (!this.collectionView) {
+        this.collectionView = new window.CollectionView();
+      }
+      this.collectionView.setColId(colid);
+      this.collectionView.render();
+      this.naviView.selectMenuItem('collections-menu');
     },
     collectionInfo: function(colid) {
       if (!this.collectionInfoView) {
@@ -283,9 +282,6 @@
     },
 
     applications: function() {
-      if (this.foxxList === undefined) {
-        this.foxxList = new window.FoxxCollection();
-      }
       if (this.applicationsView === undefined) {
         this.applicationsView = new window.ApplicationsView({
           collection: this.foxxList
@@ -296,9 +292,6 @@
     },
 
     applicationsAvailable: function() {
-      if (this.foxxList === undefined) {
-        this.foxxList = new window.FoxxCollection();
-      }
       if (this.applicationsInstalledView === undefined) {
         this.applicationsInstalledView = new window.FoxxInstalledListView({
           collection: this.foxxList
@@ -309,9 +302,6 @@
     },
 
     applicationsInstalled: function() {
-      if (this.foxxList === undefined) {
-        this.foxxList = new window.FoxxCollection();
-      }
       if (this.applicationsActiveView === undefined) {
         this.applicationsActiveView = new window.FoxxActiveListView({
           collection: this.foxxList
@@ -322,23 +312,17 @@
     },
 
     applicationEdit: function(appkey) {
-      if (this.foxxList === undefined) {
-        this.foxxList = new window.FoxxCollection();
-        this.foxxList.fetch({
-          async: false
-        });
-      }
+      this.foxxList.fetch({
+        async: false
+      });
       var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
       editAppView.render();
     },
 
     applicationInstall: function(appkey) {
-      if (this.foxxList === undefined) {
-        this.foxxList = new window.FoxxCollection();
-        this.foxxList.fetch({
-          async: false
-        });
-      }
+      this.foxxList.fetch({
+        async: false
+      });
       var installAppView = new window.foxxMountView({
         model: this.foxxList.findWhere({_key: appkey})
       });
