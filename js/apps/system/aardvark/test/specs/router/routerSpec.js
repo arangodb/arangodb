@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
-/*global $, jasmine*/
+/*global $, jasmine, _*/
 
 (function() {
   "use strict";
@@ -67,7 +67,6 @@
       spyOn(window, "GraphCollection").andReturn(graphsDummy);
       spyOn(window, "CollectionsView");
       spyOn(window, "CollectionView");
-      spyOn(window, "CollectionInfoView");
       spyOn(window, "DocumentsView");
       spyOn(window, "DocumentView");
       spyOn(window, "DocumentSourceView");
@@ -137,10 +136,6 @@
         expect(window.DocumentsView).toHaveBeenCalledWith();
       });
 
-      it("should create collectionInfoView", function() {
-        expect(window.CollectionInfoView).toHaveBeenCalledWith();
-      });
-
       it("should create collectionView", function() {
         expect(window.CollectionView).toHaveBeenCalledWith();
       });
@@ -163,25 +158,128 @@
 
     describe("navigation", function () {
       
-      var r;
+      var r,
+        simpleNavigationCheck;
 
       beforeEach(function() {
         r = new window.Router();
+        simpleNavigationCheck = function(url, viewName, navTo, initObject, funcList) {
+          var route,
+            view = {},
+            checkFuncExec = function() {
+              _.each(funcList, function(v, f) {
+                if (v !== undefined) {
+                  expect(view[f]).toHaveBeenCalledWith(v);
+                } else {
+                  expect(view[f]).toHaveBeenCalled();
+                }
+              });
+            };
+          funcList = funcList || {};
+          if (_.isObject(url)) {
+            route = function() {
+              r[r.routes[url.url]].apply(r, url.params);
+            };
+          } else {
+            route = r[r.routes[url]].bind(r);
+          }
+          if (!funcList.hasOwnProperty("render")) {
+            funcList.render = undefined;
+          }
+          _.each(_.keys(funcList), function(f) {
+            view[f] = function(){};
+            spyOn(view, f);
+          });
+          expect(route).toBeDefined();
+          spyOn(window, viewName).andReturn(view);
+          route();
+          if (initObject) {
+            expect(window[viewName]).toHaveBeenCalledWith(initObject);
+          } else {
+            expect(window[viewName]).toHaveBeenCalled();
+          }
+          checkFuncExec();
+          expect(naviDummy.selectMenuItem).toHaveBeenCalledWith(navTo);
+          // Check if the view is loaded from cache
+          window[viewName].reset();
+          _.each(_.keys(funcList), function(f) {
+            view[f].reset();
+          });
+          naviDummy.selectMenuItem.reset();
+          route();
+          expect(window[viewName]).not.toHaveBeenCalled();
+          checkFuncExec();
+        };
+      });
+
+      it("should route to collection info", function() {
+        var colid = 5;
+        simpleNavigationCheck(
+          {
+            url: "collectionInfo/:colid",
+            params: [colid]
+          },
+          "CollectionInfoView",
+          "collections-menu",
+          undefined,
+          {
+            setColId: colid
+          }
+        );
+      });
+      
+      it("should route to the graph management tab", function() {
+        simpleNavigationCheck(
+          "new",
+          "newCollectionView",
+          "collections-menu",
+          {}
+        );
+      });
+
+      it("should route to the api tab", function() {
+        simpleNavigationCheck(
+          "api",
+          "apiView",
+          "api-menu"
+        );
+      });
+
+      it("should route to the query tab", function() {
+        simpleNavigationCheck(
+          "query",
+          "queryView",
+          "query-menu"
+        );
+      });
+
+      it("should route to the shell tab", function() {
+        simpleNavigationCheck(
+          "shell",
+          "shellView",
+          "shell-menu"
+        );
+      });
+
+      it("should route to the graph management tab", function() {
+        simpleNavigationCheck(
+          "graphManagement",
+          "GraphManagementView",
+          "graphviewer-menu",
+          { collection: graphsDummy}
+        );
       });
 
       it("should offer the add new graph view", function() {
-        var route = r.routes["graphManagement/add"],
-          view = {render: function(){}};
-        expect(route).toBeDefined();
-        spyOn(window, "AddNewGraphView").andReturn(view);
-        spyOn(view, "render");
-        r[route]();
-        expect(window.AddNewGraphView).toHaveBeenCalledWith({
-          collection: storeDummy,
-          graphs: graphsDummy
-        });
-        expect(view.render).toHaveBeenCalled();
-        expect(naviDummy.selectMenuItem).toHaveBeenCalledWith("graphviewer-menu");
+        simpleNavigationCheck(
+          "graphManagement/add",
+          "AddNewGraphView",
+          "graphviewer-menu",
+          {
+            collection: storeDummy,
+            graphs: graphsDummy
+          }
+        );
       });
 
     });

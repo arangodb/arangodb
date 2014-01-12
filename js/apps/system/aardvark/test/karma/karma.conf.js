@@ -142,6 +142,7 @@ module.exports = function(karma) {
 
       // Views
       'frontend/js/views/navigationView.js',
+      'frontend/js/views/apiView.js',
       'frontend/js/views/footerView.js',
       'frontend/js/views/queryView.js',
       'frontend/js/views/shellView.js',
