@@ -156,6 +156,7 @@ module.exports = function(karma) {
       'frontend/js/views/documentView.js',
       'frontend/js/views/documentSourceView.js',
       'frontend/js/views/logsView.js',
+      'frontend/js/views/applicationsView.js',
       'frontend/js/views/foxxActiveView.js',
       'frontend/js/views/foxxActiveListView.js',
       'frontend/js/views/foxxInstalledView.js',
@@ -168,6 +169,7 @@ module.exports = function(karma) {
       'frontend/js/views/addNewGraphView.js',
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
+      'frontend/js/views/loginView.js',
 
       // Router
       'frontend/js/routers/router.js',
