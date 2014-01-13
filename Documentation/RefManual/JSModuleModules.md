@@ -160,11 +160,11 @@ follows
 
   is checked.
 
-- If no file can be found, ArangoDB will check if the collection `modules`
+- If no file can be found, ArangoDB will check if the collection `_modules`
   contains a document of the form
   
       {
-        path: "com/example/extension",
+        path: "/com/example/extension",
         content: "...."
       }
   
