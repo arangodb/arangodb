@@ -1146,7 +1146,7 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
 
 AgencyCommResult AgencyComm::casValue (std::string const& key,
                                        std::string const& value,
-                                       bool prevExists,
+                                       bool prevExist,
                                        double ttl,
                                        double timeout) {
   AgencyCommResult result;
@@ -1154,8 +1154,8 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevExists=" 
-                     + (prevExists ? "true" : "false") + ttlParam(ttl, false), 
+                   buildUrl(key) + "?prevExist=" 
+                     + (prevExist ? "true" : "false") + ttlParam(ttl, false), 
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
                    false);
 

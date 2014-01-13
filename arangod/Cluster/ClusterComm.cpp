@@ -892,6 +892,8 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
   map<string, string> headers = responseToSend->headers();
   headers["X-Arango-Coordinator"] = coordinatorHeader;
+  headers["X-Arango-Response-Code"] 
+    = responseToSend->responseString( responseToSend->responseCode());
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
@@ -959,6 +961,8 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
     if (i != receivedByOpID.end()) {
       ClusterCommOperation* op = *(i->second);
       op->answer = answer;
+      op->answer_code = rest::HttpResponse::responseCode(
+          answer->header("x-arango-response-code"));
       op->status = CL_COMM_RECEIVED;
       // Do we have to do a callback?
       if (0 != op->callback) {
@@ -980,6 +984,8 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
       if (i != toSendByOpID.end()) {
         ClusterCommOperation* op = *(i->second);
         op->answer = answer;
+        op->answer_code = rest::HttpResponse::responseCode(
+            answer->header("x-arango-response-code"));
         op->status = CL_COMM_RECEIVED;
         if (0 != op->callback) {
           if ((*op->callback)(static_cast<ClusterCommResult*>(op))) {
