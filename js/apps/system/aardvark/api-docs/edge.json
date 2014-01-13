@@ -8,21 +8,48 @@
                 {
                     "errorResponses": [
                         {
+                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
                             "reason": "is returned if the edge was created successfully. ",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the edge collection was not found. ",
+                            "reason": "is returned if the body does not contain a valid JSON representation of an edge, or if the collection specified is not an edge collection.  The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
                             "code": "404"
                         }
                     ],
                     "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "edge-document",
+                            "description": "A JSON representation of the edge document must be passed as the body of the POST request. This JSON object may contain the edge's document key in the <em>_key</em> attribute if needed. "
+                        },
                         {
                             "dataType": "String",
                             "paramType": "query",
                             "required": "True",
                             "name": "collection",
                             "description": "Creates a new edge in the collection identified by <em>collection</em> name. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "createCollection",
+                            "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until the edge document has been synced to disk. "
                         },
                         {
                             "dataType": "String",
@@ -37,23 +64,342 @@
                             "required": "True",
                             "name": "to",
                             "description": "The document handle of the end point must be passed in <em>to</em> handle. "
-                        },
-                        {
-                            "dataType": "Json",
-                            "paramType": "body",
-                            "required": "true",
-                            "name": "edge-document",
-                            "description": "A JSON representation of the edge document must be passed as the body of the POST request. This JSON object may contain the edge's document key in the <em>_key</em> attribute if needed. "
                         }
                     ],
-                    "notes": "<em>from</em> handle and <em>to</em> handle are immutable once the edge has been created. <br><br>In all other respects the method works like <em>POST /document</em>, see the manual for details. <br><br>",
+                    "notes": "Creates a new edge document in the collection named <em>collection</em>. A JSON representation of the document must be passed as the body of the POST request. <br><br>The <em>from</em> and <em>to</em> handles are immutable once the edge has been created. <br><br>In all other respects the method works like <em>POST /document</em>, see the manual for details. <br><br>",
                     "summary": "creates an edge",
                     "httpMethod": "POST",
-                    "examples": "Create an edge and reads it back: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2\n{\"name\":\"Emil\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"373899687\"\nlocation: /_db/_system/_api/document/edges/373899687\n\n{ \n  \"error\" : false, \n  \"_id\" : \"edges/373899687\", \n  \"_rev\" : \"373899687\", \n  \"_key\" : \"373899687\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/edge/edges/373899687\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"373899687\"\n\n{ \n  \"name\" : \"Emil\", \n  \"_id\" : \"edges/373899687\", \n  \"_rev\" : \"373899687\", \n  \"_key\" : \"373899687\", \n  \"_from\" : \"vertices/1\", \n  \"_to\" : \"vertices/2\" \n}\n\n</code></pre><br>",
+                    "examples": "Create an edge and read it back: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2\n{\"name\":\"Emil\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"373899687\"\nlocation: /_db/_system/_api/document/edges/373899687\n\n{ \n  \"error\" : false, \n  \"_id\" : \"edges/373899687\", \n  \"_rev\" : \"373899687\", \n  \"_key\" : \"373899687\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/edge/edges/373899687\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"373899687\"\n\n{ \n  \"name\" : \"Emil\", \n  \"_id\" : \"edges/373899687\", \n  \"_rev\" : \"373899687\", \n  \"_key\" : \"373899687\", \n  \"_from\" : \"vertices/1\", \n  \"_to\" : \"vertices/2\" \n}\n\n</code></pre><br>",
                     "nickname": "createsAnEdge"
                 }
             ],
             "path": "/_api/edge"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the edge was found ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the edge or collection was not found ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if the \"If-None-Match\" header is given and the edge has  the same version ",
+                            "code": "304"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The handle of the edge document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-None-Match",
+                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The edge is returned if it has a different revision than the given etag. Otherwise an <em>HTTP 304</em> is returned. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The edge is returned if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                        }
+                    ],
+                    "notes": "Returns the edge identified by <em>document-handle</em>. The returned edge contains a few special attributes:  <br><br>- <em>_id</em> contains the document handle<br><br>- <em>_rev</em> contains the revision<br><br>- <em>_from</em> and <em>to</em> contain the document handles of the connected   vertex documents <br><br>",
+                    "summary": "reads an edge",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "readsAnEdge"
+                }
+            ],
+            "path": "/_api/edge/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "All went good. ",
+                            "code": "200"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The name of the collection. "
+                        }
+                    ],
+                    "notes": "Returns a list of all URI for all edges from the collection identified by <em>collection</em>. <br><br>",
+                    "summary": "reads all edges from collection",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "readsAllEdgesFromCollection"
+                }
+            ],
+            "path": "/_api/edge"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the edge document was found ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the edge document or collection was not found ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if the \"If-None-Match\" header is given and the edge document has same version ",
+                            "code": "304"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The handle of the edge document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally fetch an edge document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally fetch an edge document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "Like <em>GET</em>, but only returns the header fields and not the body. You can use this call to get the current revision of an edge document or check if it was deleted. <br><br>",
+                    "summary": "reads an edge header",
+                    "httpMethod": "HEAD",
+                    "examples": "",
+                    "nickname": "readsAnEdgeHeader"
+                }
+            ],
+            "path": "/_api/edge/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the edge document was replaced successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the edge document was replaced successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of an edge document or if applied to a non-edge collection. The response body contains an  error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection or the edge document was not found ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "edge",
+                            "description": "A JSON representation of the new edge data. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The handle of the edge document. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until edge document has been synced to disk. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally replace an edge document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter (see below). "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally replace an edge document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "Completely updates (i.e. replaces) the edge document identified by <em>document-handle</em>. If the edge document exists and can be updated, then a <em>HTTP 201</em> is returned and the \"ETag\" header field contains the new revision of the edge document. <br><br>If the new edge document passed in the body of the request contains the <em>document-handle</em> in the attribute <em>_id</em> and the revision in <em>_rev</em>, these attributes will be ignored. Only the URI and the \"ETag\" header are relevant in order to avoid confusion when using proxies. Note that the attributes <em>_from</em> and <em>_to</em> of an edge are immutable and cannot be updated either. <br><br>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the edge document replacement operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>The body of the response contains a JSON object with the information about the handle and the revision.  The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated edge document, the attribute <em>_rev</em> contains the new revision of the edge document. <br><br>If the edge document does not exist, then a <em>HTTP 404</em> is returned and the body of the response contains an error document. <br><br>There are two ways for specifying the targeted revision id for conditional replacements (i.e. replacements that will only be executed if the revision id found in the database matches the revision id specified in the request): - specifying the target revision in the <em>rev</em> URL query parameter- specifying the target revision in the <em>if-match</em> HTTP header<br><br>Specifying a target revision is optional, however, if done, only one of the described mechanisms must be used (either the <em>rev</em> URL parameter or the <em>if-match</em> HTTP header). Regardless which mechanism is used, the parameter needs to contain the target revision id as returned in the <em>_rev</em> attribute of an edge document or by an HTTP <em>etag</em> header. <br><br>For example, to conditionally replace an edge document based on a specific revision id, you can use the following request: <br><br>- PUT /_api/document/<em>document-handle</em>?rev=<em>etag</em><br><br>If a target revision id is provided in the request (e.g. via the <em>etag</em> value in the <em>rev</em> URL query parameter above), ArangoDB will check that the revision id of the edge document found in the database is equal to the target revision id provided in the request. If there is a mismatch between the revision id, then by default a <em>HTTP 412</em> conflict is returned and no replacement is performed. <br><br>The conditional update behavior can be overriden with the <em>policy</em> URL query parameter: <br><br>- PUT /_api/document/<em>document-handle</em>?policy=<em>policy</em><br><br>If <em>policy</em> is set to <em>error</em>, then the behavior is as before: replacements will fail if the revision id found in the database does not match the target revision id specified in the request. <br><br>If <em>policy</em> is set to <em>last</em>, then the replacement will succeed, even if the revision id found in the database does not match the target revision id specified in the request. You can use the <em>last</em> `policy` to force replacements. <br><br>",
+                    "summary": "replaces an edge",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "replacesAnEdge"
+                }
+            ],
+            "path": "/_api/edge/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was patched successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the document was patched successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation or when applied on an non-edge collection. The response body contains an error document  in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection or the edge document was not found ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "document",
+                            "description": "A JSON representation of the edge update. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The handle of the edge document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "keepNull",
+                            "description": "If the intention is to delete existing attributes with the patch command,  the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing edge document that are contained in the patch document with an attribute value of <em>null</em>. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until edge document has been synced to disk. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally patch an edge document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally patch an edge document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "Partially updates the edge document identified by <em>document-handle</em>. The body of the request must contain a JSON document with the attributes to patch (the patch document). All attributes from the patch document will be added to the existing edge document if they do not yet exist, and overwritten in the existing edge document if they do exist there. <br><br>Setting an attribute value to <em>null</em> in the patch document will cause a value of <em>null</em> be saved for the attribute by default.  <br><br>Note that internal attributes such as <em>_key</em>, <em>_from</em> and <em>_to</em> are immutable once set and cannot be updated. <br><br>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the edge document update operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>The body of the response contains a JSON object with the information about the handle and the revision. The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated edge document, the attribute <em>_rev</em> contains the new edge document revision. <br><br>If the edge document does not exist, then a <em>HTTP 404</em> is returned and the body of the response contains an error document. <br><br>You can conditionally update an edge document based on a target revision id by using either the <em>rev</em> URL parameter or the <em>if-match</em> HTTP header. To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing edge documents (see replacing documents for details). <br><br>",
+                    "summary": "patches an edge",
+                    "httpMethod": "PATCH",
+                    "examples": "",
+                    "nickname": "patchesAnEdge"
+                }
+            ],
+            "path": "/_api/edge/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the edge document was deleted successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the edge document was deleted successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the collection or the edge document was not found. The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "Deletes the edge document identified by <em>document-handle</em>.  "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally delete an edge document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing edge documents (see replacing edge documents for more details). "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until edge document has been synced to disk. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally delete an edge document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "The body of the response contains a JSON object with the information about the handle and the revision.  The attribute <em>_id</em> contains the known <em>document-handle</em> of the deleted edge document, the attribute <em>_rev</em> contains the edge document revision. <br><br>If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>",
+                    "summary": "deletes an edge",
+                    "httpMethod": "DELETE",
+                    "examples": "",
+                    "nickname": "deletesAnEdge"
+                }
+            ],
+            "path": "/_api/edge/{document-handle}"
         }
     ]
 }
