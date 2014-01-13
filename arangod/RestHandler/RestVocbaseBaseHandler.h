@@ -298,7 +298,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_voc_rid_t extractRevision (char const*, 
-                                       char const*);
+                                       char const*,
+                                       bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the update policy
