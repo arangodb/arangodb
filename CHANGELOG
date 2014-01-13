@@ -1,6 +1,8 @@
 v1.4.5-rc2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #716: dpkg -P doesn't remove everything
+
 * fixed bugs in description of HTTP API `_api/index`
 
 * fixed issue #732: Rest API GET revision number
