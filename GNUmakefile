@@ -183,6 +183,8 @@ pack-arm:
 	rm -rf Build && mkdir Build
 
 	./configure \
+		CFLAGS="-I./3rdParty-ARM/include" \
+		LDFLAGS="-L./3rdParty-ARM/lib" \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
