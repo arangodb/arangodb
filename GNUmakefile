@@ -183,14 +183,13 @@ pack-arm:
 	rm -rf Build && mkdir Build
 
 	./configure \
-		CFLAGS="-I./3rdParty-ARM/include" \
-		LDFLAGS="-L./3rdParty-ARM/lib" \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--disable-all-in-one-icu \
 		--disable-all-in-one-v8 \
 		--disable-all-in-one-libev \
+		--with-libev=./3rdParty-ARM \
 		--disable-mruby
 
 	${MAKE} pack-arm-cmake
