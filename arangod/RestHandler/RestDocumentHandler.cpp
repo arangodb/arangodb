@@ -558,9 +558,24 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   assert(document._key != 0);
 
   const TRI_voc_rid_t rid = document._rid;
+
   // check for an etag
-  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
-  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
+  bool isValidRevision;
+  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
+
+  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev", isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
@@ -1164,7 +1179,17 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // extract the revision
-  const TRI_voc_rid_t revision = extractRevision("if-match", "rev");
+  bool isValidRevision;
+  const TRI_voc_rid_t revision = extractRevision("if-match", "rev", isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return false;
+  }
 
   // extract or chose the update policy
   const TRI_doc_update_policy_e policy = extractUpdatePolicy();
@@ -1422,7 +1447,14 @@ bool RestDocumentHandler::deleteDocument () {
   const string& key = suffix[1];
 
   // extract the revision
-  const TRI_voc_rid_t revision = extractRevision("if-match", "rev");
+  bool isValidRevision;
+  const TRI_voc_rid_t revision = extractRevision("if-match", "rev", isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
 
   // extract or choose the update policy
   const TRI_doc_update_policy_e policy = extractUpdatePolicy();
