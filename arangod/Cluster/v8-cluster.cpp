@@ -718,8 +718,8 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
     TRI_V8_EXCEPTION_USAGE(scope, "getCollectionInfo(<database-id>, <collection-id>)");
   }
  
-  CollectionInfo ci = ClusterInfo::instance()->getCollectionInfo(TRI_ObjectToString(argv[0]), 
-                                                                 TRI_ObjectToString(argv[1]));
+  CollectionInfo ci = ClusterInfo::instance()->getCollection(TRI_ObjectToString(argv[0]), 
+                                                             TRI_ObjectToString(argv[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New();
   const std::string cid = triagens::basics::StringUtils::itoa(ci.cid());

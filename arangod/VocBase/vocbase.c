@@ -560,6 +560,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   }
 
   memcpy(collection, &init, sizeof(TRI_vocbase_col_t));
+  collection->_isLocal = true;
 
   // check name
   res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, name, collection, &found);
