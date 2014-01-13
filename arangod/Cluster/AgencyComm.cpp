@@ -121,6 +121,34 @@ int AgencyCommResult::httpCode () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the "index" attribute from the result
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t AgencyCommResult::index () const {
+  uint64_t result = 0;
+
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return result;
+  }
+
+  // get "index" attribute
+  TRI_json_t const* errorCode = TRI_LookupArrayJson(json, "errorCode");
+
+  if (TRI_IsNumberJson(errorCode)) {
+    result = (uint64_t) errorCode->_value._number;
+  }
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the error code from the result
 ////////////////////////////////////////////////////////////////////////////////
 
