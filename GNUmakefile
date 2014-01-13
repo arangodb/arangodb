@@ -186,9 +186,9 @@ pack-arm:
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
+		--disable-all-in-one-icu \
+		--disable-all-in-one-v8 \
+		--disable-all-in-one-libev \
 		--disable-mruby
 
 	${MAKE} pack-arm-cmake
