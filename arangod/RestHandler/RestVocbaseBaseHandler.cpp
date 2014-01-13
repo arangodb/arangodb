@@ -447,7 +447,9 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
-                                                       char const* parameter) {
+                                                       char const* parameter,
+                                                       bool& isValid) {
+  isValid = true;
   bool found;
   char const* etag = _request->header(header, found);
 
@@ -459,31 +461,36 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
       ++s;
     }
 
+    if (s < e && (s[0] == '"' || s[0] == '\'')) {
+      ++s;
+    }
+
+
     while (s < e && (e[-1] == ' ' || e[-1] == '\t')) {
       --e;
     }
+    
+    if (s < e && (e[-1] == '"' || e[-1] == '\'')) {
+      --e;
+    }
 
-    if (s + 1 < e && s[0] == '"' && e[-1] == '"') {
-      return TRI_UInt64String2(s + 1, e - s - 2);
-    }
-    else {
-      return 0;
-    }
+    TRI_voc_rid_t rid = TRI_UInt64String2(s, e - s);
+    isValid = (TRI_errno() != TRI_ERROR_ILLEGAL_NUMBER);
+
+    return rid;
   }
 
-  if (parameter == 0) {
-    return 0;
-  }
-  else {
+  if (parameter != 0) {
     etag = _request->value(parameter, found);
 
     if (found) {
-      return TRI_UInt64String(etag);
-    }
-    else {
-      return 0;
+      TRI_voc_rid_t rid = TRI_UInt64String(etag);
+      isValid = (TRI_errno() != TRI_ERROR_ILLEGAL_NUMBER);
+      return rid;
     }
   }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -461,6 +461,34 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cid).should eq(0)
       end
+
+      it "use an invalid revision for HEAD" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        # get document
+        cmd = location
+        doc = ArangoDB.log_get("#{prefix}-head-rev-invalid", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        # get the document head
+        doc = ArangoDB.head(cmd + "?rev=abcd")
+
+        doc.code.should eq(400)
+        
+        hdr = { "if-match" => "'abcd'" }
+        doc = ArangoDB.log_head("#{prefix}-head-rev-invalid", cmd, :headers => hdr)
+        
+        doc.code.should eq(400)
+      end
+
     end
 
   end
