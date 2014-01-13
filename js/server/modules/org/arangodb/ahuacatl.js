@@ -79,6 +79,14 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a database-specific function prefix
+////////////////////////////////////////////////////////////////////////////////
+
+function DB_PREFIX () {
+  return INTERNAL.db._name();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -401,8 +409,13 @@ function FCALL (name, parameters) {
 function FCALL_USER (name, parameters) {
   "use strict";
 
-  if (UserFunctions.hasOwnProperty(name)) {
-    var result = UserFunctions[name].func.apply(null, parameters);
+  var prefix = DB_PREFIX();
+  if (! UserFunctions.hasOwnProperty(prefix)) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+  }
+
+  if (UserFunctions[prefix].hasOwnProperty(name)) {
+    var result = UserFunctions[prefix][name].func.apply(null, parameters);
 
     return FIX_VALUE(result);
   }
@@ -1052,6 +1065,26 @@ function TERNARY_OPERATOR (condition, truePart, falsePart) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief execute ternary operator
+///
+/// the condition operand must be a boolean value, returns either the truepart
+/// or the falsepart 
+////////////////////////////////////////////////////////////////////////////////
+
+function TERNARY_OPERATOR_FN (condition, truePart, falsePart) {
+  "use strict";
+
+  if (TYPEWEIGHT(condition) !== TYPEWEIGHT_BOOL) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+
+  if (condition) {
+    return truePart();
+  }
+  return falsePart();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief perform logical and
 ///
 /// both operands must be boolean values, returns a boolean, uses short-circuit
@@ -1093,6 +1126,60 @@ function LOGICAL_OR (lhs, rhs) {
   }
 
   return rhs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform logical and
+///
+/// both operands must be boolean values, returns a boolean, uses short-circuit
+/// evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+function LOGICAL_AND_FN (lhs, rhs) {
+  "use strict";
+
+  var l = lhs();
+  if (TYPEWEIGHT(l) !== TYPEWEIGHT_BOOL) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+
+  if (! l) {
+    return false;
+  }
+
+  var r = rhs();
+  if (TYPEWEIGHT(r) !== TYPEWEIGHT_BOOL) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+
+  return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform logical or
+///
+/// both operands must be boolean values, returns a boolean, uses short-circuit
+/// evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+function LOGICAL_OR_FN (lhs, rhs) {
+  "use strict";
+
+  var l = lhs();
+  if (TYPEWEIGHT(l) !== TYPEWEIGHT_BOOL) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+
+  if (l) {
+    return true;
+  }
+
+  var r = rhs();
+  if (TYPEWEIGHT(r) !== TYPEWEIGHT_BOOL) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  }
+  
+  return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3945,8 +4032,6 @@ function reloadUserFunctions () {
 
   var c;
 
-  UserFunctions = { };
-
   c = INTERNAL.db._collection("_aqlfunctions");
 
   if (c === null) {
@@ -3954,6 +4039,9 @@ function reloadUserFunctions () {
   }
 
   var foundError = false;
+  var prefix = DB_PREFIX();
+
+  UserFunctions[prefix] = { };
 
   c.toArray().forEach(function (f) {
     var code = "(function() { var callback = " + f.code + "; return callback; })();";
@@ -3962,7 +4050,7 @@ function reloadUserFunctions () {
     try {
       var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")"); 
 
-      UserFunctions[key.toUpperCase()] = {
+      UserFunctions[prefix][key.toUpperCase()] = {
         name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
@@ -4025,8 +4113,11 @@ exports.GET_DOCUMENTS_SKIPLIST = GET_DOCUMENTS_SKIPLIST;
 exports.GET_DOCUMENTS_SKIPLIST_LIST = GET_DOCUMENTS_SKIPLIST_LIST;
 exports.COLLECTIONS = COLLECTIONS;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
+exports.TERNARY_OPERATOR_FN = TERNARY_OPERATOR_FN;
 exports.LOGICAL_AND = LOGICAL_AND;
 exports.LOGICAL_OR = LOGICAL_OR;
+exports.LOGICAL_AND_FN = LOGICAL_AND_FN;
+exports.LOGICAL_OR_FN = LOGICAL_OR_FN;
 exports.LOGICAL_NOT = LOGICAL_NOT;
 exports.RELATIONAL_EQUAL = RELATIONAL_EQUAL;
 exports.RELATIONAL_UNEQUAL = RELATIONAL_UNEQUAL;

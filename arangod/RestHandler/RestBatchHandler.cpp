@@ -102,6 +102,9 @@ RestBatchHandler::~RestBatchHandler () {
 /// boundary identifier is declared in the batch envelope. The MIME content-type
 /// for each individual batch part must be `application/x-arango-batchpart`.
 ///
+/// Please note that when constructing the individual batch parts, you must 
+/// use CRLF (`\r\n`) as the line terminator as in regular HTTP messages.
+///
 /// The response sent by the server will be an `HTTP 200` response, with an
 /// optional error summary header `x-arango-errors`. This header contains the 
 /// number of batch part operations that failed with an HTTP error code of at 
@@ -554,10 +557,28 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
   bool hasTypeHeader = false;
 
+  int breakLength = 1;
+
   while (found < searchEnd) {
+    // try Windows linebreak first
+    breakLength = 2;
+
     char* eol = strstr(found, "\r\n");
 
-    if (0 == eol || eol == found) {
+    if (eol == found) {
+      break;
+    }
+
+    if (eol == 0) {
+      breakLength = 1;
+      eol = strchr(found, '\n');
+
+      if (eol == found) {
+        break;
+      }
+    }
+
+    if (eol == 0) {
       break;
     }
 
@@ -597,10 +618,10 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
       // ignore other headers
     }
 
-    found = eol + 2;
+    found = eol + breakLength; // plus the \n
   }
 
-  found += 2; // for 2nd \r\n
+  found += breakLength; // for 2nd \n
 
   if (! hasTypeHeader) {
     // no Content-Type header. this is an error

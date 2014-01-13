@@ -90,7 +90,7 @@ EOF
 ## -----------------------------------------------------------------------------
 
 %else
-c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod-uid.conf
+c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod.conf
 %preinstall <<EOF
 getent group arangodb >/dev/null || groupadd -r arangodb 
 getent passwd arangodb >/dev/null || useradd -r -g arangodb -d ${static_dir}/arangodb -s /bin/false -c "ArangoDB Application User" arangodb 

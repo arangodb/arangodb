@@ -1544,7 +1544,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop replication
   TRI_StopReplicationApplier(vocbase->_replicationApplier, false); 
   TRI_StopReplicationLogger(vocbase->_replicationLogger); 
-
+  
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);

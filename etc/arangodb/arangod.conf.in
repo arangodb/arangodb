@@ -5,9 +5,11 @@
 # 
 
 [database]
-directory= @LOCALSTATEDIR@/lib/arangodb
-# maximal-journal-size=33554432
-# remove-on-drop=true
+directory = @LOCALSTATEDIR@/lib/arangodb
+# directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
+
+# maximal-journal-size = 33554432
+# remove-on-drop = true
 
 [server]
 # Specify the endpoint for HTTP requests by clients.
@@ -29,6 +31,8 @@ endpoint = tcp://0.0.0.0:8529
 
 disable-authentication = yes
 threads = 5
+
+# the user and group are normally set in the start script
 # uid = arangodb
 # gid = arangodb
 
@@ -38,6 +42,7 @@ threads = 3
 [javascript]
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
+# app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
 
 [ruby]
 action-directory = @PKGDATADIR@/mr/actions
