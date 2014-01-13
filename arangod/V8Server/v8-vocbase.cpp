@@ -7822,7 +7822,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
           delete res;
           TRI_json_t* json = JsonHelper::fromString(body);
           if (json != 0 && JsonHelper::isArray(json)) {
-            TRI_json_t* dotresult = JsonHelper::getArrayElement(json,"result");
+            TRI_json_t const* dotresult = JsonHelper::getArrayElement(json,"result");
             if (dotresult != 0) {
               vector<string> list = JsonHelper::stringList(dotresult);
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -7835,6 +7835,9 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
             }
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           }
+        }
+        else {
+          delete res;
         }
       }
       ci->loadDBServers();   // just in case some new have arrived
