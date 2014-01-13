@@ -8158,6 +8158,65 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for the agency
+///
+/// `place` can be "/Target", "/Plan" or "/Current" and name is the database
+/// name.
+////////////////////////////////////////////////////////////////////////////////
+
+static int CreateDatabaseInAgency(string const& place, string const& name) {
+  AgencyComm ac;
+  AgencyCommLocker locker(place,"WRITE");
+  AgencyCommResult res;
+  res = ac.casValue(place+"/Collections/"+name+"/Lock",string("UNLOCKED"),
+                     false, 0.0, 0.0);
+  if (res.successful()) {
+    res = ac.casValue(place+"/Collections/"+name+"/Version",string("1"),
+                       false, 0.0, 0.0);
+    if (res.successful()) {
+      return TRI_ERROR_NO_ERROR;
+    }
+    else {
+      ac.removeValues(place+"/Collections/"+name,true);
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+  else if (res.httpCode() == 412) {
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+  else {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for building a json body for our requests
+////////////////////////////////////////////////////////////////////////////////
+
+static string CreateDatabaseBuildJsonBody( v8::Arguments const& argv ) {
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (0 == json) {
+    return string("");
+  }
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", 
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, 
+                               TRI_ObjectToString(argv[0]).c_str()));
+  if (argv.Length() > 1) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
+                         TRI_ObjectToJson(argv[1]));
+    if (argv.Length() > 2) {
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "users",
+                           TRI_ObjectToJson(argv[2]));
+    }
+  }
+  string jsonstr = JsonHelper::toString(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  return jsonstr;
+}
+
 static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -8165,83 +8224,101 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
   
   const string name = TRI_ObjectToString(argv[0]);
 
-#if 0
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  AgencyComm* ac = new AgencyComm();
+  AgencyComm ac;
 
   int ourerrno = TRI_ERROR_NO_ERROR;
 
-  { 
-    AgencyCommLocker locker("/Target/Lock","WRITE");
-    AgencyCommResult res;
-    res = ac->casValue("/Target/Collections/"+name+"/Lock","UNLOCKED",
-                       false, 0.0, 0.0);
-    if (res.successful()) {
-      res = ac->casValue("/Target/Collections/"+name+"/Lock","UNLOCKED",
-                         false, 0.0, 0.0);
-
-    }
-    else if (res.httpCode() == 412) {
-      ourerrno = TRI_ERROR_ARANGO_DUPLICATE_NAME;
-    }
-    else {
-      ourerrno = TRI_ERROR_INTERNAL;
-    }
-  }
-
+  ourerrno = CreateDatabaseInAgency("Target",name);
   if (ourerrno == TRI_ERROR_NO_ERROR) {  // everything OK in /Target
-    // Try to create /Plan/Collections/<name>/{Lock,Version}
-    if (error) {
-      ourerrno = TRI_ERROR_INTERNAL;
-    }
-    else {  // everything OK in /Plan
-      ClusterCommResult* res;
-      CoordTransactionID coordTransactionID = cc->getOperationID();
+    ourerrno = CreateDatabaseInAgency("Plan",name);
+    if (ourerrno == TRI_ERROR_NO_ERROR) {
       vector<ServerID> DBServers = ci->getDBServers();
       vector<ServerID>::iterator it;
       // build request to be sent to all servers
-      for (it = DBServers.begin(); it != DBServers.end(); ++it) {
-        // res = sendAsyncRequest(to *it);
-        // delete res;
+
+      string jsonstr = CreateDatabaseBuildJsonBody(argv);
+      if (jsonstr.empty()) {
+        ourerrno = TRI_ERROR_INTERNAL;
       }
-      int done = 0;
-      while (done < DBServers.size()) {
-        // res = cc->wait()
-        if (res->status == CL_COMM_RECEIVED) {
+      else {
+        ClusterCommResult* res;
+        CoordTransactionID coordTransactionID = TRI_NewTickServer();
+        for (it = DBServers.begin(); it != DBServers.end(); ++it) {
+          res = cc->asyncRequest("CreateDB", coordTransactionID,
+                            "server:"+*it, 
+                            triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
+                            "/_api/database", jsonstr.c_str(),
+                            jsonstr.size(), new map<string, string>, 0, 0.0);
+          delete res;
+        }
+        cout << "CDB: Have sent " << DBServers.size() << " requests." << endl;
+        unsigned int done = 0;
+        while (done < DBServers.size()) {
+          res = cc->wait("", coordTransactionID, 0, "", 0.0);
+          if (res->status == CL_COMM_RECEIVED) {
+            if (res->answer_code == triagens::rest::HttpResponse::OK) {
+              cout << "CDB: answer OK" << endl;
+              done++;
+              delete res;
+            }
+            else if (res->answer_code == triagens::rest::HttpResponse::CONFLICT) {
+              cout << "CDB: answer CONFLICT" << endl;
+              ourerrno = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+              delete res;
+              break;
+            } 
+            else {
+              cout << "CDB: answer BAD" << endl;
+              ourerrno = TRI_ERROR_INTERNAL;
+              delete res;
+              break;
+            }
+          }
+          else {
+            cout << "CDB: CL_COMM_ERROR" << endl;
+            delete res;
+            break;
+          }
+        }
+        if (done == DBServers.size()) {
+          ourerrno = CreateDatabaseInAgency("Current",name);
+          if (ourerrno == TRI_ERROR_NO_ERROR) {
+            cout << "CDB: All done" << endl;
+            return scope.Close(v8::True());
+          }
+        }
+        cc->drop( "CreateDatabase", coordTransactionID, 0, "" );
+        cout << "CDB: Aborting..." << endl;
+        for (it = DBServers.begin(); it != DBServers.end(); ++it) {
+          res = cc->asyncRequest("CreateDB", coordTransactionID,
+                           "server:"+*it,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, 
+                           "/_api/database/"+name, "", 0,
+                           new map<string, string>, 0, 0.0);
+          delete res;
+        }
+        done = 0;
+        while (done < DBServers.size()) {
+          res = cc->wait("", coordTransactionID, 0, "", 0.0);
+          cout << "CDB: Got answer" << endl;
+          delete res;
           done++;
-          delete res;
-        }
-        else {
-          delete res;
-          break;
         }
       }
-      if (done == DBServers.size()) {
-        // Try to create /Current/Collections/<name>/{Lock,Version}
-        if (OK) {
-          return Scope.Close(v8::True());
-        }
-        // Remove /Current/Collections/<name>/{Lock,Version}
+      {
+        AgencyCommLocker locker("Plan","WRITE");
+        ac.removeValues("Plan/Collections/"+name,true);
       }
-      cc->drop( coordTransactionID );
-      // build removal req
-      for (it = DBServers.begin(); it != DBServers.end(); ++it) {
-        // res = sendAsyncRequest(db);
-        // delete res;
-      }
-      done = 0;
-      while (done < DBServers.size()) {
-        // res = cc->wait(coordTransactionID)
-        // done++;
-      }
-      // Remove /Plan/Collections/<name>/{Lock,Version}
     }
-    // Remove /Target/Collections/<name>/{Lock,Version}
+    {
+      AgencyCommLocker locker("Target","WRITE");
+      ac.removeValues("Target/Collections/"+name,true);
+    }
   }
 
   TRI_V8_EXCEPTION(scope, ourerrno);
-#endif
   return scope.Close(v8::True());
 }
 #endif
