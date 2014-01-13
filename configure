@@ -8309,14 +8309,16 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 tr_V8="yes"
 
-   as_ac_Lib=`$as_echo "ac_cv_lib_v8_v8::V8::GetVersion()" | $as_tr_sh`
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for v8::V8::GetVersion() in -lv8" >&5
-$as_echo_n "checking for v8::V8::GetVersion() in -lv8... " >&6; }
+LIBS="$LIBS -lv8_nosnapshot"
+
+   as_ac_Lib=`$as_echo "ac_cv_lib_v8_base_v8::V8::GetVersion()" | $as_tr_sh`
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for v8::V8::GetVersion() in -lv8_base" >&5
+$as_echo_n "checking for v8::V8::GetVersion() in -lv8_base... " >&6; }
 if eval \${$as_ac_Lib+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-                   LIBS="-lv8  $LIBS"
+                   LIBS="-lv8_base  $LIBS"
                    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -8345,7 +8347,7 @@ eval ac_res=\$$as_ac_Lib
 	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
 $as_echo "$ac_res" >&6; }
    if test `eval 'as_val=${'$as_ac_Lib'};$as_echo "$as_val"'` = yes; then :
-  V8_LIBS="-lv8"
+  V8_LIBS="-lv8_base -lv8_nosnapshot"
 else
   tr_V8="no"
 fi
