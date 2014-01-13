@@ -1154,7 +1154,7 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevExists=" 
+                   buildUrl(key) + "?prevExist=" 
                      + (prevExists ? "true" : "false") + ttlParam(ttl, false), 
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
                    false);
