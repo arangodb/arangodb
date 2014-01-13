@@ -43,11 +43,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup LineEditor
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -66,24 +61,43 @@ LineEditor::~LineEditor () {
   close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup LineEditor
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool) {
+bool LineEditor::open (bool autoComplete) {
+  if (autoComplete) {
+
+    // issue #289: do not append a space after completion
+    rl_completion_append_character = '\0';
+
+    // works only in Readline 4.2+
+#if RL_READLINE_VERSION >= 0x0500
+    // enable this to turn on the visual bell - evil!
+    // rl_variable_bind("prefer-visible-bell", "1");
+
+    // use this for single-line editing as in mongodb shell
+    // rl_variable_bind("horizontal-scroll-mode", "1");
+
+    // show matching parentheses
+    rl_set_paren_blink_timeout(1 * 1000 * 1000);
+    rl_variable_bind("blink-matching-paren", "1");
+
+    // show selection list when completion is ambiguous. not setting this
+    // variable will turn the selection list off at least on Ubuntu
+    rl_variable_bind("show-all-if-ambiguous", "1");
+
+    // use readline's built-in page-wise completer
+    rl_variable_bind("page-completions", "1");
+#endif
+
+    rl_bind_key('\t', rl_complete);
+  }
+
   using_history();
   stifle_history(MAX_HISTORY_ENTRIES);
 
@@ -235,9 +249,9 @@ char* LineEditor::prompt (char const* prompt) {
   return line;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

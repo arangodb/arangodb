@@ -60,7 +60,7 @@ API aka Drivers {#HomeApi}
 
 Though ArangoDB is yet a young project, a couple of people started to
 add APIs for different programming languages/frameworks. See
-@S_EXTREF{http://www.arangodb.org/api,http://www.arangodb.org/api}.
+@S_EXTREF{http://www.arangodb.org/drivers,http://www.arangodb.org/drivers}.
 
 Stay in Contact {#HomeStayInContact}
 ====================================

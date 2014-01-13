@@ -22,7 +22,7 @@
 ARANGO_BIN=/usr/sbin/arangod
 test -x $ARANGO_BIN || exit 5
 
-ARANGO_SYSCONFIG=/etc/arangodb/arangod-uid.conf
+ARANGO_SYSCONFIG=/etc/arangodb/arangod.conf
 test -r $ARANGO_SYSCONFIG || exit 6
 
 
@@ -60,9 +60,9 @@ start () {
     fi
 
     if [ "$1" = "--upgrade" ];  then
-      $ARANGO_BIN -c $ARANGO_SYSCONFIG $@ 
+      $ARANGO_BIN -c $ARANGO_SYSCONFIG --uid arangodb --gid arangodb $@ 
     else
-      startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@ 
+      startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --uid arangodb --gid arangodb --pid-file "$ARANGO_PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@ 
     fi
 
     # Remember status and be verbose

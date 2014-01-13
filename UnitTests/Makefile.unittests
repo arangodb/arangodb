@@ -787,7 +787,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)/databases"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --database.directory "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 ################################################################################
 ### @brief FOXX MANAGER TESTS
@@ -806,8 +806,8 @@ unittests-foxx-manager:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/foxx-manager --relative $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/foxx-manager --relative $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh -c etc/relative/foxx-manager.conf --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) update || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh -c etc/relative/foxx-manager.conf --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) search "itzpapalotl" || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
