@@ -7144,13 +7144,13 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    TRI_V8_TYPE_ERROR(scope, "collection is not a document or edge collection");
+    return scope.Close(v8::Undefined());
   }
 
   v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
 
   if (result.IsEmpty()) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    return scope.Close(v8::Undefined());
   }
  
   holder->Set(cacheName, result, v8::DontEnum);

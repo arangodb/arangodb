@@ -975,12 +975,12 @@ function post_api_index (req, res) {
 ///
 /// @RESTRETURNCODES
 ///
-/// @RESTRETURNCODE{202}
-/// If the index could be deleted, then a `HTTP 202` is
+/// @RESTRETURNCODE{200}
+/// If the index could be deleted, then an `HTTP 200` is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `index-handle` is unknown, then a `HTTP 404` is returned.
+/// If the `index-handle` is unknown, then an `HTTP 404` is returned.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
