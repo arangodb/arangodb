@@ -411,7 +411,11 @@ function FCALL_USER (name, parameters) {
 
   var prefix = DB_PREFIX();
   if (! UserFunctions.hasOwnProperty(prefix)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+    reloadUserFunctions();
+
+    if (! UserFunctions.hasOwnProperty(prefix)) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+    }
   }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
