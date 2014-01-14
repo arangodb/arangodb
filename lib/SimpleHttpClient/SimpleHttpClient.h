@@ -91,6 +91,7 @@ namespace triagens {
         GeneralClientConnection* tmp = _connection;
         _connection = 0;
         _state = DEAD;
+        return tmp;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
