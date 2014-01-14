@@ -31,6 +31,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
+#include "lib/SimpleHttpClient/ConnectionManager.h"
 
 #include "VocBase/server.h"
 
@@ -39,18 +40,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                   ClusterComm connection options 
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global options for connections
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterCommOptions ClusterComm::_globalConnectionOptions = {
-  15.0,  // connectTimeout 
-  3.0,   // requestTimeout
-  3,     // numRetries
-  5.0,   // singleRequestTimeout
-  0      // sslProtocol
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global callback for asynchronous REST handler
@@ -90,11 +79,6 @@ ClusterComm::~ClusterComm () {
   delete _backgroundThread;
   _backgroundThread = 0;
   cleanupAllQueues();
-  WRITE_LOCKER(allLock);
-  map<ServerID,ServerConnections*>::iterator i;
-  for (i = allConnections.begin(); i != allConnections.end(); ++i) {
-    delete i->second;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,229 +115,6 @@ void ClusterComm::initialise () {
       
 OperationID ClusterComm::getOperationID () {
   return TRI_NewTickServer();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor for SingleServerConnection class
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterComm::SingleServerConnection::~SingleServerConnection () {
-  delete connection;
-  delete endpoint;
-  lastUsed = 0;
-  serverID = "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor of ServerConnections class
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterComm::ServerConnections::~ServerConnections () {
-  vector<SingleServerConnection*>::iterator i;
-  WRITE_LOCKER(lock);
-
-  unused.clear();
-  for (i = connections.begin();i != connections.end();++i) {
-    delete *i;
-  }
-  connections.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief open or get a previously cached connection to a server
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterComm::SingleServerConnection* 
-ClusterComm::getConnection(ServerID& serverID) {
-  map<ServerID,ServerConnections*>::iterator i;
-  ServerConnections* s;
-  SingleServerConnection* c;
-
-  // First find a connections list:
-  {
-    WRITE_LOCKER(allLock);
-
-    i = allConnections.find(serverID);
-    if (i != allConnections.end()) {
-      s = i->second;
-    }
-    else {
-      s = new ServerConnections();
-      allConnections[serverID] = s;
-    }
-  }
-
-  assert(s != 0);
-  
-  // Now get an unused one:
-  {
-    WRITE_LOCKER(s->lock);
-    if (!s->unused.empty()) {
-      c = s->unused.back();
-      s->unused.pop_back();
-      return c;
-    }
-  }
-  
-  // We need to open a new one:
-  string a = ClusterInfo::instance()->getServerEndpoint(serverID);
-
-  if (a == "") {
-    // Unknown server address, probably not yet connected
-    return 0;
-  }
-  triagens::rest::Endpoint* e = triagens::rest::Endpoint::clientFactory(a);
-  if (0 == e) {
-    return 0;
-  }
-  triagens::httpclient::GeneralClientConnection*
-         g = triagens::httpclient::GeneralClientConnection::factory(
-                   e,
-                   _globalConnectionOptions._requestTimeout,
-                   _globalConnectionOptions._connectTimeout,
-                   _globalConnectionOptions._connectRetries,
-                   _globalConnectionOptions._sslProtocol);
-  if (0 == g) {
-    delete e;
-    return 0;
-  }
-  c = new SingleServerConnection(g,e,serverID);
-  if (0 == c) {
-    delete g;
-    delete e;
-    return 0;
-  }
-
-  // Now put it into our administration:
-  {
-    WRITE_LOCKER(s->lock);
-    s->connections.push_back(c);
-  }
-  c->lastUsed = time(0);
-  return c;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return leased connection to a server
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::returnConnection(SingleServerConnection* c) {
-  map<ServerID,ServerConnections*>::iterator i;
-  ServerConnections* s;
-
-  // First find the collections list:
-  {
-    WRITE_LOCKER(allLock);
-
-    i = allConnections.find(c->serverID);
-    if (i != allConnections.end()) {
-      s = i->second;
-    }
-    else {
-      // How strange! We just destroy the connection in despair!
-      delete c;
-      return;
-    }
-  }
-  
-  c->lastUsed = time(0);
-
-  // Now mark it as unused:
-  {
-    WRITE_LOCKER(s->lock);
-    s->unused.push_back(c);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief report a leased connection as being broken
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::brokenConnection(SingleServerConnection* c) {
-  map<ServerID,ServerConnections*>::iterator i;
-  ServerConnections* s;
-
-  // First find the collections list:
-  {
-    WRITE_LOCKER(allLock);
-
-    i = allConnections.find(c->serverID);
-    if (i != allConnections.end()) {
-      s = i->second;
-    }
-    else {
-      // How strange! We just destroy the connection in despair!
-      delete c;
-      return;
-    }
-  }
-  
-  // Now find it to get rid of it:
-  {
-    WRITE_LOCKER(s->lock);
-    vector<SingleServerConnection*>::iterator i;
-    for (i = s->connections.begin(); i != s->connections.end(); ++i) {
-      if (*i == c) {
-        // Got it, now remove it:
-        s->connections.erase(i);
-        delete c;
-        return;
-      }
-    }
-  }
-
-  // How strange! We should have known this one!
-  delete c;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes all connections that have been unused for more than
-/// limit seconds
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::closeUnusedConnections (double limit) {
-  WRITE_LOCKER(allLock);
-  map<ServerID,ServerConnections*>::iterator s;
-  list<SingleServerConnection*>::iterator i;
-  list<SingleServerConnection*>::iterator prev;
-  ServerConnections* sc;
-  time_t t;
-  bool haveprev;
-
-  t = time(0);
-  for (s = allConnections.begin(); s != allConnections.end(); ++s) {
-    sc = s->second;
-    {
-      WRITE_LOCKER(sc->lock);
-      haveprev = false;
-      for (i = sc->unused.begin(); i != sc->unused.end(); ) {
-        if (t - (*i)->lastUsed > limit) {
-          vector<SingleServerConnection*>::iterator j;
-          for (j = sc->connections.begin(); j != sc->connections.end(); ++j) {
-            if (*j == *i) {
-              sc->connections.erase(j);
-              break;
-            }
-          }
-          delete (*i);
-          sc->unused.erase(i);
-          if (haveprev) {
-            i = prev;   // will be incremented in next iteration
-            i++;
-            haveprev = false;
-          }
-          else {
-            i = sc->unused.begin();
-          }
-        }
-        else {
-          prev = i;
-          ++i;
-          haveprev = true;
-        }
-      }
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +199,8 @@ ClusterCommResult* ClusterComm::asyncRequest (
   }
   op->headerFields         = headerFields;
   op->callback             = callback;
-  op->endTime              = timeout == 0.0 ? now()+24*60*60.0 : now()+timeout;
+  op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0 
+                                            : TRI_microtime()+timeout;
   
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
@@ -498,7 +260,7 @@ ClusterCommResult* ClusterComm::syncRequest (
     body = 0;
   }
 
-  double currentTime = now();
+  double currentTime = TRI_microtime();
   double endTime = timeout == 0.0 ? currentTime+24*60*60.0 
                                   : currentTime+timeout;
 
@@ -521,52 +283,61 @@ ClusterCommResult* ClusterComm::syncRequest (
   }
 
   // We need a connection to this server:
-  SingleServerConnection* connection = getConnection(res->serverID);
-  if (0 == connection) {
+  string endpoint = ClusterInfo::instance()->getServerEndpoint(res->serverID);
+  if (endpoint == "") {
     res->status = CL_COMM_ERROR;
-    LOG_ERROR("cannot create connection to server '%s'", 
-              res->serverID.c_str());
+    LOG_ERROR("cannot find endpoint of server '%s'", res->serverID.c_str());
   }
   else {
-    if (0 != body) {
-      LOG_DEBUG("sending %s request to DB server '%s': %s",
-         triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
-         res->serverID.c_str(), body);
-    }
-    else {
-      LOG_DEBUG("sending %s request to DB server '%s'",
-         triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
-         res->serverID.c_str());
-    }
-    triagens::httpclient::SimpleHttpClient* client
-        = new triagens::httpclient::SimpleHttpClient(
-                              connection->connection,
-                              endTime-currentTime, false);
-
-    res->result = client->request(reqtype, path, body, bodyLength, 
-                                  headerFields);
-    if (res->result == 0 || ! res->result->isComplete()) {
-      brokenConnection(connection);
+    httpclient::ConnectionManager* cm 
+        = httpclient::ConnectionManager::instance();
+    httpclient::ConnectionManager::SingleServerConnection* connection 
+        = cm->leaseConnection(endpoint);
+    if (0 == connection) {
       res->status = CL_COMM_ERROR;
+      LOG_ERROR("cannot create connection to server '%s'", 
+                res->serverID.c_str());
     }
     else {
-      returnConnection(connection);
-      if (res->result->wasHttpError()) {
-        res->status = CL_COMM_ERROR;
+      if (0 != body) {
+        LOG_DEBUG("sending %s request to DB server '%s': %s",
+           triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
+           res->serverID.c_str(), body);
       }
-      else if (client->getErrorMessage() == 
-               "Request timeout reached") {
-        res->status = CL_COMM_TIMEOUT;
+      else {
+        LOG_DEBUG("sending %s request to DB server '%s'",
+           triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
+           res->serverID.c_str());
       }
-      else if (client->getErrorMessage() != "") {
-        res->status = CL_COMM_ERROR;
+      triagens::httpclient::SimpleHttpClient* client
+          = new triagens::httpclient::SimpleHttpClient(
+                                connection->connection,
+                                endTime-currentTime, false);
+      client->keepConnectionOnDestruction(true);
+
+      res->result = client->request(reqtype, path, body, bodyLength, 
+                                    headerFields);
+      if (! res->result->isComplete()) {
+        cm->brokenConnection(connection);
+        if (client->getErrorMessage() == "Request timeout reached") {
+          res->status = CL_COMM_TIMEOUT;
+        }
+        else {
+          res->status = CL_COMM_ERROR;
+        }
       }
+      else {
+        cm->returnConnection(connection);
+        if (res->result->wasHttpError()) {
+          res->status = CL_COMM_ERROR;
+        }
+      }
+      delete client;
     }
-    delete client;
-  }
-  if (res->status == CL_COMM_SENDING) {
-    // Everything was OK
-    res->status = CL_COMM_SENT;
+    if (res->status == CL_COMM_SENDING) {
+      // Everything was OK
+      res->status = CL_COMM_SENT;
+    }
   }
   return res;
 }
@@ -688,7 +459,7 @@ ClusterCommResult* ClusterComm::wait (
     endtime = 1.0e50;   // this is the Sankt Nimmerleinstag
   }
   else {
-    endtime = now() + timeout;
+    endtime = TRI_microtime() + timeout;
   }
 
   if (0 != operationID) {
@@ -722,7 +493,7 @@ ClusterCommResult* ClusterComm::wait (
         // It is in the receive queue but still waiting, now wait actually
       }
       // Here it could either be in the receive or the send queue, let's wait
-      timeleft = endtime - now();
+      timeleft = endtime - TRI_microtime();
       if (timeleft <= 0) break;
       somethingReceived.wait(uint64_t(timeleft * 1000000.0));
     }
@@ -773,7 +544,7 @@ ClusterCommResult* ClusterComm::wait (
         return res;
       }
       // Here it could either be in the receive or the send queue, let's wait
-      timeleft = endtime - now();
+      timeleft = endtime - TRI_microtime();
       if (timeleft <= 0) break;
       somethingReceived.wait(uint64_t(timeleft * 1000000.0));
     }
@@ -882,8 +653,16 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   coordinatorID = coordinatorHeader.substr(start,pos-start);
 
   // Now find the connection to which the request goes from the coordinatorID:
-  ClusterComm::SingleServerConnection* connection 
-          = getConnection(coordinatorID);
+  httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
+  string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
+  if (endpoint == "") {
+    LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'", 
+              coordinatorID.c_str());
+    return;
+  }
+  
+  httpclient::ConnectionManager::SingleServerConnection* connection 
+      = cm->leaseConnection(endpoint);
   if (0 == connection) {
     LOG_ERROR("asyncAnswer: cannot create connection to server '%s'", 
               coordinatorID.c_str());
@@ -902,24 +681,23 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
   triagens::httpclient::SimpleHttpClient* client
     = new triagens::httpclient::SimpleHttpClient(
-                             connection->connection,
-                             _globalConnectionOptions._singleRequestTimeout, 
-                             false);
+                             connection->connection, 3600.0, false);
+  client->keepConnectionOnDestruction(true);
 
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   httpclient::SimpleHttpResult* result = 
                  client->request(rest::HttpRequest::HTTP_REQUEST_PUT, 
                                  "/_api/shard-comm", body, len, headers);
-  if (client->getErrorMessage() != "") {
-    brokenConnection(connection);
+  if (! result->isComplete()) {
+    cm->brokenConnection(connection);
   }
   else {
-    returnConnection(connection);
+    cm->returnConnection(connection);
   }
+  // We cannot deal with a bad result here, so forget about it in any case.
   delete result;
   delete client;
-  returnConnection(connection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1036,8 +814,8 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   }
   if (op->status == CL_COMM_SENDING) {
     // Note that in the meantime the status could have changed to
-    // CL_COMM_ERROR or indeed to CL_COMM_RECEIVED in these cases, we do
-    // not want to overwrite this result
+    // CL_COMM_ERROR, CL_COMM_TIMEOUT or indeed to CL_COMM_RECEIVED in
+    // these cases, we do not want to overwrite this result
     op->status = CL_COMM_SENT;
   }
   received.push_back(op);
@@ -1141,7 +919,7 @@ void ClusterCommThread::run () {
       // sent the request (happens in moveFromSendToReceived).
 
       // Have we already reached the timeout?
-      double currentTime = cc->now();
+      double currentTime = TRI_microtime();
       if (op->endTime <= currentTime) {
         op->status = CL_COMM_TIMEOUT;
       }
@@ -1151,53 +929,63 @@ void ClusterCommThread::run () {
         }
         else {
           // We need a connection to this server:
-          ClusterComm::SingleServerConnection* connection 
-            = cc->getConnection(op->serverID);
-          if (0 == connection) {
+          string endpoint 
+              = ClusterInfo::instance()->getServerEndpoint(op->serverID);
+          if (endpoint == "") {
             op->status = CL_COMM_ERROR;
-            LOG_ERROR("cannot create connection to server '%s'", 
+            LOG_ERROR("cannot find endpoint for server '%s'",
                       op->serverID.c_str());
           }
           else {
-            if (0 != op->body) {
-              LOG_DEBUG("sending %s request to DB server '%s': %s",
-                 triagens::rest::HttpRequest::translateMethod(op->reqtype)
-                   .c_str(), op->serverID.c_str(), op->body);
-            }
-            else {
-              LOG_DEBUG("sending %s request to DB server '%s'",
-                 triagens::rest::HttpRequest::translateMethod(op->reqtype)
-                    .c_str(), op->serverID.c_str());
-            }
-
-            triagens::httpclient::SimpleHttpClient* client
-              = new triagens::httpclient::SimpleHttpClient(
-                                    connection->connection,
-                                    op->endTime-currentTime, false);
-
-            // We add this result to the operation struct without acquiring
-            // a lock, since we know that only we do such a thing:
-            op->result = client->request(op->reqtype, op->path, op->body, 
-                                         op->bodyLength, *(op->headerFields));
-
-            if (op->result == 0 || ! op->result->isComplete()) {
-              cc->brokenConnection(connection);
+            httpclient::ConnectionManager* cm
+                = httpclient::ConnectionManager::instance();
+            httpclient::ConnectionManager::SingleServerConnection* connection 
+                = cm->leaseConnection(endpoint);
+            if (0 == connection) {
               op->status = CL_COMM_ERROR;
+              LOG_ERROR("cannot create connection to server '%s'", 
+                        op->serverID.c_str());
             }
             else {
-              cc->returnConnection(connection);
-              if (op->result->wasHttpError()) {
-                op->status = CL_COMM_ERROR;
+              if (0 != op->body) {
+                LOG_DEBUG("sending %s request to DB server '%s': %s",
+                   triagens::rest::HttpRequest::translateMethod(op->reqtype)
+                     .c_str(), op->serverID.c_str(), op->body);
               }
-              else if (client->getErrorMessage() == 
-                       "Request timeout reached") {
-                op->status = CL_COMM_TIMEOUT;
+              else {
+                LOG_DEBUG("sending %s request to DB server '%s'",
+                   triagens::rest::HttpRequest::translateMethod(op->reqtype)
+                      .c_str(), op->serverID.c_str());
               }
-              else if (client->getErrorMessage() != "") {
-                op->status = CL_COMM_ERROR;
+
+              triagens::httpclient::SimpleHttpClient* client
+                = new triagens::httpclient::SimpleHttpClient(
+                                      connection->connection,
+                                      op->endTime-currentTime, false);
+              client->keepConnectionOnDestruction(true);
+
+              // We add this result to the operation struct without acquiring
+              // a lock, since we know that only we do such a thing:
+              op->result = client->request(op->reqtype, op->path, op->body, 
+                                           op->bodyLength, *(op->headerFields));
+
+              if (! op->result->isComplete()) {
+                cm->brokenConnection(connection);
+                if (client->getErrorMessage() == "Request timeout reached") {
+                  op->status = CL_COMM_TIMEOUT;
+                }
+                else {
+                  op->status = CL_COMM_ERROR;
+                }
               }
+              else {
+                cm->returnConnection(connection);
+                if (op->result->wasHttpError()) {
+                  op->status = CL_COMM_ERROR;
+                }
+              }
+              delete client;
             }
-            delete client;
           }
         }
       }
@@ -1212,7 +1000,7 @@ void ClusterCommThread::run () {
     // just now, so we can check on our receive queue to detect timeouts:
 
     {
-      double currentTime = cc->now();
+      double currentTime = TRI_microtime();
       basics::ConditionLocker locker(&cc->somethingReceived);
       ClusterComm::QueueIterator q;
       for (q = cc->received.begin(); q != cc->received.end(); ++q) {

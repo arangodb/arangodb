@@ -8305,7 +8305,6 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for the agency
 ///
@@ -8313,10 +8312,16 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 /// name.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateDatabaseInAgency(string const& place, string const& name) {
+static int CreateDatabaseInAgency(string const& place, string const& name,
+                                  vector<ServerID>* DBServers) {
   AgencyComm ac;
   AgencyCommLocker locker(place,"WRITE");
   AgencyCommResult res;
+  if (0 != DBServers) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    ci->loadDBServers();   // to make sure we know about all of them
+    *DBServers = ci->getDBServers();
+  }
   res = ac.casValue(place+"/Collections/"+name+"/Lock",string("UNLOCKED"),
                      false, 0.0, 0.0);
   if (res.successful()) {
@@ -8370,17 +8375,22 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
   
   const string name = TRI_ObjectToString(argv[0]);
 
-  ClusterInfo* ci = ClusterInfo::instance();
+  //ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
   AgencyComm ac;
 
   int ourerrno = TRI_ERROR_NO_ERROR;
 
-  ourerrno = CreateDatabaseInAgency("Target",name);
+  ourerrno = CreateDatabaseInAgency("Target",name,0);
   if (ourerrno == TRI_ERROR_NO_ERROR) {  // everything OK in /Target
-    ourerrno = CreateDatabaseInAgency("Plan",name);
+    vector<ServerID> DBServers;
+    // We will get the list of DBServers whilst holding the lock to
+    // modify "/Plan/Collections". Therefore, everybody who is on the
+    // list will be told, everybody who is starting later will see the
+    // entry in "/Plan/Collections/..." and will create the database on
+    // startup.
+    ourerrno = CreateDatabaseInAgency("Plan",name,&DBServers);
     if (ourerrno == TRI_ERROR_NO_ERROR) {
-      vector<ServerID> DBServers = ci->getDBServers();
       vector<ServerID>::iterator it;
       // build request to be sent to all servers
 
@@ -8399,44 +8409,37 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
                             jsonstr.size(), new map<string, string>, 0, 0.0);
           delete res;
         }
-        cout << "CDB: Have sent " << DBServers.size() << " requests." << endl;
         unsigned int done = 0;
         while (done < DBServers.size()) {
           res = cc->wait("", coordTransactionID, 0, "", 0.0);
           if (res->status == CL_COMM_RECEIVED) {
             if (res->answer_code == triagens::rest::HttpResponse::OK) {
-              cout << "CDB: answer OK" << endl;
               done++;
               delete res;
             }
             else if (res->answer_code == triagens::rest::HttpResponse::CONFLICT) {
-              cout << "CDB: answer CONFLICT" << endl;
               ourerrno = TRI_ERROR_ARANGO_DUPLICATE_NAME;
               delete res;
               break;
             } 
             else {
-              cout << "CDB: answer BAD" << endl;
               ourerrno = TRI_ERROR_INTERNAL;
               delete res;
               break;
             }
           }
           else {
-            cout << "CDB: CL_COMM_ERROR" << endl;
             delete res;
             break;
           }
         }
         if (done == DBServers.size()) {
-          ourerrno = CreateDatabaseInAgency("Current",name);
+          ourerrno = CreateDatabaseInAgency("Current",name,0);
           if (ourerrno == TRI_ERROR_NO_ERROR) {
-            cout << "CDB: All done" << endl;
             return scope.Close(v8::True());
           }
         }
         cc->drop( "CreateDatabase", coordTransactionID, 0, "" );
-        cout << "CDB: Aborting..." << endl;
         for (it = DBServers.begin(); it != DBServers.end(); ++it) {
           res = cc->asyncRequest("CreateDB", coordTransactionID,
                            "server:"+*it,
@@ -8448,7 +8451,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
         done = 0;
         while (done < DBServers.size()) {
           res = cc->wait("", coordTransactionID, 0, "", 0.0);
-          cout << "CDB: Got answer" << endl;
           delete res;
           done++;
         }
@@ -8617,6 +8619,66 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop a database, case of a coordinator in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // Arguments are already checked, there is exactly one argument
+  
+  const string name = TRI_ObjectToString(argv[0]);
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  AgencyComm ac;
+  AgencyCommResult acres;
+
+  int ourerrno = TRI_ERROR_NO_ERROR;
+
+  {
+    AgencyCommLocker locker("Target","WRITE");
+    // FIXME: need to check that locking worked!
+    
+    // Now nobody can create or remove a database, so we can check that
+    // the one we want to drop does indeed exist:
+    acres = ac.getValues("Current/Collections/"+name+"/Lock", false);
+    if (!acres.successful()) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+  }
+
+  // Now let's lock it.
+  // We cannot use a locker here, because we want to remove all of
+  // Current/Collections/<db-name> before we are done and we must not
+  // unlock the Lock after that.
+  if (!ac.lockWrite("Current/Collections/"+name, 24*3600.0, 24*3600.0)) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+  // res = ac.getValues("Current/Collections/"+name+"/Lock, false);
+
+  // If this fails or the DB does not exist, return an error
+  // Remove entry Plan/Collections/<name> using Plan/Lock
+  // get list of DBServers during the lock
+  // (from now on new DBServers will no longer create a database)
+  // this is the point of no return
+  // tell all DBServers to drop database
+  // note errors, but there is nothing we can do about it if things go wrong
+  // only count and reports the servers with errors
+  // Remove entry Target/Collections/<name>, use Target/Lock
+  // Remove entry Current/Collections/<name> using Current/Lock
+  // (from now on coordinators will understand that the database is gone
+  // Release Plan/Lock
+  // Report error
+  
+  return scope.Close(v8::True());
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an existing database
 ///
 /// @FUN{@FA{db}._dropDatabase(@FA{name})}
@@ -8648,6 +8710,13 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
   
+#ifdef TRI_ENABLE_CLUSTER
+  // If we are a coordinator in a cluster, we have to behave differently:
+  if (ServerState::instance()->isCoordinator()) {
+    return JS_DropDatabase_Coordinator(argv);
+  }
+#endif
+
   const string name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
 
