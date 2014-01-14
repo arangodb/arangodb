@@ -483,13 +483,22 @@ function AgencySuite () {
 
     testCreateDir : function () {
       assertTrue(agency.createDirectory("UnitTestsAgency/someDir"));
+      assertTrue(agency.createDirectory("UnitTestsAgency/someDir2/bar"));
 
       try {
         // re-create an existing dir
         agency.createDir("UnitTestsAgency/someDir");
         fail();
       }
-      catch (err) {
+      catch (err1) {
+      }
+      
+      try {
+        // re-create an existing dir
+        agency.createDir("UnitTestsAgency/someDir2/bar");
+        fail();
+      }
+      catch (err2) {
       }
     },
 

@@ -55,7 +55,6 @@ CollectionInfo::CollectionInfo ()
     _name(),
     _type(TRI_COL_TYPE_UNKNOWN),
     _status(TRI_VOC_COL_STATUS_CORRUPTED),
-    _version(0),
     _maximalSize(0),
     _deleted(false),
     _doCompact(false),
@@ -94,7 +93,6 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
   _name(other._name),
   _type(other._type),
   _status(other._status),
-  _version(other._version),
   _maximalSize(other._maximalSize),
   _deleted(other._deleted),
   _doCompact(other._doCompact),
@@ -119,7 +117,6 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
   _name = other._name;
   _type = other._type;
   _status = other._status;
-  _version = other._version;
   _maximalSize = other._maximalSize;
   _deleted = other._deleted;
   _doCompact = other._doCompact;
@@ -160,7 +157,6 @@ void CollectionInfo::invalidate () {
   _name = "";
   _type = TRI_COL_TYPE_UNKNOWN;
   _status = TRI_VOC_COL_STATUS_CORRUPTED;
-  _version = 0;
   _maximalSize = 0;
   _deleted = false;
   _doCompact = false;
@@ -212,7 +208,6 @@ bool CollectionInfo::createFromJson (TRI_json_t const* json) {
     return false;
   }
 
-  _version     = JsonHelper::getNumericValue<TRI_col_version_t>(json, "version", 0);
   _maximalSize = JsonHelper::getNumericValue<TRI_voc_size_t>(json, "maximalSize", 0);
   _doCompact   = JsonHelper::getBooleanValue(json, "doCompact", false);
   _isSystem    = JsonHelper::getBooleanValue(json, "isSystem", false);
@@ -269,7 +264,6 @@ TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
   TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateNumberJson(zone, (int) _type));
   TRI_Insert3ArrayJson(zone, json, "status", TRI_CreateNumberJson(zone, (int) _status));
   
-  TRI_Insert3ArrayJson(zone, json, "version", TRI_CreateNumberJson(zone, (int) _version));
   TRI_Insert3ArrayJson(zone, json, "maximalSize", TRI_CreateNumberJson(zone, (int) _maximalSize));
   TRI_Insert3ArrayJson(zone, json, "doCompact", TRI_CreateBooleanJson(zone, _doCompact));
   TRI_Insert3ArrayJson(zone, json, "isSystem", TRI_CreateBooleanJson(zone, _isSystem));
@@ -567,7 +561,6 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
 TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
   TRI_col_info_t info;
 
-  info._version     = collection._version;
   info._type        = collection._type;
   info._cid         = collection._id;
   info._revision    = 0; // TODO 
