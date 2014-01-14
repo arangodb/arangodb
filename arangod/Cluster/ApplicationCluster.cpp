@@ -227,10 +227,13 @@ bool ApplicationCluster::start () {
 
     if (result.successful()) {
       std::map<std::string, std::string> value;
+
       if (result.flattenJson(value, "", false)) {
         std::map<std::string, std::string>::const_iterator it = value.begin();
+
         if (it != value.end()) {
           _heartbeatInterval = triagens::basics::StringUtils::uint64((*it).second);
+
           LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
                    (unsigned long long) _heartbeatInterval);
         }

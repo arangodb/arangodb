@@ -413,7 +413,7 @@ namespace triagens {
 /// @brief how big a batch is for unique ids
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const uint64_t MinIdsPerBatch = 1000;
+        static const uint64_t MinIdsPerBatch = 100;
 
     };
 

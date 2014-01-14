@@ -1835,7 +1835,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
     }
   }
 
-  if (numberOfShards == 0) {
+  if (numberOfShards == 0 || numberOfShards > 1000) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
   }
     
@@ -1896,7 +1896,12 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
   AgencyComm agency;
 
   {
-    AgencyCommLocker targetLock("Plan", "WRITE");
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "could not lock plan in agency");
+    }
    
     if (! agency.exists("Plan/Collections/" + databaseName)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1911,7 +1916,6 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
 
       AgencyCommResult result = agency.setValue("Plan/Collections/" + databaseName + "/" + cid, JsonHelper::toString(json), 0.0);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
     }
   }
 
@@ -8315,8 +8319,14 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 static int CreateDatabaseInAgency(string const& place, string const& name,
                                   vector<ServerID>* DBServers) {
   AgencyComm ac;
-  AgencyCommLocker locker(place,"WRITE");
   AgencyCommResult res;
+
+  AgencyCommLocker locker(place, "WRITE");
+
+  if (! locker.successful()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
   if (0 != DBServers) {
     ClusterInfo* ci = ClusterInfo::instance();
     ci->loadDBServers();   // to make sure we know about all of them
@@ -8324,23 +8334,24 @@ static int CreateDatabaseInAgency(string const& place, string const& name,
   }
   res = ac.casValue(place+"/Collections/"+name+"/Lock",string("UNLOCKED"),
                      false, 0.0, 0.0);
+
+  if (res.httpCode() == 412) {
+    // already created by someone else
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+
   if (res.successful()) {
     res = ac.casValue(place+"/Collections/"+name+"/Version",string("1"),
                        false, 0.0, 0.0);
     if (res.successful()) {
       return TRI_ERROR_NO_ERROR;
     }
-    else {
-      ac.removeValues(place+"/Collections/"+name,true);
-      return TRI_ERROR_INTERNAL;
-    }
+
+    // clean up    
+    ac.removeValues(place+"/Collections/"+name,true);
   }
-  else if (res.httpCode() == 412) {
-    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
-  }
-  else {
-    return TRI_ERROR_INTERNAL;
-  }
+  
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8455,14 +8466,23 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
           done++;
         }
       }
+
       {
         AgencyCommLocker locker("Plan","WRITE");
-        ac.removeValues("Plan/Collections/"+name,true);
+
+        // TODO: what should we do if locking fails?
+        if (locker.successful()) {
+          ac.removeValues("Plan/Collections/"+name,true);
+        }
       }
     }
     {
       AgencyCommLocker locker("Target","WRITE");
-      ac.removeValues("Target/Collections/"+name,true);
+        
+      // TODO: what should we do if locking fails?
+      if (locker.successful()) {
+        ac.removeValues("Target/Collections/"+name,true);
+      }
     }
   }
 
@@ -8635,14 +8655,20 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   AgencyCommResult acres;
 
   {
-    AgencyCommLocker locker("Target","WRITE");
-    // FIXME: need to check that locking worked!
-    
-    // Now nobody can create or remove a database, so we can check that
-    // the one we want to drop does indeed exist:
-    acres = ac.getValues("Current/Collections/"+name+"/Lock", false);
-    if (!acres.successful()) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    AgencyCommLocker locker("Target", "WRITE");
+
+    // check that locking worked!
+    if (locker.successful()) { 
+      // Now nobody can create or remove a database, so we can check that
+      // the one we want to drop does indeed exist:
+      acres = ac.getValues("Current/Collections/"+name+"/Lock", false);
+
+      if (! acres.successful()) {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+    }
+    else {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "could not acquire agency lock");
     }
   }
 
@@ -8650,7 +8676,7 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   // We cannot use a locker here, because we want to remove all of
   // Current/Collections/<db-name> before we are done and we must not
   // unlock the Lock after that.
-  if (!ac.lockWrite("Current/Collections/"+name, 24*3600.0, 24*3600.0)) {
+  if (! ac.lockWrite("Current/Collections/"+name, 24*3600.0, 24*3600.0)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
   // res = ac.getValues("Current/Collections/"+name+"/Lock, false);
