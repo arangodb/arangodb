@@ -86,10 +86,14 @@ void HeartbeatThread::run () {
 
   // convert timeout to seconds  
   const double interval = (double) _interval / 1000.0 / 1000.0;
+  
+  // last value of plan that we fetched
+  uint64_t lastPlanVersion = 0;
 
   // value of Sync/Commands/my-id at startup 
   uint64_t lastCommandIndex = getLastCommandIndex(); 
   bool valueFound = false;
+
 
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
@@ -102,6 +106,28 @@ void HeartbeatThread::run () {
 
     if (_stop) {
       break;
+    }
+
+    {
+      // get the current version of the Plan
+      AgencyCommResult result = _agency.getValues("Plan/Version", false);
+
+      if (result.successful()) {
+        std::map<std::string, std::string> out;
+    
+        if (result.flattenJson(out, "", false)) {
+          std::map<std::string, std::string>::const_iterator it = out.begin();
+
+          if (it != out.end()) {
+            // there is a plan version
+            uint64_t planVersion = triagens::basics::StringUtils::uint64((*it).second);
+
+            if (planVersion > lastPlanVersion) {
+              handlePlanChange(planVersion, lastPlanVersion);
+            }
+          }
+        }
+      }
     }
 
     {
@@ -142,7 +168,7 @@ void HeartbeatThread::run () {
       }
       else {
         // check for a specific AGENCY error code 
-        if (result.httpCode() == 400 && result.errorCode() == 401) {
+        if (result.httpCode() == triagens::rest::HttpResponse::BAD && result.errorCode() == 401) {
           // the requested history has been cleared
           // pick up new index from the agency
           const uint64_t agencyIndex = result.index();
@@ -225,6 +251,22 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
 
   // nothing found. this is not an error
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a plan version change
+/// this is triggered if the heartbeat thread finds a new plan version number
+////////////////////////////////////////////////////////////////////////////////
+
+bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
+                                        uint64_t& remotePlanVersion) {
+  LOG_TRACE("found a plan update");
+
+  // TODO: actually handle the change
+
+  remotePlanVersion = currentPlanVersion;
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
