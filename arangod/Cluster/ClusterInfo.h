@@ -195,9 +195,9 @@ namespace triagens {
         bool                               _isSystem;
         bool                               _isVolatile;
         bool                               _waitForSync;
+
+        TRI_json_t*                        _keyOptions;
         
-        // TODO: keyoptions
- 
         // TODO: indexes
         std::vector<std::string>           _shardKeys;
         std::map<std::string, std::string> _shardIds;
