@@ -53,6 +53,7 @@ namespace triagens {
                                         double requestTimeout, 
                                         bool warn) :
       _connection(connection),
+      _keepConnectionOnDestruction(false),
       _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _requestTimeout(requestTimeout),
@@ -75,7 +76,9 @@ namespace triagens {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      _connection->disconnect();
+      if (!_keepConnectionOnDestruction) {
+        _connection->disconnect();
+      }
     }
 
 // -----------------------------------------------------------------------------
