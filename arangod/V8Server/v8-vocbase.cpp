@@ -8631,12 +8631,8 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   
   const string name = TRI_ObjectToString(argv[0]);
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
   AgencyComm ac;
   AgencyCommResult acres;
-
-  int ourerrno = TRI_ERROR_NO_ERROR;
 
   {
     AgencyCommLocker locker("Target","WRITE");
