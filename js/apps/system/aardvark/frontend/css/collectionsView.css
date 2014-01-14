@@ -17,12 +17,6 @@
   margin-right: 10px;
 }
 
-
-.thumbnail, .navbar-inner, .btn, .btn-primary {
-  border-radius:0;
-  box-shadow: 0;
-}
-
 .thumbnails2 {
   padding-top: 1px !important;
   margin-left:0;
