@@ -403,10 +403,10 @@ TRI_vocbase_col_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t* const              _vocbase;
+  TRI_vocbase_t*                    _vocbase;
 
-  TRI_col_type_t const              _type;       // collection type
-  TRI_voc_cid_t const               _cid;        // collecttion identifier
+  TRI_col_type_t                    _type;       // collection type
+  TRI_voc_cid_t                     _cid;        // collecttion identifier
 
   TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
@@ -415,6 +415,8 @@ typedef struct TRI_vocbase_col_s {
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
 
+  bool                              _isLocal;    // if true, the collection is local. if false,
+                                                 // the collection is a remote (cluster) collection
   bool                              _canDrop;    // true if the collection can be dropped
   bool                              _canUnload;  // true if the collection can be unloaded
   bool                              _canRename;  // true if the collection can be renamed

@@ -83,10 +83,23 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 ///
 /// @RESTHEADER{POST /_api/edge,creates an edge}
 ///
+/// @RESTBODYPARAM{edge-document,json,required}
+/// A JSON representation of the edge document must be passed as the body of
+/// the POST request. This JSON object may contain the edge's document key in
+/// the `_key` attribute if needed.
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{collection,string,required}
 /// Creates a new edge in the collection identified by `collection` name.
+///
+/// @RESTQUERYPARAM{createCollection,boolean,optional}
+/// If this parameter has a value of `true` or `yes`, then the collection is
+/// created if it does not yet exist. Other values will be ignored so the
+/// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until the edge document has been synced to disk.
 ///
 /// @RESTQUERYPARAM{from,string,required}
 /// The document handle of the start point must be passed in `from` handle.
@@ -94,29 +107,37 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// @RESTQUERYPARAM{to,string,required}
 /// The document handle of the end point must be passed in `to` handle.
 ///
-/// @RESTBODYPARAM{edge-document,json,required}
-/// A JSON representation of the edge document must be passed as the body of
-/// the POST request. This JSON object may contain the edge's document key in
-/// the `_key` attribute if needed.
-///
 /// @RESTDESCRIPTION
-/// `from` handle and `to` handle are immutable once the edge has been
-/// created.
+/// Creates a new edge document in the collection named `collection`. A JSON
+/// representation of the document must be passed as the body of the POST
+/// request.
+///
+/// The `from` and `to` handles are immutable once the edge has been created.
 ///
 /// In all other respects the method works like `POST /document`, see
 /// @ref RestDocument for details.
 ///
 /// @RESTRETURNCODES
 ///
+/// @RESTRETURNCODE{201}
+/// is returned if the edge was created successfully and `waitForSync` was
+/// `true`.
+///
 /// @RESTRETURNCODE{202}
 /// is returned if the edge was created successfully.
 ///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of an
+/// edge, or if the collection specified is not an edge collection. 
+/// The response body contains an error document in this case.
+///
 /// @RESTRETURNCODE{404}
-/// is returned if the edge collection was not found.
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
 ///
 /// @EXAMPLES
 ///
-/// Create an edge and reads it back:
+/// Create an edge and read it back:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgeCreateEdge}
 ///     var Graph = require("org/arangodb/graph").Graph;
@@ -296,6 +317,408 @@ bool RestEdgeHandler::createDocument () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single edge
+///
+/// @RESTHEADER{GET /_api/edge/`document-handle`,reads an edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The handle of the edge document.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The edge is returned if it has a different revision than the
+/// given etag. Otherwise an `HTTP 304` is returned.
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The edge is returned if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Returns the edge identified by `document-handle`. The returned
+/// edge contains a few special attributes: 
+///
+/// - `_id` contains the document handle
+///
+/// - `_rev` contains the revision
+///
+/// - `_from` and `to` contain the document handles of the connected 
+///   vertex documents
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the edge was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the edge has 
+/// the same version
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// edge has a different version
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads all edges from collection
+///
+/// @RESTHEADER{GET /_api/edge,reads all edges from collection}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection,string,required}
+/// The name of the collection.
+///
+/// @RESTDESCRIPTION
+/// Returns a list of all URI for all edges from the collection identified
+/// by `collection`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// All went good.
+///
+/// @RESTRETURNCODE{404}
+/// The collection does not exist.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single edge head
+///
+/// @RESTHEADER{HEAD /_api/edge/`document-handle`,reads an edge header}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The handle of the edge document.
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally fetch an edge document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally fetch an edge document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// Like `GET`, but only returns the header fields and not the body. You
+/// can use this call to get the current revision of an edge document or check if
+/// it was deleted.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the edge document was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge document or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the edge document has
+/// same version
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found edge
+/// document has a different version
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an edge
+///
+/// @RESTHEADER{PUT /_api/edge/`document-handle`,replaces an edge}
+///
+/// @RESTBODYPARAM{edge,json,required}
+/// A JSON representation of the new edge data.
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The handle of the edge document.
+/// 
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge document has been synced to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally replace an edge document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter (see below).
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally replace an edge document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// Completely updates (i.e. replaces) the edge document identified by `document-handle`.
+/// If the edge document exists and can be updated, then a `HTTP 201` is returned
+/// and the "ETag" header field contains the new revision of the edge document.
+///
+/// If the new edge document passed in the body of the request contains the
+/// `document-handle` in the attribute `_id` and the revision in `_rev`,
+/// these attributes will be ignored. Only the URI and the "ETag" header are
+/// relevant in order to avoid confusion when using proxies. Note that the attributes
+/// `_from` and `_to` of an edge are immutable and cannot be updated either.
+///
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the edge document replacement operation to disk even in case
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
+///
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated edge document, the attribute `_rev`
+/// contains the new revision of the edge document.
+///
+/// If the edge document does not exist, then a `HTTP 404` is returned and the
+/// body of the response contains an error document.
+///
+/// There are two ways for specifying the targeted revision id for
+/// conditional replacements (i.e. replacements that will only be executed if
+/// the revision id found in the database matches the revision id specified
+/// in the request):
+/// - specifying the target revision in the `rev` URL query parameter
+/// - specifying the target revision in the `if-match` HTTP header
+///
+/// Specifying a target revision is optional, however, if done, only one of the
+/// described mechanisms must be used (either the `rev` URL parameter or the
+/// `if-match` HTTP header).
+/// Regardless which mechanism is used, the parameter needs to contain the target
+/// revision id as returned in the `_rev` attribute of an edge document or
+/// by an HTTP `etag` header.
+///
+/// For example, to conditionally replace an edge document based on a specific revision
+/// id, you can use the following request:
+/// 
+/// - PUT /_api/document/`document-handle`?rev=`etag`
+///
+/// If a target revision id is provided in the request (e.g. via the `etag` value
+/// in the `rev` URL query parameter above), ArangoDB will check that
+/// the revision id of the edge document found in the database is equal to the target
+/// revision id provided in the request. If there is a mismatch between the revision
+/// id, then by default a `HTTP 412` conflict is returned and no replacement is
+/// performed.
+///
+/// The conditional update behavior can be overriden with the `policy` URL query parameter:
+///
+/// - PUT /_api/document/`document-handle`?policy=`policy`
+///
+/// If `policy` is set to `error`, then the behavior is as before: replacements
+/// will fail if the revision id found in the database does not match the target
+/// revision id specified in the request.
+///
+/// If `policy` is set to `last`, then the replacement will succeed, even if the
+/// revision id found in the database does not match the target revision id specified
+/// in the request. You can use the `last` `policy` to force replacements.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the edge document was replaced successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the edge document was replaced successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of an edge
+/// document or if applied to a non-edge collection. The response body contains an 
+/// error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection or the edge document was not found
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found edge
+/// document has a different version
+///////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates an edge
+///
+/// @RESTHEADER{PATCH /_api/edge/`document-handle`,patches an edge}
+///
+/// @RESTBODYPARAM{document,json,required}
+/// A JSON representation of the edge update.
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The handle of the edge document.
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{keepNull,string,optional}
+/// If the intention is to delete existing attributes with the patch command, 
+/// the URL query parameter `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing edge document that are contained in the patch document with an
+/// attribute value of `null`.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge document has been synced to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally patch an edge document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally patch an edge document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// Partially updates the edge document identified by `document-handle`.
+/// The body of the request must contain a JSON document with the attributes
+/// to patch (the patch document). All attributes from the patch document will
+/// be added to the existing edge document if they do not yet exist, and overwritten
+/// in the existing edge document if they do exist there.
+///
+/// Setting an attribute value to `null` in the patch document will cause a
+/// value of `null` be saved for the attribute by default. 
+///
+/// Note that internal attributes such as `_key`, `_from` and `_to` are immutable
+/// once set and cannot be updated.
+///
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the edge document update operation to disk even in case
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
+///
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision. The attribute `_id` contains the known
+/// `document-handle` of the updated edge document, the attribute `_rev`
+/// contains the new edge document revision.
+///
+/// If the edge document does not exist, then a `HTTP 404` is returned and the
+/// body of the response contains an error document.
+///
+/// You can conditionally update an edge document based on a target revision id by
+/// using either the `rev` URL parameter or the `if-match` HTTP header.
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// edge documents (see replacing documents for details).
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the document was patched successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was patched successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation or when
+/// applied on an non-edge collection. The response body contains an error document 
+/// in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection or the edge document was not found
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found edge
+/// document has a different version
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an edge
+///
+/// @RESTHEADER{DELETE /_api/edge/`document-handle`,deletes an edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// Deletes the edge document identified by `document-handle`. 
+/// 
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally delete an edge document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing edge
+/// documents (see replacing edge documents for more details).
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge document has been synced to disk.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally delete an edge document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the deleted edge document, the attribute `_rev`
+/// contains the edge document revision.
+///
+/// If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the edge document was deleted successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the edge document was deleted successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection or the edge document was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the current edge
+/// document has a different version
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

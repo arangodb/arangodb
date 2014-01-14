@@ -55,6 +55,14 @@ CollectionInfo::CollectionInfo ()
     _name(),
     _type(TRI_COL_TYPE_UNKNOWN),
     _status(TRI_VOC_COL_STATUS_CORRUPTED),
+    _version(0),
+    _maximalSize(0),
+    _deleted(false),
+    _doCompact(false),
+    _isSystem(false),
+    _isVolatile(false),
+    _waitForSync(false),
+    _keyOptions(0),
     _shardKeys(),
     _shardIds() {
 }
@@ -78,10 +86,65 @@ CollectionInfo::CollectionInfo (std::string const& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from another
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo::CollectionInfo (CollectionInfo const& other) :
+  _id(other._id),
+  _name(other._name),
+  _type(other._type),
+  _status(other._status),
+  _version(other._version),
+  _maximalSize(other._maximalSize),
+  _deleted(other._deleted),
+  _doCompact(other._doCompact),
+  _isSystem(other._isSystem),
+  _isVolatile(other._isVolatile),
+  _waitForSync(other._waitForSync),
+  _keyOptions(0),
+  _shardKeys(other._shardKeys),
+  _shardIds(other._shardIds) {
+
+  if (other._keyOptions != 0) {
+    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from json
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
+  _id = other._id;
+  _name = other._name;
+  _type = other._type;
+  _status = other._status;
+  _version = other._version;
+  _maximalSize = other._maximalSize;
+  _deleted = other._deleted;
+  _doCompact = other._doCompact;
+  _isSystem = other._isSystem;
+  _isVolatile = other._isVolatile;
+  _waitForSync = other._waitForSync;
+  _shardKeys = other._shardKeys;
+  _shardIds = other._shardIds;
+  _keyOptions = 0;
+  
+  if (other._keyOptions != 0) {
+    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  }
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a collection info object
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::~CollectionInfo () {
+  if (_keyOptions != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+  }
 } 
 
 // -----------------------------------------------------------------------------
@@ -93,12 +156,24 @@ CollectionInfo::~CollectionInfo () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionInfo::invalidate () {
-  _id   = 0;
+  _id = 0;
   _name = "";
   _type = TRI_COL_TYPE_UNKNOWN;
   _status = TRI_VOC_COL_STATUS_CORRUPTED;
+  _version = 0;
+  _maximalSize = 0;
+  _deleted = false;
+  _doCompact = false;
+  _isSystem = false;
+  _isVolatile = false;
+  _waitForSync = false;
   _shardKeys.clear();
   _shardIds.clear();
+  
+  if (_keyOptions != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+  }
+  _keyOptions = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +210,21 @@ bool CollectionInfo::createFromJson (TRI_json_t const* json) {
   if (_status == TRI_VOC_COL_STATUS_CORRUPTED || 
       _status == TRI_VOC_COL_STATUS_NEW_BORN) {
     return false;
+  }
+
+  _version     = JsonHelper::getNumericValue<TRI_col_version_t>(json, "version", 0);
+  _maximalSize = JsonHelper::getNumericValue<TRI_voc_size_t>(json, "maximalSize", 0);
+  _doCompact   = JsonHelper::getBooleanValue(json, "doCompact", false);
+  _isSystem    = JsonHelper::getBooleanValue(json, "isSystem", false);
+  _isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
+  _waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", false);
+
+  TRI_json_t const* keyOptions = JsonHelper::getArrayElement(json, "keyOptions");
+  if (JsonHelper::isArray(keyOptions)) {
+    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+  }
+  else {
+    _keyOptions = 0;
   }
   
   // TODO: indexes
@@ -178,6 +268,17 @@ TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
   TRI_Insert3ArrayJson(zone, json, "name", TRI_CreateStringCopyJson(zone, _name.c_str()));
   TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateNumberJson(zone, (int) _type));
   TRI_Insert3ArrayJson(zone, json, "status", TRI_CreateNumberJson(zone, (int) _status));
+  
+  TRI_Insert3ArrayJson(zone, json, "version", TRI_CreateNumberJson(zone, (int) _version));
+  TRI_Insert3ArrayJson(zone, json, "maximalSize", TRI_CreateNumberJson(zone, (int) _maximalSize));
+  TRI_Insert3ArrayJson(zone, json, "doCompact", TRI_CreateBooleanJson(zone, _doCompact));
+  TRI_Insert3ArrayJson(zone, json, "isSystem", TRI_CreateBooleanJson(zone, _isSystem));
+  TRI_Insert3ArrayJson(zone, json, "isVolatile", TRI_CreateBooleanJson(zone, _isVolatile));
+  TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, _waitForSync));
+
+  if (_keyOptions != 0) {
+    TRI_Insert3ArrayJson(zone, json, "keyOptions", TRI_CopyJson(zone, _keyOptions));
+  }
 
   // TODO: indexes
 
@@ -301,8 +402,9 @@ void ClusterInfo::flush () {
 bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
   int tries = 0;
 
-  if (!_collectionsValid) {
+  if (! _collectionsValid) {
     loadCollections();
+    ++tries;
   }
 
   while (++tries <= 2) {
@@ -330,7 +432,7 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
 vector<DatabaseID> ClusterInfo::listDatabases () {
   vector<DatabaseID> res;
 
-  if (!_collectionsValid) {
+  if (! _collectionsValid) {
     loadCollections();
   }
 
@@ -359,14 +461,14 @@ void ClusterInfo::loadCollections () {
 
     if (result.flattenJson(collections, "Current/Collections/", false)) {
       LOG_TRACE("Current/Collections loaded successfully");
-    
+   
       WRITE_LOCKER(_lock);
       _collections.clear(); 
       _shardIds.clear();
 
       std::map<std::string, std::string>::const_iterator it;
       for (it = collections.begin(); it != collections.end(); ++it) {
-        const std::string key = (*it).first;
+        const std::string& key = (*it).first;
 
         // each entry consists of a database id and a collection id, separated by '/'
         std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
@@ -393,9 +495,10 @@ void ClusterInfo::loadCollections () {
           continue;
         }
 
-        CollectionInfo collectionData((*it).second);
+        const CollectionInfo collectionData((*it).second);
 
         // insert the collection into the existing map
+
         (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
         (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
 
@@ -426,8 +529,8 @@ void ClusterInfo::loadCollections () {
 /// If it is not found in the cache, the cache is reloaded once
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo ClusterInfo::getCollectionInfo (DatabaseID const& databaseID,
-                                               CollectionID const& collectionID) {
+CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
+                                           CollectionID const& collectionID) {
   if (! _collectionsValid) {
     loadCollections();
   }
@@ -455,6 +558,80 @@ CollectionInfo ClusterInfo::getCollectionInfo (DatabaseID const& databaseID,
   }
 
   return CollectionInfo();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get properties of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
+  TRI_col_info_t info;
+
+  info._version     = collection._version;
+  info._type        = collection._type;
+  info._cid         = collection._id;
+  info._revision    = 0; // TODO 
+  info._maximalSize = collection._maximalSize;
+  memcpy(info._name, collection._name.c_str(), collection._name.size());
+  info._deleted     = collection._deleted;
+  info._doCompact   = collection._doCompact;
+  info._isSystem    = collection._isSystem;
+  info._isVolatile  = collection._isVolatile;
+  info._waitForSync = collection._waitForSync;
+
+  if (collection._keyOptions != 0) {
+    info._keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, collection._keyOptions);
+  }
+  else {
+    info._keyOptions = 0;
+  }
+
+  return info;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get properties of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
+                                                     CollectionID const& collectionID) {
+  CollectionInfo ci = getCollection(databaseID, collectionID);
+  
+  return getCollectionProperties(ci);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask about all collections
+////////////////////////////////////////////////////////////////////////////////
+
+const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const& databaseID) {
+  std::vector<CollectionInfo> result;
+
+  // always reload
+  loadCollections();
+
+  READ_LOCKER(_lock);
+  // look up database by id
+  AllCollections::const_iterator it = _collections.find(databaseID);
+
+  if (it == _collections.end()) {
+    return result;
+  }
+
+  // iterate over all collections
+  DatabaseCollections::const_iterator it2 = (*it).second.begin();
+  while (it2 != (*it).second.end()) {
+    char c = (*it2).first[0];
+
+    if (c < '0' || c > '9') {
+      // skip collections indexed by id
+      result.push_back((*it2).second);
+    }
+
+    ++it2;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,12 +802,12 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
+  int tries = 0;
 
   if (! _collectionsValid) {
     loadCollections();
+    tries++;
   }
-
-  int tries = 0;
 
   while (++tries <= 2) {
     {

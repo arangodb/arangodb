@@ -43,6 +43,7 @@ extern "C" {
 
 namespace triagens {
   namespace arango {
+    class ClusterInfo;
     
 // -----------------------------------------------------------------------------
 // --SECTION--                                       some types for ClusterInfo
@@ -58,6 +59,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class CollectionInfo {
+      friend class ClusterInfo;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -68,6 +70,10 @@ namespace triagens {
         CollectionInfo ();
         
         CollectionInfo (std::string const&);
+
+        CollectionInfo (CollectionInfo const&);
+
+        CollectionInfo& operator= (CollectionInfo const&);
         
         ~CollectionInfo ();
 
@@ -116,6 +122,12 @@ namespace triagens {
         std::string statusString () const {
           return TRI_GetStatusStringCollectionVocBase(_status);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the properties
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_info_t properties () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief TODO: returns the indexes
@@ -175,7 +187,17 @@ namespace triagens {
         std::string                        _name;
         TRI_col_type_e                     _type;
         TRI_vocbase_col_status_e           _status;
- 
+
+        TRI_col_version_t                  _version;
+        TRI_voc_size_t                     _maximalSize;
+        bool                               _deleted;
+        bool                               _doCompact;
+        bool                               _isSystem;
+        bool                               _isVolatile;
+        bool                               _waitForSync;
+
+        TRI_json_t*                        _keyOptions;
+        
         // TODO: indexes
         std::vector<std::string>           _shardKeys;
         std::map<std::string, std::string> _shardIds;
@@ -284,8 +306,27 @@ namespace triagens {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionInfo getCollectionInfo (DatabaseID const&,
-                                          CollectionID const&);
+        CollectionInfo getCollection (DatabaseID const&,
+                                      CollectionID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get properties of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_info_t getCollectionProperties (CollectionInfo const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get properties of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_info_t getCollectionProperties (DatabaseID const&,
+                                                CollectionID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask about all collections
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::vector<CollectionInfo> getCollections (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency

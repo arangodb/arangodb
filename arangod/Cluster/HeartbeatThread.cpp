@@ -141,6 +141,15 @@ void HeartbeatThread::run () {
         guard.wait(_interval);
       }
       else {
+        // check for a specific AGENCY error code 
+        if (result.httpCode() == 400 && result.errorCode() == 401) {
+          // the requested history has been cleared
+          // pick up new index from the agency
+          const uint64_t agencyIndex = result.index();
+          if (agencyIndex > 0) {
+            lastCommandIndex = agencyIndex;
+          }
+        }
         if (valueFound) {
           // value did not change, but we already blocked waiting for a change...
           // nothing to do here
