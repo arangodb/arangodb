@@ -278,10 +278,14 @@ bool ApplicationCluster::open () {
 
   // tell the agency that we are ready
   {
-    AgencyCommLocker locker("Current", "WRITE"); 
-     
     AgencyComm comm;
-    AgencyCommResult result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
+    AgencyCommResult result;
+
+    AgencyCommLocker locker("Current", "WRITE"); 
+    
+    if (locker.successful()) {
+      result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
+    }
 
     if (! result.successful()) {
       locker.unlock();
@@ -358,9 +362,11 @@ void ApplicationCluster::stop () {
 
   {
     AgencyCommLocker locker("Current", "WRITE"); 
-    
-    // unregister ourselves 
-    comm.removeValues("Current/ServersRegistered/" + _myId, false);
+
+    if (locker.successful()) {
+      // unregister ourselves 
+      comm.removeValues("Current/ServersRegistered/" + _myId, false);
+    }
   }
   
   ClusterComm::cleanup();
