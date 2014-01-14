@@ -27,6 +27,7 @@
 
 #include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
+#include "SimpleHttpClient/ConnectionManager.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
@@ -201,6 +202,9 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
  
+  // initialise ConnectionManager library
+  httpclient::ConnectionManager::instance()->initialise();
+
   // the agency about our state 
   AgencyComm comm;
   comm.sendServerState();
