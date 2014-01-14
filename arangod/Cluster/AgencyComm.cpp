@@ -1086,6 +1086,25 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a key exists
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::exists (std::string const& key) {
+  std::string url(buildUrl(key));
+  
+  AgencyCommResult result;
+
+  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                   _globalConnectionOptions._requestTimeout, 
+                   result,
+                   url,
+                   "",
+                   false);
+  
+  return result.successful();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 

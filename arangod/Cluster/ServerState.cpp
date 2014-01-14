@@ -477,15 +477,19 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id)
   // fetch value at Plan/Coordinators
   // we need to do this to determine the server's role
   
-  AgencyCommLocker locker("Plan", "READ"); 
-
   const std::string key = "Plan/Coordinators";
-
+  
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, true);
+  AgencyCommResult result;
+  
+  {
+    AgencyCommLocker locker("Plan", "READ"); 
 
-  locker.unlock();
- 
+    if (locker.successful()) {
+      result = comm.getValues(key, true);
+    }
+  }
+
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
@@ -525,16 +529,19 @@ ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
   // fetch value at Plan/DBServers
   // we need to do this to determine the server's role
   
-  AgencyCommLocker locker("Plan", "READ"); 
-
   const std::string key = "Plan/DBServers";
 
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, true);
-  
-  // do this here because we might abort the program below
-  locker.unlock();
+  AgencyCommResult result;
  
+  { 
+    AgencyCommLocker locker("Plan", "READ"); 
+
+    if (locker.successful()) {
+      result = comm.getValues(key, true);
+    }
+  }
+  
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 

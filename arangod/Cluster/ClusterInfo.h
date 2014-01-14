@@ -188,7 +188,6 @@ namespace triagens {
         TRI_col_type_e                     _type;
         TRI_vocbase_col_status_e           _status;
 
-        TRI_col_version_t                  _version;
         TRI_voc_size_t                     _maximalSize;
         bool                               _deleted;
         bool                               _doCompact;
@@ -414,7 +413,7 @@ namespace triagens {
 /// @brief how big a batch is for unique ids
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const uint64_t MinIdsPerBatch = 1000;
+        static const uint64_t MinIdsPerBatch = 100;
 
     };
 

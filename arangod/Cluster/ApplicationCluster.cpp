@@ -27,6 +27,7 @@
 
 #include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
+#include "SimpleHttpClient/ConnectionManager.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
@@ -201,6 +202,9 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
  
+  // initialise ConnectionManager library
+  httpclient::ConnectionManager::instance()->initialise();
+
   // the agency about our state 
   AgencyComm comm;
   comm.sendServerState();
@@ -223,10 +227,13 @@ bool ApplicationCluster::start () {
 
     if (result.successful()) {
       std::map<std::string, std::string> value;
+
       if (result.flattenJson(value, "", false)) {
         std::map<std::string, std::string>::const_iterator it = value.begin();
+
         if (it != value.end()) {
           _heartbeatInterval = triagens::basics::StringUtils::uint64((*it).second);
+
           LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
                    (unsigned long long) _heartbeatInterval);
         }
@@ -274,10 +281,14 @@ bool ApplicationCluster::open () {
 
   // tell the agency that we are ready
   {
-    AgencyCommLocker locker("Current", "WRITE"); 
-     
     AgencyComm comm;
-    AgencyCommResult result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
+    AgencyCommResult result;
+
+    AgencyCommLocker locker("Current", "WRITE"); 
+    
+    if (locker.successful()) {
+      result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
+    }
 
     if (! result.successful()) {
       locker.unlock();
@@ -354,9 +365,11 @@ void ApplicationCluster::stop () {
 
   {
     AgencyCommLocker locker("Current", "WRITE"); 
-    
-    // unregister ourselves 
-    comm.removeValues("Current/ServersRegistered/" + _myId, false);
+
+    if (locker.successful()) {
+      // unregister ourselves 
+      comm.removeValues("Current/ServersRegistered/" + _myId, false);
+    }
   }
   
   ClusterComm::cleanup();
