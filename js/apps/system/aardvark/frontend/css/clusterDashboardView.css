@@ -4,3 +4,10 @@ div.clusterColumn {
   padding-right: 1%;
   float: left;
 }
+
+div.clusterColumn li {
+  background: none;
+}
+h3.clusterColumnHeader {
+  text-align: center;
+}
