@@ -55,6 +55,14 @@ CollectionInfo::CollectionInfo ()
     _name(),
     _type(TRI_COL_TYPE_UNKNOWN),
     _status(TRI_VOC_COL_STATUS_CORRUPTED),
+    _version(0),
+    _maximalSize(0),
+    _deleted(false),
+    _doCompact(false),
+    _isSystem(false),
+    _isVolatile(false),
+    _waitForSync(false),
+    _keyOptions(0),
     _shardKeys(),
     _shardIds() {
 }
@@ -92,7 +100,14 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
   _doCompact(other._doCompact),
   _isSystem(other._isSystem),
   _isVolatile(other._isVolatile),
-  _waitForSync(other._waitForSync) {
+  _waitForSync(other._waitForSync),
+  _keyOptions(0),
+  _shardKeys(other._shardKeys),
+  _shardIds(other._shardIds) {
+
+  if (other._keyOptions != 0) {
+    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,6 +126,13 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
   _isSystem = other._isSystem;
   _isVolatile = other._isVolatile;
   _waitForSync = other._waitForSync;
+  _shardKeys = other._shardKeys;
+  _shardIds = other._shardIds;
+  _keyOptions = 0;
+  
+  if (other._keyOptions != 0) {
+    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  }
 
   return *this;
 }
@@ -120,6 +142,9 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::~CollectionInfo () {
+  if (_keyOptions != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+  }
 } 
 
 // -----------------------------------------------------------------------------
@@ -131,12 +156,24 @@ CollectionInfo::~CollectionInfo () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionInfo::invalidate () {
-  _id   = 0;
+  _id = 0;
   _name = "";
   _type = TRI_COL_TYPE_UNKNOWN;
   _status = TRI_VOC_COL_STATUS_CORRUPTED;
+  _version = 0;
+  _maximalSize = 0;
+  _deleted = false;
+  _doCompact = false;
+  _isSystem = false;
+  _isVolatile = false;
+  _waitForSync = false;
   _shardKeys.clear();
   _shardIds.clear();
+  
+  if (_keyOptions != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+  }
+  _keyOptions = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +219,13 @@ bool CollectionInfo::createFromJson (TRI_json_t const* json) {
   _isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
   _waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", false);
 
-  // TODO: keyoptions
+  TRI_json_t const* keyOptions = JsonHelper::getArrayElement(json, "keyOptions");
+  if (JsonHelper::isArray(keyOptions)) {
+    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+  }
+  else {
+    _keyOptions = 0;
+  }
   
   // TODO: indexes
 
@@ -233,7 +276,10 @@ TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
   TRI_Insert3ArrayJson(zone, json, "isVolatile", TRI_CreateBooleanJson(zone, _isVolatile));
   TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, _waitForSync));
 
-  // TODO: keyoptions
+  if (_keyOptions != 0) {
+    TRI_Insert3ArrayJson(zone, json, "keyOptions", TRI_CopyJson(zone, _keyOptions));
+  }
+
   // TODO: indexes
 
   TRI_json_t* values = JsonHelper::stringList(zone, _shardKeys);
@@ -527,12 +573,18 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
   info._revision    = 0; // TODO 
   info._maximalSize = collection._maximalSize;
   memcpy(info._name, collection._name.c_str(), collection._name.size());
-  info._keyOptions  = 0; // TODO
   info._deleted     = collection._deleted;
   info._doCompact   = collection._doCompact;
   info._isSystem    = collection._isSystem;
   info._isVolatile  = collection._isVolatile;
   info._waitForSync = collection._waitForSync;
+
+  if (collection._keyOptions != 0) {
+    info._keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, collection._keyOptions);
+  }
+  else {
+    info._keyOptions = 0;
+  }
 
   return info;
 }

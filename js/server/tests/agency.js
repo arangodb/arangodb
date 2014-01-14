@@ -423,21 +423,36 @@ function AgencySuite () {
       var start = require("internal").time();
       assertFalse(agency.watch("UnitTestsAgency/foo", 0, wait));
       var end = require("internal").time();
+
+      // expecting this to time out
       assertEqual(wait, Math.round(end - start));
 
       assertTrue(agency.set("UnitTestsAgency/foo/3", "bart"));
       var idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
+      assertTrue(agency.set("UnitTestsAgency/foo/3", "bartz"));
       start = require("internal").time();
-      var result = agency.watch("UnitTestsAgency/foo", idx - 10, wait);
+      var result = agency.watch("UnitTestsAgency/foo", idx - 100, wait);
       end = require("internal").time();
 
+      // expecting an immediate return
+      assertEqual(0, Math.round(end - start));
+     
+      idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
+      assertTrue(agency.set("UnitTestsAgency/foo/3", "barto"));
+      start = require("internal").time();
+      result = agency.watch("UnitTestsAgency/foo", idx, wait, true);
+      end = require("internal").time();
+
+      // expecting an immediate return
       assertEqual(0, Math.round(end - start));
       
       idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
       start = require("internal").time();
-      result = agency.watch("UnitTestsAgency/foo", idx - 5, wait, true);
+      result = agency.watch("UnitTestsAgency/foo", idx + 100000, wait, true);
       end = require("internal").time();
-      assertEqual(0, Math.round(end - start));
+
+      // expecting a timeout
+      assertEqual(wait, Math.round(end - start));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

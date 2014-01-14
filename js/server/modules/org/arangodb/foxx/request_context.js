@@ -60,7 +60,7 @@ createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandle
     try {
       handler(req, res);
     } catch (e) {
-      if (e instanceof errorClass) {
+      if ((typeof errorClass === 'string' && e.name === errorClass) || e instanceof errorClass) {
         res.status(code);
         res.json(errorHandler(e));
       } else {
