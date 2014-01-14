@@ -6093,20 +6093,12 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->IsSystemKey, info._isSystem ? v8::True() : v8::False());
     result->Set(v8g->IsVolatileKey, info._isVolatile ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(info._maximalSize));
-/*
-    // TODO
-    TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
-
-    if (keyOptions != 0) {
-      result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
-
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
-    }
-    else {
-      result->Set(v8g->KeyOptionsKey, v8::Array::New());
-    }
-    */
     result->Set(v8g->WaitForSyncKey, info._waitForSync ? v8::True() : v8::False());
+
+    if (info._keyOptions != 0) {
+      result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(info._keyOptions)->ToObject());
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+    }
 
     return scope.Close(result);
   }

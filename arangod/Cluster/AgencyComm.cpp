@@ -33,6 +33,7 @@
 #include "BasicsC/logging.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -1207,7 +1208,7 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
   }
 
   AgencyCommResult result;
-  
+
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
@@ -1550,7 +1551,7 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
          realUrl,
          body);
  
-    if (result._statusCode == 307) {
+    if (result._statusCode == (int) triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
       
@@ -1699,11 +1700,13 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   
   result._connected  = true;
 
-  if (response->getHttpReturnCode() == 307) {
+  if (response->getHttpReturnCode() == (int) triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
  
     bool found = false;
     result._location = response->getHeaderField("location", found);
+    
+    LOG_TRACE("redirecting to location: '%s'", result._location.c_str());
 
     if (! found) {
       // a 307 without a location header does not make any sense
