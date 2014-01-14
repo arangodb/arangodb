@@ -29,7 +29,17 @@
       "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph",
       "graphManagement"                     : "graphManagement",
-      "graphManagement/add"                 : "graphAddNew"
+      "graphManagement/add"                 : "graphAddNew",
+
+
+      "test"                                : "test"
+    },
+
+    test: function() {
+      if(!this.clusterDashboardView) {
+        this.clusterDashboardView = new window.ClusterDashboardView();
+      }
+      this.clusterDashboardView.render();
     },
 
     initialize: function () {

@@ -170,6 +170,12 @@ module.exports = function(karma) {
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
       'frontend/js/views/loginView.js',
+      'frontend/js/views/clusterDashboardView.js',
+      'frontend/js/views/clusterOverviewView.js',
+      'frontend/js/views/clusterServerView.js',
+      'frontend/js/views/clusterDatabaseView.js',
+      'frontend/js/views/clusterCollectionView.js',
+      'frontend/js/views/clusterShardsView.js',
 
       // Router
       'frontend/js/routers/router.js',
@@ -177,6 +183,7 @@ module.exports = function(karma) {
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
       // Specs
+
       // GraphViewer
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
@@ -211,6 +218,7 @@ module.exports = function(karma) {
       // Models
       'test/specs/models/currentDatabaseSpec.js',
       'test/specs/models/graphSpec.js',
+
       // Views
       'test/specs/views/editListEntryViewSpec.js',
       'test/specs/views/collectionViewSpec.js',
@@ -221,6 +229,12 @@ module.exports = function(karma) {
       'test/specs/views/graphViewSpec.js',
       'test/specs/views/graphManagementViewSpec.js',
       'test/specs/views/addNewGraphViewSpec.js',
+      'test/specs/views/clusterDashboardViewSpec.js',
+      'test/specs/views/clusterOverviewViewSpec.js',
+      'test/specs/views/clusterServerViewSpec.js',
+      'test/specs/views/clusterDatabaseViewSpec.js',
+      'test/specs/views/clusterCollectionViewSpec.js',
+      'test/specs/views/clusterShardsViewSpec.js',
       // Router
       'test/specs/router/routerSpec.js',
       // JSLint
