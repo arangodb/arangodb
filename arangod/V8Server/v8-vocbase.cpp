@@ -1784,6 +1784,145 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a collection on the coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& argv,
+                                                          TRI_col_type_e collectionType,
+                                                          std::string const& databaseName,
+                                                          TRI_col_info_t& parameter) {
+  v8::HandleScope scope;
+  
+  const string name = TRI_ObjectToString(argv[0]);
+
+  uint64_t numberOfShards = 1;
+  std::vector<std::string> shardKeys;
+      
+  // default shard key
+  shardKeys.push_back("_key");
+  
+  if (2 <= argv.Length()) {
+    if (! argv[1]->IsObject()) {
+      TRI_V8_TYPE_ERROR(scope, "<properties> must be an object");
+    }
+
+    v8::Handle<v8::Object> p = argv[1]->ToObject();
+
+    if (p->Has(v8::String::New("numberOfShards"))) {
+      numberOfShards = TRI_ObjectToUInt64(p->Get(v8::String::New("numberOfShards")), false);
+    }
+    
+    if (p->Has(TRI_V8_SYMBOL("shardKeys"))) {
+      shardKeys.clear();
+
+      if (p->Get(TRI_V8_SYMBOL("shardKeys"))->IsArray()) {
+        v8::Handle<v8::Array> k = v8::Handle<v8::Array>::Cast(p->Get(TRI_V8_SYMBOL("shardKeys")));
+
+        for (uint32_t i = 0 ; i < k->Length(); ++i) {
+          v8::Handle<v8::Value> v = k->Get(i);
+          if (v->IsString()) {
+            const std::string key = TRI_ObjectToString(v);
+
+            // system attributes are not allowed (except _key)
+            if (! key.empty() && (key[0] != '_' || key == "_key")) {
+              shardKeys.push_back(key);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (numberOfShards == 0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
+  }
+    
+  if (shardKeys.empty()) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "no shard keys specified");
+  }
+
+  // fetch a unique id for the new collection plus one for each shard to create
+  uint64_t id = ClusterInfo::instance()->uniqid(1 + numberOfShards);
+
+  // collection id is the first unique id we got
+  const std::string cid = StringUtils::itoa(id);
+
+  // fetch list of available servers in cluster, and shuffle them randomly
+  std::vector<std::string> dbServers = ClusterInfo::instance()->getDBServers();
+
+  if (dbServers.empty()) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no database servers found in cluster");
+  }
+
+  std::random_shuffle(dbServers.begin(), dbServers.end());
+
+  // now create the shards
+  std::map<std::string, std::string> shards; 
+  for (uint64_t i = 0; i < numberOfShards; ++i) {
+    // determine responsible server
+    const std::string serverId = dbServers[i % dbServers.size()];
+
+    // determine shard id
+    const std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
+
+    shards.insert(std::make_pair<std::string, std::string>(shardId, serverId));
+  }
+ 
+  // now create the JSON for the collection 
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isSystem));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isVolatile)); 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
+
+  if (parameter._keyOptions != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameter._keyOptions));
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
+
+  AgencyComm agency;
+
+  {
+    AgencyCommLocker targetLock("Plan", "WRITE");
+   
+    if (! agency.exists("Plan/Collections/" + databaseName)) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "didn't find database entry in agency");
+    }
+
+    {
+      if (agency.exists("Plan/Collections/" + databaseName + "/" + cid)) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME); 
+      }
+
+      AgencyCommResult result = agency.setValue("Plan/Collections/" + databaseName + "/" + cid, JsonHelper::toString(json), 0.0);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    }
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  // TODO: wait for the creation of the collection
+  return scope.Close(result);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1805,13 +1944,14 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
   }
 
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
+  PREVENT_EMBEDDED_TRANSACTION(scope); 
+
 
   // set default journal size
   TRI_voc_size_t effectiveSize = vocbase->_settings.defaultMaximalSize;
 
   // extract the name
-  string name = TRI_ObjectToString(argv[0]);
+  const string name = TRI_ObjectToString(argv[0]);
 
   // extract the parameters
   TRI_col_info_t parameter;
@@ -1886,47 +2026,16 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
 
 #ifdef TRI_ENABLE_CLUSTER
-  const bool isCoordinator = ServerState::instance()->isCoordinator(); 
-
-  if (isCoordinator) {
-    v8::Handle<v8::Object> p = argv[1]->ToObject();
-
-    int64_t numberOfShards = 0;
-    std::vector<std::string> shardKeys;
-
-    if (p->Has(v8::String::New("numberOfShards"))) {
-      numberOfShards = TRI_ObjectToInt64(p->Get(v8::String::New("numberOfShards")));
-    }
-    
-    if (p->Has(TRI_V8_SYMBOL("shardKeys"))) {
-      if (p->Get(TRI_V8_SYMBOL("shardKeys"))->IsArray()) {
-        v8::Handle<v8::Array> k = v8::Handle<v8::Array>::Cast(p->Get(TRI_V8_SYMBOL("shardKeys")));
-      
-        for (uint32_t i = 0 ; i < k->Length(); ++i) {
-          v8::Handle<v8::Value> v = k->Get(i);
-          if (v->IsString()) {
-            shardKeys.push_back(TRI_ObjectToString(v));
-          }
-        }
-      }
-    }
-
-    if (numberOfShards == 0) {
-      TRI_FreeCollectionInfoOptions(&parameter);
-      TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
-    }
-    
-    if (shardKeys.empty()) {
-      TRI_FreeCollectionInfoOptions(&parameter);
-      TRI_V8_EXCEPTION_PARAMETER(scope, "no shard keys specified");
-    }
-
-    // TODO: decide whether this check must be executed way earlier
+  if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
     if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
-      TRI_FreeCollectionInfoOptions(&parameter);
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
+
+    v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, originalDatabase, parameter);
+    TRI_FreeCollectionInfoOptions(&parameter);
+
+    return scope.Close(result);
   }
 #endif
 
@@ -7135,15 +7244,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (! collection->_isLocal) {
-    char const* originalDatabase = GetCurrentDatabaseName();
-    TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(std::string(originalDatabase), StringUtils::itoa(collection->_cid));
-
-    return scope.Close(v8::Number::New((int) info._version));
-  } 
-  // fallthru intentional 
-#endif
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
   
   TRI_col_info_t info;
 
