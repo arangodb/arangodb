@@ -33,6 +33,7 @@
 #include "BasicsC/logging.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -118,6 +119,34 @@ bool AgencyCommResult::connected () const {
 
 int AgencyCommResult::httpCode () const {
   return _statusCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the "index" attribute from the result
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t AgencyCommResult::index () const {
+  uint64_t result = 0;
+
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+
+  if (! TRI_IsArrayJson(json)) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return result;
+  }
+
+  // get "index" attribute
+  TRI_json_t const* errorCode = TRI_LookupArrayJson(json, "errorCode");
+
+  if (TRI_IsNumberJson(errorCode)) {
+    result = (uint64_t) errorCode->_value._number;
+  }
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1118,7 +1147,7 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
 
 AgencyCommResult AgencyComm::casValue (std::string const& key,
                                        std::string const& value,
-                                       bool prevExists,
+                                       bool prevExist,
                                        double ttl,
                                        double timeout) {
   AgencyCommResult result;
@@ -1126,8 +1155,8 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
-                   buildUrl(key) + "?prevExists=" 
-                     + (prevExists ? "true" : "false") + ttlParam(ttl, false), 
+                   buildUrl(key) + "?prevExist=" 
+                     + (prevExist ? "true" : "false") + ttlParam(ttl, false), 
                    "value=" + triagens::basics::StringUtils::urlEncode(value),
                    false);
 
@@ -1179,7 +1208,7 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
   }
 
   AgencyCommResult result;
-  
+
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
@@ -1522,7 +1551,7 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
          realUrl,
          body);
  
-    if (result._statusCode == 307) {
+    if (result._statusCode == (int) triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
       
@@ -1671,11 +1700,13 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   
   result._connected  = true;
 
-  if (response->getHttpReturnCode() == 307) {
+  if (response->getHttpReturnCode() == (int) triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
  
     bool found = false;
     result._location = response->getHeaderField("location", found);
+    
+    LOG_TRACE("redirecting to location: '%s'", result._location.c_str());
 
     if (! found) {
       // a 307 without a location header does not make any sense

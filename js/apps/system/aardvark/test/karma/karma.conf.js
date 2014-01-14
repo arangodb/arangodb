@@ -142,6 +142,7 @@ module.exports = function(karma) {
 
       // Views
       'frontend/js/views/navigationView.js',
+      'frontend/js/views/apiView.js',
       'frontend/js/views/footerView.js',
       'frontend/js/views/queryView.js',
       'frontend/js/views/shellView.js',
@@ -155,6 +156,7 @@ module.exports = function(karma) {
       'frontend/js/views/documentView.js',
       'frontend/js/views/documentSourceView.js',
       'frontend/js/views/logsView.js',
+      'frontend/js/views/applicationsView.js',
       'frontend/js/views/foxxActiveView.js',
       'frontend/js/views/foxxActiveListView.js',
       'frontend/js/views/foxxInstalledView.js',
@@ -167,6 +169,7 @@ module.exports = function(karma) {
       'frontend/js/views/addNewGraphView.js',
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
+      'frontend/js/views/loginView.js',
       'frontend/js/views/clusterDashboardView.js',
       'frontend/js/views/clusterOverviewView.js',
       'frontend/js/views/clusterServerView.js',

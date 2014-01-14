@@ -53,6 +53,7 @@ namespace triagens {
                                         double requestTimeout, 
                                         bool warn) :
       _connection(connection),
+      _keepConnectionOnDestruction(false),
       _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _requestTimeout(requestTimeout),
@@ -75,7 +76,9 @@ namespace triagens {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      _connection->disconnect();
+      if (!_keepConnectionOnDestruction) {
+        _connection->disconnect();
+      }
     }
 
 // -----------------------------------------------------------------------------
@@ -309,7 +312,7 @@ namespace triagens {
         _writeBuffer.appendText("Connection: Close\r\n");
       }
       _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
-      _writeBuffer.appendText("X-Arango-Version: 1.4\r\n");
+      _writeBuffer.appendText("X-Arango-Version: 1.5\r\n");
       _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
       
       // do basic authorization
