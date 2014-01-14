@@ -26,11 +26,11 @@ describe ArangoDB do
         cmd = "/_api/document"
         doc = ArangoDB.log_delete("#{prefix}-missing-handle", cmd)
 
-    doc.code.should eq(400)
-    doc.parsed_response['error'].should eq(true)
-    doc.parsed_response['errorNum'].should eq(400)
-    doc.parsed_response['code'].should eq(400)
-    doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(400)
+        doc.parsed_response['code'].should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
       it "returns an error if document handle is corrupted" do
@@ -274,7 +274,6 @@ describe ArangoDB do
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
         did2.should eq(did)
-        
 
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
@@ -312,6 +311,59 @@ describe ArangoDB do
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
         rev2.should eq(rev)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "create a document and delete it, using an invalid revision" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # delete document, invalid revision
+        cmd = "/_api/document/#{did}?rev=abcd"
+        doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(400)
+        doc.parsed_response['code'].should eq(400)
+        
+        # delete document, invalid revision
+        cmd = "/_api/document/#{did}"
+        hdr = { "if-match" => "\"abcd\"" }
+        doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd, :headers => hdr)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(400)
+        doc.parsed_response['code'].should eq(400)
+        
+        # delete document, invalid revision
+        cmd = "/_api/document/#{did}"
+        hdr = { "if-match" => "'abcd'" }
+        doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd, :headers => hdr)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(400)
+        doc.parsed_response['code'].should eq(400)
+        
+        # delete document, correct revision
+        cmd = "/_api/document/#{did}"
+        hdr = { "if-match" => "'#{rev}'" }
+        doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd, :headers => hdr)
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
 
         ArangoDB.size_collection(@cid).should eq(0)
       end

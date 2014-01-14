@@ -1267,7 +1267,7 @@ function require (path) {
       libpath = fs.join(this._root, this._path, this._manifest[type]);
     }
     else {
-      libpath = fs.join(this._root, this._path, type);
+      libpath = fs.join(this._root, this._path);
     }
 
     var pkg = new Package("application",
