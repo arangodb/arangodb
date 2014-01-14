@@ -36,12 +36,64 @@
       beforeEach(function() {
         spyOn(serverView, "render");
         view = new window.ClusterOverviewView();
+        // Fake Data Injection to be removed
+        view.fakeData = {
+          primaries: {
+            plan: 3,
+            having: 2,
+            status: "warning"
+          },
+          secondaries: {
+            plan: 3,
+            having: 1,
+            status: "critical"
+          },
+          coordinators: {
+            plan: 3,
+            having: 3,
+            status: "ok"
+          }
+        };
       });
 
       it("should not render the Server view", function() {
         view.render();
         expect(serverView.render).not.toHaveBeenCalled();
       });
+
+      it("should render the amounts and status of primaries", function() {
+        view.render();
+        var btn = document.getElementById("primary"),
+          txt = $(btn).text();
+        expect(btn).toBeDefined();
+        expect(txt.trim()).toEqual("Primaries 2/3");
+        expect($(btn).hasClass("btn-success")).toBeFalsy();
+        expect($(btn).hasClass("btn-warning")).toBeTruthy();
+        expect($(btn).hasClass("btn-danger")).toBeFalsy();
+      });
+
+      it("should render the amounts and status of secondaries", function() {
+        view.render();
+        var btn = document.getElementById("secondary"),
+          txt = $(btn).text();
+        expect(btn).toBeDefined();
+        expect(txt.trim()).toEqual("Secondaries 1/3");
+        expect($(btn).hasClass("btn-success")).toBeFalsy();
+        expect($(btn).hasClass("btn-warning")).toBeFalsy();
+        expect($(btn).hasClass("btn-danger")).toBeTruthy();
+      });
+
+      it("should render the amounts and status of coordinators", function() {
+        view.render();
+        var btn = document.getElementById("coordinator"),
+          txt = $(btn).text();
+        expect(btn).toBeDefined();
+        expect(txt.trim()).toEqual("Coordinators 3/3");
+        expect($(btn).hasClass("btn-success")).toBeTruthy();
+        expect($(btn).hasClass("btn-warning")).toBeFalsy();
+        expect($(btn).hasClass("btn-danger")).toBeFalsy();
+      });
+
     });
 
     describe("user actions", function() {
