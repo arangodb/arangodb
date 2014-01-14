@@ -45,7 +45,7 @@ var docus = new (require("lib/swagger").Swagger)();
 
 controller.put("/foxxes/install", function (req, res) {
   var content = JSON.parse(req.requestBody),
-    name = content.name,-
+    name = content.name,
     mount = content.mount,
     version = content.version;
   res.json(foxxes.install(name, mount, version));
