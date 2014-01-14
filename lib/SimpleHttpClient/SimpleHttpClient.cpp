@@ -75,9 +75,7 @@ namespace triagens {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      if (0 != _connection) {
-        _connection->disconnect();
-      }
+      _connection->disconnect();
     }
 
 // -----------------------------------------------------------------------------
@@ -89,10 +87,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     bool SimpleHttpClient::close () {
-      if (0 != _connection) {
-        _connection->disconnect();
-        _state = IN_CONNECT;
-      }
+      _connection->disconnect();
+      _state = IN_CONNECT;
 
       reset();
 
