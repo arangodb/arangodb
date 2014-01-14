@@ -1014,6 +1014,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1209,6 +1211,8 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1499,6 +1503,8 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (col->_type != TRI_COL_TYPE_EDGE) {
     TRI_V8_TYPE_ERROR(scope, "invalid collection type for edge query");
@@ -1703,6 +1709,8 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -1778,6 +1786,8 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_voc_size_t internalSkip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[0]);
   TRI_voc_size_t batchSize = (TRI_voc_size_t) TRI_ObjectToDouble(argv[1]);
@@ -1863,6 +1873,8 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
@@ -1929,6 +1941,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -2156,6 +2170,8 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -2308,6 +2324,8 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
   
   bool withRevisions = false;
   if (argv.Length() > 0) {
@@ -2480,6 +2498,8 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
 
@@ -2674,6 +2694,8 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -2761,6 +2783,8 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
 
@@ -2901,6 +2925,8 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -3022,6 +3048,8 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);

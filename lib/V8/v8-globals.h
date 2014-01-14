@@ -167,6 +167,23 @@
 #define TRI_V8_TYPE_ERROR(scope, message) \
   return scope.Close(v8::ThrowException(v8::Exception::TypeError(v8::String::New(message))))
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "not yet implemented" handler for sharding
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+#define TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection) \
+  if (! collection->_isLocal) {                                        \
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);                \
+  }
+
+#else
+
+#define TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection) while (0) { }
+
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------

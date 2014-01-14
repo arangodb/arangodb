@@ -627,6 +627,14 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   if (col != 0) {
+#ifdef TRI_ENABLE_CLUSTER
+    if (! col->_isLocal) {
+      *err = TRI_CreateErrorObject(TRI_ERROR_NOT_IMPLEMENTED);
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
+      return 0;
+    }
+#endif
+
     res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
     if (res == TRI_ERROR_NO_ERROR && 
@@ -1049,6 +1057,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1159,6 +1169,8 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1272,6 +1284,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1590,6 +1604,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -1727,6 +1743,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -4778,8 +4796,10 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -4819,6 +4839,8 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -4943,6 +4965,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
@@ -5787,6 +5811,8 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   v8::Handle<v8::Object> result = v8::Object::New();
 
@@ -5899,14 +5925,16 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   bool withStats = false;
   if (argv.Length() > 0) { 
-      withStats = TRI_ObjectToBoolean(argv[0]);
+    withStats = TRI_ObjectToBoolean(argv[0]);
   }
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -5989,7 +6017,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-
+  
 #ifdef TRI_ENABLE_CLUSTER
   if (! collection->_isLocal) {
     v8::Handle<v8::Value> result = v8::String::New(collection->_name);
@@ -6080,7 +6108,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-
+  
 #ifdef TRI_ENABLE_CLUSTER
   if (! collection->_isLocal) {
     char const* originalDatabase = GetCurrentDatabaseName();
@@ -6338,6 +6366,8 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+  
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, 
@@ -6493,6 +6523,8 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -6659,14 +6691,16 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (col == 0) {
+  if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+  CollectionNameResolver resolver(collection->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
 
@@ -6676,11 +6710,11 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> result;
 
-  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, col, argv, false);
+  if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+    result = SaveVocbaseCol(&trx, collection, argv, false);
   }
-  else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, col, argv, false);
+  else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
+    result = SaveEdgeCol(&trx, collection, argv, false);
   }
 
   return scope.Close(result);
@@ -6725,22 +6759,24 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (col == 0) {
+  if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   size_t pos;
 
-  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+  if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
     if (argv.Length() < 1) {
       TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>]");
     }
 
     pos = 0;
   }
-  else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+  else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
     if (argv.Length() < 1) {
       TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>]");
     }
@@ -6758,8 +6794,8 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+  CollectionNameResolver resolver(collection->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(collection->_vocbase, resolver, collection->_cid);
 
   res = trx.begin();
 
@@ -6815,7 +6851,7 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> r = v8::Object::New();
-    r->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+    r->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document._key));
     r->Set(v8g->_RevKey, V8RevisionId(document._rid));
     r->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
     r->Set(v8g->_KeyKey, v8::String::New(document._key));
@@ -6825,11 +6861,11 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
   else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
-    if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-      result = SaveVocbaseCol(&trx, col, argv, true);
+    if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+      result = SaveVocbaseCol(&trx, collection, argv, true);
     }
-    else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-      result = SaveEdgeCol(&trx, col, argv, true);
+    else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
+      result = SaveEdgeCol(&trx, collection, argv, true);
     }
   }
   else {
@@ -6854,6 +6890,8 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   if (argv.Length() != 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "setAttribute(<key>, <value>)");
@@ -6936,14 +6974,16 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
 
   const bool forceSync = ExtractForceSync(argv, 1);
 
-  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (col == 0) {
+  if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, resolver, col->_cid);
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+  
+  CollectionNameResolver resolver(collection->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(collection->_vocbase, resolver, collection->_cid);
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -6980,6 +7020,8 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   if (argv.Length() != 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "truncateDatafile(<datafile>, <size>)");
@@ -7025,7 +7067,6 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
@@ -7069,6 +7110,8 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
 
@@ -7092,6 +7135,16 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (! collection->_isLocal) {
+    char const* originalDatabase = GetCurrentDatabaseName();
+    TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(std::string(originalDatabase), StringUtils::itoa(collection->_cid));
+
+    return scope.Close(v8::Number::New((int) info._version));
+  } 
+  // fallthru intentional 
+#endif
+  
   TRI_col_info_t info;
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
