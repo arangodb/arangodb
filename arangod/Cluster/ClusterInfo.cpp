@@ -447,7 +447,10 @@ void ClusterInfo::loadCollections () {
 
   {
     AgencyCommLocker locker("Current", "READ");
-    result = _agency.getValues("Current/Collections", true);
+
+    if (locker.successful()) {
+      result = _agency.getValues("Current/Collections", true);
+    }
   }
 
   if (result.successful()) {
@@ -515,7 +518,6 @@ void ClusterInfo::loadCollections () {
 
   LOG_TRACE("Error while loading Current/Collections");
   _collectionsValid = false;
-  return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,7 +639,10 @@ void ClusterInfo::loadServers () {
 
   {
     AgencyCommLocker locker("Current", "READ");
-    result = _agency.getValues("Current/ServersRegistered", true);
+
+    if (locker.successful()) {
+      result = _agency.getValues("Current/ServersRegistered", true);
+    }
   }
 
   if (result.successful()) {
@@ -708,7 +713,10 @@ void ClusterInfo::loadDBServers () {
 
   {
     AgencyCommLocker locker("Current", "READ");
-    result = _agency.getValues("Current/DBServers", true);
+
+    if (locker.successful()) {
+      result = _agency.getValues("Current/DBServers", true);
+    }
   }
 
   if (result.successful()) {
@@ -763,11 +771,16 @@ std::vector<ServerID> ClusterInfo::getDBServers () {
 ////////////////////////////////////////////////////////////////////////////////
   
 std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
+  AgencyCommResult result;
+
   // fetch value at Target/MapIDToEndpoint
-  AgencyCommLocker locker("Target", "READ");
-  AgencyCommResult result = _agency.getValues("Target/MapIDToEndpoint/" + serverID,
-                                              false);
-  locker.unlock();  // release as fast as possible
+  {
+    AgencyCommLocker locker("Target", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues("Target/MapIDToEndpoint/" + serverID, false);
+    }
+  }
  
   if (result.successful()) {
     std::map<std::string, std::string> out;
