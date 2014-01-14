@@ -106,7 +106,8 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
-	lib/SimpleHttpClient/SimpleHttpResult.cpp
+	lib/SimpleHttpClient/SimpleHttpResult.cpp \
+	lib/SimpleHttpClient/ConnectionManager.cpp
 
 ################################################################################
 ### @brief library "libarango.a", front-end part
@@ -162,7 +163,8 @@ lib_libarango_v8_a_SOURCES = \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
-	lib/SimpleHttpClient/SimpleHttpResult.cpp
+	lib/SimpleHttpClient/SimpleHttpResult.cpp \
+	lib/SimpleHttpClient/ConnectionManager.cpp
 
 
 ################################################################################
