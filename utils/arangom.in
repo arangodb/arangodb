@@ -43,21 +43,21 @@ if [ "$1" == "init" ] ; then
     set Target/MapIDToEndpoint
 
     set Target/Version 1
-    set Target/Lock UNLOCKED
+    set Target/Lock "\"UNLOCKED\""
     set Target/DBServers
     set Target/Coordinators
     set Target/Databases/@Usystem "{}"
     set Target/Collections/@Usystem
 
     set Plan/Version 1
-    set Plan/Lock UNLOCKED
+    set Plan/Lock "\"UNLOCKED\""
     set Plan/DBServers
     set Plan/Coordinators
     set Plan/Databases/@Usystem "{}"
     set Plan/Collections/@Usystem
 
     set Current/Version 1
-    set Current/Lock UNLOCKED
+    set Current/Lock "\"UNLOCKED\""
     set Current/DBServers
     set Current/Coordinators
     set Current/Databases/@Usystem
@@ -68,7 +68,7 @@ if [ "$1" == "init" ] ; then
 
     set Sync/ServerStates
     set Sync/Problems
-    set Sync/ClusterManager none
+    set Sync/ClusterManager "\"none\""
     set Sync/LatestID 0
     set Sync/Commands
     set Sync/HeartbeatIntervalMs 1000

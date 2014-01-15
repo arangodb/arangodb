@@ -27,6 +27,7 @@
 
 #include "Basics/JsonHelper.h"
 
+#include "BasicsC/conversions.h"
 #include "BasicsC/string-buffer.h"
 
 using namespace triagens::basics;
@@ -38,6 +39,52 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint64 into a JSON string 
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* JsonHelper::uint64String (TRI_memory_zone_t* zone,
+                                      uint64_t value) {
+  char buffer[21];
+  size_t len;
+
+  len = TRI_StringUInt64InPlace(value, (char*) &buffer);
+
+  return TRI_CreateString2CopyJson(zone, buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint64 into a JSON string 
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json) {
+  if (json != 0) {
+    if (json->_type == TRI_JSON_STRING) {
+      return TRI_UInt64String2(json->_value._string.data, json->_value._string.length - 1);
+    }
+    else if (json->_type == TRI_JSON_NUMBER) {
+      return (uint64_t) json->_value._number;
+    }
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint64 into a JSON string 
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json,
+                                   char const* name) {
+
+  if (json == 0) {
+    return 0;
+  }
+
+  TRI_json_t const* element = TRI_LookupArrayJson(json, name);
+  return stringUInt64(element);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a JSON key/value object from a list of strings
@@ -136,6 +183,17 @@ std::vector<std::string> JsonHelper::stringList (TRI_json_t const* json) {
         
 TRI_json_t* JsonHelper::fromString (std::string const& data) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create JSON from string
+////////////////////////////////////////////////////////////////////////////////
+        
+TRI_json_t* JsonHelper::fromString (char const* data,
+                                    size_t length) {
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
 
   return json;
 }

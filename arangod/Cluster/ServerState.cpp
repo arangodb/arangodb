@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/logging.h"
@@ -502,18 +503,17 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id)
 
     return ServerState::ROLE_UNDEFINED;
   }
-  
-  std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "Plan/Coordinators/", false)) {
+ 
+  if (! result.parse("Plan/Coordinators/", false)) { 
     LOG_TRACE("Got an invalid JSON response for Plan/Coordinators");
 
     return ServerState::ROLE_UNDEFINED;
   }
 
   // check if we can find ourselves in the list returned by the agency
-  std::map<std::string, std::string>::const_iterator it = out.find(id);
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(id);
 
-  if (it != out.end()) {
+  if (it != result._values.end()) {
     // we are in the list. this means we are a primary server
     return ServerState::ROLE_COORDINATOR;
   }
@@ -554,30 +554,25 @@ ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
 
     return ServerState::ROLE_UNDEFINED;
   }
- 
-  std::map<std::string, std::string> out;
-  if (! result.flattenJson(out, "Plan/DBServers/", false)) {
-    LOG_TRACE("Got an invalid JSON response for Plan/DBServers");
-    
-    return ServerState::ROLE_UNDEFINED;
-  }
 
   ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
 
   // check if we can find ourselves in the list returned by the agency
-  std::map<std::string, std::string>::const_iterator it = out.find(id);
+  result.parse("Plan/DBServers/", false); 
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(id);
 
-  if (it != out.end()) {
+  if (it != result._values.end()) {
     // we are in the list. this means we are a primary server
     role = ServerState::ROLE_PRIMARY;
   }
   else {
     // check if we are a secondary...
-    it = out.begin();
+    it = result._values.begin();
 
-    while (it != out.end()) {
-      const std::string value = (*it).second;
-      if (value == id) {
+    while (it != result._values.end()) {
+      const std::string name = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+
+      if (name == id) {
         role = ServerState::ROLE_SECONDARY;
         break;
       }
