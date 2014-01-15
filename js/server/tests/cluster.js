@@ -92,8 +92,6 @@ function ClusterEnabledSuite () {
       catch (err) {
       }
     });
-
-    agency.set("Sync/LatestID", "0");
   };
 
   return {
@@ -234,7 +232,7 @@ function ClusterEnabledSuite () {
         shardKeys: [ "_key" ],
         shards: { "s1" : "myself", "s2" : "other" }
       };
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
 
       assertTrue(ci.doesDatabaseExist("test"));
       assertFalse(ci.doesDatabaseExist("UnitTestsAgencyNonExisting"));
@@ -253,7 +251,7 @@ function ClusterEnabledSuite () {
         shardKeys: [ "_key" ],
         shards: { "s1" : "myself", "s2" : "other" }
       };
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
 
       var data = ci.getCollectionInfo("test", collection.id);
 
@@ -279,7 +277,7 @@ function ClusterEnabledSuite () {
         shards: { "s1" : "myself", "s2" : "other", "s3" : "foo", "s4" : "bar" }
       };
 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
 
       var data = ci.getCollectionInfo("test", collection.id);
 
@@ -305,14 +303,14 @@ function ClusterEnabledSuite () {
         shards: { "s1" : "myself" }
       };
 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
       ci.flush();
 
       assertEqual("myself", ci.getResponsibleServer("s1"));
       assertEqual("", ci.getResponsibleServer("s9999"));
      
       collection.shards = { s1: "other", s2: "myself" }; 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, JSON.stringify(collection)));
+      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
       ci.flush();
 
       assertEqual("other", ci.getResponsibleServer("s1"));

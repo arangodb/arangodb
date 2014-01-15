@@ -108,6 +108,16 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             AgencyCommResultEntry
+// -----------------------------------------------------------------------------
+
+    struct AgencyCommResultEntry {
+      uint64_t _index;
+      TRI_json_t* _json;
+      bool _isDir;
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  AgencyCommResult
 // -----------------------------------------------------------------------------
 
@@ -197,35 +207,21 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
+///
+/// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool processJsonNode (TRI_json_t const*,
-                            std::map<std::string, bool>&,
-                            std::string const&) const;
+      bool parseJsonNode (TRI_json_t const*,
+                          std::string const&,
+                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively flatten the JSON response into a map
+/// parse an agency result
+/// note that stripKeyPrefix is a decoded, normal key!
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool processJsonNode (TRI_json_t const*,
-                            std::map<std::string, std::string>&,
-                            std::string const&,
-                            bool) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn a result into a map
-////////////////////////////////////////////////////////////////////////////////
-
-      bool flattenJson (std::map<std::string, bool>&,
-                        std::string const&) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn a result into a map
-////////////////////////////////////////////////////////////////////////////////
-
-      bool flattenJson (std::map<std::string, std::string>&,
-                        std::string const&,
-                        bool) const; 
+      bool parse (std::string const&,
+                  bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -236,6 +232,8 @@ namespace triagens {
       std::string _location;
       std::string _message;
       std::string _body;
+
+      std::map<std::string, AgencyCommResultEntry> _values;
       uint64_t    _index;
       int         _statusCode;
       bool        _connected;
@@ -261,14 +259,7 @@ namespace triagens {
 
         AgencyCommLocker (std::string const&,
                           std::string const&,
-                          double);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an agency comm locker with default timeout
-////////////////////////////////////////////////////////////////////////////////
-
-        AgencyCommLocker (std::string const&,
-                          std::string const&);
+                          double = 0.0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an agency comm locker
@@ -322,6 +313,7 @@ namespace triagens {
 
         const std::string _key;
         const std::string _type;
+        TRI_json_t* _json;
         uint64_t _version;
         bool _isLocked;
 
@@ -425,13 +417,6 @@ namespace triagens {
 
         static std::string generateStamp ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates the lock type
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool checkLockType (std::string const&,
-                                   std::string const&);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            private static methods
 // -----------------------------------------------------------------------------
@@ -469,7 +454,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AgencyCommResult setValue (std::string const&, 
-                                   std::string const&,
+                                   TRI_json_t const*,
                                    double);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,7 +483,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AgencyCommResult casValue (std::string const&,
-                                   std::string const&,
+                                   TRI_json_t const*,
                                    bool,
                                    double,
                                    double);
@@ -510,8 +495,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         AgencyCommResult casValue (std::string const&, 
-                                   std::string const&, 
-                                   std::string const&,
+                                   TRI_json_t const*,
+                                   TRI_json_t const*,
                                    double,
                                    double);
 
@@ -610,14 +595,14 @@ namespace triagens {
         bool lock (std::string const&,
                    double,
                    double,
-                   std::string const&);
+                   TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release a lock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool unlock (std::string const&,
-                     std::string const&,
+                     TRI_json_t const*,
                      double);
 
 ////////////////////////////////////////////////////////////////////////////////

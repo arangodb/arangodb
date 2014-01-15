@@ -27,6 +27,7 @@
 
 #include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
+#include "Basics/JsonHelper.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -226,17 +227,15 @@ bool ApplicationCluster::start () {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
 
     if (result.successful()) {
-      std::map<std::string, std::string> value;
+      result.parse("", false);
 
-      if (result.flattenJson(value, "", false)) {
-        std::map<std::string, std::string>::const_iterator it = value.begin();
+      std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
-        if (it != value.end()) {
-          _heartbeatInterval = triagens::basics::StringUtils::uint64((*it).second);
+      if (it != result._values.end()) {
+        _heartbeatInterval = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
-          LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
-                   (unsigned long long) _heartbeatInterval);
-        }
+        LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
+                 (unsigned long long) _heartbeatInterval);
       }
     }
       
@@ -287,7 +286,15 @@ bool ApplicationCluster::open () {
     AgencyCommLocker locker("Current", "WRITE"); 
     
     if (locker.successful()) {
-      result = comm.setValue("Current/ServersRegistered/" + _myId, _myAddress, 0.0);
+      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
+      
+      if (json == 0) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("out of memory");
+      }
+
+      result = comm.setValue("Current/ServersRegistered/" + _myId, json, 0.0);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
 
     if (! result.successful()) {
@@ -296,20 +303,38 @@ bool ApplicationCluster::open () {
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {
+      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "none", 4);
+      
+      if (json == 0) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("out of memory");
+      }
+
       ServerState::instance()->setState(ServerState::STATE_SERVING);
   
       // register coordinator
-      AgencyCommResult result = comm.setValue("Current/Coordinators/" + _myId, "none", 0.0);
+      AgencyCommResult result = comm.setValue("Current/Coordinators/" + _myId, json, 0.0);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
       if (! result.successful()) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
       }
     }
     else if (role == ServerState::ROLE_PRIMARY) {
+      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "none", 4);
+      
+      if (json == 0) {
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("out of memory");
+      }
+
       ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
 
       // register server
-      AgencyCommResult result = comm.setValue("Current/DBServers/" + _myId, "none", 0.0);
+      AgencyCommResult result = comm.setValue("Current/DBServers/" + _myId, json, 0.0);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
       if (! result.successful()) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("unable to register db server in agency");

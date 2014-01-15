@@ -85,8 +85,18 @@ static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
-  const std::string oldValue = TRI_ObjectToString(argv[1]);
-  const std::string newValue = TRI_ObjectToString(argv[2]);
+
+  TRI_json_t* oldJson = TRI_ObjectToJson(argv[1]);
+
+  if (oldJson == 0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "cannot convert <oldValue> to JSON");
+  }
+
+  TRI_json_t* newJson = TRI_ObjectToJson(argv[2]);
+  if (newJson == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+    TRI_V8_EXCEPTION_PARAMETER(scope, "cannot convert <newValue> to JSON");
+  }
   
   double ttl = 0.0;
   if (argv.Length() > 3) {
@@ -104,7 +114,10 @@ static v8::Handle<v8::Value> JS_CasAgency (v8::Arguments const& argv) {
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.casValue(key, oldValue, newValue, ttl, timeout);
+  AgencyCommResult result = comm.casValue(key, oldJson, newJson, ttl, timeout);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
 
   if (! result.successful()) {
     if (! shouldThrow) {
@@ -184,50 +197,43 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
   if (! result.successful()) {
     return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
+    
+  result.parse("", false);
   
   v8::Handle<v8::Object> l = v8::Object::New();
 
   if (withIndexes) {
-    // return an object for each key
-    std::map<std::string, std::string> outValues;
-    std::map<std::string, std::string> outIndexes;
-  
-    result.flattenJson(outValues, "", false);
-    result.flattenJson(outIndexes, "", true);
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin(); 
     
-    assert(outValues.size() == outIndexes.size());
-
-    std::map<std::string, std::string>::const_iterator it = outValues.begin(); 
-    std::map<std::string, std::string>::const_iterator it2 = outIndexes.begin(); 
-
-    while (it != outValues.end()) {
+    while (it != result._values.end()) {
       const std::string key = (*it).first;
-      const std::string value = (*it).second;
-      const std::string idx = (*it2).second;
+      TRI_json_t const* json = (*it).second._json;
+      const std::string idx = StringUtils::itoa((*it).second._index);
 
-      v8::Handle<v8::Object> sub = v8::Object::New();
+      if (json != 0) {
+        v8::Handle<v8::Object> sub = v8::Object::New();
       
-      sub->Set(v8::String::New("value"), v8::String::New(value.c_str(), value.size()));
-      sub->Set(v8::String::New("index"), v8::String::New(idx.c_str(), idx.size()));
+        sub->Set(v8::String::New("value"), TRI_ObjectJson(json));
+        sub->Set(v8::String::New("index"), v8::String::New(idx.c_str(), idx.size()));
 
-      l->Set(v8::String::New(key.c_str(), key.size()), sub);
+        l->Set(v8::String::New(key.c_str(), key.size()), sub);
+      }
       
       ++it;
-      ++it2;
     }
   }
   else {
     // return just the value for each key
-    std::map<std::string, std::string> out;
-  
-    result.flattenJson(out, "", false);
-    std::map<std::string, std::string>::const_iterator it = out.begin(); 
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin(); 
 
-    while (it != out.end()) {
+    while (it != result._values.end()) {
       const std::string key = (*it).first;
-      const std::string value = (*it).second;
+      TRI_json_t const* json = (*it).second._json;
 
-      l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
+      if (json != 0) {
+        l->Set(v8::String::New(key.c_str(), key.size()), TRI_ObjectJson(json));
+      }
+
       ++it;
     }
   }
@@ -266,18 +272,19 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
   }
   
   // return just the value for each key
-  std::map<std::string, bool> out;
-  result.flattenJson(out, "");
-  std::map<std::string, bool>::const_iterator it = out.begin(); 
+  result.parse("", true);
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin(); 
 
   // skip first entry
-  ++it;
+  if (it != result._values.end()) {
+    ++it;
+  }
 
   if (flat) {
     v8::Handle<v8::Array> l = v8::Array::New();
 
     uint32_t i = 0;
-    while (it != out.end()) {
+    while (it != result._values.end()) {
       const std::string key = (*it).first;
 
       l->Set(i++, v8::String::New(key.c_str(), key.size()));
@@ -289,9 +296,9 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
   else {
     v8::Handle<v8::Object> l = v8::Object::New();
 
-    while (it != out.end()) {
+    while (it != result._values.end()) {
       const std::string key = (*it).first;
-      const bool isDirectory = (*it).second;
+      const bool isDirectory = (*it).second._isDir;
 
       l->Set(v8::String::New(key.c_str(), key.size()), v8::Boolean::New(isDirectory)); 
       ++it;
@@ -454,7 +461,12 @@ static v8::Handle<v8::Value> JS_SetAgency (v8::Arguments const& argv) {
   }
 
   const std::string key = TRI_ObjectToString(argv[0]);
-  const std::string value = TRI_ObjectToString(argv[1]);
+
+  TRI_json_t* json = TRI_ObjectToJson(argv[1]);
+
+  if (json == 0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "cannot convert <value> to JSON");
+  }
 
   double ttl = 0.0;
   if (argv.Length() > 2) {
@@ -462,7 +474,9 @@ static v8::Handle<v8::Value> JS_SetAgency (v8::Arguments const& argv) {
   }
   
   AgencyComm comm;
-  AgencyCommResult result = comm.setValue(key, value, ttl);
+  AgencyCommResult result = comm.setValue(key, json, ttl);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   if (! result.successful()) {
     return scope.Close(v8::ThrowException(CreateAgencyException(result)));
@@ -509,17 +523,19 @@ static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(CreateAgencyException(result)));
   }
 
-  std::map<std::string, std::string> out;
-  result.flattenJson(out, "", false);
-  std::map<std::string, std::string>::const_iterator it = out.begin(); 
+  result.parse("", false);
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin(); 
 
   v8::Handle<v8::Object> l = v8::Object::New();
 
-  while (it != out.end()) {
+  while (it != result._values.end()) {
     const std::string key = (*it).first;
-    const std::string value = (*it).second;
+    TRI_json_t* json = (*it).second._json;
 
-    l->Set(v8::String::New(key.c_str(), key.size()), v8::String::New(value.c_str(), value.size()));
+    if (json != 0) {
+      l->Set(v8::String::New(key.c_str(), key.size()), TRI_ObjectJson(json));
+    }
+
     ++it;
   }
     
@@ -795,7 +811,7 @@ static v8::Handle<v8::Value> JS_GetDBServers (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "DBServers()");
   }
 
-  std::vector<std::string> DBServers = ClusterInfo::instance()->getDBServers();
+  std::vector<std::string> DBServers = ClusterInfo::instance()->getCurrentDBServers();
 
   v8::Handle<v8::Array> l = v8::Array::New();
 
@@ -819,7 +835,7 @@ static v8::Handle<v8::Value> JS_ReloadDBServers (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "reloadDBServers()");
   }
 
-  ClusterInfo::instance()->loadDBServers();
+  ClusterInfo::instance()->loadCurrentDBServers();
   return scope.Close(v8::Undefined());
 }
 

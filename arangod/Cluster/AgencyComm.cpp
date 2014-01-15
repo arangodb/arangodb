@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/AgencyComm.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
@@ -89,6 +90,7 @@ AgencyCommResult::AgencyCommResult ()
   : _location(),
     _message(),
     _body(),
+    _values(),
     _index(0),
     _statusCode(0),
     _connected(false) {
@@ -99,6 +101,15 @@ AgencyCommResult::AgencyCommResult ()
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult::~AgencyCommResult () {
+  // free all JSON data
+  std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
+
+  while (it != _values.end()) {
+    if ((*it).second._json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
+    }
+    ++it;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -238,9 +249,9 @@ std::string AgencyCommResult::errorDetails () const {
 /// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
-                                        std::map<std::string, bool>& out,
-                                        std::string const& stripKeyPrefix) const {
+bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
+                                      std::string const& stripKeyPrefix,
+                                      bool withDirs) {
   if (! TRI_IsArrayJson(node)) {
     return true;
   }
@@ -251,10 +262,10 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
   if (! TRI_IsStringJson(key)) {
     return false;
   }
-  
+
   std::string keydecoded 
-    = AgencyComm::decodeKey(string(key->_value._string.data,
-                                   key->_value._string.length-1));
+    = AgencyComm::decodeKey(std::string(key->_value._string.data,
+                                        key->_value._string.length-1));
 
   // make sure we don't strip more bytes than the key is long
   const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
@@ -273,7 +284,14 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
   bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
 
   if (isDir) {
-    out.insert(std::make_pair<std::string, bool>(prefix, true));
+    if (withDirs) {
+      AgencyCommResultEntry entry;
+
+      entry._index = 0;
+      entry._json  = 0;
+      entry._isDir = true;
+      _values.insert(std::make_pair<std::string, AgencyCommResultEntry>(prefix, entry));
+    }
 
     // is a directory, so there may be a "nodes" attribute
     TRI_json_t const* nodes = TRI_LookupArrayJson(node, "nodes");
@@ -286,9 +304,9 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
     const size_t n = TRI_LengthVector(&nodes->_value._objects);
 
     for (size_t i = 0; i < n; ++i) {
-      if (! processJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), 
-                            out, 
-                            stripKeyPrefix)) { 
+      if (! parseJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), 
+                           stripKeyPrefix,
+                           withDirs)) {
         return false;
       }
     }
@@ -301,8 +319,14 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
 
     if (TRI_IsStringJson(value)) {
       if (! prefix.empty()) {
-        // otherwise return value
-        out.insert(std::make_pair<std::string, bool>(prefix, false));
+        AgencyCommResultEntry entry;
+
+        // get "modifiedIndex"
+        entry._index = triagens::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
+        entry._json  = triagens::basics::JsonHelper::fromString(value->_value._string.data, value->_value._string.length - 1);
+        entry._isDir = false;
+
+        _values.insert(std::make_pair<std::string, AgencyCommResultEntry>(prefix, entry));
       }
     }
   }
@@ -311,106 +335,12 @@ bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively flatten the JSON response into a map
-///
-/// stripKeyPrefix is decoded, as is the _globalPrefix
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommResult::processJsonNode (TRI_json_t const* node,
-                                        std::map<std::string, std::string>& out,
-                                        std::string const& stripKeyPrefix,
-                                        bool returnIndex) const {
-  if (! TRI_IsArrayJson(node)) {
-    return true;
-  }
-
-  // get "key" attribute
-  TRI_json_t const* key = TRI_LookupArrayJson(node, "key");
-
-  if (! TRI_IsStringJson(key)) {
-    return false;
-  }
-
-  std::string keydecoded 
-    = AgencyComm::decodeKey(string(key->_value._string.data,
-                                   key->_value._string.length-1));
-
-  // make sure we don't strip more bytes than the key is long
-  const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
-  const size_t length = keydecoded.size();
-
-  std::string prefix;
-  if (offset >= length) {
-    prefix = "";
-  }
-  else {
-    prefix = keydecoded.substr(offset);
-  }
-
-  // get "dir" attribute
-  TRI_json_t const* dir = TRI_LookupArrayJson(node, "dir");
-  bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
-
-  if (isDir) {
-    // is a directory, so there may be a "nodes" attribute
-    TRI_json_t const* nodes = TRI_LookupArrayJson(node, "nodes");
-
-    if (! TRI_IsListJson(nodes)) {
-      // if directory is empty...
-      return true;
-    }
-
-    const size_t n = TRI_LengthVector(&nodes->_value._objects);
-
-    for (size_t i = 0; i < n; ++i) {
-      if (! processJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i), 
-                            out, 
-                            stripKeyPrefix, 
-                            returnIndex)) {
-        return false;
-      }
-    }
-  }
-  else {
-    // not a directory
-    
-    // get "value" attribute
-    TRI_json_t const* value = TRI_LookupArrayJson(node, "value");
-
-    if (TRI_IsStringJson(value)) {
-      if (! prefix.empty()) {
-        if (returnIndex) {
-          // return "modifiedIndex"
-          TRI_json_t const* modifiedIndex = TRI_LookupArrayJson(node, "modifiedIndex");
-
-          if (! TRI_IsNumberJson(modifiedIndex)) {
-            return false;
-          }
-          // convert the number to an integer  
-          out.insert(std::make_pair<std::string, std::string>(prefix, 
-                                                              triagens::basics::StringUtils::itoa((uint64_t) modifiedIndex->_value._number)));
-        }
-        else {
-          // otherwise return value
-          out.insert(std::make_pair<std::string, std::string>(prefix,
-                                                              std::string(value->_value._string.data, value->_value._string.length - 1)));
-        }
-  
-      }
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn a result into a map
-///
+/// parse an agency result
 /// note that stripKeyPrefix is a decoded, normal key!
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::flattenJson (std::map<std::string, bool>& out,
-                                    std::string const& stripKeyPrefix) const {
+bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
+                              bool withDirs) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
   if (! TRI_IsArrayJson(json)) {
@@ -420,37 +350,12 @@ bool AgencyCommResult::flattenJson (std::map<std::string, bool>& out,
     return false;
   }
 
-  // get "node" attribute
-  TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
-
-  const bool result = processJsonNode(node, out, stripKeyPrefix);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn a result into a map
-///
-/// note that stripKeyPrefix is a decoded, normal key!
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommResult::flattenJson (std::map<std::string, std::string>& out,
-                                    std::string const& stripKeyPrefix,
-                                    bool returnIndex) const {
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
-
-  if (! TRI_IsArrayJson(json)) {
-    if (json != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-    return false;
-  }
+  _values.clear();
 
   // get "node" attribute
   TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
 
-  const bool result = processJsonNode(node, out, stripKeyPrefix, returnIndex);
+  const bool result = parseJsonNode(node, stripKeyPrefix, withDirs);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;
@@ -516,29 +421,19 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
                                     double ttl) 
   : _key(key),
     _type(type),
+    _json(0),
     _version(0),
     _isLocked(false) {
 
   AgencyComm comm;
-  if (comm.lock(key, ttl, 0.0, type)) {
-    fetchVersion(comm);
-    _isLocked = true;
+
+  _json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
+
+  if (_json == 0) {
+    return;
   }
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an agency comm locker with default timeout
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommLocker::AgencyCommLocker (std::string const& key,
-                                    std::string const& type)
-  : _key(key),
-    _type(type),
-    _version(0),
-    _isLocked(false) {
-
-  AgencyComm comm;
-  if (comm.lock(key, AgencyComm::_globalConnectionOptions._lockTimeout, 0.0, type)) {
+  if (comm.lock(key, ttl, 0.0, _json)) {
     fetchVersion(comm);
     _isLocked = true;
   }
@@ -550,6 +445,10 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
 
 AgencyCommLocker::~AgencyCommLocker () {
   unlock();
+
+  if (_json != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -565,7 +464,7 @@ void AgencyCommLocker::unlock () {
     AgencyComm comm;
 
     updateVersion(comm);
-    if (comm.unlock(_key, _type, 0.0)) {
+    if (comm.unlock(_key, _json, 0.0)) {
       _isLocked = false;
     }
   }
@@ -586,22 +485,21 @@ bool AgencyCommLocker::fetchVersion (AgencyComm& comm) {
 
   AgencyCommResult result = comm.getValues(_key + "/Version", false); 
   if (! result.successful()) {
-    if (result.httpCode() != 404) {
+    if (result.httpCode() != (int) triagens::rest::HttpResponse::NOT_FOUND) {
       return false;
     }
 
     return true;
   }
-    
-  std::map<std::string, std::string> out;
-  result.flattenJson(out, "", false);
-  std::map<std::string, std::string>::const_iterator it = out.begin(); 
+   
+  result.parse("", false); 
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin(); 
 
-  if (it == out.end()) {
+  if (it == result._values.end()) {
     return false;
   }
 
-  _version = triagens::basics::StringUtils::uint64((*it).second);
+  _version = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
   return true;
 }
 
@@ -617,20 +515,44 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
   AgencyCommResult result;
 
   if (_version == 0) {
+    TRI_json_t* json = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1); 
+
+    if (json == 0) {
+      return false;
+    }
+
     // no Version key found, now set it
     result = comm.casValue(_key + "/Version", 
-                           "1",
+                           json,
                            false,
                            0.0, 
                            0.0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
   else {
     // Version key found, now update it
+    TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, _version); 
+
+    if (oldJson == 0) {
+      return false;
+    }
+    
+    TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, _version + 1); 
+
+    if (newJson == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+      return false;
+    }
+
     result = comm.casValue(_key + "/Version", 
-                           triagens::basics::StringUtils::itoa(_version),
-                           triagens::basics::StringUtils::itoa(_version + 1), 
+                           oldJson,
+                           newJson,
                            0.0, 
                            0.0);
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
   }
 
   return result.successful();
@@ -963,19 +885,6 @@ std::string AgencyComm::generateStamp () {
   return std::string(buffer, len);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates the lock type
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyComm::checkLockType (std::string const& key,
-                                std::string const& value) {
-  if (value != "READ" && value != "WRITE") {
-    return false;
-  }
-
-  return true;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            private static methods
 // -----------------------------------------------------------------------------
@@ -1018,13 +927,21 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 
 bool AgencyComm::sendServerState () {
   // construct JSON value { "status": "...", "time": "..." }
-  std::string value("{\"status\":\"");
-  value.append(ServerState::stateToString(ServerState::instance()->getState()));
-  value.append("\",\"time\":\""); 
-  value.append(AgencyComm::generateStamp());
-  value.append("\"}"); 
-  
-  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), value, 0.0));
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == 0) {
+    return false;
+  }
+
+  const std::string status = ServerState::stateToString(ServerState::instance()->getState());
+  const std::string stamp = AgencyComm::generateStamp();
+    
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "time", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
+
+  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json, 0.0));
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
   return result.successful();
 }
 
@@ -1071,7 +988,7 @@ AgencyCommResult AgencyComm::createDirectory (std::string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
         
 AgencyCommResult AgencyComm::setValue (std::string const& key, 
-                                       std::string const& value,
+                                       TRI_json_t const* json,
                                        double ttl) {
   AgencyCommResult result;
   
@@ -1079,7 +996,7 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
                    _globalConnectionOptions._requestTimeout, 
                    result,
                    buildUrl(key) + ttlParam(ttl, true),
-                   "value=" + triagens::basics::StringUtils::urlEncode(value),
+                   "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(json)),
                    false);
 
   return result;
@@ -1165,7 +1082,7 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue (std::string const& key,
-                                       std::string const& value,
+                                       TRI_json_t const* json,
                                        bool prevExist,
                                        double ttl,
                                        double timeout) {
@@ -1176,7 +1093,7 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
                    result,
                    buildUrl(key) + "?prevExist=" 
                      + (prevExist ? "true" : "false") + ttlParam(ttl, false), 
-                   "value=" + triagens::basics::StringUtils::urlEncode(value),
+                   "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(json)),
                    false);
 
   return result;
@@ -1189,8 +1106,8 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue (std::string const& key,
-                                       std::string const& oldValue, 
-                                       std::string const& newValue,
+                                       TRI_json_t const* oldJson,
+                                       TRI_json_t const* newJson,
                                        double ttl,
                                        double timeout) {
   AgencyCommResult result;
@@ -1199,9 +1116,9 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
                    timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, 
                    result,
                    buildUrl(key) + "?prevValue=" 
-                     + triagens::basics::StringUtils::urlEncode(oldValue) 
+                     + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(oldJson))
                      + ttlParam(ttl, false),
-                   "value=" + triagens::basics::StringUtils::urlEncode(newValue),
+                   "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(newJson)),
                    false);
 
   return result;
@@ -1245,7 +1162,15 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
 bool AgencyComm::lockRead (std::string const& key, 
                            double ttl,
                            double timeout) {
-  return lock(key, ttl, timeout, "READ");
+  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", 4);
+
+  if (json == 0) {
+    return false;
+  }
+
+  bool result = lock(key, ttl, timeout, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1255,7 +1180,15 @@ bool AgencyComm::lockRead (std::string const& key,
 bool AgencyComm::lockWrite (std::string const& key, 
                             double ttl,
                             double timeout) {
-  return lock(key, ttl, timeout, "WRITE");
+  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", 5);
+
+  if (json == 0) {
+    return false;
+  }
+
+  bool result = lock(key, ttl, timeout, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1264,7 +1197,15 @@ bool AgencyComm::lockWrite (std::string const& key,
 
 bool AgencyComm::unlockRead (std::string const& key,
                              double timeout) {
-  return unlock(key, "READ", timeout);
+  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", 4);
+
+  if (json == 0) {
+    return false;
+  }
+
+  bool result = unlock(key, json, timeout);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1273,7 +1214,15 @@ bool AgencyComm::unlockRead (std::string const& key,
 
 bool AgencyComm::unlockWrite (std::string const& key,
                               double timeout) {
-  return unlock(key, "WRITE", timeout);
+  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", 5);
+
+  if (json == 0) {
+    return false;
+  }
+
+  bool result = unlock(key, json, timeout);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1290,29 +1239,58 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 
   while (tries++ < maxTries) {
     result = getValues(key, false);
+    
+    if (result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
+      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "0", 1);
+
+      if (json != 0) {
+        // create the key on the fly
+        setValue(key, json, 0.0);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        tries--;
+
+        continue;
+      }
+    }
 
     if (! result.successful()) {
       return result;
     }
 
-    std::map<std::string, std::string> out;
-    result.flattenJson(out, "", false);
-    std::map<std::string, std::string>::const_iterator it = out.begin(); 
+    result.parse("", false);
+    
+    TRI_json_t* oldJson = 0;
 
-    std::string oldValue;
-    if (it != out.end()) {
-      oldValue = (*it).second;
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+
+    if (it != result._values.end()) {
+      // steal the json
+      oldJson = (*it).second._json;
+      (*it).second._json = 0;
     }
     else {
-      oldValue = "0";
-   }
-  
-    uint64_t newValue = triagens::basics::StringUtils::int64(oldValue) + count;
+      oldJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "0", 1);
+    }
 
-    result = casValue(key, oldValue, triagens::basics::StringUtils::itoa(newValue), 0.0, timeout);
+    if (oldJson == 0) {
+      return AgencyCommResult();
+    }
+  
+    const uint64_t oldValue = triagens::basics::JsonHelper::stringUInt64(oldJson) + count;
+    const uint64_t newValue = oldValue + count;
+    TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, newValue);
+
+    if (newJson == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+      return AgencyCommResult();
+    }
+
+    result = casValue(key, oldJson, newJson, 0.0, timeout);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
 
     if (result.successful()) {
-      result._index = triagens::basics::StringUtils::int64(oldValue) + 1; 
+      result._index = oldValue + 1; 
       break;
     }
   }
@@ -1344,11 +1322,7 @@ std::string AgencyComm::ttlParam (double ttl,
 bool AgencyComm::lock (std::string const& key,
                        double ttl,
                        double timeout,
-                       std::string const& value) {
-  if (! checkLockType(key, value)) {
-    return false;
-  }
-  
+                       TRI_json_t const* json) {
   if (ttl == 0.0) {
     ttl = _globalConnectionOptions._lockTimeout;
   }
@@ -1360,16 +1334,25 @@ bool AgencyComm::lock (std::string const& key,
   const double end = TRI_microtime() + timeout;
 
   while (true) {
+    TRI_json_t* oldJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", 8);
+
+    if (oldJson == 0) {
+      return false;
+    }
+
     AgencyCommResult result = casValue(key + "/Lock", 
-                                       "UNLOCKED", 
-                                       value, 
+                                       oldJson, 
+                                       json, 
                                        ttl,
                                        timeout);
 
-    if (! result.successful() && result.httpCode() == 404) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+
+    if (! result.successful() && 
+        result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", 
-                        value,
+                        json,
                         false,
                         ttl,
                         timeout);
@@ -1397,12 +1380,8 @@ bool AgencyComm::lock (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::unlock (std::string const& key,
-                         std::string const& value,
+                         TRI_json_t const* json,
                          double timeout) {
-  if (! checkLockType(key, value)) {
-    return false;
-  }
-  
   if (timeout == 0.0) {
     timeout = _globalConnectionOptions._lockTimeout;
   }
@@ -1410,11 +1389,19 @@ bool AgencyComm::unlock (std::string const& key,
   const double end = TRI_microtime() + timeout;
 
   while (true) {
+    TRI_json_t* newJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", 8);
+
+    if (newJson == 0) {
+      return false;
+    }
+
     AgencyCommResult result = casValue(key + "/Lock", 
-                                       value, 
-                                       std::string("UNLOCKED"), 
+                                       json, 
+                                       newJson,
                                        0.0,
                                        timeout);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
 
     if (result.successful()) {
       return true;

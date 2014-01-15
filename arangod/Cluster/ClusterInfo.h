@@ -70,6 +70,8 @@ namespace triagens {
         CollectionInfo ();
         
         CollectionInfo (std::string const&);
+        
+        CollectionInfo (struct TRI_json_s*);
 
         CollectionInfo (CollectionInfo const&);
 
@@ -298,7 +300,14 @@ namespace triagens {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCollections ();
+        void loadCurrentCollections ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about planned databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadPlannedDatabases ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection
@@ -332,14 +341,14 @@ namespace triagens {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadDBServers ();
+        void loadCurrentDBServers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a list of all DBServers in the cluster that have
 /// currently registered
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ServerID> getDBServers ();
+        std::vector<ServerID> getCurrentDBServers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
@@ -391,6 +400,7 @@ namespace triagens {
         _uniqid;
 
         // Cached data from the agency, we reload whenever necessary:
+        std::map<DatabaseID, struct TRI_json_s*> _plannedDatabases; // from Plan/Databases
         AllCollections                     _collections;  // from Current/Collections/
         bool                               _collectionsValid;
         std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered
