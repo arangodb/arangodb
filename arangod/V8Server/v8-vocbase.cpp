@@ -1937,10 +1937,18 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     res = agency.getValues("Current/Collections/" + databaseName + "/" + cid, 
                            true);
     if (res.successful()) {
-      // FIXME
-      // Now extract JSON, look into length of "shards" entry, if equal to
-      // numberOfShards then we are done.
-          return scope.Close(v8::True());
+      res.parse("", false);
+      map<string, AgencyCommResultEntry>::iterator it = res._values.begin();
+      if (it != res._values.end()) {
+        TRI_json_t const* json = (*it).second._json;
+        TRI_json_t const* shards = TRI_LookupArrayJson(json, "shards");
+        if (TRI_IsArrayJson(shards)) {
+          size_t len = shards->_value._objects._length / 2;
+          if (len == numberOfShards) {
+            return scope.Close(v8::True());
+          }
+        }
+      }
     }
     res = agency.watchValue("Current/Version", index, 1.0, false);
     if (!res.successful()) {
@@ -8397,13 +8405,11 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
   }
   uint64_t index = res._index;
   while (true) {
-    map<string, TRI_json_t*> done;
     res = ac.getValues("Current/Databases/"+name, true);
     if (res.successful()) {
-      if (res.flattenJson(done, "Current/Databases/"+name+"/",false)) {
-        if (done.size() >= DBServers.size()) {
-          return scope.Close(v8::True());
-        }
+      res.parse("Current/Databases/"+name+"/", false);
+      if (res._values.size() >= DBServers.size()) {
+        return scope.Close(v8::True());
       }
     }
     res = ac.watchValue("Current/Version", index, 1.0, false);
@@ -8596,20 +8602,24 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
 
   res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                             "could not read version of current in agency");
   }
   uint64_t index = res._index;
   while (true) {
     map<string, TRI_json_t*> done;
     res = ac.getValues("Current/Databases/"+name, true);
     if (res.successful()) {
-      if (res.flattenJson(done, "Current/Databases/"+name+"/",false)) {
-        if (done.size() > 0) {
-          return scope.Close(v8::True());
-        }
+      res.parse("Current/Databases/"+name+"/", false);
+      if (res._values.size() == 0) {
+        return scope.Close(v8::True());
       }
     }
     res = ac.watchValue("Current/Version", index, 1.0, false);
+    if (!res.successful()) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not read version of current in agency");
+    }
     index = res._index;
   }
 }
