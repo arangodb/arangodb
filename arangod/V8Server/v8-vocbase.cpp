@@ -8216,7 +8216,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
 
   if (argv.Length() == 0) {
     ci->loadCurrentCollections();
-    vector<DatabaseID> list = ci->listDatabases();
+    vector<DatabaseID> list = ci->listDatabases(true);
     v8::Handle<v8::Array> result = v8::Array::New();
     for (size_t i = 0;  i < list.size();  ++i) {    
       result->Set((uint32_t) i, v8::String::New(list[i].c_str(), 
