@@ -7631,10 +7631,12 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
     
-    if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
+    if (ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
+      names = GetCollectionNamesCluster(vocbase, originalDatabase);
     }
-    names = GetCollectionNamesCluster(vocbase, originalDatabase);
+    else {
+      TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
+    }
   }
   else {
     names = TRI_CollectionNamesVocBase(vocbase);
@@ -8216,7 +8218,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
 
   if (argv.Length() == 0) {
     ci->loadCurrentCollections();
-    vector<DatabaseID> list = ci->listDatabases();
+    vector<DatabaseID> list = ci->listDatabases(true);
     v8::Handle<v8::Array> result = v8::Array::New();
     for (size_t i = 0;  i < list.size();  ++i) {    
       result->Set((uint32_t) i, v8::String::New(list[i].c_str(), 

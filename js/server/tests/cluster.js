@@ -224,18 +224,36 @@ function ClusterEnabledSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDoesDatabaseExist : function () {
-      var collection = {
-        id: "123",
-        name: "mycollection",
-        type: 2,
-        status: 3, // LOADED 
-        shardKeys: [ "_key" ],
-        shards: { "s1" : "myself", "s2" : "other" }
+      var database = {
+        name: "test"
       };
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
+
+      assertTrue(agency.set("Plan/Databases/" + database.name, database));
+      assertTrue(agency.set("Current/DBServers/Foo", "Bar"));
+      assertTrue(agency.set("Current/DBServers/Barz", "Bat"));
+      assertTrue(agency.set("Current/Databases/test/Foo", database));
+      assertTrue(agency.set("Current/Databases/test/Barz", database));
 
       assertTrue(ci.doesDatabaseExist("test"));
+
       assertFalse(ci.doesDatabaseExist("UnitTestsAgencyNonExisting"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test doesDatabaseExist
+////////////////////////////////////////////////////////////////////////////////
+
+    testDoesDatabaseExistNotReady : function () {
+      var database = {
+        name: "test"
+      };
+
+      assertTrue(agency.set("Plan/Databases/" + database.name, database));
+      assertTrue(agency.set("Current/DBServers/Foo", "Bar"));
+      assertTrue(agency.set("Current/DBServers/Barz", "Bat"));
+      assertTrue(agency.set("Current/Databases/test/Foo", database));
+      
+      assertFalse(ci.doesDatabaseExist("test"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

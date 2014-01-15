@@ -29,34 +29,34 @@ function set() {
   value=$2
   if [ "x$value" == "x" ] ; then
       echo "Creating directory $PREFIX$key"
-      $CURL -X PUT "$URL$PREFIX$key?dir=true" > /dev/null || exit 1
+      $CURL -X PUT -L "$URL$PREFIX$key?dir=true" > /dev/null || exit 1
   else
       echo "Setting key $PREFIX$key to value $value"
-      $CURL -X PUT "$URL$PREFIX$key" -d "value=$value" > /dev/null || exit 1
+      $CURL -X PUT -L "$URL$PREFIX$key" -d "value=$value" > /dev/null || exit 1
   fi
 }
 
 
 if [ "$1" == "init" ] ; then
-    $CURL -X DELETE "$URL$PREFIX?recursive=true" > /dev/null 
+    $CURL -X DELETE -L "$URL$PREFIX?recursive=true" > /dev/null 
     set Target/MapLocalToID
     set Target/MapIDToEndpoint
 
-    set Target/Version 1
+    set Target/Version "\"1\""
     set Target/Lock "\"UNLOCKED\""
     set Target/DBServers
     set Target/Coordinators
     set Target/Databases/@Usystem "{}"
     set Target/Collections/@Usystem
 
-    set Plan/Version 1
+    set Plan/Version "\"1\""
     set Plan/Lock "\"UNLOCKED\""
     set Plan/DBServers
     set Plan/Coordinators
     set Plan/Databases/@Usystem "{}"
     set Plan/Collections/@Usystem
 
-    set Current/Version 1
+    set Current/Version "\"1\""
     set Current/Lock "\"UNLOCKED\""
     set Current/DBServers
     set Current/Coordinators
