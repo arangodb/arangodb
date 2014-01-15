@@ -272,7 +272,8 @@ actions.defineHttp({
   callback : function (req, res) {
     var result = {
       appPath: module.appPath(),
-      devAppPath: internal.developmentMode ? module.devAppPath() : null
+      devAppPath: internal.developmentMode ? module.devAppPath() : null,
+      startupPath: module.startupPath()
     };
 
     actions.resultOk(req, res, actions.HTTP_OK, { result: result });
