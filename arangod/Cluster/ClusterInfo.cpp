@@ -435,6 +435,48 @@ vector<DatabaseID> ClusterInfo::listDatabases () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about planned databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::loadPlannedDatabases () {
+  static const std::string prefix = "Plan/Databases";
+
+  AgencyCommResult result;
+
+  {
+    AgencyCommLocker locker("Plan", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues(prefix, true);
+    }
+  }
+
+  if (result.successful()) {
+    std::map<std::string, std::string> databases;
+
+    if (result.flattenJson(databases, prefix + "/", false)) {
+      LOG_TRACE("%s loaded successfully", prefix.c_str());
+   
+      WRITE_LOCKER(_lock);
+      _plannedDatabases.clear(); 
+
+      std::map<std::string, std::string>::const_iterator it;
+      for (it = databases.begin(); it != databases.end(); ++it) {
+        const std::string& name = (*it).first;
+        TRI_json_t* options = JsonHelper::fromString((*it).second);
+
+        _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
+      }
+
+      return;
+    }
+  }
+
+  LOG_TRACE("Error while loading %s", prefix.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,7 +498,7 @@ void ClusterInfo::loadCurrentCollections () {
     std::map<std::string, std::string> collections;
 
     if (result.flattenJson(collections, prefix + "/", false)) {
-      LOG_TRACE("Current/Collections loaded successfully");
+      LOG_TRACE("%s loaded successfully", prefix.c_str());
    
       WRITE_LOCKER(_lock);
       _collections.clear(); 
