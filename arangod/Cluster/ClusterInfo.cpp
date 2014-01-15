@@ -51,53 +51,15 @@ using triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::CollectionInfo () 
-  : _id(),
-    _name(),
-    _type(TRI_COL_TYPE_UNKNOWN),
-    _status(TRI_VOC_COL_STATUS_CORRUPTED),
-    _maximalSize(0),
-    _deleted(false),
-    _doCompact(false),
-    _isSystem(false),
-    _isVolatile(false),
-    _waitForSync(false),
-    _keyOptions(0),
-    _shardKeys(),
-    _shardIds() {
+  : _json(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection info object from json
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo::CollectionInfo (std::string const& data) {
-  TRI_json_t* json = JsonHelper::fromString(data);
-
-  if (json != 0) {
-    if (JsonHelper::isArray(json)) {
-      if (! createFromJson(json)) {
-        invalidate();
-      }
-    }
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::CollectionInfo (TRI_json_t* json) {
-  if (json != 0) {
-    if (JsonHelper::isArray(json)) {
-      if (! createFromJson(json)) {
-        invalidate();
-      }
-    }
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
+CollectionInfo::CollectionInfo (TRI_json_t* json)
+  : _json(json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,22 +67,10 @@ CollectionInfo::CollectionInfo (TRI_json_t* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::CollectionInfo (CollectionInfo const& other) :
-  _id(other._id),
-  _name(other._name),
-  _type(other._type),
-  _status(other._status),
-  _maximalSize(other._maximalSize),
-  _deleted(other._deleted),
-  _doCompact(other._doCompact),
-  _isSystem(other._isSystem),
-  _isVolatile(other._isVolatile),
-  _waitForSync(other._waitForSync),
-  _keyOptions(0),
-  _shardKeys(other._shardKeys),
-  _shardIds(other._shardIds) {
+  _json(other._json) {
 
-  if (other._keyOptions != 0) {
-    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  if (other._json != 0) {
+    _json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._json);
   }
 }
 
@@ -129,22 +79,11 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
-  _id = other._id;
-  _name = other._name;
-  _type = other._type;
-  _status = other._status;
-  _maximalSize = other._maximalSize;
-  _deleted = other._deleted;
-  _doCompact = other._doCompact;
-  _isSystem = other._isSystem;
-  _isVolatile = other._isVolatile;
-  _waitForSync = other._waitForSync;
-  _shardKeys = other._shardKeys;
-  _shardIds = other._shardIds;
-  _keyOptions = 0;
-  
-  if (other._keyOptions != 0) {
-    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  if (other._json != 0 && this != &other) {
+    _json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._json);
+  }
+  else {
+    _json = 0;
   }
 
   return *this;
@@ -155,166 +94,13 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::~CollectionInfo () {
-  if (_keyOptions != 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+  if (_json != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
   }
 } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidates a collection info object
-////////////////////////////////////////////////////////////////////////////////
-
-void CollectionInfo::invalidate () {
-  _id = 0;
-  _name = "";
-  _type = TRI_COL_TYPE_UNKNOWN;
-  _status = TRI_VOC_COL_STATUS_CORRUPTED;
-  _maximalSize = 0;
-  _deleted = false;
-  _doCompact = false;
-  _isSystem = false;
-  _isVolatile = false;
-  _waitForSync = false;
-  _shardKeys.clear();
-  _shardIds.clear();
-  
-  if (_keyOptions != 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
-  }
-  _keyOptions = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief populate object properties from the JSON given
-////////////////////////////////////////////////////////////////////////////////
-
-bool CollectionInfo::createFromJson (TRI_json_t const* json) {
-  // id
-  const std::string id = JsonHelper::getStringValue(json, "id", "");
-  if (id.empty()) {
-    return false;
-  }
-  _id = triagens::basics::StringUtils::uint64(id.c_str(), id.size());
-
-
-  // name
-  _name = JsonHelper::getStringValue(json, "name", "");
-  if (_name.empty()) {
-    return false;
-  }
-
-  // type
-  _type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, 
-                                                            "type", 
-                                                            (int) TRI_COL_TYPE_UNKNOWN);
-  if (_type == TRI_COL_TYPE_UNKNOWN) {
-    return false;
-  }
-
-  // status
-  _status = (TRI_vocbase_col_status_e) JsonHelper::getNumericValue<int>(json, 
-                                                                        "status", 
-                                                                        (int) TRI_VOC_COL_STATUS_NEW_BORN);
-  if (_status == TRI_VOC_COL_STATUS_CORRUPTED || 
-      _status == TRI_VOC_COL_STATUS_NEW_BORN) {
-    return false;
-  }
-
-  _maximalSize = JsonHelper::getNumericValue<TRI_voc_size_t>(json, "maximalSize", 0);
-  _doCompact   = JsonHelper::getBooleanValue(json, "doCompact", false);
-  _isSystem    = JsonHelper::getBooleanValue(json, "isSystem", false);
-  _isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
-  _waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", false);
-
-  TRI_json_t const* keyOptions = JsonHelper::getArrayElement(json, "keyOptions");
-  if (JsonHelper::isArray(keyOptions)) {
-    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-  }
-  else {
-    _keyOptions = 0;
-  }
-  
-  // TODO: indexes
-
-  // shardKeys
-  TRI_json_t const* value = TRI_LookupArrayJson(json, "shardKeys");
-  if (! JsonHelper::isList(value)) {
-    return false;
-  }
-  _shardKeys = JsonHelper::stringList(value);
- 
-  // shards
-  value = TRI_LookupArrayJson(json, "shards");
-  if (! JsonHelper::isArray(value)) {
-    return false;
-  }
-  _shardIds = JsonHelper::stringObject(value);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON string from the object
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
-
-  if (json == 0) {
-    return json;
-  }
-
-  char* data = TRI_StringUInt64(_id);
-
-  if (data == 0) {
-    TRI_FreeJson(zone, json);
-    return 0;
-  }
-
-  TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringJson(zone, data));
-  TRI_Insert3ArrayJson(zone, json, "name", TRI_CreateStringCopyJson(zone, _name.c_str()));
-  TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateNumberJson(zone, (int) _type));
-  TRI_Insert3ArrayJson(zone, json, "status", TRI_CreateNumberJson(zone, (int) _status));
-  
-  TRI_Insert3ArrayJson(zone, json, "maximalSize", TRI_CreateNumberJson(zone, (int) _maximalSize));
-  TRI_Insert3ArrayJson(zone, json, "doCompact", TRI_CreateBooleanJson(zone, _doCompact));
-  TRI_Insert3ArrayJson(zone, json, "isSystem", TRI_CreateBooleanJson(zone, _isSystem));
-  TRI_Insert3ArrayJson(zone, json, "isVolatile", TRI_CreateBooleanJson(zone, _isVolatile));
-  TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, _waitForSync));
-
-  if (_keyOptions != 0) {
-    TRI_Insert3ArrayJson(zone, json, "keyOptions", TRI_CopyJson(zone, _keyOptions));
-  }
-
-  // TODO: indexes
-
-  TRI_json_t* values = JsonHelper::stringList(zone, _shardKeys);
-
-  if (values == 0) {
-    TRI_FreeJson(zone, json);
-    return 0;
-  }
-
-  TRI_Insert3ArrayJson(zone, json, "shardKeys", values);
-  
-  values = JsonHelper::stringObject(zone, _shardIds);
-
-  if (values == 0) {
-    TRI_FreeJson(zone, json);
-    return 0;
-  }
-
-  TRI_Insert3ArrayJson(zone, json, "shards", values);
-
-  return json;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ClusterInfo class
 // -----------------------------------------------------------------------------
 
 ClusterInfo* ClusterInfo::_theinstance = 0;
@@ -763,23 +549,19 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
 TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
   TRI_col_info_t info;
 
-  info._type        = collection._type;
-  info._cid         = collection._id;
+  info._type        = collection.type();
+  info._cid         = collection.id();
   info._revision    = 0; // TODO 
-  info._maximalSize = collection._maximalSize;
-  memcpy(info._name, collection._name.c_str(), collection._name.size());
-  info._deleted     = collection._deleted;
-  info._doCompact   = collection._doCompact;
-  info._isSystem    = collection._isSystem;
-  info._isVolatile  = collection._isVolatile;
-  info._waitForSync = collection._waitForSync;
+  info._maximalSize = collection.maximalSize();
 
-  if (collection._keyOptions != 0) {
-    info._keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, collection._keyOptions);
-  }
-  else {
-    info._keyOptions = 0;
-  }
+  const std::string name = collection.name();
+  memcpy(info._name, name.c_str(), name.size());
+  info._deleted     = collection.deleted();
+  info._doCompact   = collection.doCompact();
+  info._isSystem    = collection.isSystem();
+  info._isVolatile  = collection.isVolatile();
+  info._waitForSync = collection.waitForSync();
+  info._keyOptions = collection.keyOptions();  
 
   return info;
 }
