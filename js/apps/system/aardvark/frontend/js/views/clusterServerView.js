@@ -16,6 +16,40 @@
 
     initialize: function() {
       this.dbView = new window.ClusterDatabaseView();
+
+      this.fakeData = [
+        {
+          primary: {
+            name: "Pavel",
+            url: "tcp://192.168.0.1:1337",
+            status: "ok"
+          },
+          secondary: {
+            name: "Sally",
+            url: "tcp://192.168.1.1:1337",
+            status: "ok"
+          }
+        },
+        {
+          primary: {
+            name: "Pancho",
+            url: "tcp://192.168.0.2:1337",
+            status: "ok"
+          }
+        },
+        {
+          primary: {
+            name: "Pablo",
+            url: "tcp://192.168.0.5:1337",
+            status: "critical"
+          },
+          secondary: {
+            name: "Sandy",
+            url: "tcp://192.168.1.5:1337",
+            status: "critical"
+          }
+        }
+      ];
     },
 
     loadServer: function(e) {
@@ -23,10 +57,14 @@
       this.dbView.render({
         name: id
       });
+      this.render(true);
     },
 
-    render: function(){
-      $(this.el).html(this.template.render({}));
+    render: function(minify){
+      $(this.el).html(this.template.render({
+        minify: minify,
+        servers: this.fakeData
+      }));
       return this;
     }
 

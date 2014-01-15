@@ -30,19 +30,16 @@
         };
 
       this.serverView = new window.ClusterServerView();
+      this.coordinatorView = new window.ClusterCoordinatorView();
     },
 
     loadDBServers: function() {
-      this.serverView.render({
-        type: "dbservers"
-      });
+      this.serverView.render();
       this.render(true);
     },
 
     loadCoordinators: function() {
-      this.serverView.render({
-        type: "coordinator"
-      });
+      this.coordinatorView.render();
       this.render(true);
     },
 
