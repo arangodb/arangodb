@@ -1789,16 +1789,17 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
 
-static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& argv,
-                                                          TRI_col_type_e collectionType,
-                                                          std::string const& databaseName,
-                                                          TRI_col_info_t& parameter) {
+static v8::Handle<v8::Value> CreateCollectionCoordinator (
+                                  v8::Arguments const& argv,
+                                  TRI_col_type_e collectionType,
+                                  std::string const& databaseName,
+                                  TRI_col_info_t& parameter) {
   v8::HandleScope scope;
   
   const string name = TRI_ObjectToString(argv[0]);
 
   uint64_t numberOfShards = 1;
-  std::vector<std::string> shardKeys;
+  vector<string> shardKeys;
       
   // default shard key
   shardKeys.push_back("_key");
@@ -1847,25 +1848,25 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
   uint64_t id = ClusterInfo::instance()->uniqid(1 + numberOfShards);
 
   // collection id is the first unique id we got
-  const std::string cid = StringUtils::itoa(id);
+  const string cid = StringUtils::itoa(id);
 
   // fetch list of available servers in cluster, and shuffle them randomly
-  std::vector<std::string> dbServers = ClusterInfo::instance()->getCurrentDBServers();
+  vector<string> dbServers = ClusterInfo::instance()->getCurrentDBServers();
 
   if (dbServers.empty()) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no database servers found in cluster");
   }
 
-  std::random_shuffle(dbServers.begin(), dbServers.end());
+  random_shuffle(dbServers.begin(), dbServers.end());
 
   // now create the shards
   std::map<std::string, std::string> shards; 
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server
-    const std::string serverId = dbServers[i % dbServers.size()];
+    const string serverId = dbServers[i % dbServers.size()];
 
     // determine shard id
-    const std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
+    const string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
     shards.insert(std::make_pair<std::string, std::string>(shardId, serverId));
   }
@@ -1892,6 +1893,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "nrShards", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberOfShards));
 
   AgencyComm agency;
 
@@ -1903,25 +1905,50 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "could not lock plan in agency");
     }
    
-    if (! agency.exists("Plan/Collections/" + databaseName)) {
+    if (! agency.exists("Plan/Databases/" + databaseName)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "didn't find database entry in agency");
     }
 
-    {
-      if (agency.exists("Plan/Collections/" + databaseName + "/" + cid)) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME); 
-      }
-
-      AgencyCommResult result = agency.setValue("Plan/Collections/" + databaseName + "/" + cid, JsonHelper::toString(json), 0.0);
+    if (agency.exists("Plan/Collections/" + databaseName + "/" + cid)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME); 
     }
+
+    AgencyCommResult result 
+      = agency.setValue("Plan/Collections/" + databaseName + "/" + cid, 
+                        json, 0.0);
+    if (!result.successful()) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                    "could not create entry for collection in plan in agency");
+    }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
-  v8::Handle<v8::Object> result = v8::Object::New();
-  // TODO: wait for the creation of the collection
-  return scope.Close(result);
+  // Now wait for it to appear and be complete:
+  AgencyCommResult res = agency.getValues("Current/Version", false);
+  if (!res.successful()) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                             "could not read version of current in agency");
+  }
+  uint64_t index = res._index;
+  while (true) {
+    res = agency.getValues("Current/Collections/" + databaseName + "/" + cid, 
+                           true);
+    if (res.successful()) {
+      // FIXME
+      // Now extract JSON, look into length of "shards" entry, if equal to
+      // numberOfShards then we are done.
+          return scope.Close(v8::True());
+    }
+    res = agency.watchValue("Current/Version", index, 1.0, false);
+    if (!res.successful()) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not read version of current in agency");
+    }
+    index = res._index;
+  }
 }
 
 #endif
@@ -2033,6 +2060,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
   if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
     if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
+      TRI_FreeCollectionInfoOptions(&parameter);
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
@@ -8344,7 +8372,8 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
     AgencyCommLocker locker("Plan", "WRITE");
     if (! locker.successful()) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+                               "could not lock plan in agency");
     }
 
     res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, 60.0);
@@ -8353,7 +8382,8 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
       if (res._statusCode == 403) {
         TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME);
       }
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not create entry in plan in agency");
     }
   }
 
@@ -8362,10 +8392,10 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
 
   res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                             "could not read version of current in agency");
   }
-  uint64_t version = 1;          // FIXME: füll mich aus dem Result
-  uint64_t index = res._index;   // FIXME: dito
+  uint64_t index = res._index;
   while (true) {
     map<string, TRI_json_t*> done;
     res = ac.getValues("Current/Databases/"+name, true);
@@ -8377,6 +8407,10 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
       }
     }
     res = ac.watchValue("Current/Version", index, 1.0, false);
+    if (!res.successful()) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not read version of current in agency");
+    }
     index = res._index;
   }
 }
@@ -8564,8 +8598,7 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   if (!res.successful()) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
-  uint64_t version = 1;          // FIXME: füll mich aus dem Result
-  uint64_t index = res._index;   // FIXME: dito
+  uint64_t index = res._index;
   while (true) {
     map<string, TRI_json_t*> done;
     res = ac.getValues("Current/Databases/"+name, true);
