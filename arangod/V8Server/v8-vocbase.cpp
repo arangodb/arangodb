@@ -1850,7 +1850,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
   const std::string cid = StringUtils::itoa(id);
 
   // fetch list of available servers in cluster, and shuffle them randomly
-  std::vector<std::string> dbServers = ClusterInfo::instance()->getDBServers();
+  std::vector<std::string> dbServers = ClusterInfo::instance()->getCurrentDBServers();
 
   if (dbServers.empty()) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no database servers found in cluster");
@@ -8179,7 +8179,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
   ClusterInfo* ci = ClusterInfo::instance();
 
   if (argv.Length() == 0) {
-    ci->loadCollections();
+    ci->loadCurrentCollections();
     vector<DatabaseID> list = ci->listDatabases();
     v8::Handle<v8::Array> result = v8::Array::New();
     for (size_t i = 0;  i < list.size();  ++i) {    
@@ -8193,7 +8193,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
     int tries = 0;
     vector<ServerID> DBServers;
     while (++tries <= 2) {
-      DBServers = ci->getDBServers();
+      DBServers = ci->getCurrentDBServers();
       if (DBServers.size() != 0) {
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
@@ -8227,7 +8227,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
           delete res;
         }
       }
-      ci->loadDBServers();   // just in case some new have arrived
+      ci->loadCurrentDBServers();   // just in case some new have arrived
     }
     // Give up:
     return scope.Close(v8::Undefined());

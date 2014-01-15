@@ -795,7 +795,7 @@ static v8::Handle<v8::Value> JS_GetDBServers (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "DBServers()");
   }
 
-  std::vector<std::string> DBServers = ClusterInfo::instance()->getDBServers();
+  std::vector<std::string> DBServers = ClusterInfo::instance()->getCurrentDBServers();
 
   v8::Handle<v8::Array> l = v8::Array::New();
 
@@ -819,7 +819,7 @@ static v8::Handle<v8::Value> JS_ReloadDBServers (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "reloadDBServers()");
   }
 
-  ClusterInfo::instance()->loadDBServers();
+  ClusterInfo::instance()->loadCurrentDBServers();
   return scope.Close(v8::Undefined());
 }
 

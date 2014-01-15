@@ -329,10 +329,7 @@ ClusterInfo::ClusterInfo ()
     _DBServersValid(false) {
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
   
-  // Actual loading is postponed until necessary:
-  // loadServers();
-  // loadDBServers();
-  // loadCollections();
+  // Actual loading into caches is postponed until necessary
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +394,7 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
   int tries = 0;
 
   if (! _collectionsValid) {
-    loadCollections();
+    loadCurrentCollections();
     ++tries;
   }
 
@@ -412,8 +409,8 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
       }
     }
     
-    // must call loadCollections outside the lock
-    loadCollections();
+    // must load collections outside the lock
+    loadCurrentCollections();
   }
 
   return false;
@@ -427,7 +424,7 @@ vector<DatabaseID> ClusterInfo::listDatabases () {
   vector<DatabaseID> res;
 
   if (! _collectionsValid) {
-    loadCollections();
+    loadCurrentCollections();
   }
 
   AllCollections::const_iterator it;
@@ -442,7 +439,7 @@ vector<DatabaseID> ClusterInfo::listDatabases () {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::loadCollections () {
+void ClusterInfo::loadCurrentCollections () {
   static const std::string prefix = "Current/Collections";
 
   AgencyCommResult result;
@@ -529,11 +526,12 @@ void ClusterInfo::loadCollections () {
 
 CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
                                            CollectionID const& collectionID) {
-  if (! _collectionsValid) {
-    loadCollections();
-  }
-
   int tries = 0;
+
+  if (! _collectionsValid) {
+    loadCurrentCollections();
+    ++tries;
+  }
 
   while (++tries <= 2) {
     {
@@ -551,8 +549,8 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
       }
     }
     
-    // must call loadCollections outside the lock
-    loadCollections();
+    // must load collections outside the lock
+    loadCurrentCollections();
   }
 
   return CollectionInfo();
@@ -605,7 +603,7 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
   std::vector<CollectionInfo> result;
 
   // always reload
-  loadCollections();
+  loadCurrentCollections();
 
   READ_LOCKER(_lock);
   // look up database by id
@@ -712,7 +710,7 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::loadDBServers () {
+void ClusterInfo::loadCurrentDBServers () {
   static const std::string prefix = "Current/DBServers";
 
   AgencyCommResult result;
@@ -757,9 +755,9 @@ void ClusterInfo::loadDBServers () {
 /// currently registered
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<ServerID> ClusterInfo::getDBServers () {
+std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
   if (! _DBServersValid) {
-    loadDBServers();
+    loadCurrentDBServers();
   }
 
   std::vector<ServerID> res;
@@ -769,7 +767,6 @@ std::vector<ServerID> ClusterInfo::getDBServers () {
   }
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
@@ -819,7 +816,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
   if (! _collectionsValid) {
-    loadCollections();
+    loadCurrentCollections();
     tries++;
   }
 
@@ -833,8 +830,8 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
       }
     }
 
-    // must call loadCollections outside the lock
-    loadCollections();
+    // must load collections outside the lock
+    loadCurrentCollections();
   }
 
   return ServerID("");
