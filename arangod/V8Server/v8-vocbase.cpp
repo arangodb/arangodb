@@ -1914,7 +1914,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (v8::Arguments const& a
         TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME); 
       }
 
-      AgencyCommResult result = agency.setValue("Plan/Collections/" + databaseName + "/" + cid, JsonHelper::toString(json), 0.0);
+      AgencyCommResult result = agency.setValue("Plan/Collections/" + databaseName + "/" + cid, json, 0.0);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   }

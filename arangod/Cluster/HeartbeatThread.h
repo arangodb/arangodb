@@ -131,7 +131,7 @@ namespace triagens {
 /// @brief handles a state change
 ////////////////////////////////////////////////////////////////////////////////
       
-        bool handleStateChange (AgencyCommResult const&,
+        bool handleStateChange (AgencyCommResult&,
                                 uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////

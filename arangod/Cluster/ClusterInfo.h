@@ -70,6 +70,8 @@ namespace triagens {
         CollectionInfo ();
         
         CollectionInfo (std::string const&);
+        
+        CollectionInfo (struct TRI_json_s*);
 
         CollectionInfo (CollectionInfo const&);
 
