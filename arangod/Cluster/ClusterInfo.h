@@ -287,13 +287,14 @@ namespace triagens {
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool doesDatabaseExist (DatabaseID const& databaseID);
+        bool doesDatabaseExist (DatabaseID const&,
+                                bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<DatabaseID> listDatabases ();
+        vector<DatabaseID> listDatabases (bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency

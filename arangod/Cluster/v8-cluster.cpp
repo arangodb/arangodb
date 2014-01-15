@@ -681,7 +681,7 @@ static v8::Handle<v8::Value> JS_DoesDatabaseExistClusterInfo (v8::Arguments cons
     TRI_V8_EXCEPTION_USAGE(scope, "doesDatabaseExist(<database-id>)");
   }
  
-  const bool result = ClusterInfo::instance()->doesDatabaseExist(TRI_ObjectToString(argv[0]));
+  const bool result = ClusterInfo::instance()->doesDatabaseExist(TRI_ObjectToString(argv[0]), true);
 
   return scope.Close(v8::Boolean::New(result));
 }
@@ -694,10 +694,10 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "doesDatabaseExist()");
+    TRI_V8_EXCEPTION_USAGE(scope, "listDatabases()");
   }
  
-  vector<DatabaseID> res = ClusterInfo::instance()->listDatabases();
+  vector<DatabaseID> res = ClusterInfo::instance()->listDatabases(true);
   v8::Handle<v8::Array> a = v8::Array::New(res.size());
   vector<DatabaseID>::iterator it;
   int count = 0;
@@ -1634,8 +1634,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "drop", JS_Drop);
 
   v8g->ClusterCommTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterCommCtor", 
-                               ft->GetFunction());
+  TRI_AddGlobalFunctionVocbase(context, "ArangoClusterCommCtor", ft->GetFunction(), true);
 
   // register the global object
   ss = v8g->ClusterCommTempl->NewInstance();
