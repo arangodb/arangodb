@@ -161,7 +161,7 @@ Choices{#InstallingWindowsChoices}
 
 The default installation directory is `c:\Program Files\ArangoDB-1.x.y`. During the
 installation process you may change this. In the following description we will assume
-that ArangoDB has been installed in the location <ROOTDIR>.
+that ArangoDB has been installed in the location `<ROOTDIR>`.
 
 You have to be careful when choosing an installation directory. You need either
 write permission to this directoy or you need to modify the config file for the
@@ -229,7 +229,7 @@ page:
     http://127.0.0.1:8529/
 
 To check if your installation was successful, click the `Collection` tab and
-open the configutation. Select the `System` TYPE. If the installation was
+open the configutation. Select the `System` type. If the installation was
 successful, then the page should display a few system collections.
 
 Try to add a new collection and then add some documents to this new collection.
@@ -259,8 +259,8 @@ the `arangod.exe` executable.
 `<ROOTDIR>/etc/arangodb/`. Please adjust this to your needs if you want to
 use different connection settings etc.
 
-32bit{#InstallingWindows3Bit}
------------------------------
+32bit{#InstallingWindows32Bit}
+------------------------------
 
 If you have an EXISTING database, then please note that currently a 32 bit
 version of ArangoDB is NOT compatible with a 64 bit version. This means that
@@ -286,9 +286,9 @@ Uninstalling{#InstallingWindowsUninstalling}
 
 To uninstall the Arango server application you can use the windows control panel
 (as you would normally uninstall an application). Note however, that any data
-files created by the Arango server will remain as well as the <ROOTDIR>
+files created by the Arango server will remain as well as the `<ROOTDIR>`
 directory.  To complete the uninstallation process, remove the data files and
-the <ROOTDIR> directory manually.
+the `<ROOTDIR>` directory manually.
 
 Limitations for Cygwin{#InstallingWindowsCygwin}
 ------------------------------------------------
