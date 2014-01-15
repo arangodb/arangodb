@@ -30,6 +30,7 @@
 #define TRIAGENS_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Cluster/AgencyComm.h"
 #include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
@@ -69,8 +70,6 @@ namespace triagens {
 
         CollectionInfo ();
         
-        CollectionInfo (std::string const&);
-        
         CollectionInfo (struct TRI_json_s*);
 
         CollectionInfo (CollectionInfo const&);
@@ -89,8 +88,8 @@ namespace triagens {
 /// @brief returns the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t cid () const {
-          return _id;
+        TRI_voc_cid_t id () const {
+          return triagens::basics::JsonHelper::stringUInt64(_json, "id");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +97,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string name () const {
-          return _name;
+          return triagens::basics::JsonHelper::getStringValue(_json, "name", "");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +105,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_col_type_e type () const {
-          return _type;
+          return triagens::basics::JsonHelper::getNumericValue<TRI_col_type_e>(_json, "type", TRI_COL_TYPE_UNKNOWN);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,39 +113,87 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_col_status_e status () const {
-          return _status;
+          return triagens::basics::JsonHelper::getNumericValue<TRI_vocbase_col_status_e>(_json, "status", TRI_VOC_COL_STATUS_CORRUPTED);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection status
+/// @brief returns the collection status as a string
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string statusString () const {
-          return TRI_GetStatusStringCollectionVocBase(_status);
+          return TRI_GetStatusStringCollectionVocBase(status());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the properties
+/// @brief returns the deleted flag
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_col_info_t properties () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief TODO: returns the indexes
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-        std::vector<std::string> indexes () const {
-          return _indexes;
+        bool deleted () const {
+          return triagens::basics::JsonHelper::getBooleanValue(_json, "deleted", false);
         }
-*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the docompact flag
+////////////////////////////////////////////////////////////////////////////////
+
+        bool doCompact () const {
+          return triagens::basics::JsonHelper::getBooleanValue(_json, "doCompact", false);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the issystem flag
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isSystem () const {
+          return triagens::basics::JsonHelper::getBooleanValue(_json, "isSystem", false);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the isvolatile flag
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isVolatile () const {
+          return triagens::basics::JsonHelper::getBooleanValue(_json, "isVolatile", false);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a copy of the key options
+/// the caller is responsible for freeing it 
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* keyOptions () const {
+          TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getArrayElement(_json, "keyOptions");
+
+          if (keyOptions != 0) {
+            return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+          }
+
+          return 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the waitforsync flag
+////////////////////////////////////////////////////////////////////////////////
+
+        bool waitForSync () const {
+          return triagens::basics::JsonHelper::getBooleanValue(_json, "waitForSync", false);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the maximal journal size
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_size_t maximalSize () const {
+          return triagens::basics::JsonHelper::getNumericValue<TRI_voc_size_t>(_json, "maximalSize", 0);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard keys
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::string> shardKeys () const {
-          return _shardKeys;
+          TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shardKeys");
+          return triagens::basics::JsonHelper::stringList(node);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,54 +201,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::map<std::string, std::string> shardIds () const {
-          return _shardIds;
+          TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shards");
+          return triagens::basics::JsonHelper::stringObject(node);
         }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidates a collection info object
-////////////////////////////////////////////////////////////////////////////////
-
-        void invalidate ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief populate object properties from the JSON given
-////////////////////////////////////////////////////////////////////////////////
-
-        bool createFromJson (struct TRI_json_s const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON string from the object
-////////////////////////////////////////////////////////////////////////////////
-        
-        struct TRI_json_s* toJson (struct TRI_memory_zone_s*);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-        
-        TRI_voc_cid_t                      _id;
-        std::string                        _name;
-        TRI_col_type_e                     _type;
-        TRI_vocbase_col_status_e           _status;
-
-        TRI_voc_size_t                     _maximalSize;
-        bool                               _deleted;
-        bool                               _doCompact;
-        bool                               _isSystem;
-        bool                               _isVolatile;
-        bool                               _waitForSync;
-
-        TRI_json_t*                        _keyOptions;
-        
-        // TODO: indexes
-        std::vector<std::string>           _shardKeys;
-        std::map<std::string, std::string> _shardIds;
+      
+      private:
+     
+        TRI_json_t*                        _json;   
     };
 
     

@@ -251,7 +251,7 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
   c->_isLocal    = false;
   c->_vocbase    = vocbase;
   c->_type       = ci.type();
-  c->_cid        = ci.cid();
+  c->_cid        = ci.id();
   c->_status     = ci.status();
   c->_collection = 0;
 
