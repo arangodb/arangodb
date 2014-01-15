@@ -287,13 +287,14 @@ namespace triagens {
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool doesDatabaseExist (DatabaseID const& databaseID);
+        bool doesDatabaseExist (DatabaseID const&,
+                                bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<DatabaseID> listDatabases ();
+        vector<DatabaseID> listDatabases (bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about collections from the agency
@@ -303,11 +304,30 @@ namespace triagens {
         void loadCurrentCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the list of planned databases
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearPlannedDatabases ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the list of current databases
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearCurrentDatabases ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about planned databases
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
         void loadPlannedDatabases ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about current databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadCurrentDatabases ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection
@@ -401,6 +421,8 @@ namespace triagens {
 
         // Cached data from the agency, we reload whenever necessary:
         std::map<DatabaseID, struct TRI_json_s*> _plannedDatabases; // from Plan/Databases
+        std::map<DatabaseID, std::map<ServerID, struct TRI_json_s*> > _currentDatabases; // from Current/Databases
+
         AllCollections                     _collections;  // from Current/Collections/
         bool                               _collectionsValid;
         std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered

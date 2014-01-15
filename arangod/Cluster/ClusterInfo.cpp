@@ -340,6 +340,8 @@ ClusterInfo* ClusterInfo::instance () {
 ClusterInfo::ClusterInfo ()
   : _agency(),
     _uniqid(),
+    _plannedDatabases(),
+    _currentDatabases(),
     _collectionsValid(false),
     _serversValid(false),
     _DBServersValid(false) {
@@ -353,6 +355,8 @@ ClusterInfo::ClusterInfo ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo () {
+  clearPlannedDatabases();
+  clearCurrentDatabases();
 }
 
 // -----------------------------------------------------------------------------
@@ -400,33 +404,50 @@ void ClusterInfo::flush () {
   _collections.clear();
   _servers.clear();
   _shardIds.clear();
+
+  clearPlannedDatabases();
+  clearCurrentDatabases();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
+bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
+                                     bool reload) {
   int tries = 0;
 
-  if (! _collectionsValid) {
-    loadCurrentCollections();
+  if (reload) {
+    loadPlannedDatabases();
+    loadCurrentDatabases();
+    loadCurrentDBServers();
     ++tries;
   }
 
   while (++tries <= 2) {
     {
       READ_LOCKER(_lock);
-      // look up database by id
-      AllCollections::const_iterator it = _collections.find(databaseID);
+      const size_t expectedSize = _DBServers.size();
 
-      if (it != _collections.end()) {
-        return true;
+      // look up database by name
+
+      std::map<DatabaseID, TRI_json_t*>::const_iterator it = _plannedDatabases.find(databaseID);
+
+      if (it != _plannedDatabases.end()) {
+        // found the database in Plan
+        std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::const_iterator it2 = _currentDatabases.find(databaseID);
+
+        if (it2 != _currentDatabases.end()) {
+          // found the database in Current
+
+          return ((*it2).second.size() >= expectedSize);
+        }
       }
     }
-    
-    // must load collections outside the lock
-    loadCurrentCollections();
+
+    loadPlannedDatabases();
+    loadCurrentDatabases();
+    loadCurrentDBServers();
   }
 
   return false;
@@ -436,18 +457,77 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID) {
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<DatabaseID> ClusterInfo::listDatabases () {
-  vector<DatabaseID> res;
+vector<DatabaseID> ClusterInfo::listDatabases (bool reload) {
+  vector<DatabaseID> result;
 
-  if (! _collectionsValid) {
-    loadCurrentCollections();
+  if (reload) {
+    loadPlannedDatabases();
+    loadCurrentDatabases();
+    loadCurrentDBServers();
   }
 
-  AllCollections::const_iterator it;
-  for (it = _collections.begin(); it != _collections.end(); ++it) {
-    res.push_back(it->first);
+  READ_LOCKER(_lock);
+  const size_t expectedSize = _DBServers.size();
+
+  std::map<DatabaseID, TRI_json_t*>::const_iterator it = _plannedDatabases.begin();
+
+  while (it != _plannedDatabases.end()) {
+    std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::const_iterator it2 = _currentDatabases.find((*it).first);
+
+    if (it2 != _currentDatabases.end()) {
+      if ((*it2).second.size() >= expectedSize) {
+        result.push_back((*it).first);
+      }
+    }
+
+    ++it;
   }
-  return res;
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the list of planned databases
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::clearPlannedDatabases () {
+  std::map<DatabaseID, TRI_json_t*>::iterator it = _plannedDatabases.begin();
+
+  while (it != _plannedDatabases.end()) {
+    TRI_json_t* json = (*it).second;
+
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    ++it;
+  }
+
+  _plannedDatabases.clear(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the list of current databases
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::clearCurrentDatabases () {
+  std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::iterator it = _currentDatabases.begin();
+
+  while (it != _currentDatabases.end()) {
+    std::map<ServerID, TRI_json_t*>::iterator it2 = (*it).second.begin();
+
+    while (it2 != (*it).second.end()) {
+      TRI_json_t* json = (*it2).second;
+
+      if (json != 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+
+      ++it2;
+    }
+    ++it;
+  }
+
+  _currentDatabases.clear(); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,7 +552,7 @@ void ClusterInfo::loadPlannedDatabases () {
     result.parse(prefix + "/", false);
 
     WRITE_LOCKER(_lock);
-    _plannedDatabases.clear(); 
+    clearPlannedDatabases();
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -483,6 +563,71 @@ void ClusterInfo::loadPlannedDatabases () {
       // steal the json
       (*it).second._json = 0;
       _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
+
+      ++it;
+    }
+
+    return;
+  }
+
+  LOG_TRACE("Error while loading %s", prefix.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about current databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::loadCurrentDatabases () {
+  static const std::string prefix = "Current/Databases";
+
+  AgencyCommResult result;
+
+  {
+    AgencyCommLocker locker("Plan", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues(prefix, true);
+    }
+  }
+
+  if (result.successful()) {
+    result.parse(prefix + "/", false);
+
+    WRITE_LOCKER(_lock);
+    clearCurrentDatabases();
+
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+
+    while (it != result._values.end()) {
+      const std::string key = (*it).first;
+
+      // each entry consists of a database id and a collection id, separated by '/'
+      std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
+      
+      if (parts.empty()) {
+        ++it;
+        continue;
+      } 
+      const std::string database = parts[0]; 
+
+      std::map<std::string, std::map<ServerID, TRI_json_t*> >::iterator it2 = _currentDatabases.find(database);
+
+      if (it2 == _currentDatabases.end()) {
+        // insert an empty list for this database
+        std::map<ServerID, TRI_json_t*> empty;
+        it2 = _currentDatabases.insert(std::make_pair<DatabaseID, std::map<ServerID, TRI_json_t*> >(database, empty)).first; 
+      }
+       
+      if (parts.size() == 2) {
+        // got a server name
+        TRI_json_t* json = (*it).second._json;
+        // steal the JSON
+        (*it).second._json = 0;
+        (*it2).second.insert(std::make_pair<ServerID, TRI_json_t*>(parts[1], json));
+      }
+
+      ++it;
     }
 
     return;
@@ -519,7 +664,7 @@ void ClusterInfo::loadCurrentCollections () {
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      const std::string& key = (*it).first;
+      const std::string key = (*it).first;
 
       // each entry consists of a database id and a collection id, separated by '/'
       std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
@@ -530,8 +675,8 @@ void ClusterInfo::loadCurrentCollections () {
         continue;
       }
         
-      const std::string& database   = parts[0]; 
-      const std::string& collection = parts[1]; 
+      const std::string database   = parts[0]; 
+      const std::string collection = parts[1]; 
 
       // check whether we have created an entry for the database already
       AllCollections::iterator it2 = _collections.find(database);
@@ -811,12 +956,17 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
     loadCurrentDBServers();
   }
 
-  std::vector<ServerID> res;
-  std::map<ServerID, ServerID>::iterator i;
-  for (i = _DBServers.begin(); i != _DBServers.end(); ++i) {
-    res.push_back(i->first);
+  std::vector<ServerID> result;
+
+  READ_LOCKER(_lock);
+  std::map<ServerID, ServerID>::iterator it = _DBServers.begin();
+
+  while (it != _DBServers.end()) {
+    result.push_back((*it).first);
+    it++;
   }
-  return res;
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
