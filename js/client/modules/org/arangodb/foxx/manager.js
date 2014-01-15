@@ -734,6 +734,9 @@ exports.run = function (args) {
     else if (type === 'config') {
       exports.config();
     }
+    else if (type === 'configJson') {
+      exports.configJson();
+    }
     else if (type === 'list' || type === 'installed') {
       if (1 < args.length && args[1] === "prefix") {
         exports.list(true);
@@ -1062,6 +1065,20 @@ exports.config = function () {
       arangodb.printf("- %s: %s\n", name, JSON.stringify(res.result[name]));
     }
   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns configuration from the server
+////////////////////////////////////////////////////////////////////////////////
+
+exports.configJson = function () {
+  'use strict';
+
+  var res = arango.GET("/_admin/foxx/config"), name;
+
+  arangosh.checkRequestResult(res);
+
+  return res.result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
