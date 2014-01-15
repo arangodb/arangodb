@@ -92,8 +92,6 @@ function ClusterEnabledSuite () {
       catch (err) {
       }
     });
-
-    agency.set("Sync/LatestID", "0");
   };
 
   return {
