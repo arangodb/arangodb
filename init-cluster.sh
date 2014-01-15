@@ -4,7 +4,7 @@ mkdir -p data-pavel data-perry data-claus
 NAME="meier"
 ETCD="http://127.0.0.1:4001"
 echo "initialising cluster $NAME"
-bin/arangom -a "$ETCD" -p "/$NAME/" init
+./arangom -a "$ETCD" -p "/$NAME/" init
 curl --silent --dump - -L -X PUT "$ETCD/v2/keys/$NAME/Plan/DBServers/Pavel" -d "value=\"none\"" || exit 1
 curl --silent --dump - -L -X PUT "$ETCD/v2/keys/$NAME/Target/DBServers/Pavel" -d "value=\"none\"" || exit 1
 curl --silent --dump - -L -X PUT "$ETCD/v2/keys/$NAME/Plan/DBServers/Perry" -d "value=\"none\"" || exit 1
