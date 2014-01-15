@@ -1,8 +1,11 @@
 div.clusterColumn {
-  width: 18%;
-  padding-left: 1%;
-  padding-right: 1%;
+  padding-right: 5px;
   float: left;
+}
+
+div.clusterColumnMax {
+  float: none;
+  min-height: 255px;
 }
 
 div.clusterColumn li {
@@ -10,4 +13,63 @@ div.clusterColumn li {
 }
 h3.clusterColumnHeader {
   text-align: center;
+}
+
+div.clusterAmounts {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+}
+
+span.cluster_icon_large {
+  font-size: 120px;
+}
+
+span.cluster_icon_small {
+  font-size: 25px;
+}
+
+div.tile {
+  width: 200px;
+  height: 200px;
+  position: absolute;
+  text-align: center;
+  font-weight: 700;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+div.tile-left {
+  right: 50%;
+  margin-right: 20px;
+}
+
+div.tile-right {
+  left: 50%;
+  margin-left: 20px;
+}
+
+.btn-success {
+  background: #8AA051;
+}
+
+.btn-success:hover {
+  background: #788F3D;
+}
+
+.btn-danger {
+  background-color: #DA4F49;
+}
+
+.btn-danger:hover {
+  background-color: #BE342E;
+}
+
+.btn-warning {
+  background-color: #FAA732;
+}
+
+.btn-warning:hover {
+  background-color: #F89406;
 }
