@@ -6,16 +6,20 @@
   "use strict";
 
   describe("Cluster Overview View", function() {
-    var view, div, serverView;
+    var view, div, serverView, coordinatorView;
 
     beforeEach(function() {
       div = document.createElement("div");
       div.id = "clusterOverview"; 
       document.body.appendChild(div);
       serverView = {
-        render: function(){}
+        render: function() {}
+      };
+      coordinatorView = {
+        render: function() {}
       };
       spyOn(window, "ClusterServerView").andReturn(serverView);
+      spyOn(window, "ClusterCoordinatorView").andReturn(coordinatorView);
       this.addMatchers({
 
         toBeTag: function(name) {
@@ -66,25 +70,20 @@
 
           beforeEach(function() {
             serverView.render.reset();
+            coordinatorView.render.reset();
             view.render();
             spyOn(view, "render");
           });
 
           it("should be able to navigate to db servers", function() {
-            info = {
-              type: "dbservers"
-            };
             $("#dbserver").click();
-            expect(serverView.render).toHaveBeenCalledWith(info);
+            expect(serverView.render).toHaveBeenCalledWith();
             expect(view.render).toHaveBeenCalledWith(true);
           });
 
-          it("should be able to navigate to primary servers", function() {
-            info = {
-              type: "coordinator"
-            };
+          it("should be able to navigate to coordinators", function() {
             $("#coordinator").click();
-            expect(serverView.render).toHaveBeenCalledWith(info);
+            expect(coordinatorView.render).toHaveBeenCalledWith();
             expect(view.render).toHaveBeenCalledWith(true);
           });
 
@@ -106,6 +105,7 @@
 
       beforeEach(function() {
         spyOn(serverView, "render");
+        spyOn(coordinatorView, "render");
         view = new window.ClusterOverviewView();
         // Fake Data Injection to be removed
         view.fakeData = {
@@ -130,6 +130,10 @@
 
         it("should not render the Server view", function() {
           expect(serverView.render).not.toHaveBeenCalled();
+        });
+
+        it("should not render the Coordinator view", function() {
+          expect(coordinatorView.render).not.toHaveBeenCalled();
         });
 
         it("should render in minified version", function() {
@@ -253,10 +257,10 @@
             view.fakeData.dbservers.having = 4;
             view.render();
             var tile = getTile(),
-                spans = $("> span", $(tile)),
-                header = spans[0],
-                icon = spans[1],
-                footer = $("> div", $(tile)),
+                headers = $("> h4", $(tile)),
+                header = headers[0],
+                footer = headers[1],
+                icon = $("> div > span", $(tile))[0],
                 htxt = $(header).text(),
                 ftxt = $(footer).text();
             expect(tile).toBeDefined();
@@ -304,10 +308,10 @@
             view.fakeData.coordinators.having = 4;
             view.render();
             var tile = getTile(),
-                spans = $("> span", $(tile)),
-                header = spans[0],
-                icon = spans[1],
-                footer = $("> div", $(tile)),
+                headers = $("> h4", $(tile)),
+                header = headers[0],
+                footer = headers[1],
+                icon = $("> div > span", $(tile))[0],
                 htxt = $(header).text(),
                 ftxt = $(footer).text();
             expect(tile).toBeDefined();
