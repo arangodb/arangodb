@@ -443,20 +443,22 @@ vector<DatabaseID> ClusterInfo::listDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::loadCollections () {
+  static const std::string prefix = "Current/Collections";
+
   AgencyCommResult result;
 
   {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues("Current/Collections", true);
+      result = _agency.getValues(prefix, true);
     }
   }
 
   if (result.successful()) {
     std::map<std::string, std::string> collections;
 
-    if (result.flattenJson(collections, "Current/Collections/", false)) {
+    if (result.flattenJson(collections, prefix + "/", false)) {
       LOG_TRACE("Current/Collections loaded successfully");
    
       WRITE_LOCKER(_lock);
@@ -516,7 +518,7 @@ void ClusterInfo::loadCollections () {
     }
   }
 
-  LOG_TRACE("Error while loading Current/Collections");
+  LOG_TRACE("Error while loading %s", prefix.c_str());
   _collectionsValid = false;
 }
 
@@ -635,21 +637,23 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::loadServers () {
+  static const std::string prefix = "Current/ServersRegistered";
+
   AgencyCommResult result;
 
   {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues("Current/ServersRegistered", true);
+      result = _agency.getValues(prefix, true);
     }
   }
 
   if (result.successful()) {
     std::map<std::string, std::string> servers;
 
-    if (result.flattenJson(servers, "Current/ServersRegistered/", false)) {
-      LOG_TRACE("Current/ServersRegistered loaded successfully");
+    if (result.flattenJson(servers, prefix + "/", false)) {
+      LOG_TRACE("%s loaded successfully", prefix.c_str());
     
       WRITE_LOCKER(_lock); 
       _servers.clear();
@@ -665,7 +669,7 @@ void ClusterInfo::loadServers () {
     }
   }
 
-  LOG_TRACE("Error while loading Current/ServersRegistered");
+  LOG_TRACE("Error while loading %s", prefix.c_str());
 
   _serversValid = false;
 
@@ -679,12 +683,12 @@ void ClusterInfo::loadServers () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
+  int tries = 0;
 
   if (! _serversValid) {
     loadServers();
+    tries++;
   }
-
-  int tries = 0;
 
   while (++tries <= 2) {
     {
@@ -709,21 +713,23 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::loadDBServers () {
+  static const std::string prefix = "Current/DBServers";
+
   AgencyCommResult result;
 
   {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues("Current/DBServers", true);
+      result = _agency.getValues(prefix, true);
     }
   }
 
   if (result.successful()) {
     std::map<std::string, std::string> servers;
 
-    if (result.flattenJson(servers, "Current/DBServers/", false)) {
-      LOG_TRACE("Current/DBServers loaded successfully");
+    if (result.flattenJson(servers, prefix + "/", false)) {
+      LOG_TRACE("%s loaded successfully", prefix.c_str());
     
       WRITE_LOCKER(_lock); 
       _DBServers.clear();
@@ -739,7 +745,7 @@ void ClusterInfo::loadDBServers () {
     }
   }
 
-  LOG_TRACE("Error while loading Current/DBServers");
+  LOG_TRACE("Error while loading %s", prefix.c_str());
 
   _DBServersValid = false;
 
@@ -771,6 +777,8 @@ std::vector<ServerID> ClusterInfo::getDBServers () {
 ////////////////////////////////////////////////////////////////////////////////
   
 std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
+  static const std::string prefix = "Target/MapIDToEndpoint/";
+
   AgencyCommResult result;
 
   // fetch value at Target/MapIDToEndpoint
@@ -778,15 +786,15 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
     AgencyCommLocker locker("Target", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues("Target/MapIDToEndpoint/" + serverID, false);
+      result = _agency.getValues(prefix + serverID, false);
     }
   }
  
   if (result.successful()) {
     std::map<std::string, std::string> out;
 
-    if (! result.flattenJson(out, "Target/MapIDToEndpoint/", false)) {
-      LOG_FATAL_AND_EXIT("Got an invalid JSON response for Target/MapIDToEndpoint");
+    if (! result.flattenJson(out, prefix, false)) {
+      LOG_FATAL_AND_EXIT("Got an invalid JSON response for %s", prefix.c_str());
     }
 
     // check if we can find ourselves in the list returned by the agency
