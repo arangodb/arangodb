@@ -272,8 +272,5 @@ button.gv-zoom-btn.pan-bottom{
 }
 
 button.btn-overview {
-  margin-left: 0px;
-  width: 140px;
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px;
 }
