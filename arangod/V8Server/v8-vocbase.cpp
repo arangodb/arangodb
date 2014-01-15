@@ -8316,43 +8316,69 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 /// name.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateDatabaseInAgency(string const& place, string const& name) {
-  AgencyComm ac;
-  AgencyCommResult res;
-  AgencyCommLocker locker(place, "WRITE");
-
-  if (! locker.successful()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  res = ac.createDirectory(place+"/Collections/"+name);
-  if (res.successful()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  else if (res.httpCode() == 403) {
-    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
-  }
-  else {
-    return TRI_ERROR_INTERNAL;
-  }
-}
-
 static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  // Arguments are already checked, there are 1 to 3.
   
+  // First work with the arguments to create a JSON entry:
   const string name = TRI_ObjectToString(argv[0]);
-
-  int ourerrno = TRI_ERROR_NO_ERROR;
-
-  ourerrno = CreateDatabaseInAgency("Plan",name);
-  if (ourerrno == TRI_ERROR_NO_ERROR) {  // everything OK in /Plan
-    // FIXME: Now wait for the directory under Current/Collections
-    return scope.Close(v8::True());
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (0 == json) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                               TRI_ObjectToString(argv[0]).c_str()));
+  if (argv.Length() > 1) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
+                         TRI_ObjectToJson(argv[1]));
+    if (argv.Length() > 2) {
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "users",
+                           TRI_ObjectToJson(argv[2]));
+    }
   }
 
-  TRI_V8_EXCEPTION(scope, ourerrno);
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+    if (! locker.successful()) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+
+    res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, 60.0);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (!res.successful()) {
+      if (res._statusCode == 403) {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      }
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+  }
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  vector<ServerID> DBServers = ci->getCurrentDBServers();
+
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+  uint64_t version = 1;          // FIXME: füll mich aus dem Result
+  uint64_t index = res._index;   // FIXME: dito
+  while (true) {
+    map<string, TRI_json_t*> done;
+    res = ac.getValues("Current/Databases/"+name, true);
+    if (res.successful()) {
+      if (res.flattenJson(done, "Current/Databases/"+name+"/",false)) {
+        if (done.size() >= DBServers.size()) {
+          return scope.Close(v8::True());
+        }
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 1.0, false);
+    index = res._index;
+  }
 }
 #endif
 
@@ -8517,52 +8543,43 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   const string name = TRI_ObjectToString(argv[0]);
 
   AgencyComm ac;
-  AgencyCommResult acres;
+  AgencyCommResult res;
 
   {
-    AgencyCommLocker locker("Target", "WRITE");
+    AgencyCommLocker locker("Plan", "WRITE");
+    if (! locker.successful()) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
 
-    // check that locking worked!
-    if (locker.successful()) { 
-      // Now nobody can create or remove a database, so we can check that
-      // the one we want to drop does indeed exist:
-      acres = ac.getValues("Current/Collections/"+name+"/Lock", false);
-
-      if (! acres.successful()) {
+    res = ac.removeValues("Plan/Databases/"+name, false);
+    if (!res.successful()) {
+      if (res._statusCode == 403) {
         TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       }
-    }
-    else {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "could not acquire agency lock");
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
   }
 
-  // Now let's lock it.
-  // We cannot use a locker here, because we want to remove all of
-  // Current/Collections/<db-name> before we are done and we must not
-  // unlock the Lock after that.
-  if (! ac.lockWrite("Current/Collections/"+name, 24*3600.0, 24*3600.0)) {
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
-  // res = ac.getValues("Current/Collections/"+name+"/Lock, false);
-
-  // If this fails or the DB does not exist, return an error
-  // Remove entry Plan/Collections/<name> using Plan/Lock
-  // get list of DBServers during the lock
-  // (from now on new DBServers will no longer create a database)
-  // this is the point of no return
-  // tell all DBServers to drop database
-  // note errors, but there is nothing we can do about it if things go wrong
-  // only count and reports the servers with errors
-  // Remove entry Target/Collections/<name>, use Target/Lock
-  // Remove entry Current/Collections/<name> using Current/Lock
-  // (from now on coordinators will understand that the database is gone
-  // Release Plan/Lock
-  // Report error
-  
-  return scope.Close(v8::True());
+  uint64_t version = 1;          // FIXME: füll mich aus dem Result
+  uint64_t index = res._index;   // FIXME: dito
+  while (true) {
+    map<string, TRI_json_t*> done;
+    res = ac.getValues("Current/Databases/"+name, true);
+    if (res.successful()) {
+      if (res.flattenJson(done, "Current/Databases/"+name+"/",false)) {
+        if (done.size() > 0) {
+          return scope.Close(v8::True());
+        }
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 1.0, false);
+    index = res._index;
+  }
 }
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
