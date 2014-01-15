@@ -273,7 +273,8 @@ actions.defineHttp({
     var result = {
       appPath: module.appPath(),
       devAppPath: internal.developmentMode ? module.devAppPath() : null,
-      logFilePath: internal.logfilePath
+      logFilePath: internal.logfilePath,
+      startupPath: module.startupPath()
     };
 
     actions.resultOk(req, res, actions.HTTP_OK, { result: result });
