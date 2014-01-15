@@ -156,122 +156,155 @@ the port used.
 Windows {#InstallingWindows}
 ============================
 
-We provide precompiled Windows binaries for ArangoDB. The binaries
-are statically linked with the required libraries such as V8, but 
-they may still require some Windows platform libraries to be present.
-These libraries should be present on a Windows Vista, Windows 7, and
-Windows 8 by default, but there may be issues with other platforms.
+Choices{#InstallingWindowsChoices}
+----------------------------------
 
-The Windows builds are available as `.msi` packages 
-@EXTREF{http://www.arangodb.org/download/,here}.
-Please note that we provide binaries for 32 and 64 bit Windows, and 
-that you need to choose the correct package for your platform.
+The default installation directory is `c:\Program Files\ArangoDB-1.x.y`. During the
+installation process you may change this. In the following description we will assume
+that ArangoDB has been installed in the location <ROOTDIR>.
 
-The msi installer will install the ArangoDB server (arangod.exe), the
-ArangoDB shell (arangosh.exe) and the ArangoDB import tool (arangoimp.exe) 
-in a directory of the user's choice (defaulting to `c:\triAGENS`).
+You have to be careful when choosing an installation directory. You need either
+write permission to this directoy or you need to modify the config file for the
+server process. In the latter case the database directory and the Foxx directory
+should must be writable by the user.
 
-Included Files {#InstallingWindowsFiles}
-----------------------------------------
+Installating for a single user: Select a different directory during
+installation. For example `C:/Users/<username>/arangodb` or `C:/ArangoDB`.
 
-Included in the distribution are some `.bat` files that can be used 
-to easily start the ArangoDB server and shell. The `.bat` files will be
-installed in the same directory as ArangoDB so they should be easy to find.
+Installating for multiple users: Keep the default directory. After the
+installation edit the file `<ROOTDIR>/etc/arangodb/arangod.conf`. Adjust the
+`directory` and `app-path` so that these paths point into your home directory.
 
-Along with ArangoDB some example configuration files (with `.conf` file
-ending) will be installed. These configuration files are used by the 
-batch files with the same name, and you might adjust them for your own
-needs.
+       [database]
+       directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
 
-The following executables are provided:
-- `arangod.exe`: the ArangoDB server binary
-- `arangosh.exe`: the ArangoShell (arangosh) binary
-- `arangoimp.exe`: an import tool for ArangoDB
-- `arangodump.exe`: a dump tool for ArangoDB
-- `arangorestore.exe`: a restore tool for ArangoDB
+       [javascript]
+       app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
 
-You can invoke any of the above executables on the command-line directly,
-however, to properly run each executable needs some configuration. The
-configuration can be provided as command-line arguments when invoking the
-executable, or be specified in configuration files.
+       Create the directories for each user that wants to use ArangoDB.
 
-ArangoDB is shipped with a few example configuration files and example 
-batch files that can be used to easily invoke some of the executables with
-the default configuration.
+Installating as Service: Keep the default directory. After the installation open
+a command line as administrator (search for `cmd` and right click `run as
+administrator`).
 
-The following configuration files are provided:
-- `arangod.conf`: configuration for the ArangoDB server, used by 
-  `arangod.bat`, `console.bat`, and `upgrade.bat`
-- `arangosh.conf`: configuration for the ArangoDB shell, used by
-  `arangosh.bat` and `foxx-manager.bat`
-- `arangoimp.conf`: configuration for the ArangoDB import tool
-- `arangodump.conf`: configuration for the ArangoDB dump tool
-- `arangorestore.conf`: configuration for the ArangoDB restore tool
+       cmd> arangod --install-service
+       INFO: adding service 'ArangoDB - the multi-purpose database' (internal 'ArangoDB')
+       INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 1.4.4\bin\arangod.exe" --start-service'
 
-The following batch files are provided:
-- `arangod.bat`: starts the ArangoDB server, with networking enabled
-- `console.bat`: starts the ArangoDB server in emergency console mode, 
-  with networking disabled
-- `upgrade.bat`: upgrades an existing ArangoDB server
-- `arangosh.bat`: starts the ArangoDB shell (requires an already
-  running ArangoDB server instance)
-- `foxx-manager.bat`: installation utility for Foxx applications
+       Open the service manager and start ArangoDB. In order to enable logging
+       edit the file "<ROOTDIR>/etc/arangodb/arangod.conf" and uncomment the file
+       option.
 
-Starting ArangoDB {#InstallingWindowsStarting}
-----------------------------------------------
+       [log]
+       file = @ROOTDIR@/var/log/arangodb/arangod.log
 
-To start the ArangoDB server, use the file `arangod.bat`. This wil start
-the ArangoDB server with networking enabled. It will use the configuration
-specified in file `arangod.conf`. Once started, the ArangoDB server will
-run until you terminate it pressing CTRL-C. Starting ArangoDB for the first 
-time will automatically create a database sub-directory in the directory 
-ArangoDB was installed in.
+Client, Server and Lock-Files{#InstallingWindowsFiles}
+------------------------------------------------------
 
-Once the ArangoDB server is running, you can use your browser to check 
-whether you can connect. Please navigate to confirm:
+Please note that ArangoDB consists of a database server and client tools. If you
+start the server, it will place a (read-only) lock file to prevent accidental
+access to the data. The server will attempt to remove this lock file when it is
+started to see if the lock is still valid - this is in case the installation did
+not proceed correctly or if the server terminated unexpectedly.
 
-http://127.0.0.1:8529/
+Starting{#InstallingWindowsStarting}
+------------------------------------
 
-Please note that when using ArangoDB's web interface with Internet Explorer
-(IE), you will need IE version 9 or higher to use all features. The web 
-interface partly relies on SVG, which is not available in previous versions 
-of IE.
+To start an ArangoDB server instance with networking enabled, use the executable
+`arangod.exe` located in `<ROOTDIR>/bin`. This will use the configuration
+file `arangod.conf` located in `<ROOTDIR>/etc/arangodb`, which you can adjust
+to your needs and use the data directory "<ROOTDIR>/var/lib/arangodb". This
+is the place where all your data (databases and collections) will be stored
+by default.
 
-To start the ArangoDB shell (_arangosh_), use the batch file `arangosh.bat`
-while the ArangoDB server is already running.
+Please check the output of the `arangod.exe` executable before going on. If the
+server started successully, you should see a line `ArangoDB is ready for
+business. Have fun!` at the end of its output.
 
-If you already have a previous version of ArangoDB installed and want to
-upgrade to a newer version, use the batch file `upgrade.bat` This will
-start ArangoDB with the `--upgrade` option and perform a migration of an
-existing database. Please note that you need to stop a running ArangoDB
-server instance before you upgrade. 
-Please also check the output of the `upgrade.bat` run for any potential
-errors. If the upgrade completes successfully, you can restart the server
-regularly using the `arangod.bat` script.
+We now wish to check that the installation is working correctly and to do this
+we will be using the administration web interface. Execute `arangod.exe` if you
+have not already done so, then open up your web browser and point it to the
+page: 
 
-To run any of the ArangoDB executables in your own environment, you will
-probably need to adjust the configuration. It is advised that you use a
-separate configuration file, and specify the configuration filename on the
-command-line when invoking the executable as follows (example for _arangod_):
+    http://127.0.0.1:8529/
 
-    > arangod.exe -c path\to\arangod.conf
+To check if your installation was successful, click the `Collection` tab and
+open the configutation. Select the `System` TYPE. If the installation was
+successful, then the page should display a few system collections.
 
-Limitations for Cygwin {#InstallingWindowsCygwin}
--------------------------------------------------
+Try to add a new collection and then add some documents to this new collection.
+If you have succeeded in creating a new collection and inserting one or more
+documents, then your installation is working correctly.
+
+Advanced Starting{#InstallingWindowsAdvanced}
+---------------------------------------------
+
+If you want to provide our own start scripts, you can set the environment
+variable `ARANGODB_CONFIG_PATH`. This variable should point to a directory
+containing the configuration files.
+
+Using the Client{#InstallingWindowsClient}
+------------------------------------------
+
+To connect to an already running ArangoDB server instance, there is a shell
+`arangosh.exe` located in `<ROOTDIR>/bin`. This starts a shell which can be
+used (amongst other things) to administer and query a local or remote
+ArangoDB server.
+
+Note that `arangosh.exe` does NOT start a separate server, it only starts the
+shell.  To use it, you must have a server running somewhere, e.g. by using
+the `arangod.exe` executable.
+
+`arangosh.exe` uses configuration from the file `arangosh.conf` located in
+`<ROOTDIR>/etc/arangodb/`. Please adjust this to your needs if you want to
+use different connection settings etc.
+
+32bit{#InstallingWindows3Bit}
+-----------------------------
+
+If you have an EXISTING database, then please note that currently a 32 bit
+version of ArangoDB is NOT compatible with a 64 bit version. This means that
+if you have a database created with a 32 bit version of ArangoDB it may
+become corrupted if you execute a 64 bit version of ArangoDB against the same
+database, and vice versa.
+
+Upgrading{#InstallingWindowsUpgrading}
+--------------------------------------
+
+To upgrade an EXISTING database created with a previous version of ArangoDB,
+please execute the server `arangod.exe` with the option
+`--upgrade`. Otherwise starting ArangoDB may fail with errors.
+
+Note that there is no harm in running the upgrade. So you should run this
+batch file if you are unsure of the database version you are using.
+
+You should always check the output for errors to see if the upgrade was
+completed successfully.
+
+Uninstalling{#InstallingWindowsUninstalling}
+--------------------------------------------
+
+To uninstall the Arango server application you can use the windows control panel
+(as you would normally uninstall an application). Note however, that any data
+files created by the Arango server will remain as well as the <ROOTDIR>
+directory.  To complete the uninstallation process, remove the data files and
+the <ROOTDIR> directory manually.
+
+Limitations for Cygwin{#InstallingWindowsCygwin}
+------------------------------------------------
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
-CTRL-C will forcefully kill the server process, without giving it a chance to 
-handle the kill signal. In this case, a regular server shutdown is not
-possible, which may leave a file `LOCK` around in the server's data directory.
-This file needs to be removed manually to make ArangoDB start again. 
-Additionally, as ArangoDB does not have a chance to handle the kill signal,
-the server cannot forcefully flush any data to disk on shutdown, leading to
-potential data loss.
+CTRL-C will forcefully kill the server process, without giving it a chance to
+handle the kill signal. In this case, a regular server shutdown is not possible,
+which may leave a file `LOCK` around in the server's data directory.  This file
+needs to be removed manually to make ArangoDB start again.  Additionally, as
+ArangoDB does not have a chance to handle the kill signal, the server cannot
+forcefully flush any data to disk on shutdown, leading to potential data loss.
 When starting ArangoDB from a Cygwin terminal it might also happen that no
-errors are printed in the terminal output.
-Starting ArangoDB from an MS-DOS command prompt does not impose these 
-limitations and is thus the preferred method.
+errors are printed in the terminal output.  Starting ArangoDB from an MS-DOS
+command prompt does not impose these limitations and is thus the preferred
+method.
 
 Please note that ArangoDB uses UTF-8 as its internal encoding and that the
 system console must support a UTF-8 codepage (65001) and font. It may be
