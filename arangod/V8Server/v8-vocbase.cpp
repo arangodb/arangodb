@@ -8344,10 +8344,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
   
   const string name = TRI_ObjectToString(argv[0]);
 
-  //ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
-  AgencyComm ac;
-
   int ourerrno = TRI_ERROR_NO_ERROR;
 
   ourerrno = CreateDatabaseInAgency("Plan",name);
