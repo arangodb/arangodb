@@ -11,35 +11,48 @@
     template: templateEngine.createTemplate("clusterOverviewView.ejs"),
 
     events: {
-      "click #primary": "loadPrimaries",
-      "click #secondary": "loadSecondaries",
+      "click #dbserver": "loadDBServers",
       "click #coordinator": "loadCoordinators"
     },
 
     initialize: function() {
+      this.fakeData = {
+          dbservers: {
+            plan: 3,
+            having: 3,
+            status: "warning"
+          },
+          coordinators: {
+            plan: 3,
+            having: 2,
+            status: "critical"
+          }
+        };
+
       this.serverView = new window.ClusterServerView();
     },
 
-    loadPrimaries: function() {
+    loadDBServers: function() {
       this.serverView.render({
-        type: "primary"
+        type: "dbservers"
       });
-    },
-
-    loadSecondaries: function() {
-      this.serverView.render({
-        type: "secondary"
-      });
+      this.render(true);
     },
 
     loadCoordinators: function() {
       this.serverView.render({
         type: "coordinator"
       });
+      this.render(true);
     },
 
-    render: function(info){
-      $(this.el).html(this.template.render({}));
+    render: function(minify){
+      $(this.el).html(this.template.render({
+        minify: minify,
+        dbservers: this.fakeData.dbservers,
+        coordinators: this.fakeData.coordinators
+      }));
+      $(this.el).toggleClass("clusterColumnMax", !minify);
       return this;
     }
 
