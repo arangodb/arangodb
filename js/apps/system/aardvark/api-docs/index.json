@@ -359,8 +359,8 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "If the index could be deleted, then a <em>HTTP 202</em> is returned. ",
-                            "code": "202"
+                            "reason": "If the index could be deleted, then an <em>HTTP 200</em> is returned. ",
+                            "code": "200"
                         }
                     ],
                     "parameters": [

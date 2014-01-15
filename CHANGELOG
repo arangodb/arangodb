@@ -1,5 +1,7 @@
-v1.4.5-rc2 (XXXX-XX-XX)
+v1.4.5 (2014-01-15)
 -------------------
+
+* fixed issue #726: Alternate Windows Install Method
 
 * fixed issue #716: dpkg -P doesn't remove everything
 
