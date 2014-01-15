@@ -301,6 +301,13 @@ namespace triagens {
         void loadCurrentCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about planned databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadPlannedDatabases ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,6 +398,7 @@ namespace triagens {
         _uniqid;
 
         // Cached data from the agency, we reload whenever necessary:
+        std::map<DatabaseID, struct TRI_json_s*> _plannedDatabases; // from Plan/Databases
         AllCollections                     _collections;  // from Current/Collections/
         bool                               _collectionsValid;
         std::map<ServerID, std::string>    _servers;      // from Current/ServersRegistered
