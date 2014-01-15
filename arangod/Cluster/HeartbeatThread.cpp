@@ -27,6 +27,7 @@
 
 #include "HeartbeatThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/JsonHelper.h"
 #include "BasicsC/logging.h"
 #include "Cluster/ServerState.h"
 
@@ -113,18 +114,16 @@ void HeartbeatThread::run () {
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
       if (result.successful()) {
-        std::map<std::string, std::string> out;
-    
-        if (result.flattenJson(out, "", false)) {
-          std::map<std::string, std::string>::const_iterator it = out.begin();
+        result.parse("", false);
 
-          if (it != out.end()) {
-            // there is a plan version
-            uint64_t planVersion = triagens::basics::StringUtils::uint64((*it).second);
+        std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
-            if (planVersion > lastPlanVersion) {
-              handlePlanChange(planVersion, lastPlanVersion);
-            }
+        if (it != result._values.end()) {
+          // there is a plan version
+          uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+
+          if (planVersion > lastPlanVersion) {
+            handlePlanChange(planVersion, lastPlanVersion);
           }
         }
       }
@@ -230,17 +229,14 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
   AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
 
   if (result.successful()) {
-    std::map<std::string, std::string> out;
+    result.parse("Sync/Commands/", false);
+   
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.find(_myId);
 
-    if (result.flattenJson(out, "Sync/Commands/", true)) {
-      // check if we can find ourselves in the list returned by the agency
-      std::map<std::string, std::string>::const_iterator it = out.find(_myId);
-
-      if (it != out.end()) {
-        // found something
-        LOG_TRACE("last command index was: '%s'", (*it).second.c_str());
-        return triagens::basics::StringUtils::uint64((*it).second);
-      }
+    if (it != result._values.end()) {
+      // found something
+      LOG_TRACE("last command index was: '%llu'", (unsigned long long) (*it).second._index);
+      return (*it).second._index;
     }
   }
   
@@ -277,35 +273,22 @@ bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
 /// notified about this particular change again).
 ////////////////////////////////////////////////////////////////////////////////
       
-bool HeartbeatThread::handleStateChange (AgencyCommResult const& result,
+bool HeartbeatThread::handleStateChange (AgencyCommResult& result,
                                          uint64_t& lastCommandIndex) {
-  std::map<std::string, std::string> out;
+  result.parse("Sync/Commands/", false);
 
-  if (result.flattenJson(out, "Sync/Commands/", true)) {
-    // get the new value of "modifiedIndex"
-    std::map<std::string, std::string>::const_iterator it = out.find(_myId);
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(_myId);
 
-    if (it != out.end()) {
-      lastCommandIndex = triagens::basics::StringUtils::uint64((*it).second);
-    }
-  }
+  if (it != result._values.end()) {
+    lastCommandIndex = (*it).second._index;
 
-  out.clear();
-     
-  if (result.flattenJson(out, "Sync/Commands/", false)) {
-    // get the new value!
-    std::map<std::string, std::string>::const_iterator it = out.find(_myId);
-
-    if (it != out.end()) {
-      const std::string command = (*it).second;
-
-      ServerState::StateEnum newState = ServerState::stringToState(command);
-
-      if (newState != ServerState::STATE_UNDEFINED) {
-        // state change.
-        ServerState::instance()->setState(newState);
-        return true;
-      }
+    const std::string command = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+    ServerState::StateEnum newState = ServerState::stringToState(command);
+      
+    if (newState != ServerState::STATE_UNDEFINED) {
+      // state change.
+      ServerState::instance()->setState(newState);
+      return true;
     }
   }
 

@@ -85,6 +85,22 @@ CollectionInfo::CollectionInfo (std::string const& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from json
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo::CollectionInfo (TRI_json_t* json) {
+  if (json != 0) {
+    if (JsonHelper::isArray(json)) {
+      if (! createFromJson(json)) {
+        invalidate();
+      }
+    }
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection info object from another
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -453,24 +469,23 @@ void ClusterInfo::loadPlannedDatabases () {
   }
 
   if (result.successful()) {
-    std::map<std::string, std::string> databases;
+    result.parse(prefix + "/", false);
 
-    if (result.flattenJson(databases, prefix + "/", false)) {
-      LOG_TRACE("%s loaded successfully", prefix.c_str());
-   
-      WRITE_LOCKER(_lock);
-      _plannedDatabases.clear(); 
+    WRITE_LOCKER(_lock);
+    _plannedDatabases.clear(); 
 
-      std::map<std::string, std::string>::const_iterator it;
-      for (it = databases.begin(); it != databases.end(); ++it) {
-        const std::string& name = (*it).first;
-        TRI_json_t* options = JsonHelper::fromString((*it).second);
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
-        _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
-      }
+    while (it != result._values.end()) {
+      const std::string& name = (*it).first;
+      TRI_json_t* options = (*it).second._json;
 
-      return;
+      // steal the json
+      (*it).second._json = 0;
+      _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
     }
+
+    return;
   }
 
   LOG_TRACE("Error while loading %s", prefix.c_str());
@@ -495,61 +510,59 @@ void ClusterInfo::loadCurrentCollections () {
   }
 
   if (result.successful()) {
-    std::map<std::string, std::string> collections;
-
-    if (result.flattenJson(collections, prefix + "/", false)) {
-      LOG_TRACE("%s loaded successfully", prefix.c_str());
+    result.parse(prefix + "/", false);
    
-      WRITE_LOCKER(_lock);
-      _collections.clear(); 
-      _shardIds.clear();
+    WRITE_LOCKER(_lock);
+    _collections.clear(); 
+    _shardIds.clear();
 
-      std::map<std::string, std::string>::const_iterator it;
-      for (it = collections.begin(); it != collections.end(); ++it) {
-        const std::string& key = (*it).first;
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
-        // each entry consists of a database id and a collection id, separated by '/'
-        std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
+    for (; it != result._values.end(); ++it) {
+      const std::string& key = (*it).first;
+
+      // each entry consists of a database id and a collection id, separated by '/'
+      std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
        
-        if (parts.size() != 2) {
-          // invalid entry
-          LOG_WARNING("found invalid collection key in agency: '%s'", key.c_str());
-          continue;
-        }
+      if (parts.size() != 2) {
+        // invalid entry
+        LOG_WARNING("found invalid collection key in agency: '%s'", key.c_str());
+        continue;
+      }
         
-        const std::string& database   = parts[0]; 
-        const std::string& collection = parts[1]; 
+      const std::string& database   = parts[0]; 
+      const std::string& collection = parts[1]; 
 
-        // check whether we have created an entry for the database already
-        AllCollections::iterator it2 = _collections.find(database);
-        if (it2 == _collections.end()) {
-          // not yet, so create an entry for the database
-          DatabaseCollections empty;
-          _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
-          it2 = _collections.find(database);
-        }
+      // check whether we have created an entry for the database already
+      AllCollections::iterator it2 = _collections.find(database);
 
-        if (collection == "Lock" || collection == "Version") {
-          continue;
-        }
+      if (it2 == _collections.end()) {
+        // not yet, so create an entry for the database
+        DatabaseCollections empty;
+        _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
+        it2 = _collections.find(database);
+      }
 
-        const CollectionInfo collectionData((*it).second);
+      TRI_json_t* json = (*it).second._json;
+      // steal the json
+      (*it).second._json = 0;
 
-        // insert the collection into the existing map
-
-        (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
-        (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
-
-        std::map<std::string, std::string> shards = collectionData.shardIds();
-        std::map<std::string, std::string>::const_iterator it3 = shards.begin();
+      const CollectionInfo collectionData(json);
         
-        while (it3 != shards.end()) {
-          const std::string shardId = (*it3).first;
-          const std::string serverId = (*it3).second;
+      // insert the collection into the existing map
 
-          _shardIds.insert(std::make_pair<ShardID, ServerID>(shardId, serverId));
-          ++it3;
-        }
+      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
+      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
+
+      std::map<std::string, std::string> shards = collectionData.shardIds();
+      std::map<std::string, std::string>::const_iterator it3 = shards.begin();
+        
+      while (it3 != shards.end()) {
+        const std::string shardId = (*it3).first;
+        const std::string serverId = (*it3).second;
+
+        _shardIds.insert(std::make_pair<ShardID, ServerID>(shardId, serverId));
+        ++it3;
       }
 
       _collectionsValid = true;
@@ -690,23 +703,23 @@ void ClusterInfo::loadServers () {
   }
 
   if (result.successful()) {
-    std::map<std::string, std::string> servers;
-
-    if (result.flattenJson(servers, prefix + "/", false)) {
-      LOG_TRACE("%s loaded successfully", prefix.c_str());
+    result.parse(prefix + "/", false);
     
-      WRITE_LOCKER(_lock); 
-      _servers.clear();
+    WRITE_LOCKER(_lock); 
+    _servers.clear();
 
-      std::map<std::string, std::string>::const_iterator it;
-      for (it = servers.begin(); it != servers.end(); ++it) {
-        _servers.insert(std::make_pair<ServerID, std::string>((*it).first, (*it).second));
-      }
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
-      _serversValid = true;
-      
-      return;
+    while (it != result._values.end()) {
+      const std::string server = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+
+      _servers.insert(std::make_pair<ServerID, std::string>((*it).first, server));
+      ++it;
     }
+
+    _serversValid = true;
+      
+    return;
   }
 
   LOG_TRACE("Error while loading %s", prefix.c_str());
@@ -766,23 +779,19 @@ void ClusterInfo::loadCurrentDBServers () {
   }
 
   if (result.successful()) {
-    std::map<std::string, std::string> servers;
+    result.parse(prefix + "/", false);
 
-    if (result.flattenJson(servers, prefix + "/", false)) {
-      LOG_TRACE("%s loaded successfully", prefix.c_str());
-    
-      WRITE_LOCKER(_lock); 
-      _DBServers.clear();
+    WRITE_LOCKER(_lock); 
+    _DBServers.clear();
 
-      std::map<std::string, std::string>::const_iterator it;
-      for (it = servers.begin(); it != servers.end(); ++it) {
-        _DBServers.insert(std::make_pair<ServerID, ServerID>
-                          ((*it).first, (*it).second));
-      }
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
-      _DBServersValid = true;
-      return;
+    for (; it != result._values.end(); ++it) {
+      _DBServers.insert(std::make_pair<ServerID, ServerID>((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
+
+    _DBServersValid = true;
+    return;
   }
 
   LOG_TRACE("Error while loading %s", prefix.c_str());
@@ -830,17 +839,13 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
   }
  
   if (result.successful()) {
-    std::map<std::string, std::string> out;
-
-    if (! result.flattenJson(out, prefix, false)) {
-      LOG_FATAL_AND_EXIT("Got an invalid JSON response for %s", prefix.c_str());
-    }
+    result.parse(prefix, false);
 
     // check if we can find ourselves in the list returned by the agency
-    std::map<std::string, std::string>::const_iterator it = out.find(serverID);
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(serverID);
 
-    if (it != out.end()) {
-      return (*it).second;
+    if (it != result._values.end()) {
+      return triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
     }
   }
 
