@@ -353,6 +353,8 @@ ClusterInfo::ClusterInfo ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo () {
+  clearPlannedDatabases();
+  clearCurrentDatabases();
 }
 
 // -----------------------------------------------------------------------------
@@ -400,6 +402,9 @@ void ClusterInfo::flush () {
   _collections.clear();
   _servers.clear();
   _shardIds.clear();
+
+  clearPlannedDatabases();
+  clearCurrentDatabases();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,6 +456,50 @@ vector<DatabaseID> ClusterInfo::listDatabases () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the list of planned databases
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::clearPlannedDatabases () {
+  std::map<DatabaseID, TRI_json_t*>::iterator it = _plannedDatabases.begin();
+
+  while (it != _plannedDatabases.end()) {
+    TRI_json_t* json = (*it).second;
+
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    ++it;
+  }
+
+  _plannedDatabases.clear(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the list of current databases
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::clearCurrentDatabases () {
+  std::map<DatabaseID, std::map<ServerID, TRI_json_t*> >::iterator it = _currentDatabases.begin();
+
+  while (it != _currentDatabases.end()) {
+    std::map<ServerID, TRI_json_t*>::iterator it2 = (*it).second.begin();
+
+    while (it2 != (*it).second.end()) {
+      TRI_json_t* json = (*it2).second;
+
+      if (json != 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+
+      ++it2;
+    }
+    ++it;
+  }
+
+  _currentDatabases.clear(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about planned databases
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,7 +521,7 @@ void ClusterInfo::loadPlannedDatabases () {
     result.parse(prefix + "/", false);
 
     WRITE_LOCKER(_lock);
-    _plannedDatabases.clear(); 
+    clearPlannedDatabases();
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -483,6 +532,63 @@ void ClusterInfo::loadPlannedDatabases () {
       // steal the json
       (*it).second._json = 0;
       _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
+    }
+
+    return;
+  }
+
+  LOG_TRACE("Error while loading %s", prefix.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about current databases
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::loadCurrentDatabases () {
+  static const std::string prefix = "Current/Databases";
+
+  AgencyCommResult result;
+
+  {
+    AgencyCommLocker locker("Plan", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues(prefix, true);
+    }
+  }
+
+  if (result.successful()) {
+    result.parse(prefix + "/", true);
+
+    WRITE_LOCKER(_lock);
+    clearCurrentDatabases();
+
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+
+    while (it != result._values.end()) {
+      const std::string& key = (*it).first;
+
+      // each entry consists of a database id and a collection id, separated by '/'
+      std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
+      
+      const std::string& database = parts[0]; 
+
+      std::map<std::string, std::map<ServerID, TRI_json_t*> >::iterator it2 = _currentDatabases.find(database);
+
+      if (it2 == _currentDatabases.end()) {
+        // insert an empty list for this database
+        std::map<ServerID, TRI_json_t*> empty;
+        it2 = _currentDatabases.insert(std::make_pair<DatabaseID, std::map<ServerID, TRI_json_t*> >(database, empty)).first; 
+      }
+       
+      if (parts.size() == 2) {
+        // got a server name
+        TRI_json_t* json = (*it).second._json;
+        // steal the JSON
+        (*it).second._json = 0;
+        (*it2).second.insert(std::make_pair<ServerID, TRI_json_t*>(parts[1], json));
+      }
     }
 
     return;
