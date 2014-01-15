@@ -8316,67 +8316,25 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 /// name.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateDatabaseInAgency(string const& place, string const& name,
-                                  vector<ServerID>* DBServers) {
+static int CreateDatabaseInAgency(string const& place, string const& name) {
   AgencyComm ac;
   AgencyCommResult res;
-
   AgencyCommLocker locker(place, "WRITE");
 
   if (! locker.successful()) {
     return TRI_ERROR_INTERNAL;
   }
 
-  if (0 != DBServers) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    ci->loadDBServers();   // to make sure we know about all of them
-    *DBServers = ci->getDBServers();
+  res = ac.createDirectory(place+"/Collections/"+name);
+  if (res.successful()) {
+    return TRI_ERROR_NO_ERROR;
   }
-  res = ac.casValue(place+"/Collections/"+name+"/Lock",string("UNLOCKED"),
-                     false, 0.0, 0.0);
-
-  if (res.httpCode() == 412) {
-    // already created by someone else
+  else if (res.httpCode() == 403) {
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
-
-  if (res.successful()) {
-    res = ac.casValue(place+"/Collections/"+name+"/Version",string("1"),
-                       false, 0.0, 0.0);
-    if (res.successful()) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    // clean up    
-    ac.removeValues(place+"/Collections/"+name,true);
+  else {
+    return TRI_ERROR_INTERNAL;
   }
-  
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for building a json body for our requests
-////////////////////////////////////////////////////////////////////////////////
-
-static string CreateDatabaseBuildJsonBody( v8::Arguments const& argv ) {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
-    return string("");
-  }
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", 
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, 
-                               TRI_ObjectToString(argv[0]).c_str()));
-  if (argv.Length() > 1) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
-                         TRI_ObjectToJson(argv[1]));
-    if (argv.Length() > 2) {
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "users",
-                           TRI_ObjectToJson(argv[2]));
-    }
-  }
-  string jsonstr = JsonHelper::toString(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  return jsonstr;
 }
 
 static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const& argv) {
@@ -8392,102 +8350,13 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
 
   int ourerrno = TRI_ERROR_NO_ERROR;
 
-  ourerrno = CreateDatabaseInAgency("Target",name,0);
-  if (ourerrno == TRI_ERROR_NO_ERROR) {  // everything OK in /Target
-    vector<ServerID> DBServers;
-    // We will get the list of DBServers whilst holding the lock to
-    // modify "/Plan/Collections". Therefore, everybody who is on the
-    // list will be told, everybody who is starting later will see the
-    // entry in "/Plan/Collections/..." and will create the database on
-    // startup.
-    ourerrno = CreateDatabaseInAgency("Plan",name,&DBServers);
-    if (ourerrno == TRI_ERROR_NO_ERROR) {
-      vector<ServerID>::iterator it;
-      // build request to be sent to all servers
-
-      string jsonstr = CreateDatabaseBuildJsonBody(argv);
-      if (jsonstr.empty()) {
-        ourerrno = TRI_ERROR_INTERNAL;
-      }
-      else {
-        ClusterCommResult* res;
-        CoordTransactionID coordTransactionID = TRI_NewTickServer();
-        for (it = DBServers.begin(); it != DBServers.end(); ++it) {
-          res = cc->asyncRequest("CreateDB", coordTransactionID,
-                            "server:"+*it, 
-                            triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
-                            "/_api/database", jsonstr.c_str(),
-                            jsonstr.size(), new map<string, string>, 0, 0.0);
-          delete res;
-        }
-        unsigned int done = 0;
-        while (done < DBServers.size()) {
-          res = cc->wait("", coordTransactionID, 0, "", 0.0);
-          if (res->status == CL_COMM_RECEIVED) {
-            if (res->answer_code == triagens::rest::HttpResponse::OK) {
-              done++;
-              delete res;
-            }
-            else if (res->answer_code == triagens::rest::HttpResponse::CONFLICT) {
-              ourerrno = TRI_ERROR_ARANGO_DUPLICATE_NAME;
-              delete res;
-              break;
-            } 
-            else {
-              ourerrno = TRI_ERROR_INTERNAL;
-              delete res;
-              break;
-            }
-          }
-          else {
-            delete res;
-            break;
-          }
-        }
-        if (done == DBServers.size()) {
-          ourerrno = CreateDatabaseInAgency("Current",name,0);
-          if (ourerrno == TRI_ERROR_NO_ERROR) {
-            return scope.Close(v8::True());
-          }
-        }
-        cc->drop( "CreateDatabase", coordTransactionID, 0, "" );
-        for (it = DBServers.begin(); it != DBServers.end(); ++it) {
-          res = cc->asyncRequest("CreateDB", coordTransactionID,
-                           "server:"+*it,
-                           triagens::rest::HttpRequest::HTTP_REQUEST_DELETE, 
-                           "/_api/database/"+name, "", 0,
-                           new map<string, string>, 0, 0.0);
-          delete res;
-        }
-        done = 0;
-        while (done < DBServers.size()) {
-          res = cc->wait("", coordTransactionID, 0, "", 0.0);
-          delete res;
-          done++;
-        }
-      }
-
-      {
-        AgencyCommLocker locker("Plan","WRITE");
-
-        // TODO: what should we do if locking fails?
-        if (locker.successful()) {
-          ac.removeValues("Plan/Collections/"+name,true);
-        }
-      }
-    }
-    {
-      AgencyCommLocker locker("Target","WRITE");
-        
-      // TODO: what should we do if locking fails?
-      if (locker.successful()) {
-        ac.removeValues("Target/Collections/"+name,true);
-      }
-    }
+  ourerrno = CreateDatabaseInAgency("Plan",name);
+  if (ourerrno == TRI_ERROR_NO_ERROR) {  // everything OK in /Plan
+    // FIXME: Now wait for the directory under Current/Collections
+    return scope.Close(v8::True());
   }
 
   TRI_V8_EXCEPTION(scope, ourerrno);
-  return scope.Close(v8::True());
 }
 #endif
 
