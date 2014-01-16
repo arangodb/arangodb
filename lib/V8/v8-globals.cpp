@@ -123,6 +123,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     WaitForSyncKey(),
 
     _FromKey(),
+    _DbNameKey(),
     _IdKey(),
     _KeyKey(),
     _OldRevKey(),
@@ -213,6 +214,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
   
   _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));
+  _DbNameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_dbName"));
   _IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_id"));
   _KeyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_key"));
   _OldRevKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_oldRev"));

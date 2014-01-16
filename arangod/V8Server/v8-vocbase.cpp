@@ -260,6 +260,9 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
   memset(c->_name, 0, TRI_COL_NAME_LENGTH + 1); 
   memcpy(c->_name, name.c_str(), name.size());
   memset(c->_path, 0, TRI_COL_PATH_LENGTH + 1); 
+  
+  memset(c->_dbName, 0, TRI_COL_NAME_LENGTH + 1); 
+  memcpy(c->_dbName, vocbase->_name, strlen(vocbase->_name));
 
   c->_canDrop   = true;
   c->_canUnload = true;
@@ -9336,6 +9339,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
     }
 
     result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+    result->Set(v8g->_DbNameKey, v8::String::New(collection->_dbName));
   }
 
   return scope.Close(result);
