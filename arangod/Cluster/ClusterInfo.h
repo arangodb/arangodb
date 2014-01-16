@@ -371,6 +371,40 @@ namespace triagens {
         const std::vector<CollectionInfo> getCollections (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create database in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int createDatabaseCoordinator (string const& name, 
+                                       TRI_json_t const* json,
+                                       string errorMsg, double timeout);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop database in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int dropDatabaseCoordinator (string const& name, string& errorMsg, 
+                                     double timeout);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create collection in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int createCollectionCoordinator (string const& databaseName, 
+                                         string const& collectionID,
+                                         uint64_t numberOfShards,
+                                         TRI_json_t const* json,
+                                         string errorMsg, double timeout);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop collection in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int dropCollectionCoordinator (string const& databaseName, 
+                                       string const& collectionID,
+                                       string& errorMsg, 
+                                       double timeout);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////

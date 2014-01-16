@@ -34,6 +34,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
@@ -609,6 +610,330 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
   }
 
   return result;
+}
+
+// A local helper to report errors and messages:
+
+static inline int set_errormsg(int ourerrno, string& errorMsg) {
+  errorMsg = TRI_errno_string(ourerrno);
+  return ourerrno;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create database in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::createDatabaseCoordinator (string const& name, 
+                                            TRI_json_t const* json,
+                                            string errorMsg, double timeout) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, 60.0);
+    if (!res.successful()) {
+      if (res._statusCode == 412) {
+        return set_errormsg(TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS, errorMsg);
+      }
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  vector<ServerID> DBServers = getCurrentDBServers();
+  int count = 0;  // this counts, when we have to reload the DBServers
+
+  string where = "Current/Databases/" + name;
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == DBServers.size()) {
+        map<string, AgencyCommResultEntry>::iterator it;
+        string tmpMsg = "";
+        bool tmpHaveError = false;
+        for (it = res._values.begin(); it != res._values.end(); ++it) {
+          TRI_json_t const* json = (*it).second._json;
+          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+            tmpHaveError = true;
+            tmpMsg += " DBServer:"+it->first+":";
+            TRI_json_t const* errorMessage 
+                  = TRI_LookupArrayJson(json, "errorMessage");
+            if (TRI_IsStringJson(errorMessage)) {
+              tmpMsg += string(errorMessage->_value._string.data,
+                               errorMessage->_value._string.length);
+            }
+            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            if (TRI_IsNumberJson(errorNum)) {
+              tmpMsg += " (errNum=";
+              tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
+                          errorNum->_value._number));
+              tmpMsg += ")";
+            }
+          }
+        }
+        if (tmpHaveError) {
+          errorMsg = "Error in creation of database:" + tmpMsg;
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+    if (++count >= 12) {
+      // We update the list of DBServers every minute in case one of them
+      // was taken away since we last looked. This also helps (slightly)
+      // if a new DBServer was added. However, in this case we report
+      // success a bit too early, which is not too bad.
+      loadCurrentDBServers();
+      DBServers = getCurrentDBServers();
+      count = 0;
+    }
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop database in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg, 
+                                          double timeout) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    if (! ac.exists("Plan/Databases/" + name)) {
+      return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+
+    res = ac.removeValues("Plan/Databases/"+name, false);
+    if (!res.successful()) {
+      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+        return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg); 
+      }
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  string where = "Current/Databases/" + name;
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == 0) {
+        AgencyCommLocker locker("Current", "WRITE");
+        if (locker.successful()) {
+          res = ac.removeValues(where, true);
+          if (res.successful()) {
+            return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+          return set_errormsg(
+            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create collection in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::createCollectionCoordinator (string const& databaseName, 
+                                              string const& collectionID,
+                                              uint64_t numberOfShards,
+                                              TRI_json_t const* json,
+                                              string errorMsg, double timeout) {
+  AgencyComm ac;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    if (! ac.exists("Plan/Databases/" + databaseName)) {
+      return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+
+    if (ac.exists("Plan/Collections/" + databaseName + "/"+collectionID)) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg); 
+    }
+
+    AgencyCommResult result 
+      = ac.setValue("Plan/Collections/" + databaseName + "/"+collectionID, 
+                        json, 0.0);
+    if (!result.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  AgencyCommResult res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == numberOfShards) {
+        map<string, AgencyCommResultEntry>::iterator it;
+        string tmpMsg = "";
+        bool tmpHaveError = false;
+        for (it = res._values.begin(); it != res._values.end(); ++it) {
+          TRI_json_t const* json = (*it).second._json;
+          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+            tmpHaveError = true;
+            tmpMsg += " shardID:"+it->first+":";
+            TRI_json_t const* errorMessage 
+                  = TRI_LookupArrayJson(json, "errorMessage");
+            if (TRI_IsStringJson(errorMessage)) {
+              tmpMsg += string(errorMessage->_value._string.data,
+                               errorMessage->_value._string.length);
+            }
+            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            if (TRI_IsNumberJson(errorNum)) {
+              tmpMsg += " (errNum=";
+              tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
+                          errorNum->_value._number));
+              tmpMsg += ")";
+            }
+          }
+        }
+        if (tmpHaveError) {
+          errorMsg = "Error in creation of collection:" + tmpMsg;
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop collection in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::dropCollectionCoordinator (string const& databaseName, 
+                                            string const& collectionID,
+                                            string& errorMsg, 
+                                            double timeout) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    if (! ac.exists("Plan/Databases/" + databaseName)) {
+      return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+
+    res = ac.removeValues("Plan/Collections/"+databaseName+"/"+collectionID, 
+                          false);
+    if (!res.successful()) {
+      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+        return set_errormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg); 
+      }
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == 0) {
+        AgencyCommLocker locker("Current", "WRITE");
+        if (locker.successful()) {
+          res = ac.removeValues("Current/Collections/"+databaseName+"/"+
+                                collectionID, true);
+          if (res.successful()) {
+            return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+          return set_errormsg(
+            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, errorMsg);
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
