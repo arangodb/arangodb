@@ -97,7 +97,7 @@ endif ()
 ## --SECTION--                                                             TESTS
 ## -----------------------------------------------------------------------------
 
-include(${PROJECT_SOURCE_DIR}/UnitTests/CTestLists.txt)
+# include(${PROJECT_SOURCE_DIR}/UnitTests/CTestLists.txt)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
