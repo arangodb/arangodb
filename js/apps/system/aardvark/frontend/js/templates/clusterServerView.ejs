@@ -1,10 +1,21 @@
+<% var statusClass = function(s) {
+    switch (s) {
+      case "ok":
+        return "success";
+      case "warning": 
+        return "warning";
+      case "critical":
+        return "danger";
+    }
+  };
+%>
 <h3 class="clusterColumnHeader">DB Server</h3>
 <% if (minify) { %>
   <div>
     <ul>
       <% _.each(servers, function(v) { %>
         <li>
-          <button id="<%=v.primary.name %>" class="server"><%=v.primary.name %></button>
+          <button id="<%=v.primary.name %>" class="btn btn-server btn-<%=statusClass(v.primary.status)%> server"><%=v.primary.name %></button>
         </li>
       <% }); %>
     </ul>
@@ -12,11 +23,20 @@
 <% } else { %>
   <% _.each(servers, function(v) { %>
     <div id="<%=v.primary.name %>" class="domino server">
-      <span><%=v.primary.name%></span>
-      <span><%=v.primary.url%></span>
+      <div class="domino-upper btn-<%=statusClass(v.primary.status)%>">
+        <h4 class="domino-header"><%=v.primary.name%></h4>
+        <span><%=v.primary.url%></span>
+      </div>
+      <hr class="domino-line"/>
       <% if (v.secondary) { %>
-        <span><%=v.secondary.name%></span>
-        <span><%=v.secondary.url%></span>
+        <div class="domino-lower btn-<%=statusClass(v.secondary.status)%>">
+          <h4 class="domino-header"><%=v.secondary.name%></h4>
+          <span><%=v.secondary.url%></span>
+        </div>
+      <% } else {%>
+      <div class="domino-lower btn-inactive">
+        <h4 class="domino-header">Not configured</h4>
+      </div>
       <% } %>
     </div>
   <% }); %>
