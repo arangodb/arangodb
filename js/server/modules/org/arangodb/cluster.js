@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var console = require("console");
+
 var isCluster = function () {
   return (typeof ArangoServerState !== "undefined" &&
           ArangoServerState.initialised());
@@ -71,10 +73,10 @@ var handlePlanChange = function () {
   }
 
   try {
-    require("internal").print("handling a plan change");
+    console.info("%s", "plan change handling successful");
   }
   catch (err) {
-    require("internal").print("plan change handling failed");
+    console.error("%s", "plan change handling failed");
   }
 };
 
