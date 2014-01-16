@@ -28,19 +28,22 @@
 #include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
 #include "Basics/JsonHelper.h"
-#include "SimpleHttpClient/ConnectionManager.h"
+#include "BasicsC/logging.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
-#include "BasicsC/logging.h"
+#include "Dispatcher/ApplicationDispatcher.h"
+#include "SimpleHttpClient/ConnectionManager.h"
+#include "V8Server/ApplicationV8.h"
+#include "VocBase/server.h"
 
 using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class ApplicationCluster
+// --SECTION--                                          class ApplicationCluster
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -51,8 +54,13 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationCluster::ApplicationCluster () 
+ApplicationCluster::ApplicationCluster (TRI_server_t* server,
+                                        triagens::rest::ApplicationDispatcher* dispatcher,
+                                        ApplicationV8* applicationV8) 
   : ApplicationFeature("Sharding"),
+    _server(server),
+    _dispatcher(dispatcher),
+    _applicationV8(applicationV8),
     _heartbeat(0),
     _disableHeartbeat(false),
     _heartbeatInterval(0),
@@ -62,6 +70,7 @@ ApplicationCluster::ApplicationCluster ()
     _myAddress(),
     _enableCluster(false) {
 
+  assert(_dispatcher != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +258,7 @@ bool ApplicationCluster::start () {
    
 
     // start heartbeat thread
-    _heartbeat = new HeartbeatThread(_heartbeatInterval * 1000, 5);
+    _heartbeat = new HeartbeatThread(_server, _dispatcher, _applicationV8, _heartbeatInterval * 1000, 5);
 
     if (_heartbeat == 0) {
       LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");

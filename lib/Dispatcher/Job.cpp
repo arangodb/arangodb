@@ -28,8 +28,6 @@
 
 #include "Job.h"
 
-#include "Dispatcher/JobObserver.h"
-
 using namespace triagens::rest;
 using namespace std;
 
