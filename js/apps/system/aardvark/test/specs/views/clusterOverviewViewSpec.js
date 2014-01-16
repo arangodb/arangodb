@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, expect*/
-/*global templateEngine, $, _*/
+/*global templateEngine, $, _, uiMatchers*/
 (function() {
   "use strict";
 
@@ -20,33 +20,7 @@
       };
       spyOn(window, "ClusterServerView").andReturn(serverView);
       spyOn(window, "ClusterCoordinatorView").andReturn(coordinatorView);
-      this.addMatchers({
-
-        toBeTag: function(name) {
-          var el = this.actual;
-          this.message = function() {
-            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
-          };
-          return el.tagName.toLowerCase() === name;
-        },
-        
-        toBeOfClass: function(name) {
-          var el = $(this.actual);
-          this.message = function() {
-            return "Expected \"" + el.attr("class") + "\" to contain " + name; 
-          };
-          return el.hasClass(name);
-        },
-
-        toNotHaveClass: function(name) {
-          var el = $(this.actual);
-          this.message = function() {
-            return "Expected \"" + el.attr("class") + "\" to not contain " + name; 
-          };
-          return !el.hasClass(name);
-        }
-
-      });
+      uiMatchers.define(this);
     });
 
     afterEach(function() {
