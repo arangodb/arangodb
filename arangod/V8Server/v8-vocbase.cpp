@@ -1939,8 +1939,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   while (true) {
     res = agency.getValues("Current/Collections/" + databaseName + "/" + cid, 
                            true);
-    if (res.successful()) {
-      res.parse("", false);
+    if (res.successful() && res.parse("", false)) {
       map<string, AgencyCommResultEntry>::iterator it = res._values.begin();
       if (it != res._values.end()) {
         TRI_json_t const* json = (*it).second._json;
@@ -5091,6 +5090,81 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection, case of a coordinator in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* collection) {
+  v8::HandleScope scope;
+
+  string const databaseName(collection->_dbName);
+
+  // First we need the collection ID as a string:
+  string const cid = StringUtils::itoa(collection->_cid);
+
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+    if (! locker.successful()) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not lock plan in agency");
+    }
+
+    res = ac.removeValues("Plan/Collections/"+databaseName+"/"+cid, false);
+    if (!res.successful()) {
+      if (res._statusCode == 404) {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                            "could not remove collection from plan in agency");
+    }
+  }
+
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                             "could not read version of current in agency");
+  }
+  uint64_t index = res._index;
+  while (true) {
+    map<string, TRI_json_t*> done;
+    res = ac.getValues("Current/Collections/"+databaseName+"/"+cid, false);
+    if (res.successful() && res.parse("", false)) {
+      map<string, AgencyCommResultEntry>::iterator it = res._values.begin();
+      if (it != res._values.end()) {
+        // now this is a JSON object, get the "shards" entry and count:
+        TRI_json_t const* json = (*it).second._json;
+        TRI_json_t const* shards = TRI_LookupArrayJson(json, "shards");
+        if (TRI_IsArrayJson(shards)) {
+          size_t len = shards->_value._objects._length / 2;
+          if (len == 0) {
+            AgencyCommLocker locker("Current", "WRITE");
+            if (locker.successful()) {
+              res = ac.removeValues("Current/Collections/"+databaseName+"/"+
+                                    cid, false);
+              if (res.successful()) {
+                return scope.Close(v8::True());
+              }
+              else {
+                TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                  "could not remove collection entry in current in agency");
+              }
+            }
+          }
+        }
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
 ///
 /// @FUN{@FA{collection}.drop()}
@@ -5114,8 +5188,13 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-  
+#ifdef TRI_ENABLE_CLUSTER
+  // If we are a coordinator in a cluster, we have to behave differently:
+  if (ServerState::instance()->isCoordinator()) {
+    return JS_DropVocbaseCol_Coordinator(collection);
+  }
+#endif
+
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
@@ -8387,7 +8466,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
     res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, 60.0);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     if (!res.successful()) {
-      if (res._statusCode == 403) {
+      if (res._statusCode == 412) {
         TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DUPLICATE_NAME);
       }
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
@@ -8594,15 +8673,17 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   {
     AgencyCommLocker locker("Plan", "WRITE");
     if (! locker.successful()) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not lock plan in agency");
     }
 
     res = ac.removeValues("Plan/Databases/"+name, false);
     if (!res.successful()) {
-      if (res._statusCode == 403) {
+      if (res._statusCode == 404) {
         TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       }
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
+                               "could not remove database from plan in agency");
     }
   }
 
@@ -8616,8 +8697,8 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
     map<string, TRI_json_t*> done;
     res = ac.getValues("Current/Databases/"+name, true);
     if (res.successful()) {
-      res.parse("Current/Databases/"+name+"/", false);
-      if (res._values.size() == 0) {
+      if (res.parse("Current/Databases/"+name+"/", false) &&
+          res._values.size() == 0) {
         AgencyCommLocker locker("Current", "WRITE");
         if (locker.successful()) {
           res = ac.removeValues("Current/Databases/"+name,true);
