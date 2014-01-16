@@ -95,6 +95,14 @@ button {
   background-color: #F89406;
 }
 
+.btn-inactive {
+  background-color: lightgrey;
+}
+
+.btn-inactive:hover {
+  background-color: grey;
+}
+
 .btn-group > .btn + .dropdown-toggle {
   box-shadow: 1px 0 0 rgba(255, 255, 255, 0.125) inset, 0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
@@ -271,6 +279,14 @@ button.gv-zoom-btn.pan-bottom{
   background-image:url("../img/gv_arrow_bottom.png");
 }
 
-button.btn-overview {
+/* Cluster View */
+
+button.btn-overview, button.btn-server {
   margin: 5px;
 }
+
+button.btn-server {
+  width: 120px;
+}
+
+

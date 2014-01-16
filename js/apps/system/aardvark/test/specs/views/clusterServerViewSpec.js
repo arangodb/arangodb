@@ -16,6 +16,17 @@
         render: function(){}
       };
       spyOn(window, "ClusterDatabaseView").andReturn(dbView);
+
+      this.addMatchers({
+        toBeOfClass: function(name) {
+          var el = $(this.actual);
+          this.message = function() {
+            return "Expected \"" + el.attr("class") + "\" to contain " + name; 
+          };
+          return el.hasClass(name);
+        }
+      });
+
     });
 
     afterEach(function() {
@@ -58,6 +69,20 @@
             });
 
           });
+        },
+
+        checkDominoLayout = function(tile) {
+          var tileElements = tile.children,
+              upper = tileElements[0],
+              line = tileElements[1],
+              lower = tileElements[2];
+          expect(tile).toBeOfClass("domino");
+          expect(tile).toBeOfClass("server");
+          expect(upper).toBeOfClass("domino-upper");
+          expect(line).toBeOfClass("domino-line");
+          expect(lower).toBeOfClass("domino-lower");
+          expect(upper.children[0]).toBeOfClass("domino-header");
+          expect(lower.children[0]).toBeOfClass("domino-header");
         };
 
       beforeEach(function() {
@@ -134,6 +159,13 @@
       
       describe("minified version", function() {
 
+        var checkButtonContent = function(btn, pair, cls) {
+          expect(btn).toBeOfClass("btn");
+          expect(btn).toBeOfClass("server");
+          expect(btn).toBeOfClass("btn-" + cls);
+          expect($(btn).text()).toEqual(pair.primary.name);
+        };
+
         beforeEach(function() {
           view.render(true);
         });
@@ -142,12 +174,57 @@
           expect($("button", $(div)).length).toEqual(4);
         });
         
-        // TODO
+        it("should render the good pair", function() {
+          checkButtonContent(
+            document.getElementById(okPair.primary.name),
+            okPair,
+            "success"
+          );
+        });
+        
+        it("should render the single primary", function() {
+          checkButtonContent(
+            document.getElementById(noBkp.primary.name),
+            noBkp,
+            "success"
+          );
+        });
+        
+        it("should render the dead secondary", function() {
+          checkButtonContent(
+            document.getElementById(deadBkp.primary.name),
+            deadBkp,
+            "success"
+          );
+        });
+        
+        it("should render the dead primary", function() {
+          checkButtonContent(
+            document.getElementById(deadPrim.primary.name),
+            deadPrim,
+            "danger"
+          );
+        });
         
         checkUserActions();
       });
 
       describe("maximised version", function() {
+
+        var checkDominoContent = function(tile, pair, btn1, btn2) {
+          var upper = tile.children[0],
+              lower = tile.children[2];
+          expect(upper).toBeOfClass("btn-" + btn1);
+          expect($(upper.children[0]).text()).toEqual(pair.primary.name);
+          expect($(upper.children[1]).text()).toEqual(pair.primary.url);
+          expect(lower).toBeOfClass("btn-" + btn2);
+          if (pair.secondary) {
+            expect($(lower.children[0]).text()).toEqual(pair.secondary.name);
+            expect($(lower.children[1]).text()).toEqual(pair.secondary.url);
+          } else {
+            expect($(lower.children[0]).text()).toEqual("Not configured");
+          }
+        };
 
         beforeEach(function() {
           view.render();
@@ -159,7 +236,28 @@
 
         it("should render the good pair", function() {
           var tile = getTile(okPair.primary.name);
+          checkDominoLayout(tile);
+          checkDominoContent(tile, okPair, "success", "success");
         });
+
+        it("should render the single primary", function() {
+          var tile = getTile(noBkp.primary.name);
+          checkDominoLayout(tile);
+          checkDominoContent(tile, noBkp, "success", "inactive");
+        });
+
+        it("should render the dead secondary pair", function() {
+          var tile = getTile(deadBkp.primary.name);
+          checkDominoLayout(tile);
+          checkDominoContent(tile, deadBkp, "success", "danger");
+        });
+
+        it("should render the dead primary pair", function() {
+          var tile = getTile(deadPrim.primary.name);
+          checkDominoLayout(tile);
+          checkDominoContent(tile, deadPrim, "danger", "success");
+        });
+
 
         checkUserActions();
 
