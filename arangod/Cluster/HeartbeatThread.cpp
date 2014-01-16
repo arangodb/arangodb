@@ -300,20 +300,25 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult& result,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
-  const bool result = _agency.sendServerState();
+  const AgencyCommResult result = _agency.sendServerState();
 
-  if (result) {
+  if (result.successful()) {
+    _numFails = 0;
+    return true;
+
+  }
+    
+  if (++_numFails % _maxFailsBeforeWarning == 0) {
+    const std::string endpoints = AgencyComm::getEndpointsString();
+
+    LOG_WARNING("heartbeat could not be sent to agency endpoints (%s): http code: %d, body: %s", 
+                endpoints.c_str(),
+                result.httpCode(),
+                result.body().c_str());
     _numFails = 0;
   }
-  else {
-    if (++_numFails % _maxFailsBeforeWarning == 0) {
-      const std::string endpoints = AgencyComm::getEndpointsString();
 
-      LOG_WARNING("heartbeat could not be sent to agency endpoints (%s)", endpoints.c_str());
-    }
-  }
-
-  return result;
+  return false;
 }
 
 // Local Variables:
