@@ -1950,11 +1950,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
         }
       }
     }
-    res = agency.watchValue("Current/Version", index, 1.0, false);
-    if (!res.successful()) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
-                               "could not read version of current in agency");
-    }
+    res = agency.watchValue("Current/Version", index, 5.0, false);
     index = res._index;
   }
 }
@@ -8217,7 +8213,6 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
   ClusterInfo* ci = ClusterInfo::instance();
 
   if (argv.Length() == 0) {
-    ci->loadCurrentCollections();
     vector<DatabaseID> list = ci->listDatabases(true);
     v8::Handle<v8::Array> result = v8::Array::New();
     for (size_t i = 0;  i < list.size();  ++i) {    
@@ -8406,6 +8401,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
                              "could not read version of current in agency");
   }
   uint64_t index = res._index;
+  int count = 0;
   while (true) {
     res = ac.getValues("Current/Databases/"+name, true);
     if (res.successful()) {
@@ -8414,12 +8410,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
         return scope.Close(v8::True());
       }
     }
-    res = ac.watchValue("Current/Version", index, 1.0, false);
-    if (!res.successful()) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
-                               "could not read version of current in agency");
-    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
     index = res._index;
+    if (++count >= 12) {
+      // We update the list of DBServers every minute in case one of them
+      // was taken away since we last looked. This also helps (slightly)
+      // if a new DBServer was added. However, in this case we report
+      // success a bit too early, which is not too bad.
+      ci->loadCurrentDBServers();
+      DBServers = ci->getCurrentDBServers();
+      count = 0;
+    }
   }
 }
 #endif
@@ -8614,14 +8615,17 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
     if (res.successful()) {
       res.parse("Current/Databases/"+name+"/", false);
       if (res._values.size() == 0) {
+        AgencyCommLocker locker("Current", "WRITE");
+        if (locker.successful()) {
+          res = ac.removeValues("Current/Databases/"+name,true);
+        }
+        // We do not care about errors here, since the directory can
+        // safely be left in place. However, it is more orderly to remove
+        // it.
         return scope.Close(v8::True());
       }
     }
-    res = ac.watchValue("Current/Version", index, 1.0, false);
-    if (!res.successful()) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
-                               "could not read version of current in agency");
-    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
     index = res._index;
   }
 }
