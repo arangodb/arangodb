@@ -1,9 +1,12 @@
 v1.4.6 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #734: foxx cookie and route problem
+
 * added method `fm.configJson` for arangosh
 
 * include `startupPath` in result of API `/_api/foxx/config`
+
 
 v1.4.5 (2014-01-15)
 -------------------
@@ -29,6 +32,7 @@ v1.4.5 (2014-01-15)
 * fixed potential deadlock in global context method execution
 
 * added override file "arangod.conf.local" (and co)
+
 
 v1.4.4 (2013-12-24)
 -------------------
