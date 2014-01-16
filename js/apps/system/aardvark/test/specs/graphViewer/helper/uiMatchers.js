@@ -52,6 +52,14 @@ var uiMatchers = uiMatchers || {};
         return el.hasClass(name);
       },
       
+      toNotHaveClass: function(name) {
+        var el = $(this.actual);
+        this.message = function() {
+          return "Expected \"" + el.attr("class") + "\" to not contain " + name; 
+        };
+        return !el.hasClass(name);
+      },
+
       toBeADropdownMenu: function() {
         var div = this.actual,
           btn = div.children[0],

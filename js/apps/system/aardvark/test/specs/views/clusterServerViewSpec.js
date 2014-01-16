@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, expect*/
-/*global templateEngine, $, _*/
+/*global templateEngine, $, _, uiMatchers*/
 (function() {
   "use strict";
 
@@ -16,17 +16,7 @@
         render: function(){}
       };
       spyOn(window, "ClusterDatabaseView").andReturn(dbView);
-
-      this.addMatchers({
-        toBeOfClass: function(name) {
-          var el = $(this.actual);
-          this.message = function() {
-            return "Expected \"" + el.attr("class") + "\" to contain " + name; 
-          };
-          return el.hasClass(name);
-        }
-      });
-
+      uiMatchers.define(this);
     });
 
     afterEach(function() {
