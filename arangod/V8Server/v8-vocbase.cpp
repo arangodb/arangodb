@@ -8599,7 +8599,7 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
 
     res = ac.removeValues("Plan/Databases/"+name, false);
     if (!res.successful()) {
-      if (res._statusCode == 403) {
+      if (res._statusCode == (int) triagens::rest::HttpResponse::FORBIDDEN) {
         TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       }
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
