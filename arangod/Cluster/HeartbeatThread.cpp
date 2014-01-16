@@ -29,7 +29,13 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "BasicsC/logging.h"
+#include "Cluster/DBServerJob.h"
 #include "Cluster/ServerState.h"
+#include "Dispatcher/ApplicationDispatcher.h"
+#include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/Job.h"
+#include "V8Server/ApplicationV8.h"
+#include "VocBase/server.h"
 
 using namespace triagens::arango;
 
@@ -45,9 +51,15 @@ using namespace triagens::arango;
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread (uint64_t interval,
-                                  uint64_t maxFailsBeforeWarning) 
+HeartbeatThread::HeartbeatThread (TRI_server_t* server,
+                                  triagens::rest::ApplicationDispatcher* dispatcher,
+                                  ApplicationV8* applicationV8,
+                                  uint64_t interval,
+                                  uint64_t maxFailsBeforeWarning)
   : Thread("heartbeat"),
+    _server(server),
+    _dispatcher(dispatcher),
+    _applicationV8(applicationV8),
     _agency(),
     _condition(),
     _myId(ServerState::instance()->getId()),
@@ -56,6 +68,7 @@ HeartbeatThread::HeartbeatThread (uint64_t interval,
     _numFails(0),
     _stop(0) {
 
+  assert(_dispatcher != 0);
   allowAsynchronousCancelation();
 }
 
@@ -258,9 +271,19 @@ bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
                                         uint64_t& remotePlanVersion) {
   LOG_TRACE("found a plan update");
 
-  // TODO: actually handle the change
+  // schedule a job for the change
+  triagens::rest::Job* job = new DBServerJob(_server, _applicationV8);
 
-  remotePlanVersion = currentPlanVersion;
+  assert(job != 0);
+
+  if (_dispatcher->dispatcher()->addJob(job)) {
+    remotePlanVersion = currentPlanVersion;
+
+    LOG_TRACE("scheduled plan update handler");
+  }
+  else {
+    LOG_ERROR("could not schedule plan update handler");
+  }
 
   return true;
 }
