@@ -2051,7 +2051,7 @@ char* TRI_LocateConfigDirectory () {
 
   v = LocateConfigDirectoryEnv();
 
-  if (v != null) {
+  if (v != NULL) {
     return v;
   }
 
