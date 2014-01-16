@@ -738,7 +738,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
                                                              TRI_ObjectToString(argv[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  const std::string cid = triagens::basics::StringUtils::itoa(ci.cid());
+  const std::string cid = triagens::basics::StringUtils::itoa(ci.id());
   const std::string& name = ci.name();
   result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
   result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));

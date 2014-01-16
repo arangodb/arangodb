@@ -1,4 +1,4 @@
-v1.5.x (XXXX-XX-XX)
+v1.5.0 (XXXX-XX-XX)
 -------------------
 
 * allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
@@ -105,8 +105,20 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.5 (XXXX-XX-XX)
+v1.4.6 (XXXX-XX-XX)
 -------------------
+
+* added method `fm.configJson` for arangosh
+
+* include `startupPath` in result of API `/_api/foxx/config`
+
+
+v1.4.5 (2014-01-15)
+-------------------
+
+* fixed issue #726: Alternate Windows Install Method
+
+* fixed issue #716: dpkg -P doesn't remove everything
 
 * fixed bugs in description of HTTP API `_api/index`
 

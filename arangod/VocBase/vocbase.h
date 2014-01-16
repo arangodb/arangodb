@@ -414,6 +414,7 @@ typedef struct TRI_vocbase_col_s {
   struct TRI_primary_collection_s*  _collection; // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
+  char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
 
   bool                              _isLocal;    // if true, the collection is local. if false,
                                                  // the collection is a remote (cluster) collection

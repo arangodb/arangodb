@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global ArangoAgency, ArangoServerState, exports */
+/*global ArangoAgency, ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript cluster functionality
@@ -27,6 +27,8 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+var console = require("console");
 
 var isCluster = function () {
   return (typeof ArangoServerState !== "undefined" &&
@@ -65,11 +67,25 @@ var isCoordinatorRequest = function (req) {
   return req.headers.hasOwnProperty("x-arango-coordinator");
 };
 
+var handlePlanChange = function () {
+  if (! isCluster() || isCoordinator()) {
+    return;
+  }
+
+  try {
+    console.info("%s", "plan change handling successful");
+  }
+  catch (err) {
+    console.error("%s", "plan change handling failed");
+  }
+};
+
 exports.isCluster            = isCluster;
 exports.isCoordinator        = isCoordinator;
 exports.role                 = role;
 exports.status               = status;
 exports.isCoordinatorRequest = isCoordinatorRequest;
+exports.handlePlanChange     = handlePlanChange;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

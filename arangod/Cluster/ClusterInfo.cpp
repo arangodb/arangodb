@@ -34,6 +34,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
@@ -51,53 +52,15 @@ using triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::CollectionInfo () 
-  : _id(),
-    _name(),
-    _type(TRI_COL_TYPE_UNKNOWN),
-    _status(TRI_VOC_COL_STATUS_CORRUPTED),
-    _maximalSize(0),
-    _deleted(false),
-    _doCompact(false),
-    _isSystem(false),
-    _isVolatile(false),
-    _waitForSync(false),
-    _keyOptions(0),
-    _shardKeys(),
-    _shardIds() {
+  : _json(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection info object from json
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo::CollectionInfo (std::string const& data) {
-  TRI_json_t* json = JsonHelper::fromString(data);
-
-  if (json != 0) {
-    if (JsonHelper::isArray(json)) {
-      if (! createFromJson(json)) {
-        invalidate();
-      }
-    }
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::CollectionInfo (TRI_json_t* json) {
-  if (json != 0) {
-    if (JsonHelper::isArray(json)) {
-      if (! createFromJson(json)) {
-        invalidate();
-      }
-    }
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
+CollectionInfo::CollectionInfo (TRI_json_t* json)
+  : _json(json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,22 +68,10 @@ CollectionInfo::CollectionInfo (TRI_json_t* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::CollectionInfo (CollectionInfo const& other) :
-  _id(other._id),
-  _name(other._name),
-  _type(other._type),
-  _status(other._status),
-  _maximalSize(other._maximalSize),
-  _deleted(other._deleted),
-  _doCompact(other._doCompact),
-  _isSystem(other._isSystem),
-  _isVolatile(other._isVolatile),
-  _waitForSync(other._waitForSync),
-  _keyOptions(0),
-  _shardKeys(other._shardKeys),
-  _shardIds(other._shardIds) {
+  _json(other._json) {
 
-  if (other._keyOptions != 0) {
-    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  if (other._json != 0) {
+    _json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._json);
   }
 }
 
@@ -129,22 +80,11 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
-  _id = other._id;
-  _name = other._name;
-  _type = other._type;
-  _status = other._status;
-  _maximalSize = other._maximalSize;
-  _deleted = other._deleted;
-  _doCompact = other._doCompact;
-  _isSystem = other._isSystem;
-  _isVolatile = other._isVolatile;
-  _waitForSync = other._waitForSync;
-  _shardKeys = other._shardKeys;
-  _shardIds = other._shardIds;
-  _keyOptions = 0;
-  
-  if (other._keyOptions != 0) {
-    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._keyOptions);
+  if (other._json != 0 && this != &other) {
+    _json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._json);
+  }
+  else {
+    _json = 0;
   }
 
   return *this;
@@ -155,166 +95,13 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::~CollectionInfo () {
-  if (_keyOptions != 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+  if (_json != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
   }
 } 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidates a collection info object
-////////////////////////////////////////////////////////////////////////////////
-
-void CollectionInfo::invalidate () {
-  _id = 0;
-  _name = "";
-  _type = TRI_COL_TYPE_UNKNOWN;
-  _status = TRI_VOC_COL_STATUS_CORRUPTED;
-  _maximalSize = 0;
-  _deleted = false;
-  _doCompact = false;
-  _isSystem = false;
-  _isVolatile = false;
-  _waitForSync = false;
-  _shardKeys.clear();
-  _shardIds.clear();
-  
-  if (_keyOptions != 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
-  }
-  _keyOptions = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief populate object properties from the JSON given
-////////////////////////////////////////////////////////////////////////////////
-
-bool CollectionInfo::createFromJson (TRI_json_t const* json) {
-  // id
-  const std::string id = JsonHelper::getStringValue(json, "id", "");
-  if (id.empty()) {
-    return false;
-  }
-  _id = triagens::basics::StringUtils::uint64(id.c_str(), id.size());
-
-
-  // name
-  _name = JsonHelper::getStringValue(json, "name", "");
-  if (_name.empty()) {
-    return false;
-  }
-
-  // type
-  _type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, 
-                                                            "type", 
-                                                            (int) TRI_COL_TYPE_UNKNOWN);
-  if (_type == TRI_COL_TYPE_UNKNOWN) {
-    return false;
-  }
-
-  // status
-  _status = (TRI_vocbase_col_status_e) JsonHelper::getNumericValue<int>(json, 
-                                                                        "status", 
-                                                                        (int) TRI_VOC_COL_STATUS_NEW_BORN);
-  if (_status == TRI_VOC_COL_STATUS_CORRUPTED || 
-      _status == TRI_VOC_COL_STATUS_NEW_BORN) {
-    return false;
-  }
-
-  _maximalSize = JsonHelper::getNumericValue<TRI_voc_size_t>(json, "maximalSize", 0);
-  _doCompact   = JsonHelper::getBooleanValue(json, "doCompact", false);
-  _isSystem    = JsonHelper::getBooleanValue(json, "isSystem", false);
-  _isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
-  _waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", false);
-
-  TRI_json_t const* keyOptions = JsonHelper::getArrayElement(json, "keyOptions");
-  if (JsonHelper::isArray(keyOptions)) {
-    _keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-  }
-  else {
-    _keyOptions = 0;
-  }
-  
-  // TODO: indexes
-
-  // shardKeys
-  TRI_json_t const* value = TRI_LookupArrayJson(json, "shardKeys");
-  if (! JsonHelper::isList(value)) {
-    return false;
-  }
-  _shardKeys = JsonHelper::stringList(value);
- 
-  // shards
-  value = TRI_LookupArrayJson(json, "shards");
-  if (! JsonHelper::isArray(value)) {
-    return false;
-  }
-  _shardIds = JsonHelper::stringObject(value);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON string from the object
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* CollectionInfo::toJson (TRI_memory_zone_t* zone) {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
-
-  if (json == 0) {
-    return json;
-  }
-
-  char* data = TRI_StringUInt64(_id);
-
-  if (data == 0) {
-    TRI_FreeJson(zone, json);
-    return 0;
-  }
-
-  TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringJson(zone, data));
-  TRI_Insert3ArrayJson(zone, json, "name", TRI_CreateStringCopyJson(zone, _name.c_str()));
-  TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateNumberJson(zone, (int) _type));
-  TRI_Insert3ArrayJson(zone, json, "status", TRI_CreateNumberJson(zone, (int) _status));
-  
-  TRI_Insert3ArrayJson(zone, json, "maximalSize", TRI_CreateNumberJson(zone, (int) _maximalSize));
-  TRI_Insert3ArrayJson(zone, json, "doCompact", TRI_CreateBooleanJson(zone, _doCompact));
-  TRI_Insert3ArrayJson(zone, json, "isSystem", TRI_CreateBooleanJson(zone, _isSystem));
-  TRI_Insert3ArrayJson(zone, json, "isVolatile", TRI_CreateBooleanJson(zone, _isVolatile));
-  TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, _waitForSync));
-
-  if (_keyOptions != 0) {
-    TRI_Insert3ArrayJson(zone, json, "keyOptions", TRI_CopyJson(zone, _keyOptions));
-  }
-
-  // TODO: indexes
-
-  TRI_json_t* values = JsonHelper::stringList(zone, _shardKeys);
-
-  if (values == 0) {
-    TRI_FreeJson(zone, json);
-    return 0;
-  }
-
-  TRI_Insert3ArrayJson(zone, json, "shardKeys", values);
-  
-  values = JsonHelper::stringObject(zone, _shardIds);
-
-  if (values == 0) {
-    TRI_FreeJson(zone, json);
-    return 0;
-  }
-
-  TRI_Insert3ArrayJson(zone, json, "shards", values);
-
-  return json;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ClusterInfo class
 // -----------------------------------------------------------------------------
 
 ClusterInfo* ClusterInfo::_theinstance = 0;
@@ -763,23 +550,19 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
 TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
   TRI_col_info_t info;
 
-  info._type        = collection._type;
-  info._cid         = collection._id;
+  info._type        = collection.type();
+  info._cid         = collection.id();
   info._revision    = 0; // TODO 
-  info._maximalSize = collection._maximalSize;
-  memcpy(info._name, collection._name.c_str(), collection._name.size());
-  info._deleted     = collection._deleted;
-  info._doCompact   = collection._doCompact;
-  info._isSystem    = collection._isSystem;
-  info._isVolatile  = collection._isVolatile;
-  info._waitForSync = collection._waitForSync;
+  info._maximalSize = collection.maximalSize();
 
-  if (collection._keyOptions != 0) {
-    info._keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, collection._keyOptions);
-  }
-  else {
-    info._keyOptions = 0;
-  }
+  const std::string name = collection.name();
+  memcpy(info._name, name.c_str(), name.size());
+  info._deleted     = collection.deleted();
+  info._doCompact   = collection.doCompact();
+  info._isSystem    = collection.isSystem();
+  info._isVolatile  = collection.isVolatile();
+  info._waitForSync = collection.waitForSync();
+  info._keyOptions = collection.keyOptions();  
 
   return info;
 }
@@ -827,6 +610,330 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
   }
 
   return result;
+}
+
+// A local helper to report errors and messages:
+
+static inline int set_errormsg(int ourerrno, string& errorMsg) {
+  errorMsg = TRI_errno_string(ourerrno);
+  return ourerrno;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create database in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::createDatabaseCoordinator (string const& name, 
+                                            TRI_json_t const* json,
+                                            string errorMsg, double timeout) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, 60.0);
+    if (!res.successful()) {
+      if (res._statusCode == 412) {
+        return set_errormsg(TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS, errorMsg);
+      }
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  vector<ServerID> DBServers = getCurrentDBServers();
+  int count = 0;  // this counts, when we have to reload the DBServers
+
+  string where = "Current/Databases/" + name;
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == DBServers.size()) {
+        map<string, AgencyCommResultEntry>::iterator it;
+        string tmpMsg = "";
+        bool tmpHaveError = false;
+        for (it = res._values.begin(); it != res._values.end(); ++it) {
+          TRI_json_t const* json = (*it).second._json;
+          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+            tmpHaveError = true;
+            tmpMsg += " DBServer:"+it->first+":";
+            TRI_json_t const* errorMessage 
+                  = TRI_LookupArrayJson(json, "errorMessage");
+            if (TRI_IsStringJson(errorMessage)) {
+              tmpMsg += string(errorMessage->_value._string.data,
+                               errorMessage->_value._string.length);
+            }
+            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            if (TRI_IsNumberJson(errorNum)) {
+              tmpMsg += " (errNum=";
+              tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
+                          errorNum->_value._number));
+              tmpMsg += ")";
+            }
+          }
+        }
+        if (tmpHaveError) {
+          errorMsg = "Error in creation of database:" + tmpMsg;
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+    if (++count >= 12) {
+      // We update the list of DBServers every minute in case one of them
+      // was taken away since we last looked. This also helps (slightly)
+      // if a new DBServer was added. However, in this case we report
+      // success a bit too early, which is not too bad.
+      loadCurrentDBServers();
+      DBServers = getCurrentDBServers();
+      count = 0;
+    }
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop database in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg, 
+                                          double timeout) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    if (! ac.exists("Plan/Databases/" + name)) {
+      return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+
+    res = ac.removeValues("Plan/Databases/"+name, false);
+    if (!res.successful()) {
+      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+        return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg); 
+      }
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  string where = "Current/Databases/" + name;
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == 0) {
+        AgencyCommLocker locker("Current", "WRITE");
+        if (locker.successful()) {
+          res = ac.removeValues(where, true);
+          if (res.successful()) {
+            return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+          return set_errormsg(
+            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create collection in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::createCollectionCoordinator (string const& databaseName, 
+                                              string const& collectionID,
+                                              uint64_t numberOfShards,
+                                              TRI_json_t const* json,
+                                              string errorMsg, double timeout) {
+  AgencyComm ac;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    if (! ac.exists("Plan/Databases/" + databaseName)) {
+      return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+
+    if (ac.exists("Plan/Collections/" + databaseName + "/"+collectionID)) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg); 
+    }
+
+    AgencyCommResult result 
+      = ac.setValue("Plan/Collections/" + databaseName + "/"+collectionID, 
+                        json, 0.0);
+    if (!result.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  AgencyCommResult res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == numberOfShards) {
+        map<string, AgencyCommResultEntry>::iterator it;
+        string tmpMsg = "";
+        bool tmpHaveError = false;
+        for (it = res._values.begin(); it != res._values.end(); ++it) {
+          TRI_json_t const* json = (*it).second._json;
+          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+            tmpHaveError = true;
+            tmpMsg += " shardID:"+it->first+":";
+            TRI_json_t const* errorMessage 
+                  = TRI_LookupArrayJson(json, "errorMessage");
+            if (TRI_IsStringJson(errorMessage)) {
+              tmpMsg += string(errorMessage->_value._string.data,
+                               errorMessage->_value._string.length);
+            }
+            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            if (TRI_IsNumberJson(errorNum)) {
+              tmpMsg += " (errNum=";
+              tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
+                          errorNum->_value._number));
+              tmpMsg += ")";
+            }
+          }
+        }
+        if (tmpHaveError) {
+          errorMsg = "Error in creation of collection:" + tmpMsg;
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop collection in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::dropCollectionCoordinator (string const& databaseName, 
+                                            string const& collectionID,
+                                            string& errorMsg, 
+                                            double timeout) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+   
+    if (! ac.exists("Plan/Databases/" + databaseName)) {
+      return set_errormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+
+    res = ac.removeValues("Plan/Collections/"+databaseName+"/"+collectionID, 
+                          false);
+    if (!res.successful()) {
+      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+        return set_errormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg); 
+      }
+      return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
+                          errorMsg);
+    }
+  }
+
+  // Now wait for it to appear and be complete:
+  res = ac.getValues("Current/Version", false);
+  if (!res.successful()) {
+    return set_errormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                        errorMsg);
+  }
+  uint64_t index = res._index;
+  double endtime = TRI_microtime();
+  endtime += timeout == 0.0 ? 1e50 : timeout;
+
+  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  while (TRI_microtime() <= endtime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where+"/", false)) {
+      if (res._values.size() == 0) {
+        AgencyCommLocker locker("Current", "WRITE");
+        if (locker.successful()) {
+          res = ac.removeValues("Current/Collections/"+databaseName+"/"+
+                                collectionID, true);
+          if (res.successful()) {
+            return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+          return set_errormsg(
+            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, errorMsg);
+        }
+        return set_errormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    res = ac.watchValue("Current/Version", index, 5.0, false);
+    index = res._index;
+  }
+  return set_errormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -277,6 +277,29 @@ static void ListTreeRecursively (char const* full,
   TRI_DestroyVectorString(&dirs);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates a environment given configuration directory
+////////////////////////////////////////////////////////////////////////////////
+
+static char* LocateConfigDirectoryEnv (void) {
+  char const* v;
+  char* r;
+
+  v = getenv("ARANGODB_CONFIG_PATH");
+
+  if (v == NULL) {
+    return NULL;
+  }
+
+  r = TRI_DuplicateString(v);
+
+  NormalizePath(r);
+
+  TRI_AppendString(&r, TRI_DIR_SEPARATOR_STR);
+
+  return r;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -2016,7 +2039,7 @@ char* TRI_LocateInstallDirectory () {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate the configuration directory
+/// @brief locates the configuration directory
 ///
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
@@ -2025,6 +2048,12 @@ char* TRI_LocateInstallDirectory () {
 
 char* TRI_LocateConfigDirectory () {
   char* v;
+
+  v = LocateConfigDirectoryEnv();
+
+  if (v != NULL) {
+    return v;
+  }
 
   v = TRI_LocateInstallDirectory();
 
@@ -2040,6 +2069,13 @@ char* TRI_LocateConfigDirectory () {
 char* TRI_LocateConfigDirectory () {
   size_t len;
   const char* dir = _SYSCONFDIR_;
+  char* v;
+
+  v = LocateConfigDirectoryEnv();
+
+  if (v != NULL) {
+    return v;
+  }
 
   if (*dir == '\0') {
     return NULL;
@@ -2058,7 +2094,7 @@ char* TRI_LocateConfigDirectory () {
 #else
 
 char* TRI_LocateConfigDirectory () {
-  return NULL;
+  return LocateConfigDirectoryEnv();
 }
 
 #endif
