@@ -24,7 +24,8 @@ We provide packages for
 Using a Package Manager to install ArangoDB {#InstallingLinuxPackageManager}
 ----------------------------------------------------------------------------
 
-Follow the instructions on the @EXTREF_S{http://www.arangodb.org/download,Downloads} 
+Follow the instructions on the
+@EXTREF_S{http://www.arangodb.org/download,Downloads} 
 page to use your favorite package manager for the major distributions. After setting 
 up the ArangoDB repository you can then easily install ArangoDB using yum, aptitude, 
 urpmi, or zypper.
@@ -155,11 +156,8 @@ the port used.
 Windows {#InstallingWindows}
 ============================
 
-We provide precompiled Windows binaries for ArangoDB. The binaries
-are statically linked with the required libraries such as V8, but 
-they may still require some Windows platform libraries to be present.
-These libraries should be present on a Windows Vista, Windows 7, and
-Windows 8 by default, but there may be issues with other platforms.
+Choices{#InstallingWindowsChoices}
+----------------------------------
 
 The default installation directory is `c:\Program Files\ArangoDB-1.x.y`. During the
 installation process you may change this. In the following description we will assume
@@ -297,17 +295,16 @@ Limitations for Cygwin{#InstallingWindowsCygwin}
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
-CTRL-C will forcefully kill the server process, without giving it a chance to 
-handle the kill signal. In this case, a regular server shutdown is not
-possible, which may leave a file `LOCK` around in the server's data directory.
-This file needs to be removed manually to make ArangoDB start again. 
-Additionally, as ArangoDB does not have a chance to handle the kill signal,
-the server cannot forcefully flush any data to disk on shutdown, leading to
-potential data loss.
+CTRL-C will forcefully kill the server process, without giving it a chance to
+handle the kill signal. In this case, a regular server shutdown is not possible,
+which may leave a file `LOCK` around in the server's data directory.  This file
+needs to be removed manually to make ArangoDB start again.  Additionally, as
+ArangoDB does not have a chance to handle the kill signal, the server cannot
+forcefully flush any data to disk on shutdown, leading to potential data loss.
 When starting ArangoDB from a Cygwin terminal it might also happen that no
-errors are printed in the terminal output.
-Starting ArangoDB from an MS-DOS command prompt does not impose these 
-limitations and is thus the preferred method.
+errors are printed in the terminal output.  Starting ArangoDB from an MS-DOS
+command prompt does not impose these limitations and is thus the preferred
+method.
 
 Please note that ArangoDB uses UTF-8 as its internal encoding and that the
 system console must support a UTF-8 codepage (65001) and font. It may be
