@@ -2,5 +2,9 @@
 
 if [ purge = "$1" ]; then
         update-rc.d arangodb remove >/dev/null
-fi
 
+	rm -rf /usr/share/arangodb/js/apps
+	rm -rf /var/log/arangodb
+	rm -rf /var/lib/arangodb
+	rm -rf /var/lib/arangodb-apps 
+fi
