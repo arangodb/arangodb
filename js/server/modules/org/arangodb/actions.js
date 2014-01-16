@@ -1487,13 +1487,46 @@ function resultUnsupported (req, res, headers) {
 /// @brief internal function for handling redirects 
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleRedirect (req, res, destination, headers) {
+function handleRedirect (req, res, options, headers) {
+  var destination;
+  var url;
+
+  destination = options.destination;
+
+  if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
+    url = req.protocol + "://";
+
+    if (req.headers.hasOwnProperty('host')) {
+      url += req.headers.host;
+    }
+    else {
+      url += req.server.address + ":" + req.server.port;
+    }
+    
+    if (options.relative) {
+      var u = req.url;
+
+      if (0 < u.length && u[u.length - 1] === '/') {
+        url += "/_db/" + encodeURIComponent(req.database) + u + destination;
+      }
+      else {
+        url += "/_db/" + encodeURIComponent(req.database) + u + "/" + destination;
+      }
+    }
+    else {
+      url += destination;
+    }
+  }
+  else {
+    url = destination;
+  }
+
   res.contentType = "text/html";
   res.body = "<html><head><title>Moved</title>"
     + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-    + destination
+    + url
     + "\">"
-    + destination
+    + url
     + "</a>.</p></body></html>";
 
   if (headers !== undefined) {
@@ -1503,56 +1536,39 @@ function handleRedirect (req, res, destination, headers) {
     res.headers = {};
   }
 
-  res.headers.location = destination;
+  res.headers.location = url;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a permanently redirect
 ///
-/// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
+/// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{options}, @FA{headers})}
 ///
 /// The function generates a redirect response.
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultPermanentRedirect (req, res, destination, headers) {
+function resultPermanentRedirect (req, res, options, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
 
-  if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
-    if (req.headers.hasOwnProperty('host')) {
-      destination = req.protocol
-                  + "://"
-                  + req.headers.host
-                  + destination;
-    }
-    else {
-      destination = req.protocol
-                  + "://"
-                  + req.server.address 
-                  + ":"
-                  + req.server.port
-                  + destination;
-    }
-  }
-
-  handleRedirect(req, res, destination, headers);
+  handleRedirect(req, res, options, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a temporary redirect
 ///
-/// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
+/// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{options}, @FA{headers})}
 ///
 /// The function generates a redirect response.
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultTemporaryRedirect (req, res, destination, headers) {
+function resultTemporaryRedirect (req, res, options, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
   
-  handleRedirect(req, res, destination, headers);
+  handleRedirect(req, res, options, headers);
 }
 
 // -----------------------------------------------------------------------------
@@ -1867,10 +1883,10 @@ function redirectRequest (req, res, options, next) {
   'use strict';
 
   if (options.permanently) {
-    resultPermanentRedirect(req, res, options.destination);
+    resultPermanentRedirect(req, res, options);
   }
   else {
-    resultTemporaryRedirect(req, res, options.destination);
+    resultTemporaryRedirect(req, res, options);
   }
 }
 
