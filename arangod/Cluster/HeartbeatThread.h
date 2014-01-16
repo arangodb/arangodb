@@ -34,13 +34,17 @@
 #include "BasicsC/logging.h"
 #include "Cluster/AgencyComm.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
-
+  struct TRI_server_s;
+}
 
 namespace triagens {
+  namespace rest {
+    class ApplicationDispatcher;
+  }
+
   namespace arango {
+    class ApplicationV8;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   HeartbeatThread
@@ -62,7 +66,10 @@ namespace triagens {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        HeartbeatThread (uint64_t,
+        HeartbeatThread (struct TRI_server_s*,
+                         triagens::rest::ApplicationDispatcher*,
+                         ApplicationV8*,
+                         uint64_t,
                          uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +160,24 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief server
+////////////////////////////////////////////////////////////////////////////////
+
+         struct TRI_server_s* _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Job dispatcher
+////////////////////////////////////////////////////////////////////////////////
+        
+        triagens::rest::ApplicationDispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief v8 dispatcher
+////////////////////////////////////////////////////////////////////////////////
+        
+        ApplicationV8* _applicationV8;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief AgencyComm instance
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -198,11 +223,6 @@ namespace triagens {
 
   }
 }
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
