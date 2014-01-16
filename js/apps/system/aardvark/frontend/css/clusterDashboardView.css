@@ -15,6 +15,14 @@ h3.clusterColumnHeader {
   text-align: center;
 }
 
+h4.domino-header {
+  margin: 0px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-right: 0px;
+  padding-left: 0px;
+}
+
 div.clusterAmounts {
   position: absolute;
   left: 0px;
@@ -50,26 +58,30 @@ div.tile-right {
   margin-left: 20px;
 }
 
-.btn-success {
-  background: #8AA051;
+div.domino {
+  float: left;
+  text-align: center;
+  background-color: #f4f3f3;
+  cursor: pointer;
+  margin: 5px;
+  width: 210px;
 }
 
-.btn-success:hover {
-  background: #788F3D;
+hr.domino-line {
+  margin: 0px 5px;
+  border-width: 1px;
+  border-top-color: #686766;
+  border-bottom-color: #333232;
 }
 
-.btn-danger {
-  background-color: #DA4F49;
+div.domino-upper, div.domino-lower {
+  height: 100px;
+  margin: 5px;
+}
+div.domino-upper {
+  margin-bottom: 0px;
+}
+div.domino-lower {
+  margin-top: 0px;
 }
 
-.btn-danger:hover {
-  background-color: #BE342E;
-}
-
-.btn-warning {
-  background-color: #FAA732;
-}
-
-.btn-warning:hover {
-  background-color: #F89406;
-}
