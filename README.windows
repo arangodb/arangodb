@@ -8,7 +8,7 @@
    **** Please read sections 5 & 6 below if you have an existing database ****
    ***************************************************************************
 
-1) The default installation directory is "c:\Program Files\ArangoDB-1.x.y". During the
+1) The default installation directory is `c:\Program Files\ArangoDB-1.x.y`. During the
    installation process you may change this. In the following description we will assume
    that ArangoDB has been installed in the location <ROOTDIR>.
 
@@ -20,12 +20,12 @@
    Installating for a single user:
 
        Select a different directory during installation. For example 
-       "C:/Users/<username>/arangodb" or "C:/ArangoDB".
+       `C:/Users/<username>/arangodb` or `C:/ArangoDB`.
 
    Installating for multiple users:
 
        Keep the default directory. After the installation edit the file
-       "<ROOTDIR>/etc/arangodb/arangod.conf". Adjust the "directory" and "app-path"
+       `<ROOTDIR>/etc/arangodb/arangod.conf`. Adjust the `directory` and `app-path`
        so that these paths point into your home directory.
 
        [database]
@@ -39,14 +39,14 @@
    Installating as Service
 
        Keep the default directory. After the installation open a command line
-       as administrator (search for "cmd" and right click "run as administrator")
+       as administrator (search for `cmd` and right click `run as administrator`)
 
        cmd> arangod --install-service
        INFO: adding service 'ArangoDB - the multi-purpose database' (internal 'ArangoDB')
        INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 1.4.4\bin\arangod.exe" --start-service'
 
        Open the service manager and start ArangoDB. In order to enable logging
-       edit the file "<ROOTDIR>/etc/arangodb/arangod.conf" and uncomment the file
+       edit the file `<ROOTDIR>/etc/arangodb/arangod.conf` and uncomment the file
        option.
 
        [log]
@@ -60,40 +60,44 @@
    unexpectedly.
 
 3) To start an ArangoDB server instance with networking enabled, use the executable
-   "arangod.exe" located in "<ROOTDIR>/bin". This will use the configuration
-   file "arangod.conf" located in "<ROOTDIR>/etc/arangodb", which you can adjust
-   to your needs and use the data directory "<ROOTDIR>/var/lib/arangodb". This
+   `arangod.exe` located in `<ROOTDIR>/bin`. This will use the configuration
+   file `arangod.conf` located in `<ROOTDIR>/etc/arangodb`, which you can adjust
+   to your needs and use the data directory `<ROOTDIR>/var/lib/arangodb`. This
    is the place where all your data (databases and collections) will be stored
    by default.
 
-   Please check the output of the "arangod.exe" executable before going on. If
-   the server started successully, you should see a line "ArangoDB is ready for
-   business. Have fun!"  at the end of its output.
+   Please check the output of the `arangod.exe` executable before going on. If
+   the server started successully, you should see a line `ArangoDB is ready for
+   business. Have fun!`  at the end of its output.
 
    We now wish to check that the installation is working correctly and to do
-   this we will be using the administration web interface. Execute "arangod.exe"
+   this we will be using the administration web interface. Execute `arangod.exe`
    if you have not already done so, then open up your web browser and point it
    to the page: http://127.0.0.1:8529/
 
-   To check if your installation was successful, click the "Collection" tab and
-   open the configutation. Select the "System" TYPE. If the installation was
+   To check if your installation was successful, click the `Collection` tab and
+   open the configutation. Select the `System` TYPE. If the installation was
    successful, then the page should display a few system collections.
 
    Try to add a new collection and then add some documents to this new
    collection.  If you have succeeded in creating a new collection and inserting
    one or more documents, then your installation is working correctly.
 
+   If you want to provide our own start scripts, you can set the environment
+   variable `ARANGODB_CONFIG_PATH`. This variable should point to a directory
+   containing the configuration files.
+
 4) To connect to an already running ArangoDB server instance, there is a shell
-   "arangosh.exe" located in "<ROOTDIR>/bin". This starts a shell which can be
+   `arangosh.exe` located in `<ROOTDIR>/bin`. This starts a shell which can be
    used (amongst other things) to administer and query a local or remote
    ArangoDB server.
 
-   Note that "arangosh.exe" does NOT start a separate server, it only starts the
+   Note that `arangosh.exe` does NOT start a separate server, it only starts the
    shell.  To use it, you must have a server running somewhere, e.g. by using
-   the "arangod.exe" executable.
+   the `arangod.exe` executable.
 
-   "arangosh.exe" uses configuration from the file "arangosh.conf" located in
-   "<ROOTDIR>/etc/arangodb/". Please adjust this to your needs if you want to
+   `arangosh.exe` uses configuration from the file `arangosh.conf` located in
+   `<ROOTDIR>/etc/arangodb/`. Please adjust this to your needs if you want to
    use different connection settings etc.
 
 5) If you have an EXISTING database, then please note that currently a 32 bit
@@ -103,8 +107,8 @@
    database, and vice versa.
 
 6) To upgrade an EXISTING database created with a previous version of ArangoDB,
-   please execute the server "arangod.exe" with the option
-   "--upgrade". Otherwise starting ArangoDB may fail with errors.
+   please execute the server `arangod.exe` with the option
+   `--upgrade`. Otherwise starting ArangoDB may fail with errors.
 
    Note that there is no harm in running the upgrade. So you should run this
    batch file if you are unsure of the database version you are using.

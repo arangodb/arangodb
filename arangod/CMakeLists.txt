@@ -98,10 +98,7 @@ add_executable(
     RestServer/ArangoServer.cpp
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
-    SkipLists/skiplist.c
     SkipLists/skiplistIndex.c
-    SkipListsEx/skiplistEx.c
-    SkipListsEx/skiplistExIndex.c
     Utils/DocumentHelper.cpp
     V8Server/ApplicationV8.cpp
     V8Server/v8-actions.cpp
@@ -118,7 +115,6 @@ add_executable(
     VocBase/general-cursor.c
     VocBase/headers.c
     VocBase/index.c
-    VocBase/index-garbage-collector.c
     VocBase/key-generator.c
     VocBase/marker.c
     VocBase/primary-collection.c

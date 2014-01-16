@@ -542,6 +542,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     }
   }
 
+  TRI_CopyString(init._dbName, vocbase->_name, strlen(vocbase->_name));
   TRI_CopyString(init._name, name, sizeof(init._name) - 1);
 
   if (path == NULL) {

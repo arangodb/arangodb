@@ -240,6 +240,46 @@ extern "C" {
 /// - 1451: @LIT{missing coordinator header}
 ///   Will be raised when a DB server in a cluster receives a HTTP request
 ///   without a coordinator header.
+/// - 1452: @LIT{could not lock plan in agency}
+///   Will be raised when a coordinator in a cluster cannot lock the Plan
+///   hierarchy in the agency.
+/// - 1453: @LIT{collection ID already exists}
+///   Will be raised when a coordinator in a cluster tries to create a
+///   collection and the collection ID already exists.
+/// - 1454: @LIT{could not create collection in plan}
+///   Will be raised when a coordinator in a cluster cannot create an entry for
+///   a new collection in the Plan hierarchy in the agency.
+/// - 1455: @LIT{could not read version in current in agency}
+///   Will be raised when a coordinator in a cluster cannot read the Version
+///   entry in the Current hierarchy in the agency.
+/// - 1456: @LIT{could not create collection}
+///   Will be raised when a coordinator in a cluster notices that some
+///   DBServers report problems when creating shards for a new collection.
+/// - 1457: @LIT{timeout in cluster operation}
+///   Will be raised when a coordinator in a cluster runs into a timeout for
+///   some cluster wide operation.
+/// - 1458: @LIT{could not remove collection from plan}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a collection in the Plan hierarchy in the agency.
+/// - 1459: @LIT{could not remove collection from current}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a collection in the Current hierarchy in the agency.
+/// - 1460: @LIT{database name already exists}
+///   Will be raised when a coordinator in a cluster tries to create a database
+///   and the database name already exists.
+/// - 1461: @LIT{could not create database in plan}
+///   Will be raised when a coordinator in a cluster cannot create an entry for
+///   a new database in the Plan hierarchy in the agency.
+/// - 1462: @LIT{could not create database}
+///   Will be raised when a coordinator in a cluster notices that some
+///   DBServers report problems when creating databases for a new cluster wide
+///   database.
+/// - 1463: @LIT{could not remove databasefrom plan}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a database in the Plan hierarchy in the agency.
+/// - 1464: @LIT{could not remove databasefrom current}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a database in the Current hierarchy in the agency.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1437,6 +1477,149 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_NO_COORDINATOR_HEADER                           (1451)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1452: ERROR_CLUSTER_COULD_NOT_LOCK_PLAN
+///
+/// could not lock plan in agency
+///
+/// Will be raised when a coordinator in a cluster cannot lock the Plan
+/// hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN                             (1452)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
+///
+/// collection ID already exists
+///
+/// Will be raised when a coordinator in a cluster tries to create a collection
+/// and the collection ID already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS                            (1453)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1454: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN
+///
+/// could not create collection in plan
+///
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new collection in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN             (1454)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1455: ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION
+///
+/// could not read version in current in agency
+///
+/// Will be raised when a coordinator in a cluster cannot read the Version
+/// entry in the Current hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION                  (1455)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1456: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION
+///
+/// could not create collection
+///
+/// Will be raised when a coordinator in a cluster notices that some DBServers
+/// report problems when creating shards for a new collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION                     (1456)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1457: ERROR_CLUSTER_TIMEOUT
+///
+/// timeout in cluster operation
+///
+/// Will be raised when a coordinator in a cluster runs into a timeout for some
+/// cluster wide operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_TIMEOUT                                         (1457)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1458: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN
+///
+/// could not remove collection from plan
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// collection in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN             (1458)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1459: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT
+///
+/// could not remove collection from current
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// collection in the Current hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT          (1459)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1460: ERROR_CLUSTER_DATABASE_NAME_EXISTS
+///
+/// database name already exists
+///
+/// Will be raised when a coordinator in a cluster tries to create a database
+/// and the database name already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS                            (1460)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
+///
+/// could not create database in plan
+///
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new database in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN               (1461)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1462: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
+///
+/// could not create database
+///
+/// Will be raised when a coordinator in a cluster notices that some DBServers
+/// report problems when creating databases for a new cluster wide database.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE                       (1462)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
+///
+/// could not remove databasefrom plan
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// database in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN               (1463)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1464: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
+///
+/// could not remove databasefrom current
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// database in the Current hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1464)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

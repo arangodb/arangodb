@@ -925,12 +925,12 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 /// @brief sends the current server state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::sendServerState () {
+AgencyCommResult AgencyComm::sendServerState () {
   // construct JSON value { "status": "...", "time": "..." }
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == 0) {
-    return false;
+    return AgencyCommResult();
   }
 
   const std::string status = ServerState::stateToString(ServerState::instance()->getState());
@@ -942,7 +942,7 @@ bool AgencyComm::sendServerState () {
   AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json, 0.0));
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  return result.successful();
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
