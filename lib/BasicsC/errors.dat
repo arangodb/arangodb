@@ -147,6 +147,19 @@ ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the re
 
 ERROR_CLUSTER_NO_AGENCY,1450,"could not connect to agency","Will be raised when none of the agency servers can be connected to."
 ERROR_CLUSTER_NO_COORDINATOR_HEADER,1451,"missing coordinator header","Will be raised when a DB server in a cluster receives a HTTP request without a coordinator header."
+ERROR_CLUSTER_COULD_NOT_LOCK_PLAN,1452,"could not lock plan in agency","Will be raised when a coordinator in a cluster cannot lock the Plan hierarchy in the agency."
+ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a coordinator in a cluster tries to create a collection and the collection ID already exists."
+ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,1454,"could not create collection in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new collection in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,1455,"could not read version in current in agency","Will be raised when a coordinator in a cluster cannot read the Version entry in the Current hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,1456,"could not create collection","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating shards for a new collection."
+ERROR_CLUSTER_TIMEOUT,1457,"timeout in cluster operation","Will be raised when a coordinator in a cluster runs into a timeout for some cluster wide operation."
+ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,1458,"could not remove collection from plan","Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,1459,"could not remove collection from current","Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Current hierarchy in the agency."
+ERROR_CLUSTER_DATABASE_NAME_EXISTS,1460,"database name already exists","Will be raised when a coordinator in a cluster tries to create a database and the database name already exists."
+ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,1461,"could not create database in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new database in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,1462,"could not create database","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating databases for a new cluster wide database."
+ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,1463,"could not remove databasefrom plan","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,1464,"could not remove databasefrom current","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency."
 
 ################################################################################
 ## ArangoDB query errors
