@@ -281,7 +281,7 @@ static void ListTreeRecursively (char const* full,
 /// @brief locates a environment given configuration directory
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* LocateConfigDirectoryEnv () {
+static char* LocateConfigDirectoryEnv (void) {
   char const* v;
   char* r;
 
