@@ -1,4 +1,19 @@
+<% var statusClass = function(s) {
+    switch (s) {
+      case "ok":
+        return "success";
+      case "warning": 
+        return "warning";
+      case "critical":
+        return "danger";
+    }
+  };
+%>
 <h3 class="clusterColumnHeader">Shards</h3>
-<button>Shard 1</button>
-<button>Shard 2</button>
-<button>Shard 3</button>
+<ul>
+  <% _.each(shards, function(v) { %>
+    <li>
+      <button id="<%=v.name%>" class="btn btn-server btn-<%=statusClass(v.status)%> shard"><%=v.name%></button>
+    </li>
+  <% }); %>
+</ul>
