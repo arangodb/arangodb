@@ -29,6 +29,101 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var console = require("console");
+var db = require("org/arangodb").db;
+  
+function getByPrefix (values, prefix) {
+  var result = { };
+  var a;
+  var n = prefix.length;
+
+  for (a in values) {
+    if (values.hasOwnProperty(a)) {
+      if (a.substr(0, n) === prefix) {
+        result[a.substr(n)] = values[a];
+      }
+    }
+  }
+  return result;
+}
+
+function writeLocked (lockInfo, cb, args) {
+  var timeout = lockInfo.timeout;
+  if (timeout === undefined) {
+    timeout = 5;
+  }
+
+  var ttl = lockInfo.ttl;
+  if (ttl === undefined) {
+    ttl = 10;
+  }
+
+  ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
+  
+  try {
+    cb.apply(this, args);
+    ArangoAgency.increaseVersion(lockInfo.part + "/Version");
+    ArangoAgency.unlockWrite(lockInfo.part, timeout); 
+  }
+  catch (err) {
+    ArangoAgency.unlockWrite(lockInfo.part, timeout); 
+    throw err;
+  }
+}
+
+function handleDatabaseChanges (plan, current) {
+  var plannedDatabases = getByPrefix(plan, "Plan/Databases/"); 
+ // var currentDatabases = getByPrefix(current, "Current/Databases/"); 
+  var localDatabases = db._listDatabases();
+  
+  var createDatabase = function (payload) { 
+    ArangoAgency.set("Current/Databases/" + payload.name + "/" + ArangoServerState.id(), payload);
+  };
+  
+  var dropDatabase = function (payload) { 
+    try {
+      ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ArangoServerState.id());
+    }
+    catch (err) {
+    }
+  };
+
+  var name;
+
+  // check which databases need to be created locally
+  for (name in plannedDatabases) {
+    if (plannedDatabases.hasOwnProperty(name)) {
+      if (localDatabases.indexOf(name) === -1) {
+        // must create database
+
+        var payload = plannedDatabases[name];
+        // TODO: handle options and user information
+
+
+        console.info("creating local database '%s'", payload.name);
+        db._createDatabase(payload.name);
+
+        writeLocked({ part: "Current" }, createDatabase, [ payload ]);
+      }
+    }
+  }
+
+  // check which databases need to be deleted locally
+  localDatabases.forEach (function (name) {
+    if (! plannedDatabases.hasOwnProperty(name)) {
+      // must drop database
+
+      console.info("dropping local database '%s'", name);
+      db._dropDatabase(name);
+        
+      writeLocked({ part: "Current" }, dropDatabase, [ { name: name } ]);
+    }
+  });
+}
+
+function handleChanges (plan, current) {
+  handleDatabaseChanges(plan, current);
+}
+
 
 var isCluster = function () {
   return (typeof ArangoServerState !== "undefined" &&
@@ -73,10 +168,14 @@ var handlePlanChange = function () {
   }
 
   try {
-    console.info("%s", "plan change handling successful");
+    var plan    = ArangoAgency.get("Plan", true);
+    var current = ArangoAgency.get("Current", true);
+ 
+    handleChanges(plan, current);
+    console.info("plan change handling successful");
   }
   catch (err) {
-    console.error("%s", "plan change handling failed");
+    console.error("plan change handling failed");
   }
 };
 

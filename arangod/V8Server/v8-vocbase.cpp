@@ -241,7 +241,8 @@ static char const* GetCurrentDatabaseName () {
 
 #ifdef TRI_ENABLE_CLUSTER
 static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
-                                                      CollectionInfo const& ci) {
+                                                      CollectionInfo const& ci,
+                                                      char const* dbname) {
   TRI_vocbase_col_t* c = (TRI_vocbase_col_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
 
   if (c == 0) {
@@ -262,7 +263,7 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
   memset(c->_path, 0, TRI_COL_PATH_LENGTH + 1); 
   
   memset(c->_dbName, 0, TRI_COL_NAME_LENGTH + 1); 
-  memcpy(c->_dbName, vocbase->_name, strlen(vocbase->_name));
+  memcpy(c->_dbName, dbname, strlen(dbname));
 
   c->_canDrop   = true;
   c->_canUnload = true;
@@ -287,7 +288,8 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase,
   const std::vector<CollectionInfo>& collections = ClusterInfo::instance()->getCollections(database);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    TRI_vocbase_col_t* c = CollectionInfoToVocBaseCol(vocbase, collections[i]);
+    TRI_vocbase_col_t* c = CollectionInfoToVocBaseCol(vocbase, collections[i],
+                                                      database);
 
     if (c != 0) {
       TRI_PushBackVectorPointer(&result, c);
@@ -1796,7 +1798,8 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
                                   v8::Arguments const& argv,
                                   TRI_col_type_e collectionType,
                                   std::string const& databaseName,
-                                  TRI_col_info_t& parameter) {
+                                  TRI_col_info_t& parameter,
+                                  TRI_vocbase_t* vocbase) {
   v8::HandleScope scope;
   
   const string name = TRI_ObjectToString(argv[0]);
@@ -1907,7 +1910,11 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
-  return scope.Close(v8::True());
+  ci->loadCurrentCollections();
+  CollectionInfo const& c = ci->getCollection( databaseName, cid );
+  TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, c,
+                                                          databaseName.c_str());
+  return scope.Close(TRI_WrapCollection(newcoll));
 }
 
 #endif
@@ -2023,7 +2030,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, originalDatabase, parameter);
+    v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, originalDatabase, parameter, vocbase);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return scope.Close(result);
@@ -7407,7 +7414,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     }
 
     CollectionInfo const& ci = ClusterInfo::instance()->getCollection(originalDatabase, std::string(key));
-    collection = CollectionInfoToVocBaseCol(vocbase, ci);
+    collection = CollectionInfoToVocBaseCol(vocbase, ci, originalDatabase);
   }
   else {
     // look up the collection regularly

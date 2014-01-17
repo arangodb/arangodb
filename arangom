@@ -46,14 +46,14 @@ if [ "$1" == "init" ] ; then
     set Target/Lock "\"UNLOCKED\""
     set Target/DBServers
     set Target/Coordinators
-    set Target/Databases/@Usystem "{}"
+    set Target/Databases/@Usystem "{ \"name\": \"_system\" }"
     set Target/Collections/@Usystem
 
     set Plan/Version "\"1\""
     set Plan/Lock "\"UNLOCKED\""
     set Plan/DBServers
     set Plan/Coordinators
-    set Plan/Databases/@Usystem "{}"
+    set Plan/Databases/@Usystem "{ \"name\": \"_system\" }"
     set Plan/Collections/@Usystem
 
     set Current/Version "\"1\""

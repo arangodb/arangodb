@@ -170,6 +170,27 @@ static v8::Handle<v8::Value> JS_IsEnabledAgency (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the version number
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IncreaseVersionAgency (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "increaseVersion(<key>)");
+  }
+  
+  const std::string key = TRI_ObjectToString(argv[0]);
+
+  AgencyComm comm;
+  if (! comm.increaseVersion(key)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "unable to increase version");
+  }
+
+  return scope.Close(v8::Boolean::New(true));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a value from the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1536,6 +1557,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "createDirectory", JS_CreateDirectoryAgency);
   TRI_AddMethodVocbase(rt, "get", JS_GetAgency);
   TRI_AddMethodVocbase(rt, "isEnabled", JS_IsEnabledAgency);
+  TRI_AddMethodVocbase(rt, "increaseVersion", JS_IncreaseVersionAgency);
   TRI_AddMethodVocbase(rt, "list", JS_ListAgency);
   TRI_AddMethodVocbase(rt, "lockRead", JS_LockReadAgency);
   TRI_AddMethodVocbase(rt, "lockWrite", JS_LockWriteAgency);

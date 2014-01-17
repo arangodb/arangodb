@@ -108,6 +108,7 @@ void HeartbeatThread::run () {
   uint64_t lastCommandIndex = getLastCommandIndex(); 
   bool valueFound = false;
 
+  const bool isCoordinator = ServerState::instance()->isCoordinator();
 
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
@@ -122,7 +123,7 @@ void HeartbeatThread::run () {
       break;
     }
 
-    {
+    if (! isCoordinator) {
       // get the current version of the Plan
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
