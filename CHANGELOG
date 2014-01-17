@@ -11,8 +11,6 @@ v1.5.0 (XXXX-XX-XX)
 
 * issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
 
-* issue #736: AQL function to parse collection and key from document handle
-
 * allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
   `/_api/batch` HTTP API.
 
@@ -119,6 +117,8 @@ v1.5.0 (XXXX-XX-XX)
 
 v1.4.6 (XXXX-XX-XX)
 -------------------
+
+* issue #736: AQL function to parse collection and key from document handle
 
 * added fm.rescan() method for Foxx-Manager
 
