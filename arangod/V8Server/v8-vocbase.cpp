@@ -7046,7 +7046,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t cid = (uint64_t) TRI_ObjectToDouble(val);
+    uint64_t cid = TRI_ObjectToUInt64(val, false);
 
     collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }
