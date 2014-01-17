@@ -26,12 +26,15 @@
           return document.getElementById(name);
         },
         checkTile = function(c, cls) {
-          var tile = getTile(c.name);
+          var tile = getTile(c.name),
+              inner = tile.children[0];
           expect(tile).toBeOfClass("coordinator");
-          expect(tile).toBeOfClass("btn-" + cls);
-          expect(tile.children[0]).toBeOfClass("domino-header");
-          expect($(tile.children[0]).text()).toEqual(c.name);
-          expect($(tile.children[1]).text()).toEqual(c.url);
+          expect(tile).toBeOfClass("domino");
+          expect(inner).toBeOfClass("btn-" + cls);
+          expect(inner).toBeOfClass("domino-inner");
+          expect(inner.children[0]).toBeOfClass("domino-header");
+          expect($(inner.children[0]).text()).toEqual(c.name);
+          expect($(inner.children[1]).text()).toEqual(c.url);
         };
 
       beforeEach(function() {
