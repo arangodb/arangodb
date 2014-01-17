@@ -74,10 +74,11 @@ hr.domino-line {
   border-bottom-color: #333232;
 }
 
-div.domino-upper, div.domino-lower {
+div.domino-upper, div.domino-lower,  div.domino-inner {
   height: 100px;
   margin: 5px;
 }
+
 div.domino-upper {
   margin-bottom: 0px;
 }
