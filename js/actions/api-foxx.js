@@ -145,6 +145,24 @@ actions.defineHttp({
     }
   })
 });
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rescans the FOXX application directory
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/rescan",
+  context : "admin",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      foxxManager.scanAppDirectory();
+      return true;
+    }
+  })
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a FOXX application
