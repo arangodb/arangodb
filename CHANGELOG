@@ -1,6 +1,8 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
+
 * allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
   `/_api/batch` HTTP API.
 
