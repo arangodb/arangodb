@@ -725,6 +725,8 @@ function require (path) {
       }
     }
 
+    sandbox.__filename = origin;
+    sandbox.__dirname = typeof origin === 'string' ? origin.split('/').slice(0, -1).join('/') : origin;
     sandbox.module = module;
     sandbox.exports = module.exports;
     sandbox.require = function(path) { return module.require(path); };
@@ -1307,6 +1309,8 @@ function require (path) {
       }
     }
 
+    sandbox.__filename = full;
+    sandbox.__dirname = full.split('/').slice(0, -1).join('/');
     sandbox.module = appModule;
     sandbox.applicationContext = appContext;
 
