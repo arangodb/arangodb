@@ -633,7 +633,7 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
 
 int ClusterInfo::createDatabaseCoordinator (string const& name, 
                                             TRI_json_t const* json,
-                                            string errorMsg,
+                                            string& errorMsg,
                                             double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
@@ -800,7 +800,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
                                               string const& collectionID,
                                               uint64_t numberOfShards,
                                               TRI_json_t const* json,
-                                              string errorMsg, double timeout) {
+                                              string& errorMsg, double timeout) {
   AgencyComm ac;
   
   const double realTimeout = getTimeout(timeout);
