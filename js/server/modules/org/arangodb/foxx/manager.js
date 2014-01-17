@@ -823,6 +823,17 @@ exports.scanAppDirectory = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rescans the FOXX application directory
+/// this function is a trampoline for scanAppDirectory
+/// the shorter function name is only here to keep compatibility with the
+/// client-side foxx manager
+////////////////////////////////////////////////////////////////////////////////
+
+exports.rescan = function () {
+  return exports.scanAppDirectory();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief mounts a FOXX application
 ///
 /// Input:
