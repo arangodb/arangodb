@@ -259,7 +259,7 @@ function createLocalCollections (plannedCollections) {
   var ourselves = ArangoServerState.id();
 
   var createCollectionAgency = function (database, payload) { 
-    ArangoAgency.set("Current/Collections/" + database + "/" + payload.name + "/" + ourselves, 
+    ArangoAgency.set("Current/Collections/" + database + "/" + payload.id + "/" + ourselves, 
                      payload);
   };
   
@@ -304,6 +304,10 @@ function createLocalCollections (plannedCollections) {
                       else {
                         db._create(shard, payload);
                       }
+
+                      payload.error = false;
+                      payload.errorNum = 0;
+                      payload.errorMessage = "no error";
             
                       writeLocked({ part: "Current" }, 
                                   createCollectionAgency, 
@@ -326,6 +330,10 @@ function createLocalCollections (plannedCollections) {
                                      database, 
                                      shard);
                         db._collection(shard).properties(properties);
+
+                        payload.error = false;
+                        payload.errorNum = 0;
+                        payload.errorMessage = "no error";
                       
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
