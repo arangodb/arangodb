@@ -29,7 +29,11 @@
       };
     },
 
-    render: function(){
+    unrender: function() {
+      $(this.el).html("");
+    },
+
+    render: function() {
       $(this.el).html(this.template.render({
         shards: this.fakeData.shards
       }));

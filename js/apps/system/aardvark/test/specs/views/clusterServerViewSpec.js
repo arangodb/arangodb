@@ -13,7 +13,8 @@
       div.id = "clusterServers"; 
       document.body.appendChild(div);
       dbView = {
-        render: function(){}
+        render: function() {},
+        unrender: function() {}
       };
       spyOn(window, "ClusterDatabaseView").andReturn(dbView);
       uiMatchers.define(this);
@@ -77,6 +78,7 @@
 
       beforeEach(function() {
         spyOn(dbView, "render");
+        spyOn(dbView, "unrender");
         view = new window.ClusterServerView();
         okPair = {
           primary: {
@@ -145,7 +147,16 @@
 
       it("should not render the Database view", function() {
         expect(dbView.render).not.toHaveBeenCalled();
+        expect(dbView.unrender).toHaveBeenCalled();
       });
+
+      it("should offer an unrender function", function() {
+        dbView.unrender.reset();
+        view.unrender();
+        expect($(div).html()).toEqual("");
+        expect(dbView.unrender).toHaveBeenCalled();
+      });
+
       
       describe("minified version", function() {
 

@@ -79,6 +79,11 @@
         checkTile(chantalle, "success");
       });
 
+      it("should allow an unrender function", function() {
+        view.unrender();
+        expect($(div).html()).toEqual("");
+      });
+
     });
 
   });
