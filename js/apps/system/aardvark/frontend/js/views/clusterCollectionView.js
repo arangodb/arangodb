@@ -16,6 +16,22 @@
 
     initialize: function() {
       this.shardsView = new window.ClusterShardsView();
+      this.fakeData = {
+        collections: [
+          {
+            name: "Documents",
+            status: "ok"
+          },
+          {
+            name: "Edges",
+            status: "warning"
+          },
+          {
+            name: "People",
+            status: "critical"
+          }
+         ]
+      };
     },
 
     loadCollection: function(e) {
@@ -25,8 +41,16 @@
       });
     },
 
-    render: function(){
-      $(this.el).html(this.template.render({}));
+    unrender: function() {
+      $(this.el).html("");
+      this.shardsView.unrender();
+    },
+
+    render: function() {
+      $(this.el).html(this.template.render({
+        collections: this.fakeData.collections
+      }));
+      this.shardsView.unrender();
       return this;
     }
 

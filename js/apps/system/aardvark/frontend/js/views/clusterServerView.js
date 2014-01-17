@@ -60,7 +60,15 @@
       this.render(true);
     },
 
+    unrender: function() {
+      $(this.el).html("");
+      this.dbView.unrender();
+    },
+
     render: function(minify){
+      if(!minify) {
+        this.dbView.unrender();
+      }
       $(this.el).html(this.template.render({
         minify: minify,
         servers: this.fakeData

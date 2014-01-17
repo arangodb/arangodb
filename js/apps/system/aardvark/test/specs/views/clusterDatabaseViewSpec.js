@@ -13,7 +13,8 @@
       div.id = "clusterDatabases"; 
       document.body.appendChild(div);
       colView = {
-        render: function(){}
+        render: function() {},
+        unrender: function() {}
       };
       spyOn(window, "ClusterCollectionView").andReturn(colView);
       uiMatchers.define(this);
@@ -47,6 +48,7 @@
 
       beforeEach(function() {
         spyOn(colView, "render");
+        spyOn(colView, "unrender");
         db1 = {
           name: "_system",
           status: "ok"
@@ -71,6 +73,7 @@
 
       it("should not render the Server view", function() {
         expect(colView.render).not.toHaveBeenCalled();
+        expect(colView.unrender).toHaveBeenCalled();
       });
 
       it("should render the ok database", function() {
@@ -83,6 +86,13 @@
 
       it("should render the error database", function() {
         checkButtonContent(db3, "danger");
+      });
+
+      it("should offer an unrender function", function() {
+        colView.unrender.reset();
+        view.unrender();
+        expect($(div).html()).toEqual("");
+        expect(colView.unrender).toHaveBeenCalled();
       });
 
       describe("user actions", function() {

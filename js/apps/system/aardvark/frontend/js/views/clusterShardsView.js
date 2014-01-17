@@ -10,8 +10,33 @@
 
     template: templateEngine.createTemplate("clusterShardsView.ejs"),
 
-    render: function(){
-      $(this.el).html(this.template.render({}));
+    initialize: function() {
+      this.fakeData = {
+        shards: [
+          {
+            name: "Shard 1",
+            status: "ok"
+          },
+          {
+            name: "Shard 2",
+            status: "warning"
+          },
+          {
+            name: "Shard 3",
+            status: "critical"
+          }
+        ]
+      };
+    },
+
+    unrender: function() {
+      $(this.el).html("");
+    },
+
+    render: function() {
+      $(this.el).html(this.template.render({
+        shards: this.fakeData.shards
+      }));
       return this;
     }
 
