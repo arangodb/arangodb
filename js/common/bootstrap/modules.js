@@ -740,7 +740,9 @@ function require (path) {
       origin = description.path;
     }
     // strip protocol (e.g. file://)
-    origin = origin.replace(/^[a-z]+:\/\//, '');
+    if (typeof origin === 'string') {
+      origin = origin.replace(/^[a-z]+:\/\//, '');
+    }
 
     sandbox.__filename = origin;
     sandbox.__dirname = typeof origin === 'string' ? origin.split('/').slice(0, -1).join('/') : origin;
