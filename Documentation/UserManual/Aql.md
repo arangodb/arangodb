@@ -1249,6 +1249,19 @@ AQL supports the following functions to operate on document values:
 
     RETURN KEEP(doc, 'firstname', 'name', 'likes')
 
+- @FN{PARSE_IDENTIFIER(@FA{document-handle})}: parses the document handle specified in 
+  @FA{document-handle} and returns a the handle's individual parts a separate attributes.
+  This function can be used to easily determine the collection name and key from a given document.
+  The @FA{document-handle} can either be a regular document from a collection, or a document
+  identifier string (e.g. `_users/1234`). Passing either a non-string or a non-document or a
+  document without an `_id` attribute will result in an error.
+
+    RETURN PARSE_IDENTIFIER('_users/my-user')
+    [ { "collection" : "_users", "key" : "my-user" } ]
+
+    RETURN PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
+    [ { "collection" : "mycollection", "key" : "mykey" } ]
+
 @subsubsection AqlFunctionsGeo Geo functions
 
 AQL offers the following functions to filter data based on geo indexes:
