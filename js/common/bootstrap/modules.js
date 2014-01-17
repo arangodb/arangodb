@@ -735,6 +735,13 @@ function require (path) {
       }
     }
 
+    // actually the file name can be set via the path attribute
+    if (origin === undefined) {
+      origin = description.path;
+    }
+    // strip protocol (e.g. file://)
+    origin = origin.replace(/^[a-z]+:\/\//, '');
+
     sandbox.__filename = origin;
     sandbox.__dirname = typeof origin === 'string' ? origin.split('/').slice(0, -1).join('/') : origin;
     sandbox.module = module;
