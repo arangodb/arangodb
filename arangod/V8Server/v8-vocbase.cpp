@@ -1795,11 +1795,6 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
   bool created;
@@ -4157,11 +4152,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
   TRI_collection_t* col = &primary->base;
 
 #ifdef TRI_ENABLE_LOGGER
@@ -4835,11 +4825,6 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (argv.Length() != 1) {
@@ -4920,11 +4905,6 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   }
 
   TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
@@ -5021,11 +5001,6 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   // .............................................................................
 
   TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
@@ -5926,11 +5901,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_collection_t* base = &primary->base;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   // check if we want to change some parameters
@@ -6010,24 +5980,22 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   // return the current parameter set
   v8::Handle<v8::Object> result = v8::Object::New();
 
-  if (TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
-    result->Set(v8g->DoCompactKey, base->_info._doCompact ? v8::True() : v8::False());
-    result->Set(v8g->IsSystemKey, base->_info._isSystem ? v8::True() : v8::False());
-    result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
-    result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
+  result->Set(v8g->DoCompactKey, base->_info._doCompact ? v8::True() : v8::False());
+  result->Set(v8g->IsSystemKey, base->_info._isSystem ? v8::True() : v8::False());
+  result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
+  result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
 
-    TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
+  TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
 
-    if (keyOptions != 0) {
-      result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
+  if (keyOptions != 0) {
+    result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
 
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
-    }
-    else {
-      result->Set(v8g->KeyOptionsKey, v8::Array::New());
-    }
-    result->Set(v8g->WaitForSyncKey, base->_info._waitForSync ? v8::True() : v8::False());
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
+  else {
+    result->Set(v8g->KeyOptionsKey, v8::Array::New());
+  }
+  result->Set(v8g->WaitForSyncKey, base->_info._waitForSync ? v8::True() : v8::False());
 
   ReleaseCollection(collection);
   return scope.Close(result);
@@ -6348,12 +6316,6 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   }
 
   TRI_primary_collection_t* primary = collection->_collection;
-  TRI_collection_t* base = &primary->base;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
@@ -7009,10 +6971,6 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
 
   if (collection == 0) {
-    return scope.Close(v8::Undefined());
-  }
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     return scope.Close(v8::Undefined());
   }
 
