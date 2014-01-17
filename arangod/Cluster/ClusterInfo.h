@@ -311,11 +311,11 @@ namespace triagens {
         vector<DatabaseID> listDatabases (bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about collections from the agency
+/// @brief (re-)load the information about planned collections from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCurrentCollections ();
+        void loadPlannedCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes the list of planned databases
