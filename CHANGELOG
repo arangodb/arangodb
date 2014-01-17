@@ -108,6 +108,10 @@ v1.5.0 (XXXX-XX-XX)
 v1.4.6 (XXXX-XX-XX)
 -------------------
 
+* added fm.rescan() method for Foxx-Manager
+
+* fixed issue #734: foxx cookie and route problem
+
 * added method `fm.configJson` for arangosh
 
 * include `startupPath` in result of API `/_api/foxx/config`
