@@ -442,12 +442,12 @@ void ClusterInfo::loadCurrentDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::loadPlannedCollections () {
-  static const std::string prefix = "Planned/Collections";
+  static const std::string prefix = "Plan/Collections";
 
   AgencyCommResult result;
 
   {
-    AgencyCommLocker locker("Current", "READ");
+    AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
       result = _agency.getValues(prefix, true);
@@ -533,6 +533,8 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     ++tries;
   }
 
+  cout << "Looking for databaseID " << databaseID << " collectionID "
+       << collectionID << endl;
   while (++tries <= 2) {
     {
       READ_LOCKER(_lock);
@@ -553,6 +555,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     loadPlannedCollections();
   }
 
+  cout << "nothing found" << endl;
   return CollectionInfo();
 }
 
