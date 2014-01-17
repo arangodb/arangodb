@@ -376,7 +376,7 @@ namespace triagens {
 
         int createDatabaseCoordinator (string const& name, 
                                        TRI_json_t const* json,
-                                       string errorMsg, double timeout);
+                                       string& errorMsg, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop database in coordinator
@@ -393,7 +393,7 @@ namespace triagens {
                                          string const& collectionID,
                                          uint64_t numberOfShards,
                                          TRI_json_t const* json,
-                                         string errorMsg, double timeout);
+                                         string& errorMsg, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop collection in coordinator
