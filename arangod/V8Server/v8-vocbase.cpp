@@ -1912,6 +1912,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
   ci->loadPlannedCollections();
+
   CollectionInfo const& c = ci->getCollection( databaseName, cid );
   TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, c,
                                                           databaseName.c_str());

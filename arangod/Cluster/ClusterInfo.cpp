@@ -468,7 +468,7 @@ void ClusterInfo::loadPlannedCollections () {
 
       // each entry consists of a database id and a collection id, separated by '/'
       std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
-       
+      
       if (parts.size() != 2) {
         // invalid entry
         LOG_WARNING("found invalid collection key in agency: '%s'", key.c_str());
@@ -495,7 +495,7 @@ void ClusterInfo::loadPlannedCollections () {
       const CollectionInfo collectionData(json);
         
       // insert the collection into the existing map
-
+        
       (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
       (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
 
@@ -510,9 +510,9 @@ void ClusterInfo::loadPlannedCollections () {
         ++it3;
       }
 
-      _collectionsValid = true;
-      return;
     }
+    _collectionsValid = true;
+    return;
   }
 
   LOG_TRACE("Error while loading %s", prefix.c_str());
@@ -533,8 +533,6 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     ++tries;
   }
 
-  cout << "Looking for databaseID " << databaseID << " collectionID "
-       << collectionID << endl;
   while (++tries <= 2) {
     {
       READ_LOCKER(_lock);
@@ -555,7 +553,6 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     loadPlannedCollections();
   }
 
-  cout << "nothing found" << endl;
   return CollectionInfo();
 }
 
