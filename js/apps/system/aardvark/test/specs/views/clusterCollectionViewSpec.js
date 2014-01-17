@@ -13,7 +13,8 @@
       div.id = "clusterCollections"; 
       document.body.appendChild(div);
       shardsView = {
-        render: function(){}
+        render: function() {},
+        unrender: function() {}
       };
       spyOn(window, "ClusterShardsView").andReturn(shardsView);
       uiMatchers.define(this);
@@ -64,13 +65,15 @@
           people
         ];
         spyOn(shardsView, "render");
+        spyOn(shardsView, "unrender");
         view = new window.ClusterCollectionView();
         view.fakeData.collections = colls;
         view.render();
       });
 
-      it("should not render the server view", function() {
+      it("should not unrender the server view", function() {
         expect(shardsView.render).not.toHaveBeenCalled();
+        expect(shardsView.unrender).toHaveBeenCalled();
       });
 
       it("should render the documents collection", function() {
@@ -84,6 +87,14 @@
       it("should render the people collection", function() {
         checkButtonContent(people, "danger");
       });
+
+      it("should offer an unrender function", function() {
+        shardsView.unrender.reset();
+        view.unrender();
+        expect($(div).html()).toEqual("");
+        expect(shardsView.unrender).toHaveBeenCalled();
+      });
+
 
       describe("user actions", function() {
         var info;

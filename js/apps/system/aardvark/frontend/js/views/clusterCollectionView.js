@@ -41,10 +41,16 @@
       });
     },
 
-    render: function(){
+    unrender: function() {
+      $(this.el).html("");
+      this.shardsView.unrender();
+    },
+
+    render: function() {
       $(this.el).html(this.template.render({
         collections: this.fakeData.collections
       }));
+      this.shardsView.unrender();
       return this;
     }
 

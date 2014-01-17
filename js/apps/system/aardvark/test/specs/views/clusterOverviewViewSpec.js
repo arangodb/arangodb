@@ -13,10 +13,12 @@
       div.id = "clusterOverview"; 
       document.body.appendChild(div);
       serverView = {
-        render: function() {}
+        render: function() {},
+        unrender: function() {}
       };
       coordinatorView = {
-        render: function() {}
+        render: function() {},
+        unrender: function() {}
       };
       spyOn(window, "ClusterServerView").andReturn(serverView);
       spyOn(window, "ClusterCoordinatorView").andReturn(coordinatorView);
@@ -52,12 +54,14 @@
           it("should be able to navigate to db servers", function() {
             $("#dbserver").click();
             expect(serverView.render).toHaveBeenCalledWith();
+            expect(coordinatorView.unrender).toHaveBeenCalled();
             expect(view.render).toHaveBeenCalledWith(true);
           });
 
           it("should be able to navigate to coordinators", function() {
             $("#coordinator").click();
             expect(coordinatorView.render).toHaveBeenCalledWith();
+            expect(serverView.unrender).toHaveBeenCalled();
             expect(view.render).toHaveBeenCalledWith(true);
           });
 
@@ -79,7 +83,9 @@
 
       beforeEach(function() {
         spyOn(serverView, "render");
+        spyOn(serverView, "unrender");
         spyOn(coordinatorView, "render");
+        spyOn(coordinatorView, "unrender");
         view = new window.ClusterOverviewView();
         // Fake Data Injection to be removed
         view.fakeData = {

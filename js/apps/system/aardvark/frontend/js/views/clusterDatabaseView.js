@@ -39,10 +39,16 @@
       this.colView.render(id);
     },
 
+    unrender: function() {
+      $(this.el).html("");
+      this.colView.unrender();
+    },
+
     render: function(){
       $(this.el).html(this.template.render({
         databases: this.fakeData.databases
       }));
+      this.colView.unrender();
       return this;
     }
 

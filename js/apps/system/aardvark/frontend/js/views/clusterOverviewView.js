@@ -34,11 +34,13 @@
     },
 
     loadDBServers: function() {
+      this.coordinatorView.unrender();
       this.serverView.render();
       this.render(true);
     },
 
     loadCoordinators: function() {
+      this.serverView.unrender();
       this.coordinatorView.render();
       this.render(true);
     },

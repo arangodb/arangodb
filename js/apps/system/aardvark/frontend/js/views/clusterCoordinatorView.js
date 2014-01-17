@@ -32,6 +32,10 @@
       };
     },
 
+    unrender: function() {
+      $(this.el).html("");
+    },
+
     render: function() {
       $(this.el).html(this.template.render({
         coordinators: this.fakeData.coordinators

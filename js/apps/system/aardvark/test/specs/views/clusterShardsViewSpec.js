@@ -67,6 +67,11 @@
         checkButtonContent(s3, "danger");
       });
 
+      it("should offer an unrender function", function() {
+        view.unrender();
+        expect($(div).html()).toEqual("");
+      });
+
     });
 
 
