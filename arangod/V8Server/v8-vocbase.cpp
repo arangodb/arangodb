@@ -1911,7 +1911,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
-  ci->loadCurrentCollections();
+  ci->loadPlannedCollections();
   CollectionInfo const& c = ci->getCollection( databaseName, cid );
   TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, c,
                                                           databaseName.c_str());
