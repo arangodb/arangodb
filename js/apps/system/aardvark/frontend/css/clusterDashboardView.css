@@ -85,3 +85,6 @@ div.domino-lower {
   margin-top: 0px;
 }
 
+button.shard {
+  cursor: default;
+}
