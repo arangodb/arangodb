@@ -6916,8 +6916,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (*key == '_' ||                       // hide system collections
-      strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
+  if (strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
       strcmp(key, "toString") == 0 ||
       strcmp(key, "toJSON") == 0) {
     return scope.Close(v8::Handle<v8::Value>());
@@ -6930,9 +6929,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   cacheKey.push_back('*');
 
   v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), cacheKey.size());
-  
   v8::Handle<v8::Object> holder = info.Holder()->ToObject();
-
+  
   if (holder->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value = holder->GetRealNamedProperty(cacheName)->ToObject();
 
@@ -6971,6 +6969,13 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
 
   if (collection == 0) {
+    if (*key == '_') {
+      // we need to do this here...
+      // otherwise we'd hide all non-collection attributes such as
+      // db._drop
+      return scope.Close(v8::Handle<v8::Value>());
+    }
+
     return scope.Close(v8::Undefined());
   }
 
