@@ -413,15 +413,12 @@ void RestJobHandler::getJob () {
 ///
 /// @RESTURLPARAM{type,string,required}
 /// The type of jobs to delete. `type` can be:
-///
 /// - `all`: deletes all jobs results. Currently executing or queued async jobs 
 ///   will not be stopped by this call.
-///
 /// - `expired`: deletes expired results. To determine the expiration status of
 ///   a result, pass the `stamp` URL parameter. `stamp` needs to be a UNIX
 ///   timestamp, and all async job results created at a lower timestamp will be
 ///   deleted.
-///
 /// - an actual job-id: in this case, the call will remove the result of the
 ///   specified async job. If the job is currently executing or queued, it will
 ///   not be aborted.
