@@ -967,6 +967,73 @@ std::string AgencyComm::getVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update a version number in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::increaseVersion (std::string const& key) {
+  // fetch existing version number
+  AgencyCommResult result = getValues(key, false); 
+
+  if (! result.successful()) {
+    if (result.httpCode() != (int) triagens::rest::HttpResponse::NOT_FOUND) {
+      return false;
+    }
+    
+    // no version key found, now set it
+    TRI_json_t* json = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1); 
+
+    if (json == 0) {
+      return false;
+    }
+
+    result = casValue(key,
+                      json,
+                      false, 
+                      0.0,
+                      0.0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    return result.successful();
+  }
+  
+  // found a version  
+  result.parse("", false); 
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin(); 
+
+  if (it == result._values.end()) {
+    return false;
+  }
+    
+  uint64_t version = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+
+  // version key found, now update it
+  TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, version); 
+
+  if (oldJson == 0) {
+    return false;
+  }
+    
+  TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, version + 1); 
+
+  if (newJson == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+    return false;
+  }
+
+  result = casValue(key, 
+                    oldJson,
+                    newJson,
+                    0.0, 
+                    0.0);
+    
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+
+  return result.successful();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
         

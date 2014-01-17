@@ -828,6 +828,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
   while (TRI_microtime() <= endtime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
+      cout << "Seeing " << res._values.size() << "shards." << endl;
       if (res._values.size() == numberOfShards) {
         map<string, AgencyCommResultEntry>::iterator it;
         string tmpMsg = "";
