@@ -193,7 +193,18 @@ function createLocalDatabases (plannedDatabases) {
         // TODO: handle options and user information
 
         console.info("creating local database '%s'", payload.name);
-        db._createDatabase(payload.name);
+
+        try {
+          db._createDatabase(payload.name);
+          payload.error = false;
+          payload.errorNum = 0;
+          payload.errorMessage = "no error";
+        }
+        catch (err) {
+          payload.error = true;
+          payload.errorNum = err.errorNum;
+          payload.errorMessage = err.errorMessage;
+        }
 
         writeLocked({ part: "Current" }, 
                     createDatabaseAgency, 
@@ -298,17 +309,23 @@ function createLocalCollections (plannedCollections) {
                       // must create this shard
                       console.info("creating local shard '%s/%s'", database, shard);
             
-                      if (payload.type === ArangoCollection.TYPE_EDGE) {
-                        db._createEdgeCollection(shard, payload);
+                      try {
+                        if (payload.type === ArangoCollection.TYPE_EDGE) {
+                          db._createEdgeCollection(shard, payload);
+                        }
+                        else {
+                          db._create(shard, payload);
+                        }
+                        payload.error = false;
+                        payload.errorNum = 0;
+                        payload.errorMessage = "no error";
                       }
-                      else {
-                        db._create(shard, payload);
+                      catch (err2) {
+                        payload.error = true;
+                        payload.errorNum = err2.errorNum;
+                        payload.errorMessage = err2.errorMessage;
                       }
 
-                      payload.error = false;
-                      payload.errorNum = 0;
-                      payload.errorMessage = "no error";
-            
                       writeLocked({ part: "Current" }, 
                                   createCollectionAgency, 
                                   [ database, payload ]);
@@ -329,12 +346,20 @@ function createLocalCollections (plannedCollections) {
                         console.info("updating properties for local shard '%s/%s'", 
                                      database, 
                                      shard);
-                        db._collection(shard).properties(properties);
+                        
+                        try {
+                          db._collection(shard).properties(properties);
+                          payload.error = false;
+                          payload.errorNum = 0;
+                          payload.errorMessage = "no error";
 
-                        payload.error = false;
-                        payload.errorNum = 0;
-                        payload.errorMessage = "no error";
-                      
+                        }
+                        catch (err3) {
+                          payload.error = true;
+                          payload.errorNum = err3.errorNum;
+                          payload.errorMessage = err3.errorMessage;
+                        }
+
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
                                     [ database, payload ]);
