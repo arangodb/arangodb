@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, expect*/
-/*global templateEngine, $*/
+/*global templateEngine, $, uiMatchers*/
 (function() {
   "use strict";
 
@@ -16,6 +16,7 @@
         render: function(){}
       };
       spyOn(window, "ClusterShardsView").andReturn(shardsView);
+      uiMatchers.define(this);
     });
 
     afterEach(function() {
@@ -32,52 +33,92 @@
     });
 
     describe("rendering", function() {
+  
+      var docs, edges, people, colls,
+        checkButtonContent = function(col, cls) {
+          var btn = document.getElementById(col.name);
+          expect(btn).toBeOfClass("btn");
+          expect(btn).toBeOfClass("btn-server");
+          expect(btn).toBeOfClass("collection");
+          expect(btn).toBeOfClass("btn-" + cls);
+          expect($(btn).text()).toEqual(col.name);
+        };
+
 
       beforeEach(function() {
+        docs = {
+          name: "Documents",
+          status: "ok"
+        };
+        edges = {
+          name: "Edges",
+          status: "warning"
+        };
+        people = {
+          name: "People",
+          status: "critical"
+        };
+        colls = [
+          docs,
+          edges,
+          people
+        ];
         spyOn(shardsView, "render");
         view = new window.ClusterCollectionView();
+        view.fakeData.collections = colls;
+        view.render();
       });
 
-      it("should not render the Server view", function() {
-        view.render();
+      it("should not render the server view", function() {
         expect(shardsView.render).not.toHaveBeenCalled();
       });
+
+      it("should render the documents collection", function() {
+        checkButtonContent(docs, "success");
+      });
+
+      it("should render the edge collection", function() {
+        checkButtonContent(edges, "warning");
+      });
+
+      it("should render the people collection", function() {
+        checkButtonContent(people, "danger");
+      });
+
+      describe("user actions", function() {
+        var info;
+
+        beforeEach(function() {
+          view = new window.ClusterCollectionView();
+        });
+
+        it("should be able to navigate to Documents", function() {
+          info = {
+            name: "Documents"
+          };
+          $("#Documents").click();
+          expect(shardsView.render).toHaveBeenCalledWith(info);
+        });
+
+        it("should be able to navigate to Edges", function() {
+          info = {
+            name: "Edges"
+          };
+          $("#Edges").click();
+          expect(shardsView.render).toHaveBeenCalledWith(info);
+        });
+
+        it("should be able to navigate to People", function() {
+          info = {
+            name: "People"
+          };
+          $("#People").click();
+          expect(shardsView.render).toHaveBeenCalledWith(info);
+        });
+
+      });
     });
 
-    describe("user actions", function() {
-      var info;
-
-      beforeEach(function() {
-        spyOn(shardsView, "render");
-        view = new window.ClusterCollectionView();
-        view.render();
-      });
-
-      it("should be able to navigate to Documents", function() {
-        info = {
-          name: "Documents"
-        };
-        $("#Documents").click();
-        expect(shardsView.render).toHaveBeenCalledWith(info);
-      });
-
-      it("should be able to navigate to Edges", function() {
-        info = {
-          name: "Edges"
-        };
-        $("#Edges").click();
-        expect(shardsView.render).toHaveBeenCalledWith(info);
-      });
-
-      it("should be able to navigate to People", function() {
-        info = {
-          name: "People"
-        };
-        $("#People").click();
-        expect(shardsView.render).toHaveBeenCalledWith(info);
-      });
-
-    });
 
   });
 
