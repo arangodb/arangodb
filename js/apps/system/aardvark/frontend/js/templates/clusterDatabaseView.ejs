@@ -13,7 +13,7 @@
 <ul>
   <% _.each(databases, function(v) { %>
     <li>
-    <button id="<%=v.name %>" class="btn btn-server btn-<%=statusClass(v.status)%> database"><%=v.name %></button>
+      <button id="<%=v.name %>" class="btn btn-server btn-<%=statusClass(v.status)%> database"><%=v.name %></button>
     </li>
   <% }); %>
 </ul>
