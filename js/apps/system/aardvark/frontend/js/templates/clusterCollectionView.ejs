@@ -1,4 +1,19 @@
+<% var statusClass = function(s) {
+    switch (s) {
+      case "ok":
+        return "success";
+      case "warning": 
+        return "warning";
+      case "critical":
+        return "danger";
+    }
+  };
+%>
 <h3 class="clusterColumnHeader">Collections</h3>
-<button id="Documents" class="collection">Documents</button>
-<button id="Edges" class="collection">Edges</button>
-<button id="People" class="collection">People</button>
+<ul>
+  <% _.each(collections, function(v) { %>
+    <li>
+      <button id="<%=v.name%>" class="btn btn-server btn-<%=statusClass(v.status) %> collection"><%=v.name %></button>
+    </li>
+  <% }); %>
+</ul>

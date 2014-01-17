@@ -10,8 +10,36 @@
 
     template: templateEngine.createTemplate("clusterCoordinatorView.ejs"),
 
-    render: function(){
-      $(this.el).html(this.template.render({}));
+    initialize: function() {
+      this.fakeData = {
+        coordinators: [
+          {
+            name: "Charly",
+            url: "tcp://192.168.0.1:1337",
+            status: "ok"
+          },
+          {
+            name: "Carlos",
+            url: "tcp://192.168.0.2:1337",
+            status: "critical"
+          },
+          {
+            name: "Chantalle",
+            url: "tcp://192.168.0.5:1337",
+            status: "ok"
+          }
+        ]
+      };
+    },
+
+    unrender: function() {
+      $(this.el).html("");
+    },
+
+    render: function() {
+      $(this.el).html(this.template.render({
+        coordinators: this.fakeData.coordinators
+      }));
       return this;
     }
 

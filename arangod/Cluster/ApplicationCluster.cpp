@@ -308,7 +308,9 @@ bool ApplicationCluster::open () {
 
     if (! result.successful()) {
       locker.unlock();
-      LOG_FATAL_AND_EXIT("unable to register server in agency");
+      LOG_FATAL_AND_EXIT("unable to register server in agency: http code: %d, body: %s",
+                         (int) result.httpCode(), 
+                         result.body().c_str());
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {
