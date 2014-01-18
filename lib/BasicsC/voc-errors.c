@@ -164,6 +164,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
   REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
+  REG_ERROR(ERROR_GRAPH_INVALID_FILTER_RESULT, "invalid filter result");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
