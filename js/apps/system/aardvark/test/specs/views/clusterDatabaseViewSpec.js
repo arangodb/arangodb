@@ -6,7 +6,7 @@
   "use strict";
 
   describe("Cluster Database View", function() {
-    var view, div, colView;
+    var view, div, colView, colCol;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -16,7 +16,11 @@
         render: function() {},
         unrender: function() {}
       };
+      colCol = {
+        __id: "refId"
+      };
       spyOn(window, "ClusterCollectionView").andReturn(colView);
+      spyOn(window, "ClusterCollections").andReturn(colCol);
       uiMatchers.define(this);
     });
 
@@ -27,15 +31,20 @@
     describe("initialisation", function() {
 
       it("should create a Cluster Collection View", function() {
-        view = new window.ClusterDatabaseView();
-        expect(window.ClusterCollectionView).toHaveBeenCalled();
+        view = new window.ClusterDatabaseView({
+          collection: {}
+        });
+        expect(window.ClusterCollections).toHaveBeenCalled();
+        expect(window.ClusterCollectionView).toHaveBeenCalledWith({
+          collection: colCol
+        });
       });
 
     });
 
     describe("rendering", function() {
 
-      var db1, db2, db3, databases,
+      var db1, db2, db3, databases, dbCol,
         checkButtonContent = function(db, cls) {
           var btn = document.getElementById(db.name);
           expect(btn).toBeOfClass("btn");
@@ -66,8 +75,14 @@
           db2,
           db3
         ];
-        view = new window.ClusterDatabaseView();
-        view.fakeData.databases = databases;
+        dbCol = {
+          getList: function() {
+            return databases;
+          }
+        };
+        view = new window.ClusterDatabaseView({
+          collection: dbCol
+        });
         view.render();
       });
 

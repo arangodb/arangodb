@@ -6,7 +6,7 @@
   "use strict";
 
   describe("Cluster Collection View", function() {
-    var view, div, shardsView;
+    var view, div, shardsView, shardCol;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -16,7 +16,11 @@
         render: function() {},
         unrender: function() {}
       };
+      shardCol = {
+        __refId: "testId"
+      };
       spyOn(window, "ClusterShardsView").andReturn(shardsView);
+      spyOn(window, "ClusterShards").andReturn(shardCol);
       uiMatchers.define(this);
     });
 
@@ -28,14 +32,17 @@
 
       it("should create a Cluster Server View", function() {
         view = new window.ClusterCollectionView();
-        expect(window.ClusterShardsView).toHaveBeenCalled();
+        expect(window.ClusterShards).toHaveBeenCalled();
+        expect(window.ClusterShardsView).toHaveBeenCalledWith({
+          collection: shardCol
+        });
       });
 
     });
 
     describe("rendering", function() {
   
-      var docs, edges, people, colls,
+      var docs, edges, people, colls, collCol,
         checkButtonContent = function(col, cls) {
           var btn = document.getElementById(col.name);
           expect(btn).toBeOfClass("btn");
@@ -64,10 +71,16 @@
           edges,
           people
         ];
+        collCol = {
+          getList: function() {
+            return colls;
+          }
+        };
         spyOn(shardsView, "render");
         spyOn(shardsView, "unrender");
-        view = new window.ClusterCollectionView();
-        view.fakeData.collections = colls;
+        view = new window.ClusterCollectionView({
+          collection: collCol
+        });
         view.render();
       });
 

@@ -127,6 +127,11 @@ module.exports = function(karma) {
       'frontend/js/models/arangoStatisticsDescription.js',
       'frontend/js/models/foxx.js',
       'frontend/js/models/graph.js',
+      'frontend/js/models/clusterServer.js',
+      'frontend/js/models/clusterCoordinator.js',
+      'frontend/js/models/clusterDatabase.js',
+      'frontend/js/models/clusterCollection.js',
+      'frontend/js/models/clusterShard.js',
 
       // Collections
       'frontend/js/collections/arangoCollections.js',
@@ -139,6 +144,11 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
       'frontend/js/collections/graphCollection.js',
+      'frontend/js/collections/clusterServers.js',
+      'frontend/js/collections/clusterCoordinators.js',
+      'frontend/js/collections/clusterDatabases.js',
+      'frontend/js/collections/clusterCollections.js',
+      'frontend/js/collections/clusterShards.js',
 
       // Views
       'frontend/js/views/navigationView.js',
@@ -184,7 +194,6 @@ module.exports = function(karma) {
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
       // Specs
-
       // GraphViewer
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',

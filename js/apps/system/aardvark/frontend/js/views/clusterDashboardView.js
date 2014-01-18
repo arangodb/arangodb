@@ -10,9 +10,17 @@
 
     template: templateEngine.createTemplate("clusterDashboardView.ejs"),
 
+    initialize: function() {
+      this.dbservers = new window.ClusterServers();
+      this.coordinators = new window.ClusterCoordinators();
+    },
+
     render: function(){
       $(this.el).html(this.template.render({}));
-      this.overView = new window.ClusterOverviewView();
+      this.overView = new window.ClusterOverviewView({
+        dbservers: this.dbservers,
+        coordinators: this.coordinators
+      });
       this.overView.render();
       return this;
     }

@@ -22,6 +22,7 @@
     describe("rendering", function() {
       
       var charly, carlos, chantalle, coordinators,
+          coordCol,
         getTile = function(name) {
           return document.getElementById(name);
         },
@@ -38,7 +39,6 @@
         };
 
       beforeEach(function() {
-        view = new window.ClusterCoordinatorView();
         charly = {
           name: "Charly",
           url: "tcp://192.168.0.1:1337",
@@ -59,7 +59,14 @@
           carlos,
           chantalle
         ];
-        view.fakeData.coordinators = coordinators;
+        coordCol = {
+          getList: function() {
+            return coordinators;
+          }
+        };
+        view = new window.ClusterCoordinatorView({
+          collection: coordCol
+        });
         view.render();
       });
 

@@ -6,7 +6,11 @@
   "use strict";
 
   describe("Cluster Overview View", function() {
-    var view, div, serverView, coordinatorView;
+    var view, div, serverView, coordinatorView,
+        clusterServers, serverStatus,
+        serverHaving, serverPlan,
+        clusterCoordinators, coordinatorStatus,
+        coordinatorHaving, coordinatorPlan;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -20,6 +24,30 @@
         render: function() {},
         unrender: function() {}
       };
+      serverStatus = "warning";
+      serverHaving = 3;
+      serverPlan = 3;
+      clusterServers = {
+        getOverview: function() {
+          return {
+            plan: serverPlan,
+            having: serverHaving,
+            status: serverStatus
+          };
+        }
+      };
+      coordinatorStatus = "critical";
+      coordinatorHaving = 2;
+      coordinatorPlan = 3;
+      clusterCoordinators = {
+        getOverview: function() {
+          return {
+            plan: coordinatorPlan,
+            having: coordinatorHaving,
+            status: coordinatorStatus
+          };
+        }
+      };
       spyOn(window, "ClusterServerView").andReturn(serverView);
       spyOn(window, "ClusterCoordinatorView").andReturn(coordinatorView);
       uiMatchers.define(this);
@@ -32,8 +60,23 @@
     describe("initialisation", function() {
 
       it("should create a Cluster Server View", function() {
-        view = new window.ClusterOverviewView();
-        expect(window.ClusterServerView).toHaveBeenCalled();
+        view = new window.ClusterOverviewView({
+          dbservers: clusterServers,
+          coordinators: clusterCoordinators
+        });
+        expect(window.ClusterServerView).toHaveBeenCalledWith({
+          collection: clusterServers 
+        });
+      });
+
+      it("should create a Cluster Coordinator View", function() {
+        view = new window.ClusterOverviewView({
+          dbservers: clusterServers,
+          coordinators: clusterCoordinators
+        });
+        expect(window.ClusterCoordinatorView).toHaveBeenCalledWith({
+          collection: clusterCoordinators
+        });
       });
 
     });
@@ -86,20 +129,10 @@
         spyOn(serverView, "unrender");
         spyOn(coordinatorView, "render");
         spyOn(coordinatorView, "unrender");
-        view = new window.ClusterOverviewView();
-        // Fake Data Injection to be removed
-        view.fakeData = {
-          dbservers: {
-            plan: 3,
-            having: 3,
-            status: "warning"
-          },
-          coordinators: {
-            plan: 3,
-            having: 2,
-            status: "critical"
-          }
-        };
+        view = new window.ClusterOverviewView({
+          dbservers: clusterServers,
+          coordinators: clusterCoordinators
+        });
       });
 
       describe("minified version", function() {
@@ -127,8 +160,8 @@
           };
 
           it("should render the amounts", function() {
-            view.fakeData.dbservers.plan = 5;
-            view.fakeData.dbservers.having = 4;
+            serverPlan = 5;
+            serverHaving = 4;
             view.render(true);
             var btn = getButton(),
                 span = btn.firstChild,
@@ -143,21 +176,21 @@
 
           it("should render the status ok", function() {
             var status = "ok";
-            view.fakeData.dbservers.status = status;
+            serverStatus = status;
             view.render(true);
             checkShowStatus(getButton(), status);
           });
 
           it("should render the status warning", function() {
             var status = "warning";
-            view.fakeData.dbservers.status = status;
+            serverStatus = status;
             view.render(true);
             checkShowStatus(getButton(), status);
           });
 
           it("should render the status critical", function() {
             var status = "critical";
-            view.fakeData.dbservers.status = status;
+            serverStatus = status;
             view.render(true);
             checkShowStatus(getButton(), status);
           });
@@ -171,8 +204,8 @@
           };
 
           it("should render the amounts", function() {
-            view.fakeData.coordinators.plan = 5;
-            view.fakeData.coordinators.having = 4;
+            coordinatorPlan = 5;
+            coordinatorHaving = 4;
             view.render(true);
             var btn = getButton(),
                 span = btn.firstChild,
@@ -187,21 +220,21 @@
 
           it("should render the status ok", function() {
             var status = "ok";
-            view.fakeData.coordinators.status = status;
+            coordinatorStatus = status;
             view.render(true);
             checkShowStatus(getButton(), status);
           });
 
           it("should render the status warning", function() {
             var status = "warning";
-            view.fakeData.coordinators.status = status;
+            coordinatorStatus = status;
             view.render(true);
             checkShowStatus(getButton(), status);
           });
 
           it("should render the status critical", function() {
             var status = "critical";
-            view.fakeData.coordinators.status = status;
+            coordinatorStatus = status;
             view.render(true);
             checkShowStatus(getButton(), status);
           });
@@ -233,8 +266,8 @@
           };
 
           it("should render the tile", function() {
-            view.fakeData.dbservers.plan = 5;
-            view.fakeData.dbservers.having = 4;
+            serverPlan = 5;
+            serverHaving = 4;
             view.render();
             var tile = getTile(),
                 headers = $("> h4", $(tile)),
@@ -256,21 +289,21 @@
 
           it("should render the status ok", function() {
             var status = "ok";
-            view.fakeData.dbservers.status = status;
+            serverStatus = status;
             view.render();
             checkShowStatus(getTile(), status);
           });
 
           it("should render the status warning", function() {
             var status = "warning";
-            view.fakeData.dbservers.status = status;
+            serverStatus = status;
             view.render();
             checkShowStatus(getTile(), status);
           });
 
           it("should render the status critical", function() {
             var status = "critical";
-            view.fakeData.dbservers.status = status;
+            serverStatus = status;
             view.render();
             checkShowStatus(getTile(), status);
           });
@@ -284,8 +317,8 @@
           };
 
           it("should render the tile", function() {
-            view.fakeData.coordinators.plan = 5;
-            view.fakeData.coordinators.having = 4;
+            coordinatorPlan = 5;
+            coordinatorHaving = 4;
             view.render();
             var tile = getTile(),
                 headers = $("> h4", $(tile)),
@@ -307,21 +340,21 @@
 
           it("should render the status ok", function() {
             var status = "ok";
-            view.fakeData.coordinators.status = status;
+            coordinatorStatus = status;
             view.render();
             checkShowStatus(getTile(), status);
           });
 
           it("should render the status warning", function() {
             var status = "warning";
-            view.fakeData.coordinators.status = status;
+            coordinatorStatus = status;
             view.render();
             checkShowStatus(getTile(), status);
           });
 
           it("should render the status critical", function() {
             var status = "critical";
-            view.fakeData.coordinators.status = status;
+            coordinatorStatus = status;
             view.render();
             checkShowStatus(getTile(), status);
           });
