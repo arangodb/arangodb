@@ -6,7 +6,7 @@
   "use strict";
 
   describe("Cluster Server View", function() {
-    var view, div, dbView;
+    var view, div, dbView, dbCol;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -16,7 +16,11 @@
         render: function() {},
         unrender: function() {}
       };
+      dbCol = {
+        __id: "testId"
+      };
       spyOn(window, "ClusterDatabaseView").andReturn(dbView);
+      spyOn(window, "ClusterDatabases").andReturn(dbCol);
       uiMatchers.define(this);
     });
 
@@ -28,14 +32,17 @@
 
       it("should create a Cluster Database View", function() {
         view = new window.ClusterServerView();
-        expect(window.ClusterDatabaseView).toHaveBeenCalled();
+        expect(window.ClusterDatabaseView).toHaveBeenCalledWith({
+          collection: dbCol
+        });
       });
 
     });
 
     describe("rendering", function() {
 
-      var okPair, noBkp, deadBkp, deadPrim, deadPair, fakeServers,
+      var okPair, noBkp, deadBkp, deadPrim, deadPair,
+          fakeServers, dbServers,
         getTile = function(name) {
           return document.getElementById(name);
         },
@@ -79,7 +86,6 @@
       beforeEach(function() {
         spyOn(dbView, "render");
         spyOn(dbView, "unrender");
-        view = new window.ClusterServerView();
         okPair = {
           primary: {
             name: "Pavel",
@@ -141,7 +147,14 @@
           deadBkp,
           deadPrim
         ];
-        view.fakeData = fakeServers;
+        dbServers = {
+          getList: function() {
+            return fakeServers;
+          }
+        };
+        view = new window.ClusterServerView({
+          collection: dbServers
+        });
         view.render();
       });
 

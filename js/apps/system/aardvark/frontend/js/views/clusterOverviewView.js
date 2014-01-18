@@ -16,21 +16,14 @@
     },
 
     initialize: function() {
-      this.fakeData = {
-          dbservers: {
-            plan: 3,
-            having: 3,
-            status: "warning"
-          },
-          coordinators: {
-            plan: 3,
-            having: 2,
-            status: "critical"
-          }
-        };
-
-      this.serverView = new window.ClusterServerView();
-      this.coordinatorView = new window.ClusterCoordinatorView();
+      this.dbservers = this.options.dbservers;
+      this.coordinators = this.options.coordinators;
+      this.serverView = new window.ClusterServerView({
+        collection: this.dbservers
+      });
+      this.coordinatorView = new window.ClusterCoordinatorView({
+        collection: this.coordinators
+      });
     },
 
     loadDBServers: function() {
@@ -48,8 +41,8 @@
     render: function(minify){
       $(this.el).html(this.template.render({
         minify: minify,
-        dbservers: this.fakeData.dbservers,
-        coordinators: this.fakeData.coordinators
+        dbservers: this.dbservers.getOverview(),
+        coordinators: this.coordinators.getOverview()
       }));
       $(this.el).toggleClass("clusterColumnMax", !minify);
       return this;

@@ -22,28 +22,61 @@
       document.body.removeChild(div);
     });
 
-    describe("rendering", function() {
-      var info;
+    describe("initialisation", function() {
+
+      var servCol, coorCol;
 
       beforeEach(function() {
+        servCol = {
+          __id: "servId"
+        };
+        coorCol = {
+          __id: "coorId"
+        };
         spyOn(overview, "render");
+        spyOn(window, "ClusterServers").andReturn(servCol);
+        spyOn(window, "ClusterCoordinators").andReturn(coorCol);
         view = new window.ClusterDashboardView();
       });
 
-      it("should create a Cluster Overview View", function() {
-        expect(window.ClusterOverviewView).not.toHaveBeenCalled();
-        window.ClusterOverviewView.reset();
-        view.render();
-        expect(window.ClusterOverviewView).toHaveBeenCalled();
-        window.ClusterOverviewView.reset();
-        view.render();
-        expect(window.ClusterOverviewView).toHaveBeenCalled();
+      it("should create the cluster server collection", function() {
+        expect(window.ClusterServers).toHaveBeenCalled();
       });
 
-      it("should render the Cluster Overview", function() {
-        view.render();
-        expect(overview.render).toHaveBeenCalled();
+      it("should create the cluster coordinators collection", function() {
+        expect(window.ClusterCoordinators).toHaveBeenCalled();
       });
+
+      describe("rendering", function() {
+        var info;
+
+        beforeEach(function() {
+          window.ClusterServers.reset();
+          window.ClusterCoordinators.reset();
+        });
+
+        it("should create a Cluster Overview View", function() {
+          expect(window.ClusterOverviewView).not.toHaveBeenCalled();
+          expect(window.ClusterServers).not.toHaveBeenCalled();
+          expect(window.ClusterCoordinators).not.toHaveBeenCalled();
+          window.ClusterOverviewView.reset();
+          view.render();
+          expect(window.ClusterOverviewView).toHaveBeenCalled();
+          expect(window.ClusterServers).not.toHaveBeenCalled();
+          expect(window.ClusterCoordinators).not.toHaveBeenCalled();
+          window.ClusterOverviewView.reset();
+          view.render();
+          expect(window.ClusterOverviewView).toHaveBeenCalled();
+          expect(window.ClusterServers).not.toHaveBeenCalled();
+          expect(window.ClusterCoordinators).not.toHaveBeenCalled();
+        });
+
+        it("should render the Cluster Overview", function() {
+          view.render();
+          expect(overview.render).toHaveBeenCalled();
+        });
+      });
+
     });
 
   });
