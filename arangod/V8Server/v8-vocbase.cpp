@@ -8178,14 +8178,15 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   v8::Handle<v8::Object> self = info.Holder();
 
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "corrupted shaped json");
+    // we better not throw here... otherwise this will cause a segfault
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   // get shaped json
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "corrupted shaped json");
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   // convert the JavaScript string to a string
