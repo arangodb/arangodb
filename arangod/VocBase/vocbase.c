@@ -514,8 +514,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // create the init object
   TRI_vocbase_col_t init = {
     vocbase,
-    (TRI_col_type_t) type,
-    cid
+    cid, 
+    0,
+    (TRI_col_type_t) type
   };
 
   init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -686,6 +687,11 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     TRI_FreeDocumentCollection(document);
     // TODO: does the collection directory need to be removed?
     return NULL;
+  }
+
+  if (parameter->_planId > 0) {
+    collection->_planId = parameter->_planId;
+    col->_info._planId = parameter->_planId;
   }
 
   // cid might have been assigned

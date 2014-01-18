@@ -55,7 +55,7 @@ TRI_json_t* JsonHelper::uint64String (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string 
+/// @brief convert a JSON strong or number into a uint64
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json) {
@@ -72,7 +72,7 @@ uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string 
+/// @brief convert a JSON strong or number into a uint64
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json,

@@ -441,13 +441,13 @@ void ClusterInfo::loadCurrentDatabases () {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::loadCurrentCollections () {
-  static const std::string prefix = "Current/Collections";
+void ClusterInfo::loadPlannedCollections () {
+  static const std::string prefix = "Plan/Collections";
 
   AgencyCommResult result;
 
   {
-    AgencyCommLocker locker("Current", "READ");
+    AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
       result = _agency.getValues(prefix, true);
@@ -468,7 +468,7 @@ void ClusterInfo::loadCurrentCollections () {
 
       // each entry consists of a database id and a collection id, separated by '/'
       std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
-       
+      
       if (parts.size() != 2) {
         // invalid entry
         LOG_WARNING("found invalid collection key in agency: '%s'", key.c_str());
@@ -495,7 +495,7 @@ void ClusterInfo::loadCurrentCollections () {
       const CollectionInfo collectionData(json);
         
       // insert the collection into the existing map
-
+        
       (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
       (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
 
@@ -510,9 +510,9 @@ void ClusterInfo::loadCurrentCollections () {
         ++it3;
       }
 
-      _collectionsValid = true;
-      return;
     }
+    _collectionsValid = true;
+    return;
   }
 
   LOG_TRACE("Error while loading %s", prefix.c_str());
@@ -529,7 +529,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
   int tries = 0;
 
   if (! _collectionsValid) {
-    loadCurrentCollections();
+    loadPlannedCollections();
     ++tries;
   }
 
@@ -550,7 +550,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     }
     
     // must load collections outside the lock
-    loadCurrentCollections();
+    loadPlannedCollections();
   }
 
   return CollectionInfo();
@@ -599,7 +599,7 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
   std::vector<CollectionInfo> result;
 
   // always reload
-  loadCurrentCollections();
+  loadPlannedCollections();
 
   READ_LOCKER(_lock);
   // look up database by id
@@ -633,7 +633,7 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
 
 int ClusterInfo::createDatabaseCoordinator (string const& name, 
                                             TRI_json_t const* json,
-                                            string errorMsg,
+                                            string& errorMsg,
                                             double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
@@ -800,7 +800,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
                                               string const& collectionID,
                                               uint64_t numberOfShards,
                                               TRI_json_t const* json,
-                                              string errorMsg, double timeout) {
+                                              string& errorMsg, double timeout) {
   AgencyComm ac;
   
   const double realTimeout = getTimeout(timeout);
@@ -931,7 +931,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
   }
   uint64_t index = res._index;
 
-  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  const string where = "Current/Collections/" + databaseName + "/" + collectionID; 
   while (TRI_microtime() <= endTime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
@@ -1140,7 +1140,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
   if (! _collectionsValid) {
-    loadCurrentCollections();
+    loadPlannedCollections();
     tries++;
   }
 
@@ -1155,7 +1155,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
     }
 
     // must load collections outside the lock
-    loadCurrentCollections();
+    loadPlannedCollections();
   }
 
   return ServerID("");

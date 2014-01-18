@@ -311,11 +311,11 @@ namespace triagens {
         vector<DatabaseID> listDatabases (bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about collections from the agency
+/// @brief (re-)load the information about planned collections from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCurrentCollections ();
+        void loadPlannedCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes the list of planned databases
@@ -376,7 +376,7 @@ namespace triagens {
 
         int createDatabaseCoordinator (string const& name, 
                                        TRI_json_t const* json,
-                                       string errorMsg, double timeout);
+                                       string& errorMsg, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop database in coordinator
@@ -393,7 +393,7 @@ namespace triagens {
                                          string const& collectionID,
                                          uint64_t numberOfShards,
                                          TRI_json_t const* json,
-                                         string errorMsg, double timeout);
+                                         string& errorMsg, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop collection in coordinator
