@@ -253,6 +253,7 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
   c->_vocbase    = vocbase;
   c->_type       = ci.type();
   c->_cid        = ci.id();
+  c->_planId     = ci.id();
   c->_status     = ci.status();
   c->_collection = 0;
 
@@ -1911,7 +1912,8 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
-  ci->loadCurrentCollections();
+  ci->loadPlannedCollections();
+
   CollectionInfo const& c = ci->getCollection( databaseName, cid );
   TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, c,
                                                           databaseName.c_str());
@@ -1985,6 +1987,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     if (keyOptions != 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
+    
+    if (p->Has(v8::String::New("planId"))) {
+      parameter._planId = TRI_ObjectToUInt64(p->Get(v8::String::New("planId")), true);
+    }
 
     if (p->Has(v8g->WaitForSyncKey)) {
       parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
@@ -2037,7 +2043,6 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     return scope.Close(result);
   }
 #endif
-
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, 
                                                                     &parameter, 
@@ -5066,6 +5071,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
+
   int myerrno = ci->dropCollectionCoordinator( databaseName, cid, 
                                                errorMsg, 120.0);
   if (myerrno != TRI_ERROR_NO_ERROR) {
@@ -6179,6 +6185,26 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
+#ifdef TRI_ENABLE_CLUSTER
+
+static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(V8CollectionId(collection->_cid));
+  }
+
+  return scope.Close(V8CollectionId(collection->_planId));
+}
+
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the properties of a collection
 ///
@@ -6577,64 +6603,6 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   return ReplaceVocbaseCol(true, argv);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends a resize hint to the collection
-///
-/// @FUN{@FA{collection}.reserve(@FA{number})}
-///
-/// Sends a resize hint to the indexes in the collection. The resize hint 
-/// allows indexes to reserve space for additional documents (specified by
-/// @FA{number}) in one go.
-///
-/// The reserve hint can be sent before a mass insertion into the collection 
-/// is started. It allows indexes to allocate the required memory at once 
-/// and avoids re-allocations and possible re-locations.
-/// 
-/// Not all indexes implement the reserve function at the moment. The indexes
-/// that don't implement it will simply ignore the request.
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static v8::Handle<v8::Value> JS_ReserveVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-    
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "reserve(<numDocuments>)");
-  }
-
-  int64_t numDocuments = TRI_ObjectToInt64(argv[0]);
-
-  if (numDocuments <= 0 || numDocuments > (int64_t) UINT32_MAX) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <numDocuments>");
-  }
-
-  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  // WRITE-LOCK start
-  trx.lockWrite();
-  TRI_document_collection_t* document = (TRI_document_collection_t*) col->_collection;
-  bool result = document->reserveIndexes(document, numDocuments);
-
-  trx.finish(res);
-  // WRITE-LOCK end
-
-  return scope.Close(v8::Boolean::New(result));
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the revision id of a collection
@@ -7461,6 +7429,23 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieves a collection from a V8 argument
+////////////////////////////////////////////////////////////////////////////////
+  
+static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
+                                                     v8::Handle<v8::Value> const& val) {
+  // number
+  if (val->IsNumber() || val->IsNumberObject()) {
+    uint64_t cid = (uint64_t) TRI_ObjectToUInt64(val, true);
+
+    return TRI_LookupCollectionByIdVocBase(vocbase, cid);
+  }
+
+  const std::string name = TRI_ObjectToString(val);
+  return TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a single collection or null
 ///
 /// @FUN{db._collection(@FA{collection-name})}
@@ -7506,17 +7491,22 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> val = argv[0];
   TRI_vocbase_col_t const* collection = 0;
 
-  // number
-  if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t cid = (uint64_t) TRI_ObjectToDouble(val);
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    char const* originalDatabase = GetCurrentDatabaseName();
+    const std::string name = TRI_ObjectToString(val);
+    const CollectionInfo& ci = ClusterInfo::instance()->getCollection(originalDatabase, name);
 
-    collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
+    collection = CollectionInfoToVocBaseCol(vocbase, ci, originalDatabase);
   }
   else {
-    string name = TRI_ObjectToString(val);
-
-    collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+    collection = GetCollectionFromArgument(vocbase, val);
   }
+#else
+
+  collection = GetCollectionFromArgument(vocbase, val);
+
+#endif  
 
   if (collection == 0) {
     return scope.Close(v8::Null());
@@ -9565,11 +9555,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "lookupUniqueConstraint", JS_LookupUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupUniqueSkiplist", JS_LookupUniqueSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
+#ifdef TRI_ENABLE_CLUSTER  
+  TRI_AddMethodVocbase(rt, "planId", JS_PlanIdVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "properties", JS_PropertiesVocbaseCol);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
-#if 0
-  TRI_AddMethodVocbase(rt, "reserve", JS_ReserveVocbaseCol, true); // currently hidden
-#endif
   TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
   TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);

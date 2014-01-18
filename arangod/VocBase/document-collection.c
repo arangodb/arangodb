@@ -3087,7 +3087,9 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
-    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->_directory, TRI_last_error());
+    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", 
+              collection->_directory, 
+              TRI_last_error());
 
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
