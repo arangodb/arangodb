@@ -52,7 +52,8 @@ specify a password, you will be prompted for one.
 Note that the collection (`users` in this case) must already exist or the import
 will fail. If you want to create a new collection with the import data, you need
 to specify the `--create-collection` option. Note that it is only possible to 
-create a document collection using the `--create-collection` flag.
+create a document collection using the `--create-collection` flag, and no edge
+collections.
 
     unix> arangoimp --file "data.json" --type json --collection "users" --create-collection true
 
@@ -114,3 +115,50 @@ with the `--separator` argument.
 An example command line to execute the TSV import is:
 
     unix> arangoimp --file "data.tsv" --type tsv --collection "users" 
+
+Importing into an Edge Collection {#ImpManualEdges}
+===================================================
+
+arangoimp can also be used to import data into an existing edge collection.
+The import data must, for each edge to import, contain at least the `_from` and
+`_to` attributes. These indicate which other two documents the edge should connect.
+It is necessary that these attributes are set for all records, and point to 
+valid document ids in existing collections.
+
+Example:
+
+    { "_from" : "users/1234", "_to" : "users/4321", "desc" : "1234 is connected to 4321" }
+
+Note that the edge collection must already exist when the import is started. Using 
+the `--create-collection` flag will not work because arangoimp will always try to 
+create a regular document collection if the target collection does not exist.
+
+Attribute Naming and Special Attributes {#ImpManualAttributes}
+==============================================================
+
+Attributes whose names start with an underscore are treated in a special way by 
+ArangoDB:
+
+- the optional `_key` attribute contains the document's key. If specified, the value
+  must be formally valid (e.g. must be a string and conform to the naming conventions 
+  for @ref DocumentKeys). Additionally, the key value must be unique within the 
+  collection the import is run for.
+- `_from`: when importing into an edge collection, this attribute contains the id
+  of one of the documents connected by the edge. The value of `_from` must be a
+  syntactially valid document id and the referred collection must exist.
+- `_to`: when importing into an edge collection, this attribute contains the id
+  of the other document connected by the edge. The value of `_to` must be a
+  syntactially valid document id and the referred collection must exist.
+- `_rev`: this attribute contains the revision number of a document. However, the
+  revision numbers are managed by ArangoDB and cannot be specified on import. Thus 
+  any value in this attribute is ignored on import.
+- all other attributes starting with an underscore are discarded on import without
+  any warnings.
+
+If you import values into `_key`, you should make sure they are valid and unique.
+
+When importing data into an edge collection, you should make sure that all import
+documents can `_from` and `_to` and that their values point to existing documents.
+
+Finally you should make sure that all other attributes in the import file do not
+start with an underscore - otherwise they might be discarded.
