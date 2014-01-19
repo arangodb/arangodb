@@ -89,55 +89,55 @@
         okPair = {
           primary: {
             name: "Pavel",
-            url: "tcp://192.168.0.1:1337",
+            address: "tcp://192.168.0.1:1337",
             status: "ok"
           },
           secondary: {
             name: "Sally",
-            url: "tcp://192.168.1.1:1337",
+            address: "tcp://192.168.1.1:1337",
             status: "ok"
           }
         };
         noBkp = {
           primary: {
             name: "Pancho",
-            url: "tcp://192.168.0.2:1337",
+            address: "tcp://192.168.0.2:1337",
             status: "ok"
           }
         };
         deadBkp = {
           primary: {
             name: "Pepe",
-            url: "tcp://192.168.0.3:1337",
+            address: "tcp://192.168.0.3:1337",
             status: "ok"
           },
           secondary: {
             name: "Sam",
-            url: "tcp://192.168.1.3:1337",
+            address: "tcp://192.168.1.3:1337",
             status: "critical"
           }
         };
         deadPrim = {
           primary: {
             name: "Pedro",
-            url: "tcp://192.168.0.4:1337",
+            address: "tcp://192.168.0.4:1337",
             status: "critical"
           },
           secondary: {
             name: "Sabrina",
-            url: "tcp://192.168.1.4:1337",
+            address: "tcp://192.168.1.4:1337",
             status: "ok"
           }
         };
         deadPair = {
           primary: {
             name: "Pablo",
-            url: "tcp://192.168.0.5:1337",
+            address: "tcp://192.168.0.5:1337",
             status: "critical"
           },
           secondary: {
             name: "Sandy",
-            url: "tcp://192.168.1.5:1337",
+            address: "tcp://192.168.1.5:1337",
             status: "critical"
           }
         };
@@ -230,11 +230,11 @@
               lower = tile.children[2];
           expect(upper).toBeOfClass("btn-" + btn1);
           expect($(upper.children[0]).text()).toEqual(pair.primary.name);
-          expect($(upper.children[1]).text()).toEqual(pair.primary.url);
+          expect($(upper.children[1]).text()).toEqual(pair.primary.address);
           expect(lower).toBeOfClass("btn-" + btn2);
           if (pair.secondary) {
             expect($(lower.children[0]).text()).toEqual(pair.secondary.name);
-            expect($(lower.children[1]).text()).toEqual(pair.secondary.url);
+            expect($(lower.children[1]).text()).toEqual(pair.secondary.address);
           } else {
             expect($(lower.children[0]).text()).toEqual("Not configured");
           }
