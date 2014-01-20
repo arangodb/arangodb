@@ -25,13 +25,13 @@
     <div id="<%=v.primary.name %>" class="domino server">
       <div class="domino-upper btn-<%=statusClass(v.primary.status)%>">
         <h4 class="domino-header"><%=v.primary.name%></h4>
-        <span><%=v.primary.url%></span>
+        <span><%=v.primary.address%></span>
       </div>
       <hr class="domino-line"/>
       <% if (v.secondary) { %>
         <div class="domino-lower btn-<%=statusClass(v.secondary.status)%>">
           <h4 class="domino-header"><%=v.secondary.name%></h4>
-          <span><%=v.secondary.url%></span>
+          <span><%=v.secondary.address%></span>
         </div>
       <% } else {%>
       <div class="domino-lower btn-inactive">

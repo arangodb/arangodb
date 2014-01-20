@@ -15,23 +15,9 @@
     },
 
     initialize: function() {
-      this.colView = new window.ClusterCollectionView();
-      this.fakeData = {
-        databases: [
-          {
-            name: "_system",
-            status: "ok"
-          },
-          {
-            name: "myDatabase",
-            status: "warning"
-          },
-          {
-            name: "otherDatabase",
-            status: "critical"
-          }
-        ]
-      };
+      this.colView = new window.ClusterCollectionView({
+        collection: new window.ClusterCollections()
+      });
     },
 
     loadDatabase: function(e) {
@@ -46,7 +32,7 @@
 
     render: function(){
       $(this.el).html(this.template.render({
-        databases: this.fakeData.databases
+        databases: this.collection.getList()
       }));
       this.colView.unrender();
       return this;

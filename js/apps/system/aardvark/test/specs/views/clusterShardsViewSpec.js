@@ -21,7 +21,7 @@
 
     describe("rendering", function() {
   
-      var s1, s2, s3, shards,
+      var s1, s2, s3, shards, shardCol,
         checkButtonContent = function(col, cls) {
           var btn = document.getElementById(col.name);
           expect(btn).toBeOfClass("btn");
@@ -50,8 +50,14 @@
           s2,
           s3
         ];
-        view = new window.ClusterShardsView();
-        view.fakeData.shards = shards;
+        shardCol = {
+          getList: function() {
+            return shards;
+          }
+        };
+        view = new window.ClusterShardsView({
+          collection: shardCol
+        });
         view.render();
       });
 

@@ -84,7 +84,7 @@ function getShardMap (plannedCollections) {
 
           for (shard in shards) {
             if (shards.hasOwnProperty(shard)) {
-              shardMap[shard] = shards[shard];
+              shardMap[shard] = shards[shard]; 
             }
           }
         }
@@ -149,9 +149,11 @@ function getLocalCollections () {
 
     if (name.substr(0, 1) !== '_') {
       result[name] = { 
+        id: collection._id,
         name: name, 
         type: collection.type(), 
-        status: collection.status()
+        status: collection.status(),
+        planId: collection.planId()
       };
 
       // merge properties
@@ -307,8 +309,14 @@ function createLocalCollections (plannedCollections) {
 
                     if (! localCollections.hasOwnProperty(shard)) {
                       // must create this shard
-                      console.info("creating local shard '%s/%s'", database, shard);
-            
+                      payload.planId = payload.id;
+
+                      console.info("creating local shard '%s/%s' for central '%s/%s'", 
+                                   database, 
+                                   shard, 
+                                   database,
+                                   payload.id);
+           
                       try {
                         if (payload.type === ArangoCollection.TYPE_EDGE) {
                           db._createEdgeCollection(shard, payload);
@@ -389,9 +397,9 @@ function createLocalCollections (plannedCollections) {
 function dropLocalCollections (plannedCollections) {
   var ourselves = ArangoServerState.id();
 
-  var dropCollectionAgency = function (database, name) {
+  var dropCollectionAgency = function (database, id) {
     try { 
-      ArangoAgency.remove("Current/Collections/" + database + "/" + name + "/" + ourselves);
+      ArangoAgency.remove("Current/Collections/" + database + "/" + id + "/" + ourselves);
     }
     catch (err) {
       // ignore errors
@@ -428,12 +436,17 @@ function dropLocalCollections (plannedCollections) {
                          (shardMap[collection] !== ourselves);
 
             if (remove) {
-              console.info("dropping local shard '%s/%s'", database, collection);
+              console.info("dropping local shard '%s/%s' of '%s/%s", 
+                           database, 
+                           collection,
+                           database,
+                           collections[collection].planId);
+
               db._drop(collection);
                         
               writeLocked({ part: "Current" }, 
                           dropCollectionAgency, 
-                          [ database, collection ]);
+                          [ database, collections[collection].planId ]);
             }
           }
         }
