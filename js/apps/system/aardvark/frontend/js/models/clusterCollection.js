@@ -3,13 +3,21 @@
 (function() {
   "use strict";
 
-  window.ClusterDatabase = Backbone.Model.extend({
+  window.ClusterCollection = Backbone.Model.extend({
     defaults: {
       "name": "",
-      "id": ""
+      "id": "",
+      "status": "ok"
     },
 
     idAttribute: "id",
+
+    forList: function() {
+      return {
+        name: this.get("name"),
+        status: this.get("status")
+      };
+    },
 
     url: function() {
       return "/_admin/aardvark/cluster/Collections";

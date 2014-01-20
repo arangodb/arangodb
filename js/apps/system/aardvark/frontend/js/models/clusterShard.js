@@ -5,10 +5,18 @@
 
   window.ClusterShard = Backbone.Model.extend({
     defaults: {
-      "id": ""
+      "id": "",
+      "status": "ok"
     },
 
     idAttribute: "id",
+
+    forList: function() {
+      return {
+        id: this.get("id"),
+        status: this.get("status")
+      };
+    },
 
     url: function() {
       return "/_admin/aardvark/cluster/Shards";

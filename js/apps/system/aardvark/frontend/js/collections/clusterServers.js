@@ -5,6 +5,7 @@
   "use strict";
 
   window.ClusterServers = Backbone.Collection.extend({
+
     model: window.ClusterServer,
     
     url: "/_admin/aardvark/cluster/DBServers",

@@ -8,20 +8,12 @@
     url: "/_admin/aardvark/cluster/Collections",
 
     getList: function() {
-      return [
-        {
-          name: "Documents",
-          status: "ok"
-        },
-        {
-          name: "Edges",
-          status: "warning"
-        },
-        {
-          name: "People",
-          status: "critical"
-        }
-      ];
+      this.fetch({
+        async: false
+      });
+      return this.map(function(m) {
+        return m.forList();
+      });
     }
 
   });
