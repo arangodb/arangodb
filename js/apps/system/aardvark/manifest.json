@@ -6,7 +6,8 @@
   "isSystem": true,
 
   "controllers": {
-    "/": "aardvark.js"
+    "/": "aardvark.js",
+    "/cluster": "cluster.js"
   },
 
   "assets": {

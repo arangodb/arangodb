@@ -931,7 +931,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
   }
   uint64_t index = res._index;
 
-  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  const string where = "Current/Collections/" + databaseName + "/" + collectionID; 
   while (TRI_microtime() <= endTime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {

@@ -238,7 +238,8 @@ TRI_col_header_marker_t;
 typedef struct TRI_col_info_s {
   TRI_col_version_t  _version;         // collection version
   TRI_col_type_e     _type;            // collection type
-  TRI_voc_cid_t      _cid;             // collection identifier
+  TRI_voc_cid_t      _cid;             // local collection identifier
+  TRI_voc_cid_t      _planId;          // cluster-wide collection identifier
   TRI_voc_rid_t      _revision;        // last revision id written
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
