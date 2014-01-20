@@ -857,7 +857,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
                   = TRI_LookupArrayJson(json, "errorMessage");
             if (TRI_IsStringJson(errorMessage)) {
               tmpMsg += string(errorMessage->_value._string.data,
-                               errorMessage->_value._string.length);
+                               errorMessage->_value._string.length-1);
             }
             TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
             if (TRI_IsNumberJson(errorNum)) {
