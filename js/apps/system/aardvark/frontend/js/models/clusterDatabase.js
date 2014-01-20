@@ -4,11 +4,20 @@
   "use strict";
 
   window.ClusterDatabase = Backbone.Model.extend({
+
     defaults: {
-      "name": ""
+      "name": "",
+      "status": "ok"
     },
 
     idAttribute: "name",
+
+    forList: function() {
+      return {
+        name: this.get("name"),
+        status: this.get("status")
+      };
+    },
 
     url: function() {
       return "/_admin/aardvark/cluster/Databases";
