@@ -55,7 +55,7 @@ exports.Communication = function() {
       if (n === "Lock" || n === "Version") {
         return;
       }
-      res[JSON.parse(v).name] = n;
+      res[v.name] = n;
     });
     return res;
   };
@@ -82,7 +82,8 @@ exports.Communication = function() {
     };
     var stubs = {
       get: function(route, recursive) {
-        return _agency.get(route, recursive);
+        var res = _agency.get(route, recursive);
+        return res;
       },
       set: function(route, name, value) {
         if (value !== undefined) {
@@ -281,7 +282,7 @@ exports.Communication = function() {
   var ColObject = function(route, writeAccess) {
     this.info = function() {
       var res = route.get();
-      return JSON.parse(_.values(res)[0]);
+      return _.values(res)[0];
     };
     this.getShards = function() {
       var info = this.info();
@@ -305,7 +306,7 @@ exports.Communication = function() {
       this.moveShard = function(shard, target) {
         var toUpdate = this.info();
         toUpdate.shards[shard] = target;
-        return route.set(JSON.stringify(toUpdate));
+        return route.set(toUpdate);
       };
     }
   };
@@ -573,7 +574,8 @@ exports.Communication = function() {
       this.list = function() {
         var res = agency.sync.beat.get(true);
         _.each(res, function(v, k) {
-          res[k] = JSON.parse(v);  
+          delete res[k];
+          res[splitServerName(k)] = v;  
         });
         return res;
       };
