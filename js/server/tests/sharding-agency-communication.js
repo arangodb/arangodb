@@ -93,14 +93,14 @@
     };
     var collections = {
       _system: {
-        "98213": JSON.stringify({name: "_graphs"}),
-        "87123": JSON.stringify(vInfo),
-        "89123": JSON.stringify({name: "e"})
+        "98213": {name: "_graphs"},
+        "87123": vInfo,
+        "89123": {name: "e"}
       },
       a_db: {
-        "11235": JSON.stringify({name: "s"}),
-        "6512": JSON.stringify({name: "a"}),
-        "123": JSON.stringify({name: "d"})
+        "11235": {name: "s"},
+        "6512": {name: "a"},
+        "123": {name: "d"}
       }
     };
     var ips = {
@@ -115,30 +115,30 @@
       "cindy": "tcp://192.168.1.3:8529"
     };
     var heartbeats = {
-      "pavel": JSON.stringify({
+      pavel: {
         status: "SERVINGSYNC",
         time: (new Date()).toISOString()
-      }),
-      "paul": JSON.stringify({
+      },
+      paul: {
         status: "SERVINGSYNC",
         time: (new Date()).toISOString()
-      }),
-      "patricia": JSON.stringify({
+      },
+      patricia: {
         status: "SERVINGASYNC",
         time: (new Date()).toISOString()
-      }),
-      "sandro": JSON.stringify({
+      },
+      sandro: {
         status: "INSYNC",
         time: (new Date()).toISOString()
-      }),
-      "sandra": JSON.stringify({
+      },
+      sandra: {
         status: "SYNCING",
         time: (new Date()).toISOString()
-      }),
-      "sally": JSON.stringify({
+      },
+      sally: {
         status: "INSYNC",
         time: (new Date()).toISOString()
-      })
+      }
     };
     dummy = {};
     dummy.target = {};
@@ -147,7 +147,7 @@
     dummy.target.databases = databases;
     dummy.target.syscollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
     dummy.target.acollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
-    dummy.target.vInfo = JSON.stringify(vInfo);
+    dummy.target.vInfo = vInfo;
 
     dummy.plan = {};
     dummy.plan.servers = createResult([agencyRoutes.plan, agencyRoutes.sub.servers], dbServers);
@@ -155,7 +155,7 @@
     dummy.plan.databases = databases;
     dummy.plan.syscollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
     dummy.plan.acollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
-    dummy.plan.vInfo = JSON.stringify(vInfo);
+    dummy.plan.vInfo = vInfo;
 
     dummy.current = {};
     dummy.current.servers = createResult([agencyRoutes.current, agencyRoutes.sub.servers], dbServers);
@@ -164,10 +164,12 @@
     dummy.current.databases = databases;
     dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
     dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
-    dummy.current.vInfo = JSON.stringify(vInfo);
+    dummy.current.vInfo = vInfo;
 
     dummy.sync = {};
     dummy.sync.heartbeats = heartbeats;
+    dummy.sync.heartbeats = createResult([agencyRoutes.registered, agencyRoutes.sub.beat], heartbeats);
+    dummy.sync.interval = "1000";
   };
   var setup = function() {
     resetToDefault();
@@ -233,7 +235,7 @@
           }
           if (parts[1] === agencyRoutes.sub.interval) {
             res = {};
-            res[route] = JSON.stringify(dummy.sync.interval);
+            res[route] = dummy.sync.interval;
             return res;
           }
           break;
@@ -582,7 +584,7 @@
 
         testGetCollectionMetaInfo: function() {
           var sysdb = dbs.select("_system");
-          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+          assertEqual(sysdb.collection("v").info(), dummy.target.vInfo);
         },
 
         testGetResponsibilitiesForCollection: function() {
@@ -747,7 +749,7 @@
 
         testGetCollectionMetaInfo: function() {
           var sysdb = dbs.select("_system");
-          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+          assertEqual(sysdb.collection("v").info(), dummy.target.vInfo);
         },
 
         testGetResponsibilitiesForCollection: function() {
@@ -897,7 +899,7 @@
 
         testGetCollectionMetaInfo: function() {
           var sysdb = dbs.select("_system");
-          assertEqual(sysdb.collection("v").info(), JSON.parse(dummy.target.vInfo));
+          assertEqual(sysdb.collection("v").info(), dummy.target.vInfo);
         },
 
         testGetResponsibilitiesForCollection: function() {
@@ -972,10 +974,22 @@
           assertEqual(beats.getOutSync(), ["patricia", "sandra"].sort());
         },
 
-        testGetNoBeat: function() {
+        testGetNoBeatIfAllWork: function() {
           assertEqual(beats.noBeat(), []);
-        }
+        },
 
+        testGetNoBeatIfOneFails: function() {
+          // Rewrite Beat
+          var now = new Date(),
+              old = new Date(now - 5 * 60 * 1000),
+              route = [
+                agencyRoutes.registered,
+                agencyRoutes.sub.beat,
+                "pavel"
+              ].join("/");
+          dummy.sync.heartbeats[route].time = old.toISOString();
+          assertEqual(beats.noBeat(), ["pavel"]);
+        }
       };
     };
 
