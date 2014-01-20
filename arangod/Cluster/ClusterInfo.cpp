@@ -688,11 +688,11 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
                   = TRI_LookupArrayJson(json, "errorMessage");
             if (TRI_IsStringJson(errorMessage)) {
               tmpMsg += string(errorMessage->_value._string.data,
-                               errorMessage->_value._string.length);
+                               errorMessage->_value._string.length-1);
             }
             TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
             if (TRI_IsNumberJson(errorNum)) {
-              tmpMsg += " (errNum=";
+              tmpMsg += " (errorNum=";
               tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
                           errorNum->_value._number));
               tmpMsg += ")";
@@ -843,7 +843,6 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
   while (TRI_microtime() <= endTime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
-      cout << "Seeing " << res._values.size() << "shards." << endl;
       if (res._values.size() == numberOfShards) {
         map<string, AgencyCommResultEntry>::iterator it;
         string tmpMsg = "";
