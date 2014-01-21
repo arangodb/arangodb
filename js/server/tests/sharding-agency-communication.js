@@ -101,6 +101,42 @@
         "11235": {name: "s"},
         "6512": {name: "a"},
         "123": {name: "d"}
+      },
+      current: {
+        _system: {
+          "98213": {
+            "sg1": {},
+            "sg2": {},
+            "sg3": {}
+          },
+          "87123": {
+            "sv1": {},
+            "sv2": {},
+            "sv3": {}
+          },
+          "89123": {
+            "se1": {},
+            "se2": {},
+            "se3": {}
+          }
+        },
+        a_db: {
+          "11235": {
+            "s01": {},
+            "s02": {},
+            "s03": {}
+          },
+          "6512": {
+            "s11": {},
+            "s12": {},
+            "s13": {}
+          },
+          "123": {
+            "s21": {},
+            "s22": {},
+            "s23": {}
+          }
+        }
       }
     };
     var ips = {
@@ -162,8 +198,8 @@
     dummy.current.coordinators = createResult([agencyRoutes.current, agencyRoutes.sub.coords], coordinators);
     dummy.current.registered = createResult([agencyRoutes.current, agencyRoutes.sub.registered], ips);
     dummy.current.databases = databases;
-    dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
-    dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections.current._system);
+    dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.current.a_db);
     dummy.current.vInfo = vInfo;
 
     dummy.sync = {};
@@ -240,9 +276,9 @@
           }
           break;
         default:
-          fail();
+          fail("Requested route: GET " + route);
       }
-      fail();
+      fail("Requested route: GET " + route);
     },
     list: function(route, recursive, flat) {
       var parts = route.split("/");
@@ -280,7 +316,7 @@
           }
           break;
         default:
-          fail();
+          fail("Requested route: LIST " + route);
       }
     }
   };
@@ -562,7 +598,7 @@
           ].sort();
           assertEqual(dbs.getList(), list);
         },
-
+        
         testGetCollectionListForDatabase: function() {
           var syslist = [
             "_graphs",
@@ -631,6 +667,7 @@
           assertTrue(wasCalled, "Agency has not been informed to move shard..");
           assertEqual(colV.getServerForShard(shard), target);
         }
+        
       };
     };
 
@@ -777,6 +814,7 @@
           assertEqual(colV.getServerForShard("v1"), "pavel");
           assertEqual(colV.getServerForShard("v2"), "paul");
         }
+
       };
     };
 
@@ -877,7 +915,7 @@
           ].sort();
           assertEqual(dbs.getList(), list);
         },
-
+        
         testGetCollectionListForDatabase: function() {
           var syslist = [
             "_graphs",
@@ -927,6 +965,7 @@
           assertEqual(colV.getServerForShard("v1"), "pavel");
           assertEqual(colV.getServerForShard("v2"), "paul");
         }
+        
       };
     };
 
