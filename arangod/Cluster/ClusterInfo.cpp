@@ -114,6 +114,86 @@ CollectionInfo::~CollectionInfo () {
 } 
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                       CollectionInfoCurrent class
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an empty collection info object
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent::CollectionInfoCurrent () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from json
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent::CollectionInfoCurrent (ShardID const& shardID, TRI_json_t* json) {
+  _jsons.insert(make_pair<ShardID, TRI_json_t*>(shardID, json));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from another
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent const& other) :
+  _jsons(other._jsons) {
+  copyAllJsons();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from json
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent& CollectionInfoCurrent::operator= (CollectionInfoCurrent const& other) {
+  if (this == &other) {
+    return *this;
+  }
+  freeAllJsons();
+  _jsons = other._jsons;
+  copyAllJsons();
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a collection info object
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent::~CollectionInfoCurrent () {
+  freeAllJsons();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all pointers to TRI_json_t in the map _jsons
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectionInfoCurrent::freeAllJsons () {
+  map<ShardID, TRI_json_t*>::iterator it;
+  for (it = _jsons.begin(); it != _jsons.end(); ++it) {
+    if (it->second != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it->second);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy TRI_json_t behind the pointers in the map _jsons
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectionInfoCurrent::copyAllJsons () {
+  map<ShardID, TRI_json_t*>::iterator it;
+  for (it = _jsons.begin(); it != _jsons.end(); ++it) {
+    if (0 != it->second) {
+      it->second = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -202,10 +282,12 @@ void ClusterInfo::flush () {
   WRITE_LOCKER(_lock);
 
   _collectionsValid = false;
+  _collectionsCurrentValid = false;
   _serversValid = false;
   _DBServersValid = false;
 
   _collections.clear();
+  _collectionsCurrent.clear();
   _servers.clear();
   _shardIds.clear();
 
@@ -468,7 +550,6 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
    
     WRITE_LOCKER(_lock);
     _collections.clear(); 
-    _shardIds.clear();
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -507,17 +588,6 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
         
       (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
       (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
-
-      std::map<std::string, std::string> shards = collectionData.shardIds();
-      std::map<std::string, std::string>::const_iterator it3 = shards.begin();
-        
-      while (it3 != shards.end()) {
-        const std::string shardId = (*it3).first;
-        const std::string serverId = (*it3).second;
-
-        _shardIds.insert(std::make_pair<ShardID, ServerID>(shardId, serverId));
-        ++it3;
-      }
 
     }
     _collectionsValid = true;
@@ -575,7 +645,7 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
   info._type        = collection.type();
   info._cid         = collection.id();
   info._revision    = 0; // TODO 
-  info._maximalSize = collection.maximalSize();
+  info._maximalSize = collection.journalSize();
 
   const std::string name = collection.name();
   memcpy(info._name, name.c_str(), name.size());
@@ -633,6 +703,147 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
 
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about current collections from the agency
+/// Usually one does not have to call this directly. Note that this is
+/// necessarily complicated, since here we have to consider information
+/// about all shards of a collection.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::loadCurrentCollections (bool acquireLock) {
+  static const std::string prefix = "Current/Collections";
+
+  AgencyCommResult result;
+
+  {
+    if (acquireLock) {
+      AgencyCommLocker locker("Current", "READ");
+
+      if (locker.successful()) {
+        result = _agency.getValues(prefix, true);
+      }
+    }
+    else {
+      result = _agency.getValues(prefix, true);
+    }
+  }
+
+  if (result.successful()) {
+    result.parse(prefix + "/", false);
+   
+    WRITE_LOCKER(_lock);
+    _collectionsCurrent.clear(); 
+    _shardIds.clear();
+
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+
+    for (; it != result._values.end(); ++it) {
+      const std::string key = (*it).first;
+
+      // each entry consists of a database id, a collection id, and a shardID, 
+      // separated by '/'
+      std::vector<std::string> parts = triagens::basics::StringUtils::split(key, '/'); 
+      
+      if (parts.size() != 3) {
+        // invalid entry
+        LOG_WARNING("found invalid collection key in current in agency: '%s'", key.c_str());
+        continue;
+      }
+        
+      const std::string database   = parts[0]; 
+      const std::string collection = parts[1]; 
+      const std::string shardID    = parts[2]; 
+
+      // check whether we have created an entry for the database already
+      AllCollectionsCurrent::iterator it2 = _collectionsCurrent.find(database);
+
+      if (it2 == _collectionsCurrent.end()) {
+        // not yet, so create an entry for the database
+        DatabaseCollectionsCurrent empty;
+        _collectionsCurrent.insert(std::make_pair<DatabaseID, DatabaseCollectionsCurrent>(database, empty));
+        it2 = _collectionsCurrent.find(database);
+      }
+
+      TRI_json_t* json = (*it).second._json;
+      // steal the json
+      (*it).second._json = 0;
+
+      // check whether we already have a CollectionInfoCurrent:
+      DatabaseCollectionsCurrent::iterator it3;
+      it3 = it2->second.find(collection);
+      if (it3 == it2->second.end()) {
+        const CollectionInfoCurrent collectionDataCurrent(shardID, json);
+        it2->second.insert(make_pair<CollectionID, CollectionInfoCurrent>
+                              (collection, collectionDataCurrent));
+        it3 = it2->second.find(collection);
+      }
+      else {
+        it3->second.add(shardID, json);
+      }
+        
+      // Note that we have only inserted the CollectionInfoCurrent under
+      // the collection ID and not under the name! It is not possible
+      // to query the current collection info by name. This is because
+      // the correct place to hold the current name is in the plan.
+      // Thus: Look there and get the collection ID from there. Then
+      // ask about the current collection info.
+
+      // Now take note of this shard and its responsible server:
+      std::string DBserver = triagens::basics::JsonHelper::getStringValue
+                    (json, "DBserver", "");
+      if (DBserver != "") {
+        _shardIds.insert(make_pair<ShardID, ServerID>(shardID, DBserver));
+      }
+    }
+    _collectionsCurrentValid = true;
+    return;
+  }
+
+  LOG_TRACE("Error while loading %s", prefix.c_str());
+  _collectionsCurrentValid = false;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ask about a collection in current. This returns information about
+/// all shards in the collection.
+/// If it is not found in the cache, the cache is reloaded once.
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent ClusterInfo::getCollectionCurrent 
+           (DatabaseID const& databaseID,
+            CollectionID const& collectionID) {
+  int tries = 0;
+
+  if (! _collectionsCurrentValid) {
+    loadCurrentCollections(true);
+    ++tries;
+  }
+
+  while (++tries <= 2) {
+    {
+      READ_LOCKER(_lock);
+      // look up database by id
+      AllCollectionsCurrent::const_iterator it = _collectionsCurrent.find(databaseID);
+
+      if (it != _collectionsCurrent.end()) {
+        // look up collection by id
+        DatabaseCollectionsCurrent::const_iterator it2 = (*it).second.find(collectionID);
+
+        if (it2 != (*it).second.end()) {
+          return (*it2).second;
+        }
+      }
+    }
+    
+    // must load collections outside the lock
+    loadCurrentCollections(true);
+  }
+
+  return CollectionInfoCurrent();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create database in coordinator, the return value is an ArangoDB
@@ -1189,7 +1400,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
     }
 
     // must load collections outside the lock
-    loadPlannedCollections(true);
+    loadCurrentCollections(true);
   }
 
   return ServerID("");
