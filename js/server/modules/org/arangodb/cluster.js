@@ -397,9 +397,9 @@ function createLocalCollections (plannedCollections) {
 function dropLocalCollections (plannedCollections) {
   var ourselves = ArangoServerState.id();
 
-  var dropCollectionAgency = function (database, id) {
+  var dropCollectionAgency = function (database, shardID, id) {
     try { 
-      ArangoAgency.remove("Current/Collections/" + database + "/" + id + "/" + ourselves);
+      ArangoAgency.remove("Current/Collections/" + database + "/" + id + "/" + shardID);
     }
     catch (err) {
       // ignore errors
@@ -446,7 +446,7 @@ function dropLocalCollections (plannedCollections) {
                         
               writeLocked({ part: "Current" }, 
                           dropCollectionAgency, 
-                          [ database, collections[collection].planId ]);
+                          [ database, collection, collections[collection].planId ]);
             }
           }
         }
