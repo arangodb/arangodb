@@ -39,7 +39,10 @@ exports.Communication = function() {
     storeServersInCache,
     Target,
     mapCollectionIDsToNames,
+    updateCollectionRouteForName,
+    updateDatabaseRoutes,
     difference,
+    self = this,
     _ = require("underscore");
 
   splitServerName = function(route) {
@@ -135,17 +138,17 @@ exports.Communication = function() {
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
     addLevel(target, "db", "Collections", ["list"]);
-    addLevelsForDBs(target.db, true);
+    //addLevelsForDBs(target.db, true);
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(plan, "db", "Collections", ["list"]);
-    addLevelsForDBs(plan.db);
+    //addLevelsForDBs(plan.db);
     addLevel(plan, "coordinators", "Coordinators", ["list", "checkVersion"]);
     var current = addLevel(this, "current", "Current");
     addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(current, "db", "Collections", ["list"]);
-    addLevelsForDBs(current.db);
+    //addLevelsForDBs(current.db);
     addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
     addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
 
@@ -153,6 +156,7 @@ exports.Communication = function() {
     addLevel(sync, "beat", "ServerStates", ["get"]);
     addLevel(sync, "interval", "HeartbeatIntervalMs", ["get"]);
 
+    this.addLevel = addLevel;
   };
 
   agency = new AgencyWrapper(); 
@@ -161,6 +165,33 @@ exports.Communication = function() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Helper Functions
 // -----------------------------------------------------------------------------
+
+  updateDatabaseRoutes = function(base, writeAccess) {
+    var list = self.plan.Databases().getList();
+    _.each(_.keys(base), function(k) {
+      if (k !== "route" && k !== "list") {
+        delete base[k];
+      }
+    });
+    _.each(list, function(d) {
+      agency.addLevel(base, d, d, ["get", "checkVersion"]);
+    });
+  };
+
+  updateCollectionRouteForName = function(route, db, name, writeAccess) {
+    var list = self.plan.Databases().select(db).getCollectionObjects();
+    var cId = null;
+    _.each(list, function(v, k) {
+      if (v.name === name) {
+        cId = splitServerName(k);
+      }
+    });
+    var acts = ["get"];
+    if (writeAccess) {
+      acts.push("set");
+    }
+    agency.addLevel(route, name, cId, acts);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Stores database servers in cache
@@ -318,18 +349,27 @@ exports.Communication = function() {
 /// It allos to get a list of collections and to select one of them for 
 /// further information.
 ////////////////////////////////////////////////////////////////////////////////
-  var DBObject = function(route, writeAccess) {
+  var DBObject = function(route, db, writeAccess) {
     var cache;
-    var getList = function() {
+    var getRaw = function() {
       if (!cache || !route.checkVersion()) {
-        cache = _.keys(mapCollectionIDsToNames(route.get(true))).sort();
+        cache = route.get(true);
       }
       return cache;
+    };
+    var getList = function() {
+      return _.keys(mapCollectionIDsToNames(
+        self.plan.Databases().select(db).getCollectionObjects()
+      )).sort();
+    };
+    this.getCollectionObjects = function() {
+      return getRaw();
     };
     this.getCollections = function() {
       return getList();
     };
     this.collection = function(name) {
+      updateCollectionRouteForName(route, db, name, writeAccess);
       var colroute = route[name];
       if (!colroute) {
         return false;
@@ -350,11 +390,12 @@ exports.Communication = function() {
       return route.list();            
     };
     this.select = function(name) {
+      updateDatabaseRoutes(route, writeAccess);
       var subroute = route[name];
       if (!subroute) {
         return false;
       }
-      return new DBObject(subroute, writeAccess);
+      return new DBObject(subroute, name, writeAccess);
     };
   };
 
