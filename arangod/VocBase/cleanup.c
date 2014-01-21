@@ -249,7 +249,6 @@ void TRI_CleanupVocBase (void* data) {
     // check if we can get the compactor lock exclusively
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
       size_t i, n;
-      TRI_col_type_e type;
 
       // copy all collections
       TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -261,6 +260,7 @@ void TRI_CleanupVocBase (void* data) {
       for (i = 0;  i < n;  ++i) {
         TRI_vocbase_col_t* collection;
         TRI_primary_collection_t* primary;
+        TRI_document_collection_t* document;
 
         collection = (TRI_vocbase_col_t*) collections._buffer[i];
 
@@ -273,24 +273,20 @@ void TRI_CleanupVocBase (void* data) {
           continue;
         }
 
-        type = primary->base._info._type;
-
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
         // we're the only ones that can unload the collection, so using
         // the collection pointer outside the lock is ok
 
         // maybe cleanup indexes, unload the collection or some datafiles
-        if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-          TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+        document = (TRI_document_collection_t*) primary;
 
-          // clean indexes?
-          if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
-            document->cleanupIndexes(document);
-          }
-
-          CleanupDocumentCollection(document);
+        // clean indexes?
+        if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
+          document->cleanupIndexes(document);
         }
+
+        CleanupDocumentCollection(document);
       }
 
       TRI_UnlockCompactorVocBase(vocbase);

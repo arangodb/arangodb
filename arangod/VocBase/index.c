@@ -344,11 +344,6 @@ TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* primary,
   TRI_index_t* idx;
   size_t i;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
-    return NULL;
-  }
-
   doc = (TRI_document_collection_t*) primary;
 
   for (i = 0;  i < doc->_allIndexes._length;  ++i) {
