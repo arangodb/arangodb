@@ -1008,6 +1008,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
         }
 
+        c->_planId = info._planId;
         c->_status = TRI_VOC_COL_STATUS_UNLOADED;
         
         if (iterateMarkers) {   
