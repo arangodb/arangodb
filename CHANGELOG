@@ -9,8 +9,6 @@ v1.5.0 (XXXX-XX-XX)
   to access such collections from these places was via the `db._collection(<name>)`
   workaround.
 
-* issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
-
 * allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
   `/_api/batch` HTTP API.
 
@@ -115,7 +113,15 @@ v1.5.0 (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.6 (XXXX-XX-XX)
+v1.4.7 (XXXX-XX-XX)
+-------------------
+
+* issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
+
+* mount all Foxx applications in system apps directory on startup
+
+
+v1.4.6 (2014-01-20)
 -------------------
 
 * issue #736: AQL function to parse collection and key from document handle
