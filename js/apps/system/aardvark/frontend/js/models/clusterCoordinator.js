@@ -4,15 +4,23 @@
   "use strict";
 
   window.ClusterCoordinator = Backbone.Model.extend({
+
     defaults: {
       "name": "",
-      "url": ""
+      "url": "",
+      "status": "ok"
     },
 
     idAttribute: "name",
 
-    url: function() {
-      return "/_admin/aardvark/cluster/Coordinators";
+    url: "/_admin/aardvark/cluster/Coordinators",
+
+    forList: function() {
+      return {
+        name: this.get("name"),
+        status: this.get("status"),
+        url: this.get("url")
+      };
     }
     
   });
