@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor,
+/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, module,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
          AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
 
@@ -162,15 +162,31 @@
     catch (err) {
       console.error("cannot initialize Foxx application: %s", String(err));
     }
-
+    
     var aal = internal.db._collection("_aal");
 
     if (aal !== null) {
-      var found = aal.firstExample({ type: "mount", mount: "/_admin/aardvark" });
+      var systemAppPath = module.systemAppPath();
 
-      if (found === null) {
-        fm.mount("aardvark", "/_admin/aardvark", {reload: false});
-      }
+      var fs = require("fs");
+      var apps = fs.list(systemAppPath); 
+
+      apps.forEach(function (appName) {
+        if (! fs.isDirectory(fs.join(systemAppPath, appName))) {
+          return;
+        }
+          
+        try {
+          var found = aal.firstExample({ type: "mount", mount: "/_admin/" + appName });
+
+          if (found === null) {
+            fm.mount(appName, "/_admin/" + appName, {reload: false});
+          }
+        }
+        catch (err) {
+          console.error("unable to mount system application '%s': %s", appName, String(err));
+        }
+      });
     }
   };
 
