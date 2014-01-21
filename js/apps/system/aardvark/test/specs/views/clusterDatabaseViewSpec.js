@@ -6,9 +6,10 @@
   "use strict";
 
   describe("Cluster Database View", function() {
-    var view, div, colView, colCol;
+    var view, div, colView, colCol, server;
 
     beforeEach(function() {
+      server = "pavel";
       div = document.createElement("div");
       div.id = "clusterDatabases"; 
       document.body.appendChild(div);
@@ -83,7 +84,7 @@
         view = new window.ClusterDatabaseView({
           collection: dbCol
         });
-        view.render();
+        view.render(server);
       });
 
       it("should not render the Server view", function() {
@@ -116,19 +117,19 @@
         it("should be able to navigate to _system", function() {
           db = "_system";
           $("#" + db).click();
-          expect(colView.render).toHaveBeenCalledWith(db);
+          expect(colView.render).toHaveBeenCalledWith(db, server);
         });
 
         it("should be able to navigate to myDatabase", function() {
           db = "myDatabase";
           $("#" + db).click();
-          expect(colView.render).toHaveBeenCalledWith(db);
+          expect(colView.render).toHaveBeenCalledWith(db, server);
         });
 
         it("should be able to navigate to otherDatabase", function() {
           db = "otherDatabase";
           $("#" + db).click();
-          expect(colView.render).toHaveBeenCalledWith(db);
+          expect(colView.render).toHaveBeenCalledWith(db, server);
         });
 
       });

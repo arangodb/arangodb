@@ -57,11 +57,8 @@
                 dbView.render.reset();
                 view.render.reset();
                 var name = o.primary.name;
-                info = {
-                  name: name
-                };
                 $(getTile(name)).click();
-                expect(dbView.render).toHaveBeenCalledWith(info);
+                expect(dbView.render).toHaveBeenCalledWith(name);
                 expect(view.render).toHaveBeenCalledWith(true);
               });
             });
