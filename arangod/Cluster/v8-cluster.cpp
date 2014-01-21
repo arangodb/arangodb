@@ -745,7 +745,7 @@ static v8::Handle<v8::Value> JS_FlushClusterInfo (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the responsible server
+/// @brief get the info about a collection in Plan
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments const& argv) {
@@ -765,6 +765,17 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
   result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
   result->Set(v8::String::New("type"), v8::Number::New((int) ci.type()));
   result->Set(v8::String::New("status"), v8::Number::New((int) ci.status()));
+
+  const string statusString = ci.statusString();
+  result->Set(v8::String::New("statusString"),
+              v8::String::New(statusString.c_str(), statusString.size()));
+
+  result->Set(v8::String::New("deleted"), v8::Boolean::New(ci.deleted()));
+  result->Set(v8::String::New("doCompact"), v8::Boolean::New(ci.doCompact()));
+  result->Set(v8::String::New("isSystem"), v8::Boolean::New(ci.isSystem()));
+  result->Set(v8::String::New("isVolatile"), v8::Boolean::New(ci.isVolatile()));
+  result->Set(v8::String::New("waitForSync"), v8::Boolean::New(ci.waitForSync()));
+  result->Set(v8::String::New("journalSize"), v8::Number::New(ci.journalSize()));
 
   const std::vector<std::string>& sks = ci.shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(sks.size());
@@ -786,6 +797,71 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
   // TODO: fill "indexes"
   v8::Handle<v8::Array> indexes = v8::Array::New();
   result->Set(v8::String::New("indexes"), indexes);
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the info about a collection in Current
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getCollectionInfoCurrent(<database-id>, <collection-id>, <shardID>)");
+  }
+ 
+  ShardID shardID = TRI_ObjectToString(argv[2]);
+
+  CollectionInfo ci = ClusterInfo::instance()->getCollection(
+       TRI_ObjectToString(argv[0]), 
+       TRI_ObjectToString(argv[1]));
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  // First some stuff from Plan for which Current does not make sense:
+  const std::string cid = triagens::basics::StringUtils::itoa(ci.id());
+  const std::string& name = ci.name();
+  result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
+  result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
+
+  CollectionInfoCurrent cic = ClusterInfo::instance()->getCollectionCurrent(
+       TRI_ObjectToString(argv[0]), cid);
+
+  result->Set(v8::String::New("type"), v8::Number::New((int) ci.type()));
+  // Now the Current information, if we actually got it:
+  TRI_vocbase_col_status_e s = cic.status(shardID);
+  result->Set(v8::String::New("status"), v8::Number::New((int) cic.status(shardID)));
+  if (s == TRI_VOC_COL_STATUS_CORRUPTED) {
+    return scope.Close(result);
+  }
+  const string statusString = TRI_GetStatusStringCollectionVocBase(s);
+  result->Set(v8::String::New("statusString"),
+              v8::String::New(statusString.c_str(), statusString.size()));
+
+  result->Set(v8::String::New("deleted"), v8::Boolean::New(cic.deleted(shardID)));
+  result->Set(v8::String::New("doCompact"), v8::Boolean::New(cic.doCompact(shardID)));
+  result->Set(v8::String::New("isSystem"), v8::Boolean::New(cic.isSystem(shardID)));
+  result->Set(v8::String::New("isVolatile"), v8::Boolean::New(cic.isVolatile(shardID)));
+  result->Set(v8::String::New("waitForSync"), v8::Boolean::New(cic.waitForSync(shardID)));
+  result->Set(v8::String::New("journalSize"), v8::Number::New(cic.journalSize(shardID)));
+  const std::string serverID = cic.responsibleServer(shardID);
+  result->Set(v8::String::New("responsibleServer"), 
+              v8::String::New(serverID.c_str(), serverID.size()));
+
+  // TODO: fill "indexes"
+  v8::Handle<v8::Array> indexes = v8::Array::New();
+  result->Set(v8::String::New("indexes"), indexes);
+
+  // Finally, report any possible error:
+  bool error = cic.error(shardID);
+  result->Set(v8::String::New("error"), v8::Boolean::New(error));
+  if (error) {
+    result->Set(v8::String::New("errorNum"), v8::Number::New(cic.errorNum(shardID)));
+    const string errorMessage = cic.errorMessage(shardID);
+    result->Set(v8::String::New("errorMessage"),
+                v8::String::New(errorMessage.c_str(), errorMessage.size()));
+  }
+  
   return scope.Close(result);
 }
 
@@ -1595,6 +1671,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "listDatabases", JS_ListDatabases);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushClusterInfo, true);
   TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
+  TRI_AddMethodVocbase(rt, "getCollectionInfoCurrent", JS_GetCollectionInfoCurrentClusterInfo);
   TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
   TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
   TRI_AddMethodVocbase(rt, "getDBServers", JS_GetDBServers);

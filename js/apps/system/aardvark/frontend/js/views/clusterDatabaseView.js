@@ -22,7 +22,7 @@
 
     loadDatabase: function(e) {
       var id = e.currentTarget.id;
-      this.colView.render(id);
+      this.colView.render(id, this.server);
     },
 
     unrender: function() {
@@ -30,7 +30,8 @@
       this.colView.unrender();
     },
 
-    render: function(){
+    render: function(server) {
+      this.server = server;
       $(this.el).html(this.template.render({
         databases: this.collection.getList()
       }));

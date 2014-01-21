@@ -381,6 +381,7 @@ function createLocalCollections (plannedCollections) {
                         payload.errorMessage = err2.errorMessage;
                       }
 
+                      payload.DBserver = ourselves;
                       writeLocked({ part: "Current" }, 
                                   createCollectionAgency, 
                                   [ database, shard, payload ]);
@@ -415,6 +416,7 @@ function createLocalCollections (plannedCollections) {
                           payload.errorMessage = err3.errorMessage;
                         }
 
+                        payload.DBserver = ourselves;
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
                                     [ database, shard, payload ]);
