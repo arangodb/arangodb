@@ -171,8 +171,15 @@
       var fs = require("fs");
       var apps = fs.list(systemAppPath); 
 
+      // make sure the aardvark app is always there
+      if (apps.indexOf("aardvark") === -1) {
+        apps.push("aardvark");
+      }
+
       apps.forEach(function (appName) {
-        if (! fs.isDirectory(fs.join(systemAppPath, appName))) {
+        // for all unknown system apps: check that the directory actually exists
+        if (appName !== "aardvark" &&
+            ! fs.isDirectory(fs.join(systemAppPath, appName))) {
           return;
         }
           
