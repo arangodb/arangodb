@@ -171,6 +171,7 @@ uint64_t ClusterInfo::uniqid (uint64_t count) {
 
   if (_uniqid._currentValue >= _uniqid._upperValue) {
     uint64_t fetch = count;
+
     if (fetch < MinIdsPerBatch) {
       fetch = MinIdsPerBatch;
     }
@@ -181,13 +182,16 @@ uint64_t ClusterInfo::uniqid (uint64_t count) {
       return 0;
     }
 
-    _uniqid._currentValue = result._index;
+    _uniqid._currentValue = result._index + count;
     _uniqid._upperValue   = _uniqid._currentValue + fetch - 1;
-
-    return _uniqid._currentValue++;
+    
+    return result._index;
   }
 
-  return ++_uniqid._currentValue;
+  uint64_t result = _uniqid._currentValue;
+  _uniqid._currentValue += count;
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
