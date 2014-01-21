@@ -752,6 +752,13 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
     if (! ac.exists("Plan/Databases/" + name)) {
       return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     }
+    
+    res = ac.removeValues("Plan/Collections/" + name, false);
+
+    if (! res.successful()) {
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
+                         errorMsg);
+    }
 
     res = ac.removeValues("Plan/Databases/"+name, false);
     if (!res.successful()) {
