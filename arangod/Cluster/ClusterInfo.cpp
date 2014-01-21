@@ -441,15 +441,20 @@ void ClusterInfo::loadCurrentDatabases () {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::loadPlannedCollections () {
+void ClusterInfo::loadPlannedCollections (bool acquireLock) {
   static const std::string prefix = "Plan/Collections";
 
   AgencyCommResult result;
 
   {
-    AgencyCommLocker locker("Plan", "READ");
+    if (acquireLock) {
+      AgencyCommLocker locker("Plan", "READ");
 
-    if (locker.successful()) {
+      if (locker.successful()) {
+        result = _agency.getValues(prefix, true);
+      }
+    }
+    else {
       result = _agency.getValues(prefix, true);
     }
   }
@@ -529,7 +534,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
   int tries = 0;
 
   if (! _collectionsValid) {
-    loadPlannedCollections();
+    loadPlannedCollections(true);
     ++tries;
   }
 
@@ -550,7 +555,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     }
     
     // must load collections outside the lock
-    loadPlannedCollections();
+    loadPlannedCollections(true);
   }
 
   return CollectionInfo();
@@ -599,7 +604,7 @@ const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const&
   std::vector<CollectionInfo> result;
 
   // always reload
-  loadPlannedCollections();
+  loadPlannedCollections(true);
 
   READ_LOCKER(_lock);
   // look up database by id
@@ -810,8 +815,27 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
   {
     AgencyCommLocker locker("Plan", "WRITE");
 
+
     if (! locker.successful()) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+
+    {
+      // check if a collection with the same name is already planned
+      loadPlannedCollections(false);
+
+      READ_LOCKER(_lock);
+      AllCollections::const_iterator it = _collections.find(databaseName);
+      if (it != _collections.end()) {
+        const std::string name = JsonHelper::getStringValue(json, "name", "");
+
+        DatabaseCollections::const_iterator it2 = (*it).second.find(name);
+
+        if (it2 != (*it).second.end()) {
+          // collection already exists!
+          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        }
+      }
     }
    
     if (! ac.exists("Plan/Databases/" + databaseName)) {
@@ -1139,7 +1163,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
   if (! _collectionsValid) {
-    loadPlannedCollections();
+    loadPlannedCollections(true);
     tries++;
   }
 
@@ -1154,7 +1178,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
     }
 
     // must load collections outside the lock
-    loadPlannedCollections();
+    loadPlannedCollections(true);
   }
 
   return ServerID("");
