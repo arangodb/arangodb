@@ -183,6 +183,7 @@
     "ERROR_GRAPH_COULD_NOT_CREATE_EDGE" : { "code" : 1907, "message" : "could not create edge" }, 
     "ERROR_GRAPH_COULD_NOT_CHANGE_EDGE" : { "code" : 1908, "message" : "could not change edge" }, 
     "ERROR_GRAPH_TOO_MANY_ITERATIONS" : { "code" : 1909, "message" : "too many iterations" }, 
+    "ERROR_GRAPH_INVALID_FILTER_RESULT" : { "code" : 1910, "message" : "invalid filter result" }, 
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" }, 
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" }, 
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 

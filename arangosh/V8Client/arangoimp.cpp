@@ -303,7 +303,8 @@ int main (int argc, char* argv[]) {
                                             BaseClient.sslProtocol(),
                                             false);
 
-  if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
+  if (! ClientConnection->isConnected() || 
+      ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification() 
          << "', database: '" << BaseClient.databaseName() << "'" << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
@@ -358,18 +359,18 @@ int main (int argc, char* argv[]) {
 
   // collection name
   if (CollectionName == "") {
-    cerr << "collection name is missing." << endl;
+    cerr << "Collection name is missing." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // filename
   if (FileName == "") {
-    cerr << "file name is missing." << endl;
+    cerr << "File name is missing." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
-    cerr << "file '" << FileName << "' is not a regular file." << endl;
+    cerr << "Cannot open file '" << FileName << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
@@ -414,9 +415,6 @@ int main (int argc, char* argv[]) {
   else {
     cerr << "error message:    " << ih.getErrorMessage() << endl;
   }
-
-  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
-  // v8::V8::Dispose();
 
   TRIAGENS_REST_SHUTDOWN;
 
