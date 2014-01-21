@@ -244,14 +244,11 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 /// @RESTQUERYPARAM{type,string,required}
 /// Determines how the body of the request will be interpreted. `type` can have
 /// the following values:
-///
 /// - `documents`: when this type is used, each line in the request body is 
 ///   expected to be an individual JSON-encoded document. Multiple JSON documents
 ///   in the request body need to be separated by newlines. 
-///
 /// - `list`: when this type is used, the request body must contain a single
 ///   JSON-encoded list of individual documents to import.
-///
 /// - `auto`: if set, this will automatically determine the body type (either
 ///   `documents` or `list`).
 ///
@@ -736,8 +733,9 @@ bool RestImportHandler::createFromJson (const string& type) {
 ///
 /// @RESTBODYPARAM{documents,string,required}
 /// The body must consist of JSON-encoded lists of attribute values, with one 
-/// line per per document. The first line of the request must be a JSON-encoded 
-/// list of attribute names.
+/// line per per document. The first row of the request must be a JSON-encoded 
+/// list of attribute names. These attribute names are used for the data in the
+/// subsequent rows.
 ///
 /// @RESTQUERYPARAMETERS
 ///
