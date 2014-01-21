@@ -5,9 +5,14 @@
   window.ClusterCollections = Backbone.Collection.extend({
     model: window.ClusterCollection,
     
-    url: "/_admin/aardvark/cluster/Collections",
+    url: function() {
+      return "/_admin/aardvark/cluster/"
+        + this.dbname + "/"
+        + "Collections";
+    },
 
-    getList: function() {
+    getList: function(db) {
+      this.dbname = db;
       this.fetch({
         async: false
       });

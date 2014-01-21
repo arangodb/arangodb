@@ -13,7 +13,7 @@
 <ul>
   <% _.each(shards, function(v) { %>
     <li>
-      <button id="<%=v.name%>" class="btn btn-server btn-<%=statusClass(v.status)%> shard"><%=v.name%></button>
+      <button id="<%=v.id%>" class="btn btn-server btn-<%=statusClass(v.status)%> shard"><%=v.id%></button>
     </li>
   <% }); %>
 </ul>

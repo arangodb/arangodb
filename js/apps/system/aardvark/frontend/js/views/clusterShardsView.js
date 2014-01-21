@@ -14,9 +14,9 @@
       $(this.el).html("");
     },
 
-    render: function() {
+    render: function(db, col, server) {
       $(this.el).html(this.template.render({
-        shards: this.collection.getList()
+        shards: this.collection.getList(db, col, server)
       }));
       return this;
     }

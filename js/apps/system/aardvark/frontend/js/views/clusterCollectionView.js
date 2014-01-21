@@ -22,9 +22,11 @@
 
     loadCollection: function(e) {
       var id = e.currentTarget.id;
-      this.shardsView.render({
-        name: id
-      });
+      this.shardsView.render(
+        this.db,
+        id,
+        this.server
+      );
     },
 
     unrender: function() {
@@ -32,9 +34,11 @@
       this.shardsView.unrender();
     },
 
-    render: function() {
+    render: function(db, server) {
+      this.db = db;
+      this.server = server;
       $(this.el).html(this.template.render({
-        collections: this.collection.getList()
+        collections: this.collection.getList(this.db)
       }));
       this.shardsView.unrender();
       return this;
