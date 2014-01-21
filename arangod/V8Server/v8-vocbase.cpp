@@ -7286,7 +7286,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
+  if (*key == '_' ||
+      strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
       strcmp(key, "toString") == 0 ||
       strcmp(key, "toJSON") == 0) {
     return scope.Close(v8::Handle<v8::Value>());
