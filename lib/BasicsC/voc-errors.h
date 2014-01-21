@@ -274,10 +274,10 @@ extern "C" {
 ///   Will be raised when a coordinator in a cluster notices that some
 ///   DBServers report problems when creating databases for a new cluster wide
 ///   database.
-/// - 1463: @LIT{could not remove databasefrom plan}
+/// - 1463: @LIT{could not remove database from plan}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Plan hierarchy in the agency.
-/// - 1464: @LIT{could not remove databasefrom current}
+/// - 1464: @LIT{could not remove database from current}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Current hierarchy in the agency.
 /// - 1500: @LIT{query killed}
@@ -1605,7 +1605,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
 ///
-/// could not remove databasefrom plan
+/// could not remove database from plan
 ///
 /// Will be raised when a coordinator in a cluster cannot remove an entry for a
 /// database in the Plan hierarchy in the agency.
@@ -1616,7 +1616,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1464: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
 ///
-/// could not remove databasefrom current
+/// could not remove database from current
 ///
 /// Will be raised when a coordinator in a cluster cannot remove an entry for a
 /// database in the Current hierarchy in the agency.

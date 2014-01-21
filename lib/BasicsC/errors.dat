@@ -158,8 +158,8 @@ ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,1459,"could not remove coll
 ERROR_CLUSTER_DATABASE_NAME_EXISTS,1460,"database name already exists","Will be raised when a coordinator in a cluster tries to create a database and the database name already exists."
 ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,1461,"could not create database in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new database in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,1462,"could not create database","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating databases for a new cluster wide database."
-ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,1463,"could not remove databasefrom plan","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Plan hierarchy in the agency."
-ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,1464,"could not remove databasefrom current","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,1463,"could not remove database from plan","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,1464,"could not remove database from current","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency."
 
 ################################################################################
 ## ArangoDB query errors
