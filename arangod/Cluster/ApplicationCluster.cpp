@@ -401,8 +401,18 @@ void ApplicationCluster::stop () {
 
   {
     AgencyCommLocker locker("Current", "WRITE"); 
-
+    
     if (locker.successful()) {
+      // unregister ourselves 
+      ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+      if (role == ServerState::ROLE_PRIMARY) {
+        comm.removeValues("Current/DBServers/" + _myId, false);
+      }
+      else if (role == ServerState::ROLE_COORDINATOR) {
+        comm.removeValues("Current/Coordinators/" + _myId, false);
+      }
+
       // unregister ourselves 
       comm.removeValues("Current/ServersRegistered/" + _myId, false);
     }
