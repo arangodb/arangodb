@@ -182,6 +182,8 @@ function createLocalDatabases (plannedDatabases) {
                      payload);
   };
   
+  db._useDatabase("_system");
+  
   var localDatabases = getLocalDatabases();
   var name;
 
@@ -232,6 +234,8 @@ function dropLocalDatabases (plannedDatabases) {
     }
   };
   
+  db._useDatabase("_system");
+  
   var localDatabases = getLocalDatabases();
   var name;
 
@@ -267,6 +271,8 @@ function cleanupCurrentDatabases () {
       // ignore errors
     }
   };
+  
+  db._useDatabase("_system");
 
   var all = ArangoAgency.get("Current/Databases", true);
   var currentDatabases = getByPrefix(all, "Current/Databases/", true); 
@@ -299,7 +305,6 @@ function cleanupCurrentDatabases () {
 function handleDatabaseChanges (plan, current) {
   var plannedDatabases = getByPrefix(plan, "Plan/Databases/"); 
 
-  db._useDatabase("_system");
   createLocalDatabases(plannedDatabases);
   dropLocalDatabases(plannedDatabases);  
   cleanupCurrentDatabases();  
@@ -317,6 +322,7 @@ function createLocalCollections (plannedCollections) {
                      payload);
   };
   
+  db._useDatabase("_system");
   var localDatabases = getLocalDatabases();
   var database;
 
@@ -447,6 +453,7 @@ function dropLocalCollections (plannedCollections) {
     }
   };
 
+  db._useDatabase("_system");
   var shardMap = getShardMap(plannedCollections);
   
   var localDatabases = getLocalDatabases();
@@ -500,6 +507,10 @@ function dropLocalCollections (plannedCollections) {
   }
 }
 
+function cleanupCurrentCollections () {
+  db._useDatabase("_system");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,11 +518,9 @@ function dropLocalCollections (plannedCollections) {
 function handleCollectionChanges (plan, current) {
   var plannedCollections = getByPrefix(plan, "Plan/Collections/", true); 
 
-  db._useDatabase("_system");
   createLocalCollections(plannedCollections);
-  
-  db._useDatabase("_system");
   dropLocalCollections(plannedCollections);
+  cleanupCurrentCollections();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
