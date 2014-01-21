@@ -253,6 +253,46 @@ function dropLocalDatabases (plannedDatabases) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clean up what's in Current/Databases for ourselves
+////////////////////////////////////////////////////////////////////////////////
+
+function cleanupCurrentDatabases () {
+  var ourselves = ArangoServerState.id();
+  
+  var dropDatabaseAgency = function (payload) { 
+    try {
+      ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ourselves);
+    }
+    catch (err) {
+      // ignore errors
+    }
+  };
+
+  var all = ArangoAgency.get("Current/Databases", true);
+  var currentDatabases = getByPrefix(all, "Current/Databases/", true); 
+  var localDatabases = getLocalDatabases();
+  var name;
+
+  for (name in currentDatabases) {
+    if (currentDatabases.hasOwnProperty(name)) {
+      if (! localDatabases.hasOwnProperty(name)) {
+        // we found a database we don't have locally
+
+        if (currentDatabases[name].hasOwnProperty(ourselves)) {
+          // we are entered for a database that we don't have locally
+          console.info("remvoing entry for local database '%s'", name);
+        
+          writeLocked({ part: "Current" }, 
+                      dropDatabaseAgency, 
+                      [ { name: name } ]);
+        }
+
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handle database changes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -262,6 +302,7 @@ function handleDatabaseChanges (plan, current) {
   db._useDatabase("_system");
   createLocalDatabases(plannedDatabases);
   dropLocalDatabases(plannedDatabases);  
+  cleanupCurrentDatabases();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
