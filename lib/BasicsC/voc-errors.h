@@ -274,10 +274,10 @@ extern "C" {
 ///   Will be raised when a coordinator in a cluster notices that some
 ///   DBServers report problems when creating databases for a new cluster wide
 ///   database.
-/// - 1463: @LIT{could not remove databasefrom plan}
+/// - 1463: @LIT{could not remove database from plan}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Plan hierarchy in the agency.
-/// - 1464: @LIT{could not remove databasefrom current}
+/// - 1464: @LIT{could not remove database from current}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Current hierarchy in the agency.
 /// - 1500: @LIT{query killed}
@@ -417,6 +417,9 @@ extern "C" {
 ///   Will be raised when the edge could not be changed
 /// - 1909: @LIT{too many iterations}
 ///   Will be raised when too many iterations are done in a graph traversal
+/// - 1910: @LIT{invalid filter result}
+///   Will be raised when an invalid filter result is returned in a graph
+///   traversal
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server
 /// - 1951: @LIT{session expired}
@@ -1602,7 +1605,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
 ///
-/// could not remove databasefrom plan
+/// could not remove database from plan
 ///
 /// Will be raised when a coordinator in a cluster cannot remove an entry for a
 /// database in the Plan hierarchy in the agency.
@@ -1613,7 +1616,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1464: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
 ///
-/// could not remove databasefrom current
+/// could not remove database from current
 ///
 /// Will be raised when a coordinator in a cluster cannot remove an entry for a
 /// database in the Current hierarchy in the agency.
@@ -2216,6 +2219,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_TOO_MANY_ITERATIONS                               (1909)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1910: ERROR_GRAPH_INVALID_FILTER_RESULT
+///
+/// invalid filter result
+///
+/// Will be raised when an invalid filter result is returned in a graph
+/// traversal
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_FILTER_RESULT                             (1910)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

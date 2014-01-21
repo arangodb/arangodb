@@ -1,6 +1,16 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* allow direct access from the `db` object to collections whose names start 
+  with an underscore (e.g. db._users).
+
+  Previously, access to such collections via the `db` object was possible from
+  arangosh, but not from arangod (and thus Foxx and actions). The only way
+  to access such collections from these places was via the `db._collection(<name>)`
+  workaround.
+
+* issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
+
 * allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
   `/_api/batch` HTTP API.
 
@@ -107,6 +117,12 @@ v1.5.0 (XXXX-XX-XX)
 
 v1.4.6 (XXXX-XX-XX)
 -------------------
+
+* issue #736: AQL function to parse collection and key from document handle
+
+* added fm.rescan() method for Foxx-Manager
+
+* fixed issue #734: foxx cookie and route problem
 
 * added method `fm.configJson` for arangosh
 
