@@ -66,6 +66,18 @@ Please note that by default, _arangoimp_ will import data into the specified
 collection in the default database (`_system`). To specify a different database, 
 use the `--server.database` option when invoking _arangoimp_. 
 
+An _arangoimp_ import will print out the final results on the command line.
+By default, it shows the number of documents created, the number of errors that
+occurred on the server side, and the total number of input file lines/documents
+that it processed. Additionally, _arangoimp_ will print out details about errors 
+that happended on the server-side (if any).
+
+Example:
+
+    created:          2
+    errors:           0
+    total:            2
+
 Importing CSV Data {#ImpManualCsv}
 ==================================
 
