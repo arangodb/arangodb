@@ -683,6 +683,9 @@ exports.run = function (args) {
         exports.mount(args[1], args[2]);
       }
     }
+    else if (type === 'rescan') {
+      exports.rescan();
+    }
     else if (type === 'setup') {
       exports.setup(args[1]);
     }
@@ -817,6 +820,18 @@ exports.fetch = function (type, location, version) {
   };
 
   var res = arango.POST("/_admin/foxx/fetch", JSON.stringify(req));
+
+  return arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rescans the FOXX application directory
+////////////////////////////////////////////////////////////////////////////////
+
+exports.rescan = function () {
+  'use strict';
+
+  var res = arango.POST("/_admin/foxx/rescan", "");
 
   return arangosh.checkRequestResult(res);
 };
@@ -1435,6 +1450,8 @@ exports.help = function () {
     "setup"     : "setup executes the setup script (app must already be mounted)",
     "install"   : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL " +
                   "and sets it up",
+    "rescan"    : "rescans the foxx application directory on the server side (only needed if server-side apps " + 
+                  "directory is modified by other processes)",
     "replace"   : "replaces an aleady existing foxx application with the current local version",
     "teardown"  : "teardown execute the teardown script (app must be still be mounted)",
     "unmount"   : "unmounts a mounted foxx application",

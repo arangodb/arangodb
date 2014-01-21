@@ -31,6 +31,7 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 
 var graph = require("org/arangodb/graph");
 var arangodb = require("org/arangodb");
+var BinaryHeap = require("org/arangodb/heap").BinaryHeap;
 var ArangoError = arangodb.ArangoError;
 
 var db = arangodb.db;
@@ -38,8 +39,53 @@ var db = arangodb.db;
 var ArangoTraverser;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone any object
+////////////////////////////////////////////////////////////////////////////////
+  
+function clone (obj) {
+  if (obj === null || typeof(obj) !== "object") {
+    return obj;
+  }
+
+  var copy, i;
+
+  if (Array.isArray(obj)) {
+    copy = [ ];
+
+    for (i = 0; i < obj.length; ++i) {
+      copy[i] = clone(obj[i]);
+    }
+  }
+  else if (obj instanceof Object) {
+    copy = { };
+
+    if (obj.hasOwnProperty) {
+      for (i in obj) {
+        if (obj.hasOwnProperty(i)) {
+          copy[i] = clone(obj[i]);
+        }
+      }
+    }
+  }
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traversal abortion exception
+////////////////////////////////////////////////////////////////////////////////
+
+var abortedException = function (message, options) {
+  'use strict';
+  this.message = message || "traversal intentionally aborted by user";
+  this.options = options || { };
+  this._intentionallyAborted = true;
+};
+
+abortedException.prototype = new Error();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       datasources
@@ -366,35 +412,6 @@ function trackingVisitor (config, result, vertex, path) {
     return;
   }
 
-  function clone (obj) {
-    if (obj === null || typeof(obj) !== "object") {
-      return obj;
-    }
-
-    var copy, i;
-
-    if (Array.isArray(obj)) {
-      copy = [ ];
-
-      for (i = 0; i < obj.length; ++i) {
-        copy[i] = clone(obj[i]);
-      }
-    }
-    else if (obj instanceof Object) {
-      copy = { };
-
-      if (obj.hasOwnProperty) {
-        for (i in obj) {
-          if (obj.hasOwnProperty(i)) {
-            copy[i] = clone(obj[i]);
-          }
-        }
-      }
-    }
-
-    return copy;
-  }
-
   if (result.visited.vertices) {
     result.visited.vertices.push(clone(vertex));
   }
@@ -555,7 +572,10 @@ function parseFilterResult (args) {
       return;
     }
 
-    throw "invalid filter result";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_FILTER_RESULT.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_FILTER_RESULT.message;
+    throw err;
   }
 
   processArgument(args);
@@ -629,6 +649,10 @@ function checkReverse (config) {
 
 function breadthFirstSearch () {
   return {
+    requiresEndVertex: function () {
+      return false;
+    },
+
     getPathItems: function (id, items) {
       var visited = { };
       var ignore = items.length - 1;
@@ -757,6 +781,10 @@ function breadthFirstSearch () {
 
 function depthFirstSearch () {
   return {
+    requiresEndVertex: function () {
+      return false;
+    },
+
     getPathItems: function (id, items) {
       var visited = { };
       items.forEach(function (item) {
@@ -854,6 +882,240 @@ function depthFirstSearch () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief implementation details for dijkstra shortest path strategy
+////////////////////////////////////////////////////////////////////////////////
+
+function dijkstraSearch () {
+  return {
+    nodes: { },
+
+    requiresEndVertex: function () {
+      return true;
+    },
+
+    makeNode: function (vertex) {
+      var id = vertex._id;
+      if (! this.nodes.hasOwnProperty(id)) {
+        this.nodes[id] = { vertex: vertex, dist: Infinity };
+      }
+
+      return this.nodes[id];
+    },
+
+    vertexList: function (vertex) {
+      var result = [ ];
+      while (vertex) {
+        result.push(vertex);
+        vertex = vertex.parent;
+      }
+      return result;
+    },
+
+    buildPath: function (vertex) {
+      var path = { vertices: [ vertex.vertex ], edges: [ ] };
+      var v = vertex;
+
+      while (v.parent) {
+        path.vertices.unshift(v.parent.vertex);
+        path.edges.unshift(v.parentEdge);
+        v = v.parent;
+      }
+      return path;
+    },
+
+    run: function (config, result, startVertex, endVertex) {
+      var maxIterations = config.maxIterations, visitCounter = 0;
+        
+      var heap = new BinaryHeap(function (node) { 
+        return node.dist; 
+      });
+
+      var startNode = this.makeNode(startVertex);
+      startNode.dist = 0;
+      heap.push(startNode);
+        
+      while (heap.size() > 0) {
+        if (visitCounter++ > maxIterations) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
+          err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
+          throw err;
+        }
+            
+        var currentNode = heap.pop();
+        var i, n;
+
+        if (currentNode.vertex._id === endVertex._id) {
+          var vertices = this.vertexList(currentNode);
+          if (config.order !== ArangoTraverser.PRE_ORDER) {
+            vertices.reverse();
+          }
+          
+          n = vertices.length;
+          for (i = 0; i < n; ++i) {
+            config.visitor(config, result, vertices[i].vertex, this.buildPath(vertices[i]));
+          }
+          return;
+        }
+
+        if (currentNode.visited) {
+          continue;
+        }
+
+        if (currentNode.dist === Infinity) {
+          break;
+        }
+
+        currentNode.visited = true;
+        var dist = currentNode.dist;
+
+        var path = this.buildPath(currentNode);
+        var connected = config.expander(config, currentNode.vertex, path); 
+        n = connected.length;
+
+        for (i = 0; i < n; ++i) {
+          var neighbor = this.makeNode(connected[i].vertex);
+
+          if (neighbor.visited) {
+            continue;
+          }
+
+          var edge = connected[i].edge;
+          var weight = 1;
+          if (config.distance) {
+            weight = config.distance(config, currentNode.vertex, neighbor.vertex, edge);
+          }
+
+          var alt = dist + weight;
+          if (alt < neighbor.dist) {
+            neighbor.dist = alt;
+            neighbor.parent = currentNode;
+            neighbor.parentEdge = edge;
+            heap.push(neighbor);
+          }
+        }
+      }
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief implementation details for a* shortest path strategy
+////////////////////////////////////////////////////////////////////////////////
+
+function astarSearch () {
+  return {
+    nodes: { },
+
+    requiresEndVertex: function () {
+      return true;
+    },
+
+    makeNode: function (vertex) {
+      var id = vertex._id;
+      if (! this.nodes.hasOwnProperty(id)) {
+        this.nodes[id] = { vertex: vertex, f: 0, g: 0, h: 0 };
+      }
+
+      return this.nodes[id];
+    },
+
+    vertexList: function (vertex) {
+      var result = [ ];
+      while (vertex) {
+        result.push(vertex);
+        vertex = vertex.parent;
+      }
+      return result;
+    },
+
+    buildPath: function (vertex) {
+      var path = { vertices: [ vertex.vertex ], edges: [ ] };
+      var v = vertex;
+
+      while (v.parent) {
+        path.vertices.unshift(v.parent.vertex);
+        path.edges.unshift(v.parentEdge);
+        v = v.parent;
+      }
+      return path;
+    },
+
+    run: function (config, result, startVertex, endVertex) {
+      var maxIterations = config.maxIterations, visitCounter = 0;
+        
+      var heap = new BinaryHeap(function (node) { 
+        return node.f; 
+      });
+
+      heap.push(this.makeNode(startVertex));
+
+        
+      while (heap.size() > 0) {
+        if (visitCounter++ > maxIterations) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
+          err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
+          throw err;
+        }
+            
+        var currentNode = heap.pop();
+        var i, n;
+
+        if (currentNode.vertex._id === endVertex._id) {
+          var vertices = this.vertexList(currentNode);
+          if (config.order !== ArangoTraverser.PRE_ORDER) {
+            vertices.reverse();
+          }
+
+          n = vertices.length;
+          for (i = 0; i < n; ++i) {
+            config.visitor(config, result, vertices[i].vertex, this.buildPath(vertices[i]));
+          }
+          return;
+        }
+
+        currentNode.closed = true;
+
+        var path = this.buildPath(currentNode);
+        var connected = config.expander(config, currentNode.vertex, path); 
+        n = connected.length;
+
+        for (i = 0; i < n; ++i) {
+          var neighbor = this.makeNode(connected[i].vertex);
+
+          if (neighbor.closed) {
+            continue;
+          }
+
+          var gScore = currentNode.g + 1;// + neighbor.cost;
+          var beenVisited = neighbor.visited;
+                
+          if (! beenVisited || gScore < neighbor.g) {
+            var edge = connected[i].edge;
+            neighbor.visited = true;
+            neighbor.parent = currentNode;
+            neighbor.parentEdge = edge;
+            neighbor.h = 1;
+            if (config.distance && ! neighbor.h) {
+              neighbor.h = config.distance(config, neighbor.vertex, endVertex, edge);
+            }
+            neighbor.g = gScore;
+            neighbor.f = neighbor.g + neighbor.h;
+
+            if (! beenVisited) {
+              heap.push(neighbor);
+            }
+            else {
+              heap.rescoreElement(neighbor);
+            }
+          }
+        }
+      }
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -959,7 +1221,9 @@ ArangoTraverser = function (config) {
   
   config.strategy = validate(config.strategy, {
     depthfirst: ArangoTraverser.DEPTH_FIRST,
-    breadthfirst: ArangoTraverser.BREADTH_FIRST
+    breadthfirst: ArangoTraverser.BREADTH_FIRST,
+    astar: ArangoTraverser.ASTAR_SEARCH,
+    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH 
   }, "strategy");
 
   config.order = validate(config.order, {
@@ -1054,23 +1318,54 @@ ArangoTraverser = function (config) {
 /// @brief execute the traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoTraverser.prototype.traverse = function (result, startVertex) { 
-  // check the start vertex
-  if (startVertex === undefined || startVertex === null) {
-    throw "invalid startVertex specified for traversal";
-  }
-
+ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) { 
   // get the traversal strategy
   var strategy;
-  if (this.config.strategy === ArangoTraverser.BREADTH_FIRST) {
+
+  if (this.config.strategy === ArangoTraverser.ASTAR_SEARCH) {
+    strategy = astarSearch();
+  }
+  else if (this.config.strategy === ArangoTraverser.DIJKSTRA_SEARCH) {
+    strategy = dijkstraSearch();
+  }
+  else if (this.config.strategy === ArangoTraverser.BREADTH_FIRST) {
     strategy = breadthFirstSearch();
   }
   else {
     strategy = depthFirstSearch();
   }
+
+  // check the start vertex
+  if (startVertex === undefined || 
+      startVertex === null ||
+      typeof startVertex !== 'object') {
+    var err1 = new ArangoError();
+    err1.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err1.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+                       ": invalid startVertex specified for traversal";
+    throw err1;
+  }
+
+  if (strategy.requiresEndVertex() &&
+      (endVertex === undefined || 
+       endVertex === null ||
+       typeof endVertex !== 'object')) {
+    var err2 = new ArangoError();
+    err2.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err2.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+                       ": invalid endVertex specified for traversal";
+    throw err2;
+  }
  
   // run the traversal
-  strategy.run(this.config, result, startVertex);
+  try {
+    strategy.run(this.config, result, startVertex, endVertex);
+  }
+  catch (err3) {
+    if (typeof err3 !== "object" || ! err3._intentionallyAborted) {
+      throw err3;
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1115,6 +1410,18 @@ ArangoTraverser.BREADTH_FIRST        = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTraverser.DEPTH_FIRST          = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief astar search
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.ASTAR_SEARCH         = 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dijkstra search
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.DIJKSTRA_SEARCH      = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pre-order traversal
@@ -1181,6 +1488,7 @@ exports.visitAllFilter                  = visitAllFilter;
 exports.maxDepthFilter                  = maxDepthFilter;
 exports.minDepthFilter                  = minDepthFilter;
 exports.includeMatchingAttributesFilter = includeMatchingAttributesFilter;
+exports.abortedException                = abortedException;
 
 exports.Traverser                       = ArangoTraverser;
 

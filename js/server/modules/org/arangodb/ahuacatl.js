@@ -3255,6 +3255,36 @@ function FIRST_DOCUMENT () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the parts of a document identifier separately
+///
+/// returns a document with the attributes `collection` and `key` or fails if
+/// the individual parts cannot be determined.
+////////////////////////////////////////////////////////////////////////////////
+
+function PARSE_IDENTIFIER (value) {
+  "use strict";
+
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
+    var parts = value.split('/');
+    if (parts.length === 2) {
+      return { 
+        collection: parts[0],
+        key: parts[1]
+      };
+    }
+    // fall through intentional
+  }
+  else if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
+    if (value.hasOwnProperty('_id')) {
+      return PARSE_IDENTIFIER(value._id);
+    }
+    // fall through intentional
+  }
+  
+  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PARSE_IDENTIFIER");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a document has a specific attribute
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4048,6 +4078,7 @@ exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
+exports.PARSE_IDENTIFIER = PARSE_IDENTIFIER;
 exports.HAS = HAS;
 exports.ATTRIBUTES = ATTRIBUTES;
 exports.UNSET = UNSET;
