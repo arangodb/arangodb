@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
-/*global window, Backbone */
+/*global window, Backbone, console */
 (function() {
   "use strict";
   window.ClusterCoordinators = Backbone.Collection.extend({
