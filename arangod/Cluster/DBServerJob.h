@@ -203,9 +203,14 @@ namespace triagens {
 
             TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), v8::String::New(file), false);
           }
+          
+          // get the pointer to the least used vocbase
+          TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
+          void* orig = v8g->_vocbase;
 
           _applicationV8->exitContext(context);
-          TRI_ReleaseDatabaseServer(_server, vocbase);
+          
+          TRI_ReleaseDatabaseServer(_server, (TRI_vocbase_t*) orig);
 
           return true;
         }

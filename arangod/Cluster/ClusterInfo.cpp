@@ -874,6 +874,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
       if (res._statusCode == triagens::rest::HttpResponse::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS, errorMsg);
       }
+
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
                          errorMsg);
     }
@@ -968,7 +969,7 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
       return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     }
     
-    res = ac.removeValues("Plan/Collections/" + name, false);
+    res = ac.removeValues("Plan/Collections/" + name, true);
 
     if (! res.successful()) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
@@ -980,6 +981,7 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
       if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg); 
       }
+
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
                           errorMsg);
     }
