@@ -371,7 +371,16 @@ int main (int argc, char* argv[]) {
   }
 
   if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
-    cerr << "Cannot open file '" << FileName << "'" << endl;
+    if (! FileUtils::exists(FileName)) {
+      cerr << "Cannot open file '" << FileName << "'. File not found." << endl;
+    }
+    else if (FileUtils::isDirectory(FileName)) {
+      cerr << "Specified file '" << FileName << "' is a directory. Please use a regular file." << endl;
+    }
+    else {
+      cerr << "Cannot open '" << FileName << "'. Invalid file type." << endl;
+    }
+
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
