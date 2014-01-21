@@ -22,9 +22,7 @@
 
     loadServer: function(e) {
       var id = e.currentTarget.id;
-      this.dbView.render({
-        name: id
-      });
+      this.dbView.render(id);
       this.render(true);
     },
 

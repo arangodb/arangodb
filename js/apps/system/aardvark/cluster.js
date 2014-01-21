@@ -28,70 +28,75 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+(function() {
 
-"use strict";
+  "use strict";
 
-// Initialise a new FoxxController called controller under the urlPrefix: "cluster".
-var FoxxController = require("org/arangodb/foxx").Controller,
-  controller = new FoxxController(applicationContext),
-  _ = require("underscore"),
-  Communication = require("org/arangodb/sharding/agency-communication"),
-  comm = new Communication.Communication();
-  
-/** Get all DBServers
- *
- * Get a list of all running and expected DBServers
- * within the cluster
- */
-controller.get("/DBServers", function(req, res) {
-  var list = {
-      Pavel: {
-        role: "primary",
-        secondary: "Sally",
-        address: "tcp://192.168.0.1:1337"
-      },
-      Pancho: {
-        role: "primary",
-        secondary: "none",
-        address: "tcp://192.168.0.2:1337"
-      },
-      Pablo: {
-        role: "primary",
-        secondary: "Sandy",
-        address: "tcp://192.168.0.5:1337"
-      },
-      Sally: {
-        role: "secondary",
-        address: "tcp://192.168.1.1:1337"
-      },
-      Sandy: {
-        role: "secondary",
-        address: "tcp://192.168.1.5:1337"
-      }
-    },
-    noBeat = ["Sandy"],
-    serving = ["Pancho", "Pavel"],
-
+  // Initialise a new FoxxController called controller under the urlPrefix: "cluster".
+  var FoxxController = require("org/arangodb/foxx").Controller,
+    controller = new FoxxController(applicationContext),
+    _ = require("underscore"),
+    Communication = require("org/arangodb/sharding/agency-communication"),
+    comm = new Communication.Communication(),
     beats = comm.sync.Heartbeats(),
-    resList = [];
-
-    list = comm.current.DBServers().getList();
-    noBeat = beats.noBeat();
-    serving = beats.getServing();
+    servers = comm.current.DBServers(),
+    dbs = comm.current.Databases(),
+    coords = comm.current.Coordinators();
     
+  /** Get all DBServers
+   *
+   * Get a list of all running and expected DBServers
+   * within the cluster
+   */
+  controller.get("/DBServers", function(req, res) {
+    var resList = [],
+      list = servers.getList(),
+      noBeat = beats.noBeat(),
+      serving = beats.getServing();
 
-  _.each(list, function(v, k) {
-    v.name = k;
-    resList.push(v);
-    if (_.contains(noBeat, k)) {
-      v.status = "critical";
-      return;
-    }
-    if (v.role === "primary" && !_.contains(serving, k)) {
-      v.status = "warning";
-      return;
-    }
-    v.status = "ok";
+    _.each(list, function(v, k) {
+      v.name = k;
+      resList.push(v);
+      if (_.contains(noBeat, k)) {
+        v.status = "critical";
+        return;
+      }
+      if (v.role === "primary" && !_.contains(serving, k)) {
+        v.status = "warning";
+        return;
+      }
+      v.status = "ok";
+    });
+    res.json(resList);
   });
-  res.json(resList);
-});
+
+  controller.get("/Databases", function(req, res) {
+    var list = dbs.getList();
+    res.json(_.map(list, function(d) {
+      return {name: d};
+    }));
+  });
+
+  controller.get("/:dbname/Collections", function(req, res) {
+    var dbname = req.params("dbname"),
+      selected = dbs.select(dbname);
+    res.json(_.map(selected.getCollections(),
+      function(c) {
+        return {name: c};
+      })
+    );
+  });
+
+  controller.get("/:dbname/:colname/Shards/:servername", function(req, res) {
+    var dbname = req.params("dbname"),
+      colname = req.params("colname"),
+      servername = req.params("servername"),
+      selected = dbs.select(dbname).collection(colname);
+    res.json(_.map(selected.getShardsForServer(servername),
+      function(c) {
+        return {id: c};
+      })
+    );
+  });
+
+}());

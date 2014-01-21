@@ -8,9 +8,18 @@
 
     model: window.ClusterShard,
     
-    url: "/_admin/aardvark/cluster/Shards",
+    url: function() {
+      return "/_admin/aardvark/cluster/"
+        + this.dbname + "/"
+        + this.colname + "/"
+        + "Shards/"
+        + this.server;
+    },
 
-    getList: function() {
+    getList: function(dbname, colname, server) {
+      this.dbname = dbname;
+      this.colname = colname;
+      this.server = server;
       this.fetch({
         async: false
       });
