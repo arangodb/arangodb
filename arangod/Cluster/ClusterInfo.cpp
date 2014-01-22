@@ -969,22 +969,23 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
       return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     }
     
-    res = ac.removeValues("Plan/Collections/" + name, true);
-
-    if (! res.successful()) {
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
-                         errorMsg);
-    }
-
     res = ac.removeValues("Plan/Databases/"+name, false);
     if (!res.successful()) {
-      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+      if (res.httpCode() == (int) rest::HttpResponse::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg); 
       }
 
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
                           errorMsg);
     }
+    
+    res = ac.removeValues("Plan/Collections/" + name, true);
+
+    if (! res.successful() && res.httpCode() != (int) rest::HttpResponse::NOT_FOUND) {
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
+                         errorMsg);
+    }
+
   }
 
   // Now wait for it to appear and be complete:
