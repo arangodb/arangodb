@@ -223,11 +223,20 @@ module.exports = function(karma) {
 //      'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
 //      'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
       'test/specs/graphViewer/specContextMenu/contextMenuSpec.js', 
+
       // Arango
       'test/specs/arango/arangoSpec.js',
+
       // Models
       'test/specs/models/currentDatabaseSpec.js',
       'test/specs/models/graphSpec.js',
+
+      // Collections
+      'test/specs/collections/clusterServersSpec.js',
+      'test/specs/collections/clusterDatabasesSpec.js',
+      'test/specs/collections/clusterCollectionsSpec.js',
+      'test/specs/collections/clusterShardsSpec.js',
+
 
       // Views
       'test/specs/views/editListEntryViewSpec.js',
