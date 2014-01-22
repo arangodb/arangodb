@@ -37,7 +37,26 @@ var ArangoCollection = arangodb.ArangoCollection;
 /// @brief get values from Plan or Current by a prefix
 ////////////////////////////////////////////////////////////////////////////////
   
-function getByPrefix (values, prefix, multiDimensional) {
+function getByPrefix (values, prefix) {
+  var result = { };
+  var a;
+  var n = prefix.length;
+
+  for (a in values) {
+    if (values.hasOwnProperty(a)) {
+      if (a.substr(0, n) === prefix) {
+        result[a.substr(n)] = values[a];
+      }
+    }
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get values from Plan or Current by a prefix
+////////////////////////////////////////////////////////////////////////////////
+  
+function getByPrefix3d (values, prefix) {
   var result = { };
   var a;
   var n = prefix.length;
@@ -46,16 +65,41 @@ function getByPrefix (values, prefix, multiDimensional) {
     if (values.hasOwnProperty(a)) {
       if (a.substr(0, n) === prefix) {
         var key = a.substr(n);
-
-        if (multiDimensional) {
-          var parts = key.split('/');
+        var parts = key.split('/');
+        if (parts.length >= 2) {
           if (! result.hasOwnProperty(parts[0])) {
             result[parts[0]] = { };
           }
           result[parts[0]][parts[1]] = values[a];
         }
-        else {
-          result[key] = values[a];
+      }
+    }
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get values from Plan or Current by a prefix
+////////////////////////////////////////////////////////////////////////////////
+  
+function getByPrefix4d (values, prefix) {
+  var result = { };
+  var a;
+  var n = prefix.length;
+
+  for (a in values) {
+    if (values.hasOwnProperty(a)) {
+      if (a.substr(0, n) === prefix) {
+        var key = a.substr(n);
+        var parts = key.split('/');
+        if (parts.length >= 3) {
+          if (! result.hasOwnProperty(parts[0])) {
+            result[parts[0]] = { };
+          }
+          if (! result[parts[0]].hasOwnProperty(parts[1])) {
+            result[parts[0]][parts[1]] = { };
+          }
+          result[parts[0]][parts[1]][parts[2]] = values[a];
         }
       }
     }
@@ -190,30 +234,31 @@ function createLocalDatabases (plannedDatabases) {
   // check which databases need to be created locally
   for (name in plannedDatabases) {
     if (plannedDatabases.hasOwnProperty(name)) {
+      var payload = plannedDatabases[name];
+      payload.error = false;
+      payload.errorNum = 0;
+      payload.errorMessage = "no error";
+
       if (! localDatabases.hasOwnProperty(name)) {
         // must create database
 
-        var payload = plannedDatabases[name];
         // TODO: handle options and user information
 
         console.info("creating local database '%s'", payload.name);
 
         try {
           db._createDatabase(payload.name);
-          payload.error = false;
-          payload.errorNum = 0;
-          payload.errorMessage = "no error";
         }
         catch (err) {
           payload.error = true;
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
-
-        writeLocked({ part: "Current" }, 
-                    createDatabaseAgency, 
-                    [ payload ]);
       }
+        
+      writeLocked({ part: "Current" }, 
+                  createDatabaseAgency, 
+                  [ payload ]);
     }
   }
 }
@@ -262,7 +307,7 @@ function dropLocalDatabases (plannedDatabases) {
 
 function cleanupCurrentDatabases () {
   var ourselves = ArangoServerState.id();
-  
+
   var dropDatabaseAgency = function (payload) { 
     try {
       ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ourselves);
@@ -275,7 +320,7 @@ function cleanupCurrentDatabases () {
   db._useDatabase("_system");
 
   var all = ArangoAgency.get("Current/Databases", true);
-  var currentDatabases = getByPrefix(all, "Current/Databases/", true); 
+  var currentDatabases = getByPrefix3d(all, "Current/Databases/"); 
   var localDatabases = getLocalDatabases();
   var name;
 
@@ -286,7 +331,7 @@ function cleanupCurrentDatabases () {
 
         if (currentDatabases[name].hasOwnProperty(ourselves)) {
           // we are entered for a database that we don't have locally
-          console.info("remvoing entry for local database '%s'", name);
+          console.info("cleaning up entry for unknown database '%s'", name);
         
           writeLocked({ part: "Current" }, 
                       dropDatabaseAgency, 
@@ -509,8 +554,60 @@ function dropLocalCollections (plannedCollections) {
   }
 }
 
-function cleanupCurrentCollections () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clean up what's in Current/Collections for ourselves
+////////////////////////////////////////////////////////////////////////////////
+
+function cleanupCurrentCollections (plannedCollections) {
+  var ourselves = ArangoServerState.id();
+
+  var dropCollectionAgency = function (database, collection, shardID) {
+    try { 
+      ArangoAgency.remove("Current/Collections/" + database + "/" + collection + "/" + shardID);
+    }
+    catch (err) {
+      // ignore errors
+    }
+  };
+  
   db._useDatabase("_system");
+
+  var all = ArangoAgency.get("Current/Collections", true);
+  var currentCollections = getByPrefix4d(all, "Current/Collections/"); 
+  var shardMap = getShardMap(plannedCollections);
+  var database;
+
+  for (database in currentCollections) {
+    if (currentCollections.hasOwnProperty(database)) {
+      var collections = currentCollections[database]; 
+      var collection;
+
+      for (collection in collections) {
+        if (collections.hasOwnProperty(collection)) {
+          var shards = collections[collection];
+          var shard;
+              
+          for (shard in shards) {
+            if (shards.hasOwnProperty(shard)) {
+              if (! shardMap.hasOwnProperty(shard) ||
+                  shardMap[shard] !== ourselves) {
+          
+                console.info("cleaning up entry for unknown shard '%s' of '%s/%s", 
+                             shard,
+                             database,
+                             collection);
+
+                writeLocked({ part: "Current" }, 
+                            dropCollectionAgency, 
+                            [ database, collection, shard ]);
+              }
+            }
+          }
+        }
+      }
+
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,11 +615,11 @@ function cleanupCurrentCollections () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleCollectionChanges (plan, current) {
-  var plannedCollections = getByPrefix(plan, "Plan/Collections/", true); 
+  var plannedCollections = getByPrefix3d(plan, "Plan/Collections/"); 
 
   createLocalCollections(plannedCollections);
   dropLocalCollections(plannedCollections);
-  cleanupCurrentCollections();
+  cleanupCurrentCollections(plannedCollections);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
