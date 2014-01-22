@@ -1205,6 +1205,71 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection status in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName, 
+                                                 string const& collectionID,
+                                                 TRI_vocbase_col_status_e status) {
+  AgencyComm ac;
+  AgencyCommResult res;
+  
+  AgencyCommLocker locker("Plan", "WRITE");
+
+  if (! locker.successful()) {
+    return TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN;
+  }
+  
+  if (! ac.exists("Plan/Databases/" + databaseName)) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+
+  res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID, false);
+
+  if (! res.successful()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  res.parse("", false);
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it = res._values.begin();
+
+  if (it == res._values.end()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  TRI_json_t* json = (*it).second._json;
+  if (json == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  TRI_vocbase_col_status_e old = triagens::basics::JsonHelper::getNumericValue<TRI_vocbase_col_status_e>(json, "status", TRI_VOC_COL_STATUS_CORRUPTED);
+  
+  if (old == status) {
+    // no status change
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (copy == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "status");
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "status", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
+
+  res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, copy);
+
+  if (res.successful()) {
+    loadPlannedCollections(false);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////

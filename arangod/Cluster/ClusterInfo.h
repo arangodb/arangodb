@@ -838,6 +838,14 @@ namespace triagens {
                                        double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection status in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int setCollectionStatusCoordinator (string const& databaseName, 
+                                            string const& collectionID,
+                                            TRI_vocbase_col_status_e status);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////

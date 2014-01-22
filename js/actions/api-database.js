@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 150, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
-/*global require */
+/*global require, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database management
@@ -30,6 +30,7 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+var cluster = require("org/arangodb/cluster");
 
 var API = "_api/database";
 
@@ -179,13 +180,21 @@ function get_api_database (req, res) {
       result = arangodb.db._listDatabases(username, password, auth);
     }
     else if (req.suffix[0] === 'current') {
-      // information about the current database
-      result = {
-        name: arangodb.db._name(),
-        id: arangodb.db._id(),
-        path: arangodb.db._path(),
-        isSystem: arangodb.db._isSystem()
-      };
+      if (cluster.isCoordinator()) {
+        // fetch database information from Agency
+        var values = ArangoAgency.get("Plan/Databases/" + req.originalDatabase, false);
+        // TODO: check if this information is sufficient
+        result = values["Plan/Databases/" + req.originalDatabase];
+      }
+      else {
+        // information about the current database
+        result = {
+          name: arangodb.db._name(),
+          id: arangodb.db._id(),
+          path: arangodb.db._path(),
+          isSystem: arangodb.db._isSystem()
+        };
+      }
     }
     else {
       actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
