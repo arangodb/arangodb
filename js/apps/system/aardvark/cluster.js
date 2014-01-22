@@ -70,6 +70,25 @@
     res.json(resList);
   });
 
+  controller.get("/Coordinators", function(req, res) {
+    var resList = [],
+      list = coords.getList(),
+      noBeat = beats.noBeat();
+    
+    _.each(list, function(url, k) {
+      var v = {};
+      v.name = k;
+      v.url = url;
+      resList.push(v);
+      if (_.contains(noBeat, k)) {
+        v.status = "critical";
+        return;
+      }
+      v.status = "ok";
+    });
+    res.json(resList);
+  });
+
   controller.get("/Databases", function(req, res) {
     var list = dbs.getList();
     res.json(_.map(list, function(d) {

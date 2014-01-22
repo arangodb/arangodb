@@ -6,9 +6,11 @@
   "use strict";
 
   describe("Cluster Collection View", function() {
-    var view, div, shardsView, shardCol;
+    var view, div, shardsView, shardCol, server, db;
 
     beforeEach(function() {
+      server = "pavel";
+      db = "_system";
       div = document.createElement("div");
       div.id = "clusterCollections"; 
       document.body.appendChild(div);
@@ -81,7 +83,7 @@
         view = new window.ClusterCollectionView({
           collection: collCol
         });
-        view.render();
+        view.render(db, server);
       });
 
       it("should not unrender the server view", function() {
@@ -117,27 +119,18 @@
         });
 
         it("should be able to navigate to Documents", function() {
-          info = {
-            name: "Documents"
-          };
           $("#Documents").click();
-          expect(shardsView.render).toHaveBeenCalledWith(info);
+          expect(shardsView.render).toHaveBeenCalledWith(db, "Documents", server);
         });
 
         it("should be able to navigate to Edges", function() {
-          info = {
-            name: "Edges"
-          };
           $("#Edges").click();
-          expect(shardsView.render).toHaveBeenCalledWith(info);
+          expect(shardsView.render).toHaveBeenCalledWith(db, "Edges", server);
         });
 
         it("should be able to navigate to People", function() {
-          info = {
-            name: "People"
-          };
           $("#People").click();
-          expect(shardsView.render).toHaveBeenCalledWith(info);
+          expect(shardsView.render).toHaveBeenCalledWith(db, "People", server);
         });
 
       });

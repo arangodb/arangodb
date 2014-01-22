@@ -6,11 +6,10 @@
   window.ClusterCollection = Backbone.Model.extend({
     defaults: {
       "name": "",
-      "id": "",
       "status": "ok"
     },
 
-    idAttribute: "id",
+    idAttribute: "name",
 
     forList: function() {
       return {

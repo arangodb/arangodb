@@ -22,27 +22,27 @@
     describe("rendering", function() {
   
       var s1, s2, s3, shards, shardCol,
-        checkButtonContent = function(col, cls) {
-          var btn = document.getElementById(col.name);
+        checkButtonContent = function(sh, cls) {
+          var btn = document.getElementById(sh.id);
           expect(btn).toBeOfClass("btn");
           expect(btn).toBeOfClass("btn-server");
           expect(btn).toBeOfClass("shard");
           expect(btn).toBeOfClass("btn-" + cls);
-          expect($(btn).text()).toEqual(col.name);
+          expect($(btn).text()).toEqual(sh.id);
         };
 
 
       beforeEach(function() {
         s1 = {
-          name: "Shard 1",
+          id: "Shard 1",
           status: "ok"
         };
         s2 = {
-          name: "Shard 2",
+          id: "Shard 2",
           status: "warning"
         };
         s3 = {
-          name: "Shard 3",
+          id: "Shard 3",
           status: "critical"
         };
         shards = [
