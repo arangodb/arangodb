@@ -37,6 +37,12 @@
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterComm.h"
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -317,6 +323,12 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return createDocumentCoordinator(collection, waitForSync, json);
+  }
+#endif
+
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
@@ -383,6 +395,23 @@ bool RestDocumentHandler::createDocument () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
+                                                     bool waitForSync,
+                                                     TRI_json_t* json) {
+  // Find collectionID from collection, which is the name
+  // ask ClusterInfo for the responsible shard
+  // send a synchronous request to that shard using ClusterComm
+  // if not successful prepare error and return false
+  // prepare successful answer (created or accepted depending on waitForSync)
+  return true;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single or all documents
