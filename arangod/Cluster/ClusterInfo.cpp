@@ -30,6 +30,7 @@
 
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -550,6 +551,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
    
     WRITE_LOCKER(_lock);
     _collections.clear(); 
+    _shards.clear();
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -583,6 +585,20 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       (*it).second._json = 0;
 
       const CollectionInfo collectionData(json);
+      vector<string>* shardKeys = new vector<string>;
+      *shardKeys = collectionData.shardKeys();
+      _shardKeys.insert(
+            make_pair<CollectionID, TRI_shared_ptr<vector<string> > >
+                     (collection, TRI_shared_ptr<vector<string> > (shardKeys)));
+      map<ShardID, ServerID> shardIDs = collectionData.shardIds();
+      vector<string>* shards = new vector<string>;
+      map<ShardID, ServerID>::iterator it3;
+      for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
+        shards->push_back(it3->first);
+      }
+      _shards.insert(
+            make_pair<CollectionID, TRI_shared_ptr<vector<string> > >
+                     (collection,TRI_shared_ptr<vector<string> >(shards)));
         
       // insert the collection into the existing map
         
@@ -1472,6 +1488,69 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   }
 
   return ServerID("");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard that is responsible for a document, which is given
+/// as a TRI_json_t const*. 
+///
+/// There are two modes, one assumes that the document is given as a
+/// whole (`docComplete`==`true`), in this case, the non-existence of
+/// values for some of the sharding attributes is silently ignored
+/// and treated as if these values were `null`. In the second mode
+/// (`docComplete`==false) leads to an error which is reported by
+/// returning an empty string as the shardID.
+////////////////////////////////////////////////////////////////////////////////
+
+ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
+                                          TRI_json_t const* json,
+                                          bool docComplete) {
+  // Note that currently we take the number of shards and the shardKeys
+  // from Plan, since they are immutable. Later we will have to switch
+  // this to Current, when we allow to add and remove shards.
+  if (!_collectionsValid) {
+    loadPlannedCollections();
+  }
+
+  int tries = 0;
+  TRI_shared_ptr<vector<string> > shardKeysPtr;
+  char const** shardKeys = 0;
+  int nrShardKeys = 0;
+  TRI_shared_ptr<vector<ShardID> > shards;
+
+  while (++tries <= 2) {
+    {
+      // Get the sharding keys and the number of shards:
+      READ_LOCKER(_lock);
+      map<CollectionID, TRI_shared_ptr<vector<string> > >::iterator it 
+          = _shards.find(collectionID);
+      if (it != _shards.end()) {
+        shards = it->second;
+        map<CollectionID, TRI_shared_ptr<vector<string> > >::iterator it2 
+            = _shardKeys.find(collectionID);
+        if (it2 != _shardKeys.end()) {
+          shardKeysPtr = it2->second;
+          shardKeys = new char const * [shardKeysPtr->size()];
+          if (shardKeys != 0) {
+            size_t i;
+            for (i = 0; i < shardKeysPtr->size(); ++i) {
+              shardKeys[i] = shardKeysPtr->at(i).c_str();
+            }
+            break;  // all OK
+          }
+        }
+      }
+    }
+    loadPlannedCollections();
+  }
+  if (0 == shardKeys) {
+    return string("");
+  }
+  
+  uint64_t hash = TRI_HashJsonByAttributes(json, shardKeys, nrShardKeys);
+  delete[] shardKeys;
+
+  return shards->at(hash % shards->size());
 }
 
 // Local Variables:
