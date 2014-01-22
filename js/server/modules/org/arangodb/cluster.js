@@ -432,6 +432,29 @@ function createLocalCollections (plannedCollections) {
                                   [ database, shard, payload ]);
                     }
                     else {
+                      if (localCollections[shard].status !== payload.status) {
+                        console.info("detected status change for local shard '%s/%s'", 
+                                     database, 
+                                     shard);
+
+                        if (payload.status === ArangoCollection.STATUS_UNLOADED) {
+                          console.info("unloading local shard '%s/%s'", 
+                                       database, 
+                                       shard);
+                          db._collection(shard).unload();
+                        }
+                        else if (payload.status === ArangoCollection.STATUS_LOADED) {
+                          console.info("loading local shard '%s/%s'", 
+                                       database, 
+                                       shard);
+                          db._collection(shard).load();
+                        }
+
+                        writeLocked({ part: "Current" }, 
+                                    createCollectionAgency, 
+                                    [ database, shard, payload ]);
+                      }
+
                       // collection exists, now compare collection properties
                       var properties = { };
                       var cmp = [ "journalSize", "waitForSync", "doCompact" ], i;
@@ -442,7 +465,7 @@ function createLocalCollections (plannedCollections) {
                           properties[p] = payload[p];
                         }
                       }
-                        
+
                       if (Object.keys(properties).length > 0) {
                         console.info("updating properties for local shard '%s/%s'", 
                                      database, 
@@ -453,7 +476,6 @@ function createLocalCollections (plannedCollections) {
                           payload.error = false;
                           payload.errorNum = 0;
                           payload.errorMessage = "no error";
-
                         }
                         catch (err3) {
                           payload.error = true;
