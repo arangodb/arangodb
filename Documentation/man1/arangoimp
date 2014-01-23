@@ -36,12 +36,14 @@ database name to use when connection (default: "_system") ENDOPTION
 OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"
-password to use when connecting. Leave empty for a password prompt ENDOPTION
+password to use when connecting. Don't specify this option to get a password prompt ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server ENDOPTION
 EXAMPLES
 EXAMPLE COMMAND --file heroes.json --type json --collection superheroes --create-collection true
-imports JSON data from file heroes.json into collection superhoeres. creates the collection if it does not exist
+imports JSON data from file heroes.json into collection superhoeres. creates the collection if it does not exist ENDEXAMPLE
 EXAMPLE COMMAND --file export.csv --type csv --collection mydata
-imports CSV data from export.csv into existing collection mydata.
+imports CSV data from export.csv into existing collection mydata ENDEXAMPLE
 EXAMPLE COMMAND --file values.json --collection mydata --server.endpoint tcp://127.0.0.1:8529 --server.database mydb
-imports JSON data from file values.json into collection mydata, using a different server endpoint and database
+imports JSON data from file values.json into collection mydata, using a different server endpoint and database ENDEXAMPLE
 AUTHOR

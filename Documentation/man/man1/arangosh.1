@@ -1,4 +1,4 @@
-.TH arangosh 1 "So 30. Sep 01:36:14 CEST 2012" "" "ArangoDB"
+.TH arangosh 1 "Do 23. Jan 09:59:38 CET 2014" "" "ArangoDB"
 .SH NAME
 arangosh - the ArangoDB shell
 .SH SYNOPSIS
@@ -13,6 +13,8 @@ online manual, available at http://www.arangodb.org/
 
 The most important startup options are:
 
+.IP "--audit-log <string>"
+log input and output to audit log file <string> 
 .IP "--configuration <string>"
 read configuration from file <string> 
 .IP "--log.level <string>"
@@ -20,11 +22,13 @@ set the log level (possible values: "fatal", "error", "warning", "info", "debug"
 .IP "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port 
 .IP "--server.database <string>"
-database name to use when connection (default: "_system")
+database name to use when connection (default: "_system") 
 .IP "--server.username <string>"
 username to use when connecting (default "root") 
 .IP "--server.password <string>"
-password to use when connecting. Leave empty for a password prompt 
+password to use when connecting. Don't specify this option to get a password prompt 
+.IP "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server 
 .SH EXAMPLES
 .EX
 shell> arangosh 
@@ -33,7 +37,7 @@ starts arangosh with the default user and server endpoint
 
 .EX
 shell> arangosh --server.username fuchsia 
-starts arangosh with a specific user. Password prompt will follow 
+starts arangosh with a specific user. Password prompt will follow if --server.disable-authentication is true. 
 .EE
 
 .EX
