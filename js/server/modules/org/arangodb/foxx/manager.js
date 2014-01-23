@@ -642,7 +642,8 @@ function routingAalApp (app, mount, options) {
           "do" : "org/arangodb/actions/redirectRequest",
           "options" : {
             "permanently" : (app._id.substr(0,4) !== 'dev'),
-            "destination" : p + defaultDocument 
+            "destination" : defaultDocument,
+            "relative" : true
           }
         }
       });
