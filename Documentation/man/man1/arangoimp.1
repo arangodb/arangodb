@@ -1,4 +1,4 @@
-.TH arangoimp 1 "So 30. Sep 01:36:14 CEST 2012" "" "ArangoDB"
+.TH arangoimp 1 "Do 23. Jan 09:59:38 CET 2014" "" "ArangoDB"
 .SH NAME
 arangoimp - a bulk importer for the ArangoDB database
 .SH SYNOPSIS
@@ -32,12 +32,29 @@ set to "json", "tsv" or "csv", depending on the input file format
 .IP "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port 
 .IP "--server.database <string>"
-database name to use when connection (default: "_system")
+database name to use when connection (default: "_system") 
 .IP "--server.username <string>"
 username to use when connecting (default "root") 
 .IP "--server.password <string>"
-password to use when connecting. Leave empty for a password prompt 
+password to use when connecting. Don't specify this option to get a password prompt 
+.IP "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server 
 .SH EXAMPLES
+.EX
+shell> arangoimp --file heroes.json --type json --collection superheroes --create-collection true
+imports JSON data from file heroes.json into collection superhoeres. creates the collection if it does not exist 
+.EE
+
+.EX
+shell> arangoimp --file export.csv --type csv --collection mydata
+imports CSV data from export.csv into existing collection mydata 
+.EE
+
+.EX
+shell> arangoimp --file values.json --collection mydata --server.endpoint tcp://127.0.0.1:8529 --server.database mydb
+imports JSON data from file values.json into collection mydata, using a different server endpoint and database 
+.EE
+
 
 .SH AUTHOR
 	    Copyright triAGENS GmbH, Cologne, Germany

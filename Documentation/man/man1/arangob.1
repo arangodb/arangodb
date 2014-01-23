@@ -1,4 +1,4 @@
-.TH arangob 1 "So 30. Sep 01:36:14 CEST 2012" "" "ArangoDB"
+.TH arangob 1 "Do 23. Jan 09:59:38 CET 2014" "" "ArangoDB"
 .SH NAME
 arangob - the ArangoDB benchmark and test tool
 .SH SYNOPSIS
@@ -32,11 +32,13 @@ complexity value for test case (meaning depends on test case)
 .IP "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port 
 .IP "--server.database <string>"
-database name to use when connection (default: "_system")
+database name to use when connection (default: "_system") 
 .IP "--server.username <string>"
 username to use when connecting (default "root") 
 .IP "--server.password <string>"
-password to use when connecting. Leave empty for a password prompt 
+password to use when connecting. Don't specify this option to get a password prompt 
+.IP "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server 
 .SH EXAMPLES
 .EX
 shell> arangob 
@@ -44,23 +46,23 @@ starts arangob with the default user and server endpoint
 .EE
 
 .EX
-shell> arangob --server.username fuchsia 
-starts arangob with a specific user. Password prompt will follow 
+shell> arangob --test-case version --requests 1000 --concurrency 1
+runs the 'version' test case with 1000 requests, without concurrency 
 .EE
 
 .EX
-shell> arangob --server.username fuchsia --server.password "abcd@34"
-starts arangob with a specific user and password given on command line 
+shell> arangob --test-case document --requests 1000 --concurrency 2
+runs the 'document' test case with 2000 requests, with concurrency 2 
 .EE
 
 .EX
-shell> arangob --server.endpoint tcp://192.168.173.13:8529
-starts arangob connecting to a specific server 
+shell> arangob --test-case document --requests 1000 --concurrency 2 --async true
+runs the 'document' test case with 2000 requests, with concurrency 2, with async requests 
 .EE
 
 .EX
-shell> arangob --server.endpoint ssl://192.168.173.13:8530
-starts arangob connecting to a specific server using an SSL connection 
+shell> arangob --test-case document --requests 1000 --concurrency 2 --batch-size 10
+runs the 'document' test case with 2000 requests, with concurrency 2, using batch requests 
 .EE
 
 
