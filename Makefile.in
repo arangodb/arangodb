@@ -8301,7 +8301,7 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 .PHONY: man
 
 man: Doxygen/.setup-directories
-	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
+	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; cp "Doxygen/man/man$$section/$$i.$$section" "Documentation/man/man$$section/$$i.$$section"; done; done
 
 ################################################################################
 ### @brief generate json for swagger REST-API
