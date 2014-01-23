@@ -173,9 +173,6 @@ endif ()
 
 file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       DIRECTORIES
 ## -----------------------------------------------------------------------------
@@ -384,6 +381,23 @@ if (MSVC_LIB_PATH)
 endif ()
 
 ################################################################################
+### @brief raspberry pi
+################################################################################
+
+if (BUILD_PACKAGE STREQUAL "raspbian")
+  set(ARM_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty-ARM/include CACHE path "ARM 3rd party include path")
+  set(ARM_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty-ARM/lib CACHE path "ARM 3rd party library path")
+endif ()
+
+if (ARM_INCLUDE)
+  include_directories(${ARM_INCLUDE})
+endif ()
+
+if (ARM_LIB_PATH)
+  link_directories(${ARM_LIB_PATH})
+endif ()
+
+################################################################################
 ### @brief ICU
 ################################################################################
 
@@ -392,6 +406,9 @@ if (MSVC)
   set(ICU_VERSION "52.1" CACHE string "ICU version")
 
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
+elseif (BUILD_PACKAGE STREQUAL "raspbian")
+  set(ICU_LIBS icui18n;icuuc;icudata;pthread;m CACHE path "ICU libraries")
+  set(ICU_VERSION "52.1" CACHE string "ICU version")
 else ()
   set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/include CACHE path "ICU include path")
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/libs CACHE path "ICU library path")
@@ -413,7 +430,7 @@ add_definitions("-DTRI_ICU_VERSION=\"${ICU_VERSION}\"")
 ### @brief LIBEV
 ################################################################################
 
-if (MSVC)
+if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian")) 
   set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
   set(LIBEV_VERSION "4.11" CACHE string "LIBEV version")
 else ()
@@ -437,7 +454,7 @@ add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ### @brief MRUBY
 ################################################################################
 
-if (MSVC)
+if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
 else ()
   set(MRUBY_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/mruby/include CACHE path "MRUBY include path")
   set(MRUBY_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/mruby/build/host/lib CACHE path "MRUBY library path")
@@ -464,6 +481,9 @@ endif ()
 if (MSVC)
   set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
   set(OPENSSL_VERSION "OpenSSL 1.0.1e" CACHE string "OPENSSL version")
+elseif (BUILD_PACKAGE STREQUAL "raspbian")
+  set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
+  set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
 else ()
   set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
   set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
@@ -488,8 +508,6 @@ add_definitions("-DTRI_OPENSSL_VERSION=\"${OPENSSL_VERSION}\"")
 if (MSVC)
   set(READLINE_LIBS linenoise CACHE string "LINENOISE libraries")
   set(READLINE_VERSION "linenoise" CACHE string "LINENOISE version")
-
-  add_definitions("-DREADLINE_STATIC=1")
 else ()
   set(READLINE_INCLUDE "" CACHE path "READLINE include path")
   set(READLINE_LIB_PATH "" CACHE path "READLINE library path")
@@ -511,7 +529,7 @@ add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 ### @brief V8
 ################################################################################
 
-if (MSVC)
+if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
   set(V8_LIBS v8_base v8_nosnapshot CACHE string "V8 libraries")
   set(V8_VERSION "3.16.14" CACHE string "V8 version")
 else ()
@@ -535,7 +553,7 @@ add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 ### @brief ZLIB
 ################################################################################
 
-if (MSVC)
+if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
   set(ZLIB_LIBS z CACHE string "ZLIB libraries")
   set(ZLIB_VERSION "1.2.7" CACHE string "ZLIB version")
 else ()

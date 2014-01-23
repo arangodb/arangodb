@@ -186,9 +186,11 @@ pack-arm:
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
+		--disable-all-in-one-icu \
+		--disable-all-in-one-v8 \
+		--disable-all-in-one-libev \
+		--with-libev=./3rdParty-ARM \
+		--with-v8=./3rdParty-ARM \
 		--disable-mruby
 
 	${MAKE} pack-arm-cmake
@@ -204,15 +206,9 @@ pack-arm-cmake:
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-                -D "V8_LIB_PATH=`pwd`/../3rdParty/V8/out/arm.release/obj.target/tools/gyp" \
                 -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
                 -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		..
-
-	${MAKE} .libev-build-32
-	${MAKE} .zlib-build-32
-	${MAKE} .icu-build-32
-	${MAKE} .v8-build-32
 
 	${MAKE} ${BUILT_SOURCES}
 

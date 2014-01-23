@@ -46,7 +46,9 @@ AC_LANG(C++)
 
 tr_V8="yes"
 
-AX_CXX_CHECK_LIB([v8], [#include <v8.h>], [v8::V8::GetVersion()], [V8_LIBS="-lv8"], [tr_V8="no"])
+LIBS="$LIBS -lv8_nosnapshot"
+
+AX_CXX_CHECK_LIB([v8_base], [#include <v8.h>], [v8::V8::GetVersion()], [V8_LIBS="-lv8_base -lv8_nosnapshot"], [tr_V8="no"])
 
 if test "x$tr_V8" != xyes;  then
   AC_MSG_ERROR([Please install the V8 library from Google])

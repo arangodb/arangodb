@@ -44,6 +44,11 @@
     hidden: function () {
       window.App.navigate("#collections", {trigger: true});
     },
+
+    setColId: function(colId) {
+      this.options.colId = colId;
+    },
+
     fillModal: function() {
       try {
         this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;

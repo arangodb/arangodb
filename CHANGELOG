@@ -1,5 +1,15 @@
-v1.5.x (XXXX-XX-XX)
+v1.5.0 (XXXX-XX-XX)
 -------------------
+
+* issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
+
+* allow direct access from the `db` object to collections whose names start 
+  with an underscore (e.g. db._users).
+
+  Previously, access to such collections via the `db` object was possible from
+  arangosh, but not from arangod (and thus Foxx and actions). The only way
+  to access such collections from these places was via the `db._collection(<name>)`
+  workaround.
 
 * allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
   `/_api/batch` HTTP API.
@@ -105,12 +115,44 @@ v1.5.x (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.5 (XXXX-XX-XX)
+v1.4.7 (XXXX-XX-XX)
 -------------------
 
+* issue #744: Add usage example arangoimp from Command line
+
+* issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
+
+* mount all Foxx applications in system apps directory on startup
+
+
+v1.4.6 (2014-01-20)
+-------------------
+
+* issue #736: AQL function to parse collection and key from document handle
+
+* added fm.rescan() method for Foxx-Manager
+
+* fixed issue #734: foxx cookie and route problem
+
+* added method `fm.configJson` for arangosh
+
+* include `startupPath` in result of API `/_api/foxx/config`
+
+
+v1.4.5 (2014-01-15)
+-------------------
+
+* fixed issue #726: Alternate Windows Install Method
+
+* fixed issue #716: dpkg -P doesn't remove everything
+
+* fixed bugs in description of HTTP API `_api/index`
+
+* fixed issue #732: Rest API GET revision number
+ 
 * added missing documentation for several methods in HTTP API `/_api/edge/...`
 
-* fixed typos in HTTP API `_api/document`
+* fixed typos in description of HTTP API `_api/document`
 
 * defer evaluation of AQL subqueries and logical operators (lazy evaluation)
 

@@ -1075,42 +1075,33 @@ char* TRI_GetDirectoryCollection (char const* path,
                                   TRI_col_type_e type,
                                   TRI_voc_cid_t cid) {
   char* filename;
+  char* tmp1;
+  char* tmp2;
 
-  assert(path);
-  assert(name);
+  assert(path != NULL);
+  assert(name != NULL);
 
-  // other collections use the collection identifier
-  if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-    char* tmp1;
-    char* tmp2;
+  tmp1 = TRI_StringUInt64(cid);
 
-    tmp1 = TRI_StringUInt64(cid);
+  if (tmp1 == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-    if (tmp1 == NULL) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-
-    tmp2 = TRI_Concatenate2String("collection-", tmp1);
-
-    if (tmp2 == NULL) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-
-    filename = TRI_Concatenate2File(path, tmp2);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-  }
-  // oops, unknown collection type
-  else {
-    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
+
+  tmp2 = TRI_Concatenate2String("collection-", tmp1);
+
+  if (tmp2 == NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+
+  filename = TRI_Concatenate2File(path, tmp2);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
 
   if (filename == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1586,9 +1577,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
                               TRI_collection_t* collection,
                               TRI_col_info_t const* parameter) {
 
-  if (TRI_IS_DOCUMENT_COLLECTION(collection->_info._type)) {
-    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
-  }
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
   if (parameter != NULL) {
     collection->_info._doCompact   = parameter->_doCompact;
@@ -1605,9 +1594,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     // ... probably a few others missing here ...
   }
 
-  if (TRI_IS_DOCUMENT_COLLECTION(collection->_info._type)) {
-    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
-  }
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
   return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_settings.forceSyncProperties);
 }
