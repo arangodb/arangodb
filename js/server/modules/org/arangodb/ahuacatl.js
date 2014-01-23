@@ -38,11 +38,6 @@ var ShapedJson = INTERNAL.ShapedJson;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cache for compiled regexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,18 +60,29 @@ var TYPEWEIGHT_STRING    = 4;
 var TYPEWEIGHT_LIST      = 8;
 var TYPEWEIGHT_DOCUMENT  = 16;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
+/// @brief throw a runtime exception
 ////////////////////////////////////////////////////////////////////////////////
+
+function THROW (error, data) {
+  "use strict";
+
+  var err = new ArangoError();
+
+  err.errorNum = error.code;
+  if (data) {
+    err.errorMessage = error.message.replace(/%s/, data);
+  }
+  else {
+    err.errorMessage = error.message;
+  }
+
+  throw err;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a database-specific function prefix
@@ -85,6 +91,72 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 function DB_PREFIX () {
   return INTERNAL.db._name();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the regex cache
+////////////////////////////////////////////////////////////////////////////////
+
+function resetRegexCache () {
+  "use strict";
+
+  RegexCache = { 'i' : { }, '' : { } };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the user functions and reload them from the database
+////////////////////////////////////////////////////////////////////////////////
+
+function reloadUserFunctions () {
+  "use strict";
+
+  var c;
+
+  c = INTERNAL.db._collection("_aqlfunctions");
+
+  if (c === null) {
+    return;
+  }
+
+  var foundError = false;
+  var prefix = DB_PREFIX();
+
+  UserFunctions[prefix] = { };
+
+  c.toArray().forEach(function (f) {
+    var code = "(function() { var callback = " + f.code + "; return callback; })();";
+    var key = f._key.replace(/:{1,}/g, '::');
+
+    try {
+      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")"); 
+
+      UserFunctions[prefix][key.toUpperCase()] = {
+        name: key,
+        func: res,
+        isDeterministic: f.isDeterministic || false
+      }; 
+  
+    }
+    catch (err) {
+      foundError = true;
+    }
+  });
+      
+  if (foundError) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the query engine
+////////////////////////////////////////////////////////////////////////////////
+
+function resetEngine () {
+  "use strict";
+
+  resetRegexCache();
+  reloadUserFunctions();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
@@ -124,26 +196,6 @@ function FILTER (list, examples) {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief throw a runtime exception
-////////////////////////////////////////////////////////////////////////////////
-
-function THROW (error, data) {
-  "use strict";
-
-  var err = new ArangoError();
-
-  err.errorNum = error.code;
-  if (data) {
-    err.errorMessage = error.message.replace(/%s/, data);
-  }
-  else {
-    err.errorMessage = error.message;
-  }
-
-  throw err;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,7 +463,11 @@ function FCALL_USER (name, parameters) {
 
   var prefix = DB_PREFIX();
   if (! UserFunctions.hasOwnProperty(prefix)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+    reloadUserFunctions();
+
+    if (! UserFunctions.hasOwnProperty(prefix)) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+    }
   }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
@@ -1031,18 +1087,9 @@ function COLLECTIONS () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                logical operations
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute ternary operator
@@ -1198,18 +1245,9 @@ function LOGICAL_NOT (lhs) {
   return ! lhs;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             comparison operations
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform equality check 
@@ -1661,18 +1699,9 @@ function RELATIONAL_IN (lhs, rhs) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             arithmetic operations
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unary plus operation
@@ -1834,18 +1863,9 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  string functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation
@@ -2115,18 +2135,9 @@ function STRING_TRIM (value, type) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                typecast functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cast to a bool
@@ -2223,18 +2234,9 @@ function CAST_LIST (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               typecheck functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if value is of type null
@@ -2308,18 +2310,9 @@ function IS_DOCUMENT (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 numeric functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief integer closest to value, not greater than value
@@ -2401,18 +2394,9 @@ function NUMBER_SQRT (value) {
   return NUMERIC_VALUE(Math.sqrt(value));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        high level query functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort the results
@@ -2505,18 +2489,9 @@ function LIMIT (value, offset, count) {
   return value.slice(offset, offset + count);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         list processing functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the length of a list, document or string
@@ -3115,18 +3090,9 @@ function STDDEV_POPULATION (values) {
   return NUMERIC_VALUE(Math.sqrt(result.value / result.n));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     geo functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return at most <limit> documents near a certain point
@@ -3189,18 +3155,9 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
   return documents;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                fulltext functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return documents that match a fulltext query
@@ -3218,18 +3175,9 @@ function FULLTEXT (collection, attribute, query) {
   return result.documents;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    misc functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the first alternative that's not null until there are no more 
@@ -3304,6 +3252,36 @@ function FIRST_DOCUMENT () {
   }
 
   return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the parts of a document identifier separately
+///
+/// returns a document with the attributes `collection` and `key` or fails if
+/// the individual parts cannot be determined.
+////////////////////////////////////////////////////////////////////////////////
+
+function PARSE_IDENTIFIER (value) {
+  "use strict";
+
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
+    var parts = value.split('/');
+    if (parts.length === 2) {
+      return { 
+        collection: parts[0],
+        key: parts[1]
+      };
+    }
+    // fall through intentional
+  }
+  else if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
+    if (value.hasOwnProperty('_id')) {
+      return PARSE_IDENTIFIER(value._id);
+    }
+    // fall through intentional
+  }
+  
+  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PARSE_IDENTIFIER");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3571,18 +3549,9 @@ function FAIL (message) {
   THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   graph functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph, INTERNAL part called recursively
@@ -3789,6 +3758,38 @@ function TRAVERSAL_FILTER (config, vertex, edge, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief vertex filter callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
+  "use strict";
+  
+  if (!MATCHES(vertex, config.filterVertexExamples)) {
+    return config.vertexFilterMethod;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check typeweights of params.followEdges/params.filterVertices
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
+  "use strict";
+  
+  if (TYPEWEIGHT(examples) !== TYPEWEIGHT_LIST) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+  if (examples.length === 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+  examples.forEach(function (example) {
+    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+    }
+  });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3801,20 +3802,14 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
 
   vertexCollection = COLLECTION(vertexCollection);
   edgeCollection   = COLLECTION(edgeCollection);
-
+  
   // check followEdges property
   if (params.followEdges) {
-    if (TYPEWEIGHT(params.followEdges) !== TYPEWEIGHT_LIST) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-    }
-    if (params.followEdges.length === 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-    }
-    params.followEdges.forEach(function (example) {
-      if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-      }
-    });
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges, func);
+  }
+  // check filterVertices property
+  if (params.filterVertices) {
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.filterVertices, func);
   }
 
   if (typeof params.visitor !== "function") {
@@ -3841,6 +3836,12 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   if (params.followEdges) {
     config.expandFilter = TRAVERSAL_FILTER;
     config.expandEdgeExamples = params.followEdges;
+  }
+
+  if (params.filterVertices) {
+    config.filter = TRAVERSAL_VERTEX_FILTER;
+    config.filterVertexExamples = params.filterVertices;
+    config.vertexFilterMethod = params.vertexFilterMethod || ["prune","exclude"];
   }
 
   if (params._sort) {
@@ -4000,96 +4001,9 @@ function GRAPH_NEIGHBORS (vertexCollection,
   return result;
 } 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           setup / reset functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the regex cache
-////////////////////////////////////////////////////////////////////////////////
-
-function resetRegexCache () {
-  "use strict";
-
-  RegexCache = { 'i' : { }, '' : { } };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the user functions and reload them from the database
-////////////////////////////////////////////////////////////////////////////////
-
-function reloadUserFunctions () {
-  "use strict";
-
-  var c;
-
-  c = INTERNAL.db._collection("_aqlfunctions");
-
-  if (c === null) {
-    return;
-  }
-
-  var foundError = false;
-  var prefix = DB_PREFIX();
-
-  UserFunctions[prefix] = { };
-
-  c.toArray().forEach(function (f) {
-    var code = "(function() { var callback = " + f.code + "; return callback; })();";
-    var key = f._key.replace(/:{1,}/g, '::');
-
-    try {
-      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")"); 
-
-      UserFunctions[prefix][key.toUpperCase()] = {
-        name: key,
-        func: res,
-        isDeterministic: f.isDeterministic || false
-      }; 
-  
-    }
-    catch (err) {
-      foundError = true;
-    }
-  });
-      
-  if (foundError) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the query engine
-////////////////////////////////////////////////////////////////////////////////
-
-function resetEngine () {
-  "use strict";
-
-  resetRegexCache();
-  reloadUserFunctions();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 exports.FCALL = FCALL;
 exports.FCALL_USER = FCALL_USER;
@@ -4196,6 +4110,7 @@ exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
+exports.PARSE_IDENTIFIER = PARSE_IDENTIFIER;
 exports.HAS = HAS;
 exports.ATTRIBUTES = ATTRIBUTES;
 exports.UNSET = UNSET;
@@ -4211,11 +4126,6 @@ exports.reload = reloadUserFunctions;
 
 // initialise the query engine
 resetEngine();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

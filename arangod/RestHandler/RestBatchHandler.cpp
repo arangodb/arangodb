@@ -560,14 +560,14 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   int breakLength = 1;
 
   while (found < searchEnd) {
+    while (*found == ' ' && found < searchEnd) {
+      ++found;
+    }
+
     // try Windows linebreak first
     breakLength = 2;
 
     char* eol = strstr(found, "\r\n");
-
-    if (eol == found) {
-      break;
-    }
 
     if (eol == 0) {
       breakLength = 1;
@@ -577,8 +577,16 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
         break;
       }
     }
+    else {
+      char* eol2 = strchr(found, '\n');
 
-    if (eol == 0) {
+      if (eol2 != 0 && eol2 < eol) {
+        breakLength = 1;
+        eol = eol2;
+      }
+    }
+
+    if (eol == 0 || eol == found) {
       break;
     }
 
@@ -608,6 +616,11 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
     if ("content-type" == key) {
       if (_partContentType == value) {
         hasTypeHeader = true;
+      }
+      else {
+        LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'", 
+                    value.c_str(),
+                    _partContentType.c_str());
       }
     }
     else if ("content-id" == key) {

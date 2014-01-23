@@ -628,6 +628,16 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief startupPath
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.startupPath = function () {
+    'use strict';
+
+    return startupPath;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compareVersions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -725,6 +735,17 @@ function require (path) {
       }
     }
 
+    // actually the file name can be set via the path attribute
+    if (origin === undefined) {
+      origin = description.path;
+    }
+    // strip protocol (e.g. file://)
+    if (typeof origin === 'string') {
+      origin = origin.replace(/^[a-z]+:\/\//, '');
+    }
+
+    sandbox.__filename = origin;
+    sandbox.__dirname = typeof origin === 'string' ? origin.split('/').slice(0, -1).join('/') : origin;
     sandbox.module = module;
     sandbox.exports = module.exports;
     sandbox.require = function(path) { return module.require(path); };
@@ -1316,6 +1337,8 @@ function require (path) {
       }
     }
 
+    sandbox.__filename = full;
+    sandbox.__dirname = full.split('/').slice(0, -1).join('/');
     sandbox.module = appModule;
     sandbox.applicationContext = appContext;
 

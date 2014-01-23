@@ -1,4 +1,4 @@
-.TH arangodump 1 "Fr 6. Sep 02:19:07 CEST 2013" "" "ArangoDB"
+.TH arangodump 1 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
 .SH NAME
 arangodump - a tool to create logical dumps of an ArangoDB database
 .SH SYNOPSIS
@@ -51,7 +51,9 @@ database name to use when connection (default: "_system")
 .IP "--server.username <string>"
 username to use when connecting (default "root") 
 .IP "--server.password <string>"
-password to use when connecting. Leave empty for a password prompt 
+password to use when connecting. Don't specify this option to get a password prompt 
+.IP "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server 
 .SH EXAMPLES
 
 .SH AUTHOR

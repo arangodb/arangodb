@@ -357,11 +357,6 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     LOG_FATAL_AND_EXIT("collection '_users' cannot be loaded");
   }
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
-    TRI_ReleaseCollectionVocBase(vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_users' has an unknown collection type");
-  }
-
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
   // .............................................................................

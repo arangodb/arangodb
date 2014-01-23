@@ -257,17 +257,6 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return true;
   }
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    LOG_ERROR("cannot unload collection '%s' of type '%d'",
-              collection->_name,
-              (int) collection->_type);
-
-    collection->_status = TRI_VOC_COL_STATUS_LOADED;
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return false;
-  }
-  
   if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT) ||
       TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_REPLICATION) ||
       TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_COMPACTION)) {
@@ -348,17 +337,6 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   // .............................................................................
 
   if (collection->_collection != NULL) {
-    if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-      LOG_ERROR("cannot drop collection '%s' of type %d",
-                collection->_name,
-                (int) collection->_type);
-
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-      regfree(&re);
-
-      return false;
-    }
-
     document = (TRI_document_collection_t*) collection->_collection;
 
     res = TRI_CloseDocumentCollection(document);
@@ -967,76 +945,70 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       else {
         // we found a collection that is still active
         TRI_col_type_e type = info._type;
+        TRI_vocbase_col_t* c;
 
-        if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-          TRI_vocbase_col_t* c;
+        if (info._version < TRI_COL_VERSION) {
+          // collection is too "old"
 
-          if (info._version < TRI_COL_VERSION) {
-            // collection is too "old"
-
-            if (! isUpgrade) {
-              LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.", 
-                        info._name);
-              
-              TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-              TRI_DestroyVectorString(&files);
-              TRI_FreeCollectionInfoOptions(&info);
-              regfree(&re);
- 
-              return TRI_set_errno(res);
-            }
-            else {
-              LOG_INFO("upgrading collection '%s'", info._name);
-
-              res = TRI_ERROR_NO_ERROR;
-
-              if (info._version < TRI_COL_VERSION_13) {
-                res = TRI_UpgradeCollection13(vocbase, file, &info);
-              }
+          if (! isUpgrade) {
+            LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.", 
+                      info._name);
             
-              if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_15) {
-                res = TRI_UpgradeCollection15(vocbase, file, &info);
-              }
-
-              if (res != TRI_ERROR_NO_ERROR) {
-                LOG_ERROR("upgrading collection '%s' failed.", info._name);
-            
-                TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-                TRI_DestroyVectorString(&files);
-                TRI_FreeCollectionInfoOptions(&info);
-                regfree(&re);
- 
-                return TRI_set_errno(res);
-              }
-            } 
-          }
-
-          c = AddCollection(vocbase, type, info._name, info._cid, file);
-       
-          if (c == NULL) {
-            LOG_ERROR("failed to add document collection from '%s'", file);
-
             TRI_FreeString(TRI_CORE_MEM_ZONE, file);
             TRI_DestroyVectorString(&files);
             TRI_FreeCollectionInfoOptions(&info);
             regfree(&re);
 
-            return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
+            return TRI_set_errno(res);
           }
+          else {
+            LOG_INFO("upgrading collection '%s'", info._name);
 
-          c->_status = TRI_VOC_COL_STATUS_UNLOADED;
+            res = TRI_ERROR_NO_ERROR;
+
+            if (info._version < TRI_COL_VERSION_13) {
+              res = TRI_UpgradeCollection13(vocbase, file, &info);
+            }
           
-          if (iterateMarkers) {   
-            // iterating markers may be time-consuming. we'll only do it if
-            // we have to
-            TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
-          }
+            if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_15) {
+              res = TRI_UpgradeCollection15(vocbase, file, &info);
+            }
 
-          LOG_DEBUG("added document collection from '%s'", file);
+            if (res != TRI_ERROR_NO_ERROR) {
+              LOG_ERROR("upgrading collection '%s' failed.", info._name);
+          
+              TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+              TRI_DestroyVectorString(&files);
+              TRI_FreeCollectionInfoOptions(&info);
+              regfree(&re);
+
+              return TRI_set_errno(res);
+            }
+          } 
         }
-        else {
-          LOG_DEBUG("skipping collection of unknown type %d", (int) type);
+
+        c = AddCollection(vocbase, type, info._name, info._cid, file);
+      
+        if (c == NULL) {
+          LOG_ERROR("failed to add document collection from '%s'", file);
+
+          TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+          TRI_DestroyVectorString(&files);
+          TRI_FreeCollectionInfoOptions(&info);
+          regfree(&re);
+
+          return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
         }
+
+        c->_status = TRI_VOC_COL_STATUS_UNLOADED;
+        
+        if (iterateMarkers) {   
+          // iterating markers may be time-consuming. we'll only do it if
+          // we have to
+          TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
+        }
+
+        LOG_DEBUG("added document collection from '%s'", file);
       }
       TRI_FreeCollectionInfoOptions(&info);
     }
@@ -1063,8 +1035,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 
 static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, 
                                   TRI_vocbase_col_t* collection) {
-  TRI_col_type_e type;
-  
   // .............................................................................
   // read lock
   // .............................................................................
@@ -1157,50 +1127,40 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   // unloaded, load collection
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    type = (TRI_col_type_e) collection->_type;
+    TRI_document_collection_t* document;
 
-    if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-      TRI_document_collection_t* document;
+    // set the status to loading
+    collection->_status = TRI_VOC_COL_STATUS_LOADING;
 
-      // set the status to loading
-      collection->_status = TRI_VOC_COL_STATUS_LOADING;
+    // release the lock on the collection temporarily
+    // this will allow other threads to check the collection's
+    // status while it is loading (loading may take a long time because of
+    // disk activity)
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-      // release the lock on the collection temporarily
-      // this will allow other threads to check the collection's
-      // status while it is loading (loading may take a long time because of
-      // disk activity)
+    document = TRI_OpenDocumentCollection(vocbase, collection->_path);
+    
+    // lock again the adjust the status
+    TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+
+    // no one else must have changed the status
+    assert(collection->_status == TRI_VOC_COL_STATUS_LOADING);
+
+    if (document == NULL) {
+      collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
+
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      document = TRI_OpenDocumentCollection(vocbase, collection->_path);
-     
-      // lock again the adjust the status
-      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
-
-      // no one else must have changed the status
-      assert(collection->_status == TRI_VOC_COL_STATUS_LOADING);
-
-      if (document == NULL) {
-        collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
-
-        TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-        return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-      }
-
-      collection->_collection = &document->base;
-      collection->_status = TRI_VOC_COL_STATUS_LOADED;
-      TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path) - 1);
-
-      // release the WRITE lock and try again
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      return LoadCollectionVocBase(vocbase, collection);
+      return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
-    else {
-      LOG_ERROR("unknown collection type %d for '%s'", (int) type, collection->_name);
 
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-      return TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
-    }
+    collection->_collection = &document->base;
+    collection->_status = TRI_VOC_COL_STATUS_LOADED;
+    TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path) - 1);
+
+    // release the WRITE lock and try again
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    return LoadCollectionVocBase(vocbase, collection);
   }
 
   LOG_ERROR("unknown collection status %d for '%s'", (int) collection->_status, collection->_name);
@@ -1932,25 +1892,15 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_voc_cid_t cid,
                                                 TRI_server_id_t generatingServer) {
   TRI_vocbase_col_t* collection;
-  TRI_col_type_e type;
   char* name;
 
-  assert(parameter);
+  assert(parameter != NULL);
   name = parameter->_name;
 
   // check that the name does not contain any strange characters
   if (! TRI_IsAllowedNameCollection(parameter->_isSystem, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
 
-    return NULL;
-  }
-
-  type = (TRI_col_type_e) parameter->_type;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(type)) {
-    LOG_ERROR("unknown collection type: %d", (int) parameter->_type);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
 

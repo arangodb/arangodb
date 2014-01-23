@@ -93,7 +93,14 @@ the data are line-wise JSON documents (type = documents) or a JSON list (type = 
 The server will respond with an HTTP 201 if everything went well. The number of
 documents imported will be returned in the `created` attribute of the
 response. If any documents were skipped or incorrectly formatted, this will be
-returned in the `errors` attribute.
+returned in the `errors` attribute. There will also be an attribute `empty` in 
+the response, which will contain a value of `0`.
+
+If the `details` parameter was set to `true` in the request, the response will 
+also contain an attribute `details` which is a list of details about errors that
+occurred on the server side during the import. This list might be empty if no
+errors occurred.
+
 
 Importing Headers and Values {#HttpImportHeaderData}
 ====================================================
@@ -112,7 +119,13 @@ are needed or allowed in this data section.
 The server will again respond with an HTTP 201 if everything went well. The
 number of documents imported will be returned in the `created` attribute of the
 response. If any documents were skipped or incorrectly formatted, this will be
-returned in the `errors` attribute.
+returned in the `errors` attribute. The number of empty lines in the input file
+will be returned in the `empty` attribute.
+
+If the `details` parameter was set to `true` in the request, the response will 
+also contain an attribute `details` which is a list of details about errors that
+occurred on the server side during the import. This list might be empty if no
+errors occurred.
 
 Importing into Edge Collections {#HttpImportEdges}
 ==================================================

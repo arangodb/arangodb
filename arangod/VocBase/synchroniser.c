@@ -227,7 +227,6 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SynchroniserVocBase (void* data) {
-  TRI_col_type_e type;
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
 
@@ -256,6 +255,7 @@ void TRI_SynchroniserVocBase (void* data) {
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
       TRI_primary_collection_t* primary;
+      bool result;
 
       collection = collections._buffer[i];
 
@@ -274,17 +274,11 @@ void TRI_SynchroniserVocBase (void* data) {
       primary = collection->_collection;
 
       // for document collection, first sync and then seal
-      type = primary->base._info._type;
+      result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);
+      worked |= result;
 
-      if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-        bool result;
-
-        result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);
-        worked |= result;
-
-        result = CheckJournalDocumentCollection((TRI_document_collection_t*) primary);
-        worked |= result;
-      }
+      result = CheckJournalDocumentCollection((TRI_document_collection_t*) primary);
+      worked |= result;
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     }

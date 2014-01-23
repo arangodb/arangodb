@@ -42,12 +42,12 @@ disable the password prompt and authentication when connecting to the server END
 EXAMPLES
 EXAMPLE COMMAND 
 starts COMMAND with the default user and server endpoint ENDEXAMPLE
-EXAMPLE COMMAND --server.username fuchsia 
-starts COMMAND with a specific user. Password prompt will follow ENDEXAMPLE
-EXAMPLE COMMAND --server.username fuchsia --server.password "abcd@34"
-starts COMMAND with a specific user and password given on command line ENDEXAMPLE
-EXAMPLE COMMAND --server.endpoint tcp://192.168.173.13:8529
-starts COMMAND connecting to a specific server ENDEXAMPLE
-EXAMPLE COMMAND --server.endpoint ssl://192.168.173.13:8530
-starts COMMAND connecting to a specific server using an SSL connection ENDEXAMPLE
+EXAMPLE COMMAND --test-case version --requests 1000 --concurrency 1
+runs the 'version' test case with 1000 requests, without concurrency ENDEXAMPLE
+EXAMPLE COMMAND --test-case document --requests 1000 --concurrency 2
+runs the 'document' test case with 2000 requests, with concurrency 2 ENDEXAMPLE
+EXAMPLE COMMAND --test-case document --requests 1000 --concurrency 2 --async true
+runs the 'document' test case with 2000 requests, with concurrency 2, with async requests ENDEXAMPLE
+EXAMPLE COMMAND --test-case document --requests 1000 --concurrency 2 --batch-size 10
+runs the 'document' test case with 2000 requests, with concurrency 2, using batch requests ENDEXAMPLE
 AUTHOR

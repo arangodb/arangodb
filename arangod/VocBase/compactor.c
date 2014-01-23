@@ -1471,7 +1471,6 @@ void TRI_CompactorVocBase (void* data) {
       for (i = 0;  i < n;  ++i) {
         TRI_vocbase_col_t* collection;
         TRI_primary_collection_t* primary;
-        TRI_col_type_e type;
         bool doCompact;
         bool worked;
       
@@ -1492,35 +1491,32 @@ void TRI_CompactorVocBase (void* data) {
 
         worked    = false;
         doCompact = primary->base._info._doCompact;
-        type      = primary->base._info._type;
 
         // for document collection, compactify datafiles
-        if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-          if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
-            TRI_barrier_t* ce;
-            
-            // check whether someone else holds a read-lock on the compaction lock
-            if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
-              // someone else is holding the compactor lock, we'll not compact
-              TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-              continue;
-            }
-
-            ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
-
-            if (ce == NULL) {
-              // out of memory
-              LOG_WARNING("out of memory when trying to create a barrier element");
-            }
-            else {
-              worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
-
-              TRI_FreeBarrier(ce);
-            }
+        if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
+          TRI_barrier_t* ce;
           
-            // read-unlock the compaction lock
-            TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
+          // check whether someone else holds a read-lock on the compaction lock
+          if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
+            // someone else is holding the compactor lock, we'll not compact
+            TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+            continue;
           }
+
+          ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
+
+          if (ce == NULL) {
+            // out of memory
+            LOG_WARNING("out of memory when trying to create a barrier element");
+          }
+          else {
+            worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
+
+            TRI_FreeBarrier(ce);
+          }
+        
+          // read-unlock the compaction lock
+          TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
         }
 
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

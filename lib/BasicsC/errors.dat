@@ -238,6 +238,7 @@ ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edg
 ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised when the edge could not be created"
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed"
 ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations","Will be raised when too many iterations are done in a graph traversal"
+ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised when an invalid filter result is returned in a graph traversal"
 
 ################################################################################
 ## Session errors

@@ -145,6 +145,24 @@ actions.defineHttp({
     }
   })
 });
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rescans the FOXX application directory
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/rescan",
+  context : "admin",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      foxxManager.scanAppDirectory();
+      return true;
+    }
+  })
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a FOXX application
@@ -273,7 +291,8 @@ actions.defineHttp({
     var result = {
       appPath: module.appPath(),
       devAppPath: internal.developmentMode ? module.devAppPath() : null,
-      logFilePath: internal.logfilePath
+      logFilePath: internal.logfilePath,
+      startupPath: module.startupPath()
     };
 
     actions.resultOk(req, res, actions.HTTP_OK, { result: result });

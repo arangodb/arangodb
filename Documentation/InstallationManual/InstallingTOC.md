@@ -10,6 +10,12 @@ TOC {#InstallingTOC}
     - @ref InstallingMacOSXAppStore
     - @ref InstallingMacOSXBundle
   - @ref InstallingWindows
+    - @ref InstallingWindowsChoices
     - @ref InstallingWindowsFiles
     - @ref InstallingWindowsStarting
+    - @ref InstallingWindowsAdvanced
+    - @ref InstallingWindowsClient
+    - @ref InstallingWindows32Bit
+    - @ref InstallingWindowsUpgrading
+    - @ref InstallingWindowsUninstalling
     - @ref InstallingWindowsCygwin

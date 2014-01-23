@@ -170,7 +170,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangoimp.conf");
+  BaseClient.parse(options, description, "--file <file> --type <type> --collection <collection>", argc, argv, "arangoimp.conf");
 
   if (FileName == "" && arguments.size() > 0) {
     FileName = arguments[0];
@@ -303,7 +303,8 @@ int main (int argc, char* argv[]) {
                                             BaseClient.sslProtocol(),
                                             false);
 
-  if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
+  if (! ClientConnection->isConnected() || 
+      ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification() 
          << "', database: '" << BaseClient.databaseName() << "'" << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
@@ -358,18 +359,27 @@ int main (int argc, char* argv[]) {
 
   // collection name
   if (CollectionName == "") {
-    cerr << "collection name is missing." << endl;
+    cerr << "Collection name is missing." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // filename
   if (FileName == "") {
-    cerr << "file name is missing." << endl;
+    cerr << "File name is missing." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
-    cerr << "file '" << FileName << "' is not a regular file." << endl;
+    if (! FileUtils::exists(FileName)) {
+      cerr << "Cannot open file '" << FileName << "'. File not found." << endl;
+    }
+    else if (FileUtils::isDirectory(FileName)) {
+      cerr << "Specified file '" << FileName << "' is a directory. Please use a regular file." << endl;
+    }
+    else {
+      cerr << "Cannot open '" << FileName << "'. Invalid file type." << endl;
+    }
+
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
@@ -414,9 +424,6 @@ int main (int argc, char* argv[]) {
   else {
     cerr << "error message:    " << ih.getErrorMessage() << endl;
   }
-
-  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
-  // v8::V8::Dispose();
 
   TRIAGENS_REST_SHUTDOWN;
 
