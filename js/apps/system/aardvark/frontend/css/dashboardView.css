@@ -248,15 +248,13 @@ li:hover h6, li.hover h6 {
 .dropdownOut input[type=checkbox].css-checkbox,
 #dashboardDropdownOut input[type=checkbox].css-checkbox,
 #transparentHeader input[type=checkbox].css-checkbox,
-#collectionsDropdown input[type=checkbox].css-checkbox,
-#foxxDropdown input[type=checkbox].css-checkbox {
+#collectionsDropdown input[type=checkbox].css-checkbox {
   display:none;
 }
 
 .dropdownOut input[type=checkbox].css-checkbox + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox + label.css-label, 
-#foxxDropdownOut input[type=checkbox].css-checkbox + label.css-label, 
 #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
@@ -272,7 +270,6 @@ li:hover h6, li.hover h6 {
 .dropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label,
-#foxxDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
   background-position: 0 -15px;
 }

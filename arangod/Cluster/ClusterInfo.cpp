@@ -1578,7 +1578,6 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   int tries = 0;
   TRI_shared_ptr<vector<string> > shardKeysPtr;
   char const** shardKeys = 0;
-  int nrShardKeys = 0;
   TRI_shared_ptr<vector<ShardID> > shards;
 
   while (++tries <= 2) {
@@ -1610,7 +1609,8 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     return string("");
   }
   
-  uint64_t hash = TRI_HashJsonByAttributes(json, shardKeys, nrShardKeys);
+  uint64_t hash = TRI_HashJsonByAttributes(json, shardKeys, 
+                                           shardKeysPtr->size());
   delete[] shardKeys;
 
   return shards->at(hash % shards->size());
