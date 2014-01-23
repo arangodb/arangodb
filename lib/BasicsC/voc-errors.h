@@ -280,6 +280,12 @@ extern "C" {
 /// - 1464: @LIT{could not remove database from current}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Current hierarchy in the agency.
+/// - 1465: @LIT{no responsible shard found}
+///   Will be raised when a coordinator in a cluster cannot determine the shard
+///   that is responsible for a given document.
+/// - 1466: @LIT{cluster internal HTTP connection broken}
+///   Will be raised when a coordinator in a cluster loses an HTTP connection
+///   to a DBserver in the cluster whilst transferring data.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1623,6 +1629,28 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1464)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1465: ERROR_SHARD_GONE
+///
+/// no responsible shard found
+///
+/// Will be raised when a coordinator in a cluster cannot determine the shard
+/// that is responsible for a given document.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SHARD_GONE                                              (1465)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1466: ERROR_CLUSTER_CONNECTION_LOST
+///
+/// cluster internal HTTP connection broken
+///
+/// Will be raised when a coordinator in a cluster loses an HTTP connection to
+/// a DBserver in the cluster whilst transferring data.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1466)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

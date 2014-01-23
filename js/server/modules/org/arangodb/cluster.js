@@ -248,6 +248,9 @@ function createLocalDatabases (plannedDatabases) {
 
         try {
           db._createDatabase(payload.name);
+          payload.error = false;
+          payload.errorNum = 0;
+          payload.errorMessage = "no error";
         }
         catch (err) {
           payload.error = true;
@@ -426,7 +429,7 @@ function createLocalCollections (plannedCollections) {
                         payload.errorMessage = err2.errorMessage;
                       }
 
-                      payload.DBserver = ourselves;
+                      payload.DBServer = ourselves;
                       writeLocked({ part: "Current" }, 
                                   createCollectionAgency, 
                                   [ database, shard, payload ]);
@@ -449,6 +452,10 @@ function createLocalCollections (plannedCollections) {
                                        shard);
                           db._collection(shard).load();
                         }
+                        payload.error = false;
+                        payload.errorNum = 0;
+                        payload.errorMessage = "no error";
+                        payload.DBServer = ourselves;
 
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
@@ -483,7 +490,7 @@ function createLocalCollections (plannedCollections) {
                           payload.errorMessage = err3.errorMessage;
                         }
 
-                        payload.DBserver = ourselves;
+                        payload.DBServer = ourselves;
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
                                     [ database, shard, payload ]);
@@ -608,12 +615,14 @@ function cleanupCurrentCollections (plannedCollections) {
         if (collections.hasOwnProperty(collection)) {
           var shards = collections[collection];
           var shard;
-              
+                
           for (shard in shards) {
             if (shards.hasOwnProperty(shard)) {
-              if (! shardMap.hasOwnProperty(shard) ||
-                  shardMap[shard] !== ourselves) {
-          
+
+              if (shards[shard].DBServer === ourselves &&
+                  (! shardMap.hasOwnProperty(shard) ||
+                   shardMap[shard] !== ourselves)) {
+                // found a shard we are entered for but that we don't have locally
                 console.info("cleaning up entry for unknown shard '%s' of '%s/%s", 
                              shard,
                              database,
