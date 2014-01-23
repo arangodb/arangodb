@@ -807,7 +807,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 
       // Now take note of this shard and its responsible server:
       std::string DBserver = triagens::basics::JsonHelper::getStringValue
-                    (json, "DBserver", "");
+                    (json, "DBServer", "");
       if (DBserver != "") {
         _shardIds.insert(make_pair<ShardID, ServerID>(shardID, DBserver));
       }
