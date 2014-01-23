@@ -18,6 +18,7 @@
       this.dbView = new window.ClusterDatabaseView({
         collection: new window.ClusterDatabases()
       });
+      this.isMinified = false;
     },
 
     loadServer: function(e) {
@@ -26,12 +27,17 @@
       this.render(true);
     },
 
+    stopUpdating: function() {
+      this.dbView.stopUpdating();
+    },
+
     unrender: function() {
       $(this.el).html("");
       this.dbView.unrender();
     },
 
     render: function(minify){
+      this.isMinified = !!minify;
       if(!minify) {
         this.dbView.unrender();
       }

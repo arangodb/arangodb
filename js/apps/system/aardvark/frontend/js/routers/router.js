@@ -90,6 +90,16 @@
         self.handleResize();
       });
       this.handleResize();
+      this.bind("all", function(page) {
+        if(page === "route") {
+          return;
+        }
+        if (page !== "route:test") {
+          if (this.clusterDashboardView) {
+            this.clusterDashboardView.stopUpdating(); 
+          }
+        }
+      });
     },
 
     logsAllowed: function () {
