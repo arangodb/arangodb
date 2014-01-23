@@ -325,6 +325,7 @@ bool RestDocumentHandler::createDocument () {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
+    // json will be freed inside!
     return createDocumentCoordinator(collection, waitForSync, json);
   }
 #endif
@@ -404,9 +405,49 @@ bool RestDocumentHandler::createDocument () {
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
                                                      TRI_json_t* json) {
-  // Find collectionID from collection, which is the name
-  // ask ClusterInfo for the responsible shard
-  // send a synchronous request to that shard using ClusterComm
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  string const& dbname = _request->originalDatabaseName();
+  CollectionID const collname(collection);
+  string collid;
+
+  // First determine the collection ID from the name:
+  CollectionInfo collinfo = ci->getCollection(dbname, collname);
+  collid = collinfo.id();
+
+  // Now find the responsible shard:
+  ShardID shardID = ci->getResponsibleShard( collid, json, true );
+  if (shardID == "") {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateTransactionError(collection, TRI_ERROR_SHARD_GONE);
+    return false;
+  }
+
+  // Now sort out the _key attribute:
+  // FIXME: we have to be cleverer here, depending on shard attributes
+  uint64_t uid = ci->uniqid();
+  string _key = triagens::basics::StringUtils::itoa(uid);
+  TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                      TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
+                                                   _key.c_str(), _key.size()));
+
+  string body = JsonHelper::toString(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  // Send a synchronous request to that shard using ClusterComm:
+  ClusterCommResult* res;
+  map<string, string> headers;
+  res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
+                        triagens::rest::HttpRequest::HTTP_REQUEST_POST,
+                        "/_db/"+dbname+"/_api/document?collection="+
+                        StringUtils::urlEncode(collname)+"&waitForSync="+
+                        (waitForSync ? "true" : "false"),
+                        body.c_str(), body.size(), headers, 0.0);
+  
+  if (res->status != CL_COMM_SENT) {
+
+  }
   // if not successful prepare error and return false
   // prepare successful answer (created or accepted depending on waitForSync)
   return true;
