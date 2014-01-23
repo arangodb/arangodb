@@ -838,6 +838,22 @@ namespace triagens {
                                        double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection properties in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int setCollectionPropertiesCoordinator (string const& databaseName, 
+                                                string const& collectionID,
+                                                TRI_col_info_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection status in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int setCollectionStatusCoordinator (string const& databaseName, 
+                                            string const& collectionID,
+                                            TRI_vocbase_col_status_e status);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
@@ -880,6 +896,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ServerID getResponsibleServer (ShardID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard that is responsible for a document
+////////////////////////////////////////////////////////////////////////////////
+
+        ShardID getResponsibleShard (CollectionID const&, TRI_json_t const*,
+                                     bool docComplete);
 
       private:
 
@@ -948,7 +971,14 @@ namespace triagens {
                                         // from Current/DBServers
         bool                            _DBServersValid;
         std::map<ShardID, ServerID>     _shardIds;
-                                        // from Plan/Collections/ ???
+                                        // from Current/Collections/
+        std::map<CollectionID, TRI_shared_ptr<std::vector<std::string> > >
+                                        _shards;
+                                        // from Plan/Collections/
+                               // (may later come from Current/Colletions/ )
+        std::map<CollectionID, TRI_shared_ptr<std::vector<std::string> > >
+                                        _shardKeys;
+                                        // from Plan/Collections/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private static variables

@@ -2031,13 +2031,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    char const* originalDatabase = GetCurrentDatabaseName();
-    if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
+    char const* databaseName = GetCurrentDatabaseName();
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
       TRI_FreeCollectionInfoOptions(&parameter);
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, originalDatabase, parameter, vocbase);
+    v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, databaseName, parameter, vocbase);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return scope.Close(result);
@@ -4902,7 +4902,12 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // TODO: fix this
+    return scope.Close(v8::Number::New(0));
+  }
+#endif  
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -6114,6 +6119,31 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+    if (collection == 0) {
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    }
+
+    string const databaseName(collection->_dbName);
+    
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
+    }
+    
+    const std::string cid = StringUtils::itoa(collection->_cid);
+    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+  
+    return scope.Close(v8::Undefined());
+  }
+#endif
+
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
@@ -6251,8 +6281,64 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   
 #ifdef TRI_ENABLE_CLUSTER
   if (! collection->_isLocal) {
-    char const* originalDatabase = GetCurrentDatabaseName();
-    TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(std::string(originalDatabase), StringUtils::itoa(collection->_cid));
+    std::string const databaseName = std::string(collection->_dbName);
+    TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(databaseName, StringUtils::itoa(collection->_cid));
+
+    if (0 < argv.Length()) {
+      v8::Handle<v8::Value> par = argv[0];
+
+      if (par->IsObject()) {
+        v8::Handle<v8::Object> po = par->ToObject();
+
+        // extract doCompact flag
+        if (po->Has(v8g->DoCompactKey)) {
+          info._doCompact = TRI_ObjectToBoolean(po->Get(v8g->DoCompactKey));
+        }
+
+        // extract sync flag
+        if (po->Has(v8g->WaitForSyncKey)) {
+          info._waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
+        }
+
+        // extract the journal size
+        if (po->Has(v8g->JournalSizeKey)) {
+          info._maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(v8g->JournalSizeKey), false);
+
+          if (info._maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+            if (info._keyOptions != 0) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+            }
+            TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize too small");
+          }
+        }
+
+        if (po->Has(v8g->IsVolatileKey)) {
+          if (TRI_ObjectToBoolean(po->Get(v8g->IsVolatileKey)) != info._isVolatile) {
+            if (info._keyOptions != 0) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+            }
+            TRI_V8_EXCEPTION_PARAMETER(scope, "isVolatile option cannot be changed at runtime");
+          }
+        }
+
+        if (info._isVolatile && info._waitForSync) {
+          if (info._keyOptions != 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+          }
+          TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
+        }
+      }
+    
+      int res = ClusterInfo::instance()->setCollectionPropertiesCoordinator(databaseName, StringUtils::itoa(collection->_cid), &info);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        if (info._keyOptions != 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+        }
+        TRI_V8_EXCEPTION(scope, res);
+      }
+    }
+
 
     // return the current parameter set
     v8::Handle<v8::Object> result = v8::Object::New();
@@ -7015,13 +7101,13 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    char const* originalDatabase = GetCurrentDatabaseName();
+    std::string const databaseName = std::string(collection->_dbName);
     
-    if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(originalDatabase, StringUtils::itoa(collection->_cid));
+    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
     return scope.Close(v8::Number::New((int) ci.status()));
   } 
   // fallthru intentional 
@@ -7138,13 +7224,13 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    char const* originalDatabase = GetCurrentDatabaseName();
+    std::string const databaseName = std::string(collection->_dbName);
     
-    if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(originalDatabase, StringUtils::itoa(collection->_cid));
+    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
     return scope.Close(v8::Number::New((int) ci.type()));
   } 
   // fallthru intentional 
@@ -7179,13 +7265,30 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
+  int res;
+   
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    string const databaseName(collection->_dbName);
+    
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
+    }
+    
+    res = ClusterInfo::instance()->setCollectionStatusCoordinator(databaseName, StringUtils::itoa(collection->_cid), TRI_VOC_COL_STATUS_UNLOADED);
+  }
+  else {
+    res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
+  }
+#else 
+
+  res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
+
+#endif
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot unload collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::Undefined());
@@ -7512,13 +7615,13 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
 
   // if we are a coordinator, we need to fetch the collection info from the agency
   if (ServerState::instance()->isCoordinator()) {
-    char const* originalDatabase = GetCurrentDatabaseName();
+    char const* databaseName = GetCurrentDatabaseName();
   
-    if (! ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    colls = GetCollectionsCluster(vocbase, originalDatabase);
+    colls = GetCollectionsCluster(vocbase, databaseName);
   }
   else {
     colls = TRI_CollectionsVocBase(vocbase);
@@ -7573,10 +7676,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   TRI_vector_string_t names;
   if (ServerState::instance()->isCoordinator()) {
-    char const* originalDatabase = GetCurrentDatabaseName();
+    char const* databaseName = GetCurrentDatabaseName();
     
-    if (ClusterInfo::instance()->doesDatabaseExist(originalDatabase)) {
-      names = GetCollectionNamesCluster(vocbase, originalDatabase);
+    if (ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
+      names = GetCollectionNamesCluster(vocbase, databaseName);
     }
     else {
       TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
