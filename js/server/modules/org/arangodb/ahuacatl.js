@@ -3765,7 +3765,7 @@ function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   "use strict";
   
   if (!MATCHES(vertex, config.filterVertexExamples)) {
-    return config.vertexFilterType;
+    return config.vertexFilterMethod;
   }
 }
 
@@ -3841,7 +3841,7 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   if (params.filterVertices) {
     config.filter = TRAVERSAL_VERTEX_FILTER;
     config.filterVertexExamples = params.filterVertices;
-    config.vertexFilterType = params.vertexFilterType || ["prune","exclude"];
+    config.vertexFilterMethod = params.vertexFilterMethod || ["prune","exclude"];
   }
 
   if (params._sort) {
