@@ -17,12 +17,18 @@
 
     render: function(){
       $(this.el).html(this.template.render({}));
-      this.overView = new window.ClusterOverviewView({
-        dbservers: this.dbservers,
-        coordinators: this.coordinators
-      });
+      if (!this.overView) {
+        this.overView = new window.ClusterOverviewView({
+          dbservers: this.dbservers,
+          coordinators: this.coordinators
+        });
+      }
       this.overView.render();
       return this;
+    },
+
+    stopUpdating: function() {
+      this.overView.stopUpdating();
     }
 
   });

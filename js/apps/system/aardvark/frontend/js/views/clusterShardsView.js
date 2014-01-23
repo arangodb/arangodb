@@ -10,11 +10,30 @@
 
     template: templateEngine.createTemplate("clusterShardsView.ejs"),
 
+    initialize: function() {
+      var rerender = function() {
+        if ($(this.el).html().trim() !== "") {
+          this.render(this.db, this.col, this.server);
+        }
+      };
+      this.collection.bind("add", rerender.bind(this));
+      this.collection.bind("change", rerender.bind(this));
+      this.collection.bind("remove", rerender.bind(this));
+    },
+
     unrender: function() {
       $(this.el).html("");
     },
 
+    stopUpdating: function() {
+      this.collection.stopUpdating();
+    },
+
     render: function(db, col, server) {
+      this.db = db;
+      this.col = col;
+      this.server = server;
+      this.collection.startUpdating();
       $(this.el).html(this.template.render({
         shards: this.collection.getList(db, col, server)
       }));

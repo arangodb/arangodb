@@ -18,6 +18,12 @@
       this.colView = new window.ClusterCollectionView({
         collection: new window.ClusterCollections()
       });
+      var rerender = function() {
+        this.render(this.server);
+      };
+      this.collection.bind("add", rerender.bind(this));
+      this.collection.bind("change", rerender.bind(this));
+      this.collection.bind("remove", rerender.bind(this));
     },
 
     loadDatabase: function(e) {
@@ -30,8 +36,14 @@
       this.colView.unrender();
     },
 
+    stopUpdating: function() {
+      this.collection.stopUpdating();
+      this.colView.stopUpdating();
+    },
+
     render: function(server) {
       this.server = server;
+      this.collection.startUpdating();
       $(this.el).html(this.template.render({
         databases: this.collection.getList()
       }));

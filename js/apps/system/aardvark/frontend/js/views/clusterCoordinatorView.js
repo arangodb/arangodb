@@ -10,9 +10,6 @@
 
     template: templateEngine.createTemplate("clusterCoordinatorView.ejs"),
 
-    initialize: function() {
-    },
-
     unrender: function() {
       $(this.el).html("");
     },

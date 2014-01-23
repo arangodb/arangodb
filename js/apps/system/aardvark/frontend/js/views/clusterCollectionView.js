@@ -18,6 +18,12 @@
       this.shardsView = new window.ClusterShardsView({
         collection: new window.ClusterShards()
       });
+      var rerender = function() {
+        this.render(this.db, this.server);
+      };
+      this.collection.bind("add", rerender.bind(this));
+      this.collection.bind("change", rerender.bind(this));
+      this.collection.bind("remove", rerender.bind(this));
     },
 
     loadCollection: function(e) {
@@ -34,9 +40,15 @@
       this.shardsView.unrender();
     },
 
+    stopUpdating: function() {
+      this.collection.stopUpdating();
+      this.shardsView.stopUpdating();
+    },
+
     render: function(db, server) {
       this.db = db;
       this.server = server;
+      this.collection.startUpdating();
       $(this.el).html(this.template.render({
         collections: this.collection.getList(this.db)
       }));
