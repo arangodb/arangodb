@@ -410,11 +410,10 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   ClusterComm* cc = ClusterComm::instance();
   string const& dbname = _request->originalDatabaseName();
   CollectionID const collname(collection);
-  string collid;
 
   // First determine the collection ID from the name:
   CollectionInfo collinfo = ci->getCollection(dbname, collname);
-  collid = collinfo.id();
+  string collid = StringUtils::itoa(collinfo.id());
 
   // Now find the responsible shard:
   ShardID shardID = ci->getResponsibleShard( collid, json, true );
@@ -441,16 +440,39 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
                         triagens::rest::HttpRequest::HTTP_REQUEST_POST,
                         "/_db/"+dbname+"/_api/document?collection="+
-                        StringUtils::urlEncode(collname)+"&waitForSync="+
+                        StringUtils::urlEncode(shardID)+"&waitForSync="+
                         (waitForSync ? "true" : "false"),
-                        body.c_str(), body.size(), headers, 0.0);
+                        body.c_str(), body.size(), headers, 60.0);
   
-  if (res->status != CL_COMM_SENT) {
-
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    generateTransactionError(collection, TRI_ERROR_CLUSTER_TIMEOUT);
+    return false;
   }
-  // if not successful prepare error and return false
-  // prepare successful answer (created or accepted depending on waitForSync)
-  return true;
+  bool resultflag = true;
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (!res->result->isComplete()) {
+      generateTransactionError(collection, TRI_ERROR_CLUSTER_CONNECTION_LOST);
+      return false;
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    // this can be 400 or 404, we simply forward the result.
+    resultflag = false;
+    // We intentionally fall through here.
+  }
+  _response = createResponse(
+                   static_cast<rest::HttpResponse::HttpResponseCode>
+                              (res->result->getHttpReturnCode()));
+  //cout << "CreateDoc: result code: " << res->result->getHttpReturnCode() 
+  //     << endl;
+  _response->setContentType(res->result->getContentType(false));
+  //cout << "CreateDoc: contentType: " << res->result->getContentType(false)
+  //     << endl;
+  body = res->result->getBody().str();  // FIXME: a bad unnecessary copy!
+  //cout << "CreateDoc: body" << endl << body << endl;
+  //_response->body().appendText(body.c_str(), body.size());
+  return resultflag;
 }
 #endif
 
