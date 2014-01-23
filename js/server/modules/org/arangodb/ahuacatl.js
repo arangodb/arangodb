@@ -3770,7 +3770,7 @@ function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check typeweights of params.followEdges/params.followVertices
+/// @brief check typeweights of params.followEdges/params.filterVertices
 ////////////////////////////////////////////////////////////////////////////////
 
 function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples) {
@@ -3807,9 +3807,9 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   if (params.followEdges) {
     TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges);
   }
-  // check followVertices property
-  if (params.followVertices) {
-    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followVertices);
+  // check filterVertices property
+  if (params.filterVertices) {
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.filterVertices);
   }
 
   if (typeof params.visitor !== "function") {
