@@ -317,6 +317,9 @@ exports.Communication = function() {
     };
     this.getShards = function() {
       var info = this.info();
+      if (!info) {
+        return;
+      }
       return info.shards;
     };
     this.getShardsForServer = function(name) {
