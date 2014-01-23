@@ -140,3 +140,5 @@ Database Methods {#HandlingIndexesDatabaseMethods}
 @CLEARPAGE
 @anchor HandlingIndexesDbDelete
 @copydetails JSF_ArangoDatabase_prototype__dropIndex
+
+@BNAVIGATE_HandlingIndexes

@@ -293,3 +293,5 @@ to the error messages file, which is converted to js and C header files using
 Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a `make unittests` run. You also need to
 install the Boost test framework for this.
+
+@BNAVIGATE_Compiling

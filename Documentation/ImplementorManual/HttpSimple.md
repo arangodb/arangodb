@@ -81,3 +81,5 @@ dispose the server-side cursor afterwards.
 @CLEARPAGE
 @anchor HttpSimpleLast
 @copydetails JSA_put_api_simple_last
+
+@BNAVIGATE_HttpSimple

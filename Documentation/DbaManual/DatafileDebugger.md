@@ -79,3 +79,5 @@ If you answer `Y`, the corrupted entry will be removed.
 If you see a corruption in a datafile (and not a journal), then something is
 terrible wrong. These files are immutable and never changed by ArangoDB. A
 corruption in such a file is an indication of a hard-disk failure.
+
+@BNAVIGATE_DbaManualDatafileDebugger

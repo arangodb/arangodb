@@ -119,3 +119,4 @@ following attribute naming constraints are not violated:
       
       { "a" : 1, "b": 4 }
 
+@BNAVIGATE_NamingConventions

@@ -25,3 +25,5 @@ monitoring of the server.
 @CLEARPAGE
 @anchor HttpSystemAdminStatisticsDescription
 @copydetails JSF_get_admin_statistics_description
+
+@BNAVIGATE_HttpSystem

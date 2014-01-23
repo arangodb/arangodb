@@ -98,3 +98,4 @@ applications until they are explicitly installed for the particular database.
 
 @copydoc GlossaryDatabaseOrganisation
 
+@BNAVIGATE_HandlingDatabases

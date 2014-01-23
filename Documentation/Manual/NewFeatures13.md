@@ -284,3 +284,5 @@ Miscelleanous changes{#NewFeatures13Misc}
   The result will now contain an attribute `attributes` with a sub-attribute `count`.
   This value provides the number of different attributes that are or have been used
   in the collection.
+
+@BNAVIGATE_NewFeatures13

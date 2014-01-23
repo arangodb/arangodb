@@ -619,3 +619,5 @@ be turned off.
 Transactions are logged to the event log on the master as an uninterrupted sequence.
 While a transaction is written to the event log, the event log is blocked for other
 writes. Transactions should thus be as small as possible.
+
+@BNAVIGATE_UserManualReplication
