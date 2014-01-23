@@ -3758,6 +3758,38 @@ function TRAVERSAL_FILTER (config, vertex, edge, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief vertex filter callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
+  "use strict";
+  
+  if (!MATCHES(vertex, config.filterVertexExamples)) {
+    return config.vertexFilterType;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check typeweights of params.followEdges/params.followVertices
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples) {
+  "use strict";
+  
+  if (TYPEWEIGHT(examples) !== TYPEWEIGHT_LIST) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+  if (examples.length === 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+  examples.forEach(function (example) {
+    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+    }
+  });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3770,20 +3802,14 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
 
   vertexCollection = COLLECTION(vertexCollection);
   edgeCollection   = COLLECTION(edgeCollection);
-
+  
   // check followEdges property
   if (params.followEdges) {
-    if (TYPEWEIGHT(params.followEdges) !== TYPEWEIGHT_LIST) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-    }
-    if (params.followEdges.length === 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-    }
-    params.followEdges.forEach(function (example) {
-      if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-      }
-    });
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges);
+  }
+  // check followVertices property
+  if (params.followVertices) {
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followVertices);
   }
 
   if (typeof params.visitor !== "function") {
@@ -3810,6 +3836,12 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   if (params.followEdges) {
     config.expandFilter = TRAVERSAL_FILTER;
     config.expandEdgeExamples = params.followEdges;
+  }
+
+  if (params.filterVertices) {
+    config.filter = TRAVERSAL_VERTEX_FILTER;
+    config.filterVertexExamples = params.filterVertices;
+  	config.vertexFilterType = params.vertexFilterType || ["prune","exclude"];
   }
 
   if (params._sort) {
