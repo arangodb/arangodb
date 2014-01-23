@@ -325,6 +325,7 @@ bool RestDocumentHandler::createDocument () {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
+    // json will be freed inside!
     return createDocumentCoordinator(collection, waitForSync, json);
   }
 #endif
@@ -404,12 +405,74 @@ bool RestDocumentHandler::createDocument () {
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
                                                      TRI_json_t* json) {
-  // Find collectionID from collection, which is the name
-  // ask ClusterInfo for the responsible shard
-  // send a synchronous request to that shard using ClusterComm
-  // if not successful prepare error and return false
-  // prepare successful answer (created or accepted depending on waitForSync)
-  return true;
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  string const& dbname = _request->originalDatabaseName();
+  CollectionID const collname(collection);
+
+  // First determine the collection ID from the name:
+  CollectionInfo collinfo = ci->getCollection(dbname, collname);
+  string collid = StringUtils::itoa(collinfo.id());
+
+  // Now find the responsible shard:
+  ShardID shardID = ci->getResponsibleShard( collid, json, true );
+  if (shardID == "") {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateTransactionError(collection, TRI_ERROR_SHARD_GONE);
+    return false;
+  }
+
+  // Now sort out the _key attribute:
+  // FIXME: we have to be cleverer here, depending on shard attributes
+  uint64_t uid = ci->uniqid();
+  string _key = triagens::basics::StringUtils::itoa(uid);
+  TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                      TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
+                                                   _key.c_str(), _key.size()));
+
+  string body = JsonHelper::toString(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  // Send a synchronous request to that shard using ClusterComm:
+  ClusterCommResult* res;
+  map<string, string> headers;
+  res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
+                        triagens::rest::HttpRequest::HTTP_REQUEST_POST,
+                        "/_db/"+dbname+"/_api/document?collection="+
+                        StringUtils::urlEncode(shardID)+"&waitForSync="+
+                        (waitForSync ? "true" : "false"),
+                        body.c_str(), body.size(), headers, 60.0);
+  
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    generateTransactionError(collection, TRI_ERROR_CLUSTER_TIMEOUT);
+    return false;
+  }
+  bool resultflag = true;
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (!res->result->isComplete()) {
+      generateTransactionError(collection, TRI_ERROR_CLUSTER_CONNECTION_LOST);
+      return false;
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    // this can be 400 or 404, we simply forward the result.
+    resultflag = false;
+    // We intentionally fall through here.
+  }
+  _response = createResponse(
+                   static_cast<rest::HttpResponse::HttpResponseCode>
+                              (res->result->getHttpReturnCode()));
+  //cout << "CreateDoc: result code: " << res->result->getHttpReturnCode() 
+  //     << endl;
+  _response->setContentType(res->result->getContentType(false));
+  //cout << "CreateDoc: contentType: " << res->result->getContentType(false)
+  //     << endl;
+  body = res->result->getBody().str();  // FIXME: a bad unnecessary copy!
+  //cout << "CreateDoc: body" << endl << body << endl;
+  //_response->body().appendText(body.c_str(), body.size());
+  return resultflag;
 }
 #endif
 

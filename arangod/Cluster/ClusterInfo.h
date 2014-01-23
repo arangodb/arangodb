@@ -595,7 +595,7 @@ namespace triagens {
           if (it != _jsons.end()) {
             TRI_json_t* _json = _jsons.begin()->second;
             return triagens::basics::JsonHelper::getStringValue
-                               (_json, "DBserver", "");
+                               (_json, "DBServer", "");
           }
           return string("");
         }

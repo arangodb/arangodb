@@ -25,5 +25,3 @@ echo start arangod with:
 echo "Pavel:   bin/arangod --cluster.my-id Pavel --cluster.agency-prefix $NAME --cluster.agency-endpoint tcp://127.0.0.1:4001 --server.endpoint tcp://127.0.0.1:8530 data-pavel"
 echo "Perry:   bin/arangod --cluster.my-id Perry --cluster.agency-prefix $NAME --cluster.agency-endpoint tcp://127.0.0.1:4001 --server.endpoint tcp://127.0.0.1:8531 data-perry"
 echo "Claus:   bin/arangod --cluster.my-id Claus --cluster.agency-prefix $NAME --cluster.agency-endpoint tcp://127.0.0.1:4001 --server.endpoint tcp://127.0.0.1:8529 data-claus"
-echo test with:
-echo curl -X GET http://localhost:8529/_admin/sharding-test/_admin/time

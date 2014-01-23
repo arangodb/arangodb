@@ -203,7 +203,7 @@ void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer and cleans the buffer
 ///
-/// @warning You must call free after or destroy using the string buffer.
+/// @warning You must call free or destroy after using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
