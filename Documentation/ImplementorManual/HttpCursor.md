@@ -93,3 +93,4 @@ Accessing Cursors via HTTP {#HttpCursorHttp}
 @anchor HttpCursorDelete
 @copydetails JSF_delete_api_cursor
 
+@BNAVIGATE_HttpCursor

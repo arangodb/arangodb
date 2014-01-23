@@ -119,3 +119,5 @@ Working with Documents using REST {#RestDocumentHttp}
 @CLEARPAGE
 @anchor RestDocumentReadAll
 @copydetails triagens::arango::RestDocumentHandler::readAllDocuments
+
+@BNAVIGATE_RestDocument

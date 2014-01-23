@@ -46,3 +46,5 @@ You can configure the durability behavior on a per collection basis.
 Use the ArangoDB shell to change these properties.
 
 @copydetails JS_PropertiesVocbaseCol
+
+@BNAVIGATE_DbaManualBasics

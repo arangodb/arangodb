@@ -20,3 +20,5 @@ If anything goes wrong during or shortly after the upgrade:
 - Start the "old" version again
 
 It is not supported to use datafiles created or modified by a newer version of ArangoDB with an older ArangoDB version. For example, it is unsupported and is likely to cause problems when using 1.4 datafiles with an ArangoDB 1.3 instance.
+
+@BNAVIGATE_UpgradingGeneral

@@ -44,3 +44,5 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{CommandLine}: All the command-line options
 
 @CHAPTER_REF{Glossary}: The obvious definitions
+
+@BNAVIGATE_UserManual

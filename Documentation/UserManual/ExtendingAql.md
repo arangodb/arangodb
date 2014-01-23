@@ -82,3 +82,4 @@ To get an overview of which functions are currently registered, the
 
 @copydetails JSF_aqlfunctions_toArray
 
+@BNAVIGATE_ExtendingAql

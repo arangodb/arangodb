@@ -147,3 +147,4 @@ The *API* tab provides an overview of ArangoDB's built-in HTTP REST API, with
 documentation and examples. It should be consulted when there is doubt about API
 URLs, parameters etc.
 
+@BNAVIGATE_UserManualWebInterface

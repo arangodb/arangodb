@@ -200,3 +200,5 @@ Edge Methods{#JSModuleGraphEdge}
 @CLEARPAGE
 @anchor JSModuleGraphEdgeSetProperty
 @copydetails JSF_Edge_prototype_setProperty
+
+@BNAVIGATE_JSModuleGraph

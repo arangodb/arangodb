@@ -1008,3 +1008,5 @@ Here are the individual steps to carry out:
 
 More information on how to deploy applications from different sources can be
 found in the @ref UserManualFoxxManager "Foxx Manager manual".
+
+@BNAVIGATE_UserManualFoxx

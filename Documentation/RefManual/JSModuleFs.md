@@ -44,3 +44,5 @@ The implementation follows the CommonJS specification
 @CLEARPAGE
 @anchor JSModuleFsRemove
 @copydetails JS_Remove
+
+@BNAVIGATE_JSModuleFs
