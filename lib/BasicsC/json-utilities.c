@@ -27,6 +27,7 @@
 
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/hashes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -764,6 +765,114 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
   result = MergeRecursive(zone, lhs, rhs, nullMeansRemove);
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute a hash value for a JSON document, starting with a given
+/// initial hash value. Note that a NULL pointer for json hashes to the
+/// same value as a json pointer that points to a JSON value `null`.
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
+  size_t n;
+  size_t i;
+  uint64_t tmphash;
+  TRI_json_t const* subjson;
+
+  if (0 == object) {
+    return TRI_FnvHashBlock(hash, "null", 4);   // strlen("null")
+  }
+  switch (object->_type) {
+    case TRI_JSON_UNUSED: {
+      return hash;
+    }
+
+    case TRI_JSON_NULL: {
+      return TRI_FnvHashBlock(hash, "null", 4);   // strlen("null")
+    }
+
+    case TRI_JSON_BOOLEAN: {
+      if (object->_value._boolean) {
+        return TRI_FnvHashBlock(hash, "true", 4);  // strlen("true")
+      }
+      else {
+        return TRI_FnvHashBlock(hash, "false", 5);  // strlen("true")
+      }
+    }
+
+    case TRI_JSON_NUMBER: {
+      return TRI_FnvHashBlock(hash, (char const*) &(object->_value._number),
+                                    sizeof(object->_value._number));
+    }
+
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE: {
+      return TRI_FnvHashBlock(hash, object->_value._string.data,
+                                    object->_value._string.length);
+    }
+
+    case TRI_JSON_ARRAY: {
+      n = object->_value._objects._length;
+      tmphash = hash;
+      for (i = 0;  i < n;  i += 2) {
+        subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
+        assert(TRI_IsStringJson(subjson));
+        tmphash ^= HashJsonRecursive(hash, subjson);
+        subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects,
+                                                   i+1);
+        tmphash ^= HashJsonRecursive(hash, subjson);
+      }
+      return tmphash;
+    }
+
+    case TRI_JSON_LIST: {
+      n = object->_value._objects._length;
+      for (i = 0;  i < n;  ++i) {
+        subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
+        hash = HashJsonRecursive(hash, subjson);
+      }
+      return hash;
+    }
+  }
+  return hash;   // never reached
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute a hash value for a JSON document. Note that a NULL pointer
+/// for json hashes to the same value as a json pointer that points to a
+/// JSON value `null`.
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_HashJson (TRI_json_t const* json) {
+  return HashJsonRecursive(TRI_FnvHashBlockInitial(), json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute a hash value for a JSON document depending on a list
+/// of attributes. This is used for sharding to map documents to shards.
+///
+/// The attributes array `attributes` has to contain exactly `nrAttributes`
+/// pointers to zero-terminated strings.
+/// Note that all JSON values given for `json` that are not JSON arrays
+/// hash to the same value, which is not the same value a JSON array gets
+/// that does not contain any of the specified attributes.
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
+                                   char const *attributes[],
+                                   int nrAttributes) {
+  int i;
+  TRI_json_t const* subjson;
+  uint64_t hash;
+
+  hash = TRI_FnvHashBlockInitial();
+  if (TRI_IsArrayJson(json)) {
+    for (i = 0; i < nrAttributes; i++) {
+      subjson = TRI_LookupArrayJson(json, attributes[i]);
+      hash = HashJsonRecursive(hash, subjson);
+    }
+  }
+  return hash;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

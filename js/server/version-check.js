@@ -47,6 +47,7 @@
   var fs = require("fs");
   var console = require("console");
   var userManager = require("org/arangodb/users");
+  var cluster = require("org/arangodb/cluster");
   var db = internal.db;
 
   // whether or not we are initialising an empty / a new database
@@ -259,292 +260,326 @@
       });
     }
 
-    // set up the collection _users 
-    addTask("setupUsers", "setup _users collection", function () {
-      return createSystemCollection("_users", { waitForSync : true });
-    });
+    if (! cluster.isCoordinator()) {
+      // set up the collection _users 
+      addTask("setupUsers", "setup _users collection", function () {
+        return createSystemCollection("_users", { waitForSync : true });
+      });
+    }
 
-    // create a unique index on "user" attribute in _users
-    addTask("createUsersIndex", 
-            "create index on 'user' attribute in _users collection",
-      function () {
+    if (! cluster.isCoordinator()) {
+      // create a unique index on "user" attribute in _users
+      addTask("createUsersIndex", 
+              "create index on 'user' attribute in _users collection",
+        function () {
+          var users = getCollection("_users");
+          if (! users) {
+            return false;
+          }
+
+          users.ensureUniqueConstraint("user");
+
+          return true;
+        }
+      );
+    }
+  
+    if (! cluster.isCoordinator()) {
+      // add a default root user with no passwd
+      addTask("addDefaultUser", "add default root user", function () {
         var users = getCollection("_users");
         if (! users) {
           return false;
         }
 
-        users.ensureUniqueConstraint("user");
+        if (args && args.users) {
+          args.users.forEach(function(user) {
+            userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          });
+        }
+
+        if (users.count() === 0) {
+          // only add account if user has not created his/her own accounts already
+          userManager.save("root", "", true);
+        }
 
         return true;
       });
+    }
   
-    // add a default root user with no passwd
-    addTask("addDefaultUser", "add default root user", function () {
-      var users = getCollection("_users");
-      if (! users) {
-        return false;
-      }
-
-      if (args && args.users) {
-        args.users.forEach(function(user) {
-          userManager.save(user.username, user.passwd, user.active, user.extra || { });
-        });
-      }
-
-      if (users.count() === 0) {
-        // only add account if user has not created his/her own accounts already
-        userManager.save("root", "", true);
-      }
-
-      return true;
-    });
+    if (! cluster.isCoordinator()) {
+      // set up the collection _graphs
+      addTask("setupGraphs", "setup _graphs collection", function () {
+        return createSystemCollection("_graphs", { waitForSync : true });
+      });
+    }
   
-    // set up the collection _graphs
-    addTask("setupGraphs", "setup _graphs collection", function () {
-      return createSystemCollection("_graphs", { waitForSync : true });
-    });
-  
-    // create a unique index on name attribute in _graphs
-    addTask("createGraphsIndex",
-            "create index on name attribute in _graphs collection",
-      function () {
-        var graphs = getCollection("_graphs");
+    if (! cluster.isCoordinator()) {
+      // create a unique index on name attribute in _graphs
+      addTask("createGraphsIndex",
+              "create index on name attribute in _graphs collection",
+        function () {
+          var graphs = getCollection("_graphs");
 
-        if (! graphs) {
+          if (! graphs) {
+            return false;
+          }
+
+          graphs.ensureUniqueConstraint("name");
+
+          return true;
+        }
+      );
+    }
+
+    if (! cluster.isCoordinator()) {
+      // make distinction between document and edge collections
+      addUpgradeTask("addCollectionVersion",
+                    "set new collection type for edge collections and update collection version",
+        function () {
+          var collections = db._collections();
+          var i;
+
+          for (i in collections) {
+            if (collections.hasOwnProperty(i)) {
+              var collection = collections[i];
+
+              try {
+                if (collection.version() > 1) {
+                  // already upgraded
+                  continue;
+                }
+
+                if (collection.type() === 3) {
+                  // already an edge collection
+                  collection.setAttribute("version", 2);
+                  continue;
+                }
+
+                if (collection.count() > 0) {
+                  var isEdge = true;
+                  // check the 1st 50 documents from a collection
+                  var documents = collection.ALL(0, 50);
+                  var j;
+
+                  for (j in documents) {
+                    if (documents.hasOwnProperty(j)) {
+                      var doc = documents[j];
+
+                      // check if documents contain both _from and _to attributes
+                      if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
+                        isEdge = false;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (isEdge) {
+                    collection.setAttribute("type", 3);
+                    logger.log("made collection '" + collection.name() + " an edge collection");
+                  }
+                }
+                collection.setAttribute("version", 2);
+              }
+              catch (e) {
+                logger.error("could not upgrade collection '" + collection.name() + "'");
+                return false;
+              }
+            }
+          }
+
+          return true;
+        }
+      );
+    }
+    
+    if (! cluster.isCoordinator()) {
+      // create the _modules collection
+      addTask("createModules", "setup _modules collection", function () {
+        return createSystemCollection("_modules");
+      });
+    }
+    
+    if (! cluster.isCoordinator()) {
+      // create the _routing collection
+      addTask("createRouting", "setup _routing collection", function () {
+        // needs to be big enough for assets
+        return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
+      });
+    }
+    
+    if (! cluster.isCoordinator()) {
+      // create the default route in the _routing collection
+      addTask("insertRedirectionsAll", "insert default routes for admin interface", function () {
+        var routing = getCollection("_routing");
+
+        if (! routing) {
           return false;
         }
 
-        graphs.ensureUniqueConstraint("name");
+        // first, check for "old" redirects
+        routing.toArray().forEach(function (doc) {
+          // check for specific redirects
+          if (doc.url && doc.action && doc.action.options && doc.action.options.destination) {
+            if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) && 
+                doc.action.options.destination.match(/_admin\/(html|aardvark)/)) {
+              // remove old, non-working redirect
+              routing.remove(doc);
+            }
+          }
+        });
+
+        // add redirections to new location
+        [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
+          routing.save({
+            url: src,
+            action: {
+              "do": "org/arangodb/actions/redirectRequest",
+              options: {
+                permanently: true,
+                destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
+              }
+            },
+            priority: -1000000
+          });
+        });
 
         return true;
       });
-
-    // make distinction between document and edge collections
-    addUpgradeTask("addCollectionVersion",
-                   "set new collection type for edge collections and update collection version",
-      function () {
+    }
+    
+    if (! cluster.isCoordinator()) {
+      // update markers in all collection datafiles to key markers
+      addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
         var collections = db._collections();
         var i;
-
+        
         for (i in collections) {
           if (collections.hasOwnProperty(i)) {
             var collection = collections[i];
 
             try {
-              if (collection.version() > 1) {
+              if (collection.version() >= 3) {
                 // already upgraded
                 continue;
               }
 
-              if (collection.type() === 3) {
-                // already an edge collection
-                collection.setAttribute("version", 2);
-                continue;
+              if (collection.upgrade()) {
+                // success
+                collection.setAttribute("version", 3);
               }
-
-              if (collection.count() > 0) {
-                var isEdge = true;
-                // check the 1st 50 documents from a collection
-                var documents = collection.ALL(0, 50);
-                var j;
-
-                for (j in documents) {
-                  if (documents.hasOwnProperty(j)) {
-                    var doc = documents[j];
-
-                    // check if documents contain both _from and _to attributes
-                    if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
-                      isEdge = false;
-                      break;
-                    }
-                  }
-                }
-
-                if (isEdge) {
-                  collection.setAttribute("type", 3);
-                  logger.log("made collection '" + collection.name() + " an edge collection");
-                }
+              else {
+                // fail
+                logger.error("could not upgrade collection datafiles for '"
+                              + collection.name() + "'");
+                return false;
               }
-              collection.setAttribute("version", 2);
             }
             catch (e) {
-              logger.error("could not upgrade collection '" + collection.name() + "'");
-              return false;
-            }
-          }
-        }
-
-        return true;
-      });
-    
-    // create the _modules collection
-    addTask("createModules", "setup _modules collection", function () {
-      return createSystemCollection("_modules");
-    });
-    
-    // create the _routing collection
-    addTask("createRouting", "setup _routing collection", function () {
-      // needs to be big enough for assets
-      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
-    });
-    
-    // create the default route in the _routing collection
-    addTask("insertRedirectionsAll", "insert default routes for admin interface", function () {
-      var routing = getCollection("_routing");
-
-      if (! routing) {
-        return false;
-      }
-
-      // first, check for "old" redirects
-      routing.toArray().forEach(function (doc) {
-        // check for specific redirects
-        if (doc.url && doc.action && doc.action.options && doc.action.options.destination) {
-          if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) && 
-              doc.action.options.destination.match(/_admin\/(html|aardvark)/)) {
-            // remove old, non-working redirect
-            routing.remove(doc);
-          }
-        }
-      });
-
-      // add redirections to new location
-      [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
-        routing.save({
-          url: src,
-          action: {
-            "do": "org/arangodb/actions/redirectRequest",
-            options: {
-              permanently: true,
-              destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
-            }
-          },
-          priority: -1000000
-        });
-      });
-
-      return true;
-    });
-    
-    // update markers in all collection datafiles to key markers
-    addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
-      var collections = db._collections();
-      var i;
-      
-      for (i in collections) {
-        if (collections.hasOwnProperty(i)) {
-          var collection = collections[i];
-
-          try {
-            if (collection.version() >= 3) {
-              // already upgraded
-              continue;
-            }
-
-            if (collection.upgrade()) {
-              // success
-              collection.setAttribute("version", 3);
-            }
-            else {
-              // fail
-              logger.error("could not upgrade collection datafiles for '"
+              logger.error("could not upgrade collection datafiles for '" 
                             + collection.name() + "'");
               return false;
             }
           }
-          catch (e) {
-            logger.error("could not upgrade collection datafiles for '" 
-                          + collection.name() + "'");
+        }
+
+        return true;
+      });
+    }
+  
+    if (! cluster.isCoordinator()) {
+      // set up the collection _aal
+      addTask("setupAal", "setup _aal collection", function () {
+        return createSystemCollection("_aal", { waitForSync : true });
+      });
+      
+      // create a unique index on collection attribute in _aal
+      addTask("createAalIndex",
+              "create index on collection attribute in _aal collection",
+        function () {
+          var aal = getCollection("_aal");
+
+          if (! aal) {
             return false;
           }
-        }
-      }
 
-      return true;
-    });
-  
-    // set up the collection _aal
-    addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { waitForSync : true });
-    });
+          aal.ensureUniqueConstraint("name", "version");
+
+          return true;
+      });
+    }
     
-    // create a unique index on collection attribute in _aal
-    addTask("createAalIndex",
-            "create index on collection attribute in _aal collection",
-      function () {
-        var aal = getCollection("_aal");
+    if (! cluster.isCoordinator()) {
+      // set up the collection _aqlfunctions
+      addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
+        return createSystemCollection("_aqlfunctions");
+      });
+    }
 
-        if (! aal) {
+    if (! cluster.isCoordinator()) {
+      // set up the collection _trx
+      addTask("setupTrx", "setup _trx collection", function () {
+        return createSystemCollection("_trx", { waitForSync : false });
+      });
+    }
+
+    if (! cluster.isCoordinator()) {
+      // set up the collection _replication
+      addTask("setupReplication", "setup _replication collection", function () {
+        return createSystemCollection("_replication", { waitForSync : false });
+      });
+    }
+
+    if (! cluster.isCoordinator()) {
+      // migration aql function names
+      addUpgradeTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
+        var funcs = getCollection('_aqlfunctions');
+
+        if (! funcs) {
           return false;
         }
 
-        aal.ensureUniqueConstraint("name", "version");
+        var result = true;
+        funcs.toArray().forEach(function(f) {
+          var oldKey = f._key;
+          var newKey = oldKey.replace(/:{1,}/g, '::');
+
+          if (oldKey !== newKey) {
+            try {
+              var doc = { 
+                _key: newKey.toUpperCase(), 
+                name: newKey, 
+                code: f.code, 
+                isDeterministic: f.isDeterministic 
+              };
+               
+              funcs.save(doc);
+              funcs.remove(oldKey);
+            }
+            catch (err) {
+              result = false;
+            }
+          }
+        });
+
+        return result;
+      });
+    }
+
+    if (! cluster.isCoordinator()) {
+      addUpgradeTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
+        var potentialFoxxes = getCollection('_routing');
+
+        potentialFoxxes.iterate(function (maybeFoxx) {
+          if (maybeFoxx.foxxMount) {
+            // This is a Foxx! Let's delete it
+            potentialFoxxes.remove(maybeFoxx._id);
+          }
+        });
 
         return true;
-    });
-    
-    // set up the collection _aqlfunctions
-    addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-      return createSystemCollection("_aqlfunctions");
-    });
-
-    // set up the collection _trx
-    addTask("setupTrx", "setup _trx collection", function () {
-      return createSystemCollection("_trx", { waitForSync : false });
-    });
-
-    // set up the collection _replication
-    addTask("setupReplication", "setup _replication collection", function () {
-      return createSystemCollection("_replication", { waitForSync : false });
-    });
-
-    // migration aql function names
-    addUpgradeTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
-      var funcs = getCollection('_aqlfunctions');
-
-      if (! funcs) {
-        return false;
-      }
-
-      var result = true;
-      funcs.toArray().forEach(function(f) {
-        var oldKey = f._key;
-        var newKey = oldKey.replace(/:{1,}/g, '::');
-
-        if (oldKey !== newKey) {
-          try {
-            var doc = { 
-              _key: newKey.toUpperCase(), 
-              name: newKey, 
-              code: f.code, 
-              isDeterministic: f.isDeterministic 
-            };
-             
-            funcs.save(doc);
-            funcs.remove(oldKey);
-          }
-          catch (err) {
-            result = false;
-          }
-        }
       });
-
-      return result;
-    });
-
-    addUpgradeTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
-      var potentialFoxxes = getCollection('_routing');
-
-      potentialFoxxes.iterate(function (maybeFoxx) {
-        if (maybeFoxx.foxxMount) {
-          // This is a Foxx! Let's delete it
-          potentialFoxxes.remove(maybeFoxx._id);
-        }
-      });
-
-      return true;
-    });
-
+    }
 
     
     // loop through all tasks and execute them
