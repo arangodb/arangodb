@@ -130,3 +130,5 @@ Other Replication Commands {#HttpReplicationOtherCommands}
 
 @anchor HttpReplicationServerId
 @copydetails triagens::arango::RestReplicationHandler::handleCommandServerId
+
+@BNAVIGATE_HttpReplication

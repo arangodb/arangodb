@@ -29,3 +29,4 @@ Executing Transactions via HTTP {#HttpTransactionsHttp}
 @anchor HttpTransactionsPost
 @copydetails JSF_post_api_transaction
 
+@BNAVIGATE_HttpTransactions

@@ -1834,3 +1834,5 @@ operator is again a list.
 In the above example, the attribute `name` is accessed for each element in the
 list `u.friends`. The result is a flat list of friend names, made available as
 the attribute `friendNames`.
+
+@BNAVIGATE_Aql

@@ -128,3 +128,4 @@ After that, run the following command:
     
     unix> arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
 
+@BNAVIGATE_RestoreManual

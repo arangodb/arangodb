@@ -136,3 +136,5 @@ and that these contain references to existing collections.
 
 Please also note that it is not possible to create a new edge collection on the
 fly using the `createCollection` parameter.
+
+@BNAVIGATE_HttpImport

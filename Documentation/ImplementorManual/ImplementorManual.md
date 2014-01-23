@@ -29,3 +29,5 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @if LATEX
 @CHAPTER_REF{Glossary}
 @endif
+
+@BNAVIGATE_ImplementorManual

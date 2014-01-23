@@ -378,3 +378,5 @@ To most relevant `arangosh` options to pass to the `foxx-manager` will be:
 
 These options allow you to use the foxx-manager with a different database or with another
 than the default user.
+
+@BNAVIGATE_UserManualFoxxManager

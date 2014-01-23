@@ -95,3 +95,5 @@ part request failed (with status code 404), the `x-arango-errors`
 header of the overall response is `1`:
 
 @verbinclude api-batch-fail-response
+
+@BNAVIGATE_HttpBatch

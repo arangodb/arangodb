@@ -117,3 +117,5 @@ applications until they are explicitly installed for the particular database.
 @copydoc GlossaryDatabaseName
 
 @copydoc GlossaryDatabaseOrganisation
+
+@BNAVIGATE_HttpDatabase

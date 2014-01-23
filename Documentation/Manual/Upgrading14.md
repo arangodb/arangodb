@@ -525,3 +525,5 @@ properly with ArangoDB 1.4:
   in development mode using the `--javascript.dev-app-path` option. This will 
   either print or log (depending on configuration) errors occurring in Foxx 
   applications.
+
+@BNAVIGATE_Upgrading14

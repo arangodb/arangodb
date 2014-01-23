@@ -115,10 +115,13 @@ def generate(l, h):
 
         if prev == "":
             print 'ALIASES += "NAVIGATE_%s=@NAVIGATE_FIRST{%s,%s}"' % (entry,home,next)
+            print 'ALIASES += "BNAVIGATE_%s=@BNAVIGATE_FIRST{%s,%s}"' % (entry,home,next)
         elif next == "":
             print 'ALIASES += "NAVIGATE_%s=@NAVIGATE_LAST{%s,%s}"' % (entry,prev,home)
+            print 'ALIASES += "BNAVIGATE_%s=@BNAVIGATE_LAST{%s,%s}"' % (entry,prev,home)
         else:
             print 'ALIASES += "NAVIGATE_%s=@NAVIGATE{%s,%s,%s}"' % (entry,prev,home,next)
+            print 'ALIASES += "BNAVIGATE_%s=@BNAVIGATE{%s,%s,%s}"' % (entry,prev,home,next)
 
 generate(books, None)
 generate(chapters, homes)
