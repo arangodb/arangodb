@@ -193,7 +193,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangodump.conf");
+  BaseClient.parse(options, description, "", argc, argv, "arangodump.conf");
   
   if (1 == arguments.size()) {
     OutputDirectory = arguments[0];

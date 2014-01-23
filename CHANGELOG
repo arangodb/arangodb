@@ -1,6 +1,8 @@
 v1.4.7 (XXXX-XX-XX)
 -------------------
 
+* issue #744: Add usage example arangoimp from Command line
+
 * issue #738: added __dirname, __filename pseudo-globals. Fixes #733. (@by pluma)
 
 * mount all Foxx applications in system apps directory on startup
