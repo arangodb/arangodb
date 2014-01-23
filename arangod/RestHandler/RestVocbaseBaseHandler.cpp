@@ -437,6 +437,13 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       generatePreconditionFailed(_resolver.getCollectionId(collectionName), key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
 
+#ifdef TRI_ENABLE_CLUSTER
+    case TRI_ERROR_SHARD_GONE:
+      generateError(HttpResponse::SERVER_ERROR, res, 
+                    "coordinator: no responsible shard found");
+      return;
+#endif
+
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "failed with error: " + string(TRI_errno_string(res)));
   }
