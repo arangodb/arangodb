@@ -283,6 +283,9 @@ extern "C" {
 /// - 1465: @LIT{no responsible shard found}
 ///   Will be raised when a coordinator in a cluster cannot determine the shard
 ///   that is responsible for a given document.
+/// - 1466: @LIT{cluster internal HTTP connection broken}
+///   Will be raised when a coordinator in a cluster loses an HTTP connection
+///   to a DBserver in the cluster whilst transferring data.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1637,6 +1640,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SHARD_GONE                                              (1465)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1466: ERROR_CLUSTER_CONNECTION_LOST
+///
+/// cluster internal HTTP connection broken
+///
+/// Will be raised when a coordinator in a cluster loses an HTTP connection to
+/// a DBserver in the cluster whilst transferring data.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1466)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

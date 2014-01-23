@@ -442,6 +442,9 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       generateError(HttpResponse::SERVER_ERROR, res, 
                     "coordinator: no responsible shard found");
       return;
+    case TRI_ERROR_CLUSTER_TIMEOUT:
+      generateError(HttpResponse::SERVER_ERROR, res);
+      return;
 #endif
 
     default:
