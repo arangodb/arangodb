@@ -1,4 +1,4 @@
-.TH foxx-manager 8 "Fr 26. Jul 22:41:49 CEST 2013" "" "ArangoDB"
+.TH foxx-manager 8 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
 .SH NAME
 foxx-manager - a Foxx application manager for ArangoDB
 .SH SYNOPSIS
@@ -9,8 +9,14 @@ ArangoDB database server. Foxx applications can be installed and
 uninstalled.
 More specific instructions are displayed when the program is invoked.
 .SH OPTIONS
+.IP "--server.database <string>"
+database name to use when connection (default: "_system") 
+.IP "--server.username <string>"
+username to use when connecting (default "root") 
+.IP "--server.password <string>"
+password to use when connecting. Don't specify this option to get a password prompt 
 .IP "--server.disable-authentication <boolean>"
-disable the password prompt when connecting to the server 
+disable the password prompt and authentication when connecting to the server 
 .SH EXAMPLES
 .EX
 shell> foxx-manager search "foobar"

@@ -412,7 +412,7 @@ bool ApplicationServer::parse (int argc,
   if (! help.empty()) {
     // output help, but do not yet exit (we'll exit a little later so we can also
     // check the specified configuration for errors)
-    cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
+    cout << argv[0] << " " << _title << endl << endl << _description.usage(help) << endl;
   }
 
   // check for version request
