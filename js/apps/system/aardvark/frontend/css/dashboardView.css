@@ -278,7 +278,7 @@ li:hover h6, li.hover h6 {
 }
 
 .dropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
-.headerDropdown input[type=checkbox].css-checkbox + label.css-label,
+.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label,
 #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
