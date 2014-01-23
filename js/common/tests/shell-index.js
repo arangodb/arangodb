@@ -35,7 +35,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var console = require("console");
 var errors = internal.errors;
 
 // -----------------------------------------------------------------------------
