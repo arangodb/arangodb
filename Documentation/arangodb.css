@@ -72,6 +72,12 @@
   top:        -69px;
 }
 
+#content div.arangodb div.bottom-navigate {
+  position:   relative;
+  text-align: right;
+  top:        10px;
+}
+
 /* ************************************************************************** */
 /* table of contents                                                          */
 /* ************************************************************************** */

@@ -14,3 +14,5 @@ ArangoDB's DBA Manual (@VERSION){#DbaManual}
 @CHAPTER_REF{DbaManualAuthentication}
 @CHAPTER_REF{DbaManualDatafileDebugger}
 @CHAPTER_REF{DbaManualEmergencyConsole}
+
+@BNAVIGATE_DbaManual

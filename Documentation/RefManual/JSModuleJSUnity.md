@@ -49,3 +49,5 @@ Assume that your file live in a directory called `lib`. Use
 to create a copy of the JavaScript files with coverage information.  Start the
 ArangoDB with these files and use @FN{jsunity.runCoverage} instead of
 @FN{jsunity.runTest}.
+
+@BNAVIGATE_jsUnity

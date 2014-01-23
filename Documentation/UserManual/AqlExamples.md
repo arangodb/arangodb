@@ -686,3 +686,4 @@ For example, to get the 3 `ageGroup`s with the most users in them:
 To increase readability, the repeated expression `LENGTH(group)` was put into a variable
 `numUsers`. The `FILTER` on `numUsers` is the SQL HAVING equivalent.
 
+@BNAVIGATE_AqlExamples

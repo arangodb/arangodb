@@ -24,3 +24,5 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{HandlingEndpoints}
 @CHAPTER_REF{CommandLine}
 @CHAPTER_REF{Glossary}
+
+@BNAVIGATE_UserManual

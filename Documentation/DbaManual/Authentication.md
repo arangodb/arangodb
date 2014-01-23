@@ -59,3 +59,5 @@ web interface.
 @CLEARPAGE
 @anchor UserManagementReload
 @copydetails JSF_reloadUsers
+
+@BNAVIGATE_DbaManualAuthentication

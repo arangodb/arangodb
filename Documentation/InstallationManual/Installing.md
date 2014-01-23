@@ -309,3 +309,5 @@ method.
 Please note that ArangoDB uses UTF-8 as its internal encoding and that the
 system console must support a UTF-8 codepage (65001) and font. It may be
 necessary to manually switch the console font to a font that supports UTF-8.
+
+@BNAVIGATE_Installing

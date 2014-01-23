@@ -462,3 +462,5 @@ already compiled binary.
 Usage is:
     
     > arangod --server.disable-statistics true ...
+
+@BNAVIGATE_NewFeatures12

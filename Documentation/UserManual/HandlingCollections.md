@@ -126,3 +126,5 @@ Database Methods {#HandlingCollectionsDatabaseMethods}
 @CLEARPAGE
 @anchor HandlingCollectionsTruncateDb
 @copydetails JSF_ArangoDatabase_prototype__truncate
+
+@BNAVIGATE_HandlingCollections

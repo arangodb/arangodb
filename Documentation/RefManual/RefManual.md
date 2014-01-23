@@ -12,3 +12,5 @@ ArangoDB's Reference Manual (@VERSION) {#RefManual}
 @CHAPTER_REF{UserManualActions}
 @CHAPTER_REF{RefManualReplication}
 @CHAPTER_REF{RefManualArangoErrors}
+
+@BNAVIGATE_RefManual
