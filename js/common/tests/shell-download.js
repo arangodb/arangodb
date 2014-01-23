@@ -39,7 +39,6 @@ var fs = require("fs");
 ////////////////////////////////////////////////////////////////////////////////
 
 function DownloadSuite () {
-  var ERRORS = internal.errors;
   var tempDir;
   var tempName;
 
