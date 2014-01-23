@@ -462,7 +462,7 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
   conf += ".conf";
 
-  BaseClient.parse(options, description, argc, argv, conf);
+  BaseClient.parse(options, description, "<options>", argc, argv, conf);
 
   // set V8 options
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);

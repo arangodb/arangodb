@@ -194,7 +194,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangorestore.conf");
+  BaseClient.parse(options, description, "", argc, argv, "arangorestore.conf");
 
   if (1 == arguments.size()) {
     InputDirectory = arguments[0];

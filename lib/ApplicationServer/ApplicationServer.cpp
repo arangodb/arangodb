@@ -420,7 +420,7 @@ bool ApplicationServer::parse (int argc,
   set<string> help = _options.needHelp("help");
 
   if (! help.empty()) {
-    cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
+    cout << argv[0] << " " << _title << endl << endl << _description.usage(help) << endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 

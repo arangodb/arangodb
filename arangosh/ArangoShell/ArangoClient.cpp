@@ -257,6 +257,7 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 
 void ArangoClient::parse (ProgramOptions& options,
                           ProgramOptionsDescription& description,
+                          string const& example,
                           int argc,
                           char* argv[],
                           string const& initFilename) {
@@ -268,6 +269,9 @@ void ArangoClient::parse (ProgramOptions& options,
   set<string> help = options.needHelp("help");
 
   if (! help.empty()) {
+    if (! example.empty()) {
+      cout << "USAGE: " << argv[0] << " " << example << endl << endl;
+    }
     cout << description.usage(help) << endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
