@@ -845,8 +845,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   result->Set(v8::String::New("waitForSync"), v8::Boolean::New(cic.waitForSync(shardID)));
   result->Set(v8::String::New("journalSize"), v8::Number::New(cic.journalSize(shardID)));
   const std::string serverID = cic.responsibleServer(shardID);
-  result->Set(v8::String::New("responsibleServer"), 
-              v8::String::New(serverID.c_str(), serverID.size()));
+  result->Set(v8::String::New("DBServer"), v8::String::New(serverID.c_str(), serverID.size()));
 
   // TODO: fill "indexes"
   v8::Handle<v8::Array> indexes = v8::Array::New();
