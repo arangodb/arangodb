@@ -3841,7 +3841,7 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   if (params.filterVertices) {
     config.filter = TRAVERSAL_VERTEX_FILTER;
     config.filterVertexExamples = params.filterVertices;
-  	config.vertexFilterType = params.vertexFilterType || ["prune","exclude"];
+    config.vertexFilterType = params.vertexFilterType || ["prune","exclude"];
   }
 
   if (params._sort) {
