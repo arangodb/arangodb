@@ -1,23 +1,38 @@
 <ul class="thumbnails2">
-  <div id="transparentHeader">
-    <div id="documentsToolbar" class="pagination pagination-small pagination-right">
+  <div id="transparentHeader" class="headerBar">
+    <div id="documentsToolbar" class="pagination pagination-small pull-right">
+
 
     <!-- remove marker for docupdiv--!>
     <ul>
-      <li class="enabled"><a id="indexCollection"><span class="icon_arangodb_checklist" title="Index collection"></span></a></li>
+      <li class="enabled">
+        <a id="indexCollection" class="headerButton">
+          <span class="icon_arangodb_checklist" title="Index collection"></span>
+        </a>
+      </li>
+      <li class="enabled">
+        <a id="filterCollection" class="headerButton">
+          <span class="icon_arangodb_filter" title="Filter collection"></span>
+        </a>
+      </li>
+      <li class="enabled">
+        <a id="importCollection" class="headerButton">
+          <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
+        </a>
+      </li>
+      <li class="enabled">
+        <a id="collectionPrev" class="headerButton">
+          <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
+        </a>
+      </li>
+      <li class="enabled">
+        <a id="collectionNext" class="headerButton">
+          <span class="icon_arangodb_arrowright" title="Next collection"></span>
+        </a>
+      </li>
     </ul>
-    <ul>
-      <li class="enabled"><a id="filterCollection"><span class="icon_arangodb_filter" title="Filter collection"></span></a></li>
-    </ul>
-    <ul>
-      <li class="enabled"><a id="importCollection"><span class="icon_arangodb_import" title="Upload documents from JSON file"></span></a></li>
-    </ul>
-    <ul>
-      <li class="enabled"><a id="collectionPrev"><span class="icon_arangodb_arrowleft" title="Previous collection"></span></a></li>
-      <li class="enabled"><a id="collectionNext"><span class="icon_arangodb_arrowright" title="Next collection"></span></a></li>
-    </ul>
-    </div>
 
+    </div>
   </div>
 </ul>
 
