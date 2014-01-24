@@ -289,7 +289,7 @@ function parseBodyForCreateCollection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
-  var r = parseBodyForCreateCollection(req);
+  var r = parseBodyForCreateCollection(req, res);
 
   if (r.bodyIsEmpty) {
     return;   // error in JSON, is already reported
