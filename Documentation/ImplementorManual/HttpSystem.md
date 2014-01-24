@@ -50,3 +50,4 @@ monitoring of the server.
 @anchor HttpSystemAdminDescriptionShardingHEAD
 @copydetails JSF_sharding_test_HEAD
 
+@BNAVIGATE_HttpSystem

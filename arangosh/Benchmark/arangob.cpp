@@ -220,7 +220,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangob.conf");
+  BaseClient.parse(options, description, "--concurrency <concurrency> --requests <request> --test-case <case> ...", argc, argv, "arangob.conf");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

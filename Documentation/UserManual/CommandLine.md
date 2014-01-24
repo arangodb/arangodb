@@ -337,3 +337,5 @@ Command-Line Options for Random Numbers {#CommandLineRandom}
 
 @anchor CommandLineRandomGenerator
 @copydetails triagens::rest::ApplicationServer::_randomGenerator
+
+@BNAVIGATE_CommandLine

@@ -211,3 +211,5 @@ versa.
 In order to flush the modules cache of the JavaScript shell, you should use
 
     arangosh> require("internal").flushModuleCache()
+
+@BNAVIGATE_JSModules

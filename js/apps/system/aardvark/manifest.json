@@ -131,6 +131,7 @@
         "frontend/css/api.css",
         "frontend/css/general.css",
         "frontend/css/buttons.css",
+        "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
         "frontend/css/clusterDashboardView.css",
         "frontend/ttf/arangofont/style.css"

@@ -30,7 +30,6 @@
 
 var jsunity = require("jsunity");
 
-var console = require("console");
 var arangodb = require("org/arangodb");
 var traversal = require("org/arangodb/graph/traversal");
 var graph = require("org/arangodb/graph");

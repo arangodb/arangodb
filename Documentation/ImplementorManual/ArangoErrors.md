@@ -5,3 +5,5 @@ Error codes and meanings{#ImplementorManualArangoErrors}
 @EMBEDTOC{ImplementorManualArangoErrorsTOC}
 
 @copydetails ArangoErrors
+
+@BNAVIGATE_ImplementorManualArangoErrors

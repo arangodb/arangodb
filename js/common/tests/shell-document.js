@@ -26,7 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var console = require("console");
 
 var arangodb = require("org/arangodb");
 

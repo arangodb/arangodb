@@ -131,3 +131,5 @@ Database Methods {#HandlingDocumentsDatabaseMethods}
 @CLEARPAGE
 @anchor HandlingDocumentsDbRemove
 @copydetails JS_RemoveVocbase
+
+@BNAVIGATE_HandlingDocuments

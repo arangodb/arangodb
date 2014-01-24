@@ -33,15 +33,28 @@
 // Initialise a new FoxxController called controller under the urlPrefix: "foxxes".
 var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
+  ArangoError = require("org/arangodb").ArangoError,
   underscore = require("underscore");
   
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var docus = new (require("lib/swagger").Swagger)();
+  
 
-/** Install a Foxx
-*
-* Mount a Foxx from your system on a given mount point.
-*/
+/** Fetch a foxx from temp folder
+ *
+ * Makes a foxx uploaded to the temp folder
+ * available for mounting.
+ */
+
+controller.post("/foxxes/inspect", function (req, res) {
+  var content = JSON.parse(req.requestBody),
+    path = content.filename;
+  res.json(foxxes.inspect(path));
+}).errorResponse(ArangoError, 500, "No valid app");
+
+// .............................................................................
+// install
+// .............................................................................
 
 controller.put("/foxxes/install", function (req, res) {
   var content = JSON.parse(req.requestBody),

@@ -13,7 +13,6 @@
   position: relative;
 }
 
-
 .badge, .label, .btn {
   text-shadow: none !important;
 }
@@ -290,3 +289,9 @@ button.btn-server {
 }
 
 
+a.headerButton {
+ margin-top: -2px; 
+ margin-left: 5px;
+ margin-right: 5px;
+ min-height: 23px;
+}

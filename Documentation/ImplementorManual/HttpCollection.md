@@ -108,3 +108,5 @@ Modifying a Collection {#HttpCollectionChanging}
 @CLEARPAGE
 @anchor HttpCollectionRotate
 @copydetails JSF_put_api_collection_rotate
+
+@BNAVIGATE_HttpCollection

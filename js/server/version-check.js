@@ -492,7 +492,9 @@
       addTask("setupAal", "setup _aal collection", function () {
         return createSystemCollection("_aal", { waitForSync : true });
       });
-      
+    }
+    
+    if (! cluster.isCoordinator()) {
       // create a unique index on collection attribute in _aal
       addTask("createAalIndex",
               "create index on collection attribute in _aal collection",

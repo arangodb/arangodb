@@ -25,3 +25,4 @@ Executing Traversals via HTTP {#HttpTraversalsHttp}
 @anchor HttpTraversalsPost
 @copydetails JSF_post_api_traversal
 
+@BNAVIGATE_HttpTraversals
