@@ -94,7 +94,6 @@
     },
 
     renderVersion: function () {
-      var self = this;
       if (this.system.hasOwnProperty('database') && this.system.hasOwnProperty('name')) {
         $(this.el).html(this.template.render({
           name: this.system.name,
@@ -116,7 +115,6 @@
     },
 
     render: function () {
-      var self = this;
       if (!this.system.version) {
         this.getVersion();
       }
