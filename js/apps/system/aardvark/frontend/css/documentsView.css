@@ -45,13 +45,13 @@
   margin-bottom: -10px;
 }
 
-#filterHeader, #importHeader, .arangoDropdownIn, #indexHeaderContent {
+#filterHeader, .arangoDropdownIn, #indexHeaderContent {
   margin-left: 5px;
   margin-right: 5px;
   background-color: white;
 }
 
-#filterHeader, #importHeader, .arangoDropdownIn {
+#filterHeader, .arangoDropdownIn {
   padding-top: 10px;
   padding-left: 10px;
   padding-right: 10px;
@@ -59,10 +59,6 @@
   position:relative;
 }
 
-#importHeader input {
-  line-height: 0px !important;
-  margin-top: 5px;margin-bottom: -5px;
-}
 
 #confirmDocImport {
   margin-right: 0px;
