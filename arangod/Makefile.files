@@ -117,7 +117,8 @@ bin_arangod_SOURCES += \
 	arangod/Cluster/HeartbeatThread.cpp \
 	arangod/Cluster/RestShardHandler.cpp \
 	arangod/Cluster/ServerState.cpp \
-	arangod/Cluster/v8-cluster.cpp
+	arangod/Cluster/v8-cluster.cpp \
+	arangod/Cluster/ClusterMethods.cpp
 endif
 
 
