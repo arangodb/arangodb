@@ -18,7 +18,7 @@
 }
 
 
-.thumbnail, .navbar-inner, .btn, .btn-primary {
+.thumbnail, .navbar-inner {
   border-radius:0;
   box-shadow: 0;
 }
@@ -140,13 +140,6 @@
   font-size: 17px !important;
 }
 
-#transparentHeader ul, #transparentHeader li, #transparentHeader a {
-  border-radius: 0 !important;
-}
-
-#transparentHeader .pagination-small ul > li:last-child > a {
-}
-
 #transparentHeader .btn-group {
   margin-top:4px;
 }
@@ -199,11 +192,7 @@ border-top: 0;
 }
  */
 
-  .dropdown-toggle {
-    border-radius: 0 !important;
-}
-
-.dashSwitch {
+.dropdown-toggle, .dashSwitch {
   border-radius: 0 !important;
 }
 

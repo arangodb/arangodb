@@ -29,10 +29,6 @@
   max-height: 30px !important;
 }
 
-#dashboardHeader ul a {
-  border-radius: 0 !important;
-}
-
 .group-close, .group-open {
   opacity: 0 !important;
   float:right;
