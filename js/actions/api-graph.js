@@ -1046,6 +1046,18 @@ function process_property_compare (compare) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function process_property_filter (data, num, property, collname) {
+  if (property.key !== undefined && property.compare == "HAS") {
+      if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
+      data.filter += " HAS(" + collname + ", @key" + num.toString() + ") ";
+      data.bindVars["key" + num.toString()] = property.key;
+      return;    
+  }
+  if (property.key !== undefined && property.compare == "HAS_NOT") {
+      if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
+      data.filter += " !HAS(" + collname + ", @key" + num.toString() + ") ";
+      data.bindVars["key" + num.toString()] = property.key;
+      return;    
+  }
   if (property.key !== undefined && property.value !== undefined) {
       if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
       data.filter += " " + collname + "[@key" + num.toString() + "] " +
