@@ -30,22 +30,6 @@
   box-shadow: 0;
 }
 
-.btn-margin {
- /* margin-left: 15px !important;*/
-}
-
-#transparentHeader .arangoHeader, #dashboardHeader .arangoHeader, .modal-header .arangoHeader{
-  color: white;
-  position: relative;
-  top: 7px;
-  left: 5px;
-  font-size: 16px;
-}
-
-.arangoHeader {
-  font-weight: 400;
-}
-
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
 	background: #788f3d;
 }
