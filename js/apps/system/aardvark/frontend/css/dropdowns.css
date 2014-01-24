@@ -10,7 +10,7 @@
 }
 
 .dropdownImport input {
-  line-height: 0px !important;
+  line-height: 0px;
   margin-top: 5px;
-  margin-bottom: -5px;
+  margin-bottom: -15px;
 }
