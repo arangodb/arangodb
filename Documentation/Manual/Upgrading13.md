@@ -184,3 +184,4 @@ startup option
 
 Please also check the logfile written by ArangoDB for further errors messages.
 
+@BNAVIGATE_Upgrading13

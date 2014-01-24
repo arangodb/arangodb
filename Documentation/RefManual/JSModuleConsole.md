@@ -195,3 +195,5 @@ String substitution patterns, which can be used in @FA{format}.
 - `%%d`, `%%i` integer
 - `%%f` floating point number
 - `%%o` object hyperlink
+
+@BNAVIGATE_JSModuleConsole

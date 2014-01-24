@@ -33,3 +33,5 @@ Working with Edges{#HandlingEdgesShell}
 @CLEARPAGE
 @anchor HandlingEdgesOutEdges
 @copydetails JS_OutEdgesQuery
+
+@BNAVIGATE_HandlingEdges

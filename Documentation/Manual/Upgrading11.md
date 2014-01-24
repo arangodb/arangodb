@@ -341,3 +341,5 @@ In 1.0, there was an API to manage user and session for the GUI
 administraion interface. In 1.1 the user management is part of the
 database (not just the front-end). There the calls to
 `_admin/user-manager` where removed.
+
+@BNAVIGATE_Upgrading11

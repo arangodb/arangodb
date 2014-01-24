@@ -40,3 +40,5 @@ Please note that user operations are not included in ArangoDB's replication.
 @CLEARPAGE
 @anchor HttpUserDocument
 @copydetails JSF_get_api_user
+
+@BNAVIGATE_HttpUser

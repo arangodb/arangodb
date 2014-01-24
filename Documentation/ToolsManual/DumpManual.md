@@ -67,4 +67,5 @@ with these attributes:
 Document data for a collection will be saved in files with name pattern 
 `<collection-name>.data.json`. Each line in a data file is a document insertion/update or
 deletion marker, alongside with some meta data.
-  
+
+@BNAVIGATE_DumpManual

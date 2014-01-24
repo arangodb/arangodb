@@ -125,3 +125,4 @@ fulltext query.
 @anchor IndexFulltextHttpFulltext
 @copydetails JSA_put_api_simple_fulltext
 
+@BNAVIGATE_HttpIndex

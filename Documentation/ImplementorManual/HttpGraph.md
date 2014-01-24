@@ -70,3 +70,5 @@ HTTP Interface for Graphs {#HttpGraph}
 @CLEARPAGE
 @anchor A_JSF_POST_graph_vertex_edges
 @copydetails JSF_post_graph_vertex_edges
+
+@BNAVIGATE_HttpGraph

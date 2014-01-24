@@ -416,7 +416,7 @@
             "do": "org/arangodb/actions/redirectRequest",
             options: {
               permanently: true,
-              destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
+              destination: "/_db/" + encodeURIComponent(db._name()) + "/_admin/aardvark/index.html"
             }
           },
           priority: -1000000
