@@ -223,6 +223,7 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 /// @brief get the name of the current database
 ////////////////////////////////////////////////////////////////////////////////
   
+#ifdef TRI_ENABLE_CLUSTER
 static char const* GetCurrentDatabaseName () { 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -234,6 +235,7 @@ static char const* GetCurrentDatabaseName () {
 
   return name;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a collection info into a TRI_vocbase_col_t
