@@ -82,6 +82,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #endif
 
 #include "unicode/timezone.h"
@@ -6814,6 +6815,69 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
+                                  TRI_vocbase_col_t* collection,
+                                  v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // First get the initial data:
+  string const dbname(collection->_dbName);
+  string const collname(collection->_name);
+
+  // Now get the arguments:
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
+  }
+  TRI_json_t* json = TRI_ObjectToJson(argv[0]);
+  const bool waitForSync = ExtractForceSync(argv, 2);
+  if (json->_type != TRI_JSON_ARRAY) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  int error = triagens::arango::createDocumentOnCoordinator(
+            dbname, collname, waitForSync, json,
+            responseCode, contentType, resultBody);
+  // Note that the json has been freed inside!
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+  // report what the DBserver told us: this could now be 201/202 or
+  // 400/404
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+    if (!TRI_IsArrayJson(json)) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+    int errorNum = 0;
+    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+      errorNum = static_cast<int>(subjson->_value._number);
+    }
+    string errorMessage;
+    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    if (0 != subjson && TRI_IsStringJson(subjson)) {
+      errorMessage = string(subjson->_value._string.data,
+                            subjson->_value._string.length-1);
+    }
+    TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
+  }
+  v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  return scope.Close(ret);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
 ///
 /// @FUN{@FA{collection}.save(@FA{data})}
@@ -6854,6 +6918,12 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return JS_SaveVocbaseCol_Coordinator(collection, argv);
+  }
+#endif
+
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   CollectionNameResolver resolver(collection->_vocbase);
