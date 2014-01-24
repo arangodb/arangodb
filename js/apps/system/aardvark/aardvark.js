@@ -45,10 +45,10 @@ var docus = new (require("lib/swagger").Swagger)();
  * available for mounting.
  */
 
-controller.post("/foxxes/fetch", function (req, res) {
+controller.post("/foxxes/inspect", function (req, res) {
   var content = JSON.parse(req.requestBody),
     path = content.filename;
-  res.json(foxxes.fetch(path));
+  res.json(foxxes.inspect(path));
 });
 
 // .............................................................................
