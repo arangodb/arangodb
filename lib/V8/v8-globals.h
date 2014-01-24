@@ -174,7 +174,7 @@
 #ifdef TRI_ENABLE_CLUSTER
 
 #define TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection) \
-  if (! collection->_isLocal) {                                        \
+  if (collection != 0 && ! collection->_isLocal) {                     \
     TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);                \
   }
 
