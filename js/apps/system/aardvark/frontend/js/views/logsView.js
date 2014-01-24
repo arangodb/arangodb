@@ -159,11 +159,11 @@
       };
       target.pagination(options);
       $('#logPaginationDiv').prepend(
-        '<ul class="prePagi"><li><a id="logTableID_first">'+
+        '<ul class="prePagi"><li><a id="logTableID_first" class="paginationButton">'+
         '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>'
       );
       $('#logPaginationDiv').append(
-        '<ul class="lasPagi"><li><a id="logTableID_last">'+
+        '<ul class="lasPagi"><li><a id="logTableID_last" class="paginationButton">'+
         '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>'
       );
     },
