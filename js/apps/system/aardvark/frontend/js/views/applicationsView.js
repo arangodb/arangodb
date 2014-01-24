@@ -21,13 +21,12 @@ window.ApplicationsView = Backbone.View.extend({
     var files = e.target.files || e.dataTransfer.files;
     this.file = files[0];
     this.allowUpload = true;
-    console.log("Checked file");
   },
 
   importFoxx: function() {
     var self = this;
-    if (self.allowUpload) {
-      console.log("Start Upload");
+    if (this.allowUpload) {
+      this.showSpinner();
       $.ajax({
         type: "POST",
         async: false,
@@ -38,57 +37,58 @@ window.ApplicationsView = Backbone.View.extend({
         complete: function(res) {
           if (res.readyState === 4) {
             if (res.status === 201) {
-              try {
+              $.ajax({
+                type: "POST",
+                async: false,
+                url: "/_admin/aardvark/foxxes/inspect",
+                data: res.responseText,
+                contentType: "application/json"
+              }).done(function(res) {
+                console.log(res);
                 $.ajax({
                   type: "POST",
                   async: false,
-                  url: "/_admin/aardvark/foxxes/inspect",
-                  data: res.responseText,
-                  contentType: "application/json"
-                }).done(function(res) {
-                  // TODO: remove logs, report errors etc.
-                  console.log("Pos:", res);
-                  
-                  $.ajax({
-                    type: "POST",
-                    async: false,
-                    url: '/_admin/foxx/fetch',
-                    data: JSON.stringify({ 
-                      name: res.name,
-                      version: res.version,
-                      filename: res.filename
-                    }),
-                    processData: false
-                  }).done(function (res) {
-                    console.log(res);
-                    // TODO: reload UI
-                  }).fail(function (res) {
-                    console.log(res);
-                  });
-
-                }).fail(function(err) {
-                  console.log("Neg:", err);
+                  url: '/_admin/foxx/fetch',
+                  data: JSON.stringify({ 
+                    name: res.name,
+                    version: res.version,
+                    filename: res.filename
+                  }),
+                  processData: false
+                }).done(function (res) {
+                  self.reload();
+                }).fail(function (err) {
+                  self.hideSpinner();
+                  var error = JSON.parse(err.responseText);
+                  arangoHelper.arangoError("Error: " + error.errorMessage);
                 });
-              } catch (e) {
-                arangoHelper.arangoError("Error: " + e);
-              }
+              }).fail(function(err) {
+                self.hideSpinner();
+                var error = JSON.parse(err.responseText);
+                arangoHelper.arangoError("Error: " + error.error);
+              });
               delete self.file;
               self.allowUpload = false;
-              /*
               self.hideSpinner();
               self.hideImportModal();
-              self.resetView();
-              */
               return;
             }
           }
-          // self.hideSpinner();
+          self.hideSpinner();
           arangoHelper.arangoError("Upload error");
         }
       });
     }
   },
   
+  showSpinner: function() {
+    $('#uploadIndicator').show();
+  },
+
+  hideSpinner: function() {
+    $('#uploadIndicator').hide();
+  },
+
   toggleDevel: function() {
     var self = this;
     this._showDevel = !this._showDevel;
@@ -113,14 +113,22 @@ window.ApplicationsView = Backbone.View.extend({
     });
   },
 
+  hideImportModal: function() {
+    $('#foxxDropdownImport').hide();
+  },
+
+  hideSettingsModal: function() {
+    $('#foxxDropdownOut').hide();
+  },
+
   slideToggleImport: function() {
     $('#foxxDropdownImport').slideToggle(200);
-    $('#foxxDropdownOut').hide();
+    this.hideSettingsModal();
   },
 
   slideToggle: function() {
     $('#foxxDropdownOut').slideToggle(200);
-    $('#foxxDropdownImport').hide();
+    this.hideImportModal();
   },
 
   toggleView: function(event) {
