@@ -300,40 +300,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     string const& k = i->first;
     string const& v = i->second;
 
-    map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
+    key = mrb_str_new(mrb, k.c_str(), k.size());
+    val = mrb_str_new(mrb, v.c_str(), v.size());
 
-    if (p == action->_parameters.end()) {
-      key = mrb_str_new(mrb, k.c_str(), k.size());
-      val = mrb_str_new(mrb, v.c_str(), v.size());
-
-      mrb_hash_set(mrb, parametersArray, key, val);
-    }
-    else {
-      TRI_action_parameter_type_e const& ap = p->second;
-
-      switch (ap) {
-        case TRI_ACT_COLLECTION:
-        case TRI_ACT_COLLECTION_NAME:
-        case TRI_ACT_COLLECTION_ID:
-        case TRI_ACT_STRING: {
-          key = mrb_str_new(mrb, k.c_str(), k.size());
-          val = mrb_str_new(mrb, v.c_str(), v.size());
-
-          mrb_hash_set(mrb, parametersArray, key, val);
-          break;
-        }
-
-        case TRI_ACT_NUMBER: {
-          key = mrb_str_new(mrb, k.c_str(), k.size());
-          // TODO: val is assigned and then re-assigned. Is this intentional??
-          val = mrb_str_new(mrb, v.c_str(), v.size());
-          val = mrb_float_value(mrb, TRI_DoubleString(v.c_str()));
-
-          mrb_hash_set(mrb, parametersArray, key, val);
-          break;
-        }
-      }
-    }
+    mrb_hash_set(mrb, parametersArray, key, val);
   }
 
   id = mrb_intern(mrb, "@parameters");
