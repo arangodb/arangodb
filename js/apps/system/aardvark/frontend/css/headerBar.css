@@ -1,0 +1,13 @@
+div.headerBar {
+  position: relative;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+div.headerBar > div.pagination {
+  position: absolute;
+  right: 5px;
+  margin: 4px 0px;
+}
+
+
