@@ -23,3 +23,5 @@ Accessing Hash Indexes from the Shell{#IndexHashShell}
 @CLEARPAGE
 @anchor IndexHashShellEnsureHashIndex
 @copydetails JS_EnsureHashIndexVocbaseCol
+
+@BNAVIGATE_IndexHash

@@ -33,3 +33,4 @@ running ArangoDB server instance. _arangodump_ will write all its output into a
 directory that needs to be specified when invoking it. _arangorestore_ will read
 files from a directory that was formerly created by invoking _arangodump_.
 
+@BNAVIGATE_ToolsManual

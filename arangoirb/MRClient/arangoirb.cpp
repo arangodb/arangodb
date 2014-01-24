@@ -202,7 +202,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   // and parse the command line and config file
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangoirb.conf");
+  BaseClient.parse(options, description, "<options>", argc, argv, "arangoirb.conf");
 
   // check module path
   if (StartupModules.empty()) {

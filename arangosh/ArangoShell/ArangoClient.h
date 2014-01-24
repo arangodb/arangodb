@@ -207,6 +207,7 @@ namespace triagens {
 
         void parse (triagens::basics::ProgramOptions&,
                     triagens::basics::ProgramOptionsDescription& description,
+                    string const& example,
                     int argc,
                     char* argv[],
                     string const& initFilename);

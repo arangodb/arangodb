@@ -15,3 +15,5 @@ Accessing BitArray Indexes from the Shell{#IndexBitArrayShell}
 
 @anchor IndexBitArrayShellEnsureBitarray
 @copydetails JS_EnsureBitarrayVocbaseCol
+
+@BNAVIGATE_IndexBitArray

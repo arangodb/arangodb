@@ -42,7 +42,6 @@ var errors = internal.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function HashIndexSuite() {
-  var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionHash";
   var collection = null;
 

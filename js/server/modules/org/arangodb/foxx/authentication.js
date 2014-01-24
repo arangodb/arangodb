@@ -1016,7 +1016,7 @@ CookieAuthentication = function (applicationContext, options) {
   this._options = {
     name: options.name || this._applicationContext.name + "-session",
     lifetime: options.lifetime || 3600,
-    path: options.path || this._applicationContext.mount,
+    path: options.path || "/",
     domain: options.path || undefined,
     secure: options.secure || false,
     httpOnly: options.httpOnly || false

@@ -41,7 +41,7 @@ if test "x$tr_ICU" = xyes;  then
     AC_MSG_ERROR([ICU config program "${ICU_CONFIG}" not found. Use supplied ICU from 3rdParty directory (--enable-all-in-one-icu).])
   fi
 
-  ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"' -DTRI_HAVE_ICU=1"
+  ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"'"
 fi
 
 dnl ----------------------------------------------------------------------------

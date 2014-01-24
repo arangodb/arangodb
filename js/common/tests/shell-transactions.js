@@ -43,14 +43,6 @@ var db = arangodb.db;
 
 function TransactionsInvocationsSuite () {
 
-  var unregister = function (name) {
-    try {
-      aqlfunctions.unregister(name);
-    }
-    catch (err) {
-    }
-  };
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

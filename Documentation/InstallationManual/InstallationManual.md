@@ -10,3 +10,5 @@ ArangoDB's Installation Manual (@VERSION) {#InstallManual}
 @CHAPTER_REF{Installing}
 @CHAPTER_REF{Compiling}
 @endif
+
+@BNAVIGATE_InstallManual

@@ -36,3 +36,5 @@ Accessing Cap Constraints from the Shell{#IndexCapShell}
 
 @anchor IndexCapShellEnsureCapConstraint
 @copydetails JS_EnsureCapConstraintVocbaseCol
+
+@BNAVIGATE_IndexCap

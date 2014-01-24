@@ -17,3 +17,5 @@ inspect it and return meta information about it.
 @CLEARPAGE
 @anchor HttpQueryPost
 @copydetails JSF_post_api_query
+
+@BNAVIGATE_HttpQuery

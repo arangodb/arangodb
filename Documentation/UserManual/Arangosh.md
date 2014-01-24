@@ -147,3 +147,4 @@ JavaScript code. If you want any variables in the global scope to survive, you n
 omit the `var` keyword for them. Otherwise the variables will only be visible inside
 the script itself, but not outside.
 
+@BNAVIGATE_UserManualArangosh

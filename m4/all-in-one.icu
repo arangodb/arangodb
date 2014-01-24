@@ -26,7 +26,7 @@ AC_SUBST(ICU_LDFLAGS)
 AC_SUBST(ICU_LIBS)
 AC_SUBST(ICU_BUILT)
 
-ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"' -DTRI_HAVE_ICU=1"
+ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"'"
 
 dnl ----------------------------------------------------------------------------
 dnl informational output
