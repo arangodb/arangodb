@@ -31,9 +31,7 @@
 exports.Swagger = function () {
   "use strict";
   
-  // Define the Repository
-  var Foxx = require("org/arangodb/foxx"),
-    db = require("internal").db,
+  var db = require("internal").db,
     _routing = db._collection("_routing"),
     _aal = db._collection("_aal"),
     _ = require("underscore"),
