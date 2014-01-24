@@ -33,6 +33,7 @@
 // Initialise a new FoxxController called controller under the urlPrefix: "foxxes".
 var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
+  ArangoError = require("org/arangodb").ArangoError,
   underscore = require("underscore");
   
 var foxxes = new (require("lib/foxxes").Foxxes)();
@@ -49,7 +50,7 @@ controller.post("/foxxes/inspect", function (req, res) {
   var content = JSON.parse(req.requestBody),
     path = content.filename;
   res.json(foxxes.inspect(path));
-});
+}).errorResponse(ArangoError, 500, "No valid app");
 
 // .............................................................................
 // install
