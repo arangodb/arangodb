@@ -128,17 +128,111 @@ exports.Foxxes = function () {
     return success;
   };
 
-  // Fetch a foxx from tmp zip file
-  this.fetch = function (path) {
+  // TODO: merge with functionality js/client/modules/org/arangodb/foxx/manager.js
+  this.repackZipFile = function (path) {
+    if (! fs.exists(path) || ! fs.isDirectory(path)) {
+      throw "'" + String(path) + "' is not a directory";
+    }
+  
+    var tree = fs.listTree(path);
+    var files = [];
+    var i;
+
+    for (i = 0;  i < tree.length;  ++i) {
+      var filename = fs.join(path, tree[i]);
+
+      if (fs.isFile(filename)) {
+        files.push(tree[i]);
+      }
+    }
+
+    if (files.length === 0) {
+      throw "Directory '" + String(path) + "' is empty";
+    }
+
+    var tempFile = fs.getTempFile("downloads", false); 
+    
+    fs.zipFile(tempFile, path, files);
+
+    return tempFile;
+  };
+
+  // TODO: merge with functionality js/client/modules/org/arangodb/foxx/manager.js
+  this.inspectUploadedFile = function (filename) {
+    if (! fs.isFile(filename)) {
+      throw "Unable to find zip file"; 
+    }
+
+    var i;
+    var path = fs.getTempFile("zip", false); 
+
+    fs.unzipFile(filename, path, false, true);
+
+    // .............................................................................
+    // locate the manifest file
+    // .............................................................................
+
+    var tree = fs.listTree(path).sort(function(a,b) { 
+      return a.length - b.length; 
+    });
+
+    var found;
+    var mf = "manifest.json";
+    var re = /[\/\\\\]manifest\.json$/; // Windows!
+
+    for (i = 0;  i < tree.length && found === undefined;  ++i) {
+      var tf = tree[i];
+
+      if (re.test(tf) || tf === mf) {
+        found = tf;
+        break;
+      }
+    }
+
+    if (typeof found === "undefined") {
+      fs.removeDirectoryRecursive(path);
+      throw "Cannot find manifest file in zip file";
+    }
+  
+    var mp;
+
+    if (found === mf) {
+      mp = ".";
+    }
+    else {
+      mp = found.substr(0, found.length - mf.length - 1);
+    }
+
+    var manifest = JSON.parse(fs.read(fs.join(path, found)));
+
+    var absolutePath = this.repackZipFile(fs.join(path, mp));
+
+    var result = {
+      name : manifest.name,
+      version: manifest.version,
+      filename: absolutePath.substr(fs.getTempPath().length + 1)
+    };  
+
+    fs.removeDirectoryRecursive(path);
+
+    return result;
+  };
+
+  // Inspect a foxx in tmp zip file
+  this.inspect = function (path) {
     var fullPath = fs.join(fs.getTempPath(), path);
+
     try {
-      return foxxmanager.fetch("zip", fullPath);
-    } catch (e) {
-      require("console").log(e);
+      var result = this.inspectUploadedFile(fullPath);
+      fs.remove(fullPath);
+      return result;
+    }
+    catch (e) {
+      require("console").log(e); // TODO
       return {
         error: true,
         status: 500,
-        message: "Could not import the app."
+        message: "Could not import the app." // TODO: add more detailed error message. TODO: return an error
       };
     }
   };

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, arangoHelper, templateEngine, _ */
+/*global Backbone, EJS, $, window, arangoHelper, templateEngine, _, console */
 
 window.ApplicationsView = Backbone.View.extend({
   el: '#content',
@@ -42,11 +42,30 @@ window.ApplicationsView = Backbone.View.extend({
                 $.ajax({
                   type: "POST",
                   async: false,
-                  url: "/_admin/aardvark/foxxes/fetch",
+                  url: "/_admin/aardvark/foxxes/inspect",
                   data: res.responseText,
                   contentType: "application/json"
                 }).done(function(res) {
+                  // TODO: remove logs, report errors etc.
                   console.log("Pos:", res);
+                  
+                  $.ajax({
+                    type: "POST",
+                    async: false,
+                    url: '/_admin/foxx/fetch',
+                    data: JSON.stringify({ 
+                      name: res.name,
+                      version: res.version,
+                      filename: res.filename
+                    }),
+                    processData: false
+                  }).done(function (res) {
+                    console.log(res);
+                    // TODO: reload UI
+                  }).fail(function (res) {
+                    console.log(res);
+                  });
+
                 }).fail(function(err) {
                   console.log("Neg:", err);
                 });
