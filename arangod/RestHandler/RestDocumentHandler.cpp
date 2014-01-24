@@ -41,6 +41,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #endif
 
 using namespace std;
@@ -404,101 +405,26 @@ bool RestDocumentHandler::createDocument () {
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
                                                      TRI_json_t* json) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
   string const& dbname = _request->originalDatabaseName();
-  CollectionID const collname(collection);
+  string const collname(collection);
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
 
-  // First determine the collection ID from the name:
-  CollectionInfo collinfo = ci->getCollection(dbname, collname);
-  if (collinfo.empty()) {
-    generateTransactionError(collection, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  int error = triagens::arango::createDocumentOnCoordinator(
+            dbname, collname, waitForSync, json,
+            responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, error);
     return false;
   }
-  string collid = StringUtils::itoa(collinfo.id());
-
-  // Sort out the _key attribute:
-  // The user is allowed to specify _key, provided that _key is the one
-  // and only sharding attribute, because in this case we can delegate
-  // the responsibility to make _key attributes unique to the responsible
-  // shard. Otherwise, we ensure uniqueness here and now by taking a
-  // cluster-wide unique number. Note that we only know the sharding 
-  // attributes a bit further down the line when we have determined
-  // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
-  bool userSpecifiedKey = false;
-  string _key;
-  if (0 == subjson) {
-    // The user did not specify a key, let's create one:
-    uint64_t uid = ci->uniqid();
-    _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
-                                                     _key.c_str(), _key.size()));
-  }
-  else {
-    userSpecifiedKey = true;
-  }
-
-  // Now find the responsible shard:
-  bool usesDefaultShardingAttributes;
-  ShardID shardID = ci->getResponsibleShard( collid, json, true,
-                                             usesDefaultShardingAttributes );
-  if (shardID == "") {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    generateTransactionError(collection, TRI_ERROR_SHARD_GONE);
-    return false;
-  }
-
-  // Now perform the above mentioned check:
-  if (userSpecifiedKey && !usesDefaultShardingAttributes) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    generateTransactionError(collection, 
-                             TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-    return false;
-  }
-
-  string body = JsonHelper::toString(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  // Send a synchronous request to that shard using ClusterComm:
-  ClusterCommResult* res;
-  map<string, string> headers;
-  res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
-                        triagens::rest::HttpRequest::HTTP_REQUEST_POST,
-                        "/_db/"+dbname+"/_api/document?collection="+
-                        StringUtils::urlEncode(shardID)+"&waitForSync="+
-                        (waitForSync ? "true" : "false"),
-                        body.c_str(), body.size(), headers, 60.0);
-  
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    delete res;
-    generateTransactionError(collection, TRI_ERROR_CLUSTER_TIMEOUT);
-    return false;
-  }
-  bool resultflag = true;
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    if (!res->result->isComplete()) {
-      delete res;
-      generateTransactionError(collection, TRI_ERROR_CLUSTER_CONNECTION_LOST);
-      return false;
-    }
-    // In this case a proper HTTP error was reported by the DBserver,
-    // this can be 400 or 404, we simply forward the result.
-    resultflag = false;
-    // We intentionally fall through here.
-  }
-  _response = createResponse(
-                   static_cast<rest::HttpResponse::HttpResponseCode>
-                              (res->result->getHttpReturnCode()));
-  _response->setContentType(res->result->getContentType(false));
-  body = res->result->getBody().str();  // FIXME: a bad unnecessary copy!
-  _response->body().appendText(body.c_str(), body.size());
-  delete res;
-  return resultflag;
+  // Essentially return the response we got from the DBserver, be it
+  // OK or an error:
+  _response = createResponse(responseCode);
+  _response->setContentType(contentType);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
 }
 #endif
 
