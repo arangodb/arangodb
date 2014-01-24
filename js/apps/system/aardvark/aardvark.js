@@ -38,6 +38,19 @@ var FoxxController = require("org/arangodb/foxx").Controller,
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var docus = new (require("lib/swagger").Swagger)();
   
+
+/** Fetch a foxx from temp folder
+ *
+ * Makes a foxx uploaded to the temp folder
+ * available for mounting.
+ */
+
+controller.post("/foxxes/fetch", function (req, res) {
+  var content = JSON.parse(req.requestBody),
+    path = content.filename;
+  res.json(foxxes.fetch(path));
+});
+
 // .............................................................................
 // install
 // .............................................................................

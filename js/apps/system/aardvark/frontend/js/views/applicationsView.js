@@ -11,7 +11,63 @@ window.ApplicationsView = Backbone.View.extend({
     "click #checkDevel": "toggleDevel",
     "click #checkActive": "toggleActive",
     "click #checkInactive": "toggleInactive",
-    "click #foxxToggle": "slideToggle"
+    "click #foxxToggle": "slideToggle",
+    "click #importFoxxToggle": "slideToggleImport",
+    "change #importFoxx": "uploadSetup",
+    "click #confirmFoxxImport": "importFoxx"
+  },
+
+  uploadSetup: function (e) {
+    var files = e.target.files || e.dataTransfer.files;
+    this.file = files[0];
+    this.allowUpload = true;
+    console.log("Checked file");
+  },
+
+  importFoxx: function() {
+    var self = this;
+    if (self.allowUpload) {
+      console.log("Start Upload");
+      $.ajax({
+        type: "POST",
+        async: false,
+        url: '/_api/upload',
+        data: self.file,
+        processData: false,
+        contentType: 'application/octet-stream',
+        complete: function(res) {
+          if (res.readyState === 4) {
+            if (res.status === 201) {
+              try {
+                $.ajax({
+                  type: "POST",
+                  async: false,
+                  url: "/_admin/aardvark/foxxes/fetch",
+                  data: res.responseText,
+                  contentType: "application/json"
+                }).done(function(res) {
+                  console.log("Pos:", res);
+                }).fail(function(err) {
+                  console.log("Neg:", err);
+                });
+              } catch (e) {
+                arangoHelper.arangoError("Error: " + e);
+              }
+              delete self.file;
+              self.allowUpload = false;
+              /*
+              self.hideSpinner();
+              self.hideImportModal();
+              self.resetView();
+              */
+              return;
+            }
+          }
+          // self.hideSpinner();
+          arangoHelper.arangoError("Upload error");
+        }
+      });
+    }
   },
   
   toggleDevel: function() {
@@ -38,8 +94,14 @@ window.ApplicationsView = Backbone.View.extend({
     });
   },
 
+  slideToggleImport: function() {
+    $('#foxxDropdownImport').slideToggle(200);
+    $('#foxxDropdownOut').hide();
+  },
+
   slideToggle: function() {
     $('#foxxDropdownOut').slideToggle(200);
+    $('#foxxDropdownImport').hide();
   },
 
   toggleView: function(event) {
