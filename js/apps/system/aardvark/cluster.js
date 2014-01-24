@@ -35,87 +35,94 @@
   // Initialise a new FoxxController called controller under the urlPrefix: "cluster".
   var FoxxController = require("org/arangodb/foxx").Controller,
     controller = new FoxxController(applicationContext),
-    _ = require("underscore"),
-    Communication = require("org/arangodb/sharding/agency-communication"),
+    cluster = require("org/arangodb/cluster"),
+    _ = require("underscore");
+
+  if (cluster.isCluster()) {
+    // only make these functions available in cluster mode!
+
+    var Communication = require("org/arangodb/sharding/agency-communication"),
     comm = new Communication.Communication(),
     beats = comm.sync.Heartbeats(),
     servers = comm.current.DBServers(),
     dbs = comm.current.Databases(),
     coords = comm.current.Coordinators();
     
-  /** Get all DBServers
-   *
-   * Get a list of all running and expected DBServers
-   * within the cluster
-   */
-  controller.get("/DBServers", function(req, res) {
-    var resList = [],
-      list = servers.getList(),
-      noBeat = beats.noBeat(),
-      serving = beats.getServing();
+    /** Get all DBServers
+    *
+    * Get a list of all running and expected DBServers
+    * within the cluster
+    */
+    controller.get("/DBServers", function(req, res) {
+      var resList = [],
+        list = servers.getList(),
+        noBeat = beats.noBeat(),
+        serving = beats.getServing();
 
-    _.each(list, function(v, k) {
-      v.name = k;
-      resList.push(v);
-      if (_.contains(noBeat, k)) {
-        v.status = "critical";
-        return;
-      }
-      if (v.role === "primary" && !_.contains(serving, k)) {
-        v.status = "warning";
-        return;
-      }
-      v.status = "ok";
+      _.each(list, function(v, k) {
+        v.name = k;
+        resList.push(v);
+        if (_.contains(noBeat, k)) {
+          v.status = "critical";
+          return;
+        }
+        if (v.role === "primary" && !_.contains(serving, k)) {
+          v.status = "warning";
+          return;
+        }
+        v.status = "ok";
+      });
+      res.json(resList);
     });
-    res.json(resList);
-  });
 
-  controller.get("/Coordinators", function(req, res) {
-    var resList = [],
-      list = coords.getList(),
-      noBeat = beats.noBeat();
-    
-    _.each(list, function(url, k) {
-      var v = {};
-      v.name = k;
-      v.url = url;
-      resList.push(v);
-      if (_.contains(noBeat, k)) {
-        v.status = "critical";
-        return;
-      }
-      v.status = "ok";
+    controller.get("/Coordinators", function(req, res) {
+      var resList = [],
+        list = coords.getList(),
+        noBeat = beats.noBeat();
+      
+      _.each(list, function(url, k) {
+        var v = {};
+        v.name = k;
+        v.url = url;
+        resList.push(v);
+        if (_.contains(noBeat, k)) {
+          v.status = "critical";
+          return;
+        }
+        v.status = "ok";
+      });
+      res.json(resList);
     });
-    res.json(resList);
-  });
 
-  controller.get("/Databases", function(req, res) {
-    var list = dbs.getList();
-    res.json(_.map(list, function(d) {
-      return {name: d};
-    }));
-  });
+    controller.get("/Databases", function(req, res) {
+      var list = dbs.getList();
+      res.json(_.map(list, function(d) {
+        return {name: d};
+      }));
+    });
 
-  controller.get("/:dbname/Collections", function(req, res) {
-    var dbname = req.params("dbname"),
-      selected = dbs.select(dbname);
-    res.json(_.map(selected.getCollections(),
-      function(c) {
-        return {name: c};
-      })
-    );
-  });
+    controller.get("/:dbname/Collections", function(req, res) {
+      var dbname = req.params("dbname"),
+        selected = dbs.select(dbname);
+      res.json(_.map(selected.getCollections(),
+        function(c) {
+          return {name: c};
+        })
+      );
+    });
 
-  controller.get("/:dbname/:colname/Shards/:servername", function(req, res) {
-    var dbname = req.params("dbname"),
-      colname = req.params("colname"),
-      servername = req.params("servername"),
-      selected = dbs.select(dbname).collection(colname);
-    res.json(_.map(selected.getShardsForServer(servername),
-      function(c) {
-        return {id: c};
-      })
-    );
-  });
+    controller.get("/:dbname/:colname/Shards/:servername", function(req, res) {
+      var dbname = req.params("dbname"),
+        colname = req.params("colname"),
+        servername = req.params("servername"),
+        selected = dbs.select(dbname).collection(colname);
+      res.json(_.map(selected.getShardsForServer(servername),
+        function(c) {
+          return {id: c};
+        })
+      );
+    });
+
+  } // end isCluster()
 
 }());
