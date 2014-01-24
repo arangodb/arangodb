@@ -1562,12 +1562,16 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
 /// values for some of the sharding attributes is silently ignored
 /// and treated as if these values were `null`. In the second mode
 /// (`docComplete`==false) leads to an error which is reported by
-/// returning an empty string as the shardID.
+/// returning an empty string as the shardID. If the collection is
+/// found, the flag `usesDefaultShardingAttributes` is used set to
+/// `true` if `_key` is the one and only sharding attribute and is
+/// set to `false` otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
 ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
                                           TRI_json_t const* json,
-                                          bool docComplete) {
+                                          bool docComplete,
+                                          bool& usesDefaultShardingAttributes) {
   // Note that currently we take the number of shards and the shardKeys
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
@@ -1592,12 +1596,14 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
             = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
-          shardKeys = new char const * [shardKeysPtr->size()];
+          shardKeys = new char const* [shardKeysPtr->size()];
           if (shardKeys != 0) {
             size_t i;
             for (i = 0; i < shardKeysPtr->size(); ++i) {
               shardKeys[i] = shardKeysPtr->at(i).c_str();
             }
+            usesDefaultShardingAttributes = shardKeysPtr->size() == 1 &&
+                                            shardKeysPtr->at(0) == "_key";
             break;  // all OK
           }
         }
@@ -1615,6 +1621,7 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
 
   return shards->at(hash % shards->size());
 }
+
 
 // Local Variables:
 // mode: outline-minor

@@ -162,6 +162,7 @@ ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,1463,"could not remove database 
 ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,1464,"could not remove database from current","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency."
 ERROR_SHARD_GONE,1465,"no responsible shard found","Will be raised when a coordinator in a cluster cannot determine the shard that is responsible for a given document."
 ERROR_CLUSTER_CONNECTION_LOST,1466,"cluster internal HTTP connection broken","Will be raised when a coordinator in a cluster loses an HTTP connection to a DBserver in the cluster whilst transferring data."
+ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1467,"must not specify _key for this collection","Will be raised when a coordinator in a cluster finds that the _key attribute was specified in a sharded collection the uses not only _key as sharding attribute."
 
 ################################################################################
 ## ArangoDB query errors

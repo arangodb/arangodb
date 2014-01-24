@@ -323,6 +323,12 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  if (json->_type != TRI_JSON_ARRAY) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    return false;
+  }
+  
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
@@ -334,13 +340,6 @@ bool RestDocumentHandler::createDocument () {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
-
-  if (json->_type != TRI_JSON_ARRAY) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    return false;
-  }
-  
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -413,23 +412,52 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
 
   // First determine the collection ID from the name:
   CollectionInfo collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.empty()) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return false;
+  }
   string collid = StringUtils::itoa(collinfo.id());
 
+  // Sort out the _key attribute:
+  // The user is allowed to specify _key, provided that _key is the one
+  // and only sharding attribute, because in this case we can delegate
+  // the responsibility to make _key attributes unique to the responsible
+  // shard. Otherwise, we ensure uniqueness here and now by taking a
+  // cluster-wide unique number. Note that we only know the sharding 
+  // attributes a bit further down the line when we have determined
+  // the responsible shard.
+  TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
+  bool userSpecifiedKey = false;
+  string _key;
+  if (0 == subjson) {
+    // The user did not specify a key, let's create one:
+    uint64_t uid = ci->uniqid();
+    _key = triagens::basics::StringUtils::itoa(uid);
+    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
+                                                     _key.c_str(), _key.size()));
+  }
+  else {
+    userSpecifiedKey = true;
+  }
+
   // Now find the responsible shard:
-  ShardID shardID = ci->getResponsibleShard( collid, json, true );
+  bool usesDefaultShardingAttributes;
+  ShardID shardID = ci->getResponsibleShard( collid, json, true,
+                                             usesDefaultShardingAttributes );
   if (shardID == "") {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_SHARD_GONE);
     return false;
   }
 
-  // Now sort out the _key attribute:
-  // FIXME: we have to be cleverer here, depending on shard attributes
-  uint64_t uid = ci->uniqid();
-  string _key = triagens::basics::StringUtils::itoa(uid);
-  TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                      TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
-                                                   _key.c_str(), _key.size()));
+  // Now perform the above mentioned check:
+  if (userSpecifiedKey && !usesDefaultShardingAttributes) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateTransactionError(collection, 
+                             TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+    return false;
+  }
 
   string body = JsonHelper::toString(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -446,6 +474,7 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
+    delete res;
     generateTransactionError(collection, TRI_ERROR_CLUSTER_TIMEOUT);
     return false;
   }
@@ -453,6 +482,7 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
     if (!res->result->isComplete()) {
+      delete res;
       generateTransactionError(collection, TRI_ERROR_CLUSTER_CONNECTION_LOST);
       return false;
     }
@@ -464,14 +494,10 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   _response = createResponse(
                    static_cast<rest::HttpResponse::HttpResponseCode>
                               (res->result->getHttpReturnCode()));
-  //cout << "CreateDoc: result code: " << res->result->getHttpReturnCode() 
-  //     << endl;
   _response->setContentType(res->result->getContentType(false));
-  //cout << "CreateDoc: contentType: " << res->result->getContentType(false)
-  //     << endl;
   body = res->result->getBody().str();  // FIXME: a bad unnecessary copy!
-  //cout << "CreateDoc: body" << endl << body << endl;
-  //_response->body().appendText(body.c_str(), body.size());
+  _response->body().appendText(body.c_str(), body.size());
+  delete res;
   return resultflag;
 }
 #endif

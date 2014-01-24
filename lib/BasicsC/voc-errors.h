@@ -286,6 +286,10 @@ extern "C" {
 /// - 1466: @LIT{cluster internal HTTP connection broken}
 ///   Will be raised when a coordinator in a cluster loses an HTTP connection
 ///   to a DBserver in the cluster whilst transferring data.
+/// - 1467: @LIT{must not specify _key for this collection}
+///   Will be raised when a coordinator in a cluster finds that the _key
+///   attribute was specified in a sharded collection the uses not only _key as
+///   sharding attribute.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1651,6 +1655,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1466)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1467: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
+///
+/// must not specify _key for this collection
+///
+/// Will be raised when a coordinator in a cluster finds that the _key
+/// attribute was specified in a sharded collection the uses not only _key as
+/// sharding attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            (1467)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
