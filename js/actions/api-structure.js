@@ -40,7 +40,6 @@ var console = require("console");
 var actions = require("org/arangodb/actions");
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
-var ERRORS = arangodb.errors;
 
 var DEFAULT_KEY = "default";
 var API = "_api/structure";

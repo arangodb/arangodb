@@ -11,7 +11,6 @@
     },
 
     initialize: function(opts) {
-      var self = this;
       this.current = opts.current;
       this.collection.fetch({
         async: false
