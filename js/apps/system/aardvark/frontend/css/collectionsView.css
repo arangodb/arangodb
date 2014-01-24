@@ -5,9 +5,6 @@
 #addFilterItem, .removeFilterItem {
   cursor: pointer;
 }
-#transparentHeader .btn-group {
-  margin-top: 6px !important;
-}
 
 #newCollection {
   position: relative;
@@ -95,39 +92,6 @@
   cursor: pointer;
 }
 
-#transparentHeader .breadcrumb {
-  padding-left: 5px !important;
-}
-
-#transparentHeader {
-  width: auto;
-  margin-bottom: 0px !important;
-  padding-right: 10px;
-  position:relative;
-  font-size: 16px;
-}
-
-
-#transparentHeader i {
-  margin-top: 0px;
-  margin-right: 0px;
-  left: 10px;
-  position: absolute;
-}
-
-#transparentHeader a.disabledBread {
-	color:#fff;
-}
-
-#transparentHeader a {
-}
-
-#transparentHeader .pagination {
-	position:absolute;
-	right:5px;
-	margin:4px 0;
-}
-
 .arangoHeaderA {
   width: 14px !important;
   height: 20px !important;
@@ -139,58 +103,6 @@
   padding-top: 5px !important;
   font-size: 17px !important;
 }
-
-#transparentHeader .btn-group {
-  margin-top:4px;
-}
-
-/* option 1 - dropdown filter  */
-#transparentHeader .dropdown-menu {
-  border-radius: 0px 0px 0px 0px;
-  margin-top: 6px;
-  margin-right: -20px;
-  background-color: rgba(0, 0, 0, 0.7);
-  /*background-color: #BFBDBC;*/
-  border: solid 1px #686766;
-}
-
-#transparentHeader .dropdown-menu .checkboxLabel {
-  color: white !important;
-}
-
-#transparentHeader .dropdown-menu .divider {
-  background-color: #686755 !important;
-  border-bottom: 0 !important;
-  color: #686755 !important;
-}
-
-/* option 2 */
-/*
-#transparentHeader .dropdown-menu {
-border-radius: 0 0 4px 4px !important;
-margin-top: 6px !important;
-margin-right: -3px !important;
-background-color: #686766;
-border-left: solid 1px #BFBDBC;
-border-bottom: solid 1px #BFBDBC;
-border-right: solid 1px #BFBDBC;
-border-top: 0;
-}
-
-  #transparentHeader .dropdown-menu .checkboxLabel {
-  color: white !important;
-}
-
-  #transparentHeader .dropdown-menu .divider {
-  background-color: #BFBDBC !important;
-  border-bottom: 0 !important;
-  color: #686755 !important;
-}
-
-  #transparentHeader .dropdown-menu .nav-header {
-  color: #BFBDBC !important;
-}
- */
 
 .dropdown-toggle, .dashSwitch {
   border-radius: 0 !important;
