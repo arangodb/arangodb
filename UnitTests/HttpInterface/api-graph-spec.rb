@@ -1424,6 +1424,27 @@ describe ArangoDB do
         doc.parsed_response['result'].count.should eq(4)
       end
 
+      it "checks list of vertices of a vertex with HAS and HAS_NOT compare" do
+
+        cmd = "/_api/graph/#{graph_name}/vertices"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional1\", \"compare\" : \"HAS\" } ] } }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(4)
+
+
+        cmd = "/_api/graph/#{graph_name}/vertices"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional1\", \"compare\" : \"HAS_NOT\" } ] } }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+
+      end
+
     end
 
 ################################################################################
