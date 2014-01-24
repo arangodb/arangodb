@@ -25,7 +25,7 @@
 }
 
 /* Radius */
-.thumbnail, .navbar-inner, .btn, .btn-primary {
+.thumbnail, .navbar-inner { 
   border-radius:0;
   box-shadow: 0;
 }

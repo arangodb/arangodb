@@ -156,7 +156,6 @@
 }
 
 #collectionPrev {
-  margin-right: 11px;
   margin-left: 20px;
 }
 
@@ -178,7 +177,7 @@
 }
 
 #documentsToolbar li {
-  margin-right: 6px;
+  margin-right: 2px;
 }
 
 #documentsToolbar .pagination-mini ul > li:first-child > a,
@@ -369,19 +368,6 @@
   float:right;
 }
 
-/*RADIUS*/
-#documentsToolbarF a , #documentsToolbar a{
-  border-radius: 0 !important;
-}
-
-#documentsToolbarF ul, #documentsToolbar ul {
-  border-radius: 0 !important;
-}
-
-#documentsToolbarF li ,#documentsToolbar li{
-  border-radius: 0 !important;
-}
-
 #documentsToolbarF a, #logPaginationDiv a {
   margin-left: 11px;
 }
@@ -418,14 +404,6 @@
   padding: 5px 11px 2px 9px;
 }
 
-#documentsToolbar span {
-  position: absolute;
-  top: 0;
-  right: 2px;
-  font-size: 25px;
-  margin-right: 3px;
-  margin-left: 0px;
-}
 
 /* better look of some icons */
 #documentsToolbar .icon_arangodb_filter {
