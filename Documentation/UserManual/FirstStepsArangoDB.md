@@ -582,3 +582,5 @@ Use `--help` to get a list of command-line options:
       --server.password <string>                password to use when connecting (leave empty for prompt)
       --server.request-timeout <double>         request timeout in seconds (default: 300)
       --server.username <string>                username to use when connecting (default: "root")
+
+@BNAVIGATE_FirstStepsArangoDB

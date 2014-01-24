@@ -900,3 +900,4 @@ will result in the URL being accessible via all supported HTTP methods (e.g.
 HTTP `HEAD` only, with all other HTTP methods being disabled. Calling a URL
 with an unsupported or disabled HTTP method will result in an HTTP 501 error.
 
+@BNAVIGATE_UserManualActions

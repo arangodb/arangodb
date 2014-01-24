@@ -412,3 +412,4 @@ ArangoDB 1.1 adds the option `--default-language` to select a locale for
 sorting and comparing strings. The default locale is set to be the system 
 locale on that platform. 
 
+@BNAVIGATE_NewFeatures11

@@ -474,6 +474,182 @@ function ahuacatlQueryPathsTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for TRAVERSAL() filter function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryTraversalFilterTestSuite () {
+  var vn = "UnitTestsTraverseVertices";
+  var en = "UnitTestsTraverseEdges";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ 
+        { name: "1", isDeleted: false }, 
+        { name: "1-1", isDeleted: false }, 
+        { name: "1-1-1", isDeleted: true },  
+        { name: "1-1-2", isDeleted: false },  
+        { name: "1-2", isDeleted: true }, 
+        { name: "1-2-1", isDeleted: false }, 
+        { name: "1-3", isDeleted: false }, 
+        { name: "1-3-1", isDeleted: true }, 
+        { name: "1-3-2", isDeleted: false },
+        { name: "1-3-3", isDeleted: true }
+      ].forEach(function (item) {
+        vertexCollection.save({ _key: item.name, name: item.name, isDeleted: item.isDeleted });
+      });
+
+      [ [ "1", "1-1" ], [ "1", "1-2" ], [ "1", "1-3" ], [ "1-1", "1-1-1" ], [ "1-1", "1-1-2" ], [ "1-2", "1-2-1" ], [ "1-3", "1-3-1" ], [ "1-3", "1-3-2" ], [ "1-3", "1-3-3" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test vertex filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalVertexFilterExcludeMult : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        filterVertices: [ { name: "1-1" }, { name: "1-2" }, { name: "1-3" } ],
+        vertexFilterMethod : [ "exclude" ]
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1-1", "1-2", "1-3" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test vertex filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalVertexFilterPruneExclude : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        filterVertices: [ { isDeleted: false } ],
+        vertexFilterMethod : [ "prune", "exclude" ]
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1", "1-1", "1-1-2", "1-3", "1-3-2" ], actual);
+
+      // no use the default value for filterVertices
+      config.vertexFilterMethod = undefined;
+      
+      actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1", "1-1", "1-1-2", "1-3", "1-3-2" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test vertex filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalVertexFilterPrune : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        filterVertices: [ { isDeleted: false } ],
+        vertexFilterMethod : [ "prune" ]
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1", "1-1", "1-1-1", "1-1-2", "1-2", "1-3", "1-3-1", "1-3-2", "1-3-3" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test vertex filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalVertexFilterPruneMult : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        filterVertices: [ { name: "1" }, { name: "1-1" }, { name: "1-2" }, { name: "1-2-1" } ],
+        vertexFilterMethod : [ "prune", "exclude" ]
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1", "1-1", "1-2", "1-2-1" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test vertex filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalVertexFilterExclude : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        filterVertices: [ { isDeleted: false } ],
+        vertexFilterMethod : [ "exclude" ]
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+      assertEqual([ "1", "1-1", "1-1-2", "1-2-1", "1-3", "1-3-2" ], actual);
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for TRAVERSAL() function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -818,6 +994,7 @@ function ahuacatlQueryTraversalTreeTestSuite () {
 
 jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryPathsTestSuite);
+jsunity.run(ahuacatlQueryTraversalFilterTestSuite);
 jsunity.run(ahuacatlQueryTraversalTestSuite);
 jsunity.run(ahuacatlQueryTraversalTreeTestSuite);
 

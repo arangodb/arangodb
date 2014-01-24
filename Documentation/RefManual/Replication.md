@@ -436,3 +436,4 @@ event that is neither a ocument/edge operation nor a `transaction commit` event)
 should abort the ongoing transaction and discard all buffered operations. It can then
 consider the current transaction as failed.
 
+@BNAVIGATE_RefManualReplication

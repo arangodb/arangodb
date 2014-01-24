@@ -46,3 +46,5 @@ Glossary {#GlossaryIntro}
 @copydoc GlossaryIndexSkiplist
 
 @copydoc GlossaryKeyGenerator
+
+@BNAVIGATE_Glossary

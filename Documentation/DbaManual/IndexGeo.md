@@ -41,3 +41,5 @@ Accessing Geo Indexes from the Shell{#IndexGeoShell}
 @CLEARPAGE
 @anchor IndexGeoShellWithin
 @copydetails JSF_ArangoCollection_prototype_within
+
+@BNAVIGATE_IndexGeo
