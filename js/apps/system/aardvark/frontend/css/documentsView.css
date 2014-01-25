@@ -37,10 +37,6 @@
   margin-top: -54px !important;
 }
 
-.arangoDropdown {
-  margin-bottom: -10px;
-}
-
 #filterHeader, .arangoDropdownIn, #indexHeaderContent {
   margin-left: 5px;
   margin-right: 5px;
@@ -91,10 +87,6 @@
 
 #documentsPaging a {
   font-size: 1.4em;
-}
-
-#documentsDiv {
-  margin-top: 10px !important;
 }
 
 #documentsTableID_length, #documentsTableID_filter {
