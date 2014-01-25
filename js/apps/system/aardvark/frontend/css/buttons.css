@@ -18,8 +18,22 @@
   position: relative;
 }
 
+ul.headerButtonList {
+  display: inline-block;
+  *display: inline;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0!important;
+}
+
+ul.headerButtonList > li {
+  display: inline;
+  margin-right: 2px;
+}
+
 a.headerButton {
- margin-top: -2px; 
+ float: left;
+ margin-top: 0px; 
  margin-left: 5px;
  margin-right: 5px;
  min-height: 19px;
@@ -30,10 +44,25 @@ a.headerButton {
  color:#FFFFFF !important;
  height:20px;
  width:14px;
+ padding: 5px 11px 2px 9px;
 }
 
 a.paginationButton, ul.arangoPagination a {
   border-radius: 2px;
+}
+
+/* better look of some icons */
+a.headerButton .icon_arangodb_filter {
+  top: 1px !important;
+}
+
+a.headerButton .icon_arangodb_import {
+  top: -1px !important;
+}
+
+a.headerButton .icon_arangodb_arrowleft,
+a.headerButton .icon_arangodb_arrowright {
+  font-weight:bold;
 }
 
 /*
@@ -45,4 +74,10 @@ a.paginationButton, ul.arangoPagination a {
   margin-right: 3px;
   margin-left: 0px;
 }
+
+#documentsToolbar li a {
+  margin-top: 0px !important;
+  padding: 5px 11px 2px 9px;
+}
+
 */

@@ -10,10 +10,6 @@
   height: 56px;
 }
 
-#documentsToolbar {
-  margin-bottom: 0 !important;
-}
-
 .marginRight5 {
   margin-right: 10px;
 }
@@ -176,16 +172,6 @@
 	border-width:0 0 0 0px;
 }
 
-#documentsToolbar li {
-  margin-right: 2px;
-}
-
-#documentsToolbar .pagination-mini ul > li:first-child > a,
-#documentsToolbar .pagination-small ul > li:first-child > a,
-#documentsToolbar .pagination-mini ul > li:first-child > span,
-#documentsToolbar .pagination-small ul > li:first-child > span {
-	margin-right: 5px;
-}
 /*
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
 	margin-right: 5px;
@@ -372,11 +358,6 @@
   margin-left: 11px;
 }
 
-#documentsToolbar ul {
-  margin-left: 0 !important;
-  padding-left: 0!important;
-}
-
 .queryline select, .queryline input {
   margin-bottom: 5px !important;
 }
@@ -399,25 +380,6 @@
   margin-left: 5px !important;
 }
 
-#documentsToolbar li a {
-  margin-top: 0px !important;
-  padding: 5px 11px 2px 9px;
-}
-
-
-/* better look of some icons */
-#documentsToolbar .icon_arangodb_filter {
-  top: 1px !important;
-}
-
-#documentsToolbar .icon_arangodb_import {
-  top: -1px !important;
-}
-
-#documentsToolbar .icon_arangodb_arrowleft,
-#documentsToolbar .icon_arangodb_arrowright {
-  font-weight:bold;
-}
 
 #indexHeaderContent > div {
   padding: 10px;

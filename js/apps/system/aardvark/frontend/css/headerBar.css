@@ -26,8 +26,9 @@ div.headerBar a.arangoHeader,
 
 /* The buttons on the right side */
 
-div.headerBar > div.pagination {
+div.headerBar > div.headerButtonBar {
   margin: 4px 0px;
+  margin-bottom: 0 !important;
 }
 
 /* Breadcrumbs on the left side */
