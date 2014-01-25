@@ -114,6 +114,9 @@ v1.5.0 (XXXX-XX-XX)
   result of <collection>.getIndexes() for each index. This is
   currently only implemented for hash indices and skiplist indices.
 
+v1.4.8 (xxxx-xx-xx)
+-------------------
+
 
 v1.4.7 (2014-01-23)
 -------------------
