@@ -134,7 +134,9 @@ Thread::~Thread () {
   int res;
 
   if (_running != 0) {
-    LOG_WARNING("forcefully shutting down thread '%s'", _name.c_str());
+    if (! isSilent()) {
+      LOG_WARNING("forcefully shutting down thread '%s'", _name.c_str());
+    }
     res = TRI_StopThread(&_thread);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -163,6 +165,14 @@ Thread::~Thread () {
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the thread is chatty on shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+bool Thread::isSilent () {
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for running
@@ -336,7 +346,9 @@ void Thread::runMe () {
   }
   catch (...) {
     _running = 0;
-    LOG_WARNING("exception caught in thread '%s'", _name.c_str());
+    if (! isSilent()) {
+      LOG_WARNING("exception caught in thread '%s'", _name.c_str());
+    }
     throw;
   }
 

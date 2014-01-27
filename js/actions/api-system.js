@@ -970,7 +970,7 @@ actions.defineHttp({
 /// @fn JSF_sharding_test_PATCH
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{PATCH/_admin/sharding-test,executes a cluster roundtrip}
+/// @RESTHEADER{PATCH /_admin/sharding-test,executes a cluster roundtrip}
 ///
 /// @RESTBODYPARAM{body,anything,required}
 ///
@@ -982,7 +982,7 @@ actions.defineHttp({
 /// @fn JSF_sharding_test_HEAD
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{HEAD/_admin/sharding-test,executes a cluster roundtrip}
+/// @RESTHEADER{HEAD /_admin/sharding-test,executes a cluster roundtrip}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.

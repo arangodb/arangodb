@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server operation mode
+/// @brief console thread
 ///
 /// @file
 ///
@@ -22,96 +22,121 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_OPERATION_MODE_H
-#define TRIAGENS_REST_OPERATION_MODE_H 1
+#ifndef TRIAGENS_REST_SERVER_CONSOLE_THREAD_H
+#define TRIAGENS_REST_SERVER_CONSOLE_THREAD_H 1
 
-#include "Basics/ProgramOptions.h"
+#include "Basics/Common.h"
+#include "Basics/Thread.h"
+#include "V8Server/ApplicationV8.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+extern "C" {
+  struct TRI_vocbase_s;
+}
 
 namespace triagens {
   namespace rest {
+    class ApplicationServer;
+  }
+
+  namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class OperationMode
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server operation modes
-////////////////////////////////////////////////////////////////////////////////
-
-    class OperationMode {
-      public:
-
-        typedef enum {
-          MODE_CONSOLE,
-          MODE_UNITTESTS,
-          MODE_SCRIPT,
-          MODE_SERVER
-        }
-        server_operation_mode_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                               class ConsoleThread
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
+
+    class ConsoleThread : public basics::Thread {
+      private:
+        ConsoleThread (const ConsoleThread&);
+        ConsoleThread& operator= (const ConsoleThread&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the server operation mode
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        static server_operation_mode_e determineMode (const triagens::basics::ProgramOptions& options) {
-          if (options.has("console")) {
-            return MODE_CONSOLE;
-          }
-          else if (options.has("javascript.unit-tests")) {
-            return MODE_UNITTESTS;
-          }
-          else if (options.has("javascript.script")) {
-            return MODE_SCRIPT;
-          }
-          else {
-            return MODE_SERVER;
-          }
+        ConsoleThread (rest::ApplicationServer*,
+                       ApplicationV8*,
+                       struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~ConsoleThread ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the console thread is done
+////////////////////////////////////////////////////////////////////////////////
+
+        bool done () const {
+          return (_done == 1);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief whether or not the thread is chatty on shutdown
 ////////////////////////////////////////////////////////////////////////////////
+
+        bool isSilent () {
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the thread
+////////////////////////////////////////////////////////////////////////////////
+
+        void run ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+      
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inner thread loop
+////////////////////////////////////////////////////////////////////////////////
+
+        void inner ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+        
+        rest::ApplicationServer* _applicationServer;
+
+        ApplicationV8* _applicationV8;
+
+        ApplicationV8::V8Context* _context;
+
+        struct TRI_vocbase_s* _vocbase;
+        
+        sig_atomic_t _done;
+
+        bool _userAborted;
 
     };
-
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
