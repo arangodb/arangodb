@@ -365,6 +365,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     createMenu = function() {
       var transparentHeader = document.createElement("div"),
         buttons = document.createElement("div"),
+        title = document.createElement("a"),
         configureLists = makeConfigure(
           buttons,
           "configuredropdown",
@@ -386,6 +387,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       transparentHeader.className = "headerBar"
       
       buttons.id = "modifiers";
+
+      title.appendChild(document.createTextNode("Graph Viewer"));
+      title.className = "arangoHeader";
       
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
@@ -398,6 +402,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.appendChild(configureLists.configure);
       menubar.appendChild(configureLists.filter);
       transparentHeader.appendChild(buttons);
+      transparentHeader.appendChild(title);
       
       adapterUI.addControlChangeCollections(function() {
         updateAttributeExamples();
