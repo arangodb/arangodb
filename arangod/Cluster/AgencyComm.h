@@ -34,10 +34,6 @@
 #include "BasicsC/json.h"
 #include "Rest/HttpRequest.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 namespace triagens {
   namespace httpclient {
     class GeneralClientConnection;
@@ -715,10 +711,6 @@ namespace triagens {
   }
 }
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

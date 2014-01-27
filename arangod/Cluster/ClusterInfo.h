@@ -36,11 +36,10 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#ifdef __cplusplus
 extern "C" {
   struct TRI_json_s;
   struct TRI_memory_zone_s;
-#endif
+}
 
 namespace triagens {
   namespace arango {
@@ -1021,10 +1020,6 @@ namespace triagens {
 
   }  // end namespace arango
 }  // end namespace triagens
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
