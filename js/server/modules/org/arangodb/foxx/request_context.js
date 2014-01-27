@@ -187,7 +187,7 @@ extend(RequestContext.prototype, {
 
     constraint[paramName] = this.typeToRegex[attributes.type];
     if (!constraint[paramName]) {
-      throw new Error("Illegal attribute type: " + attributes.type); 
+      throw new Error("Illegal attribute type: " + attributes.type);
     }
     this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
     this.docs.addPathParam(paramName, attributes.description, attributes.type);
