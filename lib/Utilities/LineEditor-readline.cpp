@@ -52,7 +52,7 @@ LineEditor::LineEditor (std::string const& history)
     _state(STATE_NONE) {
   rl_initialize();
 
-#if RL_READLINE_VERSION >= 0x0400
+#ifndef __APPLE__
   rl_catch_signals = 0;
 #endif  
 }
@@ -124,7 +124,7 @@ bool LineEditor::close () {
 
   bool res = writeHistory();
     
-#if RL_READLINE_VERSION >= 0x0400
+#ifndef __APPLE__
   // reset state of the terminal to what it was before readline()
   rl_cleanup_after_signal();
 #endif  
