@@ -1353,7 +1353,7 @@ static std::string BuildPrompt () {
 
 static void SignalHandler (int signal) {
   if (_console != 0) {
-    _console->writeHistory();
+    _console->close();
     _console = 0;
   }
   printf("\n");
