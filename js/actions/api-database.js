@@ -240,7 +240,7 @@ function get_api_database (req, res) {
 ///
 /// @RESTRETURNCODES
 /// 
-/// @RESTRETURNCODE{200}
+/// @RESTRETURNCODE{201}
 /// is returned if the database was created successfully.
 ///
 /// @RESTRETURNCODE{400}
@@ -272,7 +272,7 @@ function get_api_database (req, res) {
 ///     var response = logCurlRequest('POST', url, JSON.stringify(data));
 ///
 ///     db._dropDatabase(name);
-///     assert(response.code === 200);
+///     assert(response.code === 201);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -306,7 +306,7 @@ function get_api_database (req, res) {
 ///     var response = logCurlRequest('POST', url, JSON.stringify(data));
 ///
 ///     db._dropDatabase(name);
-///     assert(response.code === 200);
+///     assert(response.code === 201);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -374,7 +374,8 @@ function post_api_database (req, res) {
 
   var result = arangodb.db._createDatabase(json.name || "", options, users);
 
-  actions.resultOk(req, res, actions.HTTP_OK, { result : result });
+  var returnCode = (req.compatibility <= 10400 ? actions.HTTP_OK : actions.HTTP_CREATED);
+  actions.resultOk(req, res, returnCode, { result : result });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
