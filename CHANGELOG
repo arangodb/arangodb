@@ -1,6 +1,15 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* issue #751: Create database through API should return HTTP status code 201
+
+  By default, the server now returns HTTP 201 (created) when creating a new
+  database successfully. To keep compatibility with older ArangoDB versions, the
+  startup parameter `--server.default-api-compatibility` can be set to a value
+  of `10400` to indicate API compatibility with ArangoDB 1.4. The compatibility
+  can also be enforced by setting the `X-Arango-Version` HTTP header in a 
+  client request to this API on a per-request basis.
+
 * issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
 
 * allow direct access from the `db` object to collections whose names start 
