@@ -31,11 +31,6 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 namespace triagens {
   namespace arango {
 
@@ -305,11 +300,6 @@ namespace triagens {
     };
   }
 }
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
