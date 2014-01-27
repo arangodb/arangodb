@@ -32,8 +32,6 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var users = require("org/arangodb/users");
 
-var ArangoError = arangodb.ArangoError; 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -163,7 +161,7 @@ function post_api_user (req, res) {
     return;
   }
 
-  var result = users.save(json.username, json.passwd, json.active, json.extra);
+  users.save(json.username, json.passwd, json.active, json.extra);
   users.reload();
 
   actions.resultOk(req, res, actions.HTTP_CREATED, { });
@@ -251,7 +249,7 @@ function put_api_user (req, res) {
   }
   
   try {
-    var result = users.replace(username, json.passwd, json.active, json.extra);
+    users.replace(username, json.passwd, json.active, json.extra);
     users.reload();
   
     actions.resultOk(req, res, actions.HTTP_OK, { });
@@ -350,7 +348,7 @@ function patch_api_user (req, res) {
   }
   
   try {
-    var result = users.update(username, json.passwd, json.active, json.extra);
+    users.update(username, json.passwd, json.active, json.extra);
     users.reload();
     actions.resultOk(req, res, actions.HTTP_OK, { });
   }
@@ -419,7 +417,7 @@ function delete_api_user (req, res) {
 
   var username = decodeURIComponent(req.suffix[0]);
   try {
-    var result = users.remove(username);
+    users.remove(username);
     users.reload();
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { });
   }

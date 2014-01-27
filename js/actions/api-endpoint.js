@@ -30,9 +30,6 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-
-var db = arangodb.db;
-
 var internal = require("internal");
 
 // -----------------------------------------------------------------------------
