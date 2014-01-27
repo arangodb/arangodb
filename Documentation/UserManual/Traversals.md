@@ -587,10 +587,10 @@ To set up the collections and populate them with initial data, the following scr
     db._create("v");
     db._createEdgeCollection("e");
 
-    /* vertices: root node */
+    // vertices: root node 
     db.v.save({ _key: "world", name: "World", type: "root" });
 
-    /* vertices: continents */
+    // vertices: continents 
     db.v.save({ _key: "continent-africa", name: "Africa", type: "continent" });
     db.v.save({ _key: "continent-asia", name: "Asia", type: "continent" });
     db.v.save({ _key: "continent-australia", name: "Australia", type: "continent" });
@@ -598,7 +598,7 @@ To set up the collections and populate them with initial data, the following scr
     db.v.save({ _key: "continent-north-america", name: "North America", type: "continent" });
     db.v.save({ _key: "continent-south-america", name: "South America", type: "continent" });
 
-    /* vertices: countries */
+    // vertices: countries 
     db.v.save({ _key: "country-afghanistan", name: "Afghanistan", type: "country", code: "AFG" });
     db.v.save({ _key: "country-albania", name: "Albania", type: "country", code: "ALB" });
     db.v.save({ _key: "country-algeria", name: "Algeria", type: "country", code: "DZA" });
@@ -640,7 +640,7 @@ To set up the collections and populate them with initial data, the following scr
     db.v.save({ _key: "country-germany", name: "Germany", type: "country", code: "DEU" });
     db.v.save({ _key: "country-people-s-republic-of-china", name: "People's Republic of China", type: "country", code: "CHN" });
 
-    /* vertices: capitals */
+    // vertices: capitals 
     db.v.save({ _key: "capital-algiers", name: "Algiers", type: "capital" });
     db.v.save({ _key: "capital-andorra-la-vella", name: "Andorra la Vella", type: "capital" });
     db.v.save({ _key: "capital-asmara", name: "Asmara", type: "capital" });
@@ -682,7 +682,7 @@ To set up the collections and populate them with initial data, the following scr
     db.v.save({ _key: "capital-yaounde", name: "Yaounde", type: "capital" });
     db.v.save({ _key: "capital-zagreb", name: "Zagreb", type: "capital" });
 
-    /* edges: continent -> world */
+    // edges: continent -> world 
     db.e.save("v/continent-africa", "v/world", { type: "is-in" });
     db.e.save("v/continent-asia", "v/world", { type: "is-in" });
     db.e.save("v/continent-australia", "v/world", { type: "is-in" });
@@ -690,7 +690,7 @@ To set up the collections and populate them with initial data, the following scr
     db.e.save("v/continent-north-america", "v/world", { type: "is-in" });
     db.e.save("v/continent-south-america", "v/world", { type: "is-in" });
 
-    /* edges: country -> continent */
+    // edges: country -> continent 
     db.e.save("v/country-afghanistan", "v/continent-asia", { type: "is-in" });
     db.e.save("v/country-albania", "v/continent-europe", { type: "is-in" });
     db.e.save("v/country-algeria", "v/continent-africa", { type: "is-in" });
@@ -732,7 +732,7 @@ To set up the collections and populate them with initial data, the following scr
     db.e.save("v/country-germany", "v/continent-europe", { type: "is-in" });
     db.e.save("v/country-people-s-republic-of-china", "v/continent-asia", { type: "is-in" });
 
-    /* edges: capital -> country */
+    // edges: capital -> country 
     db.e.save("v/capital-algiers", "v/country-algeria", { type: "is-in" });
     db.e.save("v/capital-andorra-la-vella", "v/country-andorra", { type: "is-in" });
     db.e.save("v/capital-asmara", "v/country-eritrea", { type: "is-in" });
