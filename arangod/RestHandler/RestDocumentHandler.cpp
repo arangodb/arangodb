@@ -1511,6 +1511,13 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return deleteDocumentCoordinator(collection, key, revision, policy, 
+                                     waitForSync);
+  }
+#endif
+
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
   // .............................................................................
@@ -1553,6 +1560,39 @@ bool RestDocumentHandler::deleteDocument () {
   }
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestDocumentHandler::deleteDocumentCoordinator (
+                              string const& collname,
+                              string const& key,
+                              TRI_voc_rid_t const rev,
+                              TRI_doc_update_policy_e policy,
+                              bool waitForSync) {
+  string const& dbname = _request->originalDatabaseName();
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  int error = triagens::arango::deleteDocumentOnCoordinator(
+            dbname, collname, key, rev, policy, waitForSync,
+            responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collname, error);
+    return false;
+  }
+  // Essentially return the response we got from the DBserver, be it
+  // OK or an error:
+  _response = createResponse(responseCode);
+  _response->setContentType(contentType);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

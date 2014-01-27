@@ -36,6 +36,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/update-policy.h"
 
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -58,6 +59,20 @@ namespace triagens {
                  string& contentType,
                  string& resultBody);
  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int deleteDocumentOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 string const& key,
+                 TRI_voc_rid_t const rev,
+                 TRI_doc_update_policy_e policy,
+                 bool waitForSync,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

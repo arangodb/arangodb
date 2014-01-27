@@ -117,9 +117,9 @@ namespace triagens {
 /// @brief creates a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool createDocumentCoordinator (char const* collection,
-                                bool waitForSync,
-                                TRI_json_t* json);
+      bool createDocumentCoordinator (char const* collection,
+                                      bool waitForSync,
+                                      TRI_json_t* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
@@ -174,6 +174,16 @@ bool createDocumentCoordinator (char const* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
       virtual bool deleteDocument ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool deleteDocumentCoordinator (string const& collname,
+                                      string const& key,
+                                      TRI_voc_rid_t const rev,
+                                      TRI_doc_update_policy_e policy,
+                                      bool waitForSync);
 
     };
   }

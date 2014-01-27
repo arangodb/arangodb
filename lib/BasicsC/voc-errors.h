@@ -290,6 +290,9 @@ extern "C" {
 ///   Will be raised when a coordinator in a cluster finds that the _key
 ///   attribute was specified in a sharded collection the uses not only _key as
 ///   sharding attribute.
+/// - 1468: @LIT{got contradicting answers from different shards}
+///   Will be raised if a coordinator in a cluster gets conflicting results
+///   from different shards, which should never happen.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1667,6 +1670,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            (1467)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1468: ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS
+///
+/// got contradicting answers from different shards
+///
+/// Will be raised if a coordinator in a cluster gets conflicting results from
+/// different shards, which should never happen.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       (1468)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

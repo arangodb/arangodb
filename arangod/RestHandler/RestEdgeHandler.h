@@ -113,6 +113,17 @@ namespace triagens {
 
       bool createDocument ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document (an edge), coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+      bool createDocumentCoordinator (string const& collname,
+                                      bool waitForSync,
+                                      TRI_json_t* json,
+                                      char const* from,
+                                      char const* to);
+#endif
     };
   }
 }

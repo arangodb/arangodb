@@ -128,6 +128,7 @@
     "ERROR_SHARD_GONE"             : { "code" : 1465, "message" : "no responsible shard found" }, 
     "ERROR_CLUSTER_CONNECTION_LOST" : { "code" : 1466, "message" : "cluster internal HTTP connection broken" }, 
     "ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY" : { "code" : 1467, "message" : "must not specify _key for this collection" }, 
+    "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1468, "message" : "got contradicting answers from different shards" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" }, 

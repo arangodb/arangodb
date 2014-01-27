@@ -34,6 +34,12 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -218,6 +224,14 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // json will be freed inside!
+    return createDocumentCoordinator(collection, waitForSync, json,
+                                     from, to);
+  }
+#endif
+
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
@@ -317,6 +331,43 @@ bool RestEdgeHandler::createDocument () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document (an edge), coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
+                                                 bool waitForSync,
+                                                 TRI_json_t* json,
+                                                 char const* from,
+                                                 char const* to) {
+  string const& dbname = _request->originalDatabaseName();
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  // Not yet implemented:
+  generateTransactionError(collname.c_str(), TRI_ERROR_INTERNAL);
+  return false;
+
+  int error = triagens::arango::createDocumentOnCoordinator(
+            dbname, collname, waitForSync, json,
+            responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collname.c_str(), error);
+    return false;
+  }
+  // Essentially return the response we got from the DBserver, be it
+  // OK or an error:
+  _response = createResponse(responseCode);
+  _response->setContentType(contentType);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single edge
