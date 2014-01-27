@@ -126,6 +126,8 @@ v1.5.0 (XXXX-XX-XX)
 v1.4.8 (xxxx-xx-xx)
 -------------------
 
+* fixed a segfault in the import API
+
 
 v1.4.7 (2014-01-23)
 -------------------

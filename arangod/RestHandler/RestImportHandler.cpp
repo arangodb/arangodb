@@ -696,7 +696,6 @@ bool RestImportHandler::createFromJson (const string& type) {
         
         if (complete) {
           // only perform a full import: abort
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
           break;
         }
         // perform partial import: continue
