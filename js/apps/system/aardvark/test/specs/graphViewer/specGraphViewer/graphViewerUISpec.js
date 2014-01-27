@@ -182,17 +182,18 @@
       });
       
       it('should contain a position for the layout buttons', function() {
-        expect($("#contentDiv #menubar #modifiers").length).toEqual(1);
-        expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
+        var buttonBar = $("#contentDiv #menubar #modifiers");
+        expect(buttonBar.length).toEqual(1);
+        expect(buttonBar).toBeOfClass("headerButtonBar");
+        expect(buttonBar).toBeOfClass("pull-right");
       });
       
       it('should contain a general configure menu', function() {
         var menuSelector = "#contentDiv #menubar #configuremenu",
           dropDownSelector = "#configureDropdown .dropdownInner ul";
         expect($(menuSelector).length).toEqual(1);
-        expect($("span", menuSelector).attr("data-original-title")).toEqual("Configure");
-        expect($("span", menuSelector)).toBeOfClass("glyphicon");
-        expect($("span", menuSelector)).toBeOfClass("glyphicon-cog");
+        expect($("span", menuSelector).attr("title")).toEqual("Configure");
+        expect($("span", menuSelector)).toBeOfClass("arangodb_icon_settings2");
         expect($(dropDownSelector +  " #control_adapter_collections").length).toEqual(1);
         expect($(dropDownSelector +  " #control_node_labelandcolourlist").length).toEqual(1);
         expect($(dropDownSelector +  " #control_adapter_priority").length).toEqual(1);
