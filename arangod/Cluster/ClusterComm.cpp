@@ -151,7 +151,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
                 ClientTransactionID const           clientTransactionID,
                 CoordTransactionID const            coordTransactionID,
                 string const&                       destination,
-                rest::HttpRequest::HttpRequestType  reqtype,
+                triagens::rest::HttpRequest::HttpRequestType  reqtype,
                 string const                        path,
                 char const*                         body,
                 size_t const                        bodyLength,
@@ -637,7 +637,7 @@ void ClusterComm::drop (
 ////////////////////////////////////////////////////////////////////////////////
                 
 void ClusterComm::asyncAnswer (string& coordinatorHeader,
-                               rest::HttpResponse* responseToSend) {
+                               triagens::rest::HttpResponse* responseToSend) {
 
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
@@ -710,7 +710,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
                 
 string ClusterComm::processAnswer(string& coordinatorHeader,
-                                  rest::HttpRequest* answer) {
+                                  triagens::rest::HttpRequest* answer) {
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;

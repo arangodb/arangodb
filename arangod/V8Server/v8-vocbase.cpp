@@ -2020,12 +2020,12 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   std::map<std::string, std::string> shards; 
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server
-    const string serverId = dbServers[i % dbServers.size()];
+    string serverId = dbServers[i % dbServers.size()];
 
     // determine shard id
-    const string shardId = "s" + StringUtils::itoa(id + 1 + i);
+    string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
-    shards.insert(std::make_pair<std::string, std::string>(shardId, serverId));
+    shards.insert(std::make_pair(shardId, serverId));
   }
  
   // now create the JSON for the collection 

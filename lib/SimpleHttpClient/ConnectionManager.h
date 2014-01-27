@@ -91,13 +91,13 @@ namespace triagens {
 
         struct SingleServerConnection {
           GeneralClientConnection* connection;
-          rest::Endpoint* endpoint;
+          triagens::rest::Endpoint* endpoint;
           time_t lastUsed;
           string ep_spec;
 
           SingleServerConnection (GeneralClientConnection* c,
-                                  rest::Endpoint* e,
-                                  string& ep_spec)
+                                  triagens::rest::Endpoint* e,
+                                  std::string& ep_spec)
               : connection(c), endpoint(e), lastUsed(0), ep_spec(ep_spec) {}
           ~SingleServerConnection ();
         };
@@ -154,13 +154,13 @@ namespace triagens {
 /// @brief open or get a previously cached connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleServerConnection* leaseConnection(std::string& endpoint);
+        SingleServerConnection* leaseConnection (std::string& endpoint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return leased connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-        void returnConnection(SingleServerConnection* singleConnection);
+        void returnConnection (SingleServerConnection* singleConnection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief report a leased connection as being broken
@@ -173,7 +173,7 @@ namespace triagens {
 /// limit seconds
 ////////////////////////////////////////////////////////////////////////////////
 
-        void closeUnusedConnections(double limit);
+        void closeUnusedConnections (double limit);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         private methods and data
@@ -198,7 +198,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        map<string, ServerConnections*> allConnections;
+        map<std::string, ServerConnections*> allConnections;
         triagens::basics::ReadWriteLock allLock;
 
     };

@@ -398,6 +398,19 @@ if (ARM_LIB_PATH)
 endif ()
 
 ################################################################################
+### @brief BOOST
+################################################################################
+
+set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost_1_55_0/include CACHE path "BOOST include path")
+set(BOOST_VERSION "1.55.0" CACHE string "BOOST version")
+
+if (BOOST_INCLUDE)
+  include_directories(${BOOST_INCLUDE})
+endif ()
+
+add_definitions("-DTRI_BOOST_VERSION=\"${BOOST_VERSION}\"")
+
+################################################################################
 ### @brief ICU
 ################################################################################
 
