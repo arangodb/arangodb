@@ -110,7 +110,7 @@ dnl BOOST
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(all-in-one-boost,
-  AS_HELP_STRING([--enable-all-in-one-boost], [use supplied BOOST from 3rdParty directory (default: no)]),
+  AS_HELP_STRING([--enable-all-in-one-boost], [use supplied BOOST from 3rdParty directory (default: yes)]),
   [tr_ALL_IN_ONE_BOOST="${enableval:-yes}"],
   [tr_ALL_IN_ONE_BOOST=yes]
 )
