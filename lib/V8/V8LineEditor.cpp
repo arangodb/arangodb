@@ -223,6 +223,20 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
   : LineEditor(history), _context(context) {
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the editor
+////////////////////////////////////////////////////////////////////////////////
+
+V8LineEditor::~V8LineEditor () {
+#ifdef TRI_HAVE_LINENOISE
+
+#else
+
+  // reset state of the terminal to what it was before readline
+  rl_cleanup_after_signal();
+#endif
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -240,6 +254,8 @@ bool V8LineEditor::open (const bool autoComplete) {
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
 
+    // block readline signal handling so we can use our own
+    rl_catch_signals = 0;
 #endif
   }
 

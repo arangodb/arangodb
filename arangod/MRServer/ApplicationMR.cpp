@@ -335,7 +335,6 @@ void ApplicationMR::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationMR::prepare () {
-
   // check the startup modules
   if (_startupModules.empty()) {
     LOG_FATAL_AND_EXIT("no 'ruby.modules-path' has been supplied, giving up");
@@ -359,7 +358,7 @@ bool ApplicationMR::prepare () {
 
   // set up action loader
   if (_actionPath.empty()) {
-    LOG_FATAL_AND_EXIT("no 'ruby.modules-path' has been supplied, giving up");
+    LOG_FATAL_AND_EXIT("no 'ruby.action-directory' has been supplied, giving up");
   }
   else {
     LOG_INFO("using Ruby action files at '%s'", _actionPath.c_str());

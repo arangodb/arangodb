@@ -72,6 +72,7 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
+	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplistIndex.c \
