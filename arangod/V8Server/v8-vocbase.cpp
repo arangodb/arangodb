@@ -1028,6 +1028,83 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document, coordinator case in a cluster
+///
+/// If generateDocument is false, this implements ".exists" rather than
+/// ".document".
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
+                                  TRI_vocbase_col_t const* collection,
+                                  TRI_voc_key_t key,
+                                  TRI_voc_rid_t rid,
+                                  bool generateDocument) {
+  v8::HandleScope scope;
+
+  // First get the initial data:
+  string const dbname(collection->_dbName);
+  string const collname(collection->_name);
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  int error = triagens::arango::getDocumentOnCoordinator(
+            dbname, collname, key, rid, false,   // no "if-none-match" here!
+            generateDocument,
+            responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+
+  // report what the DBserver told us: this could now be 200 or
+  // 404/412
+  // For the error processing we have to distinguish whether we are in
+  // the ".exists" case (generateDocument==false) or the ".document" case
+  // (generateDocument==true).
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+    if (!TRI_IsArrayJson(json)) {
+      if (generateDocument) {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      }
+      else {
+        return scope.Close(v8::False());
+      }
+    }
+    int errorNum = 0;
+    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+      errorNum = static_cast<int>(subjson->_value._number);
+    }
+    string errorMessage;
+    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    if (0 != subjson && TRI_IsStringJson(subjson)) {
+      errorMessage = string(subjson->_value._string.data,
+                            subjson->_value._string.length-1);
+    }
+    if (generateDocument) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
+    }
+    else {
+      return scope.Close(v8::False());
+    }
+  }
+  if (generateDocument) {
+    v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return scope.Close(ret);
+  }
+  else {
+    // Note that for this case we will never get a 304 "NOT_MODIFIED"
+    return scope.Close(v8::True());
+  }
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document and returns it
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1067,8 +1144,6 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
-
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
@@ -1077,6 +1152,12 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return DocumentVocbaseCol_Coordinator(col, key, rid, true);
+  }
+#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -1205,6 +1286,12 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     // for any other error that happens, we'll rethrow it
     return scope.Close(v8::ThrowException(err));
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return DocumentVocbaseCol_Coordinator(col, key, rid, false);
+  }
+#endif
 
   assert(col != 0);
   assert(key != 0);

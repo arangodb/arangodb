@@ -557,6 +557,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   const string& collection = suffix[0];
   const string& key = suffix[1];
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return getDocumentCoordinator(collection, key, generateBody);
+  }
+#endif
+
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
 
@@ -648,6 +654,67 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestDocumentHandler::getDocumentCoordinator (
+                              string const& collname,
+                              string const& key,
+                              bool generateBody ) {
+  string const& dbname = _request->originalDatabaseName();
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  // check for an etag
+  bool notthisref = false;  // will be set if "if-none-match" is given but
+                            // "if-match" is not
+  TRI_voc_rid_t rev = 0;
+
+  bool isValidRevision;
+  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
+  if (ifNoneRid != 0) {
+    notthisref = true;
+    rev = ifNoneRid;
+  }
+
+  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev", isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
+  if (ifRid != 0) {  // not that this takes precedence over "if-none-match"
+    notthisref = false;
+    rev = ifRid;
+  }
+
+  int error = triagens::arango::getDocumentOnCoordinator(
+            dbname, collname, key, rev, notthisref, generateBody,
+            responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collname, error);
+    return false;
+  }
+  // Essentially return the response we got from the DBserver, be it
+  // OK or an error:
+  _response = createResponse(responseCode);
+  _response->setContentType(contentType);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all documents from collection
