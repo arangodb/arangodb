@@ -1,0 +1,176 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief console thread
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#include "ConsoleThread.h"
+
+#include "ApplicationServer/ApplicationServer.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/tri-strings.h"
+#include "Rest/Version.h"
+#include "VocBase/vocbase.h"
+#include "V8/V8LineEditor.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-utils.h"
+#include <v8.h>
+
+using namespace triagens::basics;
+using namespace triagens::rest;
+using namespace triagens::arango;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class ConsoleThread
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a console thread
+////////////////////////////////////////////////////////////////////////////////
+
+ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
+                              ApplicationV8* applicationV8,
+                              TRI_vocbase_t* vocbase) 
+  : Thread("console"),
+    _applicationServer(applicationServer),
+    _applicationV8(applicationV8),
+    _context(0),
+    _vocbase(vocbase),
+    _done(0),
+    _userAborted(false) {
+  allowAsynchronousCancelation();
+  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a console thread
+////////////////////////////////////////////////////////////////////////////////
+
+ConsoleThread::~ConsoleThread () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the thread
+////////////////////////////////////////////////////////////////////////////////
+
+void ConsoleThread::run () {
+  usleep(100000);
+
+  // enter V8 context
+  _context = _applicationV8->enterContext(_vocbase, 0, true, true);
+
+  try {
+    inner();
+    _applicationV8->exitContext(_context);
+    _done = 1;
+  }
+  catch (...) {
+    _applicationV8->exitContext(_context);
+    _done = 1;
+
+    if (! _userAborted) {
+      throw;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inner thread loop - this handles all the user inputs
+////////////////////////////////////////////////////////////////////////////////
+
+void ConsoleThread::inner () {
+  v8::HandleScope globalScope;
+
+  // run the shell
+  cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
+
+  v8::Local<v8::String> name(v8::String::New("(arango)"));
+  v8::Context::Scope contextScope(_context->_context);
+
+  // .............................................................................
+  // run console
+  // .............................................................................
+
+  const string pretty = "start_pretty_print();";
+  TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(pretty.c_str(), pretty.size()), v8::String::New("(internal)"), false);
+
+  V8LineEditor console(_context->_context, ".arangod.history");
+
+  console.open(true);
+
+  while (true) {
+    v8::V8::LowMemoryNotification();
+    while(! v8::V8::IdleNotification()) {
+    }
+
+    char* input = console.prompt("arangod> ");
+
+    if (input == 0) {
+      _applicationServer->beginShutdown();
+      _userAborted = true;
+
+      // this will be caught by "run" 
+      throw "user aborted";
+    }
+
+    if (*input == '\0') {
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      continue;
+    }
+
+    console.addHistory(input);
+
+    v8::HandleScope scope;
+    v8::TryCatch tryCatch;
+
+    TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(input), name, true);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+
+    if (tryCatch.HasCaught()) {
+      cout << TRI_StringifyV8Exception(&tryCatch);
+    }
+  }
+
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
