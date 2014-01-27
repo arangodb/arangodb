@@ -74,6 +74,21 @@ namespace triagens {
                  string& contentType,
                  string& resultBody);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int getDocumentOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 string const& key,
+                 TRI_voc_rid_t const rev,
+                 bool notthisref,
+                 bool generateDocument,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

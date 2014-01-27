@@ -185,6 +185,14 @@ namespace triagens {
                                       TRI_doc_update_policy_e policy,
                                       bool waitForSync);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool getDocumentCoordinator (string const& collname,
+                                   string const& key,
+                                   bool generateBody);
+
     };
   }
 }
