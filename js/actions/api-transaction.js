@@ -127,6 +127,10 @@ var actions = require("org/arangodb/actions");
 /// If the transaction specification is either missing or malformed, the server
 /// will respond with `HTTP 400`.
 ///
+/// @RESTRETURNCODE{404}
+/// If the transaction specification contains an unknown collection, the server
+/// will respond with `HTTP 404`.
+///
 /// @RESTRETURNCODE{500}
 /// Exceptions thrown by users will make the server respond with a return code of 
 /// `HTTP 500` 
