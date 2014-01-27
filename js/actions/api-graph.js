@@ -136,7 +136,7 @@ function edge_by_request (req, g) {
 function matchError (req, res, doc, errorCode) {  
 
   if (req.headers["if-none-match"] !== undefined) {
-    if (doc._rev === req.headers["if-none-match"]) {
+    if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
       // error      
       res.responseCode = actions.HTTP_NOT_MODIFIED;
       res.contentType = "application/json; charset=utf-8";
@@ -147,7 +147,7 @@ function matchError (req, res, doc, errorCode) {
   }  
   
   if (req.headers["if-match"] !== undefined) {
-    if (doc._rev !== req.headers["if-match"]) {
+    if (doc._rev !== req.headers["if-match"].replace(/(^["']|["']$)/g, '')) {
       // error
       actions.resultError(req, 
                           res, 
