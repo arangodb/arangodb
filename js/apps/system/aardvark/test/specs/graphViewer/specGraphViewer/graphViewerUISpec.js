@@ -189,16 +189,24 @@
       });
       
       it('should contain a general configure menu', function() {
-        var menuSelector = "#contentDiv #menubar #configuremenu",
+        var menuSelector = "#contentDiv #menubar #configuredropdown",
           dropDownSelector = "#configureDropdown .dropdownInner ul";
         expect($(menuSelector).length).toEqual(1);
         expect($("span", menuSelector).attr("title")).toEqual("Configure");
-        expect($("span", menuSelector)).toBeOfClass("arangodb_icon_settings2");
+        expect($("span", menuSelector)).toBeOfClass("icon_arangodb_settings2");
         expect($(dropDownSelector +  " #control_adapter_collections").length).toEqual(1);
         expect($(dropDownSelector +  " #control_node_labelandcolourlist").length).toEqual(1);
         expect($(dropDownSelector +  " #control_adapter_priority").length).toEqual(1);
       });
       
+      it('should contain a filter menu', function() {
+        var menuSelector = "#contentDiv #menubar #filterdropdown",
+          dropDownSelector = "#filterDropdown .dropdownInner ul";
+        expect($(menuSelector).length).toEqual(1);
+        expect($("span", menuSelector).attr("title")).toEqual("Filter");
+        expect($("span", menuSelector)).toBeOfClass("icon_arangodb_filter");
+      });
+
       it('should have the same layout as the web interface', function() {
         var header = div.children[0];
         expect(header).toBeTag("ul");
