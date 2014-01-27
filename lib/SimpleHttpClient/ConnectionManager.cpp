@@ -91,7 +91,7 @@ ConnectionManager::ServerConnections::~ServerConnections () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::SingleServerConnection* 
-ConnectionManager::leaseConnection(string& endpoint) {
+ConnectionManager::leaseConnection (std::string& endpoint) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
   SingleServerConnection* c;
@@ -158,7 +158,7 @@ ConnectionManager::leaseConnection(string& endpoint) {
 /// @brief return leased connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::returnConnection(SingleServerConnection* c) {
+void ConnectionManager::returnConnection (SingleServerConnection* c) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
 
@@ -190,7 +190,7 @@ void ConnectionManager::returnConnection(SingleServerConnection* c) {
 /// @brief report a leased connection as being broken
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::brokenConnection(SingleServerConnection* c) {
+void ConnectionManager::brokenConnection (SingleServerConnection* c) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
 

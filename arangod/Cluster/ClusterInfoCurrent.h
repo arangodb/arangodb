@@ -31,13 +31,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "BasicsC/json.h"
 #include "Cluster/AgencyComm.h"
 #include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 extern "C" {
-  struct TRI_json_s;
   struct TRI_memory_zone_s;
 }
 
@@ -69,7 +69,7 @@ namespace triagens {
 
         CollectionInfo ();
         
-        CollectionInfo (ShardID const&, struct TRI_json_s*);
+        CollectionInfo (ShardID const&, TRI_json_t*);
 
         CollectionInfo (CollectionInfo const&);
 
@@ -98,7 +98,7 @@ namespace triagens {
         bool add (ShardID& shardID, TRI_json_t* json) {
           map<ShardID, TRI_json_t*>::iterator it = _jsons.find(shardID);
           if (it == _jsons.end()) {
-            _jsons.insert(make_pair<ShardID, TRI_json_t*>(shardID, json));
+            _jsons.insert(make_pair(shardID, json));
             return true;
           }
           return false;
@@ -145,7 +145,7 @@ namespace triagens {
           for (it = _jsons.begin(); it != _jsons.end(); ++it) {
             TRI_json_t* _json = it->second;
             n = triagens::basics::JsonHelper::getStringValue(_json, "name", "");
-            m.insert(make_pair<ShardID, string>(it->first,n));
+            m.insert(make_pair(it->first,n));
           }
           return m;
         }
@@ -168,8 +168,8 @@ namespace triagens {
           map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
           if (it != _jsons.end()) {
             TRI_json_t* _json = it->second;
-            return triagens::basics::JsonHelper::getNumericValue<TRI_col_type_e>
-                                      (_json, "type", TRI_COL_TYPE_UNKNOWN);
+            return (TRI_col_type_e) triagens::basics::JsonHelper::getNumericValue<int>
+                                      (_json, "type", (int) TRI_COL_TYPE_UNKNOWN);
           }
           else {
             return TRI_COL_TYPE_UNKNOWN;
@@ -184,9 +184,9 @@ namespace triagens {
           map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
           if (it != _jsons.end()) {
             TRI_json_t* _json = _jsons.begin()->second;
-            return triagens::basics::JsonHelper::getNumericValue
-                               <TRI_vocbase_col_status_e>
-                               (_json, "status", TRI_VOC_COL_STATUS_CORRUPTED);
+            return (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue
+                               <int>
+                               (_json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
           }
           return TRI_VOC_COL_STATUS_CORRUPTED;
         }
@@ -201,10 +201,10 @@ namespace triagens {
           TRI_vocbase_col_status_e s;
           for (it = _jsons.begin(); it != _jsons.end(); ++it) {
             TRI_json_t* _json = it->second;
-            s = triagens::basics::JsonHelper::getNumericValue
-                          <TRI_vocbase_col_status_e>
-                          (_json, "status", TRI_VOC_COL_STATUS_CORRUPTED);
-            m.insert(make_pair<ShardID, TRI_vocbase_col_status_e>(it->first,s));
+            s = (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue
+                          <int> 
+                          (_json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
+            m.insert(make_pair(it->first,s));
           }
           return m;
         }
@@ -246,7 +246,7 @@ namespace triagens {
             TRI_json_t* _json = it->second;
             b = triagens::basics::JsonHelper::getBooleanValue(_json, 
                                                               name, false);
-            m.insert(make_pair<ShardID, bool>(it->first,b));
+            m.insert(make_pair(it->first,b));
           }
           return m;
         }
@@ -382,9 +382,9 @@ namespace triagens {
           TRI_voc_size_t s;
           for (it = _jsons.begin(); it != _jsons.end(); ++it) {
             TRI_json_t* _json = it->second;
-            s = triagens::basics::JsonHelper::getNumericValue
-                          <TRI_voc_size_t> (_json, "journalSize", 0);
-            m.insert(make_pair<ShardID, TRI_voc_size_t>(it->first,s));
+            s = (TRI_voc_size_t) triagens::basics::JsonHelper::getNumericValue
+                          <int> (_json, "journalSize", 0);
+            m.insert(make_pair(it->first,s));
           }
           return m;
         }
@@ -703,8 +703,8 @@ namespace triagens {
         _uniqid;
 
         // Cached data from the agency, we reload whenever necessary:
-        std::map<DatabaseID, struct TRI_json_s*> _plannedDatabases; // from Plan/Databases
-        std::map<DatabaseID, std::map<ServerID, struct TRI_json_s*> > _currentDatabases; // from Current/Databases
+        std::map<DatabaseID, TRI_json_t*> _plannedDatabases; // from Plan/Databases
+        std::map<DatabaseID, std::map<ServerID, TRI_json_t*> > _currentDatabases; // from Current/Databases
 
         AllCollections                     _collections;  // from Current/Collections/
         bool                               _collectionsValid;

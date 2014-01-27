@@ -26,10 +26,9 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterInfoCurrent.h"
 
 #include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -59,7 +58,7 @@ CollectionInfo::CollectionInfo () {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::CollectionInfo (ShardID const& shardID, TRI_json_t* json) {
-  _jsons.insert(make_pair<ShardID, TRI_json_t*>(shardID, json));
+  _jsons.insert(make_pair(shardID, json));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,7 +367,7 @@ void ClusterInfo::loadPlannedDatabases () {
 
       // steal the json
       (*it).second._json = 0;
-      _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
+      _plannedDatabases.insert(std::make_pair(name, options));
 
       ++it;
     }
@@ -422,7 +421,7 @@ void ClusterInfo::loadCurrentDatabases () {
       if (it2 == _currentDatabases.end()) {
         // insert an empty list for this database
         std::map<ServerID, TRI_json_t*> empty;
-        it2 = _currentDatabases.insert(std::make_pair<DatabaseID, std::map<ServerID, TRI_json_t*> >(database, empty)).first; 
+        it2 = _currentDatabases.insert(std::make_pair(database, empty)).first; 
       }
        
       if (parts.size() == 2) {
@@ -430,7 +429,7 @@ void ClusterInfo::loadCurrentDatabases () {
         TRI_json_t* json = (*it).second._json;
         // steal the JSON
         (*it).second._json = 0;
-        (*it2).second.insert(std::make_pair<ServerID, TRI_json_t*>(parts[1], json));
+        (*it2).second.insert(std::make_pair(parts[1], json));
       }
 
       ++it;
@@ -491,7 +490,7 @@ void ClusterInfo::loadCurrentCollections () {
       if (it2 == _collections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollections empty;
-        _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
+        _collections.insert(std::make_pair(database, empty));
         it2 = _collections.find(database);
       }
 
@@ -508,7 +507,7 @@ void ClusterInfo::loadCurrentCollections () {
       if (it4 != dbcolls.end()) {
         collectionData = it4->second;
         if (!collectionData->add(shardID, json)) {
-          TRI_FreeJson(json);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
       else {
@@ -517,8 +516,8 @@ void ClusterInfo::loadCurrentCollections () {
         
       // insert the collection into the existing map
 
-      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo*>(collection, collectionData));
-      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo*>(collectionData.name(), collectionData));
+      (*it2).second.insert(std::make_pair(collection, collectionData));
+      (*it2).second.insert(std::make_pair(collectionData.name(), collectionData));
 
       std::map<std::string, std::string> shards 
           = collectionData->shardIdsPlanned();
@@ -528,7 +527,7 @@ void ClusterInfo::loadCurrentCollections () {
         const std::string shardId = (*it3).first;
         const std::string serverId = (*it3).second;
 
-        _shardIds.insert(std::make_pair<ShardID, ServerID>(shardId, serverId));
+        _shardIds.insert(std::make_pair(shardId, serverId));
         ++it3;
       }
 
@@ -588,7 +587,7 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
   info._type        = collection.type();
   info._cid         = collection.id();
   info._revision    = 0; // TODO 
-  info._maximalSize = collection.maximalSize();
+  info._maximalSize = collection.journalSize();
 
   const std::string name = collection.name();
   memcpy(info._name, name.c_str(), name.size());

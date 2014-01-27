@@ -197,7 +197,7 @@ void HeartbeatThread::run () {
           const double remain = interval - (TRI_microtime() - start);
 
           if (remain > 0.0) {
-            usleep((useconds_t) (remain * 1000.0 * 1000.0)); 
+            usleep((unsigned long) (remain * 1000.0 * 1000.0)); 
           }
         }
       }

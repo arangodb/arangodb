@@ -249,6 +249,7 @@ target_link_libraries(
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${OPENSSL_LIBS}
+    ${MSVC_LIBS}
 )
 
 ## -----------------------------------------------------------------------------

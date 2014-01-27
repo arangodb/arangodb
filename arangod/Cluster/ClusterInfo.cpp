@@ -134,7 +134,7 @@ CollectionInfoCurrent::CollectionInfoCurrent () {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfoCurrent::CollectionInfoCurrent (ShardID const& shardID, TRI_json_t* json) {
-  _jsons.insert(make_pair<ShardID, TRI_json_t*>(shardID, json));
+  _jsons.insert(make_pair(shardID, json));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +449,7 @@ void ClusterInfo::loadPlannedDatabases () {
 
       // steal the json
       (*it).second._json = 0;
-      _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
+      _plannedDatabases.insert(std::make_pair(name, options));
 
       ++it;
     }
@@ -503,7 +503,7 @@ void ClusterInfo::loadCurrentDatabases () {
       if (it2 == _currentDatabases.end()) {
         // insert an empty list for this database
         std::map<ServerID, TRI_json_t*> empty;
-        it2 = _currentDatabases.insert(std::make_pair<DatabaseID, std::map<ServerID, TRI_json_t*> >(database, empty)).first; 
+        it2 = _currentDatabases.insert(std::make_pair(database, empty)).first; 
       }
        
       if (parts.size() == 2) {
@@ -511,7 +511,7 @@ void ClusterInfo::loadCurrentDatabases () {
         TRI_json_t* json = (*it).second._json;
         // steal the JSON
         (*it).second._json = 0;
-        (*it2).second.insert(std::make_pair<ServerID, TRI_json_t*>(parts[1], json));
+        (*it2).second.insert(std::make_pair(parts[1], json));
       }
 
       ++it;
@@ -576,7 +576,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       if (it2 == _collections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollections empty;
-        _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
+        _collections.insert(std::make_pair(database, empty));
         it2 = _collections.find(database);
       }
 
@@ -588,8 +588,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       vector<string>* shardKeys = new vector<string>;
       *shardKeys = collectionData.shardKeys();
       _shardKeys.insert(
-            make_pair<CollectionID, TRI_shared_ptr<vector<string> > >
-                     (collection, TRI_shared_ptr<vector<string> > (shardKeys)));
+                    make_pair(collection, TRI_shared_ptr<vector<string> > (shardKeys)));
       map<ShardID, ServerID> shardIDs = collectionData.shardIds();
       vector<string>* shards = new vector<string>;
       map<ShardID, ServerID>::iterator it3;
@@ -597,13 +596,12 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
         shards->push_back(it3->first);
       }
       _shards.insert(
-            make_pair<CollectionID, TRI_shared_ptr<vector<string> > >
-                     (collection,TRI_shared_ptr<vector<string> >(shards)));
+              make_pair(collection,TRI_shared_ptr<vector<string> >(shards)));
         
       // insert the collection into the existing map
         
-      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
-      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
+      (*it2).second.insert(std::make_pair(collection, collectionData));
+      (*it2).second.insert(std::make_pair(collectionData.name(), collectionData));
 
     }
     _collectionsValid = true;
@@ -777,7 +775,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       if (it2 == _collectionsCurrent.end()) {
         // not yet, so create an entry for the database
         DatabaseCollectionsCurrent empty;
-        _collectionsCurrent.insert(std::make_pair<DatabaseID, DatabaseCollectionsCurrent>(database, empty));
+        _collectionsCurrent.insert(std::make_pair(database, empty));
         it2 = _collectionsCurrent.find(database);
       }
 
@@ -790,8 +788,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       it3 = it2->second.find(collection);
       if (it3 == it2->second.end()) {
         const CollectionInfoCurrent collectionDataCurrent(shardID, json);
-        it2->second.insert(make_pair<CollectionID, CollectionInfoCurrent>
-                              (collection, collectionDataCurrent));
+        it2->second.insert(make_pair(collection, collectionDataCurrent));
         it3 = it2->second.find(collection);
       }
       else {
@@ -809,7 +806,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       std::string DBserver = triagens::basics::JsonHelper::getStringValue
                     (json, "DBServer", "");
       if (DBserver != "") {
-        _shardIds.insert(make_pair<ShardID, ServerID>(shardID, DBserver));
+        _shardIds.insert(make_pair(shardID, DBserver));
       }
     }
     _collectionsCurrentValid = true;
@@ -1321,7 +1318,7 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_vocbase_col_status_e old = triagens::basics::JsonHelper::getNumericValue<TRI_vocbase_col_status_e>(json, "status", TRI_VOC_COL_STATUS_CORRUPTED);
+  TRI_vocbase_col_status_e old = (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue<int>(json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
   
   if (old == status) {
     // no status change
@@ -1377,7 +1374,7 @@ void ClusterInfo::loadServers () {
     while (it != result._values.end()) {
       const std::string server = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
 
-      _servers.insert(std::make_pair<ServerID, std::string>((*it).first, server));
+      _servers.insert(std::make_pair((*it).first, server));
       ++it;
     }
 
@@ -1451,7 +1448,7 @@ void ClusterInfo::loadCurrentDBServers () {
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      _DBServers.insert(std::make_pair<ServerID, ServerID>((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+      _DBServers.insert(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
 
     _DBServersValid = true;
