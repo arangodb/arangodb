@@ -1,6 +1,9 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* always start networking and HTTP listeners when starting the server (even in 
+  console mode)
+
 * issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
 
 * allow direct access from the `db` object to collections whose names start 
