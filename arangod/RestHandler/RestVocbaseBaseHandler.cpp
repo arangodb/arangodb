@@ -438,7 +438,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       return;
 
 #ifdef TRI_ENABLE_CLUSTER
-    case TRI_ERROR_SHARD_GONE:
+    case TRI_ERROR_CLUSTER_SHARD_GONE:
       generateError(HttpResponse::SERVER_ERROR, res, 
                     "coordinator: no responsible shard found");
       return;

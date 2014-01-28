@@ -193,6 +193,18 @@ namespace triagens {
                                    string const& key,
                                    bool generateBody);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool modifyDocumentCoordinator (string const& collname,
+                                      string const& key,
+                                      TRI_voc_rid_t const rev,
+                                      TRI_doc_update_policy_e policy,
+                                      bool waitForSync,
+                                      bool isPatch,
+                                      TRI_json_t* json);
+
     };
   }
 }

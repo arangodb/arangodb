@@ -150,7 +150,9 @@ uint64_t TRI_HashJson (TRI_json_t const* json);
 
 uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
                                    char const *attributes[],
-                                   int nrAttributes);
+                                   int nrAttributes,
+                                   bool docComplete,
+                                   int* error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

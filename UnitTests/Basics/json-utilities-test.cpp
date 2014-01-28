@@ -607,40 +607,40 @@ BOOST_AUTO_TEST_CASE (tst_json_hashattributes_single) {
   const char* v1[] = { "_key" };
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ }");
-  const uint64_t h1 = TRI_HashJsonByAttributes(json, v1, 1);
+  const uint64_t h1 = TRI_HashJsonByAttributes(json, v1, 1, true, NULL);
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"_key\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foobar\" }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foobar\", \"_key\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foobar\", \"keys\": { \"_key\": \"foobar\" } }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foobar\", \"KEY\": 1234, \"_KEY\": \"foobar\" }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"_key\": \"i-am-a-foo\" }");
-  const uint64_t h2 = TRI_HashJsonByAttributes(json, v1, 1);
+  const uint64_t h2 = TRI_HashJsonByAttributes(json, v1, 1, true, NULL);
   BOOST_CHECK(h1 != h2);
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foobar\", \"KEY\": 1234, \"_key\": \"i-am-a-foo\" }");
-  BOOST_CHECK_EQUAL(h2, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h2, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": [ \"foobar\" ], \"KEY\": { }, \"_key\": \"i-am-a-foo\" }");
-  BOOST_CHECK_EQUAL(h2, TRI_HashJsonByAttributes(json, v1, 1));
+  BOOST_CHECK_EQUAL(h2, TRI_HashJsonByAttributes(json, v1, 1, true, NULL));
   FREE_JSON
 }
 
@@ -654,48 +654,48 @@ BOOST_AUTO_TEST_CASE (tst_json_hashattributes_mult1) {
   const char* v1[] = { "a", "b" };
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ }");
-  const uint64_t h1 = TRI_HashJsonByAttributes(json, v1, 2);
+  const uint64_t h1 = TRI_HashJsonByAttributes(json, v1, 2, true, NULL);
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": null, \"b\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": null, \"a\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
 
   // test if non-relevant attributes influence our hash
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": null, \"B\": 123 }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"B\": 1234, \"a\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": null, \"A\": 123, \"B\": \"hihi\" }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
 
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"c\": null, \"d\": null }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"A\": 1, \"B\": 2, \" a\": \"bar\" }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"ab\": 1, \"ba\": 2 }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
 }
 
@@ -710,39 +710,80 @@ BOOST_AUTO_TEST_CASE (tst_json_hashattributes_mult2) {
   
   const uint64_t h1 = 6369173190757857502ULL;
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"bar\" }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": \"bar\", \"a\": \"foo\" }");
-  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"food\", \"b\": \"bar\" }");
-  BOOST_CHECK_EQUAL(720060016857102700ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(720060016857102700ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"baz\" }");
-  BOOST_CHECK_EQUAL(6361520589827022742ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(6361520589827022742ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"FOO\", \"b\": \"BAR\" }");
-  BOOST_CHECK_EQUAL(3595137217367956894ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(3595137217367956894ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\" }");
-  BOOST_CHECK_EQUAL(12739237936894360852ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(12739237936894360852ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"meow\" }");
-  BOOST_CHECK_EQUAL(13378327204915572311ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(13378327204915572311ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": \"bar\" }");
-  BOOST_CHECK_EQUAL(10085884912118216755ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(10085884912118216755ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": \"bar\", \"a\": \"meow\" }");
-  BOOST_CHECK_EQUAL(15753579192430387496ULL, TRI_HashJsonByAttributes(json, v1, 2));
+  BOOST_CHECK_EQUAL(15753579192430387496ULL, TRI_HashJsonByAttributes(json, v1, 2, true, NULL));
+  FREE_JSON
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hashing by attribute names with incomplete docs
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_json_hashattributes_mult3) {
+  TRI_json_t* json;
+  
+  const char* v1[] = { "a", "b" };
+  
+  int error;
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"bar\" }");
+  TRI_HashJsonByAttributes(json, v1, 2, false, &error);
+  BOOST_CHECK_EQUAL(TRI_ERROR_NO_ERROR, error);
+  FREE_JSON
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\" }");
+  TRI_HashJsonByAttributes(json, v1, 2, false, &error);
+  BOOST_CHECK_EQUAL(TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, error);
+  FREE_JSON
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": \"bar\" }");
+  TRI_HashJsonByAttributes(json, v1, 2, false, &error);
+  BOOST_CHECK_EQUAL(TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, error);
+  FREE_JSON
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ }");
+  TRI_HashJsonByAttributes(json, v1, 2, false, &error);
+  BOOST_CHECK_EQUAL(TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, error);
+  FREE_JSON
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"c\": 12 }");
+  TRI_HashJsonByAttributes(json, v1, 2, false, &error);
+  BOOST_CHECK_EQUAL(TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, error);
+  FREE_JSON
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": 1, \"b\": null }");
+  TRI_HashJsonByAttributes(json, v1, 2, false, &error);
+  BOOST_CHECK_EQUAL(TRI_ERROR_NO_ERROR, error);
   FREE_JSON
 }
 

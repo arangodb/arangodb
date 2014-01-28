@@ -908,9 +908,10 @@ namespace triagens {
 /// @brief find the shard that is responsible for a document
 ////////////////////////////////////////////////////////////////////////////////
 
-        ShardID getResponsibleShard (CollectionID const&, TRI_json_t const*,
-                                     bool docComplete,
-                                     bool& usesDefaultShardingAttributes);
+        int getResponsibleShard (CollectionID const&, TRI_json_t const*,
+                                 bool docComplete,
+                                 ShardID& shardID,
+                                 bool& usesDefaultShardingAttributes);
 
       private:
 

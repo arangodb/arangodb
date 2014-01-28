@@ -1306,6 +1306,14 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const TRI_doc_update_policy_e policy = extractUpdatePolicy();
   const bool waitForSync = extractWaitForSync();
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // json will be freed inside
+    return modifyDocumentCoordinator(collection, key, revision, policy, 
+                                     waitForSync, isPatch, json);
+  }
+#endif
+
   TRI_doc_mptr_t document;
 
   // find and load collection given by name or identifier
@@ -1425,6 +1433,43 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modifies a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestDocumentHandler::modifyDocumentCoordinator (
+                              string const& collname,
+                              string const& key,
+                              TRI_voc_rid_t const rev,
+                              TRI_doc_update_policy_e policy,
+                              bool waitForSync,
+                              bool isPatch,
+                              TRI_json_t* json) {
+  string const& dbname = _request->originalDatabaseName();
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  string const keepNull = _request->value("keepNull");
+
+  int error = triagens::arango::modifyDocumentOnCoordinator(
+            dbname, collname, key, rev, policy, waitForSync, isPatch, 
+            keepNull, json, responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collname, error);
+    return false;
+  }
+  // Essentially return the response we got from the DBserver, be it
+  // OK or an error:
+  _response = createResponse(responseCode);
+  _response->setContentType(contentType);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
