@@ -89,6 +89,24 @@ namespace triagens {
                  string& contentType,
                  string& resultBody);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modify a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int modifyDocumentOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 string const& key,
+                 TRI_voc_rid_t const rev,
+                 TRI_doc_update_policy_e policy,
+                 bool waitForSync,
+                 bool isPatch,
+                 string const& keepNull,
+                 TRI_json_t* json,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

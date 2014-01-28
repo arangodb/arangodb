@@ -858,19 +858,33 @@ uint64_t TRI_HashJson (TRI_json_t const* json) {
 /// Note that all JSON values given for `json` that are not JSON arrays
 /// hash to the same value, which is not the same value a JSON array gets
 /// that does not contain any of the specified attributes.
+/// If the flag `docComplete` is false, it is an error if the document
+/// does not contain explicit values for all attributes. An error
+/// is reported by setting *error to 
+/// TRI_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN instead of
+/// TRI_ERROR_NO_ERROR. It is allowed to give NULL as error in which
+/// case no error is reported.
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
                                    char const *attributes[],
-                                   int nrAttributes) {
+                                   int nrAttributes,
+                                   bool docComplete,
+                                   int* error) {
   int i;
   TRI_json_t const* subjson;
   uint64_t hash;
 
+  if (NULL != error) {
+    *error = TRI_ERROR_NO_ERROR;
+  }
   hash = TRI_FnvHashBlockInitial();
   if (TRI_IsArrayJson(json)) {
     for (i = 0; i < nrAttributes; i++) {
       subjson = TRI_LookupArrayJson(json, attributes[i]);
+      if (NULL == subjson && !docComplete && NULL != error) {
+        *error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+      }
       hash = HashJsonRecursive(hash, subjson);
     }
   }

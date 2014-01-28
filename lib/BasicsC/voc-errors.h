@@ -293,6 +293,10 @@ extern "C" {
 /// - 1468: @LIT{got contradicting answers from different shards}
 ///   Will be raised if a coordinator in a cluster gets conflicting results
 ///   from different shards, which should never happen.
+/// - 1469: @LIT{not all sharding attributes given}
+///   Will be raised if a coordinator tries to find out which shard is
+///   responsible for a partial document, but cannot do this because not all
+///   sharding attributes are specified.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1638,7 +1642,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1464)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1465: ERROR_SHARD_GONE
+/// @brief 1465: ERROR_CLUSTER_SHARD_GONE
 ///
 /// no responsible shard found
 ///
@@ -1646,7 +1650,7 @@ void TRI_InitialiseErrorMessages (void);
 /// that is responsible for a given document.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SHARD_GONE                                              (1465)
+#define TRI_ERROR_CLUSTER_SHARD_GONE                                      (1465)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1466: ERROR_CLUSTER_CONNECTION_LOST
@@ -1681,6 +1685,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       (1468)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1469: ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN
+///
+/// not all sharding attributes given
+///
+/// Will be raised if a coordinator tries to find out which shard is
+/// responsible for a partial document, but cannot do this because not all
+/// sharding attributes are specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               (1469)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

@@ -92,11 +92,12 @@ int createDocumentOnCoordinator (
 
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
-  ShardID shardID = ci->getResponsibleShard( collid, json, true,
-                                             usesDefaultShardingAttributes );
-  if (shardID == "") {
+  ShardID shardID;
+  int error = ci->getResponsibleShard( collid, json, true, shardID,
+                                       usesDefaultShardingAttributes );
+  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return TRI_ERROR_SHARD_GONE;
+    return TRI_ERROR_CLUSTER_SHARD_GONE;
   }
 
   // Now perform the above mentioned check:
@@ -180,8 +181,9 @@ int deleteDocumentOnCoordinator (
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
-  ShardID shardID = ci->getResponsibleShard( collid, json, true,
-                                             usesDefaultShardingAttributes );
+  ShardID shardID;
+  int error = ci->getResponsibleShard( collid, json, true, shardID,
+                                       usesDefaultShardingAttributes );
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:
@@ -197,8 +199,8 @@ int deleteDocumentOnCoordinator (
 
   if (usesDefaultShardingAttributes) {
     // OK, this is the fast method, we only have to ask one shard:
-    if (shardID == "") {
-      return TRI_ERROR_SHARD_GONE;
+    if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
 
     // Send a synchronous request to that shard using ClusterComm:
@@ -311,8 +313,9 @@ int getDocumentOnCoordinator (
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
-  ShardID shardID = ci->getResponsibleShard( collid, json, true,
-                                             usesDefaultShardingAttributes );
+  ShardID shardID;
+  int error = ci->getResponsibleShard( collid, json, true, shardID,
+                                       usesDefaultShardingAttributes );
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:
@@ -331,8 +334,8 @@ int getDocumentOnCoordinator (
 
   if (usesDefaultShardingAttributes) {
     // OK, this is the fast method, we only have to ask one shard:
-    if (shardID == "") {
-      return TRI_ERROR_SHARD_GONE;
+    if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
 
     // Set up revision string or header:
@@ -389,6 +392,179 @@ int getDocumentOnCoordinator (
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(it->first)+"/"+key+
                           revstr, NULL, 0, headers, NULL, 60.0);
+    delete res;
+  }
+  // Now listen to the results:
+  int count;
+  int nrok = 0;
+  for (count = shards.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_RECEIVED) {
+      if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
+          (nrok == 0 && count == 1)) {
+        nrok++;
+        responseCode = res->answer_code;
+        contentType = res->answer->header("content-type");
+        resultBody = string(res->answer->body(), res->answer->bodySize());
+      }
+    }
+    delete res;
+  }
+  // Note that nrok is always at least 1!
+  if (nrok > 1) {
+    return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+  }
+  return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
+                               // the DBserver could have reported an error.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modify a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+int modifyDocumentOnCoordinator (
+                 string const& dbname,
+                 string const& collname,
+                 string const& key,
+                 TRI_voc_rid_t const rev,
+                 TRI_doc_update_policy_e policy,
+                 bool waitForSync,
+                 bool isPatch,
+                 string const& keepNull,   // only for isPatch == true
+                 TRI_json_t* json,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+
+  // First determine the collection ID from the name:
+  CollectionInfo collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  string collid = StringUtils::itoa(collinfo.id());
+
+  // We have a fast path and a slow path. The fast path only asks one shard
+  // to do the job and the slow path asks them all and expects to get
+  // "not found" from all but one shard. We have to cover the following
+  // cases:
+  //   isPatch == false    (this is a "replace" operation)
+  //     Here, the complete new document is given, we assume that we
+  //     can read off the responsible shard, therefore can use the fast
+  //     path, this is always true if _key is the one and only sharding
+  //     attribute, however, if there is any other sharding attribute,
+  //     it is possible that the user has changed the values in any of 
+  //     them, in that case we will get a "not found" or a "sharding
+  //     attributes changed answer" in the fast path. In the latter case
+  //     we have to delegate to the slow path.
+  //   isPatch == true     (this is an "update" operation)
+  //     In this case we might or might not have all sharding attributes
+  //     specified in the partial document given. If _key is the one and
+  //     only sharding attribute, it is always given, if not all sharding
+  //     attributes are explicitly given (at least as value `null`), we must
+  //     assume that the fast path cannot be used. If all sharding attributes
+  //     are given, we first try the fast path, but might, as above, 
+  //     have to use the slow path after all.
+
+  bool usesDefaultShardingAttributes;
+  ShardID shardID;
+  int error;
+  if (isPatch) {
+    error = ci->getResponsibleShard( collid, json, false, shardID,
+                                     usesDefaultShardingAttributes );
+  }
+  else {
+    error = ci->getResponsibleShard( collid, json, true, shardID,
+                                     usesDefaultShardingAttributes );
+  }
+
+  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    return error;
+  }
+
+  // Some stuff to prepare cluster-internal requests:
+  ClusterCommResult* res;
+  string revstr;
+  if (rev != 0) {
+    revstr = "?rev="+StringUtils::itoa(rev);
+  }
+  triagens::rest::HttpRequest::HttpRequestType reqType;
+  if (isPatch) {
+    reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PATCH;
+    if (!keepNull.empty()) {
+      if (revstr.empty()) {
+        revstr += "?keepNull=";
+      }
+      else {
+        revstr += "&keepNull=";
+      }
+      revstr += keepNull;
+    }
+  }
+  else {
+    reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PUT;
+  }
+
+  string body = JsonHelper::toString(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  if (!isPatch || 
+      error != TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN) {
+    // This is the fast method, we only have to ask one shard, unless
+    // the we are in isPatch==false and the user has actually changed the
+    // sharding attributes
+
+    // Set up revision string or header:
+    map<string, string> headers;
+
+    // Send a synchronous request to that shard using ClusterComm:
+    res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID, reqType,
+                          "/_db/"+dbname+"/_api/document/"+
+                          StringUtils::urlEncode(shardID)+"/"+key+
+                          revstr, body.c_str(), body.size(), headers, 60.0);
+  
+    if (res->status == CL_COMM_TIMEOUT) {
+      // No reply, we give up:
+      delete res;
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+    }
+    if (res->status == CL_COMM_ERROR) {
+      // This could be a broken connection or an Http error:
+      if (!res->result->isComplete()) {
+        delete res;
+        return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+      }
+      // In this case a proper HTTP error was reported by the DBserver,
+      // this can be 400 or 404, we simply forward the result.
+      // We intentionally fall through here.
+    }
+    // Now we have to distinguish whether we still have to go the slow way:
+    responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
+                              (res->result->getHttpReturnCode());
+    if (responseCode < triagens::rest::HttpResponse::BAD) {
+      // OK, we are done, let's report:
+      contentType = res->result->getContentType(false);
+      resultBody = res->result->getBody().str();
+      delete res;
+      return TRI_ERROR_NO_ERROR;
+    }
+    delete res;
+  }
+
+  // If we get here, we have to do it the slow way and contact everybody:
+  map<ShardID, ServerID> shards = collinfo.shardIds();
+  map<ShardID, ServerID>::iterator it;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  for (it = shards.begin(); it != shards.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
+                          "/_db/"+dbname+"/_api/document/"+
+                          StringUtils::urlEncode(it->first)+"/"+key+revstr, 
+                          body.c_str(), body.size(), headers, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:

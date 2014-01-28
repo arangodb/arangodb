@@ -807,6 +807,8 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
                     (json, "DBServer", "");
       if (DBserver != "") {
         _shardIds.insert(make_pair(shardID, DBserver));
+        cout << "_shardIDs[" << shardID << "] == " << DBserver 
+             << DBserver.size() << endl;
       }
     }
     _collectionsCurrentValid = true;
@@ -1559,16 +1561,20 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
 /// values for some of the sharding attributes is silently ignored
 /// and treated as if these values were `null`. In the second mode
 /// (`docComplete`==false) leads to an error which is reported by
-/// returning an empty string as the shardID. If the collection is
-/// found, the flag `usesDefaultShardingAttributes` is used set to
-/// `true` if `_key` is the one and only sharding attribute and is
-/// set to `false` otherwise.
+/// returning TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, which is the only
+/// error code that can be returned.
+///
+/// In either case, if the collection is found, the variable
+/// shardID is set to the ID of the responsible shard and the flag
+/// `usesDefaultShardingAttributes` is used set to `true` if and only if
+/// `_key` is the one and only sharding attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
-                                          TRI_json_t const* json,
-                                          bool docComplete,
-                                          bool& usesDefaultShardingAttributes) {
+int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
+                                      TRI_json_t const* json,
+                                      bool docComplete,
+                                      ShardID& shardID,
+                                      bool& usesDefaultShardingAttributes) {
   // Note that currently we take the number of shards and the shardKeys
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
@@ -1580,6 +1586,7 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   TRI_shared_ptr<vector<string> > shardKeysPtr;
   char const** shardKeys = 0;
   TRI_shared_ptr<vector<ShardID> > shards;
+  bool found = false;
 
   while (++tries <= 2) {
     {
@@ -1601,6 +1608,7 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
             }
             usesDefaultShardingAttributes = shardKeysPtr->size() == 1 &&
                                             shardKeysPtr->at(0) == "_key";
+            found = true;
             break;  // all OK
           }
         }
@@ -1608,15 +1616,18 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     }
     loadPlannedCollections();
   }
-  if (0 == shardKeys) {
-    return string("");
+  if (!found) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   
+  int error;
   uint64_t hash = TRI_HashJsonByAttributes(json, shardKeys, 
-                                           shardKeysPtr->size());
+                                           shardKeysPtr->size(),
+                                           docComplete, &error);
   delete[] shardKeys;
 
-  return shards->at(hash % shards->size());
+  shardID = shards->at(hash % shards->size());
+  return error;
 }
 
 
