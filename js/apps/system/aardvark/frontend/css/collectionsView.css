@@ -56,20 +56,12 @@
   border-radius: 2px 2px 2px 2px !important;
 }
 
-.searchInput {
-  background-color: #FFFFFF;
-  border: 0 !important;
-  box-shadow: 0 !important;
-  color: #555555;
-  display: inline-block;
-  font-size: 12px;
-  height: 18px !important;
+input.searchInput {
+  border: none;
+  height: 18px;
   line-height: 18px;
   margin-top: 5px;
-  padding: 2px;
-  vertical-align: middle;
-  width:214px !important;
-  border-radius: 0px 0px 0px 0px !important;
+  width:214px;
 }
 
 #searchInput:focus {
