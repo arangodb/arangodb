@@ -101,7 +101,7 @@ namespace triagens {
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
                  bool isPatch,
-                 string const& keepNull,
+                 bool keepNull,   // only counts for isPatch == true
                  TRI_json_t* json,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  string& contentType,

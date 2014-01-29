@@ -1452,7 +1452,10 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   string contentType;
   string resultBody;
 
-  string const keepNull = _request->value("keepNull");
+  bool keepNull = true;
+  if (!strcmp(_request->value("keepNull"),"false")) {
+    keepNull = false;
+  }
 
   int error = triagens::arango::modifyDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, isPatch, 
