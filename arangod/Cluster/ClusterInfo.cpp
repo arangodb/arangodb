@@ -1626,6 +1626,12 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   uint64_t hash = TRI_HashJsonByAttributes(json, shardKeys, 
                                            shardKeysPtr->size(),
                                            docComplete, &error);
+  static char const* magicPhrase 
+      = "Foxx you have stolen the goose, give she back again!";
+  static size_t const len = 52;
+  // To improve our hash function:
+  hash = TRI_FnvHashBlock(hash, magicPhrase, len);
+
   delete[] shardKeys;
 
   shardID = shards->at(hash % shards->size());
