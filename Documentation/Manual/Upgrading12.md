@@ -457,3 +457,4 @@ ArangoDB 1.2 in favor of managing users via `arangosh` or `arangod` directly.
 Please refer to @ref Upgrading12Troubleshooting for more information on how
 to manage users in ArangoDB 1.2.
 
+@BNAVIGATE_Upgrading12

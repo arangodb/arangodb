@@ -7,7 +7,12 @@
     <div class="pull-right pagination pagination-small pagination-right btn-group">
       <ul>
         <li>
-          <a id="foxxToggle" class="arangoHeaderA">
+          <a id="importFoxxToggle" class="headerButton">
+            <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
+          </a>
+        </li>
+        <li>
+          <a id="foxxToggle" class="headerButton">
             <span class="icon_arangodb_settings2" title="Settings"></span>
           </a>
         </li>
@@ -17,36 +22,44 @@
     </div>
 
   </div>
-    <div id="foxxDropdownOut" class="headerDropdown">
-      <div id="foxxDropdown" class="dropdownInner">
+  <div id="foxxDropdownOut" class="headerDropdown">
+    <div id="foxxDropdown" class="dropdownInner">
 
-        <ul>
-          <li class="nav-header">Type</li>
-          <li><a href="#">
-            <label class="checkbox checkboxLabel">
-              <input class="css-checkbox" type="checkbox" id="checkActive">
-              <label class="css-label"></label>Active
-            </label>
-          </a></li>
+      <ul>
+        <li class="nav-header">Type</li>
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkActive">
+            <label class="css-label"></label>Active
+          </label>
+        </a></li>
 
-          <li><a href="#">
-            <label class="checkbox checkboxLabel">
-              <input class="css-checkbox" type="checkbox" id="checkDevel">
-              <label class="css-label"></label>Development
-            </label>
-          </a></li>
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkDevel">
+            <label class="css-label"></label>Development
+          </label>
+        </a></li>
 
-          <!--li><a href="#">
-            <label class="checkbox checkboxLabel">
-              <input class="css-checkbox" type="checkbox" id="checkInactive">
-              <label class="css-label"></label>Inactive
-            </label>
-          </a></li-->
-        </ul>
+        <!--li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkInactive">
+            <label class="css-label"></label>Inactive
+          </label>
+        </a></li-->
+      </ul>
 
-      </div>
     </div>
+  </div>
 
+  <div id="foxxDropdownImport" class="headerDropdown">
+    <div id="foxxDropdownImportInner" class="dropdownImport">
+      <input id="importFoxx" name="importFoxx" type="file" accept="application/zip" />
+      <button id="confirmFoxxImport" class="btn btn-success btn-old-padding" style="float:right">
+        <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import Foxx
+      </button>
+    </div>
+  </div>
 </ul>
 
 

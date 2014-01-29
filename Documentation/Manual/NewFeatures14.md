@@ -507,3 +507,4 @@ The following command-line options have been added for _arangoimp_ in 1.4:
 
   * `--server.database`: allows specifying the database name for the connection
 
+@BNAVIGATE_NewFeatures14

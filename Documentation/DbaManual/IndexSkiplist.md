@@ -23,3 +23,5 @@ Accessing Skip-List Indexes from the Shell{#IndexSkiplistShell}
 @CLEARPAGE
 @anchor IndexSkiplistShellEnsureSkiplist
 @copydetails JS_EnsureSkiplistVocbaseCol
+
+@BNAVIGATE_IndexSkiplist

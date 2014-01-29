@@ -50,3 +50,5 @@ ArangoDB Result Generators {#JSModuleActionsArangoDB}
 @CLEARPAGE
 @anchor JSModuleActionsResultException
 @copydetails JSF_resultException
+
+@BNAVIGATE_JSModuleActions

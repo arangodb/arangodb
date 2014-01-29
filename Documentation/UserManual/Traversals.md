@@ -774,3 +774,4 @@ To set up the collections and populate them with initial data, the following scr
     db.e.save("v/capital-yaounde", "v/country-cameroon", { type: "is-in" });
     db.e.save("v/capital-zagreb", "v/country-croatia", { type: "is-in" });
 
+@BNAVIGATE_Traversals

@@ -174,3 +174,5 @@ documents can `_from` and `_to` and that their values point to existing document
 
 Finally you should make sure that all other attributes in the import file do not
 start with an underscore - otherwise they might be discarded.
+
+@BNAVIGATE_ImpManual

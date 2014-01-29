@@ -245,3 +245,4 @@ controlled environments. Thus the default value for this option is `false` (no m
 overriding allowed). You need to enable it explicitly if you want to use this
 feature.
 
+@BNAVIGATE_Communication

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, arangoHelper, templateEngine, _ */
+/*global Backbone, EJS, $, window, arangoHelper, templateEngine, _, console */
 
 window.ApplicationsView = Backbone.View.extend({
   el: '#content',
@@ -11,9 +11,84 @@ window.ApplicationsView = Backbone.View.extend({
     "click #checkDevel": "toggleDevel",
     "click #checkActive": "toggleActive",
     "click #checkInactive": "toggleInactive",
-    "click #foxxToggle": "slideToggle"
+    "click #foxxToggle": "slideToggle",
+    "click #importFoxxToggle": "slideToggleImport",
+    "change #importFoxx": "uploadSetup",
+    "click #confirmFoxxImport": "importFoxx"
+  },
+
+  uploadSetup: function (e) {
+    var files = e.target.files || e.dataTransfer.files;
+    this.file = files[0];
+    this.allowUpload = true;
+  },
+
+  importFoxx: function() {
+    var self = this;
+    if (this.allowUpload) {
+      this.showSpinner();
+      $.ajax({
+        type: "POST",
+        async: false,
+        url: '/_api/upload',
+        data: self.file,
+        processData: false,
+        contentType: 'application/octet-stream',
+        complete: function(res) {
+          if (res.readyState === 4) {
+            if (res.status === 201) {
+              $.ajax({
+                type: "POST",
+                async: false,
+                url: "/_admin/aardvark/foxxes/inspect",
+                data: res.responseText,
+                contentType: "application/json"
+              }).done(function(res) {
+                console.log(res);
+                $.ajax({
+                  type: "POST",
+                  async: false,
+                  url: '/_admin/foxx/fetch',
+                  data: JSON.stringify({ 
+                    name: res.name,
+                    version: res.version,
+                    filename: res.filename
+                  }),
+                  processData: false
+                }).done(function (res) {
+                  self.reload();
+                }).fail(function (err) {
+                  self.hideSpinner();
+                  var error = JSON.parse(err.responseText);
+                  arangoHelper.arangoError("Error: " + error.errorMessage);
+                });
+              }).fail(function(err) {
+                self.hideSpinner();
+                var error = JSON.parse(err.responseText);
+                arangoHelper.arangoError("Error: " + error.error);
+              });
+              delete self.file;
+              self.allowUpload = false;
+              self.hideSpinner();
+              self.hideImportModal();
+              return;
+            }
+          }
+          self.hideSpinner();
+          arangoHelper.arangoError("Upload error");
+        }
+      });
+    }
   },
   
+  showSpinner: function() {
+    $('#uploadIndicator').show();
+  },
+
+  hideSpinner: function() {
+    $('#uploadIndicator').hide();
+  },
+
   toggleDevel: function() {
     var self = this;
     this._showDevel = !this._showDevel;
@@ -38,8 +113,22 @@ window.ApplicationsView = Backbone.View.extend({
     });
   },
 
+  hideImportModal: function() {
+    $('#foxxDropdownImport').hide();
+  },
+
+  hideSettingsModal: function() {
+    $('#foxxDropdownOut').hide();
+  },
+
+  slideToggleImport: function() {
+    $('#foxxDropdownImport').slideToggle(200);
+    this.hideSettingsModal();
+  },
+
   slideToggle: function() {
     $('#foxxDropdownOut').slideToggle(200);
+    this.hideImportModal();
   },
 
   toggleView: function(event) {

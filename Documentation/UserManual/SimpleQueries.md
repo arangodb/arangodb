@@ -241,3 +241,5 @@ will be undefined which of the matching documents will get removed/modified.
 
 @anchor SimpleQueryUpdateByExample
 @copydetails JSF_ArangoCollection_prototype_updateByExample
+
+@BNAVIGATE_SimpleQueries

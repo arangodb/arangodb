@@ -42,3 +42,4 @@ Managing Endpoints via HTTP {#HttpEndpointHttp}
 @anchor HttpEndpointGet
 @copydetails JSF_get_api_endpoint
 
+@BNAVIGATE_HttpEndpoint

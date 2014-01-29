@@ -152,12 +152,12 @@
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the document or collection was not found ",
-                            "code": "404"
-                        },
-                        {
                             "reason": "is returned if the \"If-None-Match\" header is given and the document has same version ",
                             "code": "304"
+                        },
+                        {
+                            "reason": "is returned if the document or collection was not found ",
+                            "code": "404"
                         },
                         {
                             "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version ",
@@ -177,6 +177,12 @@
                             "paramType": "query",
                             "name": "rev",
                             "description": "You can conditionally fetch a document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-None-Match",
+                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. If the current document revision is different to the specified etag, an <em>HTTP 200</em> response is returned. If the current document revision is  identical to the specified etag, then an <em>HTTP 304</em> is returned. "
                         },
                         {
                             "dataType": "String",
