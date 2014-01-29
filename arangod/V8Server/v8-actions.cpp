@@ -898,7 +898,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
 
   if (asyncMode) {
     res = cc->asyncRequest(clientTransactionId,TRI_NewTickServer(),destination, 
-                         reqType, path, body.c_str(), body.size(), headerFields, 
+                         reqType, path, &body, false, headerFields, 
                          new CallbackTest("Hello Callback"), timeout);
 
     if (res == 0) {
@@ -990,8 +990,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
   }
   else {   // synchronous mode
     res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(),destination, 
-                          reqType, path, body.c_str(), body.size(), 
-                          *headerFields, timeout);
+                          reqType, path, body, *headerFields, timeout);
     delete headerFields;
     if (res != 0) {
       LOG_DEBUG("JS_ShardingTest: request has been sent synchronously, "

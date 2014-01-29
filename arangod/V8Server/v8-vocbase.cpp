@@ -8514,7 +8514,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
         headers["Authentication"] = TRI_ObjectToString(argv[2]);
         res = cc->syncRequest("", 0, "server:"+sid, 
                               triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                              "/_api/database/user", 0, 0, headers, 0.0);
+                              "/_api/database/user", 0, headers, 0.0);
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
           string body = res->result->getBody().str();
