@@ -30,7 +30,6 @@
 
 var internal = require("internal");
 var console = require("console");
-var cluster = require("org/arangodb/cluster");
 
 var ArangoError = require("org/arangodb").ArangoError;
 
@@ -70,7 +69,8 @@ SimpleQueryAll.prototype.execute = function () {
     }
   
     var documents;
-
+    var cluster = require("org/arangodb/cluster");
+    
     if (cluster.isCoordinator()) {
       var dbName = require("internal").db._name();
       var shards = cluster.shardList(dbName, this._collection.name());
@@ -93,13 +93,40 @@ SimpleQueryAll.prototype.execute = function () {
 
       var _documents = [ ], total = 0;
       var result = cluster.wait(coord, shards);
+      var toSkip = this._skip, toLimit = this._limit;
+
       result.forEach(function(part) {
         var body = JSON.parse(part.body);
-        _documents = _documents.concat(body.result);
         total += body.total;
+
+        if (toSkip > 0) {
+          if (toSkip >= body.result.length) {
+            toSkip -= body.result.length;
+            return;
+          }
+          
+          body.result = body.result.slice(toSkip);
+          toSkip = 0;
+        }
+
+        if (toLimit !== null && toLimit !== undefined) {
+          if (body.result.length >= toLimit) {
+            body.result = body.result.slice(0, toLimit);
+            toLimit = 0;
+          }
+          else {
+            toLimit -= body.result.length;
+          }
+        }
+
+        _documents = _documents.concat(body.result);
       });
 
-      documents = { documents: _documents, count: _documents.length, total: total };
+      documents = { 
+        documents: _documents, 
+        count: _documents.length, 
+        total: total
+      };
     }
     else {
       documents = this._collection.ALL(this._skip, this._limit);

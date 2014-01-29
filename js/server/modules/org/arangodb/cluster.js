@@ -30,7 +30,6 @@
 
 var console = require("console");
 var arangodb = require("org/arangodb");
-var db = arangodb.db;
 var ArangoCollection = arangodb.ArangoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,6 +172,7 @@ function writeLocked (lockInfo, cb, args) {
 
 function getLocalDatabases () {
   var result = { };
+  var db = require("internal").db;
 
   db._listDatabases().forEach(function (database) {
     result[database] = { name: database };
@@ -187,6 +187,7 @@ function getLocalDatabases () {
 
 function getLocalCollections () {
   var result = { };
+  var db = require("internal").db;
 
   db._collections().forEach(function (collection) {
     var name = collection.name();
@@ -226,6 +227,7 @@ function createLocalDatabases (plannedDatabases) {
                      payload);
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
   
   var localDatabases = getLocalDatabases();
@@ -282,6 +284,7 @@ function dropLocalDatabases (plannedDatabases) {
     }
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
   
   var localDatabases = getLocalDatabases();
@@ -320,6 +323,7 @@ function cleanupCurrentDatabases () {
     }
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
 
   var all = ArangoAgency.get("Current/Databases", true);
@@ -370,6 +374,7 @@ function createLocalCollections (plannedCollections) {
                      payload);
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
   var localDatabases = getLocalDatabases();
   var database;
@@ -529,6 +534,7 @@ function dropLocalCollections (plannedCollections) {
     }
   };
 
+  var db = require("internal").db;
   db._useDatabase("_system");
   var shardMap = getShardMap(plannedCollections);
   
@@ -599,6 +605,7 @@ function cleanupCurrentCollections (plannedCollections) {
     }
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
 
   var all = ArangoAgency.get("Current/Collections", true);
