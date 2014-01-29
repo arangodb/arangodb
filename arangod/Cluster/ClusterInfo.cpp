@@ -584,12 +584,12 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       // steal the json
       (*it).second._json = 0;
 
-      const CollectionInfo collectionData(json);
+      TRI_shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
       vector<string>* shardKeys = new vector<string>;
-      *shardKeys = collectionData.shardKeys();
+      *shardKeys = collectionData->shardKeys();
       _shardKeys.insert(
                     make_pair(collection, TRI_shared_ptr<vector<string> > (shardKeys)));
-      map<ShardID, ServerID> shardIDs = collectionData.shardIds();
+      map<ShardID, ServerID> shardIDs = collectionData->shardIds();
       vector<string>* shards = new vector<string>;
       map<ShardID, ServerID>::iterator it3;
       for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
@@ -601,7 +601,8 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       // insert the collection into the existing map
         
       (*it2).second.insert(std::make_pair(collection, collectionData));
-      (*it2).second.insert(std::make_pair(collectionData.name(), collectionData));
+      (*it2).second.insert(std::make_pair(collectionData->name(), 
+                                          collectionData));
 
     }
     _collectionsValid = true;
@@ -617,7 +618,8 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
+TRI_shared_ptr<CollectionInfo> ClusterInfo::getCollection 
+                                          (DatabaseID const& databaseID,
                                            CollectionID const& collectionID) {
   int tries = 0;
 
@@ -646,7 +648,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     loadPlannedCollections(true);
   }
 
-  return CollectionInfo();
+  return TRI_shared_ptr<CollectionInfo>(new CollectionInfo());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -679,17 +681,18 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
 
 TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
                                                      CollectionID const& collectionID) {
-  CollectionInfo ci = getCollection(databaseID, collectionID);
+  TRI_shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
   
-  return getCollectionProperties(ci);
+  return getCollectionProperties(*ci);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const& databaseID) {
-  std::vector<CollectionInfo> result;
+const std::vector<TRI_shared_ptr<CollectionInfo> > ClusterInfo::getCollections 
+                         (DatabaseID const& databaseID) {
+  std::vector<TRI_shared_ptr<CollectionInfo> > result;
 
   // always reload
   loadPlannedCollections(true);
@@ -787,12 +790,13 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       DatabaseCollectionsCurrent::iterator it3;
       it3 = it2->second.find(collection);
       if (it3 == it2->second.end()) {
-        const CollectionInfoCurrent collectionDataCurrent(shardID, json);
+        TRI_shared_ptr<CollectionInfoCurrent> collectionDataCurrent
+                    (new CollectionInfoCurrent(shardID, json));
         it2->second.insert(make_pair(collection, collectionDataCurrent));
         it3 = it2->second.find(collection);
       }
       else {
-        it3->second.add(shardID, json);
+        it3->second->add(shardID, json);
       }
         
       // Note that we have only inserted the CollectionInfoCurrent under
@@ -826,7 +830,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfoCurrent ClusterInfo::getCollectionCurrent 
+TRI_shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent 
            (DatabaseID const& databaseID,
             CollectionID const& collectionID) {
   int tries = 0;
@@ -856,7 +860,7 @@ CollectionInfoCurrent ClusterInfo::getCollectionCurrent
     loadCurrentCollections(true);
   }
 
-  return CollectionInfoCurrent();
+  return TRI_shared_ptr<CollectionInfoCurrent>(new CollectionInfoCurrent());
 }
 
 

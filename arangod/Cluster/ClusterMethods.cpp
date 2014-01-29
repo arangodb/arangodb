@@ -61,11 +61,11 @@ int createDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  CollectionInfo collinfo = ci->getCollection(dbname, collname);
-  if (collinfo.empty()) {
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo.id());
+  string collid = StringUtils::itoa(collinfo->id());
 
   // Sort out the _key attribute:
   // The user is allowed to specify _key, provided that _key is the one
@@ -162,11 +162,11 @@ int deleteDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  CollectionInfo collinfo = ci->getCollection(dbname, collname);
-  if (collinfo.empty()) {
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo.id());
+  string collid = StringUtils::itoa(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the 
@@ -237,7 +237,7 @@ int deleteDocumentOnCoordinator (
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  map<ShardID, ServerID> shards = collinfo.shardIds();
+  map<ShardID, ServerID> shards = collinfo->shardIds();
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
@@ -294,11 +294,11 @@ int getDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  CollectionInfo collinfo = ci->getCollection(dbname, collname);
-  if (collinfo.empty()) {
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo.id());
+  string collid = StringUtils::itoa(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the 
@@ -376,7 +376,7 @@ int getDocumentOnCoordinator (
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  map<ShardID, ServerID> shards = collinfo.shardIds();
+  map<ShardID, ServerID> shards = collinfo->shardIds();
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
@@ -441,11 +441,11 @@ int modifyDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  CollectionInfo collinfo = ci->getCollection(dbname, collname);
-  if (collinfo.empty()) {
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo.id());
+  string collid = StringUtils::itoa(collinfo->id());
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
@@ -555,7 +555,7 @@ int modifyDocumentOnCoordinator (
   }
 
   // If we get here, we have to do it the slow way and contact everybody:
-  map<ShardID, ServerID> shards = collinfo.shardIds();
+  map<ShardID, ServerID> shards = collinfo->shardIds();
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
