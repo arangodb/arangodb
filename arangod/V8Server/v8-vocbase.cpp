@@ -5216,8 +5216,20 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    // TODO: fix this
-    return scope.Close(v8::Number::New(0));
+    // First get the initial data:
+    string const dbname(collection->_dbName);
+  
+    // TODO: someone might rename the collection while we're reading its name...
+    string const collname(collection->_name);
+
+    uint64_t count = 0;
+    int error = triagens::arango::countOnCoordinator(dbname, collname, count);
+
+    if (error != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, error);
+    }
+
+    return scope.Close(v8::Number::New(count));
   }
 #endif  
 
@@ -7135,6 +7147,8 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
 
   // First get the initial data:
   string const dbname(collection->_dbName);
+
+  // TODO: someone might rename the collection while we're reading its name...
   string const collname(collection->_name);
 
   // Now get the arguments:
