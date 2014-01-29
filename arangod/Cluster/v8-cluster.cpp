@@ -1138,8 +1138,10 @@ static void PrepareClusterCommRequest (
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
                          v8::Isolate::GetCurrent()->GetData();
 
+  assert(argv.Length() >= 4);
+
   reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
-  if (argv.Length() > 0 && argv[0]->IsString()) {
+  if (argv[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, argv[0]);
     string methstring = *UTF8;
     reqType = triagens::rest::HttpRequest::translateMethod(methstring);
@@ -1148,28 +1150,11 @@ static void PrepareClusterCommRequest (
     }
   }
 
-  destination.clear();
-  if (argv.Length() > 1) {
-    destination = TRI_ObjectToString(argv[1]);
-  }
-  if (destination == "") {
-    destination = "shard:shardBlubb";
-  }
+  destination = TRI_ObjectToString(argv[1]);
   
-  string dbname;
-  if (argv.Length() > 2) {
-    dbname = TRI_ObjectToString(argv[2]);
-  } 
-  if (dbname == "") {
-    dbname = "_system";
-  }
-  path.clear();
-  if (argv.Length() > 3) {
-    path = TRI_ObjectToString(argv[3]);
-  }
-  if (path == "") {
-    path = "/_admin/version";
-  }
+  string dbname = TRI_ObjectToString(argv[2]);
+  
+  path = TRI_ObjectToString(argv[3]);
   path = "/_db/" + dbname + path;
 
   body.clear();
@@ -1404,7 +1389,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path, body, headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
@@ -1435,7 +1420,7 @@ static v8::Handle<v8::Value> JS_Enquire (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "wait(operationID)");
+    TRI_V8_EXCEPTION_USAGE(scope, "enquire(operationID)");
   }
   
   if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {

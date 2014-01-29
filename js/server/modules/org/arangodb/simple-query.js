@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -63,14 +63,74 @@ var SimpleQueryWithin = sq.SimpleQueryWithin;
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryAll.prototype.execute = function () {
-  var documents;
-
   if (this._execution === null) {
     if (this._skip === null) {
       this._skip = 0;
     }
+  
+    var documents;
+    var cluster = require("org/arangodb/cluster");
+    
+    if (cluster.isCoordinator()) {
+      var dbName = require("internal").db._name();
+      var shards = cluster.shardList(dbName, this._collection.name());
+      var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+      var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+      shards.forEach(function (shard) {
+        ArangoClusterComm.asyncRequest("put", 
+                                       "shard:" + shard, 
+                                       dbName, 
+                                       "/_api/simple/all", 
+                                       JSON.stringify({ 
+                                         collection: shard, 
+                                         skip: 0, 
+                                         limit: this._skip + this._limit 
+                                       }), 
+                                       { }, 
+                                       options);
+      });
 
-    documents = this._collection.ALL(this._skip, this._limit);
+      var _documents = [ ], total = 0;
+      var result = cluster.wait(coord, shards);
+      var toSkip = this._skip, toLimit = this._limit;
+
+      result.forEach(function(part) {
+        var body = JSON.parse(part.body);
+        total += body.total;
+
+        if (toSkip > 0) {
+          if (toSkip >= body.result.length) {
+            toSkip -= body.result.length;
+            return;
+          }
+          
+          body.result = body.result.slice(toSkip);
+          toSkip = 0;
+        }
+
+        if (toLimit !== null && toLimit !== undefined) {
+          if (body.result.length >= toLimit) {
+            body.result = body.result.slice(0, toLimit);
+            toLimit = 0;
+          }
+          else {
+            toLimit -= body.result.length;
+          }
+        }
+
+        _documents = _documents.concat(body.result);
+      });
+
+      documents = { 
+        documents: _documents, 
+        count: _documents.length, 
+        total: total
+      };
+    }
+    else {
+      documents = this._collection.ALL(this._skip, this._limit);
+    }
 
     this._execution = new GeneralArrayCursor(documents.documents);
     this._countQuery = documents.count;

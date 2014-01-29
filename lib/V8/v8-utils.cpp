@@ -2154,27 +2154,41 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract arguments
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>)");
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>, <gc>)");
   }
 
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
-  v8::V8::LowMemoryNotification();
-  while(! v8::V8::IdleNotification()) {
+  bool gc = true; // default is to trigger the gc
+  if (argv.Length() > 1) {
+    gc = TRI_ObjectToBoolean(argv[1]);
   }
 
-  size_t i = 0;
-  while (TRI_microtime() < until) {
-    if (++i % 1000 == 0) {
-      // garbage collection only every x iterations, otherwise we'll use too much CPU
-      v8::V8::LowMemoryNotification();
-      while(! v8::V8::IdleNotification()) {
-      }
+  if (gc) {
+    // wait with gc
+    v8::V8::LowMemoryNotification();
+    while(! v8::V8::IdleNotification()) {
     }
 
-    usleep(100);
+    size_t i = 0;
+    while (TRI_microtime() < until) {
+      if (++i % 1000 == 0) {
+        // garbage collection only every x iterations, otherwise we'll use too much CPU
+        v8::V8::LowMemoryNotification();
+        while(! v8::V8::IdleNotification()) {
+        }
+      }
+
+      usleep(100);
+    }
+  }
+  else {
+    // wait without gc
+    while (TRI_microtime() < until) {
+      usleep(100);
+    }
   }
 
   return scope.Close(v8::Undefined());
