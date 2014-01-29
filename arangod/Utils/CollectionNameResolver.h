@@ -33,6 +33,11 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
+#endif
+
 namespace triagens {
   namespace arango {
 
@@ -137,15 +142,47 @@ namespace triagens {
             }
           }
 
-          char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-          if (n == 0) {
-            return "_unknown";
+          string name;
+#ifndef TRI_ENABLE_CLUSTER
+          char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+          if (0 != n) {
+            name = n;
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
           }
+#else
+          if (ServerState::instance()->isDBserver()) {
+            TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
 
-          string name(n);
+            TRI_vocbase_col_t* found 
+                = static_cast<TRI_vocbase_col_t*>(
+                     TRI_LookupByKeyAssociativePointer
+                                   (&_vocbase->_collectionsById, &cid));
 
+            if (0 != found) {
+              name = triagens::basics::StringUtils::itoa(found->_planId);
+            }
+
+            TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
+
+            if (!name.empty()) {
+              TRI_shared_ptr<CollectionInfo> ci
+                = ClusterInfo::instance()->getCollection(found->_dbName, name);
+              name = ci->name();
+            }
+          }
+          else {
+            // exactly as in the non-cluster case
+            char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+            if (0 != n) {
+              name = n;
+              TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
+            }
+          }
+#endif
+          if (name.empty()) {
+            name = "_unknown";
+          }
           _resolvedIds[cid] = name;
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
 
           return name;
         }
