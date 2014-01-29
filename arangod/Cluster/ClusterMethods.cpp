@@ -429,7 +429,7 @@ int modifyDocumentOnCoordinator (
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
                  bool isPatch,
-                 string const& keepNull,   // only for isPatch == true
+                 bool keepNull,   // only counts for isPatch == true
                  TRI_json_t* json,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  string& contentType,
@@ -493,14 +493,14 @@ int modifyDocumentOnCoordinator (
   triagens::rest::HttpRequest::HttpRequestType reqType;
   if (isPatch) {
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PATCH;
-    if (!keepNull.empty()) {
+    if (!keepNull) {
       if (revstr.empty()) {
         revstr += "?keepNull=";
       }
       else {
         revstr += "&keepNull=";
       }
-      revstr += keepNull;
+      revstr += "false";
     }
   }
   else {
