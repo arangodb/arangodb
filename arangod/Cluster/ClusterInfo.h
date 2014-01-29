@@ -646,11 +646,11 @@ namespace triagens {
     class ClusterInfo {
       private:
 
-        typedef std::map<CollectionID, CollectionInfo>
+        typedef std::map<CollectionID, TRI_shared_ptr<CollectionInfo> >
                 DatabaseCollections;
         typedef std::map<DatabaseID, DatabaseCollections>
                 AllCollections;
-        typedef std::map<CollectionID, CollectionInfoCurrent>
+        typedef std::map<CollectionID, TRI_shared_ptr<CollectionInfoCurrent> >
                 DatabaseCollectionsCurrent;
         typedef std::map<DatabaseID, DatabaseCollectionsCurrent>
                 AllCollectionsCurrent;
@@ -770,8 +770,8 @@ namespace triagens {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionInfo getCollection (DatabaseID const&,
-                                      CollectionID const&);
+        TRI_shared_ptr<CollectionInfo> getCollection (DatabaseID const&,
+                                                      CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get properties of a collection
@@ -790,7 +790,8 @@ namespace triagens {
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<CollectionInfo> getCollections (DatabaseID const&);
+        const std::vector<TRI_shared_ptr<CollectionInfo> > getCollections 
+                                                           (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about current collections from the agency
@@ -807,7 +808,8 @@ namespace triagens {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionInfoCurrent getCollectionCurrent (DatabaseID const&,
+        TRI_shared_ptr<CollectionInfoCurrent> getCollectionCurrent (
+                                                    DatabaseID const&,
                                                     CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
