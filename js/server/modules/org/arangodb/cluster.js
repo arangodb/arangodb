@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global ArangoAgency, ArangoServerState, require, exports */
+/*global ArangoAgency, ArangoClusterComm, ArangoClusterInfo, ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript cluster functionality
@@ -30,7 +30,6 @@
 
 var console = require("console");
 var arangodb = require("org/arangodb");
-var db = arangodb.db;
 var ArangoCollection = arangodb.ArangoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,6 +172,7 @@ function writeLocked (lockInfo, cb, args) {
 
 function getLocalDatabases () {
   var result = { };
+  var db = require("internal").db;
 
   db._listDatabases().forEach(function (database) {
     result[database] = { name: database };
@@ -187,6 +187,7 @@ function getLocalDatabases () {
 
 function getLocalCollections () {
   var result = { };
+  var db = require("internal").db;
 
   db._collections().forEach(function (collection) {
     var name = collection.name();
@@ -226,6 +227,7 @@ function createLocalDatabases (plannedDatabases) {
                      payload);
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
   
   var localDatabases = getLocalDatabases();
@@ -282,6 +284,7 @@ function dropLocalDatabases (plannedDatabases) {
     }
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
   
   var localDatabases = getLocalDatabases();
@@ -320,6 +323,7 @@ function cleanupCurrentDatabases () {
     }
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
 
   var all = ArangoAgency.get("Current/Databases", true);
@@ -370,6 +374,7 @@ function createLocalCollections (plannedCollections) {
                      payload);
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
   var localDatabases = getLocalDatabases();
   var database;
@@ -529,6 +534,7 @@ function dropLocalCollections (plannedCollections) {
     }
   };
 
+  var db = require("internal").db;
   db._useDatabase("_system");
   var shardMap = getShardMap(plannedCollections);
   
@@ -599,6 +605,7 @@ function cleanupCurrentCollections (plannedCollections) {
     }
   };
   
+  var db = require("internal").db;
   db._useDatabase("_system");
 
   var all = ArangoAgency.get("Current/Collections", true);
@@ -661,12 +668,73 @@ function handleChanges (plan, current) {
   handleDatabaseChanges(plan, current);
   handleCollectionChanges(plan, current);
 }
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieve a list of shards for a collection
+////////////////////////////////////////////////////////////////////////////////
 
+var shardList = function (dbName, collectionName) {
+  var ci = ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
+
+  if (ci === undefined || typeof ci !== 'object') {
+    throw "unable to determine shard list for '" + dbName + "/" + collectionName + "'";
+  }
+      
+  var shards = [ ], shard;
+  for (shard in ci.shards) {
+    if (ci.shards.hasOwnProperty(shard)) {
+      shards.push(shard);
+    }
+  }
+
+  return shards;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for a distributed response
+////////////////////////////////////////////////////////////////////////////////
+
+var wait = function (data, shards) {
+  var received = [ ];
+
+  while (received.length < shards.length) {
+    var result = ArangoClusterComm.wait(data);
+    var status = result.status;
+        
+    if (status === "ERROR") {
+      throw "received an error";
+    }
+    else if (status === "TIMEOUT") {
+      throw "received a timeout";
+    }
+    else if (status === "DROPPED") {
+      throw "operation was dropped";
+    }
+    else if (status === "RECEIVED") {
+      received.push(result);
+    }
+    else {
+      // something else... wait without GC
+      require("internal").print(result);
+      require("internal").wait(0.1, false);
+    }
+  }
+
+  return received;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not clustering is enabled
+////////////////////////////////////////////////////////////////////////////////
 
 var isCluster = function () {
   return (typeof ArangoServerState !== "undefined" &&
           ArangoServerState.initialised());
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are a coordinator
+////////////////////////////////////////////////////////////////////////////////
 
 var isCoordinator = function () {
   if (! isCluster()) {
@@ -718,6 +786,8 @@ var handlePlanChange = function () {
   }
 };
 
+exports.shardList            = shardList;
+exports.wait                 = wait;
 exports.isCluster            = isCluster;
 exports.isCoordinator        = isCoordinator;
 exports.role                 = role;
