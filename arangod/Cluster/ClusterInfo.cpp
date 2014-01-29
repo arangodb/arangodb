@@ -811,8 +811,6 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
                     (json, "DBServer", "");
       if (DBserver != "") {
         _shardIds.insert(make_pair(shardID, DBserver));
-        cout << "_shardIDs[" << shardID << "] == " << DBserver 
-             << DBserver.size() << endl;
       }
     }
     _collectionsCurrentValid = true;
