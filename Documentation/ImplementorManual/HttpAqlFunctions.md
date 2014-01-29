@@ -32,3 +32,4 @@ be accessed directly, but only via the dedicated interfaces.
 @anchor HttpAqlFunctionsList
 @copydetails JSF_get_api_aqlfunction
 
+@BNAVIGATE_HttpAqlFunctions

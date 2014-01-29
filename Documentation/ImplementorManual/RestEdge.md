@@ -101,3 +101,5 @@ See @ref RestDocument for details.
 
 @anchor RestEdgeEdges
 @copydetails JSF_get_edges
+
+@BNAVIGATE_RestEdge

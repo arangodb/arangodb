@@ -18,3 +18,4 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 @anchor HttpMiscEcho
 @copydetails JSF_get_admin_echo
 
+@BNAVIGATE_HttpMisc

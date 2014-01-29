@@ -956,3 +956,4 @@ provides a few mechanisms for this:
 
   Of course you can also use `console.log` or any other means of logging output.
 
+@BNAVIGATE_UserManualFoxx

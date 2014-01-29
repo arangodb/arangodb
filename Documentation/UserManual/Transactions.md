@@ -577,3 +577,5 @@ It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
 
 Please refer to @ref TransactionsLocking for more details.
+
+@BNAVIGATE_Transactions

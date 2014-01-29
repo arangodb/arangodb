@@ -719,3 +719,5 @@ Application Deployment{#UserManualActionsApplicationDeployment}
 Using single routes or @ref UserManualActionsAdvancedBundles "bundles" can be
 become a bit messy in large applications. Kaerus has written a deployment tool
 `https://github.com/kaerus/arangodep` in node.js.
+
+@BNAVIGATE_UserManualActions

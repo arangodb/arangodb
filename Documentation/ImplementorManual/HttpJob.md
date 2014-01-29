@@ -103,3 +103,4 @@ Managing Async Results via HTTP {#HttpJobHttp}
 @anchor HttpJobGet
 @copydetails triagens::admin::RestJobHandler::getJob
 
+@BNAVIGATE_HttpJob

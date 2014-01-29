@@ -235,6 +235,11 @@ ALIASES += \
   "NAVIGATE_LAST{2}=@htmlonly<div class=\"navigate\"><a href=\"\1.html\">prev</a> | <a href=\"\2.html\">home</a> | next</div>@endhtmlonly@xmlonly<ulink url=\"\1\">prev</ulink> | <ulink url=\"\2\">home</ulink> | next@endxmlonly" \
   "EMBEDTOC{1}=@if LATEX@else@htmlonly <div class=\"toc\">@endhtmlonly@copydetails \1\n@htmlonly</div>@endhtmlonly@endif"
 
+ALIASES += \
+  "BNAVIGATE{3}=@htmlonly<div class=\"bottom-navigate\"><a href=\"\1.html\">prev</a> | <a href=\"\2.html\">home</a> | <a href=\"\3.html\">next</a></div>@endhtmlonly@xmlonly<ulink url=\"\1\">prev</ulink> | <ulink url=\"\2\">home</ulink> | <ulink url=\"\3\">next</ulink>@endxmlonly" \
+  "BNAVIGATE_FIRST{2}=@htmlonly<div class=\"bottom-navigate\">prev | <a href=\"\1.html\">home</a> | <a href=\"\2.html\">next</a></div>@endhtmlonly@xmlonly prev | <ulink url=\"\1\">home</ulink> | <ulink url=\"\2\">next</ulink>@endxmlonly" \
+  "BNAVIGATE_LAST{2}=@htmlonly<div class=\"bottom-navigate\"><a href=\"\1.html\">prev</a> | <a href=\"\2.html\">home</a> | next</div>@endhtmlonly@xmlonly<ulink url=\"\1\">prev</ulink> | <ulink url=\"\2\">home</ulink> | next@endxmlonly"
+
 # glossary
 ALIASES += \
   "GE{1}=@latexonly\glossaryentry{@endlatexonly@htmlonly<span class=\"glossaryentry\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly</computeroutput>@endxmlonly"

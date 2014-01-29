@@ -46,3 +46,4 @@ Configuring and Removing Endpoints {#HandlingEndpointsShell}
 @anchor HandlingEndpointsRemove
 @copydetails JSF_ArangoDatabase_prototype__removeEndpoint
 
+@BNAVIGATE_HandlingEndpoints
