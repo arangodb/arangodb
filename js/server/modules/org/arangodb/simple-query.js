@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -30,6 +30,7 @@
 
 var internal = require("internal");
 var console = require("console");
+var cluster = require("org/arangodb/cluster");
 
 var ArangoError = require("org/arangodb").ArangoError;
 
@@ -63,14 +64,46 @@ var SimpleQueryWithin = sq.SimpleQueryWithin;
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryAll.prototype.execute = function () {
-  var documents;
-
   if (this._execution === null) {
     if (this._skip === null) {
       this._skip = 0;
     }
+  
+    var documents;
 
-    documents = this._collection.ALL(this._skip, this._limit);
+    if (cluster.isCoordinator()) {
+      var dbName = require("internal").db._name();
+      var shards = cluster.shardList(dbName, this._collection.name());
+      var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+      var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+      shards.forEach(function (shard) {
+        ArangoClusterComm.asyncRequest("put", 
+                                       "shard:" + shard, 
+                                       dbName, 
+                                       "/_api/simple/all", 
+                                       JSON.stringify({ 
+                                         collection: shard, 
+                                         skip: 0, 
+                                         limit: this._skip + this._limit 
+                                       }), 
+                                       { }, 
+                                       options);
+      });
+
+      var _documents = [ ], total = 0;
+      var result = cluster.wait(coord, shards);
+      result.forEach(function(part) {
+        var body = JSON.parse(part.body);
+        _documents = _documents.concat(body.result);
+        total += body.total;
+      });
+
+      documents = { documents: _documents, count: _documents.length, total: total };
+    }
+    else {
+      documents = this._collection.ALL(this._skip, this._limit);
+    }
 
     this._execution = new GeneralArrayCursor(documents.documents);
     this._countQuery = documents.count;
