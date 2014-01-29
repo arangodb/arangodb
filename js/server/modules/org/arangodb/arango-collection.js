@@ -80,6 +80,12 @@ var ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.toArray = function () {
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    return this.all().toArray();
+  }
+
   return this.ALL(null, null).documents;
 };
 
