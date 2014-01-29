@@ -1341,20 +1341,19 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   triagens::rest::HttpRequest::HttpRequestType reqType;
   string destination;
   string path;
-  string body;
+  string *body = new string();
   map<string, string>* headerFields = new map<string, string>;
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path,*body,headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
   res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination, 
-                         reqType, path, body.c_str(), body.size(), 
-                         headerFields, 0, timeout);
+                         reqType, path, body, true, headerFields, 0, timeout);
 
   if (res == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
@@ -1411,8 +1410,7 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   ClusterCommResult const* res;
 
   res = cc->syncRequest(clientTransactionID, coordTransactionID, destination, 
-                         reqType, path, body.c_str(), body.size(), 
-                         *headerFields, timeout);
+                         reqType, path, body, *headerFields, timeout);
 
   delete headerFields;
 

@@ -116,8 +116,7 @@ int createDocumentOnCoordinator (
                         triagens::rest::HttpRequest::HTTP_REQUEST_POST,
                         "/_db/"+dbname+"/_api/document?collection="+
                         StringUtils::urlEncode(shardID)+"&waitForSync="+
-                        (waitForSync ? "true" : "false"),
-                        body.c_str(), body.size(), headers, 60.0);
+                        (waitForSync ? "true" : "false"), body, headers, 60.0);
   
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -210,7 +209,7 @@ int deleteDocumentOnCoordinator (
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(shardID)+"/"+key+
                           "?waitForSync="+(waitForSync ? "true" : "false")+
-                          revstr+policystr, NULL, 0, headers, 60.0);
+                          revstr+policystr, "", headers, 60.0);
   
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
@@ -247,7 +246,7 @@ int deleteDocumentOnCoordinator (
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(it->first)+"/"+key+
                           "?waitForSync="+(waitForSync ? "true" : "false")+
-                          revstr+policystr, NULL, 0, headers, NULL, 60.0);
+                          revstr+policystr, 0, false, headers, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -349,7 +348,7 @@ int getDocumentOnCoordinator (
     res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID, reqType,
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(shardID)+"/"+key+
-                          revstr, NULL, 0, headers, 60.0);
+                          revstr, "", headers, 60.0);
   
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
@@ -391,7 +390,7 @@ int getDocumentOnCoordinator (
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(it->first)+"/"+key+
-                          revstr, NULL, 0, headers, NULL, 60.0);
+                          revstr, 0, false, headers, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -524,7 +523,7 @@ int modifyDocumentOnCoordinator (
     res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID, reqType,
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(shardID)+"/"+key+
-                          revstr, body.c_str(), body.size(), headers, 60.0);
+                          revstr, body, headers, 60.0);
   
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
@@ -564,7 +563,7 @@ int modifyDocumentOnCoordinator (
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(it->first)+"/"+key+revstr, 
-                          body.c_str(), body.size(), headers, NULL, 60.0);
+                          &body, false, headers, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:

@@ -173,13 +173,13 @@ namespace triagens {
     struct ClusterCommOperation : public ClusterCommResult {
       rest::HttpRequest::HttpRequestType reqtype;
       string path;
-      char const* body;
-      size_t bodyLength;
+      string const* body;
+      bool freeBody;
       map<string, string>* headerFields;
       ClusterCommCallback* callback;
       ClusterCommTimeout endTime;
 
-      ClusterCommOperation () : headerFields(0), callback(0) {}
+      ClusterCommOperation () : body(0), headerFields(0), callback(0) {}
       virtual ~ClusterCommOperation () {
         if (_deleteOnDestruction && 0 != headerFields) {
           delete headerFields;
@@ -187,7 +187,9 @@ namespace triagens {
         if (_deleteOnDestruction && 0 != callback) {
           delete callback;
         }
-
+        if (_deleteOnDestruction && 0 != body && freeBody) {
+          delete body;
+        }
       }
     };
 
@@ -269,8 +271,8 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                 string const&                       destination,
                 rest::HttpRequest::HttpRequestType  reqtype,
                 string const                        path,
-                char const*                         body,
-                size_t const                        bodyLength,
+                string const*                       body,
+                bool                                freeBody,
                 map<string, string>*                headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout);
@@ -285,8 +287,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                 string const&                      destination,
                 rest::HttpRequest::HttpRequestType reqtype,
                 string const&                      path,
-                char const*                        body,
-                size_t const                       bodyLength,
+                string const&                      body,
                 map<string, string> const&         headerFields,
                 ClusterCommTimeout                 timeout);
 

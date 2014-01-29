@@ -133,9 +133,14 @@ OperationID ClusterComm::getOperationID () {
 /// either in the callback or via poll. The caller has to call delete on
 /// the resulting ClusterCommResult*. The library takes ownerships of
 /// the pointers `headerFields` and `callback` and releases
-/// the memory when the operation has been finished. It is the caller's
-/// responsibility to free the memory to which `body` points after the
-/// operation has finally terminated.
+/// the memory when the operation has been finished. If `freeBody`
+/// is `true`, then the library takes ownership of the pointer `body`
+/// as well and deletes it at the end. If `freeBody` is `false, it 
+/// is the caller's responsibility to ensure that the object object
+/// to which `body` points is retained until the full asynchronous
+/// operation is finished and has been reported back to the caller
+/// and that the object is destructed after the operation has finally
+/// terminated.
 ///
 /// Arguments: `clientTransactionID` is a string coming from the client
 /// and describing the transaction the client is doing, `coordTransactionID`
@@ -153,8 +158,8 @@ ClusterCommResult* ClusterComm::asyncRequest (
                 string const&                       destination,
                 triagens::rest::HttpRequest::HttpRequestType  reqtype,
                 string const                        path,
-                char const*                         body,
-                size_t const                        bodyLength,
+                string const*                       body,
+                bool                                freeBody,
                 map<string, string>*                headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout) {
@@ -189,14 +194,8 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
-  if (0 != bodyLength) {
-    op->body               = body;
-    op->bodyLength         = bodyLength;
-  }
-  else {
-    op->body               = 0;
-    op->bodyLength         = 0;
-  }
+  op->body                 = body;
+  op->freeBody             = freeBody;
   op->headerFields         = headerFields;
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0 
@@ -243,8 +242,7 @@ ClusterCommResult* ClusterComm::syncRequest (
         string const&                      destination,
         triagens::rest::HttpRequest::HttpRequestType reqtype,
         string const&                      path,
-        char const*                        body,
-        size_t const                       bodyLength,
+        string const&                      body,
         map<string, string> const&         headerFields,
         ClusterCommTimeout                 timeout) {
 
@@ -256,10 +254,6 @@ ClusterCommResult* ClusterComm::syncRequest (
   } while (res->operationID == 0);   // just to make sure
   res->status               = CL_COMM_SENDING;
   
-  if (0 == bodyLength) {
-    body = 0;
-  }
-
   double currentTime = TRI_microtime();
   double endTime = timeout == 0.0 ? currentTime+24*60*60.0 
                                   : currentTime+timeout;
@@ -299,23 +293,16 @@ ClusterCommResult* ClusterComm::syncRequest (
                 res->serverID.c_str());
     }
     else {
-      if (0 != body) {
-        LOG_DEBUG("sending %s request to DB server '%s': %s",
-           triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
-           res->serverID.c_str(), body);
-      }
-      else {
-        LOG_DEBUG("sending %s request to DB server '%s'",
-           triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
-           res->serverID.c_str());
-      }
+      LOG_DEBUG("sending %s request to DB server '%s': %s",
+         triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
+         res->serverID.c_str(), body.c_str());
       triagens::httpclient::SimpleHttpClient* client
           = new triagens::httpclient::SimpleHttpClient(
                                 connection->connection,
                                 endTime-currentTime, false);
       client->keepConnectionOnDestruction(true);
 
-      res->result = client->request(reqtype, path, body, bodyLength, 
+      res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headerFields);
       if (! res->result->isComplete()) {
         cm->brokenConnection(connection);
@@ -950,7 +937,7 @@ void ClusterCommThread::run () {
               if (0 != op->body) {
                 LOG_DEBUG("sending %s request to DB server '%s': %s",
                    triagens::rest::HttpRequest::translateMethod(op->reqtype)
-                     .c_str(), op->serverID.c_str(), op->body);
+                     .c_str(), op->serverID.c_str(), op->body->c_str());
               }
               else {
                 LOG_DEBUG("sending %s request to DB server '%s'",
@@ -966,8 +953,15 @@ void ClusterCommThread::run () {
 
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
-              op->result = client->request(op->reqtype, op->path, op->body, 
-                                           op->bodyLength, *(op->headerFields));
+              if (0 != op->body) {
+                op->result = client->request(op->reqtype, op->path, 
+                             op->body->c_str(), op->body->size(), 
+                             *(op->headerFields));
+              }
+              else {
+                op->result = client->request(op->reqtype, op->path, 
+                             NULL, 0, *(op->headerFields));
+              }
 
               if (! op->result->isComplete()) {
                 cm->brokenConnection(connection);
