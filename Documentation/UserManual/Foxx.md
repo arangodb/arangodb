@@ -301,14 +301,7 @@ If you now want to document your route, you can use JSDoc style comments (a
 multiline comment block with the first line starting with `/**` instead 
 of `/*`) above your routes to do that:
 
-    /** Get all Foxes
-     * 
-     * If you want to get all foxes, please use this
-     * method to do that.
-     */
-    app.get("/foxes", function () {
-      //...
-    });
+@verbinclude foxx-doc-comment
 
 The first line will be treated as a summary (For optical reasons in the 
 produced documentation, the summary is restricted to 60 characters). All 
