@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global ArangoClusterComm, ArangoClusterInfo, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -233,7 +233,7 @@ ArangoCollection.prototype.any = function () {
                                      dbName, 
                                      "/_api/simple/any", 
                                      JSON.stringify({ 
-                                       collection: shard, 
+                                       collection: shard 
                                      }), 
                                      { }, 
                                      options);
@@ -304,23 +304,61 @@ ArangoCollection.prototype.firstExample = function (example) {
 ArangoCollection.prototype.removeByExample = function (example, 
                                                        waitForSync, 
                                                        limit) {
-  var deleted = 0;
-  var documents;
-
   if (limit === 0) {
     return 0;
   }
 
-  documents = this.byExample(example);
-  if (limit > 0) {
-    documents = documents.limit(limit);
+  var deleted = 0;
+  var documents;
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    if (limit > 0) {
+      var err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      err.errorMessage = "limit not supported in clustered operation";
+
+      throw err;
+    }
+
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/remove-by-example", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       example: example,
+                                       waitForSync: waitForSync
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var results = cluster.wait(coord, shards), i;
+    for (i = 0; i < results.length; ++i) {
+      var body = JSON.parse(results[i].body);
+
+      deleted += (body.deleted || 0);
+    }
   }
+  else {
+    documents = this.byExample(example);
+    if (limit > 0) {
+      documents = documents.limit(limit);
+    }
 
-  while (documents.hasNext()) {
-    var document = documents.next();
-
-    if (this.remove(document, true, waitForSync)) {
-      deleted++;
+    while (documents.hasNext()) {
+      var document = documents.next();
+ 
+      if (this.remove(document, true, waitForSync)) {
+        deleted++;
+      }
     }
   }
 
