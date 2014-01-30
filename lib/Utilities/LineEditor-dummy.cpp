@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using readline
+/// @brief line editor using getline
 ///
 /// @file
 ///
@@ -27,10 +27,8 @@
 
 #include "LineEditor.h"
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "BasicsC/tri-strings.h"
+#include "BasicsC/files.h"
 
 using namespace std;
 
@@ -50,7 +48,6 @@ LineEditor::LineEditor (std::string const& history)
   : _current(),
     _historyFilename(history),
     _state(STATE_NONE) {
-  rl_initialize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,41 +66,9 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool autoComplete) {
-  if (autoComplete) {
-
-    // issue #289: do not append a space after completion
-    rl_completion_append_character = '\0';
-
-    // works only in Readline 4.2+
-#if RL_READLINE_VERSION >= 0x0500
-    // enable this to turn on the visual bell - evil!
-    // rl_variable_bind("prefer-visible-bell", "1");
-
-    // use this for single-line editing as in mongodb shell
-    // rl_variable_bind("horizontal-scroll-mode", "1");
-
-    // show matching parentheses
-    rl_set_paren_blink_timeout(1 * 1000 * 1000);
-    rl_variable_bind("blink-matching-paren", "1");
-
-    // show selection list when completion is ambiguous. not setting this
-    // variable will turn the selection list off at least on Ubuntu
-    rl_variable_bind("show-all-if-ambiguous", "1");
-
-    // use readline's built-in page-wise completer
-    rl_variable_bind("page-completions", "1");
-#endif
-
-    rl_bind_key('\t', rl_complete);
-  }
-
-  using_history();
-  stifle_history(MAX_HISTORY_ENTRIES);
-
+bool LineEditor::open (bool) {
   _state = STATE_OPENED;
-
-  return read_history(historyPath().c_str()) == 0;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,14 +76,8 @@ bool LineEditor::open (bool autoComplete) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LineEditor::close () {
-  if (_state != STATE_OPENED) {
-    // avoid duplicate saving of history
-    return true;
-  }
-
   _state = STATE_CLOSED;
-
-  return writeHistory();
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,16 +85,7 @@ bool LineEditor::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string LineEditor::historyPath () {
-  string path;
-
-  if (getenv("HOME")) {
-    path.append(getenv("HOME"));
-    path += '/';
-  }
-
-  path.append(_historyFilename);
-
-  return path;
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,23 +93,6 @@ string LineEditor::historyPath () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LineEditor::addHistory (char const* str) {
-  if (*str == '\0') {
-    return;
-  }
-
-  history_set_pos(history_length-1);
-
-  if (current_history()) {
-    do {
-      if (strcmp(current_history()->line, str) == 0) {
-        remove_history(where_history());
-        break;
-      }
-    }
-    while (previous_history());
-  }
-
-  add_history(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +100,7 @@ void LineEditor::addHistory (char const* str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LineEditor::writeHistory () {
-  return (write_history(historyPath().c_str()) == 0);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,20 +125,16 @@ char* LineEditor::prompt (char const* prompt) {
   char const* sep = "";
 
   while (true) {
-    char* result = readline(p);
+    fprintf(stdout, "%s", p);
+    fflush(stdout);
+
+    string line;
+    getline(cin, line);
 
     p = dotdot.c_str();
 
-    if (result == 0) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
+    if (cin.eof()) {
         return 0;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
     }
 
     _current += sep;
@@ -213,7 +142,7 @@ char* LineEditor::prompt (char const* prompt) {
     ++lineno;
 
     // remove any prompt at the beginning of the line
-    char* originalLine = result;
+    char* result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, line.c_str());
     bool c1 = strncmp(result, prompt, len1) == 0;
     bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
 
@@ -233,9 +162,6 @@ char* LineEditor::prompt (char const* prompt) {
     _current += result;
 
     bool ok = isComplete(_current, lineno, strlen(result));
-
-    // cannot use TRI_Free, because it was allocated by the system call readline
-    TRI_SystemFree(originalLine);
 
     // stop if line is complete
     if (ok) {
