@@ -171,7 +171,7 @@ ArangoCollection.prototype.index = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns any document from a collection
 ///
-/// @FUN{@FA{collection}.any()
+/// @FUN{@FA{collection}.any()}
 ///
 /// Returns a random document from the collection or @LIT{null} if none exists.
 ///
@@ -213,6 +213,8 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_ArangoCollection_prototype_first
+///
 /// @brief selects the n first documents in the collection
 ///
 /// @FUN{@FA{collection}.first(@FA{count})}
@@ -292,6 +294,8 @@ ArangoCollection.prototype.first = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_ArangoCollection_prototype_last
+///
 /// @brief selects the n last documents in the collection
 ///
 /// @FUN{@FA{collection}.last(@FA{count})}
@@ -371,6 +375,8 @@ ArangoCollection.prototype.last = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_ArangoCollection_prototype_firstExample
+///
 /// @brief constructs a query-by-example for a collection
 ///
 /// @FUN{@FA{collection}.firstExample(@FA{example})}
