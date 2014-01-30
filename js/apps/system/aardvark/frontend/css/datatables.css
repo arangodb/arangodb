@@ -33,11 +33,12 @@ table.arangoDataTable.dataTable td {
   border-bottom: 1px solid #C2C2C2;
 }
 
-.arangoDataTable .odd:hover,
-.arangoDataTable .even:hover,
-#logContent .odd:hover,
-#logContent .even:hover {
+table.arangoDataTable tr {
   cursor: pointer;
+}
+
+table.arangoDataTable.noPointer tr {
+  cursor: default;
 }
 
 .arangoDataTable .key {
