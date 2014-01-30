@@ -25,25 +25,11 @@
   word-break: break-all;
 }
 
-
-
-#logContent .sorting_1 {
-  background-color: #FBFBFB !important;
-}
-
-/*.odd .sorting_1 {
-background-color: none !important;
-}
-
-  .even .sorting_1 {
-  background-color: #F1F0EE !important;
-}*/
-
-  #logToolbar {
-    padding-top: 10px;
-    padding-bottom: 15px;
-    border: 1px solid #C1BDBA;
-    background-color: #F7F6F6 !important;
+#logToolbar {
+  padding-top: 10px;
+  padding-bottom: 15px;
+  border: 1px solid #C1BDBA;
+  background-color: #F7F6F6 !important;
 }
 
 #logToolbar button {

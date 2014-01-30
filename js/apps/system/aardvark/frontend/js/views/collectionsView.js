@@ -73,8 +73,7 @@
       "click #sortName"       : "sortName",
       "click #sortType"       : "sortType",
       "click #sortOrder"      : "sortOrder",
-      "click #collectionsToggle"     : "toggleView",
-      "click #transparentHeader .btn-group .dropdown-toggle" : "slideEffect"
+      "click #collectionsToggle"     : "toggleView"
     },
 
     toggleView: function() {

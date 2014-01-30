@@ -30,6 +30,7 @@
       "graph"                               : "graph",
       "graphManagement"                     : "graphManagement",
       "graphManagement/add"                 : "graphAddNew",
+      "graphManagement/delete/:name"        : "graphDelete",
 
 
       "test"                                : "test"
@@ -298,6 +299,16 @@
         });
       }
       this.addNewGraphView.render();
+      this.naviView.selectMenuItem('graphviewer-menu');
+    },
+
+    graphDelete: function(name) {
+      if (!this.deleteGraphView) {
+        this.deleteGraphView = new window.DeleteGraphView({
+          collection: this.graphs
+        });
+      }
+      this.deleteGraphView.render(name);
       this.naviView.selectMenuItem('graphviewer-menu');
     },
 

@@ -24,16 +24,13 @@
   color: #FFFFFF;
 }
 
-#transparentHeader .arangoHeader, #dashboardHeader .arangoHeader, .modal-header .arangoHeader{
-  color: white;
-  position: relative;
-  top: 7px;
-  left: 5px;
-  font-size: 16px;
-}
-
 .arangoHeader {
   font-weight: 400;
+}
+/* Radius */
+.thumbnail, .navbar-inner { 
+  border-radius:0;
+  box-shadow: 0;
 }
 
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
@@ -71,8 +68,8 @@ body {
 
 .form-actions {
   margin-top: -10px !important;
-  background-color: rgba(0,0,0,0.05);
   border:none;
+  background: none;
 }
 
 /* ICONS */
