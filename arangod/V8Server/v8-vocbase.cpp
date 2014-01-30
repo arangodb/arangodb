@@ -1204,7 +1204,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return DocumentVocbaseCol_Coordinator(col, argv, true);
+    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, true));
   }
 #endif
 
@@ -1320,7 +1320,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return DocumentVocbaseCol_Coordinator(col, argv, false);
+    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, false));
   }
 #endif
 
@@ -1516,10 +1516,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return ModifyVocbaseCol_Coordinator(col, policy, forceSync,
+    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
                                         false,  // isPatch
                                         true,   // keepNull, does not matter
-                                        argv);
+                                        argv));
   }
 #endif
 
@@ -1843,10 +1843,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return ModifyVocbaseCol_Coordinator(col, policy, forceSync,
+    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
                                         true,  // isPatch
                                         !nullMeansRemove,     // keepNull
-                                        argv);
+                                        argv));
   }
 #endif
 
@@ -2057,7 +2057,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return RemoveVocbaseCol_Coordinator(col, policy, forceSync, argv);
+    return scope.Close(
+               RemoveVocbaseCol_Coordinator(col, policy, forceSync, argv));
   }
 #endif
 
@@ -5429,7 +5430,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_DropVocbaseCol_Coordinator(collection);
+    return scope.Close(JS_DropVocbaseCol_Coordinator(collection));
   }
 #endif
 
@@ -7210,6 +7211,81 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves an edge, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> JS_SaveEdgeCol_Coordinator (
+                                  TRI_vocbase_col_t* collection,
+                                  v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // First get the initial data:
+  string const dbname(collection->_dbName);
+
+  // TODO: someone might rename the collection while we're reading its name...
+  string const collname(collection->_name);
+
+  // Now get the arguments:
+  if (argv.Length() < 3 || argv.Length() > 4) {
+    TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
+  }
+  string _from = TRI_ObjectToString(argv[0]);
+  string _to = TRI_ObjectToString(argv[1]);
+  TRI_json_t* json = TRI_ObjectToJson(argv[2]);
+  const bool waitForSync = ExtractForceSync(argv, 3);
+  if (!TRI_IsArrayJson(json)) {
+    if (0 != json) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  int error = triagens::arango::createEdgeOnCoordinator(
+            dbname, collname, waitForSync, json, _from.c_str(), _to.c_str(),
+            responseCode, contentType, resultBody);
+  // Note that the json has been freed inside!
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+  // report what the DBserver told us: this could now be 201/202 or
+  // 400/404
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+    if (!TRI_IsArrayJson(json)) {
+      if (0 != json) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+    int errorNum = 0;
+    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+      errorNum = static_cast<int>(subjson->_value._number);
+    }
+    string errorMessage;
+    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    if (0 != subjson && TRI_IsStringJson(subjson)) {
+      errorMessage = string(subjson->_value._string.data,
+                            subjson->_value._string.length-1);
+    }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
+  }
+  v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+  if (0 != json) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+  return scope.Close(ret);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
 ///
 /// @FUN{@FA{collection}.save(@FA{data})}
@@ -7252,7 +7328,12 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return JS_SaveVocbaseCol_Coordinator(collection, argv);
+    if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+      return scope.Close(JS_SaveVocbaseCol_Coordinator(collection, argv));
+    }
+    else {
+      return scope.Close(JS_SaveEdgeCol_Coordinator(collection, argv));
+    }
   }
 #endif
 
@@ -8761,7 +8842,7 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_ListDatabases_Coordinator(argv);
+    return scope.Close(JS_ListDatabases_Coordinator(argv));
   }
 #endif
 
@@ -8898,7 +8979,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_CreateDatabase_Coordinator(argv);
+    return scope.Close(JS_CreateDatabase_Coordinator(argv));
   }
 #endif
 
@@ -9049,7 +9130,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_DropDatabase_Coordinator(argv);
+    return scope.Close(JS_DropDatabase_Coordinator(argv));
   }
 #endif
 
