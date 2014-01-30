@@ -324,11 +324,12 @@ ArangoCollection.prototype.first = function (count) {
       var body = JSON.parse(results[i].body);
       return body.result || null;
     }
-    return null;
   }
   else {
     return this.FIRST(count);
   } 
+
+  return null;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,7 +337,7 @@ ArangoCollection.prototype.first = function (count) {
 ///
 /// @FUN{@FA{collection}.last(@FA{count})}
 ///
-/// The @FN{first} method returns the n last documents from the collection, in 
+/// The @FN{lst} method returns the n last documents from the collection, in 
 /// order of document insertion/update time. 
 ///
 /// If called with the @FA{count} argument, the result is a list of up to
@@ -405,7 +406,9 @@ ArangoCollection.prototype.last = function (count) {
   }
   else {
     return this.LAST(count);
-  } 
+  }
+
+  return null; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
