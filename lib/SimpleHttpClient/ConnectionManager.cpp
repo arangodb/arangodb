@@ -138,6 +138,11 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
     delete e;
     return 0;
   }
+  if (!g->connect()) {
+    delete g;
+    delete e;
+    return 0;
+  }
   c = new SingleServerConnection(g,e,endpoint);
   if (0 == c) {
     delete g;
@@ -161,6 +166,11 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
 void ConnectionManager::returnConnection (SingleServerConnection* c) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
+
+  if (!c->connection->isConnected()) {
+    brokenConnection(c);
+    return;
+  }
 
   // First find the collections list:
   {
