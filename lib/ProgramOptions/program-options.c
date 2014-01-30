@@ -187,18 +187,21 @@ static char * FillVariables (const char* value) {
           if (v == NULL) {
             if (TRI_EqualString(k, "ROOTDIR")) {
               char* vv = TRI_LocateInstallDirectory();
-              size_t lv = strlen(vv);
 
-              if (0 < lv) {
-                if (vv[lv - 1] == TRI_DIR_SEPARATOR_CHAR || vv[lv - 1] == '/') {
-                  v = TRI_DuplicateString2(vv, lv - 1);
+              if (vv != NULL) {
+                size_t lv = strlen(vv);
+
+                if (0 < lv) {
+                  if (vv[lv - 1] == TRI_DIR_SEPARATOR_CHAR || vv[lv - 1] == '/') {
+                    v = TRI_DuplicateString2(vv, lv - 1);
+                  }
+                  else {
+                    v = TRI_DuplicateString2(vv, lv);
+                  }
                 }
-                else {
-                  v = TRI_DuplicateString2(vv, lv);
-                }
+
+                TRI_FreeString(TRI_CORE_MEM_ZONE, vv);
               }
-
-              TRI_FreeString(TRI_CORE_MEM_ZONE, vv);
             }
           }
           else {

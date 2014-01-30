@@ -1,0 +1,8 @@
+/** Get all foxxes
+  * 
+  * If you want to get all foxxes, please use this
+  * method to do that.
+  */
+app.get("/foxxes", function () {
+  // ...
+});

@@ -121,16 +121,14 @@ You can use this to define your own extra variables and functions that you need 
 For example, you could put the following into the `.arangosh.rc` file in your home
 directory:
 
-    /* var keyword omitted intentionally,
-       otherwise "timed" would not survive the scope of this script */
+    // var keyword omitted intentionally,
+    // otherwise "timed" would not survive the scope of this script
     timed = function (cb) {
       var internal = require("internal");
       var start = internal.time();
-
       cb();
-
       internal.print("execution took: ", internal.time() - start);
-    }
+    };
 
 This will make a function named `timed` available in _arangosh_ in the global scope.
 
