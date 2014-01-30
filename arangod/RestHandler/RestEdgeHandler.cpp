@@ -269,12 +269,18 @@ bool RestEdgeHandler::createDocument () {
   edge._toKey   = 0;
 
   string wrongPart;
+  // Note that in a DBserver in a cluster, the following call will
+  // actually parse the first part of `from` as a cluster-wide
+  // collection name, exactly as it is needed here!
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
     wrongPart = "'from'";
   }
   else {
+    // Note that in a DBserver in a cluster, the following call will
+    // actually parse the first part of `from` as a cluster-wide
+    // collection name, exactly as it is needed here!
     res = parseDocumentId(to, edge._toCid, edge._toKey);
     if (res != TRI_ERROR_NO_ERROR) {
       wrongPart = "'to'";
@@ -343,16 +349,13 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  char const* from,
                                                  char const* to) {
   string const& dbname = _request->originalDatabaseName();
+
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   string contentType;
   string resultBody;
 
-  // Not yet implemented:
-  generateTransactionError(collname.c_str(), TRI_ERROR_INTERNAL);
-  return false;
-
-  int error = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json,
+  int error = triagens::arango::createEdgeOnCoordinator(
+            dbname, collname, waitForSync, json, from, to,
             responseCode, contentType, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
