@@ -22,7 +22,7 @@
         success: function() {
           self.hide();
         },
-        error: function() {
+        error: function(xhr, err) {
           var response = JSON.parse(err.responseText),
             msg = response.errorMessage;
           arangoHelper.arangoError(msg);
