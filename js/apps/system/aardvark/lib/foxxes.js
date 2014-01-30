@@ -65,6 +65,9 @@ exports.Foxxes = function () {
   };
   
   this.install = function (name, mount, version) {      
+    if (version) {
+      name = "app:" + name + ":" + version;
+    }
     return foxxmanager.mount(name, mount, { setup: true }); 
   };
   
