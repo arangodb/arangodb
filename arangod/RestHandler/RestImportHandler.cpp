@@ -193,6 +193,8 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
     edge._fromKey = 0;
     edge._toKey   = 0;
 
+    // Note that in a DBserver in a cluster the following two calls will
+    // parse the first part as a cluster-wide collection name:
     int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
     int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 

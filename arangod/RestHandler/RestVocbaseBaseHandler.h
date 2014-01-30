@@ -329,7 +329,9 @@ namespace triagens {
                                             char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a document handle
+/// @brief parses a document handle, on a cluster this will parse the
+/// collection name as a cluster-wide collection name and return a
+/// cluster-wide collection ID in `cid`.
 ////////////////////////////////////////////////////////////////////////////////
 
         int parseDocumentId (string const&, 
