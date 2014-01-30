@@ -142,7 +142,11 @@ bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
     return false;
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  cid = resolver.getCollectionIdCluster(string(input, pos - input));
+#else
   cid = resolver.getCollectionId(string(input, pos - input));
+#endif
   *key = (char*) (pos + 1);
 
   if (**key == '\0') {
