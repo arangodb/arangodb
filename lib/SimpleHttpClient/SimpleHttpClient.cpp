@@ -71,8 +71,9 @@ namespace triagens {
       _errorMessage = "";
       _written = 0;
       _state = IN_CONNECT;
-
-      reset();
+      if (_connection->isConnected()) {
+        _state = FINISHED;
+      }
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
