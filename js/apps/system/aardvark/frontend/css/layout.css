@@ -91,11 +91,11 @@ textarea, .alert {
 }
 
 .btn-danger {
-    background-color: #DA4F49;
+  background-color: #DA4F49;
 }
 
 .btn-danger:hover {
-    background-color: #be342e;
+  background-color: #be342e;
 }
 
 .btn-group > .btn + .dropdown-toggle {
@@ -131,8 +131,8 @@ body {
 
 .form-actions {
   margin-top: -10px !important;
-  background-color: rgba(0,0,0,0.05);
   border:none;
+  background: none;
 }
 
 /* ICONS */

@@ -477,7 +477,7 @@
 
     initTable: function (colid, pageid) {
       $('#documentsTableID').dataTable({
-        "aaSorting": [[ 1, "asc" ]],
+        "bSortClasses": false,
         "bFilter": false,
         "bPaginate":false,
         "bRetrieve": true,
