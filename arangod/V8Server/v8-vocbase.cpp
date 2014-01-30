@@ -8422,6 +8422,10 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
       return false;
     }
 
+    if (! obj->Has(v8g->_RevKey)) {
+      return true;
+    }
+
     rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
 
     if (rid == 0) {
