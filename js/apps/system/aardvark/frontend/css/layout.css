@@ -131,8 +131,8 @@ body {
 
 .form-actions {
   margin-top: -10px !important;
-  background-color: rgba(0,0,0,0.05);
   border:none;
+  background: none;
 }
 
 /* ICONS */
