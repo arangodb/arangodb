@@ -1873,8 +1873,6 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
@@ -3117,7 +3115,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt = v8g->VocbaseColTempl;
 
   TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
-  TRI_AddMethodVocbase(rt, "any", JS_AnyQuery);
+  TRI_AddMethodVocbase(rt, "ANY", JS_AnyQuery);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery);

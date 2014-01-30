@@ -1085,6 +1085,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
 
   // First get the initial data:
   string const dbname(collection->_dbName);
+  // TODO: someone might rename the collection while we're reading its name...
   string const collname(collection->_name);
 
   string key;
