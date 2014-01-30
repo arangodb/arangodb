@@ -116,6 +116,21 @@ namespace triagens {
                  string& contentType,
                  string& resultBody);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an edge in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int createEdgeOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 bool waitForSync,
+                 TRI_json_t* json,
+                 char const* from,
+                 char const* to,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody);
+ 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

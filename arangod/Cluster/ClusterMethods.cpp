@@ -657,6 +657,107 @@ int modifyDocumentOnCoordinator (
                                // the DBserver could have reported an error.
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an edge in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+int createEdgeOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 bool waitForSync,
+                 TRI_json_t* json,
+                 char const* from,
+                 char const* to,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+
+  // First determine the collection ID from the name:
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  string collid = StringUtils::itoa(collinfo->id());
+
+  // Sort out the _key attribute:
+  // The user is allowed to specify _key, provided that _key is the one
+  // and only sharding attribute, because in this case we can delegate
+  // the responsibility to make _key attributes unique to the responsible
+  // shard. Otherwise, we ensure uniqueness here and now by taking a
+  // cluster-wide unique number. Note that we only know the sharding 
+  // attributes a bit further down the line when we have determined
+  // the responsible shard.
+  TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
+  bool userSpecifiedKey = false;
+  string _key;
+  if (0 == subjson) {
+    // The user did not specify a key, let's create one:
+    uint64_t uid = ci->uniqid();
+    _key = triagens::basics::StringUtils::itoa(uid);
+    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
+                                                     _key.c_str(), _key.size()));
+  }
+  else {
+    userSpecifiedKey = true;
+  }
+
+  // Now find the responsible shard:
+  bool usesDefaultShardingAttributes;
+  ShardID shardID;
+  int error = ci->getResponsibleShard( collid, json, true, shardID,
+                                       usesDefaultShardingAttributes );
+  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return TRI_ERROR_CLUSTER_SHARD_GONE;
+  }
+
+  // Now perform the above mentioned check:
+  if (userSpecifiedKey && !usesDefaultShardingAttributes) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+  }
+
+  string body = JsonHelper::toString(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  // Send a synchronous request to that shard using ClusterComm:
+  ClusterCommResult* res;
+  map<string, string> headers;
+  res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
+                        triagens::rest::HttpRequest::HTTP_REQUEST_POST,
+                        "/_db/"+dbname+"/_api/edge?collection="+
+                        StringUtils::urlEncode(shardID)+"&waitForSync="+
+                        (waitForSync ? "true" : "false")+
+                        "&from="+from+"&to="+to, body, headers, 60.0);
+  
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    delete res;
+    return TRI_ERROR_CLUSTER_TIMEOUT;
+  }
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (!res->result->isComplete()) {
+      delete res;
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    // this can be 400 or 404, we simply forward the result.
+    // We intentionally fall through here.
+  }
+  responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
+                            (res->result->getHttpReturnCode());
+  contentType = res->result->getContentType(false);
+  resultBody = res->result->getBody().str();
+  delete res;
+  return TRI_ERROR_NO_ERROR;
+}
+
   }  // namespace arango
 }  // namespace triagens
 
