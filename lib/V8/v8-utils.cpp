@@ -284,7 +284,7 @@ static void FillDistribution (v8::Handle<v8::Object> list,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief decode a base64-encoded string
+/// @brief decodes a base64-encoded string
 ///
 /// @FUN{internal.base64Decode(@FA{value})}
 ///
@@ -312,7 +312,7 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief base64-encode a string
+/// @brief encodes a string as base64
 ///
 /// @FUN{internal.base64Encode(@FA{value})}
 ///
@@ -340,7 +340,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a Javascript snippet, but do not execute it
+/// @brief parses a Javascript snippet, but do not execute it
 ///
 /// @FUN{internal.parse(@FA{script})}
 ///
@@ -839,7 +839,7 @@ static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of a file
+/// @brief gets the size of a file
 ///
 /// @FUN{fs.size(@FA{path})}
 ///
@@ -887,7 +887,7 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the temporary directory
+/// @brief returns the temporary directory
 ///
 /// @FUN{fs.getTempPath()}
 ///
@@ -914,7 +914,7 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name for a (new) temporary file
+/// @brief returns the name for a (new) temporary file
 ///
 /// @FUN{fs.getTempFile(@FA{directory}, @FA{createFile})}
 ///
@@ -1010,7 +1010,7 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the directory tree
+/// @brief returns the directory listing
 ///
 /// @FUN{fs.list(@FA{path})}
 ///
@@ -1097,7 +1097,7 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a directory
+/// @brief creates a directory
 ///
 /// @FUN{fs.makeDirectory(@FA{path})}
 ///
@@ -1381,7 +1381,7 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief md5 sum
+/// @brief computes the md5 sum of a text
 ///
 /// @FUN{internal.md5(@FA{text})}
 ///
@@ -1422,7 +1422,7 @@ static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate random numbers
+/// @brief generates random numbers
 ///
 /// @FUN{internal.genRandomNumbers(@FA{length})}
 ///
@@ -1444,7 +1444,7 @@ static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate random alpha-numbers
+/// @brief generates random alpha-numbers
 ///
 /// @FUN{internal.genRandomAlphaNumbers(@FA{length})}
 ///
@@ -1465,7 +1465,7 @@ static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gernate a salt
+/// @brief generates a salt
 ///
 /// @FUN{internal.genRandomSalt()}
 ///
@@ -1484,7 +1484,7 @@ static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief nonce generator
+/// @brief generates a nonce
 ///
 /// @FUN{internal.createNonce()}
 ///
@@ -1661,7 +1661,7 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a random number using OpenSSL
+/// @brief generates a random number using OpenSSL
 ///
 /// @FUN{internal.rand()}
 ///
@@ -2087,7 +2087,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sha256 sum
+/// @brief computes the sha256 sum
 ///
 /// @FUN{internal.sha256(@FA{text})}
 ///
@@ -2195,7 +2195,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief intentionally cause a segfault
+/// @brief intentionally causes a segfault
 ///
 /// @FUN{internal.debugSegfault(@FA{message})}
 ///
@@ -2220,7 +2220,7 @@ static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set a failure point
+/// @brief sets a failure point
 ///
 /// @FUN{internal.debugSetFailAt(@FA{point})}
 ///
@@ -2243,7 +2243,7 @@ static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a failure point
+/// @brief removes a failure point
 ///
 /// @FUN{internal.debugRemoveFailAt(@FA{point})}
 ///
@@ -2266,7 +2266,7 @@ static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clear all failure points
+/// @brief clears all failure points
 ///
 /// @FUN{internal.debugClearFailAt()}
 ///
@@ -2777,6 +2777,10 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
   return scope.Close(result);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            modules initialisation
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable

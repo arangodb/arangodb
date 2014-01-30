@@ -21,10 +21,6 @@
 }
 
 
-#dashboardHeader ul a {
-  border-radius: 0 !important;
-}
-
 .group-close, .group-open {
   opacity: 0 !important;
   float:right;
@@ -194,17 +190,6 @@ li:hover h6, li.hover h6 {
   font-size: 16px;
   font-weight: 400;
   font-family: 'Open Sans', sans-serif !important;
-}
-
-#dashboardHeader, #transparentHeader {
-  margin-left: 5px;
-  margin-right: 5px;
-  padding-right: 5px;
-  padding-left: 5px;
-  background-color: #686766;
-  color: #FFFFFF;
-  height: 36px;
-  margin-top: 5px !important;
 }
 
 

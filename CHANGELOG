@@ -4,6 +4,59 @@ v1.5.0 (XXXX-XX-XX)
 * always start networking and HTTP listeners when starting the server (even in 
   console mode)
 
+* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
+  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
+
+      // using user-defined AQL functions for edge and vertex filtering
+      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
+
+      // using the following custom filter functions
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
+
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
+
+
+* added SHORTEST_PATH AQL function 
+
+  this calculates the shortest paths between two vertices, using the Dijkstra
+  algorithm, employing a min-heap
+
+  By default, ArangoDB does not know the distance between any two vertices and
+  will use a default distance of 1. A custom distance function can be registered
+  as an AQL user function to make the distance calculation use any document 
+  attributes or custom logic:
+    
+      RETURN SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true,
+        distance: "myfunctions::citydistance"
+      }) 
+
+      // using the following custom distance function
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
+        return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+      }, false);
+
+* issue #751: Create database through API should return HTTP status code 201
+
+  By default, the server now returns HTTP 201 (created) when creating a new
+  database successfully. To keep compatibility with older ArangoDB versions, the
+  startup parameter `--server.default-api-compatibility` can be set to a value
+  of `10400` to indicate API compatibility with ArangoDB 1.4. The compatibility
+  can also be enforced by setting the `X-Arango-Version` HTTP header in a 
+  client request to this API on a per-request basis.
+
 * issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
 
 * allow direct access from the `db` object to collections whose names start 
@@ -116,6 +169,11 @@ v1.5.0 (XXXX-XX-XX)
 * added the option to return the number of elements indexed to the
   result of <collection>.getIndexes() for each index. This is
   currently only implemented for hash indices and skiplist indices.
+
+v1.4.8 (xxxx-xx-xx)
+-------------------
+
+* fixed a segfault in the import API
 
 
 v1.4.7 (2014-01-23)

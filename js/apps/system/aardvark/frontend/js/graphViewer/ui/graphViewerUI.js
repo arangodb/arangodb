@@ -143,7 +143,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchAttrExampleCaret.className = "caret gv_caret";
       searchAttrExampleList.className = "dropdown-menu";
       searchValueField.id = "value";
-      searchValueField.className = "searchInput";
+      searchValueField.className = "searchInput gv_searchInput";
       //searchValueField.className = "filterValue";
       searchValueField.type = "text";
       searchValueField.placeholder = "Attribute value";
@@ -208,35 +208,37 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
     makeConfigure = function (div, idConf, idFilter) {
       var ul, liConf, aConf, spanConf, liFilter, aFilter, spanFilter, lists;
-      div.className = "pagination pagination-small pagination-right btn-group";
+      div.className = "headerButtonBar pull-right";
       ul = document.createElement("ul");
-      liConf = document.createElement("li");
-      liConf.className = "enabled";
-      aConf = document.createElement("a");
-      aConf.id = idConf;
-      aConf.className = "arangoHeaderA";
-      spanConf = document.createElement("span");
-      spanConf.className = "glyphicon glyphicon-cog";
-      $(spanConf).attr("data-original-title", "Configure");
+      ul.className = "headerButtonList";
+
+      div.appendChild(ul);
 
       liFilter = document.createElement("li");
       liFilter.className = "enabled";
       aFilter = document.createElement("a");
       aFilter.id = idFilter;
-      aFilter.className = "arangoHeaderA";
+      aFilter.className = "headerButton";
       spanFilter = document.createElement("span");
-      spanFilter.className = "glyphicon glyphicon-filter";
-      $(spanFilter).attr("data-original-title", "Filter");
+      spanFilter.className = "icon_arangodb_filter";
+      $(spanFilter).attr("title", "Filter");
       
-      div.appendChild(ul);
+      ul.appendChild(liFilter);
+      liFilter.appendChild(aFilter);
+      aFilter.appendChild(spanFilter);
+
+      liConf = document.createElement("li");
+      liConf.className = "enabled";
+      aConf = document.createElement("a");
+      aConf.id = idConf;
+      aConf.className = "headerButton";
+      spanConf = document.createElement("span");
+      spanConf.className = "icon_arangodb_settings2";
+      $(spanConf).attr("title", "Configure");
 
       ul.appendChild(liConf);
       liConf.appendChild(aConf);
       aConf.appendChild(spanConf);
-
-      ul.appendChild(liFilter);
-      liFilter.appendChild(aFilter);
-      aFilter.appendChild(spanFilter);
 
       lists = makeConfigureDiv();
       lists.filter = makeFilterDiv();
@@ -363,58 +365,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     createMenu = function() {
       var transparentHeader = document.createElement("div"),
         buttons = document.createElement("div"),
-        configureDropDown = document.createElement("div"),
+        title = document.createElement("a"),
         configureLists = makeConfigure(
-          configureDropDown,
+          buttons,
           "configuredropdown",
           "filterdropdown"
         );
         
-        /*
-        nodeShaperDropDown = document.createElement("div"),
-        nodeShaperList = makeBootstrapDropdown(
-          nodeShaperDropDown,
-          "nodeshaperdropdown",
-          "Nodes"
-        ),
-        edgeShaperDropDown = document.createElement("div"),
-        edgeShaperList = makeBootstrapDropdown(
-          edgeShaperDropDown,
-          "edgeshaperdropdown",
-          "Edges"
-        ),
-        adapterDropDown = document.createElement("div"),
-        adapterList = makeBootstrapDropdown(
-          adapterDropDown,
-          "adapterdropdown",
-          "Connection"
-        ),
-        layouterDropDown = document.createElement("div"),
-        layouterList = makeBootstrapDropdown(
-          layouterDropDown,
-          "layouterdropdown",
-          "Layout"
-        ),
-        nodeShaperUI = new NodeShaperControls(
-          nodeShaperList,
-          graphViewer.nodeShaper
-        ),
-        edgeShaperUI = new EdgeShaperControls(
-          edgeShaperList,
-          graphViewer.edgeShaper
-        ),
-        layouterUI = new LayouterControls(
-          layouterList,
-          graphViewer.layouter
-        ),
-        adapterUI = new ArangoAdapterControls(
-          adapterList,
-          graphViewer.adapter
-        ),
-        */
-        
-        
-
       nodeShaperUI = new NodeShaperControls(
         configureLists.nodes,
         graphViewer.nodeShaper
@@ -427,11 +384,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.id = "menubar";
       menubar.className = "thumbnails2";
       
-      transparentHeader.id = "transparentHeader";
+      transparentHeader.className = "headerBar";
       
       buttons.id = "modifiers";
-      buttons.className = "pull-right";
-      
+
+      title.appendChild(document.createTextNode("Graph Viewer"));
+      title.className = "arangoHeader";
       
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
@@ -439,15 +397,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       layouterDropDown.id = "layoutermenu";
       adapterDropDown.id = "adaptermenu";
       */
-      configureDropDown.id = "configuremenu";
-      
       
       menubar.appendChild(transparentHeader);
       menubar.appendChild(configureLists.configure);
       menubar.appendChild(configureLists.filter);
       transparentHeader.appendChild(buttons);
-      
-      buttons.appendChild(configureDropDown);
+      transparentHeader.appendChild(title);
       
       adapterUI.addControlChangeCollections(function() {
         updateAttributeExamples();

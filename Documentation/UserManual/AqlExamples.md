@@ -637,7 +637,7 @@ For example, to get the 3 `ageGroup`s with the most users in them:
       FILTER u.active == true 
       COLLECT ageGroup = FLOOR(u.age / 5) * 5 INTO group 
       LET numUsers = LENGTH(group) 
-      FILTER numUsers > 2 /* group must contain at least 3 users in order to qualify */
+      FILTER numUsers > 2 // group must contain at least 3 users in order to qualify 
       SORT numUsers DESC 
       LIMIT 0, 3 
       RETURN { 

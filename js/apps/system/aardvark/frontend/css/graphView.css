@@ -9,3 +9,7 @@ svg.graphViewer {
 .gv_manageButtonContainer {
   margin-top: 10px;
 }
+
+input.gv_searchInput {
+  border: 1px solid #cccccc;
+}

@@ -12,6 +12,11 @@
   background-color: #333232 !important;
 }
 
+.navbar .nav a.tab {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 .navbar .nav > li > a:hover {
   background-color: #8AA051 !important;
   color: white !important
@@ -26,7 +31,7 @@
 body, input, textarea, .page-title span, .pingback a.url {
   /*font-family: "Helvetica",sans-serif;*/
   font-family: 'Open Sans', sans-serif !important;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .arango-top-nav {
