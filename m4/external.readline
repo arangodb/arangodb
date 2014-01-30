@@ -61,15 +61,28 @@ if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
     AC_CHECK_LIB([readline], [readline], [READLINE_LIBS="-lreadline" tr_READLINE="yes"], [tr_READLINE="no"])
   fi
 
+  AC_MSG_CHECKING([READLINE support])
+
   if test "x$tr_READLINE" != xyes;  then
+    AC_MSG_RESULT([not found])
+
     if test "x$ch_READLINE" = xyes;  then
       AC_MSG_ERROR([Please install readline support])
     fi
+  else
+    AC_MSG_RESULT([readline])
   fi
-fi
 
-if test "x$tr_READLINE" = xno;  then
-  AC_MSG_ERROR([Please install readline support])
+elif test "x$tr_READLINE" = xlinenoise;  then
+  READLINE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise -DUSE_UTF8"
+
+  AC_MSG_CHECKING([READLINE support])
+  AC_MSG_RESULT([linenoise])
+
+else
+  AC_MSG_CHECKING([READLINE support])
+  AC_MSG_RESULT([disabled])
+
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -91,17 +104,23 @@ main () {
 }
 
 _ACEOF
-AC_MSG_CHECKING([READLINE version])
-eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
-TRI_READLINE_VERSION=`cat conftest.output`
 
-if test -z "$TRI_READLINE_VERSION"; then
-  AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
-fi
+  AC_MSG_CHECKING([READLINE version])
+  eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
+  TRI_READLINE_VERSION=`cat conftest.output`
 
-AC_MSG_RESULT([$TRI_READLINE_VERSION])
-rm -f conftest*
+  if test -z "$TRI_READLINE_VERSION"; then
+    AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
+  fi
 
+  AC_MSG_RESULT([$TRI_READLINE_VERSION])
+  rm -f conftest*
+
+elif test "x$tr_READLINE" = xlinenoise;  then
+  TRI_READLINE_VERSION="linenoise"
+
+  AC_MSG_CHECKING([READLINE version])
+  AC_MSG_RESULT([$TRI_READLINE_VERSION])
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -115,6 +134,9 @@ CPPFLAGS="$SAVE_CPPFLAGS"
 if test "x$tr_READLINE" = xyes;  then
   CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
   READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
+
+elif test "x$tr_READLINE" = xlinenoise;  then
+  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -122,6 +144,16 @@ dnl add substitutions
 dnl ----------------------------------------------------------------------------
 
 AM_CONDITIONAL(ENABLE_READLINE, test "x$tr_READLINE" = xyes)
+
+if test "x$tr_READLINE" = xyes;  then
+  AC_DEFINE_UNQUOTED(TRI_HAVE_READLINE, 1, [true if readline is used])
+fi
+
+AM_CONDITIONAL(ENABLE_LINENOISE, test "x$tr_READLINE" = xlinenoise)
+
+if test "x$tr_READLINE" = xlinenoise;  then
+  AC_DEFINE_UNQUOTED(TRI_HAVE_LINENOISE, 1, [true if linenoise is used])
+fi
 
 AC_SUBST(READLINE_CPPFLAGS)
 AC_SUBST(READLINE_LDFLAGS)
@@ -132,11 +164,19 @@ dnl informational output
 dnl ----------------------------------------------------------------------------
 
 if test "x$tr_READLINE" = xyes;  then
-  LIB_INFO="$LIB_INFO|READLINE VERSION: ${TRI_READLINE_VERSION}"
+  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${TRI_READLINE_VERSION}"
 
-  LIB_INFO="$LIB_INFO|READLINE_CPPLIBS: ${READLINE_CPPLIBS}"
-  LIB_INFO="$LIB_INFO|READLINE_LDLIBS:  ${READLINE_LDLIBS}"
+  LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|READLINE_LDLIBS:   ${READLINE_LDLIBS}"
   LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
+
+elif test "x$tr_READLINE" = xlinenoise;  then
+  LIB_INFO="$LIB_INFO|LINENOISE VERSION:  ${TRI_READLINE_VERSION}"
+
+  LIB_INFO="$LIB_INFO|LINENOISE_CPPFLAGS: ${READLINE_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|LINENOISE_LDLIBS:   ${READLINE_LDLIBS}"
+  LIB_INFO="$LIB_INFO|LINENOISE_LIBS:     ${READLINE_LIBS}"
+
 else
   LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
 fi

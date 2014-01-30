@@ -29,7 +29,9 @@
 
 #ifdef TRI_HAVE_LINENOISE
 #include <linenoise.h>
-#else
+#endif
+
+#ifdef TRI_HAVE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
@@ -37,7 +39,7 @@
 #include "BasicsC/tri-strings.h"
 #include "V8/v8-utils.h"
 
-#ifndef TRI_HAVE_LINENOISE
+#ifdef TRI_HAVE_READLINE
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
 #endif
@@ -57,11 +59,15 @@ using namespace std;
 /// @brief word break characters
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_READLINE
+
 static char WordBreakCharacters[] = {
     ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
     '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
     '\0'
 };
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -70,6 +76,8 @@ static char WordBreakCharacters[] = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief completion generator
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_READLINE
 
 static char* CompletionGenerator (char const* text, int state) {
   static size_t currentIndex;
@@ -179,13 +187,13 @@ static char* CompletionGenerator (char const* text, int state) {
   }
 }
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempted completion
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_LINENOISE
-
-#else
+#ifdef TRI_HAVE_READLINE
 
 static char** AttemptedCompletion (char const* text, int start, int end) {
   char** result;
@@ -240,13 +248,9 @@ V8LineEditor::~V8LineEditor () {
 
 bool V8LineEditor::open (const bool autoComplete) { 
   if (autoComplete) {
-#ifdef TRI_HAVE_LINENOISE
-
-#else
-
+#ifdef TRI_HAVE_READLINE
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
-
 #endif
   }
 

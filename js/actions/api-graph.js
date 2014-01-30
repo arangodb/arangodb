@@ -136,7 +136,7 @@ function edge_by_request (req, g) {
 function matchError (req, res, doc, errorCode) {  
 
   if (req.headers["if-none-match"] !== undefined) {
-    if (doc._rev === req.headers["if-none-match"]) {
+    if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
       // error      
       res.responseCode = actions.HTTP_NOT_MODIFIED;
       res.contentType = "application/json; charset=utf-8";
@@ -147,7 +147,7 @@ function matchError (req, res, doc, errorCode) {
   }  
   
   if (req.headers["if-match"] !== undefined) {
-    if (doc._rev !== req.headers["if-match"]) {
+    if (doc._rev !== req.headers["if-match"].replace(/(^["']|["']$)/g, '')) {
       // error
       actions.resultError(req, 
                           res, 
@@ -1046,6 +1046,18 @@ function process_property_compare (compare) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function process_property_filter (data, num, property, collname) {
+  if (property.key !== undefined && property.compare === "HAS") {
+      if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
+      data.filter += " HAS(" + collname + ", @key" + num.toString() + ") ";
+      data.bindVars["key" + num.toString()] = property.key;
+      return;    
+  }
+  if (property.key !== undefined && property.compare === "HAS_NOT") {
+      if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
+      data.filter += " !HAS(" + collname + ", @key" + num.toString() + ") ";
+      data.bindVars["key" + num.toString()] = property.key;
+      return;    
+  }
   if (property.key !== undefined && property.value !== undefined) {
       if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
       data.filter += " " + collname + "[@key" + num.toString() + "] " +

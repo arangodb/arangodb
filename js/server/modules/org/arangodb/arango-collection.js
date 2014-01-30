@@ -254,6 +254,161 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the n first documents in the collection
+///
+/// @FUN{@FA{collection}.first(@FA{count})}
+///
+/// The @FN{first} method returns the n first documents from the collection, in 
+/// order of document insertion/update time. 
+///
+/// If called with the @FA{count} argument, the result is a list of up to
+/// @FA{count} documents. If @FA{count} is bigger than the number of documents
+/// in the collection, then the result will contain as many documents as there
+/// are in the collection.
+/// The result list is ordered, with the "oldest" documents being positioned at 
+/// the beginning of the result list.
+///
+/// When called without an argument, the result is the first document from the
+/// collection. If the collection does not contain any documents, the result 
+/// returned is @LIT{null}.
+///
+/// Note: this method is not supported on sharded collections with more than
+/// one shard.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.example.first(1)
+/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
+/// @endcode
+///
+/// @code
+/// arangod> db.example.first()
+/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.first = function (count) {
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+
+    if (shards.length !== 1) {
+      var err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      err.errorMessage = "operation is not supported in clustered collections with multiple shards";
+
+      throw err;
+    }
+
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var shard = shards[0];
+
+    ArangoClusterComm.asyncRequest("put", 
+                                   "shard:" + shard, 
+                                   dbName, 
+                                   "/_api/simple/first", 
+                                   JSON.stringify({ 
+                                     collection: shard,
+                                     count: count 
+                                   }), 
+                                   { }, 
+                                   options);
+
+    var results = cluster.wait(coord, shards), i;
+
+    if (results.length) {
+      var body = JSON.parse(results[i].body);
+      return body.result || null;
+    }
+    return null;
+  }
+  else {
+    return this.FIRST(count);
+  } 
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the n last documents in the collection
+///
+/// @FUN{@FA{collection}.last(@FA{count})}
+///
+/// The @FN{first} method returns the n last documents from the collection, in 
+/// order of document insertion/update time. 
+///
+/// If called with the @FA{count} argument, the result is a list of up to
+/// @FA{count} documents. If @FA{count} is bigger than the number of documents
+/// in the collection, then the result will contain as many documents as there
+/// are in the collection.
+/// The result list is ordered, with the "latest" documents being positioned at 
+/// the beginning of the result list.
+///
+/// When called without an argument, the result is the last document from the
+/// collection. If the collection does not contain any documents, the result 
+/// returned is @LIT{null}.
+///
+/// Note: this method is not supported on sharded collections with more than
+/// one shard.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.example.last(1)
+/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
+/// @endcode
+///
+/// @code
+/// arangod> db.example.last()
+/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.last = function (count) {
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+
+    if (shards.length !== 1) {
+      var err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      err.errorMessage = "operation is not supported in clustered collections with multiple shards";
+
+      throw err;
+    }
+
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var shard = shards[0];
+
+    ArangoClusterComm.asyncRequest("put", 
+                                   "shard:" + shard, 
+                                   dbName, 
+                                   "/_api/simple/last", 
+                                   JSON.stringify({ 
+                                     collection: shard,
+                                     count: count 
+                                   }), 
+                                   { }, 
+                                   options);
+
+    var results = cluster.wait(coord, shards), i;
+
+    if (results.length) {
+      var body = JSON.parse(results[i].body);
+      return body.result || null;
+    }
+  }
+  else {
+    return this.LAST(count);
+  } 
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
 ///
 /// @FUN{@FA{collection}.firstExample(@FA{example})}

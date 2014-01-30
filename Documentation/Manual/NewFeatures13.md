@@ -81,7 +81,7 @@ another:
         db.accounts.update(account1, { amount : account1.amount - amount });
         db.accounts.update(account2, { amount : account2.amount + amount });
 
-        /* will commit the transaction and return the value true */
+        // will commit the transaction and return the value true 
         return true; 
       }
     });
