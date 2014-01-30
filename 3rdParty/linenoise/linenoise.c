@@ -858,20 +858,20 @@ static void refreshLine(const char *prompt, struct current *current)
     b = 0; /* unwritted bytes */
     n = 0; /* How many control chars were written */
     for (i = 0; i < chars; i++) {
-        int ch;
-        int w = utf8_tounicode(buf + b, &ch);
-        if (ch < ' ') {
+        int ch2;
+        int w = utf8_tounicode(buf + b, &ch2);
+        if (ch2 < ' ') {
             n++;
         }
         if (pchars + i + n >= current->cols) {
             break;
         }
-        if (ch < ' ') {
+        if (ch2 < ' ') {
             /* A control character, so write the buffer so far */
             outputChars(current, buf, b);
             buf += b + w;
             b = 0;
-            outputControlChar(current, ch + '@');
+            outputControlChar(current, ch2 + '@');
             if (i < pos) {
                 backup++;
             }
@@ -1225,8 +1225,8 @@ process_char:
                     c = fd_read(current);
                     if (c == ctrl('H') || c == 127) {
                         if (rchars) {
-                            int p = utf8_index(rbuf, --rchars);
-                            rbuf[p] = 0;
+                            int p2 = utf8_index(rbuf, --rchars);
+                            rbuf[p2] = 0;
                             rlen = strlen(rbuf);
                         }
                         continue;
