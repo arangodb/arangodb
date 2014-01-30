@@ -373,31 +373,70 @@ ArangoCollection.prototype.replaceByExample = function (example,
                                                         newValue, 
                                                         waitForSync, 
                                                         limit) {
-  var replaced = 0;
-  var documents;
-  
   if (limit === 0) {
     return 0;
   }
 
   if (typeof newValue !== "object" || Array.isArray(newValue)) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
-    err.errorMessage = "invalid value for parameter 'newValue'";
+    var err1 = new ArangoError();
+    err1.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
+    err1.errorMessage = "invalid value for parameter 'newValue'";
 
-    throw err;
+    throw err1;
   }
 
-  documents = this.byExample(example);
-  if (limit > 0) {
-    documents = documents.limit(limit);
+  var replaced = 0;
+  var documents;
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    if (limit > 0) {
+      var err2 = new ArangoError();
+      err2.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      err2.errorMessage = "limit not supported in clustered operation";
+
+      throw err2;
+    }
+
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/replace-by-example", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       example: example,
+                                       newValue: newValue,
+                                       waitForSync: waitForSync
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var results = cluster.wait(coord, shards), i;
+    for (i = 0; i < results.length; ++i) {
+      var body = JSON.parse(results[i].body);
+
+      replaced += (body.replaced || 0);
+    }
   }
+  else {
+    documents = this.byExample(example);
+    if (limit > 0) {
+      documents = documents.limit(limit);
+    }
 
-  while (documents.hasNext()) {
-    var document = documents.next();
+    while (documents.hasNext()) {
+      var document = documents.next();
 
-    if (this.replace(document, newValue, true, waitForSync)) {
-      replaced++;
+      if (this.replace(document, newValue, true, waitForSync)) {
+        replaced++;
+      }
     }
   }
 
@@ -413,31 +452,72 @@ ArangoCollection.prototype.updateByExample = function (example,
                                                        keepNull, 
                                                        waitForSync, 
                                                        limit) {
-  var updated = 0;
-  var documents;
   
   if (limit === 0) {
     return 0;
   }
   
   if (typeof newValue !== "object" || Array.isArray(newValue)) {
-    var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
-    err.errorMessage = "invalid value for parameter 'newValue'";
+    var err1 = new ArangoError();
+    err1.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
+    err1.errorMessage = "invalid value for parameter 'newValue'";
 
-    throw err;
+    throw err1;
   }
+  
+  var updated = 0;
+  var documents;
+  var cluster = require("org/arangodb/cluster");
 
-  documents = this.byExample(example);
-  if (limit > 0) {
-    documents = documents.limit(limit);
+  if (cluster.isCoordinator()) {
+    if (limit > 0) {
+      var err2 = new ArangoError();
+      err2.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      err2.errorMessage = "limit not supported in clustered operation";
+
+      throw err2;
+    }
+
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/update-by-example", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       example: example,
+                                       newValue: newValue,
+                                       waitForSync: waitForSync,
+                                       keepNull: keepNull
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var results = cluster.wait(coord, shards), i;
+    for (i = 0; i < results.length; ++i) {
+      var body = JSON.parse(results[i].body);
+
+      updated += (body.updated || 0);
+    }
   }
+  else {
+    documents = this.byExample(example);
+    if (limit > 0) {
+      documents = documents.limit(limit);
+    }
 
-  while (documents.hasNext()) {
-    var document = documents.next();
-
-    if (this.update(document, newValue, true, keepNull, waitForSync)) {
-      updated++;
+    while (documents.hasNext()) {
+      var document = documents.next();
+ 
+      if (this.update(document, newValue, true, keepNull, waitForSync)) {
+        updated++;
+      }
     }
   }
 
