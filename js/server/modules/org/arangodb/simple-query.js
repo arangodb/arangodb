@@ -86,7 +86,8 @@ SimpleQueryAll.prototype.execute = function () {
                                        JSON.stringify({ 
                                          collection: shard, 
                                          skip: 0, 
-                                         limit: limit || undefined
+                                         limit: limit || undefined,
+                                         batchSize: 100000000
                                        }), 
                                        { }, 
                                        options);
@@ -325,7 +326,8 @@ SimpleQueryByExample.prototype.execute = function () {
                                          example: example,
                                          collection: shard, 
                                          skip: 0, 
-                                         limit: limit || undefined 
+                                         limit: limit || undefined, 
+                                         batchSize: 100000000
                                        }), 
                                        { }, 
                                        options);
