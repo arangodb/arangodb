@@ -18,14 +18,8 @@
     },
 
     deleteGraph: function(e) {
-      var key = $(e.target).closest("a").attr("id"),
-        self = this;
-      // Ask user for permission
-      this.collection.get(key).destroy({
-        success: function() {
-          self.render();
-         }
-      });
+      var key = $(e.target).closest("a").attr("id");
+      window.App.navigate("graphManagement/delete/" + key, {trigger: true});
     },
 
     render: function() {
