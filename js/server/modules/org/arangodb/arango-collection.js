@@ -210,13 +210,57 @@ ArangoCollection.prototype.index = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns any document from a collection
+///
+/// @FUN{@FA{collection}.any()
+///
+/// Returns a random document from the collection or @LIT{null} if none exists.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.any = function () {
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/any", 
+                                     JSON.stringify({ 
+                                       collection: shard, 
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var results = cluster.wait(coord, shards), i;
+    for (i = 0; i < results.length; ++i) {
+      var body = JSON.parse(results[i].body);
+      if (body.document !== null) {
+        return body.document;
+      }
+    }
+
+    return null;
+  }
+
+  return this.ANY();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
 ///
 /// @FUN{@FA{collection}.firstExample(@FA{example})}
 ///
-/// Returns the a document of a collection that match the specified example or
-/// @LIT{null}. The example must be specified as paths and values. See 
-/// @FN{byExample} for details.
+/// Returns the first document of a collection that matches the specified 
+/// example or @LIT{null}. The example must be specified as paths and values. 
+/// See @FN{byExample} for details.
 ///
 /// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
 ///
@@ -245,10 +289,9 @@ ArangoCollection.prototype.firstExample = function (example) {
     }
   }
 
-  var documents = simple.byExample(this, e, 0, 1);
-
-  if (0 < documents.documents.length) {
-    return documents.documents[0];
+  var documents = (new simple.SimpleQueryByExample(this, e)).limit(1).toArray();
+  if (documents.length > 0) {
+    return documents[0];
   }
 
   return null;
