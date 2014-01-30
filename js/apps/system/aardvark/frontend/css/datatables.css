@@ -6,14 +6,6 @@
   padding:12px 18px !important;
 }
 
-#logContent .odd {
-  background-color: #F1F0EE;
-}
-
-#logContent .even {
-  background-color: #FFFFFF;
-}
-
 
 table.dataTable thead th {
   border-bottom:none;
@@ -31,8 +23,6 @@ table.arangoDataTable.dataTable td {
 }
 
 .arangoDataTable {
-  padding-left: 5px !important;
-  padding-right: 5px !important;
   width: 100% !important;
   position: relative;
   table-layout:fixed !important;
@@ -54,3 +44,13 @@ table.arangoDataTable.dataTable td {
   margin-top: 4px;
 }
 
+/* Odd / Even coloring */
+.api-container ul#resources > li.resource:nth-child(even),
+table.arangoDataTable tr.even {
+  background-color: #FFFFFF;
+}
+
+.api-container ul#resources > li.resource:nth-child(odd),
+table.arangoDataTable tr.odd {
+  background-color: #F1F0EE;
+}
