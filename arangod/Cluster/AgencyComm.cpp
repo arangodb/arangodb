@@ -1742,6 +1742,8 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   triagens::httpclient::SimpleHttpClient client(connection,
                                                 timeout, 
                                                 false);
+  
+  client.keepConnectionOnDestruction(true);
 
   // set up headers
   std::map<std::string, std::string> headers;
