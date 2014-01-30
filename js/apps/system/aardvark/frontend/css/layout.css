@@ -259,10 +259,10 @@ button {
 }
 
 li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
-  font-size: 26px;
+  font-size: 22px;
   position: absolute;
-  right: 4px;
-  top: 0px;
+  right: 5px;
+  top: 2px;
 }
 
 .modal-body .icon_arangodb_info {
