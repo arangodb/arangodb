@@ -91,11 +91,11 @@ textarea, .alert {
 }
 
 .btn-danger {
-    background-color: #DA4F49;
+  background-color: #DA4F49;
 }
 
 .btn-danger:hover {
-    background-color: #be342e;
+  background-color: #be342e;
 }
 
 .btn-group > .btn + .dropdown-toggle {
