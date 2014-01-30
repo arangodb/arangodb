@@ -403,22 +403,6 @@ INLINE_SIMPLE_STRUCTS  = NO
 
 TYPEDEF_HIDES_STRUCT   = NO
 
-# The SYMBOL_CACHE_SIZE determines the size of the internal cache use to
-# determine which symbols to keep in memory and which to flush to disk.
-# When the cache is full, less often used symbols will be written to disk.
-# For small to medium size projects (<1000 input files) the default value is
-# probably good enough. For larger projects a too small cache size can cause
-# doxygen to be busy swapping symbols to and from disk most of the time
-# causing a significant performance penalty.
-# If the system has enough physical memory increasing the cache will improve the
-# performance by keeping more symbols in memory. Note that the value works on
-# a logarithmic scale so increasing the size by one will roughly double the
-# memory usage. The cache size is given by this formula:
-# 2^(16+SYMBOL_CACHE_SIZE). The valid range is 0..9, the default is 0,
-# corresponding to a cache size of 2^16 = 65536 symbols.
-
-SYMBOL_CACHE_SIZE      = 0
-
 # Similar to the SYMBOL_CACHE_SIZE the size of the symbol lookup cache can be
 # set using LOOKUP_CACHE_SIZE. This cache is used to resolve symbols given
 # their name and scope. Since this can be an expensive process and often the
@@ -1719,39 +1703,19 @@ HAVE_DOT               = @HAVE_DOT@
 
 DOT_NUM_THREADS        = 0
 
-# By default doxygen will use the Helvetica font for all dot files that
-# doxygen generates. When you want a differently looking font you can specify
-# the font name using DOT_FONTNAME. You need to make sure dot is able to find
-# the font, which can be done by putting it in a standard location or by setting
-# the DOTFONTPATH environment variable or by setting DOT_FONTPATH to the
-# directory containing the font.
-
-DOT_FONTNAME           = FreeSans
-
-# The DOT_FONTSIZE tag can be used to set the size of the font of dot graphs.
-# The default size is 10pt.
-
-DOT_FONTSIZE           = 10
-
-# By default doxygen will tell dot to use the Helvetica font.
-# If you specify a different font using DOT_FONTNAME you can use DOT_FONTPATH to
-# set the path where dot can find it.
-
-DOT_FONTPATH           =
-
 # If the CLASS_GRAPH and HAVE_DOT tags are set to YES then doxygen
 # will generate a graph for each documented class showing the direct and
 # indirect inheritance relations. Setting this tag to YES will force the
 # CLASS_DIAGRAMS tag to NO.
 
-CLASS_GRAPH            = YES
+CLASS_GRAPH            = NO
 
 # If the COLLABORATION_GRAPH and HAVE_DOT tags are set to YES then doxygen
 # will generate a graph for each documented class showing the direct and
 # indirect implementation dependencies (inheritance, containment, and
 # class references variables) of the class with other documented classes.
 
-COLLABORATION_GRAPH    = YES
+COLLABORATION_GRAPH    = NO
 
 # If the GROUP_GRAPHS and HAVE_DOT tags are set to YES then doxygen
 # will generate a graph for groups, showing the direct groups dependencies
