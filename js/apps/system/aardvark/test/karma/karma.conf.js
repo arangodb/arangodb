@@ -167,6 +167,7 @@ module.exports = function(karma) {
       'frontend/js/views/graphView.js',
       'frontend/js/views/graphManagementView.js',
       'frontend/js/views/addNewGraphView.js',
+      'frontend/js/views/deleteGraphView.js',
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
       'frontend/js/views/loginView.js',

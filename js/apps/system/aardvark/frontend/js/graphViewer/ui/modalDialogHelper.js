@@ -377,7 +377,7 @@ var modalDialogHelper = modalDialogHelper || {};
     buttonDismiss.className = "close";
     buttonDismiss.dataDismiss = "modal";
     buttonDismiss.ariaHidden = "true";
-    buttonDismiss.appendChild(document.createTextNode("x"));
+    buttonDismiss.appendChild(document.createTextNode("×"));
     
     header.appendChild(document.createTextNode(title));
     

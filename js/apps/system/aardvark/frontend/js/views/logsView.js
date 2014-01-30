@@ -114,6 +114,7 @@
           "bFilter": false,
           "bPaginate": false,
           "bSort" : false,
+          "bSortClasses": false,
           "bLengthChange": false,
           "bDeferRender": true,
           "bProcessing": true,
