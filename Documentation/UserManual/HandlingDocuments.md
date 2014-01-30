@@ -103,11 +103,11 @@ Collection Methods {#HandlingDocumentsCollectionMethods}
 
 @CLEARPAGE
 @anchor HandlingDocumentsFirst
-@copydetails JS_FirstQuery
+@copydetails JSF_ArangoCollection_prototype_first
 
 @CLEARPAGE
 @anchor HandlingDocumentsLast
-@copydetails JS_LastQuery
+@copydetails JSF_ArangoCollection_prototype_last
 
 @CLEARPAGE
 Database Methods {#HandlingDocumentsDatabaseMethods}
