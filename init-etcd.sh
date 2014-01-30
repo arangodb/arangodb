@@ -1,5 +1,5 @@
 #!/bin/sh
-ETCD=$HOME/etcd/etcd
+ETCD=$HOME/etcd/bin/etcd
 killall etcd
 cd /tmp
 rm -f etcd.log
