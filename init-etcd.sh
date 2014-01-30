@@ -1,6 +1,6 @@
 #!/bin/sh
-ETCD=$HOME/etcd/etcd
-killall etcd
+ETCD=$HOME/etcd/bin/etcd
+killall -9 etcd
 cd /tmp
 rm -f etcd.log
 rm -Rf machine1 machine2 machine3
