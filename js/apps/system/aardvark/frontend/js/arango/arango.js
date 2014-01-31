@@ -3,6 +3,40 @@
 
 (function() {
   "use strict";
+  window.versionHelper = {
+    fromString: function (s) {
+      var parts = s.replace(/-.*$/g, '').split('.');
+      return {
+        major: parseInt(parts[0]) || 0,
+        minor: parseInt(parts[1]) || 0,
+        patch: parseInt(parts[2]) || 0
+      };
+    },
+    toString: function (v) {
+      return v.major + '.' + v.minor + '.' + v.patch;
+    },
+    toStringMainLine: function (v) {
+      return v.major + '.' + v.minor;
+    },
+    compareVersions: function (l, r) {
+      if (l.major === r.major) {
+        if (l.minor === r.minor) {
+          if (l.patch === r.patch) {
+            return 0;
+          }
+          return l.patch - r.patch;
+        }
+        return l.minor - r.minor;
+      }
+      return l.major - r.major;
+    },
+    compareVersionStrings: function (l, r) {
+      l = window.versionHelper.fromString(l);
+      r = window.versionHelper.fromString(r);
+      return window.versionHelper.compareVersions(l, r);
+    }
+  };
+
   window.arangoHelper = {
     lastNotificationMessage: null,
 
@@ -71,12 +105,12 @@
       $.gritter.removeAll();
       this.lastNotificationMessage = null;
     },
-    arangoNotification: function (message) {
+    arangoNotification: function (message, time) {
       var returnVal = false;
       $.gritter.add({
         title: "Notice:",
         text: message,
-        time: 3000,
+        time: time || 3000,
         before_open: function(){
           returnVal = true;
         }
