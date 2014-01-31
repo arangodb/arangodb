@@ -29,10 +29,8 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-/* Archive
-function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, dispatcherConfig) {
-*/
-function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig) {
+
+function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcherConfig) {
   "use strict";
   
   if (list === undefined) {
@@ -43,6 +41,9 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   }
   if (edgeShaper === undefined) {
     throw "The EdgeShaper has to be given.";
+  }
+  if (start === undefined) {
+    throw "The Start callback has to be given.";
   }
   
   var self = this,
@@ -124,6 +125,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
               dispatcher.events.CREATENODE(data, function(node) {
                 $("#" + idprefix + "modal").modal('hide');
                 nodeShaper.reshapeNodes();
+                start();
               }, pos.x, pos.y)();
             }
           );
@@ -189,6 +191,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         nodesUp = dispatcher.events.FINISHCREATEEDGE(function(edge){
           edgeShaper.removeCursorFollowingEdge();
           dispatcher.bind("svg", "mousemove", function(){});
+          start();
         }),
         svgUp = function() {
           dispatcher.events.CANCELCREATEEDGE();
@@ -240,6 +243,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
                 $("#control_event_node_delete_modal").modal('hide');
                 nodeShaper.reshapeNodes();
                 edgeShaper.reshapeEdges();
+                start();
               })(n);
             }
           );
@@ -254,6 +258,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
                 $("#control_event_edge_delete_modal").modal('hide');
                 nodeShaper.reshapeNodes();
                 edgeShaper.reshapeEdges();
+                start();
               })(e);
             }
           );
