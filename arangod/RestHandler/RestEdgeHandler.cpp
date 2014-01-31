@@ -574,7 +574,7 @@ bool RestEdgeHandler::createDocument () {
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{keepNull,string,optional}
+/// @RESTQUERYPARAM{keepNull,boolean,optional}
 /// If the intention is to delete existing attributes with the patch command, 
 /// the URL query parameter `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
