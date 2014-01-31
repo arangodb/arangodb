@@ -207,6 +207,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
   {
     basics::ConditionLocker locker(&somethingToSend);
     toSend.push_back(op);
+    assert(0 != op);
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
@@ -579,14 +580,20 @@ void ClusterComm::drop (
       op = *q;
       if ((0 != operationID && operationID == op->operationID) ||
           match(clientTransactionID, coordTransactionID, shardID, op)) {
-        nextq = q;
-        nextq++;
-        i = toSendByOpID.find(op->operationID);   // cannot fail
-        assert(i != toSendByOpID.end());
-        assert(q == i->second);
-        receivedByOpID.erase(i);
-        toSend.erase(q);
-        q = nextq;
+        if (op->status == CL_COMM_SENDING) {
+          op->dropped = true;
+          q++;
+        }
+        else {
+          nextq = q;
+          nextq++;
+          i = toSendByOpID.find(op->operationID);   // cannot fail
+          assert(i != toSendByOpID.end());
+          assert(q == i->second);
+          toSendByOpID.erase(i);
+          toSend.erase(q);
+          q = nextq;
+        }
       }
       else {
         q++;
@@ -606,7 +613,7 @@ void ClusterComm::drop (
         assert(i != receivedByOpID.end());
         assert(q == i->second);
         receivedByOpID.erase(i);
-        toSend.erase(q);
+        received.erase(q);
         q = nextq;
       }
       else {
@@ -788,7 +795,6 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   basics::ConditionLocker locker(&somethingReceived);
   basics::ConditionLocker sendlocker(&somethingToSend);
   i = toSendByOpID.find(operationID);   // cannot fail
-
   assert(i != toSendByOpID.end());
 
   q = i->second;
