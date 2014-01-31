@@ -2493,6 +2493,32 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a port is available
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "testPort(<address>)");
+  }
+
+  string address = TRI_ObjectToString(argv[0]);
+  Endpoint* endpoint = Endpoint::serverFactory(address);
+  TRI_socket_t s = endpoint->connect(1, 1);
+  
+  if (s.fileDescriptor == 0) {
+    endpoint->disconnect();
+  }
+
+  delete endpoint;
+
+  // return the result
+  return scope.Close(v8::Boolean::New(s.fileDescriptor != 0));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3001,6 +3027,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
 
