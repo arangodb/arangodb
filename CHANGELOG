@@ -1,3 +1,38 @@
+v1.4.9 (XXXX-XX-XX)
+-------------------
+
+* issue #755: TRAVERSAL does not use strategy, order and itemOrder options
+
+  these options were not honored when configuring a traversal via the AQL
+  TRAVERSAL function. Now, these options are used and must contain valid
+  value if specified. Invalid values in any of these attributes will be
+  rejected and the query will fail with an error
+
+* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
+  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
+
+      // using user-defined AQL functions for edge and vertex filtering
+      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
+
+      // using the following custom filter functions
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
+
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
+
+* issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
+
+
 v1.4.8 (2014-01-31)
 -------------------
 

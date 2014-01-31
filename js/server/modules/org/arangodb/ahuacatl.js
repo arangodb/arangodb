@@ -1683,7 +1683,6 @@ function RELATIONAL_CMP (lhs, rhs) {
 function RELATIONAL_IN (lhs, rhs) {
   "use strict";
 
-  var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
   if (rightWeight !== TYPEWEIGHT_LIST) {
@@ -3714,39 +3713,79 @@ function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
 /// @brief expander callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSAL_FILTER (config, vertex, edge, path) {
+function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
   "use strict";
 
   return MATCHES(edge, config.expandEdgeExamples);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief vertex filter callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
+  "use strict";
+  
+  if (! MATCHES(vertex, config.filterVertexExamples)) {
+    return config.vertexFilterMethod;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check typeweights of params.followEdges/params.filterVertices
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
+  "use strict";
+
+  if (TYPEWEIGHT(examples) === TYPEWEIGHT_STRING) {
+    // a callback function was supplied. this is considered valid
+    return;
+  }
+  
+  if (TYPEWEIGHT(examples) !== TYPEWEIGHT_LIST) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+  if (examples.length === 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+  examples.forEach(function (example) {
+    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+    }
+  });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, direction, params) {
+function TRAVERSAL_FUNC (func, 
+                         vertexCollection, 
+                         edgeCollection, 
+                         startVertex, 
+                         direction, 
+                         params) {
   "use strict";
 
   if (startVertex.indexOf('/') === -1) {
     startVertex = vertexCollection + '/' + startVertex;
   }
-
+  
   vertexCollection = COLLECTION(vertexCollection);
   edgeCollection   = COLLECTION(edgeCollection);
 
+  if (params === undefined) {
+    params = { };
+  }
+  
   // check followEdges property
   if (params.followEdges) {
-    if (TYPEWEIGHT(params.followEdges) !== TYPEWEIGHT_LIST) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-    }
-    if (params.followEdges.length === 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-    }
-    params.followEdges.forEach(function (example) {
-      if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-      }
-    });
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges, func);
+  }
+  // check filterVertices property
+  if (params.filterVertices) {
+    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.filterVertices, func);
   }
 
   if (typeof params.visitor !== "function") {
@@ -3767,26 +3806,52 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
     minDepth: params.minDepth,
     maxIterations: params.maxIterations,
     uniqueness: params.uniqueness,
-    expander: direction
+    expander: direction,
+    strategy: params.strategy,
+    order: params.order,
+    itemOrder: params.itemOrder
   };
 
   if (params.followEdges) {
-    config.expandFilter = TRAVERSAL_FILTER;
-    config.expandEdgeExamples = params.followEdges;
+    if (typeof params.followEdges === 'string') {
+      var f1 = params.followEdges.toUpperCase();
+      config.expandFilter = function (config, vertex, edge, path) {
+        return FCALL_USER(f1, [ config, vertex, edge, path ]);
+      };
+    } 
+    else {
+      config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
+      config.expandEdgeExamples = params.followEdges;  
+    }
+  }
+
+  if (params.filterVertices) {
+    if (typeof params.filterVertices === 'string') {
+      var f2 = params.filterVertices.toUpperCase();
+      config.filter = function (config, vertex, edge, path) {
+        return FCALL_USER(f2, [ config, vertex, path ]);
+      };
+    } 
+    else {
+      config.filter = TRAVERSAL_VERTEX_FILTER;
+      config.filterVertexExamples = params.filterVertices;
+      config.vertexFilterMethod = params.vertexFilterMethod || ["prune", "exclude"];
+    }
   }
 
   if (params._sort) {
     config.sort = function (l, r) { return l._key < r._key ? -1 : 1; };
   }
 
+  // start vertex
   var v = null;
-  var result = [ ];
   try {
     v = INTERNAL.db._document(startVertex);
   }
-  catch (err) {
+  catch (err1) {
   }
 
+  var result = [ ];
   if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
     traverser.traverse(result, v);
@@ -3794,7 +3859,7 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
 
   return result;
 }
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -3806,12 +3871,15 @@ function GRAPH_TRAVERSAL (vertexCollection,
                           params) {
   "use strict";
 
+  if (params === undefined) {
+    params = { };
+  }
   params.visitor  = TRAVERSAL_VISITOR;
 
   return TRAVERSAL_FUNC("TRAVERSAL", 
                         vertexCollection, 
                         edgeCollection, 
-                        startVertex, 
+                        startVertex,
                         direction, 
                         params);
 }
@@ -3834,8 +3902,9 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSAL_TREE");
   }
 
-  params.strategy = "depthfirst";
-  params.order    = "preorder";
+  if (params === undefined) {
+    params = { };
+  }
   params.visitor  = TRAVERSAL_TREE_VISITOR;
   params.connect  = connectName;
 

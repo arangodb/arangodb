@@ -925,7 +925,7 @@ ArangoTraverser = function (config) {
     }
     if (typeof value === 'string') {
       value = value.toLowerCase().replace(/-/, "");
-      if (map[value] !== null) {
+      if (map[value] !== null && map[value] !== undefined) {
         return map[value];
       }
     }
@@ -955,7 +955,7 @@ ArangoTraverser = function (config) {
       global: ArangoTraverser.UNIQUE_GLOBAL
     }, "uniqueness.edges")
   };
-  
+ 
   config.strategy = validate(config.strategy, {
     depthfirst: ArangoTraverser.DEPTH_FIRST,
     breadthfirst: ArangoTraverser.BREADTH_FIRST
