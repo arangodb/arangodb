@@ -451,7 +451,6 @@ var modalDialogHelper = modalDialogHelper || {};
   
   modalDialogHelper.createModalChangeDialog = function(title, idprefix, objects, callback) {
     var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback);
-    console.log(objects);
     _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });
