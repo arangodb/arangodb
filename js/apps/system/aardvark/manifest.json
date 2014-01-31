@@ -100,6 +100,7 @@
         "frontend/css/arangodbIcons.css",
         "frontend/css/bootstrap-glyphicons.css",
         "frontend/css/jquery-ui-1.9.2.custom.css",
+        "frontend/css/jquery.contextmenu.css",
         "frontend/css/layout.css",
         "frontend/css/jquery.dataTables.css",
         "frontend/css/nv.d3.css",
