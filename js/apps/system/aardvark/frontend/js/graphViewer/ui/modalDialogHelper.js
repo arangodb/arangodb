@@ -84,7 +84,6 @@ var modalDialogHelper = modalDialogHelper || {};
       thirdCell.className = "actionCell";
       thirdCell.appendChild(addRow);
     
-    
       addRow.id = idprefix + "new";
       addRow.className = "graphViewer-icon-button gv-icon-small add";
     
@@ -296,6 +295,65 @@ var modalDialogHelper = modalDialogHelper || {};
       for (i = 1; i < list.length; i++) {
         addNewLine(list[i]);
       }
+    },
+
+    modalContent = function(title, idprefix) {
+      // Create needed Elements
+      
+      var div = document.createElement("div"),
+        headerDiv = document.createElement("div"),
+        buttonDismiss = document.createElement("button"),
+        header = document.createElement("a"),
+        bodyDiv = document.createElement("div"),
+        bodyTable = document.createElement("table");
+          
+      // Set Classnames and attributes.
+      div.id = idprefix + "modal";
+      div.className = "modal hide fade";
+      div.setAttribute("tabindex", "-1");
+      div.setAttribute("role", "dialog");
+      div.setAttribute("aria-labelledby", "myModalLabel");
+      div.setAttribute("aria-hidden", true);
+      div.style.display = "none";
+      div.onhidden = function() {
+        unbindSubmit();
+        document.body.removeChild(div);
+      };
+        
+      headerDiv.className = "modal-header";
+      header.className = "arangoHeader";
+      buttonDismiss.id = idprefix + "modal_dismiss";
+      buttonDismiss.className = "close";
+      buttonDismiss.dataDismiss = "modal";
+      buttonDismiss.ariaHidden = "true";
+      buttonDismiss.appendChild(document.createTextNode("×"));
+      
+      header.appendChild(document.createTextNode(title));
+      
+      bodyDiv.className = "modal-body";
+      
+      bodyTable.id = idprefix + "table";
+      
+      // Append in correct ordering
+      div.appendChild(headerDiv);
+      div.appendChild(bodyDiv);
+      
+      headerDiv.appendChild(buttonDismiss);
+      headerDiv.appendChild(header);
+      
+      bodyDiv.appendChild(bodyTable);
+      
+      document.body.appendChild(div);
+
+      buttonDismiss.onclick = function() {
+        unbindSubmit();
+        $("#" + idprefix + "modal").modal('hide');
+      };
+
+      return {
+        div: div,
+        bodyTable: bodyTable
+      };
     };
     
   insertModalRow = function(table, idprefix, o) {
@@ -342,49 +400,17 @@ var modalDialogHelper = modalDialogHelper || {};
     }
     return tr;
   };
-  
+
+
   modalDialogHelper.modalDivTemplate = function (title, buttonTitle, idprefix, callback) {
-    // Create needed Elements
-    
+
     buttonTitle = buttonTitle || "Switch";
-    
-    var div = document.createElement("div"),
-    headerDiv = document.createElement("div"),
-    buttonDismiss = document.createElement("button"),
-    header = document.createElement("a"),
-    footerDiv = document.createElement("div"),
-    buttonCancel = document.createElement("button"),
-    buttonSubmit = document.createElement("button"),
-    bodyDiv = document.createElement("div"),
-    bodyTable = document.createElement("table");
-        
-    // Set Classnames and attributes.
-    div.id = idprefix + "modal";
-    div.className = "modal hide fade";
-    div.setAttribute("tabindex", "-1");
-    div.setAttribute("role", "dialog");
-    div.setAttribute("aria-labelledby", "myModalLabel");
-    div.setAttribute("aria-hidden", true);
-    div.style.display = "none";
-    div.onhidden = function() {
-      unbindSubmit();
-      document.body.removeChild(div);
-    };
-      
-    headerDiv.className = "modal-header";
-    header.className = "arangoHeader";
-    buttonDismiss.id = idprefix + "modal_dismiss";
-    buttonDismiss.className = "close";
-    buttonDismiss.dataDismiss = "modal";
-    buttonDismiss.ariaHidden = "true";
-    buttonDismiss.appendChild(document.createTextNode("×"));
-    
-    header.appendChild(document.createTextNode(title));
-    
-    bodyDiv.className = "modal-body";
-    
-    bodyTable.id = idprefix + "table";
-    
+
+    var footerDiv = document.createElement("div"),
+      buttonCancel = document.createElement("button"),
+      buttonSubmit = document.createElement("button"),
+      content = modalContent(title, idprefix);
+
     footerDiv.className = "modal-footer";
 
     buttonCancel.id = idprefix + "cancel";
@@ -396,26 +422,11 @@ var modalDialogHelper = modalDialogHelper || {};
     buttonSubmit.style.marginRight = "8px";
     buttonSubmit.appendChild(document.createTextNode(buttonTitle));
     
-    // Append in correct ordering
-    div.appendChild(headerDiv);
-    div.appendChild(bodyDiv);
-    div.appendChild(footerDiv);
-    
-    headerDiv.appendChild(buttonDismiss);
-    headerDiv.appendChild(header);
-    
-    bodyDiv.appendChild(bodyTable);
-    
+    content.div.appendChild(footerDiv);
     footerDiv.appendChild(buttonSubmit);
     footerDiv.appendChild(buttonCancel);
-
-    document.body.appendChild(div);
     
     // Add click events
-    buttonDismiss.onclick = function() {
-      unbindSubmit();
-      $("#" + idprefix + "modal").modal('hide');
-    };
     buttonCancel.onclick = function() {
       unbindSubmit();
       $("#" + idprefix + "modal").modal('hide');
@@ -427,7 +438,7 @@ var modalDialogHelper = modalDialogHelper || {};
     };
     bindSubmit(buttonSubmit);
     // Return the table which has to be filled somewhere else
-    return bodyTable;
+    return content.bodyTable;
   };
   
   modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
@@ -440,6 +451,7 @@ var modalDialogHelper = modalDialogHelper || {};
   
   modalDialogHelper.createModalChangeDialog = function(title, idprefix, objects, callback) {
     var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback);
+    console.log(objects);
     _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });
@@ -454,9 +466,43 @@ var modalDialogHelper = modalDialogHelper || {};
     createDialogWithObject(title, "Create", idprefix, object, callback);
   };
   
-  
   modalDialogHelper.createModalViewDialog = function(title, idprefix, object, callback) {
     createViewWithObject(title, "Edit", idprefix, object, callback);
+  };
+  
+  modalDialogHelper.createModalDeleteDialog = function(title, idprefix, object, callback) {
+    var footerDiv = document.createElement("div"),
+      buttonCancel = document.createElement("button"),
+      buttonSubmit = document.createElement("button"),
+      content = modalContent(title, idprefix);
+
+    footerDiv.className = "modal-footer";
+
+    buttonCancel.id = idprefix + "cancel";
+    buttonCancel.className = "btn btn-close btn-margin";
+    buttonCancel.appendChild(document.createTextNode("Close"));
+    
+    buttonSubmit.id = idprefix + "submit";
+    buttonSubmit.className = "btn btn-danger";
+    buttonSubmit.style.marginRight = "8px";
+    buttonSubmit.appendChild(document.createTextNode("Delete"));
+    
+    content.div.appendChild(footerDiv);
+    footerDiv.appendChild(buttonSubmit);
+    footerDiv.appendChild(buttonCancel);
+    
+    // Add click events
+    buttonCancel.onclick = function() {
+      unbindSubmit();
+      $("#" + idprefix + "modal").modal('hide');
+    };
+    buttonSubmit.onclick = function() {
+      unbindSubmit();
+      callback(object);
+      $("#" + idprefix + "modal").modal('hide');
+    };
+    bindSubmit(buttonSubmit);
+    $("#" + idprefix + "modal").modal('show');
   };
   
 }());
