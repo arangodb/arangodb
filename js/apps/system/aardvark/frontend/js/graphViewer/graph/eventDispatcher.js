@@ -133,6 +133,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     
     bindSVGEvents = function() {
       svgObj = svgObj || $("svg");
+      svgObj.unbind();
       _.each(svgBase, function(fs, ev) {
         svgObj.bind(ev, function(trigger) {
           _.each(fs, function(f) {
