@@ -1853,8 +1853,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
-
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
