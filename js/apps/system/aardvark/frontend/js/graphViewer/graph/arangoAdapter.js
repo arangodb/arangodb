@@ -29,8 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function ArangoAdapter(nodes, edges, viewer, config) {
+
   "use strict";
-  
+
   if (nodes === undefined) {
     throw "The nodes have to be given.";
   }
@@ -153,7 +154,6 @@ function ArangoAdapter(nodes, edges, viewer, config) {
             throw "[" + data.errorNum + "] " + data.errorMessage;
           }
           catch (e) {
-            console.log(e);
             throw "Undefined ERROR";
           }
         }

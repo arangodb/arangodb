@@ -30,7 +30,6 @@
 
 var graph = require("org/arangodb/graph");
 
-var Edge = graph.Edge;
 var Graph = graph.Graph;
 var Vertex = graph.Vertex;
 
