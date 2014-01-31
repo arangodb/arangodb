@@ -60,14 +60,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     appendToList = function(button) {
       list.appendChild(button);
     },
-    createButton = function(title, callback) {
-      uiComponentsHelper.createButton(
-        list,
-        title,
-        "control_event_" + title,
-        callback
-      );
-    },
     createIcon = function(icon, title, callback) {
       var btn = uiComponentsHelper.createIconButton(
         icon,
@@ -201,15 +193,15 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         svgUp = function() {
           dispatcher.events.CANCELCREATEEDGE();
           edgeShaper.removeCursorFollowingEdge();
+          dispatcher.bind("svg", "mousemove", function(){});
         };
       callbacks.nodes.startEdge = nodesDown;
       callbacks.nodes.endEdge = nodesUp;
       callbacks.svg.cancelEdge = svgUp;
     },
+
     createEditsCBs = function() {
-      var prefix = "control_event_edit",
-        idprefix = prefix + "_",
-        nodeCallback = function(n) {
+      var nodeCallback = function(n) {
           modalDialogHelper.createModalEditDialog(
             "Edit Node " + n._id,
             "control_event_node_edit_",
@@ -236,14 +228,40 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       callbacks.nodes.edit = nodeCallback;
       callbacks.edges.edit = edgeCallback;
     },
+
     createDeleteCBs = function() {
-      callbacks.nodes.del = dispatcher.events.DELETENODE(
-        function() {}
-      );
-      callbacks.edges.del = dispatcher.events.DELETEEDGE(
-        function() {}
-      );
+      var nodeCallback = function(n) {
+          modalDialogHelper.createModalDeleteDialog(
+            "Delete Node " + n._id,
+            "control_event_node_delete_",
+            n,
+            function(n) {
+              dispatcher.events.DELETENODE(function() {
+                $("#control_event_node_delete_modal").modal('hide');
+                nodeShaper.reshapeNodes();
+                edgeShaper.reshapeEdges();
+              })(n);
+            }
+          );
+        },
+        edgeCallback = function(e) {
+          modalDialogHelper.createModalDeleteDialog(
+            "Delete Edge " + e._id,
+            "control_event_edge_delete_",
+            e,
+            function(e) {
+              dispatcher.events.DELETEEDGE(function() {
+                $("#control_event_edge_delete_modal").modal('hide');
+                nodeShaper.reshapeNodes();
+                edgeShaper.reshapeEdges();
+              })(e);
+            }
+          );
+        };
+      callbacks.nodes.del = nodeCallback;
+      callbacks.edges.del = edgeCallback;
     },
+
     createSpotCB = function() {
      callbacks.nodes.spot = dispatcher.events.EXPAND;
     };
@@ -400,13 +418,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlDelete = function() {
     var icon = icons.trash,
       callback = function() {
-        rebindNodes({click: dispatcher.events.DELETENODE(function() {
-          
-        })});
-        rebindEdges({click: dispatcher.events.DELETEEDGE(function() {
-          
-        })});
-        rebindSVG();
+        self.rebindAll(self.deleteRebinds());
       };
     createIcon(icon, "delete", callback);
   };
