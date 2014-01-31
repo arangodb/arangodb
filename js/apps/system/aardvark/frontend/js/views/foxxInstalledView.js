@@ -9,7 +9,7 @@
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
     events: {
-      'click #install': 'installFoxx'
+      'click .install': 'installFoxx'
     },
 
     initialize: function(){

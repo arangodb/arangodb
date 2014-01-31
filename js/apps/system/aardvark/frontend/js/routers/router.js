@@ -334,10 +334,12 @@
       this.foxxList.fetch({
         async: false
       });
-      var installAppView = new window.foxxMountView({
-        model: this.foxxList.findWhere({_key: appkey})
-      });
-      installAppView.render();
+      if (!this.installAppView) {
+        this.installAppView = new window.foxxMountView({
+          collection: this.foxxList
+        });
+      }
+      this.installAppView.render(appkey);
     },
 
     appDocumentation: function(key) {
