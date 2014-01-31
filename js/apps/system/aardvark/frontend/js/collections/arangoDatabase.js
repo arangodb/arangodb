@@ -2,13 +2,15 @@
 /*global window, Backbone, $, window, _*/
 
 (function() {
+  'use strict';
+
   window.ArangoDatabase = Backbone.Collection.extend({
+
     model: window.Database,
 
     comparator: "name",
 
     sync: function(method, model, options) {
-      'use strict';
       if (method === "read") {
         options.url = model.url() + "user";
       }
@@ -20,6 +22,9 @@
     },
 
     parse: function(response) {
+      if (!response) {
+        return;
+      }
       return _.map(response.result, function(v) {
         return {name:v};
       });
