@@ -168,6 +168,17 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
     return true;
   }
 
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator() ||  
+      ServerState::instance()->isDBserver()) {
+    // create-collection is not supported in a cluster
+    generateTransactionError(name, TRI_ERROR_NOT_IMPLEMENTED);
+    return false;
+  }
+#endif
+
+
   TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
                                                                           name.c_str(), 
                                                                           type,

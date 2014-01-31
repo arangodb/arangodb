@@ -138,6 +138,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
+/// Note: this flag is not supported in a cluster. Using it will result in an
+/// error.
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
 ///
@@ -1384,6 +1387,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_primary_collection_t* primary = trx.primaryCollection();
   assert(primary != 0);
   TRI_shaper_t* shaper = primary->_shaper;
+      
+#ifdef TRI_ENABLE_CLUSTER
+  const string cidString = StringUtils::itoa(primary->base._info._planId);
+#endif
 
   if (isPatch) {
     // patching an existing document
@@ -1436,6 +1443,21 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
+#ifdef TRI_ENABLE_CLUSTER
+    if (ServerState::instance()->isDBserver()) {
+      // compare attributes in shardKeys
+      if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
+        TRI_FreeJson(shaper->_memoryZone, old);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        trx.abort();
+        generateTransactionError(collection, TRI_ERROR_CLUSTER_MOST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+
+        return false;
+      } 
+    }
+#endif
+
     TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
     TRI_FreeJson(shaper->_memoryZone, old);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1447,12 +1469,60 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
+
     // do not acquire an extra lock
     res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
   }
   else {
     // replacing an existing document, using a lock
+
+#ifdef TRI_ENABLE_CLUSTER
+    if (ServerState::instance()->isDBserver()) {
+      // compare attributes in shardKeys
+      // read the existing document
+      TRI_doc_mptr_t oldDocument;
+    
+      // do not lock again
+      trx.lockWrite();
+    
+      res = trx.read(&oldDocument, key);
+      if (res != TRI_ERROR_NO_ERROR) {
+        trx.abort();
+        generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        return false;
+      }
+
+      if (oldDocument._key == 0 || oldDocument._data == 0) {
+        trx.abort();
+        generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        return false;
+      }
+
+      TRI_shaped_json_t shapedJson;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
+      TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
+      
+      if (shardKeysChanged(_request->databaseName(), cidString, old, json, false)) {
+        TRI_FreeJson(shaper->_memoryZone, old);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+        trx.abort();
+        generateTransactionError(collection, TRI_ERROR_CLUSTER_MOST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+
+        return false;
+      }
+
+      if (old != 0) { 
+        TRI_FreeJson(shaper->_memoryZone, old);
+      }
+    }
+#endif
+
     res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
