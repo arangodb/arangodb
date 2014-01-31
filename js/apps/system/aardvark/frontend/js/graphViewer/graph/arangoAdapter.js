@@ -29,8 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function ArangoAdapter(nodes, edges, viewer, config) {
+
   "use strict";
-  
+
   if (nodes === undefined) {
     throw "The nodes have to be given.";
   }
