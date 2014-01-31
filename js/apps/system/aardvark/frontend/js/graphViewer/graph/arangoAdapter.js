@@ -462,6 +462,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
   };
   
   self.createNode = function (nodeToAdd, callback) {
+    console.log("Creating node");
     $.ajax({
       cache: false,
       type: "POST",
