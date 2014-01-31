@@ -39,11 +39,6 @@ var internal = require("internal");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,18 +52,9 @@ var simple = require("org/arangodb/simple-query");
 var ArangoError = require("org/arangodb").ArangoError;
 var ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
@@ -89,18 +75,9 @@ ArangoCollection.prototype.toArray = function () {
   return this.ALL(null, null).documents;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -131,18 +108,9 @@ ArangoCollection.prototype.truncate = function () {
   return internal.db._truncate(this);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   index functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index of a collection
@@ -196,23 +164,14 @@ ArangoCollection.prototype.index = function (id) {
   throw err;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                document functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns any document from a collection
 ///
-/// @FUN{@FA{collection}.any()
+/// @FUN{@FA{collection}.any()}
 ///
 /// Returns a random document from the collection or @LIT{null} if none exists.
 ///
@@ -254,6 +213,8 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_ArangoCollection_prototype_first
+///
 /// @brief selects the n first documents in the collection
 ///
 /// @FUN{@FA{collection}.first(@FA{count})}
@@ -324,19 +285,22 @@ ArangoCollection.prototype.first = function (count) {
       var body = JSON.parse(results[i].body);
       return body.result || null;
     }
-    return null;
   }
   else {
     return this.FIRST(count);
   } 
+
+  return null;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_ArangoCollection_prototype_last
+///
 /// @brief selects the n last documents in the collection
 ///
 /// @FUN{@FA{collection}.last(@FA{count})}
 ///
-/// The @FN{first} method returns the n last documents from the collection, in 
+/// The @FN{last} method returns the n last documents from the collection, in 
 /// order of document insertion/update time. 
 ///
 /// If called with the @FA{count} argument, the result is a list of up to
@@ -405,10 +369,14 @@ ArangoCollection.prototype.last = function (count) {
   }
   else {
     return this.LAST(count);
-  } 
+  }
+
+  return null; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_ArangoCollection_prototype_firstExample
+///
 /// @brief constructs a query-by-example for a collection
 ///
 /// @FUN{@FA{collection}.firstExample(@FA{example})}
@@ -678,10 +646,6 @@ ArangoCollection.prototype.updateByExample = function (example,
 
   return updated;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
