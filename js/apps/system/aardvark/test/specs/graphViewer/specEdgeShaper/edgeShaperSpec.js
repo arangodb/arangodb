@@ -38,7 +38,27 @@
 
   describe('Edge Shaper', function() {
     
-    var svg;
+    var svg,
+      getDistance = function(s, t) {
+        var res = Math.sqrt(
+          (t.y - s.y)
+          * (t.y - s.y)
+          + (t.x - s.x)
+          * (t.x - s.x)
+        ),
+        m;
+        if (s.x === t.x) {
+          res -= t.z * 18;
+        } else {
+          m = Math.abs((t.y - s.y) / (t.x - s.x));
+          if (m < 0.4) {
+            res -= Math.abs((res * t.z * 45) / (t.x - s.x));
+          } else {
+            res -= Math.abs((res * t.z * 18) / (t.y - s.y));
+          }
+        }
+        return res; 
+      };
     
     beforeEach(function () {
       svg = document.createElement("svg");
@@ -261,35 +281,40 @@
         _id: 1,
         position: {
           x: 20,
-          y: 20
+          y: 20,
+          z: 1
         }
       },
       NE = {
         _id: 2,
         position: {
           x: 30,
-          y: 10
+          y: 10,
+          z: 1
         }
       },
       SE = {
         _id: 3,
         position: {
           x: 40,
-          y: 30
+          y: 30,
+          z: 1
         }
       },
       SW = {
         _id: 4,
         position: {
           x: 10,
-          y: 40
+          y: 40,
+          z: 1
         }
       },
       NW = {
         _id: 5,
         position: {
           x: 0,
-          y: 0
+          y: 0,
+          z: 1
         }
       },
       edges = [
@@ -328,10 +353,10 @@
       expect($("#1-5").attr("transform")).toEqual("translate(20, 20)rotate(-135)");
       
       //Check length of line
-      expect($("#1-2 line").attr("x2")).toEqual("14.142135623730951");
-      expect($("#1-3 line").attr("x2")).toEqual("22.360679774997898");
-      expect($("#1-4 line").attr("x2")).toEqual("22.360679774997898");
-      expect($("#1-5 line").attr("x2")).toEqual("28.284271247461902");
+      expect($("#1-2 line").attr("x2")).toEqual(String(getDistance(center.position, NE.position)));
+      expect($("#1-3 line").attr("x2")).toEqual(String(getDistance(center.position, SE.position)));
+      expect($("#1-4 line").attr("x2")).toEqual(String(getDistance(center.position, SW.position)));
+      expect($("#1-5 line").attr("x2")).toEqual(String(getDistance(center.position, NW.position)));
     });
     
     it('should be able to draw an edge that follows the cursor', function() {
@@ -721,14 +746,16 @@
             _id: 1,
             position: {
               x: 20,
-              y: 20
+              y: 20,
+              z: 1
             }
           },
           {
             _id: 2,
             position: {
               x: 100,
-              y: 20
+              y: 20,
+              z: 1
             }
           }
         ],
@@ -744,7 +771,9 @@
         ];
         shaper.drawEdges(edges);
         
-        expect($("#1-2 text").attr("transform")).toEqual("translate(40, -3)");
+        expect($("#1-2 text").attr("transform")).toEqual("translate("
+          + getDistance(nodes[0].position, nodes[1].position) / 2
+          + ", -3)");
       });
       
       it('should ignore other attributes', function() {
