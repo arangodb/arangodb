@@ -41,6 +41,11 @@
 #include <mach/vm_map.h>
 #endif
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
+
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
