@@ -1423,14 +1423,45 @@ Example calls:
         traversal path
   - `followEdges`: an optional list of example edge documents that the traversal will
     expand into. If no examples are given, the traversal will follow all edges. If one
-    or many edge examples are given. The traversal will only follow an edge if it matches
-    at least one of the specified examples.
+    or many edge examples are given, the traversal will only follow an edge if it matches
+    at least one of the specified examples. `followEdges` can also be a string with the
+    name of an AQL user-defined function that should be responsible for checking if an
+    edge should be followed. In this case, the AQL function will is expected to have the
+    following signature:
+
+        function (config, vertex, edge, path)
+
+    The function is expected to return a boolean value. If ìt returns `true`, the edge
+    will be followed. If `false` is returned, the edge will be ignored.
+
+  - `filterVertices`: an optional list of example vertex documents that the traversal will
+    treat specially. If no examples are given, the traversal will handle all encountered
+    vertices equally. If one or many vertex examples are given, the traversal will exclude
+    the vertex from the result and/or not descend into it. Optionally, `filterVertices` can 
+    contain the name of a user-defined AQL function that should be responsible for filtering.
+    If so, the AQL function is expected to have the following signature:
+
+        function (config, vertex, path)
+
+    If a custom AQL function is used, it is expected to return one of the following values:
+    - `[ ]`: include the vertex in the result and descend into its connected edges
+    - `[ "prune" ]`: will include the vertex in the result but not descend into its connected edges
+    - `[ "exclude" ]`: will not include the vertex in the result but descend into its connected edges
+    - `[ "prune", "exclude" ]`: will completely ignore the vertex and its connected edges
+
+  - `vertexFilterMethod`: only useful in conjunction with `filterVertices` and if no user-defined
+    AQL function is used.. If specified, it will influence how vertices are handled that don't match 
+    the examples in `filterVertices`:
+    - `[ "prune" ]`: will include non-matching vertices in the result but not descend into them
+    - `[ "exclude" ]`: will not include non-matching vertices in the result but descend into them
+    - `[ "prune", "exclude" ]`: will neither include non-matching vertices in the result nor descend into them
 
   The result of the TRAVERSAL function is a list of traversed points. Each point is a 
   document consisting of the following properties:
   - `vertex`: the vertex at the traversal point
   - `path`: The path history for the traversal point. The path is a document with the
-    properties `vertices` and `edges`, which are both lists.
+    attributes `vertices` and `edges`, which are both lists. Note that `path` is only present
+    in the result if the `paths` attribute is set in the @FA{options}. 
 
 Example calls:
 
@@ -1439,15 +1470,48 @@ Example calls:
       order: "postorder",
       itemOrder: "backward",
       maxDepth: 6,
-      trackPaths: true
+      paths: true
     })
 
+    // filtering on specific edges (by specifying example edges)
     TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
       strategy: "breadthfirst",
       order: "preorder",
       itemOrder: "forward",
       followEdges: [ { type: "knows" }, { state: "FL" } ]
     })
+
+    // filtering on specific edges and vertices
+    TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+      strategy: "breadthfirst",
+      order: "preorder",
+      itemOrder: "forward",
+      followEdges: [ { type: "knows" }, { state: "FL" } ],
+      filterVertices: [ { isActive: true }, { isDeleted: false } ],
+      vertexFilterMethod: [ "prune", "exclude" ]
+    })
+
+    // using user-defined AQL functions for edge and vertex filtering
+    TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+      followEdges: "myfunctions::checkedge",
+      filterVertices: "myfunctions::checkvertex"
+    })
+
+    // to register the custom AQL functions, execute something in the fashion of the 
+    // following commands in arangosh once: 
+    var aqlfunctions = require("org/arangodb/aql/functions");
+
+    // these are the actual filter functions
+    aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+      return (edge.type !== 'dislikes'); // don't follow these edges
+    }, false);
+
+    aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+      if (vertex.isDeleted || ! vertex.isActive) {
+        return [ "prune", "exclude" ]; // exclude these and don't follow them
+      }
+      return [ ]; // include everything else
+    }, false);
 
 - @FN{TRAVERSAL_TREE(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{connectName}, @FA{options})}: 
   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
@@ -1462,7 +1526,7 @@ Example calls:
 
 Example calls:
 
-    TREE(friends, friendrelations, "friends/john", "outbound", "likes", { 
+    TRAVERSAL_TREE(friends, friendrelations, "friends/john", "outbound", "likes", { 
       itemOrder: "forward"
     })
 
