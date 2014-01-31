@@ -2459,8 +2459,10 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
 
   // if argument is supplied, we'll return a list - otherwise we simply return the first doc
   if (argv.Length() == 1) {
-    count = TRI_ObjectToInt64(argv[0]);
-    returnList = true;
+    if (! argv[0]->IsUndefined()) {
+      count = TRI_ObjectToInt64(argv[0]);
+      returnList = true;
+    }
   }
 
   if (count < 1) {
@@ -2714,8 +2716,10 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 
   // if argument is supplied, we'll return a list - otherwise we simply return the last doc
   if (argv.Length() == 1) {
-    count = TRI_ObjectToInt64(argv[0]);
-    returnList = true;
+    if (! argv[0]->IsUndefined()) {
+      count = TRI_ObjectToInt64(argv[0]);
+      returnList = true;
+    }
   }
 
   if (count < 1) {
