@@ -1196,11 +1196,14 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
   }
   uint64_t index = res._index;
 
+  // monitor the entry for the collection
   const string where = "Current/Collections/" + databaseName + "/" + collectionID; 
   while (TRI_microtime() <= endTime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
+      // if there are no more active shards for the collection...
       if (res._values.size() == 0) {
+        // ...remove the entire directory for the collection
         AgencyCommLocker locker("Current", "WRITE");
         if (locker.successful()) {
           res = ac.removeValues("Current/Collections/"+databaseName+"/"+
