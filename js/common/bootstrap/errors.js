@@ -130,6 +130,7 @@
     "ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY" : { "code" : 1467, "message" : "must not specify _key for this collection" }, 
     "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1468, "message" : "got contradicting answers from different shards" }, 
     "ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN" : { "code" : 1469, "message" : "not all sharding attributes given" }, 
+    "ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES" : { "code" : 1470, "message" : "must not change the value of a shardkey attribute" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" }, 

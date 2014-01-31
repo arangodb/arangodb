@@ -32,7 +32,6 @@ exports.Swagger = function () {
   "use strict";
   
   var db = require("internal").db,
-    _routing = db._collection("_routing"),
     _aal = db._collection("_aal"),
     _ = require("underscore"),
     foxx_manager = require("org/arangodb/foxx/manager");

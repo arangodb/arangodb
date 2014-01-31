@@ -28,6 +28,7 @@
 #include "Cluster/ClusterMethods.h"
 
 #include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 
@@ -42,6 +43,57 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a list of attributes have the same values in two JSON
+/// documents
+////////////////////////////////////////////////////////////////////////////////
+
+bool shardKeysChanged (std::string const& dbname,
+                       std::string const& collname,
+                       TRI_json_t const* oldJson,
+                       TRI_json_t const* newJson,
+                       bool isPatch) {
+
+  TRI_json_t nullJson;
+  TRI_InitNullJson(&nullJson);
+  
+  if (! TRI_IsArrayJson(oldJson) || ! TRI_IsArrayJson(newJson)) {
+    // expecting two arrays. everything else is an error
+    return true;
+  }
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(dbname, collname);
+  const std::vector<std::string>& shardKeys = c->shardKeys();
+
+  for (size_t i = 0; i < shardKeys.size(); ++i) {
+    TRI_json_t const* n = TRI_LookupArrayJson(newJson, shardKeys[i].c_str());
+
+    if (n == 0 && isPatch) {
+      // attribute not set in patch document. this means no update
+      continue;
+    }
+
+    TRI_json_t const* o = TRI_LookupArrayJson(oldJson, shardKeys[i].c_str());
+
+    if (o == 0) {
+      // if attribute is undefined, use "null" instead
+      o = &nullJson;
+    }
+      
+    if (n == 0) {
+      // if attribute is undefined, use "null" instead
+      n = &nullJson;
+    }
+
+    if (! TRI_CheckSameValueJson(o, n)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator
@@ -192,6 +244,11 @@ int createDocumentOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
+    if (res->result == 0) {
+      // there is not result
+      delete res;
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
     if (!res->result->isComplete()) {
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;

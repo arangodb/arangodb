@@ -433,7 +433,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     };
   container.appendChild(menubar);
   container.appendChild(background);
-  background.className = "thumbnails";
+  background.className = "thumbnails gv_background ";
   background.id = "background";
   
   viewerConfig = viewerConfig || {};

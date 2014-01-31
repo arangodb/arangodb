@@ -2158,8 +2158,8 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
   }
     
-  if (shardKeys.empty()) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "no shard keys specified");
+  if (shardKeys.empty() || shardKeys.size() > 8) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shard keys");
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
@@ -5387,15 +5387,29 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
 
   // First we need the collection ID as a string:
   string const cid = StringUtils::itoa(collection->_cid);
+  
+  // delete the collection name from the db.<xxx> cache
+  string cacheKey(collection->_name);
+  cacheKey.push_back('*');
+  v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), cacheKey.size());
+
+  v8::Handle<v8::Value> db = v8::Context::GetCurrent()->Global()->Get(v8::String::New("db"));
+  if (db->IsObject()) {
+    v8::Handle<v8::Object> dbObj = v8::Handle<v8::Object>::Cast(db);
+    dbObj->Delete(cacheName);
+  }
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
-
+  
   int myerrno = ci->dropCollectionCoordinator( databaseName, cid, 
                                                errorMsg, 120.0);
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
+
+
+
   return scope.Close(v8::True());
 }
 
@@ -5425,14 +5439,14 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+  
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(JS_DropVocbaseCol_Coordinator(collection));
   }
 #endif
-
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
 
@@ -6604,7 +6618,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   }
   
 #ifdef TRI_ENABLE_CLUSTER
-  if (! collection->_isLocal) {
+  if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
     TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(databaseName, StringUtils::itoa(collection->_cid));
 
@@ -6672,6 +6686,14 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->IsVolatileKey, info._isVolatile ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(info._maximalSize));
     result->Set(v8g->WaitForSyncKey, info._waitForSync ? v8::True() : v8::False());
+
+    TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
+    v8::Handle<v8::Array> shardKeys = v8::Array::New();
+    const vector<string> sks = (*c).shardKeys();
+    for (size_t i = 0; i < sks.size(); ++i) {
+      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str()));
+    }
+    result->Set(v8::String::New("shardKeys"), shardKeys);
 
     if (info._keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(info._keyOptions)->ToObject());
@@ -7625,7 +7647,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
   
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
@@ -7640,7 +7662,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   TRI_FreeBarrier(barrier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::Undefined());
@@ -7792,7 +7814,18 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    std::string const databaseName = std::string(collection->_dbName);
+    
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
+    }
+
+    return scope.Close(v8::Number::New((int) TRI_COL_VERSION_15));
+  } 
+  // fallthru intentional 
+#endif
   
   TRI_col_info_t info;
 
@@ -7936,16 +7969,12 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                                  std::string(key));
     collection = CollectionInfoToVocBaseCol(vocbase, *ci, originalDatabase);
   }
-  else {
-    // look up the collection regularly
+#endif
+
+  if (collection == 0) {
+    // look up the collection
     collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
   }
-#else
-
-  // look up the collection
-  collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
-
-#endif
 
   if (collection == 0) {
     if (*key == '_') {
@@ -10130,7 +10159,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
-  TRI_AddMethodVocbase(rt, "truncate", JS_TruncateVocbaseCol);
+  TRI_AddMethodVocbase(rt, "TRUNCATE", JS_TruncateVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "truncateDatafile", JS_TruncateDatafileVocbaseCol);
   TRI_AddMethodVocbase(rt, "type", JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(rt, "unload", JS_UnloadVocbaseCol);
