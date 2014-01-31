@@ -450,14 +450,9 @@ var modalDialogHelper = modalDialogHelper || {};
   };
   
   modalDialogHelper.createModalChangeDialog = function(title, idprefix, objects, callback) {
-    var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback),
-      os;
-    if (_.isFunction(objects)) {
-      os = objects(); 
-    } else {
-      os = objects;
-    }
-    _.each(os, function(o) {
+    var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback);
+    console.log(objects);
+    _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });
     $("#" + idprefix + "modal").modal('show');
