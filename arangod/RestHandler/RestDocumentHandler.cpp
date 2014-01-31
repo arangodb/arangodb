@@ -779,6 +779,12 @@ bool RestDocumentHandler::readAllDocuments () {
   bool found;
   string collection = _request->value("collection", found);
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return getAllDocumentsCoordinator(collection);
+  }
+#endif
+
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
 
@@ -836,6 +842,34 @@ bool RestDocumentHandler::readAllDocuments () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestDocumentHandler::getAllDocumentsCoordinator (
+                              string const& collname ) {
+  string const& dbname = _request->originalDatabaseName();
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  string contentType;
+  string resultBody;
+
+  int error = triagens::arango::getAllDocumentsOnCoordinator(
+            dbname, collname, responseCode, contentType, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collname, error);
+    return false;
+  }
+  // Return the response we got:
+  _response = createResponse(responseCode);
+  _response->setContentType(contentType);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head

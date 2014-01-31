@@ -485,6 +485,83 @@ int getDocumentOnCoordinator (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all documents in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int getAllDocumentsOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody ) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+
+  // First determine the collection ID from the name:
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  string collid = StringUtils::itoa(collinfo->id());
+
+  ClusterCommResult* res;
+
+  map<ShardID, ServerID> shards = collinfo->shardIds();
+  map<ShardID, ServerID>::iterator it;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  for (it = shards.begin(); it != shards.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
+                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                          "/_db/"+dbname+"/_api/document?collection="+
+                          it->first, 0, false, headers, NULL, 3600.0);
+    delete res;
+  }
+  // Now listen to the results:
+  int count;
+  responseCode = triagens::rest::HttpResponse::OK;
+  contentType = "application/json; charset=utf-8";
+  resultBody.clear();
+  resultBody.reserve(1024*1024);
+  resultBody += "{ \"documents\" : [\n";
+  char const* p;
+  char const* q;
+  for (count = shards.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_TIMEOUT) {
+      delete res;
+      cc->drop( "", coordTransactionID, 0, "");
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+    }
+    if (res->status == CL_COMM_ERROR || res->status == CL_COMM_DROPPED ||
+        res->answer_code == triagens::rest::HttpResponse::NOT_FOUND) {
+      delete res;
+      cc->drop( "", coordTransactionID, 0, "");
+      return TRI_ERROR_INTERNAL;
+    }
+    p = res->answer->body();
+    q = p+res->answer->bodySize();
+    while (*p != '\n' && *p != 0) p++;
+    p++;
+    while (*q != '\n' && q > p) q--;
+    if (p != q) {
+      resultBody.append(p,q-p);
+      resultBody += ",\n";
+    }
+    delete res;
+  }
+  if (resultBody[resultBody.size()-2] == ',') {
+    resultBody.erase(resultBody.size()-2);
+  }
+  resultBody += "\n] }\n";
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
