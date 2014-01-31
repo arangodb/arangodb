@@ -1,6 +1,11 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* fail if invalid `strategy`, `order` or `itemOrder` attribute values
+  are passed to the AQL TRAVERSAL function. Omitting these attributes 
+  is not considered an error, but specifying an invalid value for any
+  of these attributes will make an AQL query fail.
+
 * added SHORTEST_PATH AQL function 
 
   this calculates the shortest paths between two vertices, using the Dijkstra
@@ -149,9 +154,7 @@ v1.4.9 (XXXX-XX-XX)
 * issue #755: TRAVERSAL does not use strategy, order and itemOrder options
 
   these options were not honored when configuring a traversal via the AQL
-  TRAVERSAL function. Now, these options are used and must contain valid
-  value if specified. Invalid values in any of these attributes will be
-  rejected and the query will fail with an error
+  TRAVERSAL function. Now, these options are used if specified.
 
 * allow vertex and edge filtering with user-defined functions in TRAVERSAL,
   TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
