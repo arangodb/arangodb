@@ -153,7 +153,6 @@ function ArangoAdapter(nodes, edges, viewer, config) {
             throw "[" + data.errorNum + "] " + data.errorMessage;
           }
           catch (e) {
-            console.log(e);
             throw "Undefined ERROR";
           }
         }
