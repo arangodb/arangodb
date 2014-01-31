@@ -165,6 +165,7 @@ ERROR_CLUSTER_CONNECTION_LOST,1466,"cluster internal HTTP connection broken","Wi
 ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1467,"must not specify _key for this collection","Will be raised when a coordinator in a cluster finds that the _key attribute was specified in a sharded collection the uses not only _key as sharding attribute."
 ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,1468,"got contradicting answers from different shards","Will be raised if a coordinator in a cluster gets conflicting results from different shards, which should never happen."
 ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN,1469,"not all sharding attributes given","Will be raised if a coordinator tries to find out which shard is responsible for a partial document, but cannot do this because not all sharding attributes are specified."
+ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,1470,"must not change the value of a shardkey attribute","Will be raised if there is an attempt to update the value of a shard attribute."
 
 ################################################################################
 ## ArangoDB query errors

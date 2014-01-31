@@ -297,6 +297,9 @@ extern "C" {
 ///   Will be raised if a coordinator tries to find out which shard is
 ///   responsible for a partial document, but cannot do this because not all
 ///   sharding attributes are specified.
+/// - 1470: @LIT{must not change the value of a shardkey attribute}
+///   Will be raised if there is an attempt to update the value of a shard
+///   attribute.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1697,6 +1700,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               (1469)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1470: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
+///
+/// must not change the value of a shardkey attribute
+///
+/// Will be raised if there is an attempt to update the value of a shard
+/// attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             (1470)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

@@ -182,7 +182,6 @@ extend(RequestContext.prototype, {
   pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
-      docs = this.route.docs,
       constraint = url.constraint || {};
 
     constraint[paramName] = this.typeToRegex[attributes.type];

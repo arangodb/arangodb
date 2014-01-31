@@ -43,8 +43,23 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 namespace triagens {
   namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a list of attributes have the same values in two JSON
+/// documents
+////////////////////////////////////////////////////////////////////////////////
+
+    bool shardKeysChanged (std::string const& dbname,
+                           std::string const& collname,
+                           struct TRI_json_s const* oldJson,
+                           struct TRI_json_s const* newJson,
+                           bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator

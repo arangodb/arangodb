@@ -6,16 +6,15 @@
 .addButton {
   position: relative;
   margin-right: 7px;
-  font-size: 20px;
+  font-size: 22px;
   color: #8AA050;
   margin-top: 2px;
   cursor: pointer;
 }
 
 .deleteButton {
-  /*color: #B30000;*/
   color: #DA4F49;
-  font-size: 20px;
+  font-size: 22px;
   padding-right: 3px;
   top: 3px;
   position: relative;
@@ -317,17 +316,21 @@ button.btn-server {
 
 a.headerButton {
  float: left;
+ cursor: pointer;
  margin-top: 0px; 
  margin-left: 5px;
  margin-right: 5px;
  min-height: 19px;
- border-radius: 2px;
+ border-radius: 3px;
  position: relative;
  box-shadow: none;
+ background: #8AA051 !important;
+ /*
  background: #8f8d8c !important;
+ */
  color:#FFFFFF !important;
  height:20px;
- width:14px;
+ width:13px;
  padding: 5px 11px 2px 9px;
 }
 
