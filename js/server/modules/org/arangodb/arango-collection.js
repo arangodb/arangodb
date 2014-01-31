@@ -105,7 +105,29 @@ ArangoCollection.prototype.toArray = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.truncate = function () {
-  return internal.db._truncate(this);
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/collection/" + encodeURIComponent(shard) + "/truncate",
+                                     "", 
+                                     { }, 
+                                     options);
+    });
+
+    cluster.wait(coord, shards);
+    return;
+  }
+
+  return this.TRUNCATE();
 };
 
 // -----------------------------------------------------------------------------

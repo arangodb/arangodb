@@ -7627,7 +7627,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
   
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
@@ -7642,7 +7642,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   TRI_FreeBarrier(barrier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::Undefined());
@@ -10132,7 +10132,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
-  TRI_AddMethodVocbase(rt, "truncate", JS_TruncateVocbaseCol);
+  TRI_AddMethodVocbase(rt, "TRUNCATE", JS_TruncateVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "truncateDatafile", JS_TruncateDatafileVocbaseCol);
   TRI_AddMethodVocbase(rt, "type", JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(rt, "unload", JS_UnloadVocbaseCol);
