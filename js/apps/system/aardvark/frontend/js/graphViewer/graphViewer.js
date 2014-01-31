@@ -112,6 +112,9 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       nsConf = config.nodeShaper || {},
       idFunc = nsConf.idfunc || undefined,
       zConf = config.zoom || false;
+    esConf.shape = esConf.shape || {
+      type: EdgeShaper.shapes.ARROW
+    };
     parseLayouterConfig(config.layouter);
     edgeContainer = graphContainer.append("g");
     edgeShaper = new EdgeShaper(edgeContainer, esConf);
