@@ -3851,7 +3851,9 @@ function TRAVERSAL_FUNC (func,
     maxIterations: params.maxIterations,
     uniqueness: params.uniqueness,
     expander: direction,
-    strategy: params.strategy
+    strategy: params.strategy,
+    order: params.order,
+    itemOrder: params.itemOrder
   };
 
   if (params.followEdges) {
@@ -3923,10 +3925,13 @@ function GRAPH_SHORTEST_PATH (vertexCollection,
                               direction, 
                               params) {
   "use strict";
+  
+  if (params === undefined) {
+    params = { };
+  }
 
   params.strategy = "dijkstra";
   params.itemorder = "forward";
-  params.order = "forward";
   params.visitor = TRAVERSAL_VISITOR;
 
   if (typeof params.distance === "string") {
@@ -3959,6 +3964,10 @@ function GRAPH_TRAVERSAL (vertexCollection,
                           direction, 
                           params) {
   "use strict";
+  
+  if (params === undefined) {
+    params = { };
+  }
 
   params.visitor  = TRAVERSAL_VISITOR;
 
