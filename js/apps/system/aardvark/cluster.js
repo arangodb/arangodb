@@ -41,7 +41,7 @@
   if (cluster.isCluster()) {
     // only make these functions available in cluster mode!
 
-    var Communication = require("org/arangodb/sharding/agency-communication"),
+    var Communication = require("org/arangodb/cluster/agency-communication"),
     comm = new Communication.Communication(),
     beats = comm.sync.Heartbeats(),
     servers = comm.current.DBServers(),
