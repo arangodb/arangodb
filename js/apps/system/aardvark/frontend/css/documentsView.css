@@ -120,7 +120,7 @@
 
 .snippet-no-num {
   font-size: 1em;
-  font-weight: 300;
+  font-weight: 400;
   font-family: 'Open Sans', sans-serif;
   margin-bottom:0px;
 }
@@ -184,7 +184,10 @@
 }
 
 .pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
+  /*
   background-color: #8aa050;
+  */
+  background-color: #8f8d8c;
   color:#FFFFFF;
 }
 
