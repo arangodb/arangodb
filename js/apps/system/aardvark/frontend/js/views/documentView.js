@@ -221,7 +221,6 @@
         }
       });
       this.makeEditable();
-      $(this.table).dataTable().fnSort([ [0, 'asc'] ]);
     },
 
     addLine: function (event) {
@@ -265,7 +264,7 @@
 
     initTable: function () {
       $(this.table).dataTable({
-        "aaSorting": [[ 1, "asc" ]],
+        "bSortClasses": false,
         "bAutoWidth": false,
         "bFilter": false,
         "bPaginate":false,

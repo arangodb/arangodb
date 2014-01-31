@@ -404,14 +404,6 @@
   min-width: 100% !important;
 }
 
-#collectionEditIndexTable tr:nth-child(even) {
-  background-color: white !important;
-}
-
-#collectionEditIndexTable tr:nth-child(odd) {
-  background-color: #F1F0EE !important;
-}
-
 #collectionEditIndexTable th {
   padding-top: 5px;
   padding-bottom: 5px;

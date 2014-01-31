@@ -51,14 +51,6 @@
     padding:12px 18px;
 }
 
-#databaseTable tr:nth-child(odd) { 
-  background-color: #F1F0EE;
-}
-
-#databaseTable tr:nth-child(even) {
-  background-color: #FFFFFF;
-}
-
 #createDatabaseModal table {
   width: 100%;
 }

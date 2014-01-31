@@ -7,6 +7,7 @@
     el: '.footer',
     system: {},
     isOffline: true,
+    firstLogin: true,
 
     initialize: function () {
       //also server online check
@@ -38,9 +39,13 @@
           if (self.isOffline === true) {
             self.isOffline = false;
             arangoHelper.removeNotifications();
-            window.setTimeout(function(){
-              arangoHelper.arangoNotification("Server connected");
-            }, 1000);
+            if (!self.firstLogin) {
+              window.setTimeout(function(){
+                arangoHelper.arangoNotification("Server connected");
+              }, 1000);
+            } else {
+              self.firstLogin = false;
+            }
             self.system.name = data.server;
             self.system.version = data.version;
             self.render();

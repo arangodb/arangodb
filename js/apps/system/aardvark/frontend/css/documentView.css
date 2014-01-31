@@ -148,7 +148,6 @@ table.dataTable thead th {
 }
 
 #documentTableID.dataTable thead tr {
-/*  background-color: #F1F0EE;*/
   background-color: #FFFFFF;
 }
 
@@ -157,23 +156,6 @@ table.dataTable thead th {
     -webkit-box-shadow: none;
     -moz-box-shadow: none;
     box-shadow: none;
-}
-
-#documentTableID .odd,
-table.dataTable.arangoDataTable tr.odd {
-	background:#F1F0EE;
-}
-#documentTableID .even,
-table.dataTable.arangoDataTable tr.even {
-	background:#FFFFFF;
-}
-
-#documentTableID tr.odd td.sorting_1 {
-    background:#F1F0EE;/* #fdf6df*/
-}
-
-#documentTableID tr.even td.sorting_1 {
-    background:#FFFFFF; /*#fdfaec*/
 }
 
 .arangoTab > li > a,

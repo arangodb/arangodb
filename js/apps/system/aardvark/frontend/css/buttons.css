@@ -9,13 +9,20 @@
   font-size: 22px;
   color: #8AA050;
   margin-top: 2px;
+  cursor: pointer;
 }
+
 .deleteButton {
-  color: #B30000;
+  color: #DA4F49;
   font-size: 22px;
   padding-right: 3px;
   top: 3px;
   position: relative;
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  color: #BE342E;
 }
 
 ul.headerButtonList {
