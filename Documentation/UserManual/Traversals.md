@@ -529,6 +529,81 @@ connected edges):
 A custom expander can also be used as an edge filter because it has full control
 over which edges will be returned.
 
+Following are two examples of custom expanders that pick edges based on attributes
+of the edges and the connected vertices.
+
+Finding the connected edges / vertices based on an attribute `when` in the 
+connected vertices. The goal is to follow the edge that leads to the vertex
+with the highest value in the `when` attribute:
+ 
+    var config = {
+      ...
+      expander: function (config, vertex, path) {
+        var datasource = config.datasource;
+        // determine all outgoing edges
+        var outEdges = datasource.getOutEdges(vertex);
+      
+        if (outEdges.length === 0) {
+          return [ ];
+        }  
+
+        var data = [ ];
+        outEdges.forEach(function (edge) {
+          data.push({ edge: edge, vertex: datasource.getInVertex(edge) });
+        });
+
+        // sort outgoing vertices according to "when" attribute value
+        data.sort(function (l, r) {
+          if (l.vertex.when === r.vertex.when) {
+            return 0;  
+          }
+
+          return (l.vertex.when < r.vertex.when ? 1 : -1);
+        });
+
+        // pick first vertex found (with highest "when" attribute value)
+        return [ data[0] ];
+      }
+      ...
+    };
+
+Finding the connected edges / vertices based on an attribute `when` in the 
+edge itself. The goal is to pick the one edge (out of potentially many) that
+has the highest `when` attribute value:
+
+    var config = {
+      ...
+      expander: function (config, vertex, path) {
+        var datasource = config.datasource;
+        // determine all outgoing edges
+        var outEdges = datasource.getOutEdges(vertex);
+     
+        if (outEdges.length === 0) {
+          return [ ]; // return an empty list
+        }
+
+        // sort all outgoing edges according to "when" attribute
+        outEdges.sort(function (l, r) {
+          if (l.when === r.when) {
+            return 0;
+          }
+          return (l.when < r.when ? -1 : 1);
+        });
+ 
+        // return first edge (the one with highest "when" value)
+        var edge = outEdges[0];
+        try {
+          var v = datasource.getInVertex(edge);
+          return [ { edge: edge, vertex: v } ];   
+        }
+        catch (e) { }
+
+        return [ ];
+      }
+      ...
+    };
+
+
 Configuration Overview{#TraversalsObjectConfiguration}
 ------------------------------------------------------
 
