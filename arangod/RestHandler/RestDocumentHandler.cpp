@@ -804,6 +804,8 @@ bool RestDocumentHandler::readAllDocuments () {
 
   res = trx.read(ids);
 
+  TRI_col_type_e typ = trx.primaryCollection()->base._info._type;
+
   res = trx.finish(res);
 
   // .............................................................................
@@ -819,7 +821,13 @@ bool RestDocumentHandler::readAllDocuments () {
   string result("{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+  string prefix;
+  if (typ == TRI_COL_TYPE_EDGE) {
+    prefix = '"' + EDGE_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+  }
+  else {
+    prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+  }
 
   for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
     // collection names do not need to be JSON-escaped
