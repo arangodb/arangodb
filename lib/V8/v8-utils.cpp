@@ -458,6 +458,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     }
 
     v8::Handle<v8::Array> options = v8::Handle<v8::Array>::Cast(argv[2]);
+
     if (options.IsEmpty()) {
       TRI_V8_EXCEPTION_USAGE(scope, signature);
     }
@@ -647,11 +648,12 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       map<string, string>::const_iterator it;
 
       v8::Handle<v8::Object> headers = v8::Object::New();
+
       for (it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
         headers->Set(v8::String::New((*it).first.c_str()), v8::String::New((*it).second.c_str()));
       }
-      result->Set(v8::String::New("headers"), headers);
 
+      result->Set(v8::String::New("headers"), headers);
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
@@ -2375,6 +2377,162 @@ static v8::Handle<v8::Value> JS_HttpStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a external program
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (2 < argv.Length() || argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "executeExternal(<filename>, [<arguments>])");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a string");
+  }
+
+  char** arguments = 0;
+  size_t n = 0;
+
+  if (2 <= argv.Length()) {
+    v8::Handle<v8::Value> a = argv[1];
+
+    if (a->IsArray()) {
+      v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+      n = arr->Length();
+      arguments = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+
+      for (size_t i = 0;  i < n;  ++i) {
+        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
+
+        if (*arg == 0) {
+          arguments[i] = TRI_DuplicateString("");
+        }
+        else {
+          arguments[i] = TRI_DuplicateString(*arg);
+        }
+      }
+    }
+    else {
+      n = 1;
+      arguments = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+
+        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
+
+        if (*arg == 0) {
+          arguments[0] = TRI_DuplicateString("");
+        }
+        else {
+          arguments[0] = TRI_DuplicateString(*arg);
+        }
+    }
+  }
+
+  TRI_external_id_t external = TRI_CreateExternalProcess(*name, (const char**) arguments, n);
+
+  if (arguments != 0) {
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
+    }
+
+    TRI_Free(TRI_CORE_MEM_ZONE, arguments);
+  }
+
+  // return the result
+  return scope.Close(v8::Number::New(external));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the status of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  }
+
+  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
+  TRI_external_status_t external = TRI_CheckExternalProcess(pid);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  const char* status = "UNKNOWN";
+
+  switch (external._status) {
+    case TRI_EXT_NOT_STARTED: status = "NOT-STARTED"; break;
+    case TRI_EXT_PIPE_FAILED: status = "FAILED"; break;
+    case TRI_EXT_FORK_FAILED: status = "FAILED"; break;
+    case TRI_EXT_RUNNING: status = "RUNNING"; break;
+    case TRI_EXT_NOT_FOUND: status = "NOT-FOUND"; break;
+    case TRI_EXT_TERMINATED: status = "TERMINATED"; break;
+    case TRI_EXT_ABORTED: status = "ABORTED"; break;
+    case TRI_EXT_STOPPED: status = "STOPPED"; break;
+    case TRI_EXT_KILL_FAILED: status = "ZOMBIE"; break;
+  }
+
+  result->Set(v8::String::New("status"), v8::String::New(status));
+
+  if (external._status == TRI_EXT_TERMINATED) {
+    result->Set(v8::String::New("exit"), v8::Number::New(external._exitStatus));
+  }
+
+  // return the result
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
+  }
+
+  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
+
+  TRI_KillExternalProcess(pid);
+
+  // return the result
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a port is available
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "testPort(<address>)");
+  }
+
+  string address = TRI_ObjectToString(argv[0]);
+  Endpoint* endpoint = Endpoint::serverFactory(address);
+  TRI_socket_t s = endpoint->connect(1, 1);
+  
+  if (s.fileDescriptor == 0) {
+    endpoint->disconnect();
+  }
+
+  delete endpoint;
+
+  // return the result
+  return scope.Close(v8::Boolean::New(s.fileDescriptor != 0));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2720,7 +2878,7 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a v8 object
+/// @brief normalizes a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
@@ -2856,20 +3014,22 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64DECODE", JS_Base64Decode);
   TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64ENCODE", JS_Base64Encode);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLIENT_STATISTICS", JS_ClientStatistics);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_EXTERNAL", JS_ExecuteExternal);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_KILL_EXTERNAL", JS_KillExternal);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
   TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
@@ -2880,6 +3040,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
 

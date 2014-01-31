@@ -326,6 +326,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           toolbox,
           graphViewer.nodeShaper,
           graphViewer.edgeShaper,
+          graphViewer.start,
           graphViewer.dispatcherConfig
         );
       toolbox.id = "toolbox";
