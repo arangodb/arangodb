@@ -52,7 +52,6 @@
   // cannot use strict here as we are going to delete globals
 
   var exports = require("internal");
-  var fs = require("fs");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
