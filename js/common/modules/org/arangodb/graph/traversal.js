@@ -925,7 +925,7 @@ ArangoTraverser = function (config) {
     }
     if (typeof value === 'string') {
       value = value.toLowerCase().replace(/-/, "");
-      if (map[value] !== null && map[value] !== undefined) {
+      if (map[value] !== null) {
         return map[value];
       }
     }
