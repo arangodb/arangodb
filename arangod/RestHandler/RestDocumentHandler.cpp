@@ -1451,7 +1451,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
-        generateTransactionError(collection, TRI_ERROR_CLUSTER_MOST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+        generateTransactionError(collection, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
       } 
@@ -1512,7 +1512,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
-        generateTransactionError(collection, TRI_ERROR_CLUSTER_MOST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+        generateTransactionError(collection, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
       }
