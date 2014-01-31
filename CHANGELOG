@@ -1,29 +1,6 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
-* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
-  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
-
-      // using user-defined AQL functions for edge and vertex filtering
-      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-        followEdges: "myfunctions::checkedge",
-        filterVertices: "myfunctions::checkvertex"
-      })
-
-      // using the following custom filter functions
-      var aqlfunctions = require("org/arangodb/aql/functions");
-      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
-        return (edge.type !== 'dislikes'); // don't follow these edges
-      }, false);
-
-      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
-        if (vertex.isDeleted || ! vertex.isActive) {
-          return [ "prune", "exclude" ]; // exclude these and don't follow them
-        }
-        return [ ]; // include everything else
-      }, false);
-
-
 * added SHORTEST_PATH AQL function 
 
   this calculates the shortest paths between two vertices, using the Dijkstra
@@ -53,8 +30,6 @@ v1.5.0 (XXXX-XX-XX)
   of `10400` to indicate API compatibility with ArangoDB 1.4. The compatibility
   can also be enforced by setting the `X-Arango-Version` HTTP header in a 
   client request to this API on a per-request basis.
-
-* issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
 
 * allow direct access from the `db` object to collections whose names start 
   with an underscore (e.g. db._users).
@@ -167,8 +142,46 @@ v1.5.0 (XXXX-XX-XX)
   result of <collection>.getIndexes() for each index. This is
   currently only implemented for hash indices and skiplist indices.
 
-v1.4.8 (xxxx-xx-xx)
+
+v1.4.9 (XXXX-XX-XX)
 -------------------
+
+* issue #755: TRAVERSAL does not use strategy, order and itemOrder options
+
+  these options were not honored when configuring a traversal via the AQL
+  TRAVERSAL function. Now, these options are used and must contain valid
+  value if specified. Invalid values in any of these attributes will be
+  rejected and the query will fail with an error
+
+* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
+  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
+
+      // using user-defined AQL functions for edge and vertex filtering
+      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
+
+      // using the following custom filter functions
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
+
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
+
+* issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
+
+
+v1.4.8 (2014-01-31)
+-------------------
+
+* install foxx apps in the web interface
 
 * fixed a segfault in the import API
 
