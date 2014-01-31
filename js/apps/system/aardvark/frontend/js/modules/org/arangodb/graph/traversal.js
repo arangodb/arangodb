@@ -633,14 +633,14 @@ function checkReverse (config) {
       result = true;
     }
   }
-  else if (config.order  === ArangoTraverser.PRE_ORDER) {
+  else if (config.order === ArangoTraverser.PRE_ORDER) {
     // pre order
     if (config.itemOrder === ArangoTraverser.BACKWARD && 
-        config.strategy  === ArangoTraverser.BREADTH_FIRST) {
+        config.strategy === ArangoTraverser.BREADTH_FIRST) {
       result = true;
     }
     else if (config.itemOrder === ArangoTraverser.FORWARD && 
-             config.strategy  === ArangoTraverser.DEPTH_FIRST) {
+             config.strategy === ArangoTraverser.DEPTH_FIRST) {
       result = true; 
     }
   }
@@ -1202,7 +1202,7 @@ ArangoTraverser = function (config) {
     }
     if (typeof value === 'string') {
       value = value.toLowerCase().replace(/-/, "");
-      if (map[value] !== null) {
+      if (map[value] !== null && map[value] !== undefined) {
         return map[value];
       }
     }

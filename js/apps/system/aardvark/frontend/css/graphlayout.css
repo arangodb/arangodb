@@ -1,3 +1,18 @@
+svg.graphViewer {
+  position: absolute;
+  left: 74px;
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: rgba(0,0,0,0.125);
+  z-index: 0;
+}
+
+div.gv_background {
+  position: relative;
+  height: 685px;
+}
+
 img.searchSubmit {
   height: 16px;
   margin-left: -18px;
@@ -22,9 +37,9 @@ img.searchSubmit {
 }
 
 .toolbox {
-  margin-left: 5px;
+  position: absolute;
+  left: 5px;
   margin-right: 5px;
-  margin-bottom: -340px;
   border-radius: 0px !important;  
   -webkit-border-radius: 0px !important;
   -moz-border-radius: 0px !important;
@@ -79,12 +94,14 @@ div.mousepointer {
 }
 
 div.gv_zoom_widget {
-  position: relative;
+  position: absolute;
+  z-index: 1;
   left: 95px;
+  top: 20px;
   width: 40px;
   height: 300px;
-  margin-bottom: -322px;
 }
+
 div.gv_zoom_slider {
   margin: 0px 17px;
   width: 4px;
@@ -180,14 +197,14 @@ span.gv_caret {
 }
 
 div.gv_colour_list {
-  position: relative;
+  position: absolute;
   right: 26px;
   top: 20px;
   text-align: right;
-  height: 680px;
+  max-height: 680px;
   overflow: auto;
-  margin-bottom: -100%;
   float: right;
+  z-index: 1;
 }
 
 div.gv_colour_list li {

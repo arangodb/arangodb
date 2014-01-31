@@ -53,7 +53,9 @@ function ContextMenu(id) {
     },
 
     bindMenu = function($objects) {
-      menu = $.contextMenu.create(jqId, {shadow: false});
+      menu = $.contextMenu.create(jqId, {
+        shadow: false
+      });
       $objects.each(function() {
         $(this).bind('contextmenu', function(e){
           menu.show(this,e);
@@ -64,13 +66,14 @@ function ContextMenu(id) {
     
     divFactory = function() {
       div = document.getElementById(id);
-      if (!div) {
-        div = document.createElement("div");
-        div.id = id;
-        ul = document.createElement("ul");
-        document.body.appendChild(div);
-        div.appendChild(ul);
+      if (div) {
+        div.parentElement.removeChild(div);
       }
+      div = document.createElement("div");
+      div.id = id;
+      ul = document.createElement("ul");
+      document.body.appendChild(div);
+      div.appendChild(ul);
       ul = div.firstChild;
       return div;
     };
