@@ -32,6 +32,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/StringUtils.h"
+#include "Rest/Endpoint.h"
 
 namespace triagens {
   namespace rest {
@@ -48,6 +49,7 @@ namespace triagens {
             serverAddress(),
             clientAddress(),
             endpoint(),
+            endpointType(Endpoint::DOMAIN_UNKNOWN),
             sslContext(0) {
         }
 
@@ -57,6 +59,7 @@ namespace triagens {
             serverAddress(that.serverAddress),
             clientAddress(that.clientAddress),
             endpoint(that.endpoint),
+            endpointType(that.endpointType),
             sslContext(that.sslContext) {
         }
 
@@ -67,6 +70,7 @@ namespace triagens {
             serverAddress = that.serverAddress;
             clientAddress = that.clientAddress;
             endpoint = that.endpoint;
+            endpointType = that.endpointType;
             sslContext = that.sslContext;
           }
 
@@ -81,6 +85,7 @@ namespace triagens {
         string serverAddress;
         string clientAddress;
         string endpoint;
+        Endpoint::DomainType endpointType;
 
         void* sslContext;
     };
