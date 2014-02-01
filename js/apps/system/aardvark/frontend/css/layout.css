@@ -259,9 +259,9 @@ button {
 }
 
 li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
-  font-size: 22px;
+  font-size: 18px;
   position: absolute;
-  right: 5px;
+  right: 4px;
   top: 2px;
 }
 
