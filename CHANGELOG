@@ -1,5 +1,167 @@
+v1.5.0 (XXXX-XX-XX)
+-------------------
+
+* added SHORTEST_PATH AQL function 
+
+  this calculates the shortest paths between two vertices, using the Dijkstra
+  algorithm, employing a min-heap
+
+  By default, ArangoDB does not know the distance between any two vertices and
+  will use a default distance of 1. A custom distance function can be registered
+  as an AQL user function to make the distance calculation use any document 
+  attributes or custom logic:
+    
+      RETURN SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true,
+        distance: "myfunctions::citydistance"
+      }) 
+
+      // using the following custom distance function
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
+        return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+      }, false);
+
+* issue #751: Create database through API should return HTTP status code 201
+
+  By default, the server now returns HTTP 201 (created) when creating a new
+  database successfully. To keep compatibility with older ArangoDB versions, the
+  startup parameter `--server.default-api-compatibility` can be set to a value
+  of `10400` to indicate API compatibility with ArangoDB 1.4. The compatibility
+  can also be enforced by setting the `X-Arango-Version` HTTP header in a 
+  client request to this API on a per-request basis.
+
+* allow direct access from the `db` object to collections whose names start 
+  with an underscore (e.g. db._users).
+
+  Previously, access to such collections via the `db` object was possible from
+  arangosh, but not from arangod (and thus Foxx and actions). The only way
+  to access such collections from these places was via the `db._collection(<name>)`
+  workaround.
+
+* allow `\n` (as well as `\r\n`) as line terminator in batch requests sent to 
+  `/_api/batch` HTTP API.
+
+* use `--data-binary` instead of `--data` parameter in generated cURL examples
+
+* issue #703: Also show path of logfile for fm.config()
+
+* issue #675: Dropping a collection used in "graph" module breaks the graph
+
+* added "static" Graph.drop() method for graphs API
+
+* fixed issue #695: arangosh server.password error
+
+* use pretty-printing in `--console` mode by defaul
+
+* added `check-server` binary for testing
+
+* simplified ArangoDB startup options
+
+  Some startup options are now superfluous or their usage is simplified. The
+  following options have been changed:
+
+  * `--javascript.modules-path`: this option has been removed. The modules paths
+    are determined by arangod and arangosh automatically based on the value of 
+    `--javascript.startup-directory`.
+
+    If the option is set on startup, it is ignored so startup will not abort with
+    an error `unrecognized option`.
+
+  * `--javascript.action-directory`: this option has been removed. The actions
+    directory is determined by arangod automatically based on the value of
+    `--javascript.startup-directory`.
+
+    If the option is set on startup, it is ignored so startup will not abort with
+    an error `unrecognized option`.
+
+  * `--javascript.package-path`: this option is still available but it is not
+    required anymore to set the standard package paths (e.g. `js/npm`). arangod
+    will automatically use this standard package path regardless of whether it
+    was specified via the options.
+
+    It is possible to use this option to add additional package paths to the
+    standard value.
+
+  Configuration files included with arangod are adjusted accordingly.
+
+* layout of the graphs tab adapted to better fit with the other tabs
+
+* database selection is moved to the bottom right corner of the web interface
+
+* removed priority queues
+
+  this feature was never advertised nor documented nor tested.
+
+* display internal attributes in document source view of web interface
+
+* removed separate shape collections
+
+  When upgrading to ArangoDB 1.5, existing collections will be converted to include
+  shapes and attribute markers in the datafiles instead of using separate files for
+  shapes.
+
+  When a collection is converted, existing shapes from the SHAPES directory will
+  be written to a new datafile in the collection directory, and the SHAPES directory
+  will be removed afterwards.
+
+  This saves up to 2 MB of memory and disk space for each collection 
+  (savings are higher, the less different shapes there are in a collection). 
+  Additionally, one less file descriptor per opened collection will be used.
+
+  When creating a new collection, the amount of sync calls may be reduced. The same
+  may be true for documents with yet-unknown shapes. This may help performance
+  in these cases.
+
+* added AQL functions `NTH` and `POSITION`
+
+* added signal handler for arangosh to save last command in more cases
+
+* added extra prompt placeholders for arangosh:
+  - `%e`: current endpoint
+  - `%u`: current user
+
+* added arangosh option `--javascript.gc-interval` to control amount of 
+  garbage collection performed by arangosh
+
+* fixed issue #651: Allow addEdge() to take vertex ids in the JS library
+
+* removed command-line option `--log.format`
+
+  In previous versions, this option did not have an effect for most log messages, so
+  it got removed.
+
+* removed C++ logger implementation
+
+  Logging inside ArangoDB is now done using the LOG_XXX() macros. The LOGGER_XXX()
+  macros are gone.
+
+* added collection status "loading"
+
+* added the option to return the number of elements indexed to the
+  result of <collection>.getIndexes() for each index. This is
+  currently only implemented for hash indices and skiplist indices.
+
+
 v1.4.9 (XXXX-XX-XX)
 -------------------
+
+* added command-line option `--server.disable-authentication-unix-sockets`
+  
+  with this option, authentication can be disabled for all requests coming
+  in via UNIX domain sockets, enabling clients located on the same host as
+  the ArangoDB server to connect without authentication.
+  Other connections (e.g. TCP/IP) are not affected by this option.
+ 
+  The default value for this option is `false`.
+  Note: this option is only supported on platforms that support Unix domain
+  sockets.
+
+* fail if invalid `strategy`, `order` or `itemOrder` attribute values
+  are passed to the AQL TRAVERSAL function. Omitting these attributes 
+  is not considered an error, but specifying an invalid value for any
+  of these attributes will make an AQL query fail.
+
 
 * call global arangod instance destructor on shutdown
 
