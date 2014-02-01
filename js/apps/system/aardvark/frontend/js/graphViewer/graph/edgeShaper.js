@@ -94,7 +94,18 @@ function EdgeShaper(parent, config, idfunc) {
         * (t.y - s.y)
         + (t.x - s.x)
         * (t.x - s.x)
-      );
+      ),
+      m;
+      if (s.x === t.x) {
+        res -= t.z * 18;
+      } else {
+        m = Math.abs((t.y - s.y) / (t.x - s.x));
+        if (m < 0.4) {
+          res -= Math.abs((res * t.z * 45) / (t.x - s.x));
+        } else {
+          res -= Math.abs((res * t.z * 18) / (t.y - s.y));
+        }
+      }
       return res; 
     },
     
@@ -215,7 +226,7 @@ function EdgeShaper(parent, config, idfunc) {
             .select("defs")
             .append("marker")
             .attr("id", "arrow")
-            .attr("refX", "22")
+            .attr("refX", "10")
             .attr("refY", "5")
             .attr("markerUnits", "strokeWidth")
             .attr("markerHeight", "10")

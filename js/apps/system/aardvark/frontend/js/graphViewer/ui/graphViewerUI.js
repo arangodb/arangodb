@@ -326,6 +326,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           toolbox,
           graphViewer.nodeShaper,
           graphViewer.edgeShaper,
+          graphViewer.start,
           graphViewer.dispatcherConfig
         );
       toolbox.id = "toolbox";
@@ -433,7 +434,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     };
   container.appendChild(menubar);
   container.appendChild(background);
-  background.className = "thumbnails";
+  background.className = "thumbnails gv_background ";
   background.id = "background";
   
   viewerConfig = viewerConfig || {};

@@ -133,6 +133,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     
     bindSVGEvents = function() {
       svgObj = svgObj || $("svg");
+      svgObj.unbind();
       _.each(svgBase, function(fs, ev) {
         svgObj.bind(ev, function(trigger) {
           _.each(fs, function(f) {
@@ -180,7 +181,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     }
     if (config.drag !== undefined) {
       if (eventlib.checkDragConfig(config.drag)) {
-        self.events.DRAG = new eventlib.Drag(config.drag);
+        self.events.DRAG = eventlib.Drag(config.drag);
       }
     }
     if (config.nodeEditor !== undefined) {

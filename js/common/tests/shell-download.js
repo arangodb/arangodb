@@ -133,7 +133,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorNoReturn : function () {
-      var result, response = internal.download(buildUrl("?foo=1&bar=baz&code=404"), undefined, { }, tempName );
+      var response = internal.download(buildUrl("?foo=1&bar=baz&code=404"), undefined, { }, tempName );
 
       assertEqual(404, response.code);
 
@@ -287,7 +287,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHead : function () {
-      var result, response = internal.download(buildUrl(""), undefined, { method: "head" });
+      var response = internal.download(buildUrl(""), undefined, { method: "head" });
 
       assertEqual(200, response.code);
 

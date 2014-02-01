@@ -357,16 +357,18 @@ bool RestEdgeHandler::createDocument () {
 /// @RESTRETURNCODE{200}
 /// is returned if the edge was found
 ///
-/// @RESTRETURNCODE{404}
-/// is returned if the edge or collection was not found
-///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the edge has 
 /// the same version
 ///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge or collection was not found
+///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
-/// edge has a different version
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,16 +426,18 @@ bool RestEdgeHandler::createDocument () {
 /// @RESTRETURNCODE{200}
 /// is returned if the edge document was found
 ///
-/// @RESTRETURNCODE{404}
-/// is returned if the edge document or collection was not found
-///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the edge document has
 /// same version
 ///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge document or collection was not found
+///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,8 +559,10 @@ bool RestEdgeHandler::createDocument () {
 /// is returned if the collection or the edge document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,7 +580,7 @@ bool RestEdgeHandler::createDocument () {
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{keepNull,string,optional}
+/// @RESTQUERYPARAM{keepNull,boolean,optional}
 /// If the intention is to delete existing attributes with the patch command, 
 /// the URL query parameter `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
@@ -655,8 +661,10 @@ bool RestEdgeHandler::createDocument () {
 /// is returned if the collection or the edge document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,8 +724,10 @@ bool RestEdgeHandler::createDocument () {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the current edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

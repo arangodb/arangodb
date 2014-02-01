@@ -426,6 +426,11 @@ function NodeShaper(parent, flags, idfunc) {
                  return colourMapper.getCommunityColour();
                }
                return colourMapper.getColour(findFirstValue(color.key, n._data));
+             }).attr("opacity", function(n) {
+               if (!n._expanded) {
+                 return "0.8";
+               }
+               return "1";
              });
           };
           addLabelColor = function (n) {

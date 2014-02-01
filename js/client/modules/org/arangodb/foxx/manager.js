@@ -1088,7 +1088,7 @@ exports.config = function () {
 exports.configJson = function () {
   'use strict';
 
-  var res = arango.GET("/_admin/foxx/config"), name;
+  var res = arango.GET("/_admin/foxx/config");
 
   arangosh.checkRequestResult(res);
 

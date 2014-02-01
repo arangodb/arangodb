@@ -2,28 +2,28 @@
 /*global alert, Backbone, EJS, $, window, templateEngine */
 
 window.foxxMountView = Backbone.View.extend({
+
   el: '#modalPlaceholder',
-  m: {},
-  
-  initialize: function () {
-    this.m = this.model.attributes;
-  },
+
   template: templateEngine.createTemplate("foxxMountView.ejs"),
 
-  render: function() {
-    $(this.el).html(this.template.render(this.model));
-    
+  events: {
+    "hidden #install-foxx"  : "hidden",
+    "click #cancel"         : "hideModal",
+    "click .installFoxx"    : "install"
+  },
+
+  render: function(key) {
+    var m = this.collection.findWhere({_key: key});
+    this.m = m;
+    $(this.el).html(this.template.render(m));
     $('#install-foxx').modal('show');
     $('.modalTooltips').tooltip({
       placement: "left"
     });
     return this;
   },
-  events: {
-    "hidden #install-foxx"  : "hidden",
-    "click #cancel"         : "hideModal",
-    "click #install"        : "install"
-  },
+
   hidden: function () {
     window.App.navigate("applications", {trigger: true});
   },
@@ -35,12 +35,10 @@ window.foxxMountView = Backbone.View.extend({
       alert("Sorry, you have to give a valid mount point, e.g.: /myPath");
       return false;
     } 
-
-    var self = this;
-    (new window.FoxxCollection()).create({
+    this.collection.create({
       mount: mountPoint,
-      name: self.m.name,
-      version: self.m.version
+      name: this.m.get("name"),
+      version: this.m.get("version")
     });
     this.hideModal();
   },
@@ -48,4 +46,5 @@ window.foxxMountView = Backbone.View.extend({
   hideModal: function () {
     $('#install-foxx').modal('hide');
   }
+
 });
