@@ -7823,6 +7823,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
+  v8::Local<v8::String> keyRequireAuthenticationUnixSockets = v8::String::New("requireAuthenticationUnixSockets");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
   
   // overwrite database defaults from argv[2]
@@ -7851,6 +7852,10 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
     if (options->Has(keyRequireAuthentication)) {
       defaults.requireAuthentication = options->Get(keyRequireAuthentication)->BooleanValue();
+    }
+
+    if (options->Has(keyRequireAuthenticationUnixSockets)) {
+      defaults.requireAuthenticationUnixSockets = options->Get(keyRequireAuthenticationUnixSockets)->BooleanValue();
     }
     
     if (options->Has(keyAuthenticateSystemOnly)) {
