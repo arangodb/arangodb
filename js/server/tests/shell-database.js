@@ -27,8 +27,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var arangodb = require("org/arangodb");
-var ERRORS = arangodb.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  database methods
